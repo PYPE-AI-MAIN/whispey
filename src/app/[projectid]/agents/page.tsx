@@ -1,0 +1,10 @@
+'use client'
+import { useParams } from 'next/navigation'
+import AgentSelection from '@/components/AgentSelection'
+
+export default function ProjectAgentsPage() {
+  const params = useParams()
+  const projectId = params.projectid as string
+
+  return <AgentSelection projectId={projectId} />
+} 

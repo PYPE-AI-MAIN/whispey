@@ -208,7 +208,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
                     <TableHead className="w-[50px]">Meta Data</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="mx-2">
                   {filteredCalls.map((call: CallLog) => (
                     <TableRow
                       key={call.id}

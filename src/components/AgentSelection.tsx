@@ -1,5 +1,6 @@
 'use client'
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,29 +27,45 @@ interface Agent {
 }
 
 interface AgentSelectionProps {
-  project: any
-  onAgentSelect: (agent: Agent) => void
-  onBack: () => void
+  projectId: string
 }
 
-const AgentSelection: React.FC<AgentSelectionProps> = ({ project, onAgentSelect, onBack }) => {
+const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const router = useRouter()
 
-  const { data: agents, loading, error } = useSupabaseQuery('pype_voice_agents', {
+  // Fetch project data
+  const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
+    select: 'id, name, description, environment, created_at, is_active',
+    filters: [{ column: 'id', operator: 'eq', value: projectId }]
+  })
+
+  const project = projects?.[0]
+
+  // Fetch agents data
+  const { data: agents, loading: agentsLoading, error: agentsError } = useSupabaseQuery('pype_voice_agents', {
     select: 'id, name, agent_type, configuration, environment, created_at, is_active',
     filters: [
-      { column: 'project_id', operator: 'eq', value: project.id },
+      { column: 'project_id', operator: 'eq', value: projectId },
       { column: 'is_active', operator: 'eq', value: true }
     ],
     orderBy: { column: 'created_at', ascending: false }
   })
 
   const handleAgentClick = (agent: Agent) => {
+    console.log('Agent clicked:', agent)
+    console.log('Agent ID:', agent.id)
     setSelectedAgent(agent.id)
     setTimeout(() => {
-      onAgentSelect(agent)
+      const url = `/agents/${agent.id}`
+      console.log('Navigating to:', url)
+      router.push(url)
     }, 150)
+  }
+
+  const handleBack = () => {
+    router.push('/')
   }
 
   const getAgentColor = (name: string) => {
@@ -74,6 +91,9 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ project, onAgentSelect,
     agent.agent_type.toLowerCase().includes(searchQuery.toLowerCase())
   ) || []
 
+  const loading = projectLoading || agentsLoading
+  const error = projectError || agentsError
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -85,17 +105,17 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ project, onAgentSelect,
     )
   }
 
-  if (error) {
+  if (error || !project) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
           <h2 className="text-xl font-semibold text-gray-900">Something went wrong</h2>
           <p className="text-gray-600 max-w-md">
-            Unable to load agents: {error}
+            Unable to load data: {error || 'Project not found'}
           </p>
           <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={onBack}>
+            <Button variant="outline" onClick={handleBack}>
               <ChevronLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
@@ -113,7 +133,7 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ project, onAgentSelect,
       {/* Simple Header */}
       <header className="px-6 py-8">
         <div className="max-w-4xl mx-auto">
-          <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
+          <Button variant="ghost" onClick={handleBack} className="mb-4 -ml-3">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back to Projects
           </Button>

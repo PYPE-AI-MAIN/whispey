@@ -1,5 +1,6 @@
 'use client'
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,12 +27,13 @@ interface Project {
 }
 
 interface ProjectSelectionProps {
-  onProjectSelect: (project: Project) => void
+  // No props needed - this component handles its own navigation
 }
 
-const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSelect }) => {
+const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const router = useRouter()
 
   const { data: projects, loading, error } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active',
@@ -42,7 +44,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ onProjectSelect }) 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project.id)
     setTimeout(() => {
-      onProjectSelect(project)
+      router.push(`/${project.id}/agents`)
     }, 150)
   }
 
