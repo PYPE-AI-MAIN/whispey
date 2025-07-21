@@ -1,6 +1,6 @@
 'use client'
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { 
   ChevronLeft,
@@ -18,8 +18,11 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
-  const [activeTab, setActiveTab] = useState('overview')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Get active tab from URL params, default to 'overview'
+  const activeTab = searchParams.get('tab') || 'overview'
 
   // Only fetch data if agentId is valid
   const shouldFetch = agentId && agentId !== 'undefined' && agentId.trim() !== ''
@@ -47,6 +50,21 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
       router.push('/')
     }
   }
+
+  const handleTabChange = (tab: string) => {
+    const current = new URLSearchParams(Array.from(searchParams.entries()))
+    current.set('tab', tab)
+    const search = current.toString()
+    const query = search ? `?${search}` : ""
+    router.push(`/agents/${agentId}${query}`)
+  }
+
+  // Set default tab if none specified
+  useEffect(() => {
+    if (!searchParams.get('tab')) {
+      handleTabChange('overview')
+    }
+  }, [searchParams])
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -119,7 +137,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                       activeTab === tab.id
                         ? 'bg-white text-gray-900 shadow-md ring-1 ring-gray-200'

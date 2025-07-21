@@ -54,13 +54,9 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
   })
 
   const handleAgentClick = (agent: Agent) => {
-    console.log('Agent clicked:', agent)
-    console.log('Agent ID:', agent.id)
     setSelectedAgent(agent.id)
     setTimeout(() => {
-      const url = `/agents/${agent.id}`
-      console.log('Navigating to:', url)
-      router.push(url)
+      router.push(`/agents/${agent.id}`)
     }, 150)
   }
 

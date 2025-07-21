@@ -14,15 +14,9 @@ export default function AgentDashboardPage() {
 
   useEffect(() => {
     // Wait for params to be properly loaded
-    console.log('Raw params:', params)
-    console.log('params.agentid:', params.agentid)
-    
     if (params && params.agentid) {
       const id = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid
-      console.log('Extracted agentId:', id)
       setAgentId(id)
-    } else {
-      console.log('No agentid found in params')
     }
     setIsLoading(false)
   }, [params])
