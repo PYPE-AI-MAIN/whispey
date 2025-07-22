@@ -11,9 +11,12 @@ interface AudioPlayerProps {
   s3Key: string
   callId: string
   className?: string
+  url: string | null
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, callId, className }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className }) => {
+
+  console.log(url)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,29 +55,45 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, callId, className }) =
   // Get presigned URL from API
   const getAudioUrl = useCallback(async () => {
     if (audioUrl) return audioUrl
-
+  
     setIsLoading(true)
     setError(null)
-
+  
+    // First, try to use the direct URL if provided
+    if (url) {
+      try {
+        // Test if the URL is accessible by making a HEAD request
+        const testResponse = await fetch(url, { method: 'HEAD' })
+        if (testResponse.ok) {
+          setAudioUrl(url)
+          setIsLoading(false)
+          return url
+        }
+      } catch (err) {
+        console.log('Direct URL failed, falling back to S3 key extraction')
+      }
+    }
+  
+    // If direct URL fails or is not provided, try S3 key extraction
     try {
       const response = await fetch("/api/audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ s3Key }),
       })
-
+  
       if (!response.ok) throw new Error("Failed to get audio URL")
-
-      const { url } = await response.json()
-      setAudioUrl(url)
-      return url
+  
+      const { url: s3Url } = await response.json()
+      setAudioUrl(s3Url)
+      return s3Url
     } catch (err) {
       setError("Failed to load audio")
       return null
     } finally {
       setIsLoading(false)
     }
-  }, [audioUrl, s3Key])
+  }, [audioUrl, url, s3Key])
 
   // Handle play/pause
   const togglePlay = useCallback(async () => {

@@ -258,7 +258,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
           {/* Audio Player */}
           {callData.recording_url && (
             <div className="mb-6">
-              <AudioPlayer s3Key={extractS3Key(callData.recording_url)} callId={callData.id} />
+              <AudioPlayer s3Key={extractS3Key(callData.recording_url)} url={callData.recording_url} callId={callData.id} />
             </div>
           )}
 
