@@ -62,15 +62,33 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
     // First, try to use the direct URL if provided
     if (url) {
       try {
-        // Test if the URL is accessible by making a HEAD request
-        const testResponse = await fetch(url, { method: 'HEAD' })
-        if (testResponse.ok) {
-          setAudioUrl(url)
-          setIsLoading(false)
-          return url
+        // Test if the URL is accessible using our proxy API
+        const testResponse = await fetch('/api/audio-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, method: 'HEAD' })
+        })
+
+        const result = await testResponse.json()
+        console.log('Audio proxy response:', result)
+
+        if (testResponse.ok && result.accessible) {
+          // If it's a valid S3 presigned URL, use the original URL directly
+          // Otherwise use the proxy URL for streaming
+          if (result.isS3PresignedUrl) {
+            console.log('Using S3 presigned URL directly to avoid CORS issues')
+            setAudioUrl(url)
+            setIsLoading(false)
+            return url
+          } else {
+            const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`
+            setAudioUrl(proxyUrl)
+            setIsLoading(false)
+            return proxyUrl
+          }
         }
       } catch (err) {
-        console.log('Direct URL failed, falling back to S3 key extraction')
+        console.log('Proxy URL test failed, falling back to S3 key extraction')
       }
     }
   

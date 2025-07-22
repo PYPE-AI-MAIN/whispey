@@ -8,10 +8,12 @@ import {
   List,
   Loader2,
   AlertCircle,
-  Rocket
+  Rocket,
+  Database
 } from 'lucide-react'
 import Overview from './Overview'
 import CallLogs from './CallLogs'
+import CampaignLogs from './CampaignLogs'
 import CampaignDialog from './CampaignDialog'
 import { useSupabaseQuery } from '../../hooks/useSupabase'
 
@@ -87,7 +89,8 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'logs', label: 'Call Logs', icon: List }
+    { id: 'logs', label: 'Call Logs', icon: List },
+    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : [])
   ]
 
   // Show error if agentId is invalid
@@ -193,6 +196,9 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
         )}
         {activeTab === 'logs' && (
           <CallLogs project={project} agent={agent} onBack={handleBack} />
+        )}
+        {activeTab === 'campaign-logs' && isEnhancedProject && (
+          <CampaignLogs project={project} agent={agent} onBack={handleBack} />
         )}
       </main>
 
