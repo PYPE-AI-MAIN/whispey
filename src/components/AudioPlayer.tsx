@@ -11,24 +11,9 @@ interface AudioPlayerProps {
   s3Key: string
   callId: string
   className?: string
-  url?:string
 }
 
-const checkUrlWithRetry = async (url: string, retries = 3, delay = 300): Promise<boolean> => {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, { method: "HEAD" })
-      if (res.ok) return true
-    } catch (e) {
-      // Optional: console.log(`Attempt ${attempt} failed`)
-    }
-    await new Promise(resolve => setTimeout(resolve, delay))
-  }
-  return false
-}
-
-
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, className }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, callId, className }) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,47 +52,29 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, className }) => {
   // Get presigned URL from API
   const getAudioUrl = useCallback(async () => {
     if (audioUrl) return audioUrl
-  
+
     setIsLoading(true)
     setError(null)
-  
+
     try {
-      let finalUrl:any = url
-  
-      // 1. Try provided URL up to 3 times
-      if (url && await checkUrlWithRetry(url, 3)) {
-        setAudioUrl(url)
-        return url
-      }
-  
-      // 2. Fallback: fetch new presigned URL using s3Key
       const response = await fetch("/api/audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ s3Key }),
       })
-  
-      if (!response.ok) throw new Error("Failed to get audio from s3")
-  
-      const data = await response.json()
-      finalUrl = data.url
-  
-      // 3. Optional: verify fallback URL
-      if (!(await checkUrlWithRetry(finalUrl, 3))) {
-        throw new Error("Fallback audio URL is invalid")
-      }
-  
-      setAudioUrl(finalUrl)
-      return finalUrl
+
+      if (!response.ok) throw new Error("Failed to get audio URL")
+
+      const { url } = await response.json()
+      setAudioUrl(url)
+      return url
     } catch (err) {
-      console.error(err)
-      setError("Audio unavailable")
+      setError("Failed to load audio")
       return null
     } finally {
       setIsLoading(false)
     }
-  }, [url, audioUrl, s3Key])
-  
+  }, [audioUrl, s3Key])
 
   // Handle play/pause
   const togglePlay = useCallback(async () => {
