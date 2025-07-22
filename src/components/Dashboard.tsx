@@ -122,9 +122,9 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   return (
     <div className="min-h-screen bg-white">
       {/* Simple Header */}
-      <header className="px-6 py-12 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="max-w-7xl mx-auto flex row justify-between">
-          <Button variant="ghost" onClick={handleBack} className="mb-6 -ml-3 hover:bg-white/50">
+      <header className="px-6 py-2 items-center border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto flex row justify-between items-center">
+          <Button variant="ghost" onClick={handleBack} className="-ml-3 hover:bg-white/50">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back to Agents
           </Button>
@@ -138,7 +138,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                   <button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       activeTab === tab.id
                         ? 'bg-white text-gray-900 shadow-md ring-1 ring-gray-200'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'

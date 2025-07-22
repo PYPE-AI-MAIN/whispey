@@ -49,6 +49,29 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
     orderBy: { column: "unix_timestamp", ascending: true },
   })
 
+  
+  // Parse basic transcript_json if no metrics are available
+  const basicTranscript = useMemo(() => {
+    if (!callData?.transcript_json || transcriptLogs?.length > 0) return null
+    
+    try {
+      const transcript = Array.isArray(callData.transcript_json) 
+        ? callData.transcript_json 
+        : JSON.parse(callData.transcript_json)
+      
+      return transcript.map((item: any, index: number) => ({
+        id: `basic-${index}`,
+        speaker: item.speaker,
+        text: item.text,
+        timestamp: item.timestamp,
+        turn_id: index + 1
+      }))
+    } catch (e) {
+      console.error('Error parsing transcript_json:', e)
+      return null
+    }
+  }, [callData?.transcript_json, transcriptLogs])
+  
   // Calculate conversation metrics
   const conversationMetrics = useMemo(() => {
     if (!transcriptLogs?.length) return null
@@ -235,7 +258,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
           {/* Audio Player */}
           {callData.recording_url && (
             <div className="mb-6">
-              <AudioPlayer s3Key={extractS3Key(callData.recording_url)} callId={callData.id} />
+              <AudioPlayer s3Key={extractS3Key(callData.recording_url)} url={callData.recording_url} callId={callData.id} />
             </div>
           )}
 
@@ -265,8 +288,8 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
             </div>
           </div>
 
-          {/* Performance Metrics */}
-          {conversationMetrics && (
+          {/* Performance Metrics - only show for metrics-based transcripts */}
+          {conversationMetrics && transcriptLogs?.length > 0 && (
             <div className="mt-6">
               <h3 className="text-sm font-medium mb-3 text-muted-foreground">PERFORMANCE METRICS</h3>
               <div className="grid grid-cols-4 gap-4">
@@ -380,6 +403,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                 </div>
               ) : transcriptLogs?.length ? (
                 <div className="space-y-6">
+                  {/* Metrics-based transcript display */}
                   {transcriptLogs.map((log: TranscriptLog) => (
                     <div key={log.id} className="space-y-4">
                       {/* User Message */}
@@ -503,10 +527,42 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                     </div>
                   ))}
                 </div>
+              ) : basicTranscript?.length ? (
+                <div className="space-y-6">
+                  {/* Basic transcript display */}
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-blue-800 text-sm font-medium">Basic Transcript</p>
+                    <p className="text-blue-700 text-xs">Simple conversation format without detailed metrics</p>
+                  </div>
+                  {basicTranscript.map((item: any) => (
+                    <div key={item.id} className="space-y-4">
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-12 text-right">
+                          <div className="text-xs text-muted-foreground font-mono">
+                            {item.timestamp ? new Date(item.timestamp * 1000).toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit', 
+                              second: '2-digit' 
+                            }) : `${item.turn_id}`}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant={item.speaker === 'user' ? 'outline' : 'secondary'} className="text-xs">
+                              {item.speaker === 'user' ? 'User' : item.speaker === 'assistant' ? 'Assistant' : item.speaker}
+                            </Badge>
+                          </div>
+                          <p className="text-sm leading-relaxed">{item.text}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No conversation transcript available for this call</p>
+                  <p className="mb-2">No conversation transcript available for this call</p>
+                  <p className="text-xs">Make sure to include either transcript_json or transcript_with_metrics in your API requests</p>
                 </div>
               )}
             </div>

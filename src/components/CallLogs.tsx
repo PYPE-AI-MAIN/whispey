@@ -200,10 +200,10 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  }
+  // const formatTime = (dateString: string) => {
+  //   const date = new Date(dateString)
+  //   return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  // }
 
   const formatToIndianDateTime = (timestamp:any) => {
     const date = new Date(timestamp)
@@ -220,8 +220,6 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
       hour12: true
     })
   }
-
-  
 
 
   if (error) {
