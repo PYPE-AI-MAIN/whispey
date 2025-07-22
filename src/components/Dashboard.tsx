@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { 
@@ -7,15 +7,19 @@ import {
   BarChart3, 
   List,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Rocket
 } from 'lucide-react'
 import Overview from './Overview'
 import CallLogs from './CallLogs'
+import CampaignDialog from './CampaignDialog'
 import { useSupabaseQuery } from '../../hooks/useSupabase'
 
 interface DashboardProps {
   agentId: string
 }
+
+const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
@@ -23,6 +27,9 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   
   // Get active tab from URL params, default to 'overview'
   const activeTab = searchParams.get('tab') || 'overview'
+  
+  // Campaign dialog state
+  const [showCampaignDialog, setShowCampaignDialog] = useState(false)
 
   // Only fetch data if agentId is valid
   const shouldFetch = agentId && agentId !== 'undefined' && agentId.trim() !== ''
@@ -59,12 +66,24 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     router.push(`/agents/${agentId}${query}`)
   }
 
+  const handleRunCampaign = () => {
+    setShowCampaignDialog(true)
+  }
+
+  const handleCampaignCreated = (campaignData: any) => {
+    // Optionally refresh data or show notification
+    console.log('Campaign created:', campaignData)
+  }
+
   // Set default tab if none specified
   useEffect(() => {
     if (!searchParams.get('tab')) {
       handleTabChange('overview')
     }
   }, [searchParams])
+
+  // Check if this is the enhanced project
+  const isEnhancedProject = agent?.project_id === ENHANCED_PROJECT_ID
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
@@ -130,26 +149,39 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
           </Button>
           
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            {/* Right side - Enhanced Tabs */}
-            <nav className="flex space-x-2 bg-white/70 backdrop-blur-sm rounded-xl p-2 shadow-sm border border-white/50 lg:flex-shrink-0">
-              {tabs.map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      activeTab === tab.id
-                        ? 'bg-white text-gray-900 shadow-md ring-1 ring-gray-200'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-                )
-              })}
-            </nav>
+            <div className="flex items-center gap-4">
+              {/* Run Campaign Button - Only for Enhanced Project */}
+              {isEnhancedProject && (
+                <Button 
+                  onClick={handleRunCampaign}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <Rocket className="w-4 h-4 mr-2" />
+                  Run Campaign
+                </Button>
+              )}
+              
+              {/* Right side - Enhanced Tabs */}
+              <nav className="flex space-x-2 bg-white/70 backdrop-blur-sm rounded-xl p-2 shadow-sm border border-white/50 lg:flex-shrink-0">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleTabChange(tab.id)}
+                      className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        activeTab === tab.id
+                          ? 'bg-white text-gray-900 shadow-md ring-1 ring-gray-200'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  )
+                })}
+              </nav>
+            </div>
           </div>
         </div>
       </header>
@@ -163,6 +195,16 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
           <CallLogs project={project} agent={agent} onBack={handleBack} />
         )}
       </main>
+
+      {/* Campaign Dialog */}
+      {isEnhancedProject && (
+        <CampaignDialog
+          isOpen={showCampaignDialog}
+          onClose={() => setShowCampaignDialog(false)}
+          onCampaignCreated={handleCampaignCreated}
+          agent={agent}
+        />
+      )}
     </div>
   )
 }

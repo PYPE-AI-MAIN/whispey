@@ -80,6 +80,69 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: projectId } = await params
+    const body = await request.json()
+    const { retry_configuration } = body
+
+    if (!projectId) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate retry_configuration if provided
+    if (retry_configuration) {
+      const validCodes = ['408', '480', '486', '504', '600']
+      for (const [code, minutes] of Object.entries(retry_configuration)) {
+        if (!validCodes.includes(code)) {
+          return NextResponse.json(
+            { error: `Invalid SIP code: ${code}` },
+            { status: 400 }
+          )
+        }
+        if (typeof minutes !== 'number' || minutes < 1 || minutes > 1440) {
+          return NextResponse.json(
+            { error: `Invalid retry minutes for ${code}: must be between 1 and 1440` },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
+    // Update the project with retry configuration
+    const { data, error } = await supabase
+      .from('pype_voice_projects')
+      .update({ retry_configuration })
+      .eq('id', projectId)
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('Error updating project:', error)
+      return NextResponse.json(
+        { error: 'Failed to update project' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`Successfully updated retry configuration for project "${data.name}"`)
+    return NextResponse.json(data, { status: 200 })
+
+  } catch (error) {
+    console.error('Unexpected error updating project:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
