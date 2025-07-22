@@ -8,13 +8,12 @@ import {
   List,
   Loader2,
   AlertCircle,
-  Rocket,
   Database
 } from 'lucide-react'
 import Overview from './Overview'
 import CallLogs from './CallLogs'
 import CampaignLogs from './CampaignLogs'
-import CampaignDialog from './CampaignDialog'
+
 import { useSupabaseQuery } from '../../hooks/useSupabase'
 
 interface DashboardProps {
@@ -30,9 +29,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // Get active tab from URL params, default to 'overview'
   const activeTab = searchParams.get('tab') || 'overview'
   
-  // Campaign dialog state
-  const [showCampaignDialog, setShowCampaignDialog] = useState(false)
-
   // Only fetch data if agentId is valid
   const shouldFetch = agentId && agentId !== 'undefined' && agentId.trim() !== ''
 
@@ -68,14 +64,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     router.push(`/agents/${agentId}${query}`)
   }
 
-  const handleRunCampaign = () => {
-    setShowCampaignDialog(true)
-  }
 
-  const handleCampaignCreated = (campaignData: any) => {
-    // Optionally refresh data or show notification
-    console.log('Campaign created:', campaignData)
-  }
 
   // Set default tab if none specified
   useEffect(() => {
@@ -152,19 +141,8 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
           </Button>
           
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div className="flex items-center gap-4">
-              {/* Run Campaign Button - Only for Enhanced Project */}
-              {isEnhancedProject && (
-                <Button 
-                  onClick={handleRunCampaign}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  <Rocket className="w-4 h-4 mr-2" />
-                  Run Campaign
-                </Button>
-              )}
-              
-              {/* Right side - Enhanced Tabs */}
+            <div className="flex items-center gap-4">              
+              {/* Navigation Tabs */}
               <nav className="flex space-x-2 bg-white/70 backdrop-blur-sm rounded-xl p-2 shadow-sm border border-white/50 lg:flex-shrink-0">
                 {tabs.map((tab) => {
                   const Icon = tab.icon
@@ -202,15 +180,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
         )}
       </main>
 
-      {/* Campaign Dialog */}
-      {isEnhancedProject && (
-        <CampaignDialog
-          isOpen={showCampaignDialog}
-          onClose={() => setShowCampaignDialog(false)}
-          onCampaignCreated={handleCampaignCreated}
-          agent={agent}
-        />
-      )}
+
     </div>
   )
 }
