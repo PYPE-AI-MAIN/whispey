@@ -42,6 +42,7 @@ interface CampaignLog {
   createdAt: string
   uploadedAt: string
   real_attempt_count:number
+  system_error_count:number
 }
 
 interface CampaignLogsProps {
@@ -82,7 +83,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     end_date: '',
     start_time: '09:00',
     end_time: '17:00',
-    concurrency: 10
+    concurrency: 10,
+    retry_config: {
+      '408': 60,
+      '480': 60,
+      '486': 120,
+      '504': 60,
+      '600': 120
+    }
   })
   
   // Delete All states
@@ -338,7 +346,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
         end_date: scheduleData.end_date,
         start_time: scheduleData.start_time,
         end_time: scheduleData.end_time,
-        concurrency: scheduleData.concurrency
+        concurrency: scheduleData.concurrency,
+        retry_config: scheduleData.retry_config
       }
 
       const response = await fetch('/api/schedule', {
@@ -355,7 +364,17 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       }
 
       const result = await response.json()
-      alert(`${result.message}\nSchedule ID: ${result.scheduleId}\nSchedule: ${result.schedule.start_date} to ${result.schedule.end_date}`)
+      
+      const alertMessage = [
+        result.message,
+        `Schedule ID: ${result.scheduleId}`,
+        `Period: ${result.schedule.start_date} to ${result.schedule.end_date}`,
+        `Time: ${result.schedule.start_time} - ${result.schedule.end_time}`,
+        `Concurrency: ${result.schedule.concurrency} calls`,
+        result.retry_configuration ? 'Retry configuration updated' : ''
+      ].filter(Boolean).join('\n')
+      
+      alert(alertMessage)
       
       setShowScheduleDialog(false)
       
@@ -365,7 +384,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
         end_date: '',
         start_time: '09:00',
         end_time: '17:00',
-        concurrency: 10
+        concurrency: 10,
+        retry_config: {
+          '408': 60,
+          '480': 60,
+          '486': 120,
+          '504': 60,
+          '600': 120
+        }
       })
       
     } catch (error) {
@@ -591,8 +617,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                       <TableHead className="w-[160px] font-semibold text-foreground">FPO Name</TableHead>
                       <TableHead className="w-[120px] font-semibold text-foreground">FPO Login ID</TableHead>
                       <TableHead className="w-[100px] font-semibold text-foreground">Status</TableHead>
-                                             <TableHead className="w-[90px] font-semibold text-foreground">Real Attempts</TableHead>
-                      <TableHead className="w-[200px] font-semibold text-foreground">Source File</TableHead>
+                      <TableHead className="w-[90px] font-semibold text-foreground">Retry Attempts</TableHead>
+                      <TableHead className="w-[200px] font-semibold text-foreground">System  Error</TableHead>
                       <TableHead className="w-[140px] font-semibold text-foreground pr-6">Created At</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -644,14 +670,11 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                         </TableCell>
 
                         <TableCell className="py-4">
-                          <div className="flex items-center gap-2">
-                            <FileText className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-xs text-gray-600 truncate max-w-[180px]" title={log.sourceFile}>
-                              {log.sourceFile.split('/').pop()}
-                            </span>
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            {log.system_error_count}
                           </div>
                         </TableCell>
-
                         <TableCell className="text-sm text-muted-foreground py-4 pr-6">
                           {formatDateTime(log.createdAt)}
                         </TableCell>
@@ -832,9 +855,129 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                   disabled={scheduling}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
                 />
+                            </div>
+
+              {/* Retry Configuration */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Retry Configuration (Minutes)
+                </label>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">
+                        SIP 408 (Request Timeout)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="1440"
+                        value={scheduleData.retry_config['408']}
+                        onChange={(e) => setScheduleData({ 
+                          ...scheduleData, 
+                          retry_config: { 
+                            ...scheduleData.retry_config, 
+                            '408': parseInt(e.target.value) || 60 
+                          } 
+                        })}
+                        disabled={scheduling}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">
+                        SIP 480 (Temporarily Unavailable)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="1440"
+                        value={scheduleData.retry_config['480']}
+                        onChange={(e) => setScheduleData({ 
+                          ...scheduleData, 
+                          retry_config: { 
+                            ...scheduleData.retry_config, 
+                            '480': parseInt(e.target.value) || 60 
+                          } 
+                        })}
+                        disabled={scheduling}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">
+                        SIP 486 (Busy Here)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="1440"
+                        value={scheduleData.retry_config['486']}
+                        onChange={(e) => setScheduleData({ 
+                          ...scheduleData, 
+                          retry_config: { 
+                            ...scheduleData.retry_config, 
+                            '486': parseInt(e.target.value) || 120 
+                          } 
+                        })}
+                        disabled={scheduling}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">
+                        SIP 504 (Server Timeout)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="1440"
+                        value={scheduleData.retry_config['504']}
+                        onChange={(e) => setScheduleData({ 
+                          ...scheduleData, 
+                          retry_config: { 
+                            ...scheduleData.retry_config, 
+                            '504': parseInt(e.target.value) || 60 
+                          } 
+                        })}
+                        disabled={scheduling}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">
+                        SIP 600 (Busy Everywhere)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="1440"
+                        value={scheduleData.retry_config['600']}
+                        onChange={(e) => setScheduleData({ 
+                          ...scheduleData, 
+                          retry_config: { 
+                            ...scheduleData.retry_config, 
+                            '600': parseInt(e.target.value) || 120 
+                          } 
+                        })}
+                        disabled={scheduling}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                        <strong>Tip:</strong> Set retry intervals based on expected recovery time for each error type.
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            
+
             <div className="flex gap-3 pt-2">
               <Button 
                 variant="outline" 
@@ -845,7 +988,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                     end_date: '',
                     start_time: '09:00',
                     end_time: '17:00',
-                    concurrency: 10
+                    concurrency: 10,
+                    retry_config: {
+                      '408': 60,
+                      '480': 60,
+                      '486': 120,
+                      '504': 60,
+                      '600': 120
+                    }
                   })
                 }}
                 disabled={scheduling}

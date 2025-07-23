@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+// Create Supabase client for server-side operations
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
     // Extract form data
-    const { project_id, start_date, end_date, start_time, end_time, concurrency } = body
-    console.log(project_id, start_date, end_date, start_time, end_time, concurrency)
+    const { project_id, start_date, end_date, start_time, end_time, concurrency, retry_config } = body
+    console.log(project_id, start_date, end_date, start_time, end_time, concurrency, retry_config)
 
     // Validation
     if (!project_id) {
@@ -21,16 +27,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Start time and end time are required' }, { status: 400 })
     }
 
-    // Validate project ID for enhanced project only
-    const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
-    if (project_id !== ENHANCED_PROJECT_ID) {
-      return NextResponse.json({ error: 'Schedule creation not available for this project' }, { status: 403 })
-    }
-
     // Validate concurrency
     const concurrencyNum = parseInt(concurrency) || 10
     if (concurrencyNum < 1 || concurrencyNum > 50) {
       return NextResponse.json({ error: 'Concurrency must be between 1 and 50' }, { status: 400 })
+    }
+
+    // Validate retry configuration
+    if (retry_config) {
+      const validCodes = ['408', '480', '486', '504', '600']
+      for (const [code, minutes] of Object.entries(retry_config)) {
+        if (!validCodes.includes(code)) {
+          return NextResponse.json({ error: `Invalid SIP code: ${code}` }, { status: 400 })
+        }
+        if (typeof minutes !== 'number' || minutes < 1 || minutes > 1440) {
+          return NextResponse.json({ error: `Invalid retry minutes for ${code}: must be between 1 and 1440` }, { status: 400 })
+        }
+      }
+    }
+
+    // Step 1: Update project retry configuration if provided
+    if (retry_config && Object.keys(retry_config).length > 0) {
+      console.log('Updating project retry configuration:', retry_config)
+      
+      const { error: projectUpdateError } = await supabase
+        .from('pype_voice_projects')
+        .update({ retry_configuration: retry_config })
+        .eq('id', project_id)
+
+      if (projectUpdateError) {
+        console.error('Error updating project retry configuration:', projectUpdateError)
+        return NextResponse.json({ error: 'Failed to update project retry configuration' }, { status: 500 })
+      }
+      
+      console.log('Successfully updated project retry configuration')
     }
 
     console.log(`Creating schedule for project: ${project_id}`)
@@ -61,13 +91,11 @@ export async function POST(request: NextRequest) {
     }
 
     const scheduleData = await scheduleResponse.json()
-    const scheduleId = scheduleData.scheduleId || scheduleData.id || 'success'
-    console.log(`Successfully created campaign schedule: ${scheduleId}`)
+    console.log('Schedule created successfully:', scheduleData)
 
     return NextResponse.json({
-      success: true,
       message: 'Campaign schedule created successfully',
-      scheduleId: scheduleId,
+      scheduleId: scheduleData.id,
       schedule: {
         start_date,
         end_date,
@@ -75,11 +103,11 @@ export async function POST(request: NextRequest) {
         end_time,
         concurrency: concurrencyNum
       },
-      projectId: project_id
-    }, { status: 200 })
+      retry_configuration: retry_config
+    })
 
   } catch (error) {
-    console.error('Unexpected error creating schedule:', error)
+    console.error('Error in schedule route:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-} 
+}
