@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip } from 'recharts'
+import { EnhancedChartBuilder } from './EnhancedChartBuilder'
 
 import { 
   Phone, 
@@ -285,6 +286,40 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
               </CardContent>
             </Card>
 
+            {/* Daily Latency */}
+            <Card className="border-0 bg-white">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Daily Average Latency</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics.dailyData}>
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 12, fill: '#6b7280' }}
+                      />
+                      <Tooltip />
+                      <Line 
+                        type="monotone" 
+                        dataKey="avg_latency" 
+                        stroke="#3b82f6" 
+                        strokeWidth={3}
+                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, fill: '#3b82f6' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+            
+
             {/* Daily Minutes */}
             <Card className="border-0 bg-white">
               <CardContent className="p-6">
@@ -316,6 +351,12 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
               </CardContent>
             </Card>
           </div>
+
+          <EnhancedChartBuilder 
+          agentId={agent.id}
+          dateFrom={apiDateRange.from}
+          dateTo={apiDateRange.to}
+        />
 
           {/* Additional Stats */}
           <Card className="border-0 bg-white">

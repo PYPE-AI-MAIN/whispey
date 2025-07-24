@@ -34,24 +34,42 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
         setError(null)
 
         // Single RPC call to get all overview data
-        const { data: overviewData, error: rpcError } = await supabase
-          .rpc('get_overview_data', {
-            p_agent_id: agentId,
-            p_date_from: `${dateFrom}T00:00:00`,
-            p_date_to: `${dateTo}T23:59:59`
-          })
+        const { data: dailyStats, error: queryError } = await supabase
+        .from('call_summary_materialized')
+        .select(`
+          call_date,
+          calls,
+          total_minutes,
+          avg_latency,
+          unique_customers,
+          successful_calls,
+          success_rate
+        `)
+        .eq('agent_id', agentId)
+        .gte('call_date', dateFrom)
+        .lte('call_date', dateTo)
+        .order('call_date', { ascending: true })
           
-        if (rpcError) throw rpcError
+        if (queryError) throw queryError
+        const totalCalls = dailyStats?.reduce((sum, day) => sum + day.calls, 0) || 0
+        const successfulCalls = dailyStats?.reduce((sum, day) => sum + day.successful_calls, 0) || 0
 
-        // Type the response data
         const typedData: OverviewData = {
-          totalCalls: overviewData.totalCalls || 0,
-          totalMinutes: overviewData.totalMinutes || 0,
-          successfulCalls: overviewData.successfulCalls || 0,
-          successRate: overviewData.successRate || 0,
-          averageLatency: overviewData.averageLatency || 0,
-          uniqueCustomers: overviewData.uniqueCustomers || 0,
-          dailyData: overviewData.dailyData || []
+          totalCalls,
+          totalMinutes: dailyStats?.reduce((sum, day) => sum + day.total_minutes, 0) || 0,
+          successfulCalls, // ✅ This now includes call_ended_reason = 'completed'
+          successRate: totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0,
+          averageLatency: dailyStats && dailyStats.length > 0
+            ? dailyStats.reduce((sum, day) => sum + day.avg_latency, 0) / dailyStats.length
+            : 0,
+          uniqueCustomers: dailyStats?.reduce((sum, day) => sum + day.unique_customers, 0) || 0,
+          dailyData: dailyStats?.map(day => ({
+            date: day.call_date,
+            dateKey: day.call_date,
+            calls: day.calls,
+            minutes: day.total_minutes,
+            avg_latency:day.avg_latency
+          })) || []
         }
 
         setData(typedData)
