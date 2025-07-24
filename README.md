@@ -30,7 +30,7 @@ We use **Supabase** for the backend database.
    * Copy your **Project URL**
    * Under **API Keys**, copy your **anon/public key**
 
-#### Add these to your `.env.local` file:
+#### Add these to your `.env` file:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
