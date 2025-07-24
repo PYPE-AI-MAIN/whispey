@@ -1,7 +1,3 @@
-Here’s a **clearer, simpler, and fully revised README** based on your original content. It keeps everything organized, beginner-friendly, and accurate, including instructions for Supabase credentials and project setup.
-
----
-
 # 🔌 Voice Analytics Platform – Integration Guide
 
 Track, analyze, and improve your voice AI applications with real-time analytics.
