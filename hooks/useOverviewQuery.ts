@@ -32,32 +32,39 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
       try {
         setLoading(true)
         setError(null)
+    
+        // 🔄 Call the PostgreSQL function to refresh the materialized view
+        const { error: refreshError } = await supabase.rpc('refresh_call_summary')
+        console.log(refreshError)
+        if (refreshError) throw refreshError
 
-        // Single RPC call to get all overview data
+    
+        // ✅ Then query the refreshed materialized view
         const { data: dailyStats, error: queryError } = await supabase
-        .from('call_summary_materialized')
-        .select(`
-          call_date,
-          calls,
-          total_minutes,
-          avg_latency,
-          unique_customers,
-          successful_calls,
-          success_rate
-        `)
-        .eq('agent_id', agentId)
-        .gte('call_date', dateFrom)
-        .lte('call_date', dateTo)
-        .order('call_date', { ascending: true })
-          
+          .from('call_summary_materialized')
+          .select(`
+            call_date,
+            calls,
+            total_minutes,
+            avg_latency,
+            unique_customers,
+            successful_calls,
+            success_rate
+          `)
+          .eq('agent_id', agentId)
+          .gte('call_date', dateFrom)
+          .lte('call_date', dateTo)
+          .order('call_date', { ascending: true })
+    
         if (queryError) throw queryError
+    
         const totalCalls = dailyStats?.reduce((sum, day) => sum + day.calls, 0) || 0
         const successfulCalls = dailyStats?.reduce((sum, day) => sum + day.successful_calls, 0) || 0
-
+    
         const typedData: OverviewData = {
           totalCalls,
           totalMinutes: dailyStats?.reduce((sum, day) => sum + day.total_minutes, 0) || 0,
-          successfulCalls, // ✅ This now includes call_ended_reason = 'completed'
+          successfulCalls,
           successRate: totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0,
           averageLatency: dailyStats && dailyStats.length > 0
             ? dailyStats.reduce((sum, day) => sum + day.avg_latency, 0) / dailyStats.length
@@ -68,10 +75,10 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
             dateKey: day.call_date,
             calls: day.calls,
             minutes: day.total_minutes,
-            avg_latency:day.avg_latency
+            avg_latency: day.avg_latency
           })) || []
         }
-
+    
         setData(typedData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
@@ -79,6 +86,7 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
         setLoading(false)
       }
     }
+    
 
     if (agentId && dateFrom && dateTo) {
       fetchOverviewData()
