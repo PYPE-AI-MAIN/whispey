@@ -107,13 +107,13 @@ curl -X POST "http://localhost:3000/api/send-logs" \
       {
         "id": "msg_1",
         "role": "user",
-        "content": ["Hello, I need help"],
+        "content": "Hello, I need help",
         "interrupted": false
       },
       {
         "id": "msg_2",
         "role": "assistant",
-        "content": ["Sure, what can I help you with?"],
+        "content": "Sure, what can I help you with?",
         "interrupted": false
       }
     ],
