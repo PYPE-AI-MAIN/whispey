@@ -61,8 +61,8 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
       
       return transcript.map((item: any, index: number) => ({
         id: `basic-${index}`,
-        speaker: item.speaker,
-        text: item.text,
+        role: item.role,
+        content: item.content,
         timestamp: item.timestamp,
         turn_id: index + 1
       }))
