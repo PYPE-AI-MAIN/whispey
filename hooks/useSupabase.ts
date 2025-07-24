@@ -13,6 +13,8 @@ export const useInfiniteScroll = (table: string, options: any = {}) => {
   const loadingRef = useRef(false) // Prevent concurrent requests
   const limit = options.limit || 50
 
+  console.log(options)
+
   // Memoize options to prevent unnecessary re-renders
   const optionsHash = JSON.stringify(options)
 

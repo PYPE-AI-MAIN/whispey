@@ -24,11 +24,14 @@ export interface FilterRule {
   column: string
   operation: string
   value: string
+  jsonField?: string  // Add this for JSONB field names
 }
 
 interface CallFilterProps {
   onFiltersChange: (filters: FilterRule[]) => void
   onClear: () => void
+  availableMetadataFields?: string[]
+  availableTranscriptionFields?: string[]
 }
 
 const COLUMNS = [
@@ -36,7 +39,9 @@ const COLUMNS = [
   { value: 'duration_seconds', label: 'Duration (seconds)', type: 'number' },
   { value: 'avg_latency', label: 'Avg Latency (ms)', type: 'number' },
   { value: 'call_started_at', label: 'Date', type: 'date' },
-  { value: 'call_ended_reason', label: 'Status', type: 'text' }
+  { value: 'call_ended_reason', label: 'Status', type: 'text' },
+  { value: 'metadata', label: 'Metadata', type: 'jsonb' },
+  { value: 'transcription_metrics', label: 'Transcription', type: 'jsonb' }
 ]
 
 const OPERATIONS = {
@@ -54,26 +59,62 @@ const OPERATIONS = {
     { value: 'equals', label: 'On date' },
     { value: 'greater_than', label: 'After' },
     { value: 'less_than', label: 'Before' }
+  ],
+  jsonb: [
+    { value: 'json_equals', label: 'Equals' },
+    { value: 'json_contains', label: 'Contains' },
+    { value: 'json_exists', label: 'Field Exists' },
+    { value: 'json_greater_than', label: 'Greater than' },
+    { value: 'json_less_than', label: 'Less than' }
   ]
 }
 
-const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => {
+const CallFilter: React.FC<CallFilterProps> = ({ 
+  onFiltersChange, 
+  onClear, 
+  availableMetadataFields = [],
+  availableTranscriptionFields = []
+}) => {
   const [filters, setFilters] = useState<FilterRule[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [newFilter, setNewFilter] = useState({
     column: '',
     operation: '',
-    value: ''
+    value: '',
+    jsonField: ''
   })
   const [selectedDate, setSelectedDate] = useState<Date>()
 
+  const getAvailableJsonFields = () => {
+    if (newFilter.column === 'metadata') {
+      return availableMetadataFields
+    }
+    if (newFilter.column === 'transcription_metrics') {
+      return availableTranscriptionFields
+    }
+    return []
+  }
+
+  const isJsonbColumn = () => {
+    return newFilter.column === 'metadata' || newFilter.column === 'transcription_metrics'
+  }
+
+  const isValidFilter = () => {
+    const hasBasicFields = newFilter.column && newFilter.operation
+    const hasValue = newFilter.operation !== 'json_exists' ? newFilter.value : true
+    const hasJsonField = isJsonbColumn() ? newFilter.jsonField : true
+    
+    return hasBasicFields && hasValue && hasJsonField
+  }
+
   const addFilter = () => {
-    if (newFilter.column && newFilter.operation && newFilter.value) {
+    if (isValidFilter()) {
       const filter: FilterRule = {
         id: Date.now().toString(),
         column: newFilter.column,
         operation: newFilter.operation,
-        value: newFilter.value
+        value: newFilter.value,
+        ...(newFilter.jsonField && { jsonField: newFilter.jsonField })
       }
       
       const updatedFilters = [...filters, filter]
@@ -81,7 +122,7 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
       onFiltersChange(updatedFilters)
       
       // Reset form
-      setNewFilter({ column: '', operation: '', value: '' })
+      setNewFilter({ column: '', operation: '', value: '', jsonField: '' })
       setSelectedDate(undefined)
     }
   }
@@ -94,7 +135,7 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
 
   const clearAllFilters = () => {
     setFilters([])
-    setNewFilter({ column: '', operation: '', value: '' })
+    setNewFilter({ column: '', operation: '', value: '', jsonField: '' })
     setSelectedDate(undefined)
     onClear()
   }
@@ -102,7 +143,6 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date)
-      // Format as YYYY-MM-DD to match database date format
       setNewFilter({ ...newFilter, value: format(date, 'yyyy-MM-dd') })
     }
   }
@@ -125,6 +165,17 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
   }
 
   const isDateField = newFilter.column === 'call_started_at'
+  const needsValue = newFilter.operation !== 'json_exists'
+  const gridCols = isJsonbColumn() ? 'grid-cols-5' : 'grid-cols-4'
+
+  const getFilterDisplayText = (filter: FilterRule) => {
+    const columnLabel = getColumnLabel(filter.column)
+    const operationLabel = getOperationLabel(filter.operation)
+    const jsonFieldText = filter.jsonField ? `.${filter.jsonField}` : ''
+    const valueText = filter.operation !== 'json_exists' ? ` "${filter.value}"` : ''
+    
+    return `${columnLabel}${jsonFieldText} ${operationLabel}${valueText}`
+  }
 
   return (
     <div className="w-fit">
@@ -148,30 +199,32 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
             </Button>
           </PopoverTrigger>
           
-          <PopoverContent className="w-[480px] p-3" align="start">
+          <PopoverContent className="w-[600px] p-3" align="start">
             <div className="space-y-3">
               {/* Compact Form */}
-              <div className="grid grid-cols-4 gap-2">
+              <div className={`grid gap-2 ${gridCols}`}>
                 {/* Column */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 text-xs justify-between">
-                      {newFilter.column ? getColumnLabel(newFilter.column).split(' ')[0] : 'Column'}
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-0">
+                    <span className="truncate">
+                      {newFilter.column ? getColumnLabel(newFilter.column) : 'Column'}
+                    </span>
+                    <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48">
                     {COLUMNS.map((column) => (
                       <DropdownMenuItem
                         key={column.value}
                         onClick={() => {
                           setNewFilter({ 
-                            ...newFilter, 
                             column: column.value,
-                            operation: '', // Reset operation when column changes
-                            value: '' // Reset value when column changes
+                            operation: '',
+                            value: '',
+                            jsonField: ''
                           })
-                          setSelectedDate(undefined) // Reset date when column changes
+                          setSelectedDate(undefined)
                         }}
                         className="text-xs"
                       >
@@ -181,17 +234,49 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* JSON Field (only for JSONB columns) */}
+                {isJsonbColumn() && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs justify-between min-w-0"
+                        disabled={!newFilter.column}
+                      >
+                        <span className="truncate">
+                          {newFilter.jsonField || 'Field'}
+                        </span>
+                        <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40 max-h-48 overflow-y-auto">
+                      {getAvailableJsonFields().map((field) => (
+                        <DropdownMenuItem
+                          key={field}
+                          onClick={() => setNewFilter({ ...newFilter, jsonField: field })}
+                          className="text-xs"
+                        >
+                          {field}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
                 {/* Operation */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger asChild>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="h-8 text-xs justify-between"
-                      disabled={!newFilter.column}
+                      className="h-8 text-xs justify-between min-w-0"
+                      disabled={!newFilter.column || (isJsonbColumn() && !newFilter.jsonField)}
                     >
-                      {newFilter.operation ? getOperationLabel(newFilter.operation) : 'Op'}
-                      <ChevronDown className="h-3 w-3" />
+                      <span className="truncate">
+                        {newFilter.operation ? getOperationLabel(newFilter.operation) : 'Operation'}
+                      </span>
+                      <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-40">
@@ -207,48 +292,54 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Value - Date picker for date fields */}
-                {isDateField ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs justify-between"
+                {/* Value - Only show if operation needs a value */}
+                {needsValue && (
+                  <>
+                    {isDateField ? (
+                      <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs justify-between min-w-0"
+                          disabled={!newFilter.operation}
+                        >
+                          <span className="truncate">
+                            {selectedDate ? format(selectedDate, 'MMM dd') : 'Date'}
+                          </span>
+                          <CalendarIcon className="h-3 w-3 flex-shrink-0 ml-1" />
+                        </Button>
+                      </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={handleDateSelect}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Input
+                        placeholder="Value"
+                        value={newFilter.value}
+                        onChange={(e) => setNewFilter({ ...newFilter, value: e.target.value })}
                         disabled={!newFilter.operation}
-                      >
-                        {selectedDate ? format(selectedDate, 'MMM dd') : 'Date'}
-                        <CalendarIcon className="h-3 w-3" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start" side="bottom">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateSelect}
-                        initialFocus
+                        className="h-8 text-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            addFilter()
+                          }
+                        }}
                       />
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Input
-                    placeholder="Value"
-                    value={newFilter.value}
-                    onChange={(e) => setNewFilter({ ...newFilter, value: e.target.value })}
-                    disabled={!newFilter.operation}
-                    className="h-8 text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        addFilter()
-                      }
-                    }}
-                  />
+                    )}
+                  </>
                 )}
 
                 {/* Add Button */}
                 <Button
                   onClick={addFilter}
-                  disabled={!newFilter.column || !newFilter.operation || !newFilter.value}
+                  disabled={!isValidFilter()}
                   size="sm"
                   className="h-8 text-xs"
                 >
@@ -281,9 +372,7 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
               variant="secondary"
               className="gap-1 py-1 px-2 text-xs"
             >
-              <span>
-                {getColumnLabel(filter.column)} {getOperationLabel(filter.operation)} "{filter.value}"
-              </span>
+              <span>{getFilterDisplayText(filter)}</span>
               <button
                 onClick={() => removeFilter(filter.id)}
                 className="hover:bg-muted rounded-full p-0.5"
@@ -298,4 +387,4 @@ const CallFilter: React.FC<CallFilterProps> = ({ onFiltersChange, onClear }) => 
   )
 }
 
-export default CallFilter 
+export default CallFilter

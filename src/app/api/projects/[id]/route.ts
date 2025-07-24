@@ -207,19 +207,6 @@ export async function DELETE(
       }
     }
 
-    // 4. Delete auth tokens for this project
-    const { error: authTokensError } = await supabase
-      .from('pype_voice_auth_tokens')
-      .delete()
-      .eq('project_id', projectId)
-
-    if (authTokensError) {
-      console.error('Error deleting auth tokens:', authTokensError)
-      return NextResponse.json(
-        { error: 'Failed to delete auth tokens' },
-        { status: 500 }
-      )
-    }
     console.log('Successfully deleted auth tokens')
 
     // 5. Delete all agents for this project

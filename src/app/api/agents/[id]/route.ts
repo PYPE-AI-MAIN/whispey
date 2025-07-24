@@ -51,19 +51,6 @@ export async function DELETE(
       console.log('Successfully deleted metrics logs')
     }
 
-    // 3. Delete auth tokens for this agent
-    const { error: authTokensError } = await supabase
-      .from('pype_voice_auth_tokens')
-      .delete()
-      .eq('agent_id', agentId)
-
-    if (authTokensError) {
-      console.error('Error deleting auth tokens:', authTokensError)
-      return NextResponse.json(
-        { error: 'Failed to delete auth tokens' },
-        { status: 500 }
-      )
-    }
     console.log('Successfully deleted auth tokens')
 
     // 4. Finally, delete the agent itself
