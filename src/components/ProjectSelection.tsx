@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import TokenRegenerationConfirmDialog from './TokenRegenerationConfirmDialog'
+
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +64,8 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
   const [regeneratingToken, setRegeneratingToken] = useState<string | null>(null)
   const [showToken, setShowToken] = useState(false)
   const [tokenCopied, setTokenCopied] = useState(false)
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState<Project | null>(null)
+
   const router = useRouter()
 
   const { data: projects, loading, error, refetch } = useSupabaseQuery('pype_voice_projects', {
@@ -136,15 +140,16 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
           action: 'regenerate_token'
         }),
       })
-
+  
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to regenerate token')
       }
-
+  
       const result = await response.json()
       setRegeneratedToken(result.api_token)
       setShowTokenDialog(project)
+      setShowRegenerateConfirm(null) // Close confirmation dialog
       console.log('Token regenerated successfully for project:', project.name)
       
       // Refresh the projects list to get updated token_hash
@@ -158,6 +163,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
       setRegeneratingToken(null)
     }
   }
+  
 
   const handleCopyToken = async () => {
     if (regeneratedToken) {
@@ -310,10 +316,10 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem 
+                        <DropdownMenuItem 
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleRegenerateToken(project)
+                              setShowRegenerateConfirm(project) // Show confirmation instead of direct regeneration
                             }}
                             disabled={regeneratingToken === project.id}
                           >
@@ -518,6 +524,14 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <TokenRegenerationConfirmDialog
+        isOpen={showRegenerateConfirm !== null}
+        project={showRegenerateConfirm}
+        isRegenerating={regeneratingToken === showRegenerateConfirm?.id}
+        onConfirm={() => showRegenerateConfirm && handleRegenerateToken(showRegenerateConfirm)}
+        onCancel={() => setShowRegenerateConfirm(null)}
+      />
     </div>
   )
 }
