@@ -1,0 +1,37 @@
+version: '3.8' # Using a modern Docker Compose version
+
+services:
+  clickhouse-server:
+    image: clickhouse/clickhouse-server:23.8-alpine # Using the Alpine image for smaller size
+    container_name: clickhouse-server
+    ports:
+      - "8123:8123" # HTTP interface
+      - "9000:9000" # Native TCP interface
+      - "9009:9009" # Inter-server communication (optional, but in your original schema)
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse # Persistent data storage
+      - clickhouse_logs:/var/log/clickhouse-server # Persistent logs
+      - ./clickhouse-init:/docker-entrypoint-initdb.d # Mount initialization scripts
+    environment:
+      # These environment variables are used by the entrypoint to create the database and user
+      CLICKHOUSE_DB: voice_analytics
+      CLICKHOUSE_USER: analytics_user
+      CLICKHOUSE_PASSWORD: secure_password_123 # IMPORTANT: Change this to a strong password!
+      # CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1 # Enable default access management (optional, but good practice)
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "bash", "-c", "clickhouse-client --query 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 2s
+      retries: 60
+    # cap_add: # Optional: Add Linux capabilities if needed for advanced ClickHouse features
+    #   - SYS_NICE
+    #   - NET_ADMIN
+    #   - IPC_LOCK
+
+volumes:
+  clickhouse_data:
+  clickhouse_logs:
