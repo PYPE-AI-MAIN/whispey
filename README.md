@@ -1,7 +1,3 @@
-Here’s a **clearer, simpler, and fully revised README** based on your original content. It keeps everything organized, beginner-friendly, and accurate, including instructions for Supabase credentials and project setup.
-
----
-
 # 🔌 Voice Analytics Platform – Integration Guide
 
 Track, analyze, and improve your voice AI applications with real-time analytics.
@@ -34,7 +30,7 @@ We use **Supabase** for the backend database.
    * Copy your **Project URL**
    * Under **API Keys**, copy your **anon/public key**
 
-#### Add these to your `.env.local` file:
+#### Add these to your `.env` file:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
@@ -111,13 +107,13 @@ curl -X POST "http://localhost:3000/api/send-logs" \
       {
         "id": "msg_1",
         "role": "user",
-        "content": ["Hello, I need help"],
+        "content": "Hello, I need help",
         "interrupted": false
       },
       {
         "id": "msg_2",
         "role": "assistant",
-        "content": ["Sure, what can I help you with?"],
+        "content": "Sure, what can I help you with?",
         "interrupted": false
       }
     ],

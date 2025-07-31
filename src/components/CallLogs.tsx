@@ -556,7 +556,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
 
                       <TableCell className="text-xs text-muted-foreground py-4 border-r-2 border-primary/30">
                         {call?.avg_latency ? (
-                          <span className="font-mono">{call.avg_latency.toFixed(2)}ms</span>
+                          <span className="font-mono">{call.avg_latency.toFixed(2)}s</span>
                         ) : (
                           "-"
                         )}

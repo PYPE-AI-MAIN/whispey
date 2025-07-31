@@ -61,8 +61,8 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
       
       return transcript.map((item: any, index: number) => ({
         id: `basic-${index}`,
-        speaker: item.speaker,
-        text: item.text,
+        role: item.role,
+        content: item.content,
         timestamp: item.timestamp,
         turn_id: index + 1
       }))
@@ -543,16 +543,16 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                               hour: '2-digit', 
                               minute: '2-digit', 
                               second: '2-digit' 
-                            }) : `${item.turn_id}`}
+                            }) : `${item.id}`}
                           </div>
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant={item.speaker === 'user' ? 'outline' : 'secondary'} className="text-xs">
-                              {item.speaker === 'user' ? 'User' : item.speaker === 'assistant' ? 'Assistant' : item.speaker}
+                            <Badge variant={item.role === 'user' ? 'outline' : 'secondary'} className="text-xs">
+                              {item.role === 'user' ? 'User' : item.role === 'assistant' ? 'Assistant' : item.role}
                             </Badge>
                           </div>
-                          <p className="text-sm leading-relaxed">{item.text}</p>
+                          <p className="text-sm leading-relaxed">{item.content}</p>
                         </div>
                       </div>
                     </div>
