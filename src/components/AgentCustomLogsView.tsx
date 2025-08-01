@@ -149,6 +149,8 @@ const getStatusVariant = (status: string) => {
 const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, dateRange }) => {
   // ===== STATE MANAGEMENT =====
   const [selectedViewId, setStoredSelectedViewId] = useLocalStorage(`selectedView-${agentId}`, "all")
+
+  console.log(selectedViewId)
   
   // Core data state
   const [views, setViews] = useState<CustomView[]>([])
@@ -558,24 +560,22 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
 
   // Initialize selected view after views are loaded
   useEffect(() => {
-    if (isFirstRender.current && views.length >= 0) {
+    if (isFirstRender.current && views.length > 0) {
       isFirstRender.current = false
-      
-      if (selectedViewId !== "all") {
-        const savedView = views.find((v) => v.id === selectedViewId)
-        if (savedView) {
-          loadView(savedView)
-        } else {
-          setStoredSelectedViewId("all")
-          resetToAllView()
-        }
+  
+      const savedView = views.find((v) => v.id === selectedViewId)
+  
+      if (selectedViewId !== "all" && savedView) {
+        loadView(savedView)
       } else {
+        setStoredSelectedViewId("all")
         resetToAllView()
       }
-      
+  
       setIsInitialized(true)
     }
   }, [views, selectedViewId, loadView, resetToAllView, setStoredSelectedViewId])
+  
 
   // Fetch call logs when filters change or component initializes
   useEffect(() => {
