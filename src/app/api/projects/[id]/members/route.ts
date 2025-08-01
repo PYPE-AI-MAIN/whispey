@@ -158,7 +158,7 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: any }
+  context: any
 ) {
   try {
     const { userId } = await auth()
@@ -166,23 +166,29 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { params } = await context;
+
     const projectId = params.id
 
-    const { data: accessCheck } = await supabase
+    const { data: accessCheck,error:accessError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('id')
       .eq('clerk_id', userId)
       .eq('project_id', projectId)
       .eq('is_active', true)
       .single()
-
     
+
+    if(accessError)
+    {
+      console.error("Access error:", accessError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
     if (!accessCheck) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    console.log("projectId", projectId)
 
     const { data: members, error } = await supabase
     .from('pype_voice_email_project_mapping')
