@@ -501,6 +501,52 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     fetchCallLogs(nextPage, false)
   }, [page, fetchCallLogs])
 
+  // fetch in background
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const filters = convertToSupabaseFilters(currentFilters)
+        let query = supabase
+          .from("pype_voice_call_logs")
+          .select("*")
+          .eq("agent_id", agentId)
+          .gte("call_started_at", dateRange.from)
+          .lte("call_started_at", dateRange.to + 1)
+          .order("call_started_at", { ascending: false })
+          .limit(PAGE_SIZE)
+  
+        for (const filter of filters) {
+          // @ts-ignore
+          query = query[filter.operator](filter.column, filter.value)
+        }
+  
+        const { data, error } = await query
+        if (error) throw error
+  
+        // Check if there's any new data not already in the list
+        if (data && data.length > 0) {
+          const latestExistingCallId = callLogs[0]?.call_id
+          const isNew = data.some((log) => log.call_id !== latestExistingCallId)
+  
+          if (isNew) {
+            // Append new logs at the beginning
+            setCallLogs((prev) => {
+              const ids = new Set(prev.map((log) => log.call_id))
+              const newOnes = data.filter((log) => !ids.has(log.call_id))
+              return [...newOnes, ...prev]
+            })
+          }
+        }
+      } catch (err) {
+        console.error("Background refresh failed:", err)
+      }
+    }, 5 * 60 * 1000)
+  
+    return () => clearInterval(interval)
+  }, [agentId, dateRange, currentFilters, callLogs, convertToSupabaseFilters])
+  
+  
+
   const loadMoreRef = useInfiniteScroll(handleLoadMore, hasMore, isLoading)
 
   // ===== EFFECTS =====
