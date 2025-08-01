@@ -16,17 +16,12 @@ import CallFilter, { type FilterRule } from "./CallFilter"
 import ColumnSelector from "./ColumnSelector"
 import { Settings2, Save, Trash2, Eye, Filter, Columns, RefreshCw, AlertCircle, Database, Search } from "lucide-react"
 
-/**
- * Props for the AgentCustomLogsView component
- */
+// ===== TYPES AND INTERFACES =====
 interface AgentCustomLogsViewProps {
   agentId: string
   dateRange: { from: string; to: string }
 }
 
-/**
- * Custom view configuration interface
- */
 interface CustomView {
   id: string
   name: string
@@ -40,9 +35,6 @@ interface CustomView {
   updated_at?: string
 }
 
-/**
- * Call log data interface
- */
 interface CallLog {
   id: string
   call_id: string
@@ -55,9 +47,6 @@ interface CallLog {
   transcription_metrics: Record<string, any>
 }
 
-/**
- * Loading states enum for better type safety
- */
 enum LoadingState {
   IDLE = "idle",
   LOADING = "loading",
@@ -65,51 +54,170 @@ enum LoadingState {
   SUCCESS = "success",
 }
 
-/**
- * Professional Agent Call Logs Management Component
- *
- * Features:
- * - Advanced filtering and column management
- * - Saved view configurations
- * - Real-time data refresh
- * - Professional UI/UX design
- * - Comprehensive error handling
- */
+// ===== CONSTANTS =====
+const PAGE_SIZE = 20
+const DEFAULT_BASIC_COLUMNS = ["customer_number", "call_id", "call_ended_reason", "duration_seconds", "call_started_at", "avg_latency"]
+
+const BASIC_COLUMN_DEFINITIONS = [
+  { key: "customer_number", label: "Customer Number" },
+  { key: "call_id", label: "Call ID" },
+  { key: "call_ended_reason", label: "Call Status" },
+  { key: "duration_seconds", label: "Duration" },
+  { key: "call_started_at", label: "Start Time" },
+  { key: "avg_latency", label: "Avg Latency (ms)" },
+]
+
+// ===== CUSTOM HOOKS =====
+const useLocalStorage = (key: string, defaultValue: string) => {
+  const [value, setValue] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(key) || defaultValue
+    }
+    return defaultValue
+  })
+
+  const setStoredValue = useCallback((newValue: string) => {
+    setValue(newValue)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, newValue)
+    }
+  }, [key])
+
+  return [value, setStoredValue] as const
+}
+
+const useInfiniteScroll = (callback: () => void, hasMore: boolean, isLoading: boolean) => {
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!hasMore || isLoading) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          callback()
+        }
+      },
+      { threshold: 1 }
+    )
+
+    const current = loadMoreRef.current
+    if (current) observer.observe(current)
+
+    return () => {
+      if (current) observer.unobserve(current)
+    }
+  }, [hasMore, isLoading, callback])
+
+  return loadMoreRef
+}
+
+// ===== UTILITY FUNCTIONS =====
+const formatDuration = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, "0")}`
+}
+
+const formatDateTime = (timestamp: string): string => {
+  const date = new Date(timestamp)
+  return date.toLocaleString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  })
+}
+
+const getStatusVariant = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "completed":
+      return "default"
+    case "failed":
+      return "destructive"
+    case "busy":
+      return "secondary"
+    default:
+      return "outline"
+  }
+}
+
+// ===== MAIN COMPONENT =====
 const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, dateRange }) => {
-  // Core state management
+  // ===== STATE MANAGEMENT =====
+  const [selectedViewId, setStoredSelectedViewId] = useLocalStorage(`selectedView-${agentId}`, "all")
+  
+  // Core data state
   const [views, setViews] = useState<CustomView[]>([])
+  const [callLogs, setCallLogs] = useState<CallLog[]>([])
   const [currentFilters, setCurrentFilters] = useState<FilterRule[]>([])
   const [currentColumns, setCurrentColumns] = useState<{
     basic: string[]
     metadata: string[]
     transcription_metrics: string[]
   }>({
-    basic: ["customer_number", "call_id", "call_ended_reason", "duration_seconds", "call_started_at", "avg_latency"],
+    basic: DEFAULT_BASIC_COLUMNS,
     metadata: [],
     transcription_metrics: [],
   })
 
-  // UI state management
-  const [viewName, setViewName] = useState<string>("")
-  const [selectedViewId, setSelectedViewId] = useState<string>(() => {
-    // Try to get from localStorage, fallback to "all"
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(`selectedView-${agentId}`) || "all"
-    }
-    return "all"
-  })
-  const [callLogs, setCallLogs] = useState<CallLog[]>([])
+  // UI state
   const [loadingState, setLoadingState] = useState<LoadingState>(LoadingState.IDLE)
-  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState<string>("")
-  const [filtersReady, setFiltersReady] = useState(false)
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false)
+  const [viewName, setViewName] = useState<string>("")
+  
+  // Pagination state
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  
+  // Initialization flags
+  const [isInitialized, setIsInitialized] = useState(false)
+  const isFirstRender = useRef(true)
 
-  const hasInitializedView = useRef(false)
+  // ===== COMPUTED VALUES =====
+  const dynamicColumns = useMemo(() => {
+    const metadataKeys = new Set<string>()
+    const transcriptionKeys = new Set<string>()
 
-  /**
-   * Fetch saved views for the current agent
-   */
+    callLogs.forEach((call) => {
+      if (call.metadata && typeof call.metadata === "object") {
+        Object.keys(call.metadata).forEach((key) => metadataKeys.add(key))
+      }
+      if (call.transcription_metrics && typeof call.transcription_metrics === "object") {
+        Object.keys(call.transcription_metrics).forEach((key) => transcriptionKeys.add(key))
+      }
+    })
+
+    return {
+      metadata: Array.from(metadataKeys).sort(),
+      transcription_metrics: Array.from(transcriptionKeys).sort(),
+    }
+  }, [callLogs])
+
+  const filteredCallLogs = useMemo(() => {
+    if (!searchTerm.trim()) return callLogs
+
+    const searchLower = searchTerm.toLowerCase()
+    return callLogs.filter(
+      (call) =>
+        call.customer_number?.toLowerCase().includes(searchLower) ||
+        call.call_id?.toLowerCase().includes(searchLower) ||
+        call.call_ended_reason?.toLowerCase().includes(searchLower),
+    )
+  }, [callLogs, searchTerm])
+
+  const selectedView = useMemo(() => views.find((v) => v.id === selectedViewId), [views, selectedViewId])
+  const isLoading = loadingState === LoadingState.LOADING
+  const isAllView = selectedViewId === "all"
+  const activeFiltersCount = currentFilters.length
+  const activeColumnsCount = currentColumns.basic.length + currentColumns.metadata.length + currentColumns.transcription_metrics.length
+
+  // ===== API FUNCTIONS =====
   const fetchViews = useCallback(async (): Promise<void> => {
     try {
       const { data, error } = await supabase
@@ -126,9 +234,6 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     }
   }, [agentId])
 
-  /**
-   * Convert filter rules to Supabase query format
-   */
   const convertToSupabaseFilters = useCallback(
     (filters: FilterRule[]) => {
       const supabaseFilters = [{ column: "agent_id", operator: "eq", value: agentId }]
@@ -259,39 +364,52 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     [agentId],
   )
 
-  /**
-   * Fetch call logs with applied filters
-   */
-  const fetchCallLogs = useCallback(async (): Promise<void> => {
-    setLoadingState(LoadingState.LOADING)
+  const fetchCallLogs = useCallback(async (pageNumber: number = 0, reset: boolean = false): Promise<void> => {
+    if (pageNumber === 0 || reset) {
+      setLoadingState(LoadingState.LOADING)
+    }
     setError(null)
-
-    console.log()
 
     try {
       let query = supabase
-      .from("pype_voice_call_logs")
-      .select("*")
-      .eq("agent_id", agentId)
-      .gte("call_started_at", dateRange.from)
-      .order("call_started_at", { ascending: false })
-      .limit(1000) // Increased limit for better data coverage
-      
-      // Apply filters
+        .from("pype_voice_call_logs")
+        .select("*")
+        .eq("agent_id", agentId)
+        .gte("call_started_at", dateRange.from)
+        .lte("call_started_at", dateRange.to+1)
+
       const filters = convertToSupabaseFilters(currentFilters)
-      console.log(filters,dateRange.from,dateRange.to)
       for (const filter of filters) {
-        // @ts-ignore - Supabase dynamic query building
+        // @ts-ignore
         query = query[filter.operator](filter.column, filter.value)
       }
 
-      const { data, error } = await query
+      const from = pageNumber * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
 
-      console.log(data)
+      query = query.order("call_started_at", { ascending: false })
+      query = query.range(from, to)
+
+      const { data, error } = await query
 
       if (error) throw error
 
-      setCallLogs(data || [])
+      if (data.length < PAGE_SIZE) setHasMore(false)
+
+      if (reset || pageNumber === 0) {
+        setCallLogs(data || [])
+      } else {
+        setCallLogs((prev) => {
+          const combined = [...prev, ...data]
+          const seen = new Set<string>()
+          return combined.filter((log) => {
+            if (seen.has(log.call_id)) return false
+            seen.add(log.call_id)
+            return true
+          })
+        })
+      }
+      
       setLoadingState(LoadingState.SUCCESS)
     } catch (err) {
       console.error("Failed to fetch call logs:", err)
@@ -300,104 +418,40 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     }
   }, [currentFilters, agentId, dateRange, convertToSupabaseFilters])
 
-  /**
-   * Extract dynamic columns from call logs data
-   */
-  const dynamicColumns = useMemo(() => {
-    const metadataKeys = new Set<string>()
-    const transcriptionKeys = new Set<string>()
-
-    callLogs.forEach((call) => {
-      if (call.metadata && typeof call.metadata === "object") {
-        Object.keys(call.metadata).forEach((key) => metadataKeys.add(key))
-      }
-      if (call.transcription_metrics && typeof call.transcription_metrics === "object") {
-        Object.keys(call.transcription_metrics).forEach((key) => transcriptionKeys.add(key))
-      }
-    })
-
-    return {
-      metadata: Array.from(metadataKeys).sort(),
-      transcription_metrics: Array.from(transcriptionKeys).sort(),
-    }
-  }, [callLogs])
-
-  /**
-   * Basic column definitions
-   */
-  const basicColumns = useMemo(
-    () => [
-      { key: "customer_number", label: "Customer Number" },
-      { key: "call_id", label: "Call ID" },
-      { key: "call_ended_reason", label: "Call Status" },
-      { key: "duration_seconds", label: "Duration" },
-      { key: "call_started_at", label: "Start Time" },
-      { key: "avg_latency", label: "Avg Latency (ms)" },
-    ],
-    [],
-  )
-
-  /**
-   * Filter call logs based on search term
-   */
-  const filteredCallLogs = useMemo(() => {
-    if (!searchTerm.trim()) return callLogs
-
-    const searchLower = searchTerm.toLowerCase()
-    return callLogs.filter(
-      (call) =>
-        call.customer_number?.toLowerCase().includes(searchLower) ||
-        call.call_id?.toLowerCase().includes(searchLower) ||
-        call.call_ended_reason?.toLowerCase().includes(searchLower),
-    )
-  }, [callLogs, searchTerm])
-
-  /**
-   * Initialize component data
-   */
-
-    useEffect(() => {
-        fetchViews()
-    }, [fetchViews])
-
-    useEffect(() => {
-        if (filtersReady || selectedViewId === "all") {
-            fetchCallLogs()
-        }
-    }, [filtersReady, fetchCallLogs])
-
-
-    
-
-  /**
-   * Update visible columns when dynamic columns change
-   */
-  useEffect(() => {
-    setCurrentColumns((prev) => ({
-      basic: prev.basic.length === 0 ? basicColumns.map((col) => col.key) : prev.basic,
-      metadata: prev.metadata.filter((col) => dynamicColumns.metadata.includes(col)),
-      transcription_metrics: prev.transcription_metrics.filter((col) =>
-        dynamicColumns.transcription_metrics.includes(col),
-      ),
-    }))
-  }, [dynamicColumns, basicColumns])
-
-  /**
-   * Reset to default "All" view
-   */
+  // ===== VIEW MANAGEMENT FUNCTIONS =====
   const resetToAllView = useCallback((): void => {
     setCurrentFilters([])
     setCurrentColumns({
-      basic: basicColumns.map((col) => col.key),
+      basic: DEFAULT_BASIC_COLUMNS,
       metadata: [],
       transcription_metrics: [],
     })
-    setSelectedViewId("all")
-  }, [basicColumns])
+  }, [])
 
-  /**
-   * Save current view configuration
-   */
+  const loadView = useCallback((view: CustomView): void => {
+    setCurrentFilters(view.filters || [])
+    setCurrentColumns({
+      basic: view.visible_columns?.basic || DEFAULT_BASIC_COLUMNS,
+      metadata: view.visible_columns?.metadata || [],
+      transcription_metrics: view.visible_columns?.transcription_metrics || [],
+    })
+  }, [])
+
+  const handleViewChange = useCallback((value: string): void => {
+    setStoredSelectedViewId(value)
+    setPage(0)
+    setHasMore(true)
+    
+    if (value === "all") {
+      resetToAllView()
+    } else {
+      const view = views.find((v) => v.id === value)
+      if (view) {
+        loadView(view)
+      }
+    }
+  }, [views, loadView, resetToAllView, setStoredSelectedViewId])
+
   const saveView = useCallback(async (): Promise<void> => {
     if (!viewName.trim()) return
 
@@ -422,143 +476,82 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     }
   }, [viewName, agentId, currentFilters, currentColumns, fetchViews])
 
-  /**
-   * Load a saved view configuration
-   */
-  const loadView = useCallback(
-    (view: CustomView): void => {
-      setCurrentFilters(view.filters || [])
-      setCurrentColumns({
-        basic: view.visible_columns?.basic || basicColumns.map((col) => col.key),
-        metadata: view.visible_columns?.metadata || [],
-        transcription_metrics: view.visible_columns?.transcription_metrics || [],
-      })
-      setSelectedViewId(view.id)
-    },
-    [basicColumns],
-  )
+  const deleteView = useCallback(async (viewId: string): Promise<void> => {
+    try {
+      const { error } = await supabase.from("pype_voice_agent_call_log_views").delete().eq("id", viewId)
 
-  /**
-   * Handle view selection change
-   */
-  const handleViewChange = useCallback(
-    (value: string): void => {
-      // Save to localStorage
-      localStorage.setItem(`selectedView-${agentId}`, value)
-      
-      if (value === "all") {
+      if (error) throw error
+
+      setViews((prev) => prev.filter((view) => view.id !== viewId))
+
+      if (selectedViewId === viewId) {
+        setStoredSelectedViewId("all")
         resetToAllView()
-      } else {
-        const view = views.find((v) => v.id === value)
-        if (view) loadView(view)
       }
-    },
-    [views, loadView, resetToAllView, agentId],
-  )
+    } catch (err) {
+      console.error("Failed to delete view:", err)
+      setError("Unable to delete view. Please try again.")
+    }
+  }, [selectedViewId, resetToAllView, setStoredSelectedViewId])
 
-  /**
-   * Delete a saved view
-   */
-    const deleteView = useCallback(
-        async (viewId: string): Promise<void> => {
-        try {
-            const { error } = await supabase.from("pype_voice_agent_call_log_views").delete().eq("id", viewId)
-    
-            if (error) throw error
-    
-            setViews((prev) => prev.filter((view) => view.id !== viewId))
-    
-            if (selectedViewId === viewId) {
-            // Clear from localStorage and reset to "all"
-            localStorage.setItem(`selectedView-${agentId}`, "all")
-            resetToAllView()
-            }
-        } catch (err) {
-            console.error("Failed to delete view:", err)
-            setError("Unable to delete view. Please try again.")
-        }
-        },
-        [selectedViewId, resetToAllView, agentId],
-    )
+  // ===== PAGINATION =====
+  const handleLoadMore = useCallback(() => {
+    const nextPage = page + 1
+    setPage(nextPage)
+    fetchCallLogs(nextPage, false)
+  }, [page, fetchCallLogs])
 
+  const loadMoreRef = useInfiniteScroll(handleLoadMore, hasMore, isLoading)
 
-    /**
-     * Restore selected view when views are loaded
-     */
-    useEffect(() => {
-        if (hasInitializedView.current) return
-        if (views.length === 0) return
+  // ===== EFFECTS =====
+  
+  // Initialize views on mount
+  useEffect(() => {
+    fetchViews()
+  }, [fetchViews])
+
+  // Initialize selected view after views are loaded
+  useEffect(() => {
+    if (isFirstRender.current && views.length >= 0) {
+      isFirstRender.current = false
       
-        const savedViewId = localStorage.getItem(`selectedView-${agentId}`) || "all"
-        setSelectedViewId(savedViewId)
-      
-        if (savedViewId !== "all") {
-          const savedView = views.find((v) => v.id === savedViewId)
-          if (savedView) {
-            loadView(savedView)
-          } else {
-            localStorage.setItem(`selectedView-${agentId}`, "all")
-            setSelectedViewId("all")
-            resetToAllView()
-          }
+      if (selectedViewId !== "all") {
+        const savedView = views.find((v) => v.id === selectedViewId)
+        if (savedView) {
+          loadView(savedView)
         } else {
+          setStoredSelectedViewId("all")
           resetToAllView()
         }
+      } else {
+        resetToAllView()
+      }
       
-        hasInitializedView.current = true
-        setFiltersReady(true)
-      }, [views, agentId, loadView, resetToAllView])
-      
-      
-  /**
-   * Format duration in MM:SS format
-   */
-  const formatDuration = useCallback((seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }, [])
-
-  /**
-   * Format timestamp to Indian timezone
-   */
-  const formatDateTime = useCallback((timestamp: string): string => {
-    const date = new Date(timestamp)
-    return date.toLocaleString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-      timeZone: "Asia/Kolkata",
-    })
-  }, [])
-
-  /**
-   * Get status badge variant based on call status
-   */
-  const getStatusVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
-        return "default"
-      case "failed":
-        return "destructive"
-      case "busy":
-        return "secondary"
-      default:
-        return "outline"
+      setIsInitialized(true)
     }
-  }
+  }, [views, selectedViewId, loadView, resetToAllView, setStoredSelectedViewId])
 
-  // Computed values
-  const activeFiltersCount = currentFilters.length
-  const activeColumnsCount =
-    currentColumns.basic.length + currentColumns.metadata.length + currentColumns.transcription_metrics.length
-  const selectedView = views.find((v) => v.id === selectedViewId)
-  const isLoading = loadingState === LoadingState.LOADING
-  const isAllView = selectedViewId === "all"
+  // Fetch call logs when filters change or component initializes
+  useEffect(() => {
+    if (isInitialized) {
+      setPage(0)
+      setHasMore(true)
+      fetchCallLogs(0, true)
+    }
+  }, [currentFilters, isInitialized, fetchCallLogs])
 
+  // Clean up dynamic columns when they change
+  useEffect(() => {
+    setCurrentColumns((prev) => ({
+      basic: prev.basic.length === 0 ? DEFAULT_BASIC_COLUMNS : prev.basic,
+      metadata: prev.metadata.filter((col) => dynamicColumns.metadata.includes(col)),
+      transcription_metrics: prev.transcription_metrics.filter((col) =>
+        dynamicColumns.transcription_metrics.includes(col),
+      ),
+    }))
+  }, [dynamicColumns])
+
+  // ===== RENDER =====
   return (
     <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
       {/* Error Alert */}
@@ -624,7 +617,11 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
             <Button
               variant="outline"
               size="sm"
-              onClick={fetchCallLogs}
+              onClick={() => {
+                setPage(0)
+                setHasMore(true)
+                fetchCallLogs(0, true)
+              }}
               disabled={isLoading}
               className="gap-2 bg-transparent"
             >
@@ -697,8 +694,8 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
                     <h3 className="text-lg font-medium text-gray-900">Columns</h3>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <ColumnSelector
-                        basicColumns={basicColumns.map((col) => col.key)}
-                        basicColumnLabels={Object.fromEntries(basicColumns.map((col) => [col.key, col.label]))}
+                        basicColumns={BASIC_COLUMN_DEFINITIONS.map((col) => col.key)}
+                        basicColumnLabels={Object.fromEntries(BASIC_COLUMN_DEFINITIONS.map((col) => [col.key, col.label]))}
                         metadataColumns={dynamicColumns.metadata}
                         transcriptionColumns={dynamicColumns.transcription_metrics}
                         visibleColumns={currentColumns}
@@ -713,7 +710,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
                             ...prev,
                             [type]: vis
                               ? type === "basic"
-                                ? basicColumns.map((col) => col.key)
+                                ? BASIC_COLUMN_DEFINITIONS.map((col) => col.key)
                                 : type === "metadata"
                                   ? dynamicColumns.metadata
                                   : dynamicColumns.transcription_metrics
@@ -805,7 +802,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isLoading && page === 0 ? (
                 <TableRow>
                   <TableCell colSpan={20} className="text-center py-12">
                     <div className="flex flex-col items-center gap-3">
@@ -831,44 +828,62 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCallLogs.map((call) => (
-                  <TableRow key={call.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100">
-                    {currentColumns.basic.includes("customer_number") && (
-                      <TableCell className="font-medium text-gray-900">{call.customer_number}</TableCell>
-                    )}
-                    {currentColumns.basic.includes("call_id") && (
-                      <TableCell className="font-mono text-sm text-gray-600">{call.call_id.slice(-8)}</TableCell>
-                    )}
-                    {currentColumns.basic.includes("call_ended_reason") && (
-                      <TableCell>
-                        <Badge variant={getStatusVariant(call.call_ended_reason)}>{call.call_ended_reason}</Badge>
+                <>
+                  {filteredCallLogs.map((call) => (
+                    <TableRow key={call.id} className="hover:bg-gray-50 transition-colors border-b border-gray-100">
+                      {currentColumns.basic.includes("customer_number") && (
+                        <TableCell className="font-medium text-gray-900">{call.customer_number}</TableCell>
+                      )}
+                      {currentColumns.basic.includes("call_id") && (
+                        <TableCell className="font-mono text-sm text-gray-600">{call.call_id.slice(-8)}</TableCell>
+                      )}
+                      {currentColumns.basic.includes("call_ended_reason") && (
+                        <TableCell>
+                          <Badge variant={getStatusVariant(call.call_ended_reason)}>{call.call_ended_reason}</Badge>
+                        </TableCell>
+                      )}
+                      {currentColumns.basic.includes("duration_seconds") && (
+                        <TableCell className="text-gray-700">{formatDuration(call.duration_seconds)}</TableCell>
+                      )}
+                      {currentColumns.basic.includes("call_started_at") && (
+                        <TableCell className="text-sm text-gray-600">{formatDateTime(call.call_started_at)}</TableCell>
+                      )}
+                      {currentColumns.basic.includes("avg_latency") && (
+                        <TableCell className="text-gray-700">
+                          {call.avg_latency ? `${call.avg_latency.toFixed(2)}ms` : "—"}
+                        </TableCell>
+                      )}
+                      {currentColumns.metadata.map((key, index) => (
+                        <TableCell key={`metadata-${call.id}-${key}`} className="max-w-xs truncate text-gray-600">
+                          {typeof call.metadata?.[key] === "object"
+                            ? JSON.stringify(call.metadata[key])
+                            : (call.metadata?.[key] ?? "—")}
+                        </TableCell>
+                      ))}
+                      {currentColumns.transcription_metrics.map((key, index) => (
+                        <TableCell key={`trans-${call.id}-${key}`} className="max-w-xs truncate text-gray-600">
+                          {call.transcription_metrics?.[key] ?? "—"}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+
+                  {/* Load More Trigger */}
+                  {hasMore && (
+                    <TableRow>
+                      <TableCell colSpan={20} className="text-center py-6" ref={loadMoreRef as any}>
+                        {isLoading ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-gray-500 text-sm">Loading more...</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 text-sm">Scroll to load more</span>
+                        )}
                       </TableCell>
-                    )}
-                    {currentColumns.basic.includes("duration_seconds") && (
-                      <TableCell className="text-gray-700">{formatDuration(call.duration_seconds)}</TableCell>
-                    )}
-                    {currentColumns.basic.includes("call_started_at") && (
-                      <TableCell className="text-sm text-gray-600">{formatDateTime(call.call_started_at)}</TableCell>
-                    )}
-                    {currentColumns.basic.includes("avg_latency") && (
-                      <TableCell className="text-gray-700">
-                        {call.avg_latency ? `${call.avg_latency.toFixed(2)}ms` : "—"}
-                      </TableCell>
-                    )}
-                    {currentColumns.metadata.map((key, index) => (
-                      <TableCell key={`metadata-${index}`} className="max-w-xs truncate text-gray-600">
-                        {typeof call.metadata?.[key] === "object"
-                          ? JSON.stringify(call.metadata[key])
-                          : (call.metadata?.[key] ?? "—")}
-                      </TableCell>
-                    ))}
-                    {currentColumns.transcription_metrics.map((key, index) => (
-                      <TableCell key={`trans-${index}`} className="max-w-xs truncate text-gray-600">
-                        {call.transcription_metrics?.[key] ?? "—"}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                    </TableRow>
+                  )}
+                </>
               )}
             </TableBody>
           </Table>
@@ -880,10 +895,31 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
             <p className="text-sm text-gray-600">
               Showing {filteredCallLogs.length} of {callLogs.length} call logs
               {searchTerm && ` (filtered by "${searchTerm}")`}
+              {!hasMore && " - All results loaded"}
             </p>
           </div>
         )}
       </div>
+
+      {/* Debug Info (Remove in production) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs">
+          <h4 className="font-semibold text-yellow-800 mb-2">Debug Info:</h4>
+          <div className="space-y-1 text-yellow-700">
+            <div>Selected View: {selectedViewId}</div>
+            <div>Is Initialized: {isInitialized.toString()}</div>
+            <div>Current Page: {page}</div>
+            <div>Has More: {hasMore.toString()}</div>
+            <div>Loading State: {loadingState}</div>
+            <div>Active Filters: {activeFiltersCount}</div>
+            <div>Call Logs Count: {callLogs.length}</div>
+            <div>Filtered Count: {filteredCallLogs.length}</div>
+            <div>Basic Columns: {currentColumns.basic.join(', ')}</div>
+            <div>Metadata Columns: {currentColumns.metadata.join(', ')}</div>
+            <div>Transcription Columns: {currentColumns.transcription_metrics.join(', ')}</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
