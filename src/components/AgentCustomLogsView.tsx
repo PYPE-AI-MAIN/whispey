@@ -367,6 +367,8 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
   )
 
   const fetchCallLogs = useCallback(async (pageNumber: number = 0, reset: boolean = false): Promise<void> => {
+
+    console.log("fetching..")
     if (pageNumber === 0 || reset) {
       setLoadingState(LoadingState.LOADING)
     }
@@ -504,6 +506,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
   }, [page, fetchCallLogs])
 
   // fetch in background
+  
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -523,7 +526,9 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
         }
   
         const { data, error } = await query
+        console.log(error)
         if (error) throw error
+
   
         // Check if there's any new data not already in the list
         if (data && data.length > 0) {
@@ -560,11 +565,11 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
 
   // Initialize selected view after views are loaded
   useEffect(() => {
-    if (isFirstRender.current && views.length > 0) {
+    if (isFirstRender.current && views.length >= 0) {
       isFirstRender.current = false
   
       const savedView = views.find((v) => v.id === selectedViewId)
-  
+
       if (selectedViewId !== "all" && savedView) {
         loadView(savedView)
       } else {
@@ -579,6 +584,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
 
   // Fetch call logs when filters change or component initializes
   useEffect(() => {
+
     if (isInitialized) {
       setPage(0)
       setHasMore(true)
