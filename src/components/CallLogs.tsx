@@ -80,13 +80,31 @@ const DynamicJsonCell: React.FC<{
   )
 }
 
+
+
 const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
+
+  const basicColumns = useMemo(
+    () => [
+      { key: "customer_number", label: "Customer Number" },
+      { key: "call_id", label: "Call ID" },
+      { key: "call_ended_reason", label: "Call Status" },
+      { key: "duration_seconds", label: "Duration" },
+      { key: "call_started_at", label: "Start Time" },
+      { key: "avg_latency", label: "Avg Latency (ms)" },
+    ],
+    [],
+  )
+
+  
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null)
   const [activeFilters, setActiveFilters] = useState<FilterRule[]>([])
   const [visibleColumns, setVisibleColumns] = useState<{
+    basic: string[]
     metadata: string[]
     transcription_metrics: string[]
   }>({
+    basic: basicColumns.map(col => col.key), // initially show all
     metadata: [],
     transcription_metrics: []
   })
@@ -239,6 +257,26 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     return supabaseFilters
   }
 
+  const handleColumnChange = (type: 'basic' | 'metadata' | 'transcription_metrics', column: string, visible: boolean) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [type]: visible 
+        ? [...prev[type], column]
+        : prev[type].filter(col => col !== column)
+    }))
+    }
+    
+    const handleSelectAll = (type: 'basic' | 'metadata' | 'transcription_metrics', visible: boolean) => {
+      setVisibleColumns(prev => ({
+        ...prev,
+        [type]: visible
+          ? (type === "basic" ? basicColumns.map(col => col.key) : dynamicColumns[type])
+          : []
+      }))
+    }
+  
+
+
   const queryOptions = useMemo(
     () => ({
       select: `
@@ -292,11 +330,21 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
 
   // Initialize visible columns when dynamic columns change
   useEffect(() => {
-    setVisibleColumns(prev => ({
-      metadata: prev.metadata.length === 0 ? dynamicColumns.metadata : prev.metadata.filter(col => dynamicColumns.metadata.includes(col)),
-      transcription_metrics: prev.transcription_metrics.length === 0 ? dynamicColumns.transcription_metrics : prev.transcription_metrics.filter(col => dynamicColumns.transcription_metrics.includes(col))
+    setVisibleColumns((prev) => ({
+      basic: prev.basic ?? basicColumns.map((col) => col.key),
+      metadata: Array.from(
+        new Set(
+          (prev.metadata.length === 0 ? dynamicColumns.metadata : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col)))
+        )
+      ),
+      transcription_metrics: Array.from(
+        new Set(
+          (prev.transcription_metrics.length === 0 ? dynamicColumns.transcription_metrics : prev.transcription_metrics.filter((col) => dynamicColumns.transcription_metrics.includes(col)))
+        )
+      ),
     }))
-  }, [dynamicColumns])
+  }, [dynamicColumns, basicColumns])
+  
 
   // Calculate total dynamic columns for table width
   const totalVisibleColumns = visibleColumns.metadata.length + visibleColumns.transcription_metrics.length
@@ -341,21 +389,6 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     refresh()
   }
 
-  const handleColumnChange = (type: 'metadata' | 'transcription_metrics', column: string, visible: boolean) => {
-    setVisibleColumns(prev => ({
-      ...prev,
-      [type]: visible 
-        ? [...prev[type], column]
-        : prev[type].filter(col => col !== column)
-    }))
-  }
-
-  const handleSelectAll = (type: 'metadata' | 'transcription_metrics', visible: boolean) => {
-    setVisibleColumns(prev => ({
-      ...prev,
-      [type]: visible ? dynamicColumns[type] : []
-    }))
-  }
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -405,6 +438,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           
           <div className="flex items-center gap-2">
             <ColumnSelector
+              basicColumns={basicColumns.map((col) => col.key)}
+              basicColumnLabels={Object.fromEntries(basicColumns.map((col) => [col.key, col.label]))}
               metadataColumns={dynamicColumns.metadata}
               transcriptionColumns={dynamicColumns.transcription_metrics}
               visibleColumns={visibleColumns}
@@ -456,14 +491,15 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
                 <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
                   <TableRow className="bg-muted/80 hover:bg-muted/80">
                     {/* Fixed Columns */}
-                    <TableHead className="w-[160px] font-semibold text-foreground pl-6">Customer</TableHead>
-                    <TableHead className="w-[130px] font-semibold text-foreground">Call ID</TableHead>
-                    <TableHead className="w-[110px] font-semibold text-foreground">Status</TableHead>
-                    <TableHead className="w-[90px] font-semibold text-foreground">Duration</TableHead>
-                    <TableHead className="w-[140px] font-semibold text-foreground">Started</TableHead>
-                    <TableHead className="w-[90px] font-semibold text-foreground">Recording</TableHead>
-                    <TableHead className="w-[100px] font-semibold text-foreground border-r-2 border-primary/30">Avg Latency</TableHead>
-                    
+                    {visibleColumns.basic.map((key) => {
+                      const col = basicColumns.find((c) => c.key === key)
+                      return (
+                        <TableHead key={`basic-${key}`} className="font-semibold text-foreground min-w-[120px]">
+                          {col?.label ?? key}
+                        </TableHead>
+                      )
+                    })}
+
                     {/* Dynamic Metadata Columns */}
                     {visibleColumns.metadata.map((key) => (
                       <TableHead 
@@ -503,64 +539,67 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
                       )}
                       onClick={() => setSelectedCall(call)}
                     >
-                      {/* Fixed Columns */}
-                      <TableCell className="font-medium pl-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Phone className="w-4 h-4 text-primary" />
-                          </div>
-                          <span className="font-medium">{call.customer_number}</span>
-                        </div>
-                      </TableCell>
+    {visibleColumns.basic.map((key) => {
+      let value: React.ReactNode = "-"
 
-                      <TableCell className="py-4">
-                        <code className="text-xs bg-muted/60 px-3 py-1.5 rounded-md font-mono">
-                          {call.call_id.slice(-8)}
-                        </code>
-                      </TableCell>
+      switch (key) {
+        case "customer_number":
+          value = (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Phone className="w-4 h-4 text-primary" />
+              </div>
+              <span className="font-medium">{call.customer_number}</span>
+            </div>
+          )
+          break
+        case "call_id":
+          value = (
+            <code className="text-xs bg-muted/60 px-3 py-1.5 rounded-md font-mono">
+              {call.call_id.slice(-8)}
+            </code>
+          )
+          break
+        case "call_ended_reason":
+          value = (
+            <Badge
+              variant={call.call_ended_reason === "completed" ? "default" : "destructive"}
+              className="text-xs font-medium px-2.5 py-1"
+            >
+              {call.call_ended_reason === "completed" ? (
+                <CheckCircle className="w-3 h-3 mr-1.5" />
+              ) : (
+                <XCircle className="w-3 h-3 mr-1.5" />
+              )}
+              {call.call_ended_reason}
+            </Badge>
+          )
+          break
+        case "duration_seconds":
+          value = (
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Clock className="w-3 h-3 text-muted-foreground" />
+              {formatDuration(call.duration_seconds)}
+            </div>
+          )
+          break
+        case "call_started_at":
+          value = formatToIndianDateTime(call.call_started_at)
+          break
+        case "avg_latency":
+          value = call?.avg_latency ? (
+            <span className="font-mono">{call.avg_latency.toFixed(2)}s</span>
+          ) : "-"
+          break
+      }
 
-                      <TableCell className="py-4">
-                        <Badge
-                          variant={call.call_ended_reason === "completed" ? "default" : "destructive"}
-                          className="text-xs font-medium px-2.5 py-1"
-                        >
-                          {call.call_ended_reason === "completed" ? (
-                            <CheckCircle className="w-3 h-3 mr-1.5" />
-                          ) : (
-                            <XCircle className="w-3 h-3 mr-1.5" />
-                          )}
-                          {call.call_ended_reason}
-                        </Badge>
-                      </TableCell>
+      return (
+        <TableCell key={`basic-${call.id}-${key}`} className="py-4">
+          {value}
+        </TableCell>
+      )
+    })}
 
-                      <TableCell className="py-4">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Clock className="w-3 h-3 text-muted-foreground" />
-                          {formatDuration(call.duration_seconds)}
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="text-sm text-muted-foreground py-4">
-                        {formatToIndianDateTime(call.call_started_at)}
-                      </TableCell>
-
-                      <TableCell className="py-4">
-                        {call.recording_url ? (
-                          <Badge variant="secondary" className="text-xs px-2.5 py-1">
-                            Available
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-
-                      <TableCell className="text-xs text-muted-foreground py-4 border-r-2 border-primary/30">
-                        {call?.avg_latency ? (
-                          <span className="font-mono">{call.avg_latency.toFixed(2)}s</span>
-                        ) : (
-                          "-"
-                        )}
-                      </TableCell>
 
                       {/* Dynamic Metadata Columns */}
                       {visibleColumns.metadata.map((key) => (

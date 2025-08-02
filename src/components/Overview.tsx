@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { useOverviewQuery } from '../../hooks/useOverviewQuery'
+import AgentCustomLogsView from './AgentCustomLogsView'
 
 
 const subDays = (date: Date, days: number) => {
@@ -138,7 +139,7 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 max-w-[1400px] mx-auto space-y-8">
       {/* Date Filters */}
       <div className="flex flex-col sm:flex-row items-right  gap-4">
         {/* Quick Filters */}
@@ -352,11 +353,19 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
             </Card>
           </div>
 
+     
+
+          <AgentCustomLogsView
+            agentId={agent.id}
+            dateRange={apiDateRange} // { from: '2024-07-01', to: '2024-07-31' }
+          />
+
           <EnhancedChartBuilder 
-          agentId={agent.id}
-          dateFrom={apiDateRange.from}
-          dateTo={apiDateRange.to}
-        />
+                      agentId={agent.id}
+                      dateFrom={apiDateRange.from}
+                      dateTo={apiDateRange.to}
+                    />
+
 
           {/* Additional Stats */}
           <Card className="border-0 bg-white">
@@ -391,6 +400,7 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
               </div>
             </CardContent>
           </Card>
+          
         </>
       ) : (
         <Card className="border-0 bg-white">

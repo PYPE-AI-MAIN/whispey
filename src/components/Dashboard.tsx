@@ -15,6 +15,8 @@ import CallLogs from './CallLogs'
 import CampaignLogs from './CampaignLogs'
 
 import { useSupabaseQuery } from '../../hooks/useSupabase'
+import FieldExtractorDialog from './FieldExtractorLogs'
+import { supabase } from '../../lib/supabase'
 
 interface DashboardProps {
   agentId: string
@@ -33,8 +35,8 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const shouldFetch = agentId && agentId !== 'undefined' && agentId.trim() !== ''
 
   // Fetch agent data
-  const { data: agents, loading: agentLoading, error: agentError } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id',
+  const { data: agents, loading: agentLoading, error: agentError ,refetch: refetchAgent} = useSupabaseQuery('pype_voice_agents', {
+    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id,field_extractor_prompt,field_extractor',
     filters: shouldFetch ? [{ column: 'id', operator: 'eq', value: agentId }] : []
   })
 
@@ -162,6 +164,24 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                   )
                 })}
               </nav>
+
+              <FieldExtractorDialog
+                initialData={JSON.parse(agent?.field_extractor_prompt) || []}
+                isEnabled={!!agent?.field_extractor}
+                onSave={async (data, enabled) => {
+                  const { error } = await supabase
+                    .from('pype_voice_agents')
+                    .update({ field_extractor_prompt: JSON.stringify(data)  , field_extractor: enabled })
+                    .eq('id', agent.id)
+
+                  if (!error) {
+                    alert('Saved field extractor config.')
+                    refetchAgent() // optional if you want fresh data
+                  } else {
+                    alert('Error saving config: ' + error.message)
+                  }
+                }}
+              />
             </div>
           </div>
         </div>

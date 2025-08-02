@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState ,useEffect} from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import MemberManagementDialog from './MemberManagmentDialog'
+import Header from './Header'
 
 interface Project {
   id: string
@@ -62,17 +64,40 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
   const [showTokenDialog, setShowTokenDialog] = useState<Project | null>(null)
   const [regeneratedToken, setRegeneratedToken] = useState<string | null>(null)
   const [regeneratingToken, setRegeneratingToken] = useState<string | null>(null)
+  const [membersDialog,setShowAddMemberDialog] = useState<boolean>(false)
   const [showToken, setShowToken] = useState(false)
   const [tokenCopied, setTokenCopied] = useState(false)
+  const [projectSelected,setSelectedProjectForDialog] = useState<any>(null)
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState<Project | null>(null)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const router = useRouter()
 
-  const { data: projects, loading, error, refetch } = useSupabaseQuery('pype_voice_projects', {
-    select: 'id, name, description, environment, created_at, is_active, token_hash',
-    orderBy: { column: 'created_at', ascending: false },
-    filters: [{ column: 'is_active', operator: 'eq', value: true }]
-  })
+  const fetchProjects = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/projects') // your API endpoint here
+      if (!res.ok) throw new Error('Failed to fetch projects')
+      const data = await res.json()
+      setProjects(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchProjects()
+  }, [])
+
+
+  // console.log(projects)
+  const refetch = fetchProjects;
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project.id)
@@ -238,21 +263,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Simple Header */}
-      <header className="px-6 py-8">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div className='flex items-center gap-2'>
-            <Image src="/pype_ai_logo.jpeg" alt="Pype AI Logo" width={80} height={80} />
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Pype Voice</h1>
-              <p className="text-gray-500 mt-1">Voice AI Platform</p>
-            </div>
-          </div>
-          
-          <Button variant="ghost" size="sm">
-            <Settings className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
+      <Header/>
 
       {/* Main Content */}
       <main className="px-6 pb-12">
@@ -316,6 +327,17 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              // setSelectedProject(project.id) // Set project to add member to
+                              setSelectedProjectForDialog(project)
+                              setShowAddMemberDialog(true)  // Show Add Member dialog/modal
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Member
+                          </DropdownMenuItem>
                         <DropdownMenuItem 
                             onClick={(e) => {
                               e.stopPropagation()
@@ -531,6 +553,11 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
         isRegenerating={regeneratingToken === showRegenerateConfirm?.id}
         onConfirm={() => showRegenerateConfirm && handleRegenerateToken(showRegenerateConfirm)}
         onCancel={() => setShowRegenerateConfirm(null)}
+      />
+      <MemberManagementDialog
+        isOpen={membersDialog}
+        onClose={setShowAddMemberDialog}
+        project={projectSelected}
       />
     </div>
   )
