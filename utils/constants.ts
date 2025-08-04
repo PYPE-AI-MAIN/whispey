@@ -1,0 +1,1 @@
+export const plivoRate = 0.70;

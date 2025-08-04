@@ -133,9 +133,9 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       {/* Simple Header */}
-      <header className="px-6 py-2 items-center border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <header className="flex-none px-6 py-2 items-center border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="max-w-7xl mx-auto flex row justify-between items-center">
           <Button variant="ghost" onClick={handleBack} className="-ml-3 hover:bg-white/50">
             <ChevronLeft className="h-4 w-4 mr-2" />
@@ -188,7 +188,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
       </header>
 
       {/* Tab Content */}
-      <main className="flex-1">
+      <main className="flex-1 min-h-0 flex overflow-hidden">
         {activeTab === 'overview' && (
           <Overview project={project} agent={agent} />
         )}
