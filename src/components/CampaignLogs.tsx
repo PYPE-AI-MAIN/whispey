@@ -591,8 +591,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       </header>
 
       {/* Table */}
-      <main className="px-6 py-6">
-        <div className="max-w-7xl mx-auto">
+      <main className="">
+        <div className="mx-auto">
           {loading && logs.length === 0 ? (
             <div className="text-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
