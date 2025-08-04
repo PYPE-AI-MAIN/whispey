@@ -139,7 +139,7 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
   }
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-8">
+    <div className="p-6 flex-1  overflow-scroll max-w-[1400px] mx-auto space-y-8">
       {/* Date Filters */}
       <div className="flex flex-col sm:flex-row items-right  gap-4">
         {/* Quick Filters */}
@@ -222,6 +222,21 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="border-0 bg-gray-50/50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold text-gray-900">{`₹ ${analytics.totalCost?.toFixed(2)}`}</p>
+                    <p className="text-sm text-gray-600">Total Cost</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
 
             <Card className="border-0 bg-gray-50/50">
               <CardContent className="p-6">

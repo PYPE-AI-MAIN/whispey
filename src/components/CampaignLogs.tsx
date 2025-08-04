@@ -471,7 +471,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Header */}
       <header className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
         <div className="max-w-7xl mx-auto">
@@ -607,9 +607,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
               </p>
             </div>
           ) : (
-            <div className="h-full overflow-auto">
-              <div className="border overflow-hidden rounded-lg">
-                <Table>
+      <div className="h-full overflow-x-auto overflow-y-hidden"> {/* Horizontal scroll container */}
+        <div className="h-full overflow-y-auto" style={{ minWidth: "1500px" }}> {/* Vertical scroll with min-width */}
+          <Table className="w-full ">
                   <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
                     <TableRow className="bg-muted/80 hover:bg-muted/80">
                       <TableHead className="w-[140px] font-semibold text-foreground pl-6">Phone Number</TableHead>
