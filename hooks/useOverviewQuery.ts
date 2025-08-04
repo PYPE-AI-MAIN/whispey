@@ -7,6 +7,7 @@ interface OverviewData {
   successfulCalls: number
   successRate: number
   averageLatency: number
+  totalCost:number
   uniqueCustomers: number
   dailyData: Array<{
     date: string
@@ -49,20 +50,27 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
             avg_latency,
             unique_customers,
             successful_calls,
-            success_rate
+            success_rate,
+            total_cost
           `)
           .eq('agent_id', agentId)
           .gte('call_date', dateFrom)
           .lte('call_date', dateTo)
           .order('call_date', { ascending: true })
-    
+            
+
+          console.log(queryError)
         if (queryError) throw queryError
     
         const totalCalls = dailyStats?.reduce((sum, day) => sum + day.calls, 0) || 0
         const successfulCalls = dailyStats?.reduce((sum, day) => sum + day.successful_calls, 0) || 0
+        const totalCost = dailyStats?.reduce((sum, day) => sum + day.total_cost, 0) || 0
+
+
     
         const typedData: OverviewData = {
           totalCalls,
+          totalCost,
           totalMinutes: dailyStats?.reduce((sum, day) => sum + day.total_minutes, 0) || 0,
           successfulCalls,
           successRate: totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0,
@@ -77,6 +85,7 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
             minutes: day.total_minutes,
             avg_latency: day.avg_latency
           })) || []
+          
         }
     
         setData(typedData)

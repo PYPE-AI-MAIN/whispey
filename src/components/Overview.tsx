@@ -230,6 +230,21 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
                     <Clock className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
+                    <p className="text-2xl font-semibold text-gray-900">{`₹ ${analytics.totalCost?.toFixed(2)}`}</p>
+                    <p className="text-sm text-gray-600">Total Cost</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+
+            <Card className="border-0 bg-gray-50/50">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
                     <p className="text-2xl font-semibold text-gray-900">{analytics.averageLatency.toFixed(2)}</p>
                     <p className="text-sm text-gray-600">overall Latency</p>
                   </div>
