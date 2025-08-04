@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useRef, useCallback } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -20,6 +21,7 @@ interface ColumnSelectorProps {
   }
   onColumnChange: (type: "basic" | "metadata" | "transcription_metrics", column: string, visible: boolean) => void
   onSelectAll: (type: "basic" | "metadata" | "transcription_metrics", visible: boolean) => void
+  alignProp?: number // Optional prop to control alignment, default to "-60"
 }
 
 const ColumnSelector: React.FC<ColumnSelectorProps> = ({
@@ -30,10 +32,51 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
   visibleColumns,
   onColumnChange,
   onSelectAll,
+  alignProp = -60, // Default alignment prop
 }) => {
+  // FIXED: Add ref to preserve scroll position
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const scrollPositionRef = useRef<number>(0)
+
   const totalVisible =
     visibleColumns.basic.length + visibleColumns.metadata.length + visibleColumns.transcription_metrics.length
   const totalColumns = basicColumns.length + metadataColumns.length + transcriptionColumns.length
+
+  // FIXED: Preserve scroll position when column changes
+  const handleColumnChange = useCallback((type: "basic" | "metadata" | "transcription_metrics", column: string, visible: boolean) => {
+    // Save current scroll position
+    if (scrollContainerRef.current) {
+      scrollPositionRef.current = scrollContainerRef.current.scrollTop
+    }
+    
+    // Call the parent handler
+    onColumnChange(type, column, visible)
+    
+    // Restore scroll position after re-render
+    setTimeout(() => {
+      if (scrollContainerRef.current && scrollPositionRef.current > 0) {
+        scrollContainerRef.current.scrollTop = scrollPositionRef.current
+      }
+    }, 0)
+  }, [onColumnChange])
+
+  // FIXED: Preserve scroll position when select all changes
+  const handleSelectAll = useCallback((type: "basic" | "metadata" | "transcription_metrics", visible: boolean) => {
+    // Save current scroll position
+    if (scrollContainerRef.current) {
+      scrollPositionRef.current = scrollContainerRef.current.scrollTop
+    }
+    
+    // Call the parent handler
+    onSelectAll(type, visible)
+    
+    // Restore scroll position after re-render
+    setTimeout(() => {
+      if (scrollContainerRef.current && scrollPositionRef.current > 0) {
+        scrollContainerRef.current.scrollTop = scrollPositionRef.current
+      }
+    }, 0)
+  }, [onSelectAll])
 
   const ColumnSection = ({
     title,
@@ -64,7 +107,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-              onClick={() => onSelectAll(type, true)}
+              onClick={() => handleSelectAll(type, true)}
               disabled={visibleCount === columns.length}
             >
               <Eye className="h-3 w-3 mr-1" />
@@ -74,7 +117,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-              onClick={() => onSelectAll(type, false)}
+              onClick={() => handleSelectAll(type, false)}
               disabled={visibleCount === 0}
             >
               <EyeOff className="h-3 w-3 mr-1" />
@@ -88,7 +131,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
             const isVisible = visibleColumns[type].includes(column)
             return (
               <div
-                key={column}
+                key={`${type}-${column}`} // FIXED: Add unique key with type prefix
                 className={cn(
                   "flex items-center space-x-3 px-3 py-2 rounded-md transition-colors",
                   isVisible ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-muted/50"
@@ -97,7 +140,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
                 <Checkbox
                   id={`${type}-${column}`}
                   checked={isVisible}
-                  onCheckedChange={(checked) => onColumnChange(type, column, checked as boolean)}
+                  onCheckedChange={(checked) => handleColumnChange(type, column, checked as boolean)}
                   className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                 />
                 <label
@@ -133,8 +176,15 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
       <PopoverContent
         className="w-96 max-h-[60vh] p-0 shadow-xl border border-gray-200 bg-white flex flex-col overflow-hidden"
         side="left"
-        align="start"
-        alignOffset={-200}
+        align="start"  // Changed from "start" to "end" to align with bottom of trigger
+        alignOffset={alignProp} // Reduced negative offset to move it higher
+        sideOffset={400}    // Increased side offset for more spacing
+        style={{ 
+          zIndex: 9999,
+          position: 'fixed',
+          transform: 'translateY(-50px)' // Additional CSS transform to move it up
+        }}
+        avoidCollisions={false} // Disable collision detection that might override positioning
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
@@ -147,8 +197,24 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
           <p className="text-sm text-gray-600 mt-1">Choose which columns to display in your table</p>
         </div>
 
-        {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1">
+        {/* FIXED: Scrollable body with ref and scroll preservation */}
+        <div 
+          ref={scrollContainerRef}
+          className="overflow-y-auto flex-1"
+          style={{ 
+            scrollBehavior: 'auto',  // Prevent smooth scrolling interfering with position restoration
+            touchAction: 'pan-y',   // Enable touch scrolling on mobile
+            overscrollBehavior: 'contain'  // Prevent scroll chaining to parent
+          }}
+          onWheel={(e) => {
+            // Prevent wheel events from bubbling up to dialog
+            e.stopPropagation()
+          }}
+          onTouchMove={(e) => {
+            // Prevent touch scroll from bubbling up to dialog
+            e.stopPropagation()
+          }}
+        >
           <div className="p-6 space-y-6">
             <ColumnSection
               title="Basic Columns"
