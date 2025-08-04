@@ -13,11 +13,42 @@ import ColumnSelector from "./ColumnSelector"
 import { cn } from "@/lib/utils"
 import { CostTooltip } from "./tool-tip/costToolTip"
 import { CallLog } from "../../types/logs"
+import { supabase } from "../../lib/supabase"
+import Papa from 'papaparse'
+
 
 interface CallLogsProps {
   project: any
   agent: any
   onBack: () => void
+}
+
+function flattenAndPickColumns(
+  row: CallLog,
+  basic: string[],
+  metadata: string[],
+  transcription: string[]
+): Record<string, any> {
+  const flat: Record<string, any> = {};
+
+  // Basic columns (skip "total_cost")
+  for (const key of basic) {
+    if (key in row) {
+      flat[key] = row[key as keyof CallLog];
+    }
+  }
+
+  // Metadata columns
+  if (row.metadata && typeof row.metadata === "object") {
+    for (const key of metadata) flat[key] = row.metadata[key];
+  }
+
+  // Transcription metrics columns
+  if (row.transcription_metrics && typeof row.transcription_metrics === "object") {
+    for (const key of transcription) flat[key] = row.transcription_metrics[key];
+  }
+
+  return flat;
 }
 
 
@@ -297,6 +328,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     [agent.id, activeFilters],
   )
 
+  
+
   const { data: calls, loading, hasMore, error, loadMore, refresh } = useInfiniteScroll("pype_voice_call_logs", queryOptions)
 
   // Extract all unique keys from metadata and transcription_metrics across all calls
@@ -339,6 +372,67 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     }))
   }, [dynamicColumns, basicColumns])
   
+
+  const handleDownloadCSV = async () => {
+    const { basic, metadata, transcription_metrics } = visibleColumns;
+  
+    // Build Supabase select string
+    // Always fetch metadata and transcription_metrics if you need their subfields
+    const selectColumns = [
+      ...(basic.filter(col => col !== "total_cost")), // Exclude total_cost from basic
+      ...(metadata.length ? ["metadata"] : []),
+      ...(transcription_metrics.length ? ["transcription_metrics"] : []),
+    ].join(",");
+  
+    // Build base query
+    let query = supabase
+      .from("pype_voice_call_logs")
+      .select(selectColumns);
+  
+    // Apply filters
+    for (const { column, operator, value } of convertToSupabaseFilters(activeFilters)) {
+      // Typesafe way, assuming only .eq, .ilike, .gte, .lte etc
+      // @ts-ignore
+      query = query[operator](column, value);
+    }
+  
+    // Fetch in chunks for large data sets
+    let allData: CallLog[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let done = false;
+  
+    while (!done) {
+      const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) {
+        alert("Failed to fetch data for export: " + error.message);
+        return;
+      }
+      if (data) {
+        allData = allData.concat(data as unknown as CallLog[]);
+        if (data.length < pageSize) done = true;
+        else page += 1;
+      } else {
+        done = true;
+      }
+    }
+  
+    // Map/flatten for CSV according to selected columns
+    const csvData = allData.map((row) =>
+      flattenAndPickColumns(row, basic, metadata, transcription_metrics)
+    );
+  
+    // Build CSV and trigger download
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "call_logs.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Calculate total dynamic columns for table width
   const totalVisibleColumns = visibleColumns.metadata.length + visibleColumns.transcription_metrics.length
@@ -431,6 +525,14 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           />
           
           <div className="flex items-center gap-2">
+          <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadCSV}
+              disabled={loading}
+            >
+              Download CSV
+            </Button>
             <ColumnSelector
               basicColumns={basicColumns.map((col) => col.key)}
               basicColumnLabels={Object.fromEntries(basicColumns.filter(col => !col.hidden).map((col) => [col.key, col.label]))}
@@ -449,6 +551,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
             >
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
+            
           </div>
         </div>
       </div>
