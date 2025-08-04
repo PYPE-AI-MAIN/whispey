@@ -139,7 +139,7 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
   }
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto space-y-8">
+    <div className="p-6 flex-1  overflow-scroll max-w-[1400px] mx-auto space-y-8">
       {/* Date Filters */}
       <div className="flex flex-col sm:flex-row items-right  gap-4">
         {/* Quick Filters */}

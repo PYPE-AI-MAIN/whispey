@@ -49,10 +49,13 @@ export async function POST(request: NextRequest) {
     // Step 1: Update project retry configuration if provided
     if (retry_config && Object.keys(retry_config).length > 0) {
       console.log('Updating project retry configuration:', retry_config)
+
+      const campaign_config = {endDate: end_date, startDate: start_date, dailyEndTime: end_time, dailyStartTime: start_time}
+      
       
       const { error: projectUpdateError } = await supabase
         .from('pype_voice_projects')
-        .update({ retry_configuration: retry_config })
+        .update({ retry_configuration: retry_config, campaign_config:campaign_config })
         .eq('id', project_id)
 
       if (projectUpdateError) {
