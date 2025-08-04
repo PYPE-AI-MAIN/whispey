@@ -113,14 +113,13 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center space-y-4">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
-            <p className="text-gray-600">Loading analytics...</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh] w-full">
+      <div className="text-center space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
+        <p className="text-gray-600">Loading analytics...</p>
       </div>
+    </div>
+
     )
   }
 
@@ -139,9 +138,9 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
   }
 
   return (
-    <div className="p-6 flex-1  overflow-scroll max-w-[1400px] mx-auto space-y-8">
+    <div className="p-6 flex-1  overflow-scroll mx-auto space-y-8">
       {/* Date Filters */}
-      <div className="flex flex-col sm:flex-row items-right  gap-4">
+      <div className="flex flex-col sm:flex-row items-right gap-4">
         {/* Quick Filters */}
         <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
           {quickFilters.map((filter) => (

@@ -232,6 +232,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
     project.description.toLowerCase().includes(searchQuery.toLowerCase())
   ) || []
 
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -242,6 +243,8 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
       </div>
     )
   }
+
+
 
   if (error) {
     return (

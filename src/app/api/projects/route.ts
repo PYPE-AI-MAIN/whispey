@@ -155,7 +155,8 @@ export async function GET(request: NextRequest) {
           description,
           environment,
           is_active,
-          owner_clerk_id
+          owner_clerk_id,
+          created_at
         ),
         role
       `)
