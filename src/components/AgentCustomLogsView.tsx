@@ -149,8 +149,6 @@ const getStatusVariant = (status: string) => {
 const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, dateRange }) => {
   // ===== STATE MANAGEMENT =====
   const [selectedViewId, setStoredSelectedViewId] = useLocalStorage(`selectedView-${agentId}`, "all")
-
-  console.log(selectedViewId)
   
   // Core data state
   const [views, setViews] = useState<CustomView[]>([])
@@ -368,11 +366,16 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
 
   const fetchCallLogs = useCallback(async (pageNumber: number = 0, reset: boolean = false): Promise<void> => {
 
-    console.log("fetching..")
     if (pageNumber === 0 || reset) {
       setLoadingState(LoadingState.LOADING)
     }
     setError(null)
+
+
+    console.log("dateRange.to:", dateRange.to); // Should be "2025-08-04"
+    const endOfDay = new Date(dateRange.to + "T23:59:59.999");
+    console.log("endOfDay:", endOfDay.toISOString());
+
 
     try {
       let query = supabase
@@ -380,7 +383,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
         .select("*")
         .eq("agent_id", agentId)
         .gte("call_started_at", dateRange.from)
-        .lte("call_started_at", dateRange.to+1)
+        .lte("call_started_at", endOfDay.toISOString())
 
       const filters = convertToSupabaseFilters(currentFilters)
       for (const filter of filters) {
@@ -511,12 +514,16 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     const interval = setInterval(async () => {
       try {
         const filters = convertToSupabaseFilters(currentFilters)
+        console.log("dateRange.to:", dateRange.to); // Should be "2025-08-04"
+        const endOfDay = new Date(dateRange.to + "T23:59:59.999");
+        console.log("endOfDay:", endOfDay.toISOString());
+        
         let query = supabase
           .from("pype_voice_call_logs")
           .select("*")
           .eq("agent_id", agentId)
           .gte("call_started_at", dateRange.from)
-          .lte("call_started_at", dateRange.to + 1)
+          .lte("call_started_at", endOfDay.toISOString())
           .order("call_started_at", { ascending: false })
           .limit(PAGE_SIZE)
   
