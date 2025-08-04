@@ -764,6 +764,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
                             [type]: vis ? [...prev[type], col] : prev[type].filter((c) => c !== col),
                           }))
                         }}
+                        alignProp={-200}
                         onSelectAll={(type, vis) => {
                           setCurrentColumns((prev) => ({
                             ...prev,
@@ -775,8 +776,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
                                   : dynamicColumns.transcription_metrics
                               : [],
                           }))
-                        }}
-                      />
+                        }}                      />
                     </div>
                   </div>
 
