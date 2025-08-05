@@ -1,22 +1,22 @@
-<p align="center">
-  <b>🔮 PypeHorus – Voice AI Observability Platform</b>
-</p>
-
+# Obsera – Voice AI Observability Platform
 
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI version](https://badge.fury.io/py/pypehorus.svg)](https://badge.fury.io/py/pypehorus)
+[![PyPI version](https://badge.fury.io/py/obsera.svg)](https://badge.fury.io/py/obsera)
 [![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
+[![Contributors](https://img.shields.io/github/contributors/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/obsera/graphs/contributors)
+[![Stars](https://img.shields.io/github/stars/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/obsera/stargazers)
 
-**Track, analyze, and improve your Voice AI applications with beautiful dashboards and actionable insights.**
+**Professional voice analytics and observability for AI agents. Monitor, analyze, and improve your voice AI applications with beautiful dashboards and actionable insights.**
 
-[📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [💬 Discord](https://discord.gg/pypeai)
+[🚀 Get Started](#quick-start) • [📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/obsera)
+
 </div>
 
 <div align="center">
-    <img width="748" height="348" alt="Screenshot 2025-08-05 at 8 22 16 PM" src="https://github.com/user-attachments/assets/6de46186-2999-4278-a1ab-55088509e345" />
+<img src="public/obsera.png" alt="Obsera Dashboard" width="400" height="400" />
 </div>
 
 ## ✨ Features
@@ -29,6 +29,7 @@
 - **🔒 Privacy-First** - Self-host option with complete data control
 - **📤 Data Export** - Export analytics to CSV for further analysis
 - **🔧 Easy Integration** - One-line SDK integration with LiveKit agents
+- **🌐 Open Source** - Full transparency and community-driven development
 
 ## 🚀 Quick Start
 
@@ -36,26 +37,47 @@
 
 Get started in under 2 minutes with our hosted platform:
 
+#### 1. Get Your Credentials
+
+1. **Sign up** at [Obsera Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
+2. **Get your Agent ID** from the dashboard
+3. **Generate your API Key** from your account settings
+
+#### 2. Environment Setup
+
+Create a `.env` file in your project root:
+
+```env
+# Obsera Voice Analytics
+OBSERA_API_KEY=your_obsera_api_key_here
+```
+
+#### 3. Install and Integrate
+
 ```bash
 # Install the SDK
-pip install pypehorus
+pip install obsera
 ```
 
 ```python
-from pypehorus import LivekitObserve
+from dotenv import load_dotenv
+from obsera import LivekitObserve
 
-# Initialize observability
-pype = LivekitObserve(agent_id="your-agent-id")
+# Load environment variables
+load_dotenv()
+
+# Initialize observability with your Agent ID
+obsera = LivekitObserve(agent_id="your-agent-id-from-dashboard")
 
 # Wrap your LiveKit session
 session = AgentSession(...)
-session_id = pype.start_session(session, phone_number="+1234567890")
+session_id = obsera.start_session(session, phone_number="+1234567890")
 
 # Ensure data is exported on shutdown
-async def pype_observe_shutdown():
-    await pype.export(session_id)
+async def obsera_shutdown():
+    await obsera.export(session_id)
 
-ctx.add_shutdown_callback(pype_observe_shutdown)
+ctx.add_shutdown_callback(obsera_shutdown)
 await session.start(...)
 ```
 
@@ -63,12 +85,12 @@ await session.start(...)
 
 ### Self-Hosted Installation
 
-For complete control over your data, deploy PypeHorus on your own infrastructure:
+For complete control over your data, deploy Obsera on your own infrastructure:
 
 ```bash
 # Clone and setup
-git clone https://github.com/PYPE-AI-MAIN/horus
-cd horus
+git clone https://github.com/PYPE-AI-MAIN/obsera
+cd obsera
 npm install
 
 # Configure environment
@@ -83,7 +105,7 @@ npm run dev
 
 ## 🏗️ Architecture
 
-PypeHorus consists of three main components:
+Obsera consists of three main components:
 
 - **Python SDK** - Lightweight library for data collection
 - **Dashboard** - Next.js web application for analytics visualization  
@@ -138,16 +160,46 @@ We welcome contributions from the community! Here's how to get started:
 
 Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/PYPE-AI-MAIN/obsera
+cd obsera
+
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.example .env.local
+
+# Start development server
+npm run dev
+```
+
+### SDK Development
+
+```bash
+# Navigate to SDK directory
+cd sdk
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
+```
+
 ## 🔒 Security
 
-Security is a top priority for PypeHorus. We implement:
+Security is a top priority for Obsera. We implement:
 
 - **End-to-end encryption** for data in transit
 - **SOC 2 compliant** infrastructure partners
 - **Regular security audits** and dependency updates
 - **Privacy-first design** with optional self-hosting
 
-Found a security issue? Please email security@pypeai.com instead of opening a public issue.
+Found a security issue? Please email security@obsera.ai instead of opening a public issue.
 
 ## 📈 Roadmap
 
@@ -158,21 +210,21 @@ Found a security issue? Please email security@pypeai.com instead of opening a pu
 - [ ] Mobile app for monitoring on-the-go
 - [ ] Custom webhook integrations
 
-See our [public roadmap](https://github.com/PYPE-AI-MAIN/horus/projects/1) for more details.
+<!-- See our [public roadmap](https://github.com/obsera-ai/obsera/projects/1) for more details. -->
 
 ## 💬 Community & Support
 
-- **🐛 Bug Reports:** [GitHub Issues](https://github.com/PYPE-AI-MAIN/horus/issues)
-- **💡 Feature Requests:** [GitHub Discussions](https://github.com/PYPE-AI-MAIN/horus/discussions)
+- **🐛 Bug Reports:** [GitHub Issues](https://github.com/obsera-ai/obsera/issues)
+- **💡 Feature Requests:** [GitHub Discussions](https://github.com/obsera-ai/obsera/discussions)
 - **💬 Chat:** [Discord Community](https://discord.gg/pypeai)
-- **📧 Email:** support@pypeai.com
-- **📱 Twitter:** [@PypeAI](https://twitter.com/PypeAI)
+- **📧 Email:** support@obsera.ai
+- **📱 Twitter:** [@ObseraAI](https://twitter.com/ObseraAI)
 
 ## 🏢 Enterprise
 
 Need enterprise features like SSO, custom deployments, or dedicated support? 
 
-**Contact us:** enterprise@pypeai.com
+**Contact us:** enterprise@obsera.ai
 
 ## 📄 License
 
@@ -180,17 +232,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built with ❤️ by the [Pype AI](https://pypeai.com) team
+- Built with ❤️ by the [Obsera](https://obsera.ai) team
 - Inspired by the observability tools from Datadog, New Relic, and Honeycomb
 - Special thanks to the LiveKit community for their amazing real-time infrastructure
-- Icons by [Lucide](https://lucide.dev)
 
 ---
 
 <div align="center">
 
-**⭐ Star us on GitHub if PypeHorus helps your voice AI applications!**
+**⭐ Star us on GitHub if Obsera helps your voice AI applications!**
 
-[⬆ Back to top](#-pypehorus--voice-ai-observability-platform)
+[⬆ Back to top](#-obsera--voice-ai-observability-platform)
 
 </div>

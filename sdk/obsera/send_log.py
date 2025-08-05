@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-PYPE_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
+PYPE_API_URL = os.getenv("PYPE_API_URL")
 PYPE_API_KEY = os.getenv("PYPE_API_KEY")
 
 def convert_timestamp(timestamp_value):
