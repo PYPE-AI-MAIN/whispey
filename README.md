@@ -1,16 +1,72 @@
-# 🔌 Voice Analytics Platform – Integration Guide
+# 🔮 PypeHorus – Voice AI Observability Platform
 
-Track, analyze, and improve your voice AI applications with real-time analytics.
+**Track, analyze, and improve your Voice AI applications with beautiful dashboards and actionable insights.**
+Use our hosted cloud platform, or self-host with Supabase + Clerk.
 
 ---
 
-## ✅ Quick Start
+## 🚀 Quick Start (Cloud Option)
 
-### 1. Install Dependencies
+Want to skip setup and start sending data instantly?
 
-Clone the repo and install dependencies:
+👉 Use our hosted dashboard:
+**🌐 [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)**
+📦 PyPI SDK: **[pypehorus on PyPI](https://pypi.org/project/pypehorus/1.0.0/)**
+
+### Install the SDK
 
 ```bash
+pip install pypehorus
+```
+
+### ⚙️ Setup Observability in Your LiveKit Agent
+
+
+```python
+from pypehorus import LivekitObserve
+
+# Instantiate once (usually at the top of your entrypoint)
+pype = LivekitObserve(agent_id="your-agent-id")
+```
+
+###  🔁 Wrap Session Lifecycle
+
+```python
+session = AgentSession(...)  # Your configured LiveKit agent session
+
+# Start tracking (you can optionally add a phone number or recording URL)
+session_id = pype.start_session(session, phone_number="+1234567890")
+
+# Ensure observability data is sent on shutdown
+async def pype_observe_shutdown():
+    await pype.export(session_id)
+
+ctx.add_shutdown_callback(pype_observe_shutdown)
+
+# Start your session as usual
+await session.start(...)
+
+```
+
+➡️ Analytics will show up in the cloud dashboard.
+
+---
+
+## 🛠 Self-Host Option
+
+You can also host the entire platform yourself using:
+
+* 🔗 **Supabase** (for DB & Auth)
+* 🙋 **Clerk.dev** (for user management)
+* 💻 **Next.js** frontend (dashboard)
+
+---
+
+### 1. Clone the Repo & Install
+
+```bash
+git clone https://github.com/PYPE-AI-MAIN/horus
+cd horus
 npm install
 ```
 
@@ -18,195 +74,84 @@ npm install
 
 ### 2. Set Up Supabase
 
-We use **Supabase** for the backend database.
+1. Go to [https://supabase.com](https://supabase.com) and create a project
+2. Open the SQL editor → paste `setup-supabase.sql` from the repo
+3. Get your **Project URL** and **Anon/public key**
 
-#### Steps:
-
-1. Go to [https://supabase.com](https://supabase.com) and **create a new project**
-2. Open the **SQL Editor** from your Supabase dashboard
-3. Copy the contents of `setup-supabase.sql` from this repo and **run the script**
-4. Go to **Settings → API** → **Data API**:
-
-   * Copy your **Project URL**
-   * Under **API Keys**, copy your **anon/public key**
-
-#### Add these to your `.env` file:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```env
+# .env.local
+NEXT_PUBLIC_SUPABASE_URL=your_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
 ```
 
 ---
 
-### 3. Run the App Locally
+### 3. Set Up Clerk
+
+1. Go to [https://clerk.dev](https://clerk.dev) and create an account
+2. Configure your instance:
+
+   * Allowed domains: `localhost`, `your-domain.com`
+   * Copy **frontend API** and **publishable key**
+
+```env
+# .env.local
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_key
+CLERK_SECRET_KEY=your_secret
+```
+
+---
+
+### 4. Run Locally
 
 ```bash
 npm run dev
 ```
 
-Visit: [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🧪 Using the Dashboard
+## 📊 Features
 
-### Step 1: Create a Project
-
-* Click **"Create New Project"**
-* Enter a project name and description
-* Copy the **API Token** that appears – you’ll need this for API requests
-
-### Step 2: Create an Agent
-
-* Go to your project → Click **"Create Agent"**
-* Choose the agent type and configuration
-* Copy the **Agent ID** shown after creation
+✅ View analytics for every call
+✅ Track STT, TTS, and LLM latency/costs
+✅ Filter by agent, date, call reason, etc.
+✅ Column customization, saved views, CSV export
+✅ Multi-project support
+✅ Built with Supabase, Clerk, Next.js, Tailwind
 
 ---
 
-## 🔑 Your API Credentials
+## 💡 Use Cases
 
-You’ll need the following for API calls:
-
-* **Project ID**: Shown in your project page
-* **API Token**: Generated when creating a project
-* **Agent ID**: Generated when creating an agent
-
----
-
-## 📡 Send Call Logs to API
-
-### Base URL
-
-```
-http://localhost:3000/api/send-logs
-```
-
-### Headers
-
-```http
-x-pype-token: your_dashboard_generated_token
-```
+* Monitor **Voice AI bots** in production
+* Audit call transcripts for compliance
+* Debug agent behavior and latency
+* Track **costs across STT, TTS, LLMs**
+* Visualize real-time agent performance
 
 ---
 
-### Example (cURL)
+## 🤝 Contributing
+
+We welcome contributions!
+To get started:
 
 ```bash
-curl -X POST "http://localhost:3000/api/send-logs" \
-  -H "Content-Type: application/json" \
-  -H "x-pype-token: your_dashboard_generated_token" \
-  -d '{
-    "call_id": "call_12345",
-    "agent_id": "your_agent_id",
-    "customer_number": "+1234567890",
-    "call_ended_reason": "completed",
-    "transcript_type": "agent",
-    "transcript_json": [
-      {
-        "id": "msg_1",
-        "role": "user",
-        "content": "Hello, I need help",
-        "interrupted": false
-      },
-      {
-        "id": "msg_2",
-        "role": "assistant",
-        "content": "Sure, what can I help you with?",
-        "interrupted": false
-      }
-    ],
-    "metadata": {
-      "call_quality": "good"
-    },
-    "call_started_at": "2024-01-01T10:00:00Z",
-    "call_ended_at": "2024-01-01T10:01:00Z",
-    "duration_seconds": 60,
-    "environment": "dev"
-  }'
+git clone https://github.com/PYPE-AI-MAIN/horus
+npm install
 ```
+
+Then follow the [self-host guide above](#self-host-option).
 
 ---
 
-## 📦 API Reference
+## 🧠 Credits
 
-### Send Call Logs
-
-```
-POST /api/send-logs
-Headers:
-  - Content-Type: application/json
-  - x-pype-token: your_token
-```
-
-### Send Failure Report
-
-```
-POST /api/failure-report
-```
-
-```json
-{
-  "token": "your_token",
-  "call_id": "failed_call_123",
-  "error_message": "Connection timeout",
-  "error_type": "network_error",
-  "stack_trace": "...",
-  "environment": "production"
-}
-```
-
-### Test Connection
-
-```
-GET /api/test-connection
-```
+Built by [Pype AI](https://pypeai.com)
+MIT Licensed
 
 ---
 
-## 📊 View Your Analytics
-
-1. Go to [http://localhost:3000](http://localhost:3000)
-2. Select your project and agent
-3. See live data and performance metrics:
-
-   * Call volume, durations, success rates
-   * Agent response times
-   * Speech-to-text (STT), LLM, and TTS metrics
-
----
-
-## 💡 Best Practices
-
-* Send data **immediately after call ends**
-* Use **meaningful call IDs**
-* Store your **API token securely**
-* Handle API failures with **retry logic**
-
----
-
-## 🛠 Troubleshooting
-
-### "Token is required"
-
-→ Check `x-pype-token` header is set and valid.
-
-### "Invalid agent ID"
-
-→ Double-check your agent ID from the dashboard.
-
-### Timeout or connection issues
-
-→ Confirm the API URL and network connectivity.
-
----
-
-## 🚀 Ready for Production?
-
-When deploying:
-
-* Use your **real domain** for API base URL
-* Enable **HTTPS**
-* Add logging and retry logic
-* Secure environment variables and tokens
+Would you like me to also generate a clean `setup.py` / `pyproject.toml` and badge set (`Made with Supabase`, `Deploy on Vercel`, etc.)?

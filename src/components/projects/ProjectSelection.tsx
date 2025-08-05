@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import TokenRegenerationConfirmDialog from './TokenRegenerationConfirmDialog'
+import TokenRegenerationConfirmDialog from '../TokenRegenerationConfirmDialog'
 
 import { 
   DropdownMenu,
@@ -40,8 +40,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import MemberManagementDialog from './MemberManagmentDialog'
-import Header from './Header'
+import MemberManagementDialog from '../MemberManagmentDialog'
+import Header from '../shared/Header'
 
 interface Project {
   id: string

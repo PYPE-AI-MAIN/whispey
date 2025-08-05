@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import CallFilter, { type FilterRule } from "./CallFilter"
-import ColumnSelector from "./ColumnSelector"
+import CallFilter, { type FilterRule } from "../CallFilter"
+import ColumnSelector from "../shared/ColumnSelector"
 import { Settings2, Save, Trash2, Eye, Filter, Columns, RefreshCw, AlertCircle, Database, Search } from "lucide-react"
 
 // ===== TYPES AND INTERFACES =====

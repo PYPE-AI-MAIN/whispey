@@ -8,10 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { useInfiniteScroll } from "../../hooks/useSupabase"
 import CallDetailsDrawer from "./CallDetailsDrawer"
-import CallFilter, { FilterRule } from "./CallFilter"
-import ColumnSelector from "./ColumnSelector"
+import CallFilter, { FilterRule } from "../CallFilter"
+import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
-import { CostTooltip } from "./tool-tip/costToolTip"
+import { CostTooltip } from "../tool-tip/costToolTip"
 import { CallLog } from "../../types/logs"
 import { supabase } from "../../lib/supabase"
 import Papa from 'papaparse'

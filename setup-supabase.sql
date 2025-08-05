@@ -1,127 +1,178 @@
--- Supabase Setup Script for Voice Analytics Platform
--- Run this in your Supabase SQL Editor to create all required tables
-
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Voice Projects Table
-CREATE TABLE IF NOT EXISTS pype_voice_projects (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR NOT NULL,
-    description TEXT,
-    environment VARCHAR DEFAULT 'dev',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_active BOOLEAN DEFAULT true,
-    retry_configuration JSONB DEFAULT '{}',
-    token_hash TEXT UNIQUE
+create table public.pype_voice_metrics_logs (
+    id uuid primary key default gen_random_uuid(),
+    session_id uuid,
+    turn_id text,
+    user_transcript text,
+    agent_response text,
+    stt_metrics jsonb,
+    llm_metrics jsonb,
+    tts_metrics jsonb,
+    eou_metrics jsonb,
+    lesson_day int4,
+    created_at timestamp with time zone default now(),
+    unix_timestamp numeric,
+    phone_number text,
+    call_duration numeric,
+    call_success boolean,
+    lesson_completed boolean
 );
 
--- Voice Agents Table
-CREATE TABLE IF NOT EXISTS pype_voice_agents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID REFERENCES pype_voice_projects(id) ON DELETE CASCADE,
-    name VARCHAR NOT NULL,
-    agent_type VARCHAR NOT NULL,
-    configuration JSONB DEFAULT '{}',
-    environment VARCHAR DEFAULT 'dev',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_active BOOLEAN DEFAULT true,
-    user_id UUID, -- References auth.users if needed
-    field_extractor BOOLEAN DEFAULT false,
-    field_extractor_prompt TEXT,
-    field_extractor_keys JSONB DEFAULT '[]'
+
+create table public.pype_voice_call_logs (
+    id uuid primary key default gen_random_uuid(),
+    call_id varchar,
+    agent_id uuid,
+    customer_number varchar,
+    call_ended_reason varchar,
+    transcript_type varchar,
+    transcript_json jsonb,
+    metadata jsonb,
+    dynamic_variables jsonb,
+    environment varchar,
+    created_at timestamp with time zone default now(),
+    call_started_at timestamp with time zone,
+    call_ended_at timestamp with time zone,
+    duration_seconds int4,
+    recording_url text,
+    avg_latency float8,
+    transcription_metrics jsonb,
+    total_stt_cost float8,
+    total_tts_cost float8,
+    total_llm_cost float8
 );
 
--- Voice Call Logs Table (Main operational data)
-CREATE TABLE IF NOT EXISTS pype_voice_call_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    call_id VARCHAR UNIQUE NOT NULL,
-    agent_id UUID REFERENCES pype_voice_agents(id) ON DELETE CASCADE,
-    customer_number VARCHAR,
-    call_ended_reason VARCHAR,
-    transcript_type VARCHAR,
-    transcript_json JSONB DEFAULT '[]',
-    metadata JSONB DEFAULT '{}',
-    dynamic_variables JSONB DEFAULT '{}',
-    environment VARCHAR DEFAULT 'dev',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    call_started_at TIMESTAMP WITH TIME ZONE,
-    call_ended_at TIMESTAMP WITH TIME ZONE,
-    duration_seconds INTEGER,
-    recording_url TEXT,
-    voice_recording_url TEXT,
-    avg_latency FLOAT,
-    transcription_metrics JSONB DEFAULT '{}'
+
+create table public.pype_voice_agents (
+    id uuid primary key default gen_random_uuid(),
+    project_id uuid,
+    name varchar,
+    agent_type varchar,
+    configuration jsonb,
+    environment varchar,
+    created_at timestamp with time zone default now(),
+    updated_at timestamp with time zone,
+    is_active boolean default true,
+    user_id uuid,
+    field_extractor boolean,
+    field_extractor_prompt text,
+    field_extractor_keys jsonb
 );
 
--- Voice Metrics Logs Table (Analytics data - will also sync to ClickHouse)
-CREATE TABLE IF NOT EXISTS pype_voice_metrics_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    session_id UUID REFERENCES pype_voice_call_logs(id) ON DELETE CASCADE,
-    turn_id TEXT NOT NULL,
-    user_transcript TEXT,
-    agent_response TEXT,
-    stt_metrics JSONB DEFAULT '{}',
-    llm_metrics JSONB DEFAULT '{}',
-    tts_metrics JSONB DEFAULT '{}',
-    eou_metrics JSONB DEFAULT '{}',
-    lesson_day INTEGER DEFAULT 1,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    unix_timestamp NUMERIC,
-    phone_number TEXT,
-    call_duration NUMERIC,
-    call_success BOOLEAN DEFAULT false,
-    lesson_completed BOOLEAN DEFAULT false
+
+create table public.pype_voice_projects (
+    id uuid primary key default gen_random_uuid(),
+    name varchar,
+    description text,
+    environment varchar,
+    created_at timestamp with time zone default now(),
+    updated_at timestamp with time zone,
+    is_active boolean default true,
+    retry_configuration jsonb,
+    token_hash text,
+    owner_clerk_id text,
+    campaign_config jsonb
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_call_logs_agent_id ON pype_voice_call_logs(agent_id);
-CREATE INDEX IF NOT EXISTS idx_call_logs_created_at ON pype_voice_call_logs(created_at);
-CREATE INDEX IF NOT EXISTS idx_call_logs_environment ON pype_voice_call_logs(environment);
-CREATE INDEX IF NOT EXISTS idx_call_logs_call_id ON pype_voice_call_logs(call_id);
+create table public.pype_voice_email_project_mapping (
+    id serial primary key,
+    email text,
+    project_id uuid,
+    role text,
+    permissions jsonb,
+    added_by_clerk_id text,
+    created_at timestamp with time zone default now(),
+    clerk_id text,
+    is_active boolean default true
+);
 
-CREATE INDEX IF NOT EXISTS idx_agents_project_id ON pype_voice_agents(project_id);
-CREATE INDEX IF NOT EXISTS idx_agents_environment ON pype_voice_agents(environment);
+create table public.pype_voice_agent_call_log_views (
+    id uuid primary key default gen_random_uuid(),
+    agent_id uuid,
+    name text,
+    filters jsonb,
+    visible_columns jsonb,
+    created_at timestamp with time zone default now(),
+    updated_at timestamp with time zone
+);
 
-CREATE INDEX IF NOT EXISTS idx_metrics_session_id ON pype_voice_metrics_logs(session_id);
-CREATE INDEX IF NOT EXISTS idx_metrics_created_at ON pype_voice_metrics_logs(created_at);
+create table public.audio_api_pricing (
+    service_type text,
+    provider text,
+    model_or_plan text,
+    unit text,
+    cost_usd_per_unit numeric,
+    valid_from date,
+    source_url text
+);
+
+create table public.gpt_api_pricing (
+    model_name text,
+    input_usd_per_million numeric,
+    output_usd_per_million numeric,
+    created_at timestamp with time zone default now()
+);
+
+create table public.gpt_api_pricing_inr (
+    model_name text,
+    input_inr_per_million numeric,
+    output_inr_per_million numeric,
+    rate_date date,
+    created_at timestamp with time zone default now()
+);
+
+create table public.pype_voice_users (
+    id uuid primary key default gen_random_uuid(),
+    email text,
+    first_name text,
+    last_name text,
+    profile_image_url text,
+    created_at timestamp with time zone default now(),
+    updated_at timestamp with time zone,
+    clerk_id text,
+    is_active boolean default true
+);
+
+create table public.usd_to_inr_rate (
+    as_of date,
+    rate numeric,
+    source text
+);
+
 
 CREATE MATERIALIZED VIEW call_summary_materialized AS
-SELECT 
+SELECT
   agent_id,
-  DATE(created_at) as call_date,
-  COUNT(*) as calls,
-  SUM(duration_seconds) as total_seconds,
-  ROUND(SUM(duration_seconds)::numeric / 60, 0) as total_minutes,
-  AVG(avg_latency) as avg_latency,
-  COUNT(DISTINCT call_id) as unique_customers,
-  -- Count successful calls using both conditions
-  COUNT(*) FILTER (
-    WHERE call_ended_reason = 'completed' 
-  ) as successful_calls,
-  -- Pre-calculate success rate
+  DATE(created_at) AS call_date,
+
+  COUNT(*) AS calls,
+  SUM(duration_seconds) AS total_seconds,
+  ROUND(SUM(duration_seconds)::numeric / 60, 0) AS total_minutes,
+  AVG(avg_latency) AS avg_latency,
+  COUNT(DISTINCT call_id) AS unique_customers,
+  COUNT(*) FILTER (WHERE call_ended_reason = 'completed') AS successful_calls,
   ROUND(
-    (COUNT(*) FILTER (
-      WHERE call_ended_reason = 'completed' 
-    )::numeric / COUNT(*)) * 100, 
+    (COUNT(*) FILTER (WHERE call_ended_reason = 'completed')::numeric / NULLIF(COUNT(*), 0)) * 100,
     2
-  ) as success_rate
+  ) AS success_rate,
+
+  -- Telecom cost only for completed calls (₹ 0.70 per started minute)
+  SUM(
+    CEIL(duration_seconds::numeric / 60)
+  ) FILTER (WHERE call_ended_reason = 'completed') * 0.70 AS telecom_cost,
+
+  -- Total LLM+TTS+STT cost only for completed calls
+  (
+    COALESCE(SUM(total_llm_cost) FILTER (WHERE call_ended_reason = 'completed'), 0)
+    + COALESCE(SUM(total_tts_cost) FILTER (WHERE call_ended_reason = 'completed'), 0)
+    + COALESCE(SUM(total_stt_cost) FILTER (WHERE call_ended_reason = 'completed'), 0)
+    + SUM(CEIL(duration_seconds::numeric / 60)) FILTER (WHERE call_ended_reason = 'completed') * 0.70
+  )::numeric(16, 2) AS total_cost
+
 FROM pype_voice_call_logs
 GROUP BY agent_id, DATE(created_at);
 
-
-CREATE INDEX idx_call_summary_agent_date ON call_summary_materialized(agent_id, call_date);
-
-CREATE UNIQUE INDEX idx_call_summary_unique
-ON call_summary_materialized(agent_id, call_date);
+CREATE UNIQUE INDEX call_summary_agent_date_idx
+  ON call_summary_materialized (agent_id, call_date);
 
 
-
-CREATE OR REPLACE FUNCTION refresh_call_summary()
-RETURNS void AS $$
-BEGIN
-  REFRESH MATERIALIZED VIEW CONCURRENTLY call_summary_materialized;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+REFRESH MATERIALIZED VIEW CONCURRENTLY call_summary_materialized;

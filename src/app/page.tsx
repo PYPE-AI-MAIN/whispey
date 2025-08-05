@@ -1,8 +1,8 @@
 'use client'
 
 import { useUser } from '@clerk/nextjs'
-import ProjectSelection from '../components/ProjectSelection'
-import LoadingSpinner from '../components/LoadingSpinner'
+import ProjectSelection from '../components/projects/ProjectSelection'
+import LoadingSpinner from '../components/shared/LoadingSpinner'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 

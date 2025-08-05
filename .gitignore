@@ -42,3 +42,24 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# Environment
+venv/
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

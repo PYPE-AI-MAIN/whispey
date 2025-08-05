@@ -11,12 +11,12 @@ import {
   Database
 } from 'lucide-react'
 import Overview from './Overview'
-import CallLogs from './CallLogs'
-import CampaignLogs from './CampaignLogs'
+import CallLogs from './calls/CallLogs'
+import CampaignLogs from './campaigns/CampaignLogs'
 
-import { useSupabaseQuery } from '../../hooks/useSupabase'
+import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '../lib/supabase'
 
 interface DashboardProps {
   agentId: string
