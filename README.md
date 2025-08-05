@@ -1,4 +1,7 @@
-# 🔮 PypeHorus – Voice AI Observability Platform
+<p align="center">
+  <b>🔮 PypeHorus – Voice AI Observability Platform</b>
+</p>
+
 
 <div align="center">
 
