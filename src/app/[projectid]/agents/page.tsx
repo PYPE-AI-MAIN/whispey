@@ -1,6 +1,6 @@
 'use client'
 import { useParams } from 'next/navigation'
-import AgentSelection from '@/components/AgentSelection'
+import AgentSelection from '@/components/agents/AgentSelection'
 
 export default function ProjectAgentsPage() {
   const params = useParams()

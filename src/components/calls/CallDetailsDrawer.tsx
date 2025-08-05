@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSupabaseQuery } from "../../hooks/useSupabase"
-import AudioPlayer from "./AudioPlayer"
+import AudioPlayer from "../AudioPlayer"
 import { extractS3Key } from "../../utils/s3"
 import { cn } from "@/lib/utils"
 

@@ -1,9 +1,9 @@
 // src/components/CostTooltip.tsx
 import * as Tooltip from "@radix-ui/react-tooltip";
 import React from "react";
-import { plivoRate } from "../../../utils/constants";
-import { telecomCost } from "../../../utils/cost";
-import { CallLog } from "../../../types/logs";
+import { plivoRate } from "../../utils/constants";
+import { telecomCost } from "../../utils/cost";
+import { CallLog } from "../../types/logs";
 
 type Props = {
   call: CallLog;

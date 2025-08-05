@@ -18,8 +18,8 @@ import {
   CalendarDays
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { useOverviewQuery } from '../../hooks/useOverviewQuery'
-import AgentCustomLogsView from './AgentCustomLogsView'
+import { useOverviewQuery } from '../hooks/useOverviewQuery'
+import AgentCustomLogsView from './calls/AgentCustomLogsView'
 
 
 const subDays = (date: Date, days: number) => {

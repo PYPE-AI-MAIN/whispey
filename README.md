@@ -1,212 +1,196 @@
-# 🔌 Voice Analytics Platform – Integration Guide
+<p align="center">
+  <b>🔮 PypeHorus – Voice AI Observability Platform</b>
+</p>
 
-Track, analyze, and improve your voice AI applications with real-time analytics.
 
----
+<div align="center">
 
-## ✅ Quick Start
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/pypehorus.svg)](https://badge.fury.io/py/pypehorus)
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
 
-### 1. Install Dependencies
+**Track, analyze, and improve your Voice AI applications with beautiful dashboards and actionable insights.**
 
-Clone the repo and install dependencies:
+[📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [💬 Discord](https://discord.gg/pypeai)
+</div>
+
+<div align="center">
+    <img width="748" height="348" alt="Screenshot 2025-08-05 at 8 22 16 PM" src="https://github.com/user-attachments/assets/6de46186-2999-4278-a1ab-55088509e345" />
+</div>
+
+## ✨ Features
+
+- **🔍 Real-time Monitoring** - Track every voice interaction with comprehensive analytics
+- **💰 Cost Tracking** - Monitor STT, TTS, and LLM costs across all providers
+- **⚡ Performance Metrics** - Analyze latency, response times, and quality scores
+- **🎯 Multi-Project Support** - Organize and compare multiple voice AI applications
+- **📈 Beautiful Dashboards** - Intuitive visualizations with customizable views
+- **🔒 Privacy-First** - Self-host option with complete data control
+- **📤 Data Export** - Export analytics to CSV for further analysis
+- **🔧 Easy Integration** - One-line SDK integration with LiveKit agents
+
+## 🚀 Quick Start
+
+### Cloud Platform (Recommended)
+
+Get started in under 2 minutes with our hosted platform:
 
 ```bash
+# Install the SDK
+pip install pypehorus
+```
+
+```python
+from pypehorus import LivekitObserve
+
+# Initialize observability
+pype = LivekitObserve(agent_id="your-agent-id")
+
+# Wrap your LiveKit session
+session = AgentSession(...)
+session_id = pype.start_session(session, phone_number="+1234567890")
+
+# Ensure data is exported on shutdown
+async def pype_observe_shutdown():
+    await pype.export(session_id)
+
+ctx.add_shutdown_callback(pype_observe_shutdown)
+await session.start(...)
+```
+
+**📊 View your analytics:** [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)
+
+### Self-Hosted Installation
+
+For complete control over your data, deploy PypeHorus on your own infrastructure:
+
+```bash
+# Clone and setup
+git clone https://github.com/PYPE-AI-MAIN/horus
+cd horus
 npm install
-```
 
----
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your Supabase and Clerk credentials
 
-### 2. Set Up Supabase
-
-We use **Supabase** for the backend database.
-
-#### Steps:
-
-1. Go to [https://supabase.com](https://supabase.com) and **create a new project**
-2. Open the **SQL Editor** from your Supabase dashboard
-3. Copy the contents of `setup-supabase.sql` from this repo and **run the script**
-4. Go to **Settings → API** → **Data API**:
-
-   * Copy your **Project URL**
-   * Under **API Keys**, copy your **anon/public key**
-
-#### Add these to your `.env` file:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
----
-
-### 3. Run the App Locally
-
-```bash
+# Run development server
 npm run dev
 ```
 
-Visit: [http://localhost:3000](http://localhost:3000)
+**🔧 Detailed setup guide:** [Self-hosting Documentation](docs/self-hosting.md)
+
+## 🏗️ Architecture
+
+PypeHorus consists of three main components:
+
+- **Python SDK** - Lightweight library for data collection
+- **Dashboard** - Next.js web application for analytics visualization  
+- **Backend** - Supabase for data storage and real-time updates
+
+## 📊 What You Can Track
+
+| Metric | Description | Providers |
+|--------|-------------|-----------|
+| **Latency** | Response times for each component | All STT/TTS/LLM providers |
+| **Costs** | Token usage and billing across services | OpenAI, Anthropic, Google, Azure |
+| **Quality** | Transcription accuracy, response relevance | Custom scoring algorithms |
+| **Usage** | Call volume, session duration, user patterns | Built-in analytics |
+
+## 🎯 Use Cases
+
+- **Production Monitoring** - Keep voice AI applications running smoothly
+- **Cost Optimization** - Identify expensive operations and optimize spending
+- **Quality Assurance** - Review call transcripts and agent responses
+- **Performance Debugging** - Diagnose latency issues and bottlenecks
+- **Business Intelligence** - Generate reports for stakeholders
+
+## 🛠️ Technology Stack
+
+- **Frontend:** Next.js 14, React, Tailwind CSS, shadcn/ui
+- **Backend:** Supabase (PostgreSQL + Real-time)
+- **Authentication:** Clerk.dev
+- **SDK:** Python 3.8+, asyncio
+- **Analytics:** Custom metrics engine
+- **Deployment:** Vercel, Docker support
+
+## 📚 Documentation
+
+- [🚀 Getting Started Guide](docs/getting-started.md)
+- [🔧 SDK Reference](docs/sdk-reference.md)
+- [🏠 Self-hosting Guide](docs/self-hosting.md)
+- [📊 Dashboard Tutorial](docs/dashboard-guide.md)
+- [🔌 API Documentation](docs/api-reference.md)
+- [❓ FAQ](docs/faq.md)
+
+## 🤝 Contributing
+
+We welcome contributions from the community! Here's how to get started:
+
+1. **Fork the repository**
+2. **Create a feature branch:** `git checkout -b feature/amazing-feature`
+3. **Make your changes** and add tests
+4. **Run the test suite:** `npm test`
+5. **Commit your changes:** `git commit -m 'Add amazing feature'`
+6. **Push to the branch:** `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+
+## 🔒 Security
+
+Security is a top priority for PypeHorus. We implement:
+
+- **End-to-end encryption** for data in transit
+- **SOC 2 compliant** infrastructure partners
+- **Regular security audits** and dependency updates
+- **Privacy-first design** with optional self-hosting
+
+Found a security issue? Please email security@pypeai.com instead of opening a public issue.
+
+## 📈 Roadmap
+
+- [ ] Multi-language SDK support (JavaScript, Go, Rust)
+- [ ] Advanced ML-powered insights and anomaly detection
+- [ ] Slack/Discord integrations for alerts
+- [ ] GraphQL API
+- [ ] Mobile app for monitoring on-the-go
+- [ ] Custom webhook integrations
+
+See our [public roadmap](https://github.com/PYPE-AI-MAIN/horus/projects/1) for more details.
+
+## 💬 Community & Support
+
+- **🐛 Bug Reports:** [GitHub Issues](https://github.com/PYPE-AI-MAIN/horus/issues)
+- **💡 Feature Requests:** [GitHub Discussions](https://github.com/PYPE-AI-MAIN/horus/discussions)
+- **💬 Chat:** [Discord Community](https://discord.gg/pypeai)
+- **📧 Email:** support@pypeai.com
+- **📱 Twitter:** [@PypeAI](https://twitter.com/PypeAI)
+
+## 🏢 Enterprise
+
+Need enterprise features like SSO, custom deployments, or dedicated support? 
+
+**Contact us:** enterprise@pypeai.com
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with ❤️ by the [Pype AI](https://pypeai.com) team
+- Inspired by the observability tools from Datadog, New Relic, and Honeycomb
+- Special thanks to the LiveKit community for their amazing real-time infrastructure
+- Icons by [Lucide](https://lucide.dev)
 
 ---
 
-## 🧪 Using the Dashboard
+<div align="center">
 
-### Step 1: Create a Project
+**⭐ Star us on GitHub if PypeHorus helps your voice AI applications!**
 
-* Click **"Create New Project"**
-* Enter a project name and description
-* Copy the **API Token** that appears – you’ll need this for API requests
+[⬆ Back to top](#-pypehorus--voice-ai-observability-platform)
 
-### Step 2: Create an Agent
-
-* Go to your project → Click **"Create Agent"**
-* Choose the agent type and configuration
-* Copy the **Agent ID** shown after creation
-
----
-
-## 🔑 Your API Credentials
-
-You’ll need the following for API calls:
-
-* **Project ID**: Shown in your project page
-* **API Token**: Generated when creating a project
-* **Agent ID**: Generated when creating an agent
-
----
-
-## 📡 Send Call Logs to API
-
-### Base URL
-
-```
-http://localhost:3000/api/send-logs
-```
-
-### Headers
-
-```http
-x-pype-token: your_dashboard_generated_token
-```
-
----
-
-### Example (cURL)
-
-```bash
-curl -X POST "http://localhost:3000/api/send-logs" \
-  -H "Content-Type: application/json" \
-  -H "x-pype-token: your_dashboard_generated_token" \
-  -d '{
-    "call_id": "call_12345",
-    "agent_id": "your_agent_id",
-    "customer_number": "+1234567890",
-    "call_ended_reason": "completed",
-    "transcript_type": "agent",
-    "transcript_json": [
-      {
-        "id": "msg_1",
-        "role": "user",
-        "content": "Hello, I need help",
-        "interrupted": false
-      },
-      {
-        "id": "msg_2",
-        "role": "assistant",
-        "content": "Sure, what can I help you with?",
-        "interrupted": false
-      }
-    ],
-    "metadata": {
-      "call_quality": "good"
-    },
-    "call_started_at": "2024-01-01T10:00:00Z",
-    "call_ended_at": "2024-01-01T10:01:00Z",
-    "duration_seconds": 60,
-    "environment": "dev"
-  }'
-```
-
----
-
-## 📦 API Reference
-
-### Send Call Logs
-
-```
-POST /api/send-logs
-Headers:
-  - Content-Type: application/json
-  - x-pype-token: your_token
-```
-
-### Send Failure Report
-
-```
-POST /api/failure-report
-```
-
-```json
-{
-  "token": "your_token",
-  "call_id": "failed_call_123",
-  "error_message": "Connection timeout",
-  "error_type": "network_error",
-  "stack_trace": "...",
-  "environment": "production"
-}
-```
-
-### Test Connection
-
-```
-GET /api/test-connection
-```
-
----
-
-## 📊 View Your Analytics
-
-1. Go to [http://localhost:3000](http://localhost:3000)
-2. Select your project and agent
-3. See live data and performance metrics:
-
-   * Call volume, durations, success rates
-   * Agent response times
-   * Speech-to-text (STT), LLM, and TTS metrics
-
----
-
-## 💡 Best Practices
-
-* Send data **immediately after call ends**
-* Use **meaningful call IDs**
-* Store your **API token securely**
-* Handle API failures with **retry logic**
-
----
-
-## 🛠 Troubleshooting
-
-### "Token is required"
-
-→ Check `x-pype-token` header is set and valid.
-
-### "Invalid agent ID"
-
-→ Double-check your agent ID from the dashboard.
-
-### Timeout or connection issues
-
-→ Confirm the API URL and network connectivity.
-
----
-
-## 🚀 Ready for Production?
-
-When deploying:
-
-* Use your **real domain** for API base URL
-* Enable **HTTPS**
-* Add logging and retry logic
-* Secure environment variables and tokens
+</div>
