@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="pypehorus",
+    name="whispy",
     version="1.0.0",
     author="Pype AI Voice Analytics",
     author_email="support@pype.ai",

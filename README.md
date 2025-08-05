@@ -1,157 +1,247 @@
-# 🔮 PypeHorus – Voice AI Observability Platform
+# Obsera – Voice AI Observability Platform
 
-**Track, analyze, and improve your Voice AI applications with beautiful dashboards and actionable insights.**
-Use our hosted cloud platform, or self-host with Supabase + Clerk.
+<div align="center">
 
----
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/obsera.svg)](https://badge.fury.io/py/obsera)
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
+[![Contributors](https://img.shields.io/github/contributors/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/obsera/graphs/contributors)
+[![Stars](https://img.shields.io/github/stars/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/obsera/stargazers)
 
-## 🚀 Quick Start (Cloud Option)
+**Professional voice analytics and observability for AI agents. Monitor, analyze, and improve your voice AI applications with beautiful dashboards and actionable insights.**
 
-Want to skip setup and start sending data instantly?
+[🚀 Get Started](#quick-start) • [📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/obsera)
 
-👉 Use our hosted dashboard:
-**🌐 [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)**
-📦 PyPI SDK: **[pypehorus on PyPI](https://pypi.org/project/pypehorus/1.0.0/)**
+</div>
 
-### Install the SDK
+<div align="center">
+<img src="public/obsera.png" alt="Obsera Dashboard" width="400" height="400" />
+</div>
+
+## ✨ Features
+
+- **🔍 Real-time Monitoring** - Track every voice interaction with comprehensive analytics
+- **💰 Cost Tracking** - Monitor STT, TTS, and LLM costs across all providers
+- **⚡ Performance Metrics** - Analyze latency, response times, and quality scores
+- **🎯 Multi-Project Support** - Organize and compare multiple voice AI applications
+- **📈 Beautiful Dashboards** - Intuitive visualizations with customizable views
+- **🔒 Privacy-First** - Self-host option with complete data control
+- **📤 Data Export** - Export analytics to CSV for further analysis
+- **🔧 Easy Integration** - One-line SDK integration with LiveKit agents
+- **🌐 Open Source** - Full transparency and community-driven development
+
+## 🚀 Quick Start
+
+### Cloud Platform (Recommended)
+
+Get started in under 2 minutes with our hosted platform:
+
+#### 1. Get Your Credentials
+
+1. **Sign up** at [Obsera Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
+2. **Get your Agent ID** from the dashboard
+3. **Generate your API Key** from your account settings
+
+#### 2. Environment Setup
+
+Create a `.env` file in your project root:
+
+```env
+# Obsera Voice Analytics
+OBSERA_API_KEY=your_obsera_api_key_here
+```
+
+#### 3. Install and Integrate
 
 ```bash
-pip install pypehorus
+# Install the SDK
+pip install obsera
 ```
 
-### ⚙️ Setup Observability in Your LiveKit Agent
-
-
 ```python
-from pypehorus import LivekitObserve
+from dotenv import load_dotenv
+from obsera import LivekitObserve
 
-# Instantiate once (usually at the top of your entrypoint)
-pype = LivekitObserve(agent_id="your-agent-id")
-```
+# Load environment variables
+load_dotenv()
 
-###  🔁 Wrap Session Lifecycle
+# Initialize observability with your Agent ID
+obsera = LivekitObserve(agent_id="your-agent-id-from-dashboard")
 
-```python
-session = AgentSession(...)  # Your configured LiveKit agent session
+# Wrap your LiveKit session
+session = AgentSession(...)
+session_id = obsera.start_session(session, phone_number="+1234567890")
 
-# Start tracking (you can optionally add a phone number or recording URL)
-session_id = pype.start_session(session, phone_number="+1234567890")
+# Ensure data is exported on shutdown
+async def obsera_shutdown():
+    await obsera.export(session_id)
 
-# Ensure observability data is sent on shutdown
-async def pype_observe_shutdown():
-    await pype.export(session_id)
-
-ctx.add_shutdown_callback(pype_observe_shutdown)
-
-# Start your session as usual
+ctx.add_shutdown_callback(obsera_shutdown)
 await session.start(...)
-
 ```
 
-➡️ Analytics will show up in the cloud dashboard.
+**📊 View your analytics:** [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)
 
----
+### Self-Hosted Installation
 
-## 🛠 Self-Host Option
-
-You can also host the entire platform yourself using:
-
-* 🔗 **Supabase** (for DB & Auth)
-* 🙋 **Clerk.dev** (for user management)
-* 💻 **Next.js** frontend (dashboard)
-
----
-
-### 1. Clone the Repo & Install
+For complete control over your data, deploy Obsera on your own infrastructure:
 
 ```bash
-git clone https://github.com/PYPE-AI-MAIN/horus
-cd horus
+# Clone and setup
+git clone https://github.com/PYPE-AI-MAIN/obsera
+cd obsera
 npm install
-```
 
----
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your Supabase and Clerk credentials
 
-### 2. Set Up Supabase
-
-1. Go to [https://supabase.com](https://supabase.com) and create a project
-2. Open the SQL editor → paste `setup-supabase.sql` from the repo
-3. Get your **Project URL** and **Anon/public key**
-
-```env
-# .env.local
-NEXT_PUBLIC_SUPABASE_URL=your_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
-```
-
----
-
-### 3. Set Up Clerk
-
-1. Go to [https://clerk.dev](https://clerk.dev) and create an account
-2. Configure your instance:
-
-   * Allowed domains: `localhost`, `your-domain.com`
-   * Copy **frontend API** and **publishable key**
-
-```env
-# .env.local
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_key
-CLERK_SECRET_KEY=your_secret
-```
-
----
-
-### 4. Run Locally
-
-```bash
+# Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+**🔧 Detailed setup guide:** [Self-hosting Documentation](docs/self-hosting.md)
 
----
+## 🏗️ Architecture
 
-## 📊 Features
+Obsera consists of three main components:
 
-✅ View analytics for every call
-✅ Track STT, TTS, and LLM latency/costs
-✅ Filter by agent, date, call reason, etc.
-✅ Column customization, saved views, CSV export
-✅ Multi-project support
-✅ Built with Supabase, Clerk, Next.js, Tailwind
+- **Python SDK** - Lightweight library for data collection
+- **Dashboard** - Next.js web application for analytics visualization  
+- **Backend** - Supabase for data storage and real-time updates
 
----
+## 📊 What You Can Track
 
-## 💡 Use Cases
+| Metric | Description | Providers |
+|--------|-------------|-----------|
+| **Latency** | Response times for each component | All STT/TTS/LLM providers |
+| **Costs** | Token usage and billing across services | OpenAI, Anthropic, Google, Azure |
+| **Quality** | Transcription accuracy, response relevance | Custom scoring algorithms |
+| **Usage** | Call volume, session duration, user patterns | Built-in analytics |
 
-* Monitor **Voice AI bots** in production
-* Audit call transcripts for compliance
-* Debug agent behavior and latency
-* Track **costs across STT, TTS, LLMs**
-* Visualize real-time agent performance
+## 🎯 Use Cases
 
----
+- **Production Monitoring** - Keep voice AI applications running smoothly
+- **Cost Optimization** - Identify expensive operations and optimize spending
+- **Quality Assurance** - Review call transcripts and agent responses
+- **Performance Debugging** - Diagnose latency issues and bottlenecks
+- **Business Intelligence** - Generate reports for stakeholders
+
+## 🛠️ Technology Stack
+
+- **Frontend:** Next.js 14, React, Tailwind CSS, shadcn/ui
+- **Backend:** Supabase (PostgreSQL + Real-time)
+- **Authentication:** Clerk.dev
+- **SDK:** Python 3.8+, asyncio
+- **Analytics:** Custom metrics engine
+- **Deployment:** Vercel, Docker support
+
+## 📚 Documentation
+
+- [🚀 Getting Started Guide](docs/getting-started.md)
+- [🔧 SDK Reference](docs/sdk-reference.md)
+- [🏠 Self-hosting Guide](docs/self-hosting.md)
+- [📊 Dashboard Tutorial](docs/dashboard-guide.md)
+- [🔌 API Documentation](docs/api-reference.md)
+- [❓ FAQ](docs/faq.md)
 
 ## 🤝 Contributing
 
-We welcome contributions!
-To get started:
+We welcome contributions from the community! Here's how to get started:
+
+1. **Fork the repository**
+2. **Create a feature branch:** `git checkout -b feature/amazing-feature`
+3. **Make your changes** and add tests
+4. **Run the test suite:** `npm test`
+5. **Commit your changes:** `git commit -m 'Add amazing feature'`
+6. **Push to the branch:** `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+
+### Development Setup
 
 ```bash
-git clone https://github.com/PYPE-AI-MAIN/horus
+# Clone the repository
+git clone https://github.com/PYPE-AI-MAIN/obsera
+cd obsera
+
+# Install dependencies
 npm install
+
+# Set up environment
+cp .env.example .env.local
+
+# Start development server
+npm run dev
 ```
 
-Then follow the [self-host guide above](#self-host-option).
+### SDK Development
+
+```bash
+# Navigate to SDK directory
+cd sdk
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
+```
+
+## 🔒 Security
+
+Security is a top priority for Obsera. We implement:
+
+- **End-to-end encryption** for data in transit
+- **SOC 2 compliant** infrastructure partners
+- **Regular security audits** and dependency updates
+- **Privacy-first design** with optional self-hosting
+
+Found a security issue? Please email security@obsera.ai instead of opening a public issue.
+
+## 📈 Roadmap
+
+- [ ] Multi-language SDK support (JavaScript, Go, Rust)
+- [ ] Advanced ML-powered insights and anomaly detection
+- [ ] Slack/Discord integrations for alerts
+- [ ] GraphQL API
+- [ ] Mobile app for monitoring on-the-go
+- [ ] Custom webhook integrations
+
+<!-- See our [public roadmap](https://github.com/obsera-ai/obsera/projects/1) for more details. -->
+
+## 💬 Community & Support
+
+- **🐛 Bug Reports:** [GitHub Issues](https://github.com/obsera-ai/obsera/issues)
+- **💡 Feature Requests:** [GitHub Discussions](https://github.com/obsera-ai/obsera/discussions)
+- **💬 Chat:** [Discord Community](https://discord.gg/pypeai)
+- **📧 Email:** support@obsera.ai
+- **📱 Twitter:** [@ObseraAI](https://twitter.com/ObseraAI)
+
+## 🏢 Enterprise
+
+Need enterprise features like SSO, custom deployments, or dedicated support? 
+
+**Contact us:** enterprise@obsera.ai
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with ❤️ by the [Obsera](https://obsera.ai) team
+- Inspired by the observability tools from Datadog, New Relic, and Honeycomb
+- Special thanks to the LiveKit community for their amazing real-time infrastructure
 
 ---
 
-## 🧠 Credits
+<div align="center">
 
-Built by [Pype AI](https://pypeai.com)
-MIT Licensed
+**⭐ Star us on GitHub if Obsera helps your voice AI applications!**
 
----
+[⬆ Back to top](#-obsera--voice-ai-observability-platform)
 
-Would you like me to also generate a clean `setup.py` / `pyproject.toml` and badge set (`Made with Supabase`, `Deploy on Vercel`, etc.)?
+</div>

@@ -10,37 +10,15 @@ from livekit.plugins import (
     elevenlabs,
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from pypehorus import LivekitObserve
+from obsera import LivekitObserve
 
 
 import base64
 import os
 
-from livekit.agents.telemetry import set_tracer_provider
 
 load_dotenv()
 
-def setup_langfuse(
-    host: str | None = None, public_key: str | None = None, secret_key: str | None = None
-):
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-    public_key = public_key or os.getenv("LANGFUSE_PUBLIC_KEY")
-    secret_key = secret_key or os.getenv("LANGFUSE_SECRET_KEY")
-    host = host or os.getenv("LANGFUSE_HOST")
-
-    if not public_key or not secret_key or not host:
-        raise ValueError("LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, and LANGFUSE_HOST must be set")
-
-    langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
-    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{host.rstrip('/')}/api/public/otel"
-    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
-
-    trace_provider = TracerProvider()
-    trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-    set_tracer_provider(trace_provider)
 
 pype = LivekitObserve(agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22")
 
@@ -53,7 +31,6 @@ class Assistant(Agent):
 
 async def entrypoint(ctx: agents.JobContext):
     await ctx.connect()
-    setup_langfuse()
     
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="multi"),

@@ -3,9 +3,9 @@ import uuid
 import logging
 from datetime import datetime
 from typing import Dict, Any
-from pype_observe.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
-from pype_observe.metrics_service import setup_usage_collector, create_session_data
-from pype_observe.pype import send_to_pype
+from obsera.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
+from obsera.metrics_service import setup_usage_collector, create_session_data
+from obsera.send_log import send_to_pype
 
 logger = logging.getLogger("observe_session")
 

@@ -3,7 +3,7 @@
 __version__ = "1.0.0"
 __author__ = "Pype AI Voice Analytics"
 
-from .observe import observe_session, send_session_to_pype
+from .obsera import observe_session, send_session_to_pype
 
 # Professional wrapper class
 class LivekitObserve:

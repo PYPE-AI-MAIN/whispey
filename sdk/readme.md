@@ -1,20 +1,33 @@
-# Pype Observe SDK
+# Obsera SDK
 
 **Professional Voice Analytics for AI Agents**
 
-Monitor, analyze, and gain insights from your AI voice agent conversations with Pype AI's advanced voice analytics platform.
+Monitor, analyze, and gain insights from your AI voice agent conversations with Obsera's advanced voice analytics platform.
+
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/obsera.svg)](https://badge.fury.io/py/obsera)
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
+
+**Transform your voice agents with professional analytics and insights.**
+
+[📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [💬 Discord](https://discord.gg/pypeai) • [⭐ Star on GitHub](https://github.com/obsera-ai/obsera)
+
+</div>
 
 ## 🚀 Quick Start
 
 ### Installation
 
 ```bash
-pip install pype-observe
+pip install obsera
 ```
 
 ### Get Your Credentials
 
-1. **Sign up** at [Pype Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
+1. **Sign up** at [Obsera Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
 2. **Get your Agent ID** from the dashboard
 3. **Generate your API Key** from your account 
 
@@ -23,13 +36,13 @@ pip install pype-observe
 Create a `.env` file in your project root:
 
 ```env
-# Pype Voice Analytics
-PYPE_API_KEY=your_pype_api_key_here
+# Obsera Voice Analytics
+OBSERA_API_KEY=your_obsera_api_key_here
 ```
 
 ## 📖 Complete Implementation
 
-Here's a complete example of how to integrate Pype Observe into your LiveKit voice agent:
+Here's a complete example of how to integrate Obsera into your LiveKit voice agent:
 
 ```python
 from dotenv import load_dotenv
@@ -43,7 +56,7 @@ from livekit.plugins import (
     elevenlabs,
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from pype_observe import PypeObserve
+from obsera import LivekitObserve
 
 import base64
 import os
@@ -51,8 +64,8 @@ import os
 # Load environment variables
 load_dotenv()
 
-# 🎙️ Initialize Pype Observe with your Agent ID from the dashboard
-pype = PypeObserve(
+# 🎙️ Initialize Obsera with your Agent ID from the dashboard
+obsera = LivekitObserve(
     agent_id="your-agent-id-from-dashboard"  # Get this from https://pype-voice-analytics-dashboard.vercel.app/
 )
 
@@ -83,26 +96,26 @@ async def entrypoint(ctx: agents.JobContext):
         turn_detection=MultilingualModel(),
     )
     
-    # 🚀 Start Pype Voice Analytics
-    session_id = pype.start_session(
+    # 🚀 Start Obsera Voice Analytics
+    session_id = obsera.start_session(
         session,
         phone_number="+1234567890",     # Optional: Customer phone number
         customer_name="John Doe",       # Optional: Customer name
         conversation_type="voice_call"  # Optional: Type of conversation
     )
     
-    print(f"🎙️ Pype Analytics started for session: {session_id}")
+    print(f"🎙️ Obsera Analytics started for session: {session_id}")
 
     # 📤 Export analytics data when session ends
-    async def pype_observe_shutdown():
+    async def obsera_shutdown():
         try:
-            result = await pype.export(
+            result = await obsera.export(
                 session_id,
                 recording_url=""  # Optional: Add recording URL if available
             )
             
             if result.get("success"):
-                print("✅ Successfully exported to Pype Voice Analytics!")
+                print("✅ Successfully exported to Obsera Voice Analytics!")
                 print(f"📊 Log ID: {result.get('data', {}).get('log_id')}")
             else:
                 print(f"❌ Export failed: {result.get('error')}")
@@ -111,7 +124,7 @@ async def entrypoint(ctx: agents.JobContext):
             print(f"💥 Export error: {e}")
 
     # Register cleanup callback
-    ctx.add_shutdown_callback(pype_observe_shutdown)
+    ctx.add_shutdown_callback(obsera_shutdown)
 
     # Start the agent session
     await session.start(
@@ -137,14 +150,14 @@ if __name__ == "__main__":
 
 | Variable | Description | Where to Get |
 |----------|-------------|--------------|
-| `PYPE_API_KEY` | Your Pype API authentication key | [Dashboard → API Keys](https://pype-voice-analytics-dashboard.vercel.app/) |
+| `OBSERA_API_KEY` | Your Obsera API authentication key | [Dashboard → API Keys](https://pype-voice-analytics-dashboard.vercel.app/) |
 
 ### Agent Configuration
 
-Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Pype dashboard:
+Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Obsera dashboard:
 
 ```python
-pype = PypeObserve(
+obsera = LivekitObserve(
     agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22"  # Your actual Agent ID
 )
 ```
@@ -166,7 +179,7 @@ pype = PypeObserve(
 
 ### Session Metadata
 ```python
-session_id = pype.start_session(
+session_id = obsera.start_session(
     session,
     phone_number="+1234567890",        # Customer contact
     customer_name="Jane Smith",        # Customer identification
@@ -183,22 +196,23 @@ session_id = pype.start_session(
 
 ```python
 # Start session
-session_id = pype.start_session(session, **metadata)
+session_id = obsera.start_session(session, **metadata)
 
 # Get current session data (without exporting)
-current_data = pype.get_data(session_id)
+current_data = obsera.get_data(session_id)
 print(f"Current metrics: {current_data}")
 
 # Manually end session
-pype.end(session_id)
+obsera.end(session_id)
 
-# Export to Pype platform
-result = await pype.export(session_id, recording_url="https://...")
+# Export to Obsera platform
+result = await obsera.export(session_id, recording_url="https://...")
 ```
+
 ## 📈 Dashboard Integration
 
 Once your data is exported, view detailed analytics at:
-**[Pype Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)**
+**[Obsera Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)**
 
 ### Available Analytics:
 - 📊 **Call Performance**: Response times, success rates
@@ -214,7 +228,7 @@ Once your data is exported, view detailed analytics at:
 **1. "Session not found" Error**
 ```python
 # Ensure session_id is stored correctly
-session_id = pype.start_session(session)
+session_id = obsera.start_session(session)
 print(f"Session ID: {session_id}")  # Save this for later use
 ```
 
@@ -222,16 +236,16 @@ print(f"Session ID: {session_id}")  # Save this for later use
 ```python
 # Make sure session has activity before exporting
 await asyncio.sleep(1)  # Allow time for metrics collection
-result = await pype.export(session_id)
+result = await obsera.export(session_id)
 ```
 
 **3. API Authentication Error**
 ```bash
 # Check your .env file
-echo $PYPE_API_KEY
+echo $OBSERA_API_KEY
 
 # Ensure API key is set in environment
-export PYPE_API_KEY="your_api_key_here"
+export OBSERA_API_KEY="your_api_key_here"
 ```
 
 ### Debug Mode
@@ -241,28 +255,64 @@ Enable verbose logging:
 import logging
 logging.basicConfig(level=logging.INFO)
 
-# Your Pype code here - you'll see detailed logs
+# Your Obsera code here - you'll see detailed logs
 ```
 
 ## 📝 Requirements
 
 - Python >= 3.8
 - LiveKit Agents >= 1.2.2
-- Active Pype account with valid API key
+- Active Obsera account with valid API key
 
-## 🤝 Support
+## 🤝 Contributing
 
-- **Documentation**: [docs.pype.ai](https://docs.pype.ai)
-- **Dashboard**: [pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app/)
-- **Email**: support@pype.ai
-- **Issues**: [GitHub Issues](https://github.com/pype-ai/pype-observe/issues)
+We welcome contributions to the Obsera SDK! Here's how to get started:
+
+1. **Fork the repository**
+2. **Create a feature branch:** `git checkout -b feature/amazing-feature`
+3. **Make your changes** and add tests
+4. **Run the test suite:** `python -m pytest`
+5. **Commit your changes:** `git commit -m 'Add amazing feature'`
+6. **Push to the branch:** `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
+
+Please read our [Contributing Guidelines](../CONTRIBUTING.md) and [Code of Conduct](../CODE_OF_CONDUCT.md) before contributing.
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/obsera-ai/obsera
+cd obsera/sdk
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
+
+# Run tests
+python -m pytest
+```
+
+## 💬 Community & Support
+
+- **🐛 Bug Reports:** [GitHub Issues](https://github.com/obsera-ai/obsera/issues)
+- **💡 Feature Requests:** [GitHub Discussions](https://github.com/obsera-ai/obsera/discussions)
+- **💬 Chat:** [Discord Community](https://discord.gg/pypeai)
+- **📧 Email:** support@obsera.ai
+- **📱 Twitter:** [@ObseraAI](https://twitter.com/ObseraAI)
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](../LICENSE) file for details.
 
 ---
 
-**Built with ❤️ by [Pype AI Voice Analytics](https://pype.ai)**
+<div align="center">
+
+**Built with ❤️ by [Obsera Voice Analytics](https://obsera.ai)**
 
 *Transform your voice agents with professional analytics and insights.*
+
+</div>
