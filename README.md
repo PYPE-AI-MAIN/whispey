@@ -232,7 +232,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built with ❤️ by the [Obsera](https://obsera.ai) team
+- Built with ❤️ by the [PYPE](https://pypeai.com/home) team
 - Inspired by the observability tools from Datadog, New Relic, and Honeycomb
 - Special thanks to the LiveKit community for their amazing real-time infrastructure
 
