@@ -3,9 +3,9 @@ import uuid
 import logging
 from datetime import datetime
 from typing import Dict, Any
-from obsera.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
-from obsera.metrics_service import setup_usage_collector, create_session_data
-from obsera.send_log import send_to_pype
+from whispey.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
+from whispey.metrics_service import setup_usage_collector, create_session_data
+from whispey.send_log import send_to_whispey
 
 logger = logging.getLogger("observe_session")
 
@@ -15,7 +15,7 @@ _session_data_store = {}
 def observe_session(session, agent_id,**kwargs):
     session_id = str(uuid.uuid4())
     
-    logger.info(f"🔗 Setting up Pype-compatible metrics collection for session {session_id}")
+    logger.info(f"🔗 Setting up Whispey-compatible metrics collection for session {session_id}")
     logger.info(f"📋 Dynamic parameters: {list(kwargs.keys())}")
     
     try:        
@@ -37,13 +37,13 @@ def observe_session(session, agent_id,**kwargs):
             'dynamic_params': kwargs,
             'agent_id': agent_id,
             'call_active': True,
-            'pype_data': None
+            'whispey_data': None
         }
         
         # Setup event handlers with session
         setup_session_event_handlers(session, session_data, usage_collector, None)
         
-        # Add custom handlers for Pype integration
+        # Add custom handlers for Whispey integration
         @session.on("disconnected")
         def on_disconnected(event):
             end_session_manually(session_id, "disconnected")
@@ -53,7 +53,7 @@ def observe_session(session, agent_id,**kwargs):
             error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
             end_session_manually(session_id, "completed", error_msg)
         
-        logger.info(f"✅ Pype-compatible metrics collection active for session {session_id}")
+        logger.info(f"✅ Whispey-compatible metrics collection active for session {session_id}")
         return session_id
         
     except Exception as e:
@@ -61,8 +61,8 @@ def observe_session(session, agent_id,**kwargs):
         # Still return session_id so caller can handle gracefully
         return session_id
 
-def generate_pype_data(session_id: str, status: str = "in_progress", error: str = None) -> Dict[str, Any]:
-    """Generate Pype data for a session"""
+def generate_whispey_data(session_id: str, status: str = "in_progress", error: str = None) -> Dict[str, Any]:
+    """Generate Whispey data for a session"""
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found in data store")
         return {}
@@ -98,8 +98,8 @@ def generate_pype_data(session_id: str, status: str = "in_progress", error: str 
     # Calculate duration
     duration = int(current_time - start_time)
     
-    # Prepare Pype format data
-    pype_data = {
+    # Prepare Whispey format data
+    whispey_data = {
         "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
         "agent_id": session_info['agent_id'],
         "customer_number": session_info['dynamic_params'].get('phone_number', 'unknown'),
@@ -121,34 +121,34 @@ def generate_pype_data(session_id: str, status: str = "in_progress", error: str 
     
     # Add transcript data if available
     if session_data:
-        pype_data["transcript_with_metrics"] = session_data.get("transcript_with_metrics", [])
+        whispey_data["transcript_with_metrics"] = session_data.get("transcript_with_metrics", [])
         
         # Extract transcript_json from session history if available
         if hasattr(session_data, 'history'):
             try:
-                pype_data["transcript_json"] = session_data.history.to_dict().get("items", [])
+                whispey_data["transcript_json"] = session_data.history.to_dict().get("items", [])
             except Exception as e:
                 logger.debug(f"Could not extract transcript_json from history: {e}")
         
         # Try other possible transcript locations
-        if not pype_data["transcript_json"]:
+        if not whispey_data["transcript_json"]:
             for attr in ['transcript_data', 'conversation_history', 'messages']:
                 if hasattr(session_data, attr):
                     try:
                         data = getattr(session_data, attr)
                         if isinstance(data, list):
-                            pype_data["transcript_json"] = data
+                            whispey_data["transcript_json"] = data
                             break
                         elif hasattr(data, 'to_dict'):
-                            pype_data["transcript_json"] = data.to_dict().get("items", [])
+                            whispey_data["transcript_json"] = data.to_dict().get("items", [])
                             break
                     except Exception as e:
                         logger.debug(f"Could not extract transcript from {attr}: {e}")
     
-    return pype_data
+    return whispey_data
 
-def get_session_pype_data(session_id: str) -> Dict[str, Any]:
-    """Get Pype-formatted data for a session"""
+def get_session_whispey_data(session_id: str) -> Dict[str, Any]:
+    """Get Whispey-formatted data for a session"""
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found")
         return {}
@@ -156,11 +156,11 @@ def get_session_pype_data(session_id: str) -> Dict[str, Any]:
     session_info = _session_data_store[session_id]
     
     # Return cached data if session has ended
-    if not session_info['call_active'] and session_info['pype_data']:
-        return session_info['pype_data']
+    if not session_info['call_active'] and session_info['whispey_data']:
+        return session_info['whispey_data']
     
     # Generate fresh data
-    return generate_pype_data(session_id)
+    return generate_whispey_data(session_id)
 
 def end_session_manually(session_id: str, status: str = "completed", error: str = None):
     """Manually end a session"""
@@ -173,11 +173,11 @@ def end_session_manually(session_id: str, status: str = "completed", error: str 
     # Mark as inactive
     _session_data_store[session_id]['call_active'] = False
     
-    # Generate and cache final pype data
-    final_data = generate_pype_data(session_id, status, error)
-    _session_data_store[session_id]['pype_data'] = final_data
+    # Generate and cache final whispey data
+    final_data = generate_whispey_data(session_id, status, error)
+    _session_data_store[session_id]['whispey_data'] = final_data
     
-    logger.info(f"📊 Session {session_id} ended - Pype data prepared")
+    logger.info(f"📊 Session {session_id} ended - Whispey data prepared")
 
 def cleanup_session(session_id: str):
     """Clean up session data"""
@@ -185,9 +185,9 @@ def cleanup_session(session_id: str):
         del _session_data_store[session_id]
         logger.info(f"🗑️ Cleaned up session {session_id}")
 
-async def send_session_to_pype(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True) -> dict:
+async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True) -> dict:
     """
-    Send session data to Pype API
+    Send session data to Whispey API
     
     Args:
         session_id: Session ID to send
@@ -196,9 +196,9 @@ async def send_session_to_pype(session_id: str, recording_url: str = "", additio
         force_end: Whether to force end the session before sending (default: True)
     
     Returns:
-        dict: Response from Pype API
+        dict: Response from Whispey API
     """
-    logger.info(f"🚀 Starting send_session_to_pype for {session_id}")
+    logger.info(f"🚀 Starting send_session_to_whispey for {session_id}")
     
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found in data store")
@@ -213,47 +213,47 @@ async def send_session_to_pype(session_id: str, recording_url: str = "", additio
         logger.info(f"🔚 Force ending session {session_id}")
         end_session_manually(session_id, "completed")
     
-    # Get pype data
-    pype_data = get_session_pype_data(session_id)
+    # Get whispey data
+    whispey_data = get_session_whispey_data(session_id)
     
-    logger.info(f"📊 Generated pype data with keys: {list(pype_data.keys()) if pype_data else 'Empty'}")
+    logger.info(f"📊 Generated whispey data with keys: {list(whispey_data.keys()) if whispey_data else 'Empty'}")
     
-    if not pype_data:
-        logger.error(f"No pype data generated for session {session_id}")
+    if not whispey_data:
+        logger.error(f"No whispey data generated for session {session_id}")
         return {"success": False, "error": "No data available"}
     
     # Update with additional data
     if recording_url:
-        pype_data["recording_url"] = recording_url
+        whispey_data["recording_url"] = recording_url
         logger.info(f"📎 Added recording URL: {recording_url}")
     
     if additional_transcript:
-        pype_data["transcript_json"] = additional_transcript
+        whispey_data["transcript_json"] = additional_transcript
         logger.info(f"📄 Added additional transcript with {len(additional_transcript)} items")
     
     # Debug print
-    print("=== PYPE DATA FOR SENDING ===")
-    print(f"Call ID: {pype_data.get('call_id', 'N/A')}")
-    print(f"Agent ID: {pype_data.get('agent_id', 'N/A')}")
-    print(f"Duration: {pype_data.get('metadata', {}).get('duration_formatted', 'N/A')}")
-    print(f"Usage: {pype_data.get('metadata', {}).get('usage', {})}")
+    print("=== WHISPEY DATA FOR SENDING ===")
+    print(f"Call ID: {whispey_data.get('call_id', 'N/A')}")
+    print(f"Agent ID: {whispey_data.get('agent_id', 'N/A')}")
+    print(f"Duration: {whispey_data.get('metadata', {}).get('duration_formatted', 'N/A')}")
+    print(f"Usage: {whispey_data.get('metadata', {}).get('usage', {})}")
     print("============================")
     
-    # Send to Pype
+    # Send to Whispey
     try:
-        logger.info(f"📤 Sending to Pype API...")
-        result = await send_to_pype(pype_data)
+        logger.info(f"📤 Sending to Whispey API...")
+        result = await send_to_whispey(whispey_data)
         
         if result.get("success"):
-            logger.info(f"✅ Successfully sent session {session_id} to Pype")
+            logger.info(f"✅ Successfully sent session {session_id} to Whispey")
             cleanup_session(session_id)
         else:
-            logger.error(f"❌ Pype API returned failure: {result}")
+            logger.error(f"❌ Whispey API returned failure: {result}")
         
         return result
         
     except Exception as e:
-        logger.error(f"❌ Exception sending to Pype: {e}")
+        logger.error(f"❌ Exception sending to Whispey: {e}")
         import traceback
         traceback.print_exc()
         return {"success": False, "error": str(e)}
@@ -289,7 +289,7 @@ def debug_session_state(session_id: str = None):
             print(f"  - Has session_data: {data['session_data'] is not None}")
             print(f"  - Has usage_collector: {data['usage_collector'] is not None}")
             print(f"  - Dynamic params: {data['dynamic_params']}")
-            print(f"  - Has cached pype_data: {data['pype_data'] is not None}")
+            print(f"  - Has cached whispey_data: {data['whispey_data'] is not None}")
         else:
             print(f"Session {session_id} not found")
     else:

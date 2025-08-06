@@ -10,7 +10,7 @@ from livekit.plugins import (
     elevenlabs,
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
 
 import base64
@@ -55,12 +55,12 @@ async def entrypoint(ctx: agents.JobContext):
     # Set up observablity after session creation
     session_id = pype.start_session(session, phone_number="+1234567890")
 
-    # send session data to Pype
+    # send session data to Whispey
     # Note: recording_url can be provided if you have a recording URL to attach 
-    async def pype_observe_shutdown():
+    async def whispey_observe_shutdown():
           await pype.export(session_id)
 
-    ctx.add_shutdown_callback(pype_observe_shutdown)
+    ctx.add_shutdown_callback(whispey_observe_shutdown)
 
 
     await session.start(
