@@ -1,33 +1,22 @@
-# Obsera SDK
+# Whispey SDK
 
 **Professional Voice Analytics for AI Agents**
 
-Monitor, analyze, and gain insights from your AI voice agent conversations with Obsera's advanced voice analytics platform.
-
-<div align="center">
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI version](https://badge.fury.io/py/obsera.svg)](https://badge.fury.io/py/obsera)
-[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
-
-**Transform your voice agents with professional analytics and insights.**
-
-[📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [💬 Discord](https://discord.gg/pypeai) • [⭐ Star on GitHub](https://github.com/obsera-ai/obsera)
-
-</div>
+Monitor, analyze, and gain insights from your AI voice agent conversations with Whispey's advanced voice analytics platform.
 
 ## 🚀 Quick Start
 
 ### Installation
 
 ```bash
-pip install obsera
+pip install whispey
 ```
+
+**📦 Available on PyPI:** [https://pypi.org/project/Whispey/1.4.0/](https://pypi.org/project/Whispey/1.4.0/)
 
 ### Get Your Credentials
 
-1. **Sign up** at [Obsera Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
+1. **Sign up** at [Whispey Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
 2. **Get your Agent ID** from the dashboard
 3. **Generate your API Key** from your account 
 
@@ -36,13 +25,13 @@ pip install obsera
 Create a `.env` file in your project root:
 
 ```env
-# Obsera Voice Analytics
-OBSERA_API_KEY=your_obsera_api_key_here
+# Whispey Voice Analytics
+WHISPEY_API_KEY=your_whispey_api_key_here
 ```
 
 ## 📖 Complete Implementation
 
-Here's a complete example of how to integrate Obsera into your LiveKit voice agent:
+Here's a complete example of how to integrate Whispey into your LiveKit voice agent:
 
 ```python
 from dotenv import load_dotenv
@@ -56,7 +45,7 @@ from livekit.plugins import (
     elevenlabs,
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
 import base64
 import os
@@ -64,8 +53,8 @@ import os
 # Load environment variables
 load_dotenv()
 
-# 🎙️ Initialize Obsera with your Agent ID from the dashboard
-obsera = LivekitObserve(
+# 🎙️ Initialize Whispey with your Agent ID from the dashboard
+whispey = LivekitObserve(
     agent_id="your-agent-id-from-dashboard"  # Get this from https://pype-voice-analytics-dashboard.vercel.app/
 )
 
@@ -96,26 +85,26 @@ async def entrypoint(ctx: agents.JobContext):
         turn_detection=MultilingualModel(),
     )
     
-    # 🚀 Start Obsera Voice Analytics
-    session_id = obsera.start_session(
-        session,
-        phone_number="+1234567890",     # Optional: Customer phone number
-        customer_name="John Doe",       # Optional: Customer name
-        conversation_type="voice_call"  # Optional: Type of conversation
-    )
+    # 🚀 Start Whispey Voice Analytics
+session_id = whispey.start_session(
+    session,
+    phone_number="+1234567890",     # Optional: Customer phone number
+    customer_name="John Doe",       # Optional: Customer name
+    conversation_type="voice_call"  # Optional: Type of conversation
+)
     
-    print(f"🎙️ Obsera Analytics started for session: {session_id}")
+    print(f"🎙️ Whispey Analytics started for session: {session_id}")
 
     # 📤 Export analytics data when session ends
-    async def obsera_shutdown():
-        try:
-            result = await obsera.export(
-                session_id,
-                recording_url=""  # Optional: Add recording URL if available
-            )
+    async def whispey_shutdown():
+    try:
+        result = await whispey.export(
+            session_id,
+            recording_url=""  # Optional: Add recording URL if available
+        )
             
             if result.get("success"):
-                print("✅ Successfully exported to Obsera Voice Analytics!")
+                print("✅ Successfully exported to Whispey Voice Analytics!")
                 print(f"📊 Log ID: {result.get('data', {}).get('log_id')}")
             else:
                 print(f"❌ Export failed: {result.get('error')}")
@@ -124,7 +113,7 @@ async def entrypoint(ctx: agents.JobContext):
             print(f"💥 Export error: {e}")
 
     # Register cleanup callback
-    ctx.add_shutdown_callback(obsera_shutdown)
+    ctx.add_shutdown_callback(whispey_shutdown)
 
     # Start the agent session
     await session.start(
@@ -150,14 +139,14 @@ if __name__ == "__main__":
 
 | Variable | Description | Where to Get |
 |----------|-------------|--------------|
-| `OBSERA_API_KEY` | Your Obsera API authentication key | [Dashboard → API Keys](https://pype-voice-analytics-dashboard.vercel.app/) |
+| `WHISPEY_API_KEY` | Your Whispey API authentication key | [Dashboard → API Keys](https://pype-voice-analytics-dashboard.vercel.app/) |
 
 ### Agent Configuration
 
-Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Obsera dashboard:
+Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Whispey dashboard:
 
 ```python
-obsera = LivekitObserve(
+whispey = LivekitObserve(
     agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22"  # Your actual Agent ID
 )
 ```
@@ -179,7 +168,7 @@ obsera = LivekitObserve(
 
 ### Session Metadata
 ```python
-session_id = obsera.start_session(
+session_id = whispey.start_session(
     session,
     phone_number="+1234567890",        # Customer contact
     customer_name="Jane Smith",        # Customer identification
@@ -196,23 +185,22 @@ session_id = obsera.start_session(
 
 ```python
 # Start session
-session_id = obsera.start_session(session, **metadata)
+session_id = whispey.start_session(session, **metadata)
 
 # Get current session data (without exporting)
-current_data = obsera.get_data(session_id)
+current_data = whispey.get_data(session_id)
 print(f"Current metrics: {current_data}")
 
 # Manually end session
-obsera.end(session_id)
+whispey.end(session_id)
 
-# Export to Obsera platform
-result = await obsera.export(session_id, recording_url="https://...")
+# Export to Whispey platform
+result = await whispey.export(session_id, recording_url="https://...")
 ```
-
 ## 📈 Dashboard Integration
 
 Once your data is exported, view detailed analytics at:
-**[Obsera Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)**
+**[Whispey Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)**
 
 ### Available Analytics:
 - 📊 **Call Performance**: Response times, success rates
@@ -228,7 +216,7 @@ Once your data is exported, view detailed analytics at:
 **1. "Session not found" Error**
 ```python
 # Ensure session_id is stored correctly
-session_id = obsera.start_session(session)
+session_id = whispey.start_session(session)
 print(f"Session ID: {session_id}")  # Save this for later use
 ```
 
@@ -236,16 +224,16 @@ print(f"Session ID: {session_id}")  # Save this for later use
 ```python
 # Make sure session has activity before exporting
 await asyncio.sleep(1)  # Allow time for metrics collection
-result = await obsera.export(session_id)
+result = await whispey.export(session_id)
 ```
 
 **3. API Authentication Error**
 ```bash
 # Check your .env file
-echo $OBSERA_API_KEY
+echo $WHISPEY_API_KEY
 
 # Ensure API key is set in environment
-export OBSERA_API_KEY="your_api_key_here"
+export WHISPEY_API_KEY="your_api_key_here"
 ```
 
 ### Debug Mode
@@ -255,64 +243,28 @@ Enable verbose logging:
 import logging
 logging.basicConfig(level=logging.INFO)
 
-# Your Obsera code here - you'll see detailed logs
+# Your Whispey code here - you'll see detailed logs
 ```
 
 ## 📝 Requirements
 
 - Python >= 3.8
 - LiveKit Agents >= 1.2.2
-- Active Obsera account with valid API key
+- Active Whispey account with valid API key
 
-## 🤝 Contributing
+## 🤝 Support
 
-We welcome contributions to the Obsera SDK! Here's how to get started:
-
-1. **Fork the repository**
-2. **Create a feature branch:** `git checkout -b feature/amazing-feature`
-3. **Make your changes** and add tests
-4. **Run the test suite:** `python -m pytest`
-5. **Commit your changes:** `git commit -m 'Add amazing feature'`
-6. **Push to the branch:** `git push origin feature/amazing-feature`
-7. **Open a Pull Request**
-
-Please read our [Contributing Guidelines](../CONTRIBUTING.md) and [Code of Conduct](../CODE_OF_CONDUCT.md) before contributing.
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/obsera-ai/obsera
-cd obsera/sdk
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install in development mode
-pip install -e .
-
-# Run tests
-python -m pytest
-```
-
-## 💬 Community & Support
-
-- **🐛 Bug Reports:** [GitHub Issues](https://github.com/obsera-ai/obsera/issues)
-- **💡 Feature Requests:** [GitHub Discussions](https://github.com/obsera-ai/obsera/discussions)
-- **💬 Chat:** [Discord Community](https://discord.gg/pypeai)
-- **📧 Email:** support@obsera.ai
-- **📱 Twitter:** [@ObseraAI](https://twitter.com/ObseraAI)
+- **Documentation**: [docs.whispey.ai](https://docs.whispey.ai)
+- **Dashboard**: [pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app/)
+- **Email**: support@whispey.ai
+- **Issues**: [GitHub Issues](https://github.com/whispey-ai/whispey/issues)
 
 ## 📄 License
 
-MIT License - see [LICENSE](../LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-<div align="center">
-
-**Built with ❤️ by [Obsera Voice Analytics](https://obsera.ai)**
+**Built with ❤️ by [Whispey Voice Analytics](https://whispey.ai)**
 
 *Transform your voice agents with professional analytics and insights.*
-
-</div>

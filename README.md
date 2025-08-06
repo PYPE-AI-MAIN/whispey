@@ -1,22 +1,22 @@
-# Obsera – Voice AI Observability Platform
+# Whispey – Voice AI Observability Platform
 
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI version](https://badge.fury.io/py/obsera.svg)](https://badge.fury.io/py/obsera)
+[![PyPI version](https://badge.fury.io/py/whispey.svg)](https://badge.fury.io/py/whispey)
 [![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
 [![Contributors](https://img.shields.io/github/contributors/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/obsera/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/obsera/stargazers)
 
 **Professional voice analytics and observability for AI agents. Monitor, analyze, and improve your voice AI applications with beautiful dashboards and actionable insights.**
 
-[🚀 Get Started](#quick-start) • [📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/obsera)
+[🚀 Get Started](#quick-start) • [📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/whispey)
 
 </div>
 
 <div align="center">
-<img src="public/obsera.png" alt="Obsera Dashboard" width="400" height="400" />
+<img src="public/obsera.png" alt="Whispey Dashboard" width="400" height="400" />
 </div>
 
 ## ✨ Features
@@ -39,7 +39,7 @@ Get started in under 2 minutes with our hosted platform:
 
 #### 1. Get Your Credentials
 
-1. **Sign up** at [Obsera Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
+1. **Sign up** at [Whispey Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
 2. **Get your Agent ID** from the dashboard
 3. **Generate your API Key** from your account settings
 
@@ -48,36 +48,36 @@ Get started in under 2 minutes with our hosted platform:
 Create a `.env` file in your project root:
 
 ```env
-# Obsera Voice Analytics
-OBSERA_API_KEY=your_obsera_api_key_here
+# Whispey Voice Analytics
+WHISPEY_API_KEY=your_whispey_api_key_here
 ```
 
 #### 3. Install and Integrate
 
 ```bash
 # Install the SDK
-pip install obsera
+pip install whispey
 ```
 
 ```python
 from dotenv import load_dotenv
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
 # Load environment variables
 load_dotenv()
 
 # Initialize observability with your Agent ID
-obsera = LivekitObserve(agent_id="your-agent-id-from-dashboard")
+whispey = LivekitObserve(agent_id="your-agent-id-from-dashboard")
 
 # Wrap your LiveKit session
 session = AgentSession(...)
-session_id = obsera.start_session(session, phone_number="+1234567890")
+session_id = whispey.start_session(session, phone_number="+1234567890")
 
 # Ensure data is exported on shutdown
-async def obsera_shutdown():
-    await obsera.export(session_id)
+async def whispey_shutdown():
+    await whispey.export(session_id)
 
-ctx.add_shutdown_callback(obsera_shutdown)
+ctx.add_shutdown_callback(whispey_shutdown)
 await session.start(...)
 ```
 
@@ -85,12 +85,12 @@ await session.start(...)
 
 ### Self-Hosted Installation
 
-For complete control over your data, deploy Obsera on your own infrastructure:
+For complete control over your data, deploy Whispey on your own infrastructure:
 
 ```bash
 # Clone and setup
-git clone https://github.com/PYPE-AI-MAIN/obsera
-cd obsera
+git clone https://github.com/PYPE-AI-MAIN/whispey
+cd whispey
 npm install
 
 # Configure environment
@@ -105,7 +105,7 @@ npm run dev
 
 ## 🏗️ Architecture
 
-Obsera consists of three main components:
+Whispey consists of three main components:
 
 - **Python SDK** - Lightweight library for data collection
 - **Dashboard** - Next.js web application for analytics visualization  
@@ -164,8 +164,8 @@ Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct]
 
 ```bash
 # Clone the repository
-git clone https://github.com/PYPE-AI-MAIN/obsera
-cd obsera
+git clone https://github.com/PYPE-AI-MAIN/whispey
+cd whispey
 
 # Install dependencies
 npm install
@@ -192,14 +192,14 @@ pip install -e .
 
 ## 🔒 Security
 
-Security is a top priority for Obsera. We implement:
+Security is a top priority for Whispey. We implement:
 
 - **End-to-end encryption** for data in transit
 - **SOC 2 compliant** infrastructure partners
 - **Regular security audits** and dependency updates
 - **Privacy-first design** with optional self-hosting
 
-Found a security issue? Please email security@obsera.ai instead of opening a public issue.
+Found a security issue? Please email security@whispey.ai instead of opening a public issue.
 
 ## 📈 Roadmap
 
@@ -210,21 +210,21 @@ Found a security issue? Please email security@obsera.ai instead of opening a pub
 - [ ] Mobile app for monitoring on-the-go
 - [ ] Custom webhook integrations
 
-<!-- See our [public roadmap](https://github.com/obsera-ai/obsera/projects/1) for more details. -->
+<!-- See our [public roadmap](https://github.com/whispey-ai/whispey/projects/1) for more details. -->
 
 ## 💬 Community & Support
 
-- **🐛 Bug Reports:** [GitHub Issues](https://github.com/obsera-ai/obsera/issues)
-- **💡 Feature Requests:** [GitHub Discussions](https://github.com/obsera-ai/obsera/discussions)
+- **🐛 Bug Reports:** [GitHub Issues](https://github.com/whispey-ai/whispey/issues)
+- **💡 Feature Requests:** [GitHub Discussions](https://github.com/whispey-ai/whispey/discussions)
 - **💬 Chat:** [Discord Community](https://discord.gg/pypeai)
-- **📧 Email:** support@obsera.ai
-- **📱 Twitter:** [@ObseraAI](https://twitter.com/ObseraAI)
+- **📧 Email:** support@whispey.ai
+- **📱 Twitter:** [@WhispeyAI](https://twitter.com/WhispeyAI)
 
 ## 🏢 Enterprise
 
 Need enterprise features like SSO, custom deployments, or dedicated support? 
 
-**Contact us:** enterprise@obsera.ai
+**Contact us:** enterprise@whispey.ai
 
 ## 📄 License
 
@@ -232,7 +232,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built with ❤️ by the [Obsera](https://obsera.ai) team
+- Built with ❤️ by the [Whispey](https://whispey.ai) team
 - Inspired by the observability tools from Datadog, New Relic, and Honeycomb
 - Special thanks to the LiveKit community for their amazing real-time infrastructure
 
@@ -240,8 +240,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**⭐ Star us on GitHub if Obsera helps your voice AI applications!**
+**⭐ Star us on GitHub if Whispey helps your voice AI applications!**
 
-[⬆ Back to top](#-obsera--voice-ai-observability-platform)
+[⬆ Back to top](#-whispey--voice-ai-observability-platform)
 
 </div>

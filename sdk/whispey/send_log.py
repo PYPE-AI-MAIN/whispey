@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-PYPE_API_URL = os.getenv("PYPE_API_URL")
-PYPE_API_KEY = os.getenv("PYPE_API_KEY")
+WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
+WHISPEY_API_KEY = os.getenv("WHISPEY_API_KEY")
 
 def convert_timestamp(timestamp_value):
     """
@@ -44,9 +44,9 @@ def convert_timestamp(timestamp_value):
     # Default: convert to string
     return str(timestamp_value)
 
-async def send_to_pype(data):
+async def send_to_whispey(data):
     """
-    Send data to Pype API
+    Send data to Whispey API
     
     Args:
         data (dict): The data to send to the API
@@ -65,10 +65,10 @@ async def send_to_pype(data):
     # Headers
     headers = {
         "Content-Type": "application/json",
-        "x-pype-token": PYPE_API_KEY
+        "x-whispey-token": WHISPEY_API_KEY
     }
     
-    print(f"📤 Sending data to Pype API...")
+    print(f"📤 Sending data to Whispey API...")
     print(f"Data keys: {list(data.keys())}")
     print(f"Call started at: {data.get('call_started_at')}")
     print(f"Call ended at: {data.get('call_ended_at')}")
@@ -80,7 +80,7 @@ async def send_to_pype(data):
         
         # Send the request
         async with aiohttp.ClientSession() as session:
-            async with session.post(PYPE_API_URL, json=data, headers=headers) as response:
+            async with session.post(WHISPEY_API_URL, json=data, headers=headers) as response:
                 print(f"📡 Response status: {response.status}")
                 
                 if response.status >= 400:
