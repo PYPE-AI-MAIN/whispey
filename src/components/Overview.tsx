@@ -475,7 +475,8 @@ const Overview: React.FC<OverviewProps> = ({ project, agent }) => {
                   </div>
                   <div>
                     <p className="text-2xl font-semibold text-gray-900">
-                      {((analytics.successfulCalls/analytics.totalCalls)* 100).toFixed(2)}%
+                      {Math.ceil(parseFloat(((analytics.successfulCalls / analytics.totalCalls) * 100).toFixed(2)))
+                      }%
                     </p>
                     <p className="text-sm text-gray-600">Pickup Rate</p>  
                   </div>
