@@ -53,12 +53,29 @@ function flattenAndPickColumns(
 
 
 
-// Dynamic JSON Cell Component
+const TruncatedText: React.FC<{ 
+  text: string; 
+  maxLength?: number;
+  className?: string;
+}> = ({ text, maxLength = 30, className = "" }) => {
+  const truncated = text.length > maxLength ? `${text.substring(0, maxLength)}...` : text
+  
+  return (
+    <span 
+      className={cn("break-words", className)}
+      title={text.length > maxLength ? text : undefined}
+    >
+      {truncated}
+    </span>
+  )
+}
+
+// Dynamic JSON Cell Component - Fixed version with better text handling
 const DynamicJsonCell: React.FC<{ 
   data: any; 
   fieldKey: string;
   maxWidth?: string;
-}> = ({ data, fieldKey, maxWidth = "200px" }) => {
+}> = ({ data, fieldKey, maxWidth = "180px" }) => {
   if (!data || typeof data !== 'object') {
     return <span className="text-muted-foreground text-xs">-</span>
   }
@@ -71,29 +88,58 @@ const DynamicJsonCell: React.FC<{
 
   // Handle different data types
   if (typeof value === 'object') {
+    const jsonString = JSON.stringify(value, null, 2)
+    const truncatedJson = jsonString.length > 80 ? jsonString.substring(0, 80) + '...' : jsonString
+    
     return (
       <div 
-        className="overflow-x-auto overflow-y-hidden max-w-full border rounded-md bg-muted/20"
+        className="w-full max-w-full overflow-hidden border rounded-md bg-muted/20"
         style={{ maxWidth }}
       >
-        <div className="p-2 min-w-max">
-          <pre className="text-xs font-mono whitespace-nowrap text-foreground">
-            {JSON.stringify(value, null, 2)}
+        <div className="p-1.5 w-full overflow-hidden">
+          <pre 
+            className="text-xs font-mono text-foreground whitespace-pre-wrap break-all overflow-hidden w-full"
+            style={{ 
+              wordBreak: 'break-all',
+              overflowWrap: 'break-word',
+              maxWidth: '100%'
+            }}
+            title={jsonString}
+          >
+            {truncatedJson}
           </pre>
         </div>
       </div>
     )
   }
 
-  // Handle primitive values
+  // Handle primitive values - truncate long strings
+  const stringValue = String(value)
+  const shouldTruncate = stringValue.length > 25
+  const displayValue = shouldTruncate ? stringValue.substring(0, 25) + '...' : stringValue
+
   return (
-    <div className="text-xs" style={{ maxWidth }}>
-      <span className="text-foreground font-medium break-words">
-        {String(value)}
+    <div 
+      className="text-xs w-full overflow-hidden" 
+      style={{ maxWidth }}
+    >
+      <span 
+        className="text-foreground font-medium block w-full overflow-hidden"
+        style={{ 
+          wordBreak: 'break-all',
+          overflowWrap: 'break-word',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}
+        title={shouldTruncate ? stringValue : undefined}
+      >
+        {displayValue}
       </span>
     </div>
   )
 }
+
+
 
 
 
