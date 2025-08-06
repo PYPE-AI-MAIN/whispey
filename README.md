@@ -39,7 +39,7 @@ Get started in under 2 minutes with our hosted platform:
 
 #### 1. Get Your Credentials
 
-1. **Sign up** at [Whispey Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
+1. **Sign up** at [Whispey Voice Analytics Dashboard](https://whispey.pypeai.com/)
 2. **Get your Agent ID** from the dashboard
 3. **Generate your API Key** from your account settings
 
@@ -81,7 +81,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 await session.start(...)
 ```
 
-**📊 View your analytics:** [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)
+**📊 View your analytics:** [https://whispey.pypeai.com/](https://whispey.pypeai.com/)
 
 ### Self-Hosted Installation
 
