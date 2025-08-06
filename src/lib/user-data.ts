@@ -1,5 +1,5 @@
 // lib/user-data.ts
-import { supabase } from '../src/lib/supabase'
+import { supabase } from '../lib/supabase'
 import { auth, currentUser } from '@clerk/nextjs/server'
 
 
