@@ -16,7 +16,7 @@
 </div>
 
 <div align="center">
-<img src="public/obsera.png" alt="Whispey Dashboard" width="400" height="400" />
+<img src="public/whispey.png" alt="Whispey Dashboard" width="400" height="400" />
 </div>
 
 ## ✨ Features
