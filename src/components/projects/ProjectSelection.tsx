@@ -96,7 +96,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
   }, [])
 
 
-  // console.log(projects)
   const refetch = fetchProjects;
 
   const handleProjectClick = (project: Project) => {
@@ -137,7 +136,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
       }
 
       const result = await response.json()
-      console.log('Project deleted successfully:', result)
       
       // Refresh the projects list
       refetch()
@@ -175,7 +173,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
       setRegeneratedToken(result.api_token)
       setShowTokenDialog(project)
       setShowRegenerateConfirm(null) // Close confirmation dialog
-      console.log('Token regenerated successfully for project:', project.name)
       
       // Refresh the projects list to get updated token_hash
       refetch()
