@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table'
 import { 
   ChevronLeft,
+  ChevronRight,
   RefreshCw,
   Search,
   Phone,
@@ -26,7 +27,11 @@ import {
   Upload,
   Calendar,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  MoreHorizontal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -41,8 +46,26 @@ interface CampaignLog {
   sourceFile: string
   createdAt: string
   uploadedAt: string
-  real_attempt_count:number
-  system_error_count:number
+  real_attempt_count: number
+  system_error_count: number
+}
+
+interface PaginationMeta {
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  itemsPerPage: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  nextPage: number | null
+  previousPage: number | null
+}
+
+interface CampaignLogsResponse {
+  items: CampaignLog[]
+  pagination: PaginationMeta
+  filters: any
+  scannedCount: number
 }
 
 interface CampaignLogsProps {
@@ -59,18 +82,53 @@ const CALL_STATUS_OPTIONS = [
   { value: 'in_progress', label: 'In Progress' }
 ]
 
+const ITEMS_PER_PAGE_OPTIONS = [10, 20, 50, 100]
+
+const SORT_OPTIONS = [
+  { value: 'createdAt', label: 'Created Date' },
+  { value: 'phoneNumber', label: 'Phone Number' },
+  { value: 'call_status', label: 'Status' },
+]
+
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
+
 const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) => {
+  // Data state
   const [logs, setLogs] = useState<CampaignLog[]>([])
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Filter and search state
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sourceFileFilter, setSourceFileFilter] = useState('')
-  const [hasMore, setHasMore] = useState(true)
-  const [lastKey, setLastKey] = useState<any>(null)
+  const [sortBy, setSortBy] = useState<'createdAt' | 'phoneNumber' | 'call_status'>('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  
+  // UI state
   const [refreshing, setRefreshing] = useState(false)
   
-  // Upload & Schedule states
+  // Dialog states
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [showScheduleDialog, setShowScheduleDialog] = useState(false) 
   const [csvFile, setCsvFile] = useState<File | null>(null)
@@ -98,62 +156,81 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteResult, setDeleteResult] = useState<any>(null)
-  
-  const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const fetchLogs = useCallback(async (reset = false) => {
+  // Debounced search
+  const debouncedSearchQuery = useDebounce(searchQuery, 500)
+
+  // Memoized project ID
+  const projectId = agent?.project_id || project?.id
+
+  // Fetch logs function with improved error handling and caching
+  const fetchLogs = useCallback(async (resetPage = false) => {
+    if (!projectId) {
+      setError('Project ID not available')
+      setLoading(false)
+      return
+    }
+
     try {
-      if (reset) {
-        setLoading(true)
-        setLogs([])
-        setLastKey(null)
-        setHasMore(true)
-        setError(null)
-      }
-
-      // Use agent's project_id directly, as it's more reliable
-      const projectId = agent?.project_id || project?.id
+      const pageToFetch = resetPage ? 1 : currentPage
       
-      if (!projectId) {
-        throw new Error('Project ID not available')
+      if (resetPage) {
+        setCurrentPage(1)
+        setLogs([])
+        setPagination(null)
       }
 
-      const params = new URLSearchParams({
-        project_id: projectId,
-        limit: '50',
-      })
+      setLoading(true)
+      setError(null)
 
-      if (statusFilter !== 'all') {
+      const params = new URLSearchParams()
+      params.append('project_id', projectId)
+      params.append('page', pageToFetch.toString())
+      params.append('limit', itemsPerPage.toString())
+      params.append('sort_by', sortBy)
+      params.append('sort_order', sortOrder)
+
+      if (statusFilter && statusFilter !== 'all') {
         params.append('call_status', statusFilter)
       }
 
-      if (sourceFileFilter) {
-        params.append('source_file', sourceFileFilter)
+      if (sourceFileFilter && sourceFileFilter.trim()) {
+        params.append('source_file', sourceFileFilter.trim())
       }
 
-      if (!reset && lastKey) {
-        params.append('lastKey', JSON.stringify(lastKey))
+      if (debouncedSearchQuery && debouncedSearchQuery.trim()) {
+        params.append('search', debouncedSearchQuery.trim())
       }
 
-      const response = await fetch(`/api/campaign-logs?${params.toString()}`)
+      const url = `/api/campaign-logs?${params.toString()}`
+      console.log(`Fetching logs: ${url}`)
+
+      const response = await fetch(url)
       
       if (!response.ok) {
+        let errorMessage = 'Failed to fetch campaign logs'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // If we can't parse the error response, use the default message
+        }
+        
         if (response.status === 403) {
           throw new Error('Campaign logs are only available for enhanced projects')
         }
-        throw new Error('Failed to fetch campaign logs')
+        if (response.status === 400) {
+          throw new Error(`Bad request: ${errorMessage}`)
+        }
+        throw new Error(errorMessage)
       }
 
-      const data = await response.json()
+      const data: CampaignLogsResponse = await response.json()
       
-      if (reset) {
-        setLogs(data.items)
-      } else {
-        setLogs(prev => [...prev, ...data.items])
-      }
-      
-      setLastKey(data.lastEvaluatedKey)
-      setHasMore(!!data.lastEvaluatedKey)
+      setLogs(data.items)
+      setPagination(data.pagination)
+
+      console.log(`Loaded ${data.items.length} logs (Page ${data.pagination.currentPage}/${data.pagination.totalPages})`)
 
     } catch (err: any) {
       console.error('Error fetching campaign logs:', err)
@@ -162,21 +239,26 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       setLoading(false)
       setRefreshing(false)
     }
-  }, [agent?.project_id, project?.id, statusFilter, sourceFileFilter])
+  }, [projectId, currentPage, itemsPerPage, statusFilter, sourceFileFilter, debouncedSearchQuery, sortBy, sortOrder])
 
-
-
+  // Refresh function
   const refresh = useCallback(() => {
     setRefreshing(true)
     fetchLogs(true)
-  }, [])
+  }, [fetchLogs])
 
+  // Effects
   useEffect(() => {
-    const projectId = agent?.project_id || project?.id
     if (projectId) {
       fetchLogs(true)
     }
-  }, [agent?.project_id, project?.id, statusFilter, sourceFileFilter])
+  }, [projectId, itemsPerPage, statusFilter, sourceFileFilter, debouncedSearchQuery, sortBy, sortOrder])
+
+  useEffect(() => {
+    if (projectId && !refreshing) {
+      fetchLogs(false)
+    }
+  }, [currentPage, fetchLogs])
 
   // Set default dates when schedule dialog opens
   useEffect(() => {
@@ -193,40 +275,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     }
   }, [showScheduleDialog])
 
-  // Create stable refs for intersection observer
-  const stableStateRef = useRef({ hasMore, loading, lastKey, fetchLogs })
-  stableStateRef.current = { hasMore, loading, lastKey, fetchLogs }
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const { hasMore, loading, lastKey, fetchLogs } = stableStateRef.current
-        if (entries[0].isIntersecting && hasMore && !loading && lastKey) {
-          fetchLogs(false)
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
-
-  const filteredLogs = logs.filter(log => {
-    if (!searchQuery) return true
-    
-    const query = searchQuery.toLowerCase()
-    return (
-      log.phoneNumber?.toLowerCase().includes(query) ||
-      log.fpoName?.toLowerCase().includes(query) ||
-      log.fpoLoginId?.toLowerCase().includes(query) ||
-      log.sourceFile?.toLowerCase().includes(query)
-    )
-  })
-
+  // Helper functions
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleString('en-IN', {
@@ -259,7 +308,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       // Header
       'Phone Number,Alternative Number,FPO Name,FPO Login ID,Status,Real Attempts,Source File,Created At,Uploaded At',
       // Data rows
-      ...filteredLogs.map(log => 
+      ...logs.map(log => 
         `"${log.phoneNumber}","${log.alternative_number || ''}","${log.fpoName}","${log.fpoLoginId}","${log.call_status}",${log.real_attempt_count},"${log.sourceFile}","${log.createdAt}","${log.uploadedAt}"`
       )
     ].join('\n')
@@ -268,14 +317,47 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `campaign-logs-${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', `campaign-logs-page-${currentPage}-${new Date().toISOString().split('T')[0]}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
   }
 
-  // Upload CSV handler
+  const handleSort = (column: 'createdAt' | 'phoneNumber' | 'call_status') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  const getSortIcon = (column: string) => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="h-4 w-4 text-gray-400" />
+    }
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 text-blue-600" />
+      : <ArrowDown className="h-4 w-4 text-blue-600" />
+  }
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && pagination && page <= pagination.totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setStatusFilter('all')
+    setSourceFileFilter('')
+    setSortBy('createdAt')
+    setSortOrder('desc')
+    setCurrentPage(1)
+  }
+
+  // Upload CSV handler (same as before)
   const handleUpload = async () => {
     if (!csvFile) return
     
@@ -283,7 +365,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     try {
       const formData = new FormData()
       formData.append('file', csvFile)
-      formData.append('project_id', agent?.project_id || project?.id)
+      formData.append('project_id', projectId)
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -296,7 +378,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       }
 
       const result = await response.json()
-      console.log('Upload API Response:', result)
       
       const alertMessage = [
         result.message,
@@ -309,19 +390,13 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       
       alert(alertMessage)
       
-      // Reset upload dialog
       setShowUploadDialog(false)
       setCsvFile(null)
       
-      // Immediately refresh DynamoDB logs to see new data
-      console.log('Refreshing DynamoDB logs after CSV upload...')
-      await fetchLogs(true) // Force refresh from DynamoDB
-      
-      // Additional refresh after a short delay to catch any async processing
+      // Refresh logs after upload
       setTimeout(() => {
-        console.log('Secondary refresh after upload processing...')
-        fetchLogs(true)
-      }, 3000)
+        refresh()
+      }, 2000)
       
     } catch (error) {
       console.error('Upload error:', error)
@@ -331,7 +406,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     }
   }
 
-  // Schedule Campaign handler
+  // Schedule Campaign handler (same as before)
   const handleSchedule = async () => {
     if (!scheduleData.start_date || !scheduleData.end_date) {
       alert('Please select start date and end date')
@@ -341,7 +416,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     setScheduling(true)
     try {
       const schedulePayload = {
-        project_id: agent?.project_id || project?.id,
+        project_id: projectId,
         start_date: scheduleData.start_date,
         end_date: scheduleData.end_date,
         start_time: scheduleData.start_time,
@@ -375,24 +450,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       ].filter(Boolean).join('\n')
       
       alert(alertMessage)
-      
       setShowScheduleDialog(false)
-      
-      // Reset schedule form
-      setScheduleData({
-        start_date: '',
-        end_date: '',
-        start_time: '09:00',
-        end_time: '17:00',
-        concurrency: 10,
-        retry_config: {
-          '408': 60,
-          '480': 60,
-          '486': 120,
-          '504': 60,
-          '600': 120
-        }
-      })
       
     } catch (error) {
       console.error('Schedule error:', error)
@@ -402,18 +460,13 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     }
   }
 
-  // Delete All handler
+  // Delete All handler (similar to before but with improved UI feedback)
   const handleDeleteAll = async () => {
     if (deleteConfirmText !== 'DELETE ALL LOGS') return
     
     setDeleting(true)
     setError(null)
     try {
-      const projectId = agent?.project_id || project?.id
-      if (!projectId) {
-        throw new Error('Project ID not available')
-      }
-
       const response = await fetch(`/api/campaign-logs?project_id=${projectId}&confirm=DELETE_ALL_CAMPAIGN_LOGS`, {
         method: 'DELETE'
       })
@@ -426,15 +479,15 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       setDeleteResult({
         success: true,
         message: result.message,
-        count: result.deletedCount
+        count: result.deletedCount,
+        batchCount: result.batchCount
       })
 
-      // Clear logs and refresh
+      // Reset data
       setLogs([])
-      setLastKey(null)
-      setHasMore(true)
+      setPagination(null)
+      setCurrentPage(1)
       
-      // Close dialog and reset
       setShowDeleteDialog(false)
       setDeleteConfirmText('')
       
@@ -454,6 +507,131 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     }
   }
 
+  // Render pagination component
+  const renderPagination = () => {
+    if (!pagination || pagination.totalPages <= 1) return null
+
+    const { currentPage: page, totalPages, hasNextPage, hasPreviousPage } = pagination
+
+    // Calculate page numbers to show
+    const getPageNumbers = () => {
+      const pages = []
+      const showPages = 5 // Number of page buttons to show
+      
+      let startPage = Math.max(1, page - Math.floor(showPages / 2))
+      let endPage = Math.min(totalPages, startPage + showPages - 1)
+      
+      if (endPage - startPage < showPages - 1) {
+        startPage = Math.max(1, endPage - showPages + 1)
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i)
+      }
+      
+      return pages
+    }
+
+    const pageNumbers = getPageNumbers()
+
+    return (
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white">
+        <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div>
+            Showing {((page - 1) * pagination.itemsPerPage) + 1} to{' '}
+            {Math.min(page * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+            {pagination.totalItems} results
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Rows per page:</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+              className="px-2 py-1 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+            >
+              {ITEMS_PER_PAGE_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => goToPage(page - 1)}
+            disabled={!hasPreviousPage || loading}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Button>
+
+          <div className="flex items-center gap-1">
+            {pageNumbers[0] > 1 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(1)}
+                  disabled={loading}
+                >
+                  1
+                </Button>
+                {pageNumbers[0] > 2 && (
+                  <span className="px-2 text-gray-400">...</span>
+                )}
+              </>
+            )}
+
+            {pageNumbers.map(pageNum => (
+              <Button
+                key={pageNum}
+                variant={pageNum === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => goToPage(pageNum)}
+                disabled={loading}
+                className={pageNum === page ? "bg-blue-600 text-white" : ""}
+              >
+                {pageNum}
+              </Button>
+            ))}
+
+            {pageNumbers[pageNumbers.length - 1] < totalPages && (
+              <>
+                {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
+                  <span className="px-2 text-gray-400">...</span>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(totalPages)}
+                  disabled={loading}
+                >
+                  {totalPages}
+                </Button>
+              </>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => goToPage(page + 1)}
+            disabled={!hasNextPage || loading}
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -461,10 +639,16 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
           <h2 className="text-xl font-semibold text-gray-900">Unable to Load Campaign Logs</h2>
           <p className="text-gray-600">{error}</p>
-          <Button variant="outline" onClick={onBack}>
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Go Back
-          </Button>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={onBack}>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Go Back
+            </Button>
+            <Button onClick={() => fetchLogs(true)}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -477,12 +661,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Campaign Logs</h1>
-                <p className="text-sm text-gray-600">
-                  Contact status from DynamoDB • {filteredLogs.length} contact{filteredLogs.length !== 1 ? 's' : ''}
-                </p>
               </div>
             </div>
 
@@ -509,7 +689,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                 variant="outline" 
                 size="sm" 
                 onClick={exportLogs}
-                disabled={filteredLogs.length === 0}
+                disabled={logs.length === 0}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -531,7 +711,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                 variant="destructive" 
                 size="sm" 
                 onClick={() => setShowDeleteDialog(true)}
-                disabled={filteredLogs.length === 0 || loading}
+                disabled={logs.length === 0 || loading}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete All
@@ -540,7 +720,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -573,14 +753,32 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
               className="bg-white/80 backdrop-blur-sm"
             />
 
+            {/* Sort Options */}
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [field, order] = e.target.value.split('-')
+                setSortBy(field as 'createdAt' | 'phoneNumber' | 'call_status')
+                setSortOrder(order as 'asc' | 'desc')
+              }}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-white/80 backdrop-blur-sm"
+            >
+              {SORT_OPTIONS.map(option => (
+                <React.Fragment key={option.value}>
+                  <option value={`${option.value}-desc`}>
+                    {option.label} ↓
+                  </option>
+                  <option value={`${option.value}-asc`}>
+                    {option.label} ↑
+                  </option>
+                </React.Fragment>
+              ))}
+            </select>
+
             {/* Clear Filters */}
             <Button 
               variant="outline" 
-              onClick={() => {
-                setSearchQuery('')
-                setStatusFilter('all')
-                setSourceFileFilter('')
-              }}
+              onClick={clearFilters}
               className="bg-white/80 backdrop-blur-sm"
             >
               <Filter className="h-4 w-4 mr-2" />
@@ -591,39 +789,71 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       </header>
 
       {/* Table */}
-      <main className="flex-1 overflow-hidden p-1">
-        <div className="h-full max-w-full">
-          {loading && logs.length === 0 ? (
-            <div className="text-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
-              <p className="text-gray-600">Loading campaign logs...</p>
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No campaign logs found</h3>
-              <p className="text-gray-600 mb-6">
-                {searchQuery ? 'Try adjusting your search criteria' : 'No contacts have been uploaded yet'}
-              </p>
-            </div>
-          ) : (
-      <div className="h-full overflow-x-auto overflow-y-hidden"> {/* Horizontal scroll container */}
-        <div className="h-full overflow-y-auto" style={{ minWidth: "1500px" }}> {/* Vertical scroll with min-width */}
-          <Table className="w-full ">
+      <main className="flex-1 overflow-hidden">
+        {loading && logs.length === 0 ? (
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+            <p className="text-gray-600">Loading campaign logs...</p>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-12">
+            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No campaign logs found</h3>
+            <p className="text-gray-600 mb-6">
+              {searchQuery || statusFilter !== 'all' || sourceFileFilter 
+                ? 'Try adjusting your search criteria' 
+                : 'No contacts have been uploaded yet'
+              }
+            </p>
+            {(searchQuery || statusFilter !== 'all' || sourceFileFilter) && (
+              <Button variant="outline" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="h-full flex flex-col">
+            <div className="flex-1 overflow-auto">
+              <div className="min-w-full" style={{ minWidth: "1500px" }}>
+                <Table className="w-full">
                   <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
                     <TableRow className="bg-muted/80 hover:bg-muted/80">
-                      <TableHead className="w-[140px] font-semibold text-foreground pl-6">Phone Number</TableHead>
+                      <TableHead 
+                        className="w-[140px] font-semibold text-foreground pl-6 cursor-pointer hover:bg-muted/60"
+                        onClick={() => handleSort('phoneNumber')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Phone Number
+                          {getSortIcon('phoneNumber')}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-[140px] font-semibold text-foreground">Alternative</TableHead>
                       <TableHead className="w-[160px] font-semibold text-foreground">FPO Name</TableHead>
                       <TableHead className="w-[120px] font-semibold text-foreground">FPO Login ID</TableHead>
-                      <TableHead className="w-[100px] font-semibold text-foreground">Status</TableHead>
+                      <TableHead 
+                        className="w-[100px] font-semibold text-foreground cursor-pointer hover:bg-muted/60"
+                        onClick={() => handleSort('call_status')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Status
+                          {getSortIcon('call_status')}
+                        </div>
+                      </TableHead>
                       <TableHead className="w-[90px] font-semibold text-foreground">Retry Attempts</TableHead>
-                      <TableHead className="w-[200px] font-semibold text-foreground">System  Error</TableHead>
-                      <TableHead className="w-[140px] font-semibold text-foreground pr-6">Created At</TableHead>
+                      <TableHead className="w-[200px] font-semibold text-foreground">System Error</TableHead>
+                      <TableHead 
+                        className="w-[140px] font-semibold text-foreground pr-6 cursor-pointer hover:bg-muted/60"
+                        onClick={() => handleSort('createdAt')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Created At
+                          {getSortIcon('createdAt')}
+                        </div>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLogs.map((log) => (
+                    {logs.map((log) => (
                       <TableRow
                         key={log.id}
                         className="cursor-default hover:bg-muted/30 transition-all duration-200 border-b border-border/50"
@@ -675,6 +905,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                             {log.system_error_count}
                           </div>
                         </TableCell>
+                        
                         <TableCell className="text-sm text-muted-foreground py-4 pr-6">
                           {formatDateTime(log.createdAt)}
                         </TableCell>
@@ -682,28 +913,23 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                     ))}
                   </TableBody>
                 </Table>
-              </div>
 
-              {/* Load More */}
-              <div ref={loadMoreRef} className="py-4">
                 {loading && logs.length > 0 && (
-                  <div className="text-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
-                    <p className="text-sm text-gray-600 mt-2">Loading more logs...</p>
-                  </div>
-                )}
-                
-                {!hasMore && logs.length > 0 && (
                   <div className="text-center py-4">
-                    <p className="text-sm text-gray-500">No more logs to load</p>
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
+                    <p className="text-sm text-gray-600 mt-2">Loading more data...</p>
                   </div>
                 )}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Pagination */}
+            {renderPagination()}
+          </div>
+        )}
       </main>
 
+      {/* All the existing dialogs remain the same */}
       {/* Upload CSV Dialog */}
       {showUploadDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -770,261 +996,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
         </div>
       )}
 
-      {/* Schedule Campaign Dialog */}
-      {showScheduleDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Schedule Campaign</h3>
-              <p className="text-sm text-gray-600">Configure your campaign schedule settings</p>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Date Range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={scheduleData.start_date}
-                    onChange={(e) => setScheduleData({ ...scheduleData, start_date: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={scheduleData.end_date}
-                    onChange={(e) => setScheduleData({ ...scheduleData, end_date: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  />
-                </div>
-              </div>
-
-              {/* Time Range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1" />
-                    Start Time <span className="text-gray-500 text-xs">(24-hour format)</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={scheduleData.start_time}
-                    onChange={(e) => setScheduleData({ ...scheduleData, start_time: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1" />
-                    End Time <span className="text-gray-500 text-xs">(24-hour format)</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={scheduleData.end_time}
-                    onChange={(e) => setScheduleData({ ...scheduleData, end_time: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Concurrency */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Concurrency (Simultaneous Calls)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={scheduleData.concurrency}
-                  onChange={(e) => setScheduleData({ ...scheduleData, concurrency: parseInt(e.target.value) || 1 })}
-                  disabled={scheduling}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                />
-                            </div>
-
-              {/* Retry Configuration */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Retry Configuration (Minutes)
-                </label>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-600 block mb-1">
-                        SIP 408 (Request Timeout)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="1440"
-                        value={scheduleData.retry_config['408']}
-                        onChange={(e) => setScheduleData({ 
-                          ...scheduleData, 
-                          retry_config: { 
-                            ...scheduleData.retry_config, 
-                            '408': parseInt(e.target.value) || 60 
-                          } 
-                        })}
-                        disabled={scheduling}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-600 block mb-1">
-                        SIP 480 (Temporarily Unavailable)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="1440"
-                        value={scheduleData.retry_config['480']}
-                        onChange={(e) => setScheduleData({ 
-                          ...scheduleData, 
-                          retry_config: { 
-                            ...scheduleData.retry_config, 
-                            '480': parseInt(e.target.value) || 60 
-                          } 
-                        })}
-                        disabled={scheduling}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-600 block mb-1">
-                        SIP 486 (Busy Here)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="1440"
-                        value={scheduleData.retry_config['486']}
-                        onChange={(e) => setScheduleData({ 
-                          ...scheduleData, 
-                          retry_config: { 
-                            ...scheduleData.retry_config, 
-                            '486': parseInt(e.target.value) || 120 
-                          } 
-                        })}
-                        disabled={scheduling}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-600 block mb-1">
-                        SIP 504 (Server Timeout)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="1440"
-                        value={scheduleData.retry_config['504']}
-                        onChange={(e) => setScheduleData({ 
-                          ...scheduleData, 
-                          retry_config: { 
-                            ...scheduleData.retry_config, 
-                            '504': parseInt(e.target.value) || 60 
-                          } 
-                        })}
-                        disabled={scheduling}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-600 block mb-1">
-                        SIP 600 (Busy Everywhere)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="1440"
-                        value={scheduleData.retry_config['600']}
-                        onChange={(e) => setScheduleData({ 
-                          ...scheduleData, 
-                          retry_config: { 
-                            ...scheduleData.retry_config, 
-                            '600': parseInt(e.target.value) || 120 
-                          } 
-                        })}
-                        disabled={scheduling}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:border-green-500 focus:ring-1 focus:ring-green-100"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                        <strong>Tip:</strong> Set retry intervals based on expected recovery time for each error type.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowScheduleDialog(false)
-                  setScheduleData({
-                    start_date: '',
-                    end_date: '',
-                    start_time: '09:00',
-                    end_time: '17:00',
-                    concurrency: 10,
-                    retry_config: {
-                      '408': 60,
-                      '480': 60,
-                      '486': 120,
-                      '504': 60,
-                      '600': 120
-                    }
-                  })
-                }}
-                disabled={scheduling}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSchedule}
-                disabled={scheduling}
-                className="flex-1"
-              >
-                {scheduling ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Scheduling...
-                  </>
-                ) : (
-                  <>
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Create Schedule
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete All Confirmation Dialog */}
       {showDeleteDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1060,9 +1031,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                     />
                   </div>
                   
-                  {filteredLogs.length > 0 && (
+                  {pagination && (
                     <div className="text-sm text-gray-600 bg-gray-50 rounded p-3">
-                      <strong>Records to be deleted:</strong> {filteredLogs.length} campaign log entries
+                      <strong>Records to be deleted:</strong> {pagination.totalItems} campaign log entries
                     </div>
                   )}
                 </div>
@@ -1123,9 +1094,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                     {deleteResult.message}
                   </p>
                   
-                  {deleteResult.success && deleteResult.count && (
+                  {deleteResult.success && (
                     <div className="mt-3 text-sm text-gray-600 bg-gray-50 rounded p-3">
-                      <strong>Deleted:</strong> {deleteResult.count} campaign log records
+                      <strong>Deleted:</strong> {deleteResult.count} records in {deleteResult.batchCount} batches
                     </div>
                   )}
                 </div>
@@ -1148,8 +1119,127 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
           </div>
         </div>
       )}
+
+      {/* Schedule Dialog - keeping the same structure as original */}
+      {showScheduleDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Schedule Campaign</h3>
+              <p className="text-sm text-gray-600">Configure your campaign schedule settings</p>
+            </div>
+            
+            {/* Schedule form content - same as original */}
+            <div className="space-y-4">
+              {/* Date Range */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduleData.start_date}
+                    onChange={(e) => setScheduleData({ ...scheduleData, start_date: e.target.value })}
+                    disabled={scheduling}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduleData.end_date}
+                    onChange={(e) => setScheduleData({ ...scheduleData, end_date: e.target.value })}
+                    disabled={scheduling}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  />
+                </div>
+              </div>
+
+              {/* Time Range and other fields - same structure */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Start Time
+                  </label>
+                  <input
+                    type="time"
+                    value={scheduleData.start_time}
+                    onChange={(e) => setScheduleData({ ...scheduleData, start_time: e.target.value })}
+                    disabled={scheduling}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    End Time
+                  </label>
+                  <input
+                    type="time"
+                    value={scheduleData.end_time}
+                    onChange={(e) => setScheduleData({ ...scheduleData, end_time: e.target.value })}
+                    disabled={scheduling}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Concurrency
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={scheduleData.concurrency}
+                  onChange={(e) => setScheduleData({ ...scheduleData, concurrency: parseInt(e.target.value) || 1 })}
+                  disabled={scheduling}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowScheduleDialog(false)}
+                disabled={scheduling}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSchedule}
+                disabled={scheduling}
+                className="flex-1"
+              >
+                {scheduling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Scheduling...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="w-4 w-4 mr-2" />
+                    Create Schedule
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-export default CampaignLogs 
+export default CampaignLogs
