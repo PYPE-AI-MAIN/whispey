@@ -1,40 +1,197 @@
 "use client"
-import { UserButton, SignedIn } from "@clerk/clerk-react";
-import Image from "next/image";
 
-function Header() {
+import { UserButton, SignedIn, useUser } from "@clerk/clerk-react";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+
+interface HeaderProps {
+  breadcrumb?: {
+    project?: string;
+    item?: string;
+  }
+}
+
+function Header({ breadcrumb }: HeaderProps) {
+  const pathname = usePathname();
+  const { user } = useUser();
+
+  const isActive = (path: string) => {
+    if (path === '/') return pathname === '/';
+    return pathname.startsWith(path);
+  };
+
+  // Get user's display name
+  const getUserDisplayName = () => {
+    if (user?.fullName) return user.fullName;
+    if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`;
+    if (user?.firstName) return user.firstName;
+    if (user?.emailAddresses?.[0]?.emailAddress) {
+      return user.emailAddresses[0].emailAddress.split('@')[0];
+    }
+    return 'User';
+  };
+
   return (
     <SignedIn>
+      <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/60 sticky top-0 z-50 shadow-sm">
+        <div className="px-6 py-3">
+          <div className="flex items-center justify-between max-w-[1600px] mx-auto">
+            {/* Logo & Brand Section */}
+            <div className="flex items-center gap-6">
+              <Link href="/" className="flex items-center gap-3 group">
+                  <Image src="/logo.png" alt="Pype AI Logo" width={48} height={48} className="group-hover:scale-110 transition-transform duration-200" />
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 tracking-tight">
+                    Whispey
+                  </h1>
+                  <p className="text-xs text-gray-500 -mt-0.5 font-medium">LiveKit Observability Platform</p>
+                </div>
+              </Link>
 
-<header className="px-6 py-8">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div className='flex items-center gap-2'>
-            <Image src="/pype_ai_logo.jpeg" alt="Pype AI Logo" width={80} height={80} />
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Pype Voice</h1>
-              <p className="text-gray-500 mt-1">Voice AI Platform</p>
+              {/* Apple-Style Clean Breadcrumb */}
+              {breadcrumb && (
+                <div className="flex items-center">
+                  <div className="w-px h-6 bg-gray-200 mx-6"></div>
+                  <nav className="flex items-center gap-2 text-sm">
+                    <Link 
+                      href="/" 
+                      className="text-gray-500 hover:text-gray-900 transition-colors"
+                    >
+                      Home
+                    </Link>
+                    
+                    {breadcrumb.project && (
+                      <>
+                        <ChevronRight className="w-4 h-4 text-gray-300" />
+                        <span className="text-gray-900">
+                          {breadcrumb.project}
+                        </span>
+                      </>
+                    )}
+                    
+                    {breadcrumb.item && (
+                      <>
+                        <ChevronRight className="w-4 h-4 text-gray-300" />
+                        <span className="text-gray-900">
+                          {breadcrumb.item}
+                        </span>
+                      </>
+                    )}
+                  </nav>
+                </div>
+              )}
+            </div>
+
+            {/* Right Side Actions */}
+            <div className="flex items-center gap-2">
+              {/* Help Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 w-9 h-9 p-0 rounded-lg border border-transparent hover:border-gray-200 transition-all duration-200"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 shadow-lg border border-gray-200/80 rounded-xl backdrop-blur-sm bg-white/95">
+                  <div className="px-3 py-2 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-900">Help & Resources</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Get support and documentation</p>
+                  </div>
+                  <div className="py-1">
+                    <DropdownMenuItem asChild>
+                      <Link href="/docs" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
+                        <FileText className="w-4 h-4 mr-3 text-blue-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">Documentation</p>
+                          <p className="text-xs text-gray-500">API guides and tutorials</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/api-reference" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
+                        <Zap className="w-4 h-4 mr-3 text-yellow-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">API Reference</p>
+                          <p className="text-xs text-gray-500">Complete API documentation</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/community" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
+                        <Users className="w-4 h-4 mr-3 text-green-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">Community</p>
+                          <p className="text-xs text-gray-500">Connect with developers</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  </div>
+                  <DropdownMenuSeparator className="bg-gray-100" />
+                  <div className="py-1">
+                    <DropdownMenuItem asChild>
+                      <Link href="/support" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
+                        <HelpCircle className="w-4 h-4 mr-3 text-purple-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">Contact Support</p>
+                          <p className="text-xs text-gray-500">Get help from our team</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* User Profile Section */}
+              <div className="flex items-center gap-3 pl-4 ml-2 border-l border-gray-200">
+                <div className="hidden sm:flex flex-col items-end">
+                  <p className="text-sm font-semibold text-gray-900 leading-none">{getUserDisplayName()}</p>
+                </div>
+                
+                <div className="relative">
+                  <UserButton 
+                    appearance={{
+                      elements: {
+                        avatarBox: "w-9 h-9 ring-2 ring-gray-100 hover:ring-blue-200 transition-all duration-200 shadow-sm hover:shadow-md",
+                        userButtonPopoverCard: "shadow-2xl border border-gray-100 rounded-2xl backdrop-blur-sm bg-white/95",
+                        userButtonPopoverActionButton: "hover:bg-gray-50 rounded-xl transition-all duration-200 mx-1",
+                        userButtonPopoverActionButtonText: "text-gray-700 font-medium",
+                        userButtonPopoverFooter: "hidden",
+                        userButtonPopoverActions: "p-2"
+                      }
+                    }}
+                    userProfileProps={{
+                      appearance: {
+                        elements: {
+                          card: "shadow-2xl border border-gray-100 rounded-2xl",
+                          navbar: "bg-gray-50/80 rounded-t-2xl border-b border-gray-100",
+                          navbarButton: "text-gray-600 hover:text-gray-900 font-semibold transition-colors",
+                          headerTitle: "text-gray-900 font-bold text-lg",
+                          headerSubtitle: "text-gray-600 font-medium"
+                        }
+                      }
+                    }}
+                  />
+                  {/* Online Status Indicator */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                </div>
+              </div>
             </div>
           </div>
-          <UserButton 
-          appearance={{
-            elements: {
-              avatarBox: "w-8 h-8"
-            }
-          }}
-          userProfileProps={{
-            appearance: {
-              elements: {
-                card: "shadow-xl"
-              }
-            }
-          }}
-        />
-         
         </div>
+        
+        {/* Subtle bottom gradient */}
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-200/50 to-transparent"></div>
       </header>
-       
     </SignedIn>
-  )
+  );
 }
 
 export default Header;

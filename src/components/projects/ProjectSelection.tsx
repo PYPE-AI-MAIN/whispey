@@ -1,45 +1,16 @@
 'use client'
-import React, { useState ,useEffect} from 'react'
+
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import TokenRegenerationConfirmDialog from '../TokenRegenerationConfirmDialog'
-
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { 
-  ChevronRight, 
-  Bot,
-  Settings, 
-  Loader2, 
-  AlertCircle,
-  Search,
-  Plus,
-  Folder,
-  MoreHorizontal,
-  Trash2,
-  Key,
-  Copy,
-  Eye,
-  EyeOff,
-  RefreshCw
-} from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { ChevronRight, Settings, Loader2, AlertCircle, Search, Plus, FolderOpen, MoreHorizontal, Trash2, Key, Copy, Eye, EyeOff, RefreshCw, Users, Clock, Filter, SortDesc, Grid3X3, List, ExternalLink, Building2, Folder } from 'lucide-react'
 import { useSupabaseQuery } from '../../hooks/useSupabase'
 import ProjectCreationDialog from './ProjectCreationDialog'
-import Image from 'next/image'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import MemberManagementDialog from '../MemberManagmentDialog'
 import Header from '../shared/Header'
 
@@ -51,6 +22,7 @@ interface Project {
   created_at: string
   is_active: boolean
   token_hash?: string
+  agent_count?: number // Adding agent count for workspace context
 }
 
 interface ProjectSelectionProps {}
@@ -64,23 +36,22 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
   const [showTokenDialog, setShowTokenDialog] = useState<Project | null>(null)
   const [regeneratedToken, setRegeneratedToken] = useState<string | null>(null)
   const [regeneratingToken, setRegeneratingToken] = useState<string | null>(null)
-  const [membersDialog,setShowAddMemberDialog] = useState<boolean>(false)
+  const [membersDialog, setShowAddMemberDialog] = useState<boolean>(false)
   const [showToken, setShowToken] = useState(false)
   const [tokenCopied, setTokenCopied] = useState(false)
-  const [projectSelected,setSelectedProjectForDialog] = useState<any>(null)
+  const [projectSelected, setSelectedProjectForDialog] = useState<any>(null)
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState<Project | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const router = useRouter()
 
   const fetchProjects = async () => {
     setLoading(true)
     setError(null)
-
     try {
-      const res = await fetch('/api/projects') // your API endpoint here
+      const res = await fetch('/api/projects')
       if (!res.ok) throw new Error('Failed to fetch projects')
       const data = await res.json()
       setProjects(data)
@@ -95,9 +66,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
     fetchProjects()
   }, [])
 
-
-  // console.log(projects)
-  const refetch = fetchProjects;
+  const refetch = fetchProjects
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project.id)
@@ -111,10 +80,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
   }
 
   const handleProjectCreated = (newProject: Project) => {
-    // Refresh the projects list to include the new project
     refetch()
-    
-    // Optionally navigate to the new project immediately
     setTimeout(() => {
       router.push(`/${newProject.id}/agents`)
     }, 500)
@@ -122,31 +88,21 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
 
   const handleDeleteProject = async (project: Project) => {
     setDeletingProject(project.id)
-    
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       })
-
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete project')
+        throw new Error(errorData.error || 'Failed to delete workspace')
       }
-
-      const result = await response.json()
-      console.log('Project deleted successfully:', result)
-      
-      // Refresh the projects list
       refetch()
       setShowDeleteConfirm(null)
-      
     } catch (error: unknown) {
-      console.error('Error deleting project:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete project'
-      alert(`Failed to delete project: ${errorMessage}`)
+      console.error('Error deleting workspace:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete workspace'
+      alert(`Failed to delete workspace: ${errorMessage}`)
     } finally {
       setDeletingProject(null)
     }
@@ -154,32 +110,21 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
 
   const handleRegenerateToken = async (project: Project) => {
     setRegeneratingToken(project.id)
-    
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'regenerate_token'
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'regenerate_token' }),
       })
-  
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to regenerate token')
       }
-  
       const result = await response.json()
       setRegeneratedToken(result.api_token)
       setShowTokenDialog(project)
-      setShowRegenerateConfirm(null) // Close confirmation dialog
-      console.log('Token regenerated successfully for project:', project.name)
-      
-      // Refresh the projects list to get updated token_hash
+      setShowRegenerateConfirm(null)
       refetch()
-      
     } catch (error: unknown) {
       console.error('Error regenerating token:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to regenerate token'
@@ -188,7 +133,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
       setRegeneratingToken(null)
     }
   }
-  
 
   const handleCopyToken = async () => {
     if (regeneratedToken) {
@@ -209,359 +153,433 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
     setTokenCopied(false)
   }
 
-  const getProjectColor = (name: string) => {
-    const colors = ['blue', 'green', 'purple', 'orange', 'pink']
-    const index = name.charCodeAt(0) % colors.length
-    return colors[index]
+  const getWorkspaceInitials = (name: string) => {
+    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
   }
 
-  const getProjectIcon = (color: string) => {
-    const colorClasses = {
-      blue: "bg-blue-500",
-      green: "bg-green-500", 
-      purple: "bg-purple-500",
-      orange: "bg-orange-500",
-      pink: "bg-pink-500"
+  const getEnvironmentColor = (environment: string) => {
+    switch (environment.toLowerCase()) {
+      case 'production':
+      case 'prod':
+        return 'bg-red-50 text-red-700 border-red-200'
+      case 'staging':
+      case 'stage':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+      case 'development':
+      case 'dev':
+        return 'bg-blue-50 text-blue-700 border-blue-200'
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200'
     }
-    return colorClasses[color as keyof typeof colorClasses] || "bg-gray-500"
   }
 
-  // Filter projects based on search
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })
+  }
+
   const filteredProjects = projects?.filter(project =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    project.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
   ) || []
-
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
-          <p className="text-gray-600">Loading projects...</p>
+      <div className="min-h-screen bg-project-gradient">
+        <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
+        <div className="relative z-10">
+          <Header />
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center space-y-4">
+              <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-900">Loading workspaces</h3>
+                <p className="text-xs text-gray-500">This should only take a moment</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
-
-
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-          <h2 className="text-xl font-semibold text-gray-900">Something went wrong</h2>
-          <p className="text-gray-600 max-w-md">
-            Unable to load projects: {error}
-          </p>
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
+      <div className="min-h-screen bg-project-gradient">
+        <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
+        <div className="relative z-10">
+          <Header />
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center space-y-6 max-w-sm">
+              <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-900">Failed to load workspaces</h3>
+                <p className="text-xs text-gray-500">{error}</p>
+              </div>
+              <Button 
+                onClick={() => window.location.reload()} 
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2"
+              >
+                Try again
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Simple Header */}
-      <Header/>
-
-      {/* Main Content */}
-      <main className="px-6 pb-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Title Section */}
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-light text-gray-900 mb-3">
-              Choose Project
-            </h2>
-            <p className="text-gray-600 max-w-md mx-auto">
-              Select a project to view agents and call analytics
-            </p>
-          </div>
-
-          {/* Search Bar */}
-          <div className="max-w-md mx-auto mb-8">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="search"
-                placeholder="Search projects..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border-0 bg-gray-50 py-3 pl-10 pr-4 text-sm placeholder:text-gray-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0"
-              />
-            </div>
-          </div>
-
-          {/* Project Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
-            {filteredProjects.map((project) => {
-              const color = getProjectColor(project.name)
-              
-              return (
-                <Card
-                  key={project.id}
-                  className={`group border-0 bg-gray-50/50 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-gray-200/50 ${
-                    selectedProject === project.id 
-                      ? 'scale-[0.98] opacity-60' 
-                      : ''
-                  }`}
-                >
-                  <CardContent className="p-6">
-                    {/* Header with Actions */}
-                    <div className="flex items-start justify-between mb-4">
-                      <Avatar className={`h-12 w-12 ${getProjectIcon(color)}`}>
-                        <AvatarFallback className={`${getProjectIcon(color)} text-white`}>
-                          <Folder className="h-6 w-6" />
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              // setSelectedProject(project.id) // Set project to add member to
-                              setSelectedProjectForDialog(project)
-                              setShowAddMemberDialog(true)  // Show Add Member dialog/modal
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Member
-                          </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setShowRegenerateConfirm(project) // Show confirmation instead of direct regeneration
-                            }}
-                            disabled={regeneratingToken === project.id}
-                          >
-                            {regeneratingToken === project.id ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-4 w-4 mr-2" />
-                            )}
-                            Regenerate Token
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setShowDeleteConfirm(project)
-                            }}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Project
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Content */}
-                    <div className="space-y-4" onClick={() => handleProjectClick(project)}>
-                      {/* Project Info */}
-                      <div>
-                        <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                          {project.name}
-                        </h3>
-                        {project.description && (
-                          <p className="text-gray-600 text-sm line-clamp-2">
-                            {project.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Project Details */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {project.environment}
-                          </Badge>
-                          {project.token_hash && (
-                            <Badge variant="outline" className="text-xs">
-                              <Key className="h-3 w-3 mr-1" />
-                              API Enabled
-                            </Badge>
-                          )}
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
-                      </div>
-
-                      {/* Creation Date */}
-                      <p className="text-xs text-gray-500">
-                        Created {new Date(project.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-
-            {/* Create New Project Card */}
-            <Card 
-              className="group cursor-pointer border-2 border-dashed border-gray-200 bg-transparent transition-all duration-200 hover:border-gray-300 hover:bg-gray-50/50"
-              onClick={handleCreateProject}
-            >
-              <CardContent className="flex flex-col items-center justify-center p-6 min-h-[200px]">
-                <div className="rounded-full bg-gray-100 p-3 mb-3 group-hover:bg-gray-200 transition-colors">
-                  <Plus className="h-6 w-6 text-gray-600" />
+    <div className="min-h-screen bg-project-gradient">
+      <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
+      <div className="relative z-10">
+        <Header />
+        
+        <main className="max-w-[1400px] mx-auto px-6 py-8">
+          {/* Updated Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-2xl font-semibold text-gray-900">Workspaces</h1>
                 </div>
-                <h3 className="font-medium text-gray-900 mb-1">New Project</h3>
-                <p className="text-sm text-gray-600 text-center">
-                  Create a new voice AI project
+                <p className="text-sm text-gray-600">
+                  Organize your voice agents by department or team. Each workspace provides isolated access control and dedicated analytics.
                 </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Empty State */}
-          {filteredProjects.length === 0 && searchQuery && (
-            <div className="text-center py-12">
-              <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No projects found</h3>
-              <p className="text-gray-600 mb-6">
-                Try adjusting your search or create a new project
-              </p>
-              <Button variant="outline" onClick={handleCreateProject}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Project
+              </div>
+              <Button 
+                onClick={handleCreateProject}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 text-sm"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Workspace
               </Button>
             </div>
-          )}
-        </div>
-      </main>
 
-      {/* Project Creation Dialog */}
-      <ProjectCreationDialog
-        isOpen={showCreateDialog}
-        onClose={() => setShowCreateDialog(false)}
-        onProjectCreated={handleProjectCreated}
-      />
-
-      {/* Token Display Dialog */}
-      <Dialog open={showTokenDialog !== null} onOpenChange={handleCloseTokenDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>New API Token Generated</DialogTitle>
-            <DialogDescription>
-              A new API token has been generated for project "{showTokenDialog?.name}".
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* API Token */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                API Token
-              </label>
-              <div className="relative">
-                <input
-                  type={showToken ? 'text' : 'password'}
-                  value={regeneratedToken || ''}
-                  readOnly
-                  className="w-full h-11 px-4 pr-20 text-sm border border-gray-300 rounded-lg bg-gray-50 font-mono"
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="search"
+                    placeholder="Search workspaces..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-80 pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                  />
+                </div>
+                <Button variant="outline" size="sm" className="text-gray-600 border-gray-200 hover:bg-gray-50">
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filter
+                </Button>
+                <Button variant="outline" size="sm" className="text-gray-600 border-gray-200 hover:bg-gray-50">
+                  <SortDesc className="w-4 h-4 mr-2" />
+                  Sort
+                </Button>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-gray-50">
                   <Button
-                    type="button"
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
                     size="sm"
-                    variant="ghost"
-                    onClick={() => setShowToken(!showToken)}
-                    className="h-7 w-7 p-0"
+                    onClick={() => setViewMode('grid')}
+                    className={`w-8 h-8 p-0 ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
                   >
-                    {showToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    <Grid3X3 className="w-4 h-4" />
                   </Button>
                   <Button
-                    type="button"
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
                     size="sm"
-                    variant="ghost"
-                    onClick={handleCopyToken}
-                    className="h-7 w-7 p-0"
+                    onClick={() => setViewMode('list')}
+                    className={`w-8 h-8 p-0 ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
                   >
-                    <Copy className="w-3 h-3" />
+                    <List className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
-              {tokenCopied && (
-                <p className="text-xs text-green-600 mt-1">Token copied to clipboard!</p>
-              )}
             </div>
+          </div>
 
-            {/* Warning */}
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-xs text-yellow-800">
-                <strong>Important:</strong> This token will only be shown once. Please save it in a secure location.
-                The previous token is now invalid.
+          {/* Workspace Grid */}
+          <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+            {filteredProjects.map((project) => (
+              <Card
+                key={project.id}
+                className={`group bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:border-gray-300 hover:shadow-lg hover:bg-white transition-all duration-200 cursor-pointer ${
+                  selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
+                }`}
+                onClick={() => handleProjectClick(project)}
+              >
+                <CardContent className="p-6">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 relative">
+                        {getWorkspaceInitials(project.name)}
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-sm">
+                          <FolderOpen className="w-2 h-2 text-indigo-600" />
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-gray-900 text-base truncate">{project.name}</h3>
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`}></div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs font-medium border ${getEnvironmentColor(project.environment)}`}
+                          >
+                            {project.environment}
+                          </Badge>
+                          {project.token_hash && (
+                            <Badge variant="outline" className="text-xs font-medium bg-green-50 text-green-700 border-green-200">
+                              <Key className="h-3 w-3 mr-1" />
+                              API
+                            </Badge>
+                          )}
+                          {project.agent_count !== undefined && (
+                            <Badge variant="outline" className="text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
+                              {project.agent_count} {project.agent_count === 1 ? 'agent' : 'agents'}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedProjectForDialog(project)
+                          setShowAddMemberDialog(true)
+                        }}>
+                          <Users className="h-4 w-4 mr-2" />
+                          Manage access
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation()
+                        }}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Settings
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation()
+                          setShowRegenerateConfirm(project)
+                        }} disabled={regeneratingToken === project.id}>
+                          {regeneratingToken === project.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                          )}
+                          Regenerate token
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation()
+                          setShowDeleteConfirm(project)
+                        }} className="text-red-600 focus:text-red-600">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete workspace
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Description */}
+                  {project.description && (
+                    <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed">
+                      {project.description}
+                    </p>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <Clock className="w-3 h-3" />
+                      <span>Created {formatDate(project.created_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-400 group-hover:text-blue-600 transition-colors">
+                      <span>Open workspace</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Empty State for Search */}
+          {filteredProjects.length === 0 && searchQuery && (
+            <div className="text-center py-20">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Search className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No workspaces found</h3>
+              <p className="text-sm text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
+                We couldn't find any workspaces matching "<span className="font-medium text-gray-900">{searchQuery}</span>". 
+                Try adjusting your search terms.
               </p>
-            </div>
-
-            {/* Close Button */}
-            <div className="pt-4">
-              <Button onClick={handleCloseTokenDialog} className="w-full">
-                Close
+              <Button 
+                variant="outline" 
+                onClick={() => setSearchQuery('')}
+                className="text-gray-600 border-gray-300"
+              >
+                Clear search
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Project</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{showDeleteConfirm?.name}"? This action cannot be undone and will delete all associated agents, call logs, and data.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex gap-3 pt-6">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowDeleteConfirm(null)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive"
-              onClick={() => showDeleteConfirm && handleDeleteProject(showDeleteConfirm)}
-              disabled={deletingProject !== null}
-              className="flex-1"
-            >
-              {deletingProject ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : null}
-              Delete Project
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          {/* Empty State for No Workspaces */}
+          {projects.length === 0 && !loading && !error && (
+            <div className="text-center py-20">
+              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Building2 className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Create your first workspace</h3>
+              <p className="text-sm text-gray-600 mb-8 max-w-lg mx-auto leading-relaxed">
+                Organize your voice agents by department or team. Each workspace provides isolated access control, 
+                dedicated analytics, and team-specific agent management.
+              </p>
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleCreateProject}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create workspace
+                </Button>
+                <div className="text-xs text-gray-500 max-w-sm mx-auto">
+                  <p><strong>Example:</strong> Create "Sales Department" to organize all sales-related voice agents and provide access to your sales team.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
 
-      <TokenRegenerationConfirmDialog
-        isOpen={showRegenerateConfirm !== null}
-        project={showRegenerateConfirm}
-        isRegenerating={regeneratingToken === showRegenerateConfirm?.id}
-        onConfirm={() => showRegenerateConfirm && handleRegenerateToken(showRegenerateConfirm)}
-        onCancel={() => setShowRegenerateConfirm(null)}
-      />
-      <MemberManagementDialog
-        isOpen={membersDialog}
-        onClose={setShowAddMemberDialog}
-        project={projectSelected}
-      />
+        {/* Dialogs - Updated terminology */}
+        <ProjectCreationDialog
+          isOpen={showCreateDialog}
+          onClose={() => setShowCreateDialog(false)}
+          onProjectCreated={handleProjectCreated}
+        />
+
+        <Dialog open={showTokenDialog !== null} onOpenChange={handleCloseTokenDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">API token generated</DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                A new API token has been generated for the "{showTokenDialog?.name}" workspace. Save this token securely as it won't be shown again.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">API Token</label>
+                <div className="relative">
+                  <input
+                    type={showToken ? 'text' : 'password'}
+                    value={regeneratedToken || ''}
+                    readOnly
+                    className="w-full h-10 px-3 pr-20 text-sm border border-gray-200 rounded-lg bg-gray-50 font-mono focus:outline-none"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowToken(!showToken)}
+                      className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                    >
+                      {showToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCopyToken}
+                      className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+                {tokenCopied && (
+                  <p className="text-xs text-emerald-600 mt-2">Token copied to clipboard</p>
+                )}
+              </div>
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-800">
+                  <strong>Important:</strong> Store this token securely. The previous token has been invalidated and will no longer work.
+                </p>
+              </div>
+              <div className="flex justify-end pt-4">
+                <Button onClick={handleCloseTokenDialog} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Done
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">Delete workspace</DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                Are you sure you want to delete the "{showDeleteConfirm?.name}" workspace? This action cannot be undone and will permanently delete all agents, call logs, and analytics data in this workspace.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 pt-6">
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => showDeleteConfirm && handleDeleteProject(showDeleteConfirm)}
+                disabled={deletingProject !== null}
+                className="flex-1"
+              >
+                {deletingProject ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Delete workspace
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <TokenRegenerationConfirmDialog
+          isOpen={showRegenerateConfirm !== null}
+          project={showRegenerateConfirm}
+          isRegenerating={regeneratingToken === showRegenerateConfirm?.id}
+          onConfirm={() => showRegenerateConfirm && handleRegenerateToken(showRegenerateConfirm)}
+          onCancel={() => setShowRegenerateConfirm(null)}
+        />
+
+        <MemberManagementDialog
+          isOpen={membersDialog}
+          onClose={setShowAddMemberDialog}
+          project={projectSelected}
+        />
+      </div>
     </div>
   )
 }

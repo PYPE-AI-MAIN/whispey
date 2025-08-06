@@ -277,10 +277,10 @@ asyncio.run(send_call_log({})))`
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                   <Book className="h-6 w-6 text-blue-600" />
-                  Pype Voice API Documentation
+                  Whispey API Documentation
                 </h1>
                 <p className="text-gray-600 text-sm mt-1">
-                  Send call logs and observability data to your Pype Voice dashboard
+                  Send call logs and observability data to your Whispey dashboard
                 </p>
               </div>
             </div>
