@@ -1,6 +1,6 @@
 # 🔌 API Reference
 
-Complete API documentation for Obsera's REST endpoints and webhooks.
+Complete API documentation for Whispey's REST endpoints and webhooks.
 
 ## 🔑 Authentication
 
@@ -8,12 +8,12 @@ All API requests require authentication using your API key:
 
 ```bash
 curl -H "Authorization: Bearer YOUR_API_KEY" \
-  https://api.obsera.ai/v1/agents
+  https://api.whispey.ai/v1/agents
 ```
 
 ### API Key Management
 
-Get your API key from the [Obsera Dashboard](https://pype-voice-analytics-dashboard.vercel.app/):
+Get your API key from the [Whispey Dashboard](https://pype-voice-analytics-dashboard.vercel.app/):
 
 1. **Sign in** to your account
 2. **Navigate** to Settings → API Keys
@@ -22,8 +22,8 @@ Get your API key from the [Obsera Dashboard](https://pype-voice-analytics-dashbo
 
 ## 📊 Base URL
 
-- **Production**: `https://api.obsera.ai`
-- **Development**: `https://dev-api.obsera.ai`
+- **Production**: `https://api.whispey.ai`
+- **Development**: `https://dev-api.whispey.ai`
 
 ## 🏗️ Core Endpoints
 
@@ -256,7 +256,7 @@ GET /v1/analytics/costs?agent_id={agent_id}&period=30d
 
 ### Webhook Events
 
-Obsera can send webhook notifications for various events:
+Whispey can send webhook notifications for various events:
 
 #### Event Types
 

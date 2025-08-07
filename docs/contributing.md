@@ -1,10 +1,10 @@
-# 🤝 Contributing to Obsera
+# 🤝 Contributing to Whispey
 
-Thank you for your interest in contributing to Obsera! We welcome contributions from the community and appreciate your help in making Obsera better for everyone.
+Thank you for your interest in contributing to Whispey! We welcome contributions from the community and appreciate your help in making Whispey better for everyone.
 
 ## 🎯 How to Contribute
 
-There are many ways to contribute to Obsera:
+There are many ways to contribute to Whispey:
 
 - **🐛 Bug Reports** - Help us identify and fix issues
 - **💡 Feature Requests** - Suggest new features and improvements
@@ -19,11 +19,11 @@ There are many ways to contribute to Obsera:
 
 ```bash
 # Fork on GitHub, then clone your fork
-git clone https://github.com/YOUR_USERNAME/obsera.git
-cd obsera
+git clone https://github.com/YOUR_USERNAME/whispey.git
+cd whispey
 
 # Add the original repository as upstream
-git remote add upstream https://github.com/PYPE-AI-MAIN/obsera.git
+git remote add upstream https://github.com/PYPE-AI-MAIN/whispey.git
 ```
 
 ### 2. Set Up Development Environment
@@ -170,7 +170,7 @@ obsera/
 │   ├── lib/              # Utility functions
 │   └── types/            # TypeScript types
 ├── sdk/                   # Python SDK
-│   ├── obsera/           # SDK source code
+│   ├── whispey/           # SDK source code
 │   ├── tests/            # Unit tests
 │   └── setup.py          # Package configuration
 ├── docs/                  # Documentation
@@ -199,11 +199,11 @@ npm run test:integration
 #### Python SDK Tests
 ```python
 import pytest
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
 def test_session_creation():
     """Test that sessions can be created successfully."""
-    obsera = LivekitObserve(agent_id="test-agent")
+    whispey = LivekitObserve(agent_id="test-agent")
     # Test implementation
     assert True
 
@@ -276,7 +276,7 @@ What actually happens
 - OS: [e.g., macOS 14.0]
 - Node.js: [e.g., 18.17.0]
 - Python: [e.g., 3.11.0]
-- Obsera Version: [e.g., 1.2.0]
+- Whispey Version: [e.g., 1.2.0]
 
 ## Additional Information
 Screenshots, logs, or other relevant information
@@ -346,7 +346,7 @@ We recognize contributors in several ways:
 
 - **💬 Discord**: [Join our community](https://discord.gg/pypeai)
 - **🐛 GitHub Issues**: Open an issue for technical questions
-- **📧 Email**: dev-support@obsera.ai for private discussions
+- **📧 Email**: dev-support@whispey.ai for private discussions
 
 ### Mentorship
 
@@ -376,18 +376,18 @@ New contributors can:
 ### Reporting
 
 Report violations to:
-- **📧 Email**: conduct@obsera.ai
+- **📧 Email**: conduct@whispey.ai
 - **💬 Discord**: Message moderators
 - **🐛 GitHub**: Open private issue
 
 ## 📄 License
 
-By contributing to Obsera, you agree that your contributions will be licensed under the MIT License.
+By contributing to Whispey, you agree that your contributions will be licensed under the MIT License.
 
 ## 🙏 Thank You
 
-Thank you for contributing to Obsera! Your contributions help make voice AI analytics better for everyone.
+Thank you for contributing to Whispey! Your contributions help make voice AI analytics better for everyone.
 
 ---
 
-**Ready to contribute?** Start with a [good first issue](https://github.com/PYPE-AI-MAIN/obsera/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or join our [Discord community](https://discord.gg/pypeai)! 
+**Ready to contribute?** Start with a [good first issue](https://github.com/PYPE-AI-MAIN/whispey/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or join our [Discord community](https://discord.gg/pypeai)! 

@@ -1,10 +1,10 @@
 # ❓ Frequently Asked Questions
 
-Common questions and answers about Obsera voice analytics platform.
+Common questions and answers about Whispey voice analytics platform.
 
 ## 🚀 Getting Started
 
-### Q: How do I get started with Obsera?
+### Q: How do I get started with Whispey?
 
 **A:** Getting started is easy! Follow these steps:
 
@@ -12,23 +12,23 @@ Common questions and answers about Obsera voice analytics platform.
 2. **Create a project** and add an agent
 3. **Get your Agent ID** from the dashboard
 4. **Generate an API key** from your account settings
-5. **Install the SDK**: `pip install obsera`
+5. **Install the SDK**: `pip install whispey`
 6. **Integrate** with your LiveKit agent
 
 See our [Getting Started Guide](getting-started.md) for detailed instructions.
 
 ### Q: What are the system requirements?
 
-**A:** Obsera requires:
+**A:** Whispey requires:
 
 - **Python 3.8+** for the SDK
 - **LiveKit Agents 1.2.2+** for integration
 - **Modern web browser** for the dashboard
 - **Internet connection** for data synchronization
 
-### Q: Is Obsera free to use?
+### Q: Is Whispey free to use?
 
-**A:** Obsera offers both free and paid tiers:
+**A:** Whispey offers both free and paid tiers:
 
 - **Free Tier**: 100 calls/month, basic analytics
 - **Pro Tier**: $49/month, unlimited calls, advanced features
@@ -36,38 +36,38 @@ See our [Getting Started Guide](getting-started.md) for detailed instructions.
 
 ## 🔧 Integration & SDK
 
-### Q: How do I integrate Obsera with my existing LiveKit agent?
+### Q: How do I integrate Whispey with my existing LiveKit agent?
 
 **A:** Integration is straightforward:
 
 ```python
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
 # Initialize with your agent ID
-obsera = LivekitObserve(agent_id="your-agent-id")
+whispey = LivekitObserve(agent_id="your-agent-id")
 
 # Start tracking
-session_id = obsera.start_session(session)
+session_id = whispey.start_session(session)
 
 # Export on shutdown
 async def shutdown():
-    await obsera.export(session_id)
+    await whispey.export(session_id)
 
 ctx.add_shutdown_callback(shutdown)
 ```
 
-### Q: Does Obsera affect my agent's performance?
+### Q: Does Whispey affect my agent's performance?
 
-**A:** No, Obsera is designed to be lightweight and non-intrusive:
+**A:** No, Whispey is designed to be lightweight and non-intrusive:
 
 - **Minimal overhead**: <1% performance impact
 - **Asynchronous**: Data collection happens in background
 - **Non-blocking**: Doesn't interfere with your agent's responses
 - **Optional**: You can disable tracking for specific sessions
 
-### Q: What data does Obsera collect?
+### Q: What data does Whispey collect?
 
-**A:** Obsera collects comprehensive metrics:
+**A:** Whispey collects comprehensive metrics:
 
 - **🎙️ Speech-to-Text**: Audio duration, processing time, accuracy
 - **🧠 LLM**: Token usage, response time, costs
@@ -116,7 +116,7 @@ ctx.add_shutdown_callback(shutdown)
 
 ### Q: Can I compare different agents or versions?
 
-**A:** Yes, Obsera provides comprehensive comparison tools:
+**A:** Yes, Whispey provides comprehensive comparison tools:
 
 - **Agent comparison** across different versions
 - **A/B testing** support for performance analysis
@@ -125,9 +125,9 @@ ctx.add_shutdown_callback(shutdown)
 
 ## 💰 Billing & Costs
 
-### Q: How is Obsera priced?
+### Q: How is Whispey priced?
 
-**A:** Obsera uses a simple pricing model:
+**A:** Whispey uses a simple pricing model:
 
 - **Free Tier**: 100 calls/month
 - **Pro Tier**: $49/month, unlimited calls
@@ -163,7 +163,7 @@ ctx.add_shutdown_callback(shutdown)
 - **Regional options**: Choose data center location
 - **Backup**: Automatic daily backups
 
-### Q: Can I self-host Obsera?
+### Q: Can I self-host Whispey?
 
 **A:** Yes, complete self-hosting is supported:
 
@@ -174,9 +174,9 @@ ctx.add_shutdown_callback(shutdown)
 
 See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
-### Q: Is Obsera GDPR compliant?
+### Q: Is Whispey GDPR compliant?
 
-**A:** Yes, Obsera is fully GDPR compliant:
+**A:** Yes, Whispey is fully GDPR compliant:
 
 - **Data portability**: Export all your data
 - **Right to deletion**: Remove data on request
@@ -201,7 +201,7 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
 - **📖 Documentation**: Comprehensive guides and examples
 - **💬 Discord**: Active community for quick help
-- **📧 Email**: support@obsera.ai for detailed support
+- **📧 Email**: support@whispey.ai for detailed support
 - **🐛 GitHub**: Open issues for bugs and feature requests
 
 ### Q: Can I customize the analytics?
@@ -215,7 +215,7 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
 ## 🚀 Advanced Features
 
-### Q: Does Obsera support multiple languages?
+### Q: Does Whispey support multiple languages?
 
 **A:** Yes, full multilingual support:
 
@@ -233,18 +233,18 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 - **Webhook support** for custom integrations
 - **API access** for custom development
 
-### Q: Does Obsera work with all voice providers?
+### Q: Does Whispey work with all voice providers?
 
-**A:** Yes, Obsera supports all major providers:
+**A:** Yes, Whispey supports all major providers:
 
 - **STT**: OpenAI Whisper, Deepgram, Azure, Google
 - **TTS**: ElevenLabs, Azure, Google, Amazon Polly
 - **LLM**: OpenAI, Anthropic, Google, Azure
 - **Custom providers**: API for custom integrations
 
-### Q: Can I use Obsera for non-voice AI?
+### Q: Can I use Whispey for non-voice AI?
 
-**A:** Currently, Obsera is optimized for voice AI:
+**A:** Currently, Whispey is optimized for voice AI:
 
 - **Voice-specific metrics** and analytics
 - **Audio quality analysis**
@@ -253,9 +253,9 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
 ## 📈 Performance & Scalability
 
-### Q: How many calls can Obsera handle?
+### Q: How many calls can Whispey handle?
 
-**A:** Obsera is built for scale:
+**A:** Whispey is built for scale:
 
 - **Free tier**: 100 calls/month
 - **Pro tier**: Unlimited calls
@@ -271,9 +271,9 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 - **Non-blocking operations** for real-time responses
 - **Optimized SDK** for minimal resource usage
 
-### Q: Can I use Obsera in production?
+### Q: Can I use Whispey in production?
 
-**A:** Yes, Obsera is production-ready:
+**A:** Yes, Whispey is production-ready:
 
 - **99.9% uptime** SLA
 - **Enterprise-grade** infrastructure
@@ -282,7 +282,7 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
 ## 🔄 Updates & Roadmap
 
-### Q: How often is Obsera updated?
+### Q: How often is Whispey updated?
 
 **A:** Regular updates and improvements:
 
@@ -321,7 +321,7 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 - **📧 Email**: Direct support from the team
 - **📱 Twitter**: Follow for updates and tips
 
-### Q: How can I contribute to Obsera?
+### Q: How can I contribute to Whispey?
 
 **A:** Multiple ways to contribute:
 
@@ -331,9 +331,9 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 - **Feature ideas**: Suggest new features
 - **Community support**: Help other users
 
-### Q: Is Obsera open source?
+### Q: Is Whispey open source?
 
-**A:** Obsera is open source with commercial support:
+**A:** Whispey is open source with commercial support:
 
 - **MIT license** for the core platform
 - **Open source SDK** available on GitHub
@@ -342,4 +342,4 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
 ---
 
-**Still have questions?** Join our [Discord community](https://discord.gg/pypeai) or email support@obsera.ai for personalized help! 
+**Still have questions?** Join our [Discord community](https://discord.gg/pypeai) or email support@whispey.ai for personalized help! 
