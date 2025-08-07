@@ -154,10 +154,6 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
     logicalOperator: 'AND'
   })
 
-  // Debug: Log filters whenever they change
-  useEffect(() => {
-    console.log('Current filters:', config.filters)
-  }, [config.filters])
 
   // Get available JSON fields based on column selection
   const getAvailableJsonFields = (column: string) => {
@@ -176,7 +172,6 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
   }
 
   const addFilter = () => {
-    console.log('Adding filter:', newFilter) // Debug log
     
     // Validation logic
     if (!newFilter.column) {
@@ -210,14 +205,12 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
       logicalOperator: newFilter.logicalOperator || 'AND'
     }
 
-    console.log('Created filter:', filter) // Debug log
     
     setConfig(prev => {
       const newConfig = {
         ...prev,
         filters: [...(prev.filters || []), filter]
       }
-      console.log('New config filters:', newConfig.filters) // Debug log
       return newConfig
     })
     
@@ -232,7 +225,6 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
   }
 
   const removeFilter = (filterId: string) => {
-    console.log('Removing filter with ID:', filterId) // Debug log
     setConfig(prev => ({
       ...prev,
       filters: prev.filters?.filter(f => f.id !== filterId) || []
@@ -297,12 +289,19 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Custom Total
-        </Button>
-      </DialogTrigger>
+    <DialogTrigger asChild>
+      <div className="p-5 h-full flex flex-col justify-center items-center text-center cursor-pointer">
+        <div className="flex items-start justify-center mb-4 w-full">
+          <div className="p-2 bg-gray-100 rounded-lg border border-gray-200 group-hover:bg-gray-200 transition-colors">
+            <Plus className="w-5 h-5 text-gray-600" />
+          </div>
+        </div>
+        <div className="space-y-6">
+          <p className="text-lg font-light text-gray-700 tracking-tight">Add Custom</p>
+          <p className="text-xs text-gray-400 font-medium">Create metric</p>
+        </div>
+      </div>
+    </DialogTrigger>
       <DialogContent className="min-w-4xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="flex items-center gap-2">

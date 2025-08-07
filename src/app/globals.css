@@ -116,15 +116,90 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
   }
 }
 
+/* Professional Background Utilities */
+@layer utilities {
+  .bg-professional {
+    background: 
+      linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted) / 0.3) 100%),
+      radial-gradient(circle at 25% 25%, hsl(var(--primary) / 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, hsl(var(--primary) / 0.01) 0%, transparent 50%);
+  }
+  
+  .bg-enterprise {
+    background: 
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted) / 0.2) 50%, hsl(var(--background)) 100%);
+  }
+  
+  .bg-minimal-texture {
+    background-image: 
+      radial-gradient(circle at 1px 1px, hsl(var(--border) / 0.15) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+}
+
+/* Professional Component Styles */
+@layer components {
+  .auth-gradient {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    position: relative;
+  }
+  
+  .auth-gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 30% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 70% 80%, rgba(147, 51, 234, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  /* Professional card styling */
+  .card-professional {
+    @apply bg-card/95 backdrop-blur-sm border border-border/60 shadow-sm;
+  }
+  
+  .card-professional:hover {
+    @apply bg-card border-border shadow-md;
+  }
+  
+  /* Enhanced button styles */
+  .btn-professional {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 
+           shadow-sm hover:shadow-md transition-all duration-200 
+           font-medium border-0;
+  }
+  
+  /* Professional input styling */
+  .input-professional {
+    @apply bg-background border-border/60 focus:border-primary/60 
+           focus:ring-2 focus:ring-primary/10 transition-all duration-200;
+  }
+}
+
+/* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 100, 100, 0.3);
+  background-color: hsl(var(--border));
   border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.3);
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.1);
 }

@@ -104,12 +104,6 @@ export const useCountChartData = (
           }
         }
 
-        console.log('🔍 Query setup:', {
-          hasFilter: !!config.filterValue,
-          source: config.source,
-          field: config.field
-        })
-
         const { data: records, error }: { data: DatabaseRecord[] | null, error: any } = await query
 
         if (error) {
@@ -118,13 +112,11 @@ export const useCountChartData = (
         }
         
         if (!records || records.length === 0) {
-          console.log('⚠️ No records returned')
           setData([])
           setUniqueValues([])
           return
         }
 
-        console.log('✅ Records found:', records.length)
 
         if (config.filterValue) {
           // SINGLE LINE LOGIC: Just count by date
@@ -146,7 +138,6 @@ export const useCountChartData = (
             }))
             .sort((a, b) => a.date.localeCompare(b.date))
 
-          console.log('📈 Single line chart data:', chartData)
           setData(chartData)
           setUniqueValues([])
         } else {
@@ -178,15 +169,12 @@ export const useCountChartData = (
             }
           }).filter((record: ProcessedRecord) => record.fieldValue !== 'null') // Remove null values
 
-          console.log('📊 Processed records sample:', processedRecords.slice(0, 5))
 
           // Get unique values
           const uniqueVals: string[] = [...new Set(processedRecords.map(r => r.fieldValue))].sort()
-          console.log('🎯 Unique values found:', uniqueVals)
           setUniqueValues(uniqueVals)
 
           if (uniqueVals.length === 0) {
-            console.log('⚠️ No unique values found')
             setData([])
             return
           }
@@ -207,7 +195,6 @@ export const useCountChartData = (
             return acc
           }, {} as { [date: string]: { [value: string]: number } })
 
-          console.log('📊 Grouped by date and value:', Object.keys(grouped).length, 'dates')
 
           // Convert to chart format
           const chartData: ChartDataPoint[] = Object.entries(grouped)
@@ -223,8 +210,7 @@ export const useCountChartData = (
             })
             .sort((a, b) => a.date.localeCompare(b.date))
 
-          console.log('📈 Final chart data sample:', chartData.slice(0, 2))
-          console.log('🎨 Lines will be created for:', uniqueVals)
+
           setData(chartData)
         }
 
@@ -279,7 +265,6 @@ export const useQuickFieldDiscovery = (agentId: string, dateFrom: string, dateTo
           .eq('id', agentId)
           .single()
 
-          console.log("debug agentData", agentData)
 
         // Get metadata fields from sample data
         const { data: sampleRecords } = await supabase
@@ -341,7 +326,6 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
     color: '#3b82f6'
   })
 
-  console.log("debug metadataFields", metadataFields)
 
 
   const fields = {
