@@ -1,23 +1,23 @@
 # 🔧 SDK Reference
 
-Complete reference for the Obsera Python SDK.
+Complete reference for the Whispey Python SDK.
 
 ## 📦 Installation
 
 ```bash
-pip install obsera
+pip install whispey
 ```
 
 ## 🏗️ Core Classes
 
 ### `LivekitObserve`
 
-The main class for integrating Obsera with your LiveKit agents.
+The main class for integrating Whispey with your LiveKit agents.
 
 ```python
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
-obsera = LivekitObserve(agent_id="your-agent-id")
+whispey = LivekitObserve(agent_id="your-agent-id")
 ```
 
 #### Constructor Parameters
@@ -33,7 +33,7 @@ obsera = LivekitObserve(agent_id="your-agent-id")
 Starts tracking a LiveKit session.
 
 ```python
-session_id = obsera.start_session(
+session_id = whispey.start_session(
     session,
     phone_number="+1234567890",
     customer_name="John Doe",
@@ -62,10 +62,10 @@ session_id = obsera.start_session(
 
 ##### `export(session_id, recording_url="")`
 
-Exports session data to Obsera platform.
+Exports session data to Whispey platform.
 
 ```python
-result = await obsera.export(
+result = await whispey.export(
     session_id,
     recording_url="https://example.com/recording.mp3"
 )
@@ -82,7 +82,7 @@ result = await obsera.export(
 Gets current session data without exporting.
 
 ```python
-data = obsera.get_data(session_id)
+data = whispey.get_data(session_id)
 print(f"Current metrics: {data}")
 ```
 
@@ -96,7 +96,7 @@ print(f"Current metrics: {data}")
 Manually ends a session.
 
 ```python
-obsera.end(session_id)
+whispey.end(session_id)
 ```
 
 **Parameters:**
@@ -168,25 +168,25 @@ obsera.end(session_id)
 
 ```python
 # Start session
-session_id = obsera.start_session(session, **metadata)
+session_id = whispey.start_session(session, **metadata)
 
 # Get current data
-current_data = obsera.get_data(session_id)
+current_data = whispey.get_data(session_id)
 
 # Manually end session
-obsera.end(session_id)
+whispey.end(session_id)
 
 # Export to platform
-result = await obsera.export(session_id, recording_url="https://...")
+result = await whispey.export(session_id, recording_url="https://...")
 ```
 
 ### Error Handling
 
 ```python
 try:
-    session_id = obsera.start_session(session)
+    session_id = whispey.start_session(session)
     # ... your session code ...
-    result = await obsera.export(session_id)
+    result = await whispey.export(session_id)
     
     if result.get("success"):
         print("✅ Data exported successfully!")
@@ -194,7 +194,7 @@ try:
         print(f"❌ Export failed: {result.get('error')}")
         
 except Exception as e:
-    print(f"💥 Obsera error: {e}")
+    print(f"💥 Whispey error: {e}")
 ```
 
 ### Debug Mode
@@ -207,8 +207,8 @@ import logging
 # Set logging level
 logging.basicConfig(level=logging.INFO)
 
-# Your Obsera code here
-obsera = LivekitObserve(agent_id="your-agent-id")
+# Your Whispey code here
+whispey = LivekitObserve(agent_id="your-agent-id")
 ```
 
 ## 🛠️ Configuration
@@ -217,29 +217,29 @@ obsera = LivekitObserve(agent_id="your-agent-id")
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OBSERA_API_KEY` | Your API key | Required |
-| `OBSERA_API_URL` | API endpoint | Auto-detected |
+| `WHISPEY_API_KEY` | Your API key | Required |
+| `WHISPEY_API_URL` | API endpoint | Auto-detected |
 
 ### API Endpoints
 
-- **Production**: `https://api.obsera.ai`
-- **Development**: `https://dev-api.obsera.ai`
+- **Production**: `https://api.whispey.ai`
+- **Development**: `https://dev-api.whispey.ai`
 
 ## 📝 Examples
 
 ### Basic Integration
 
 ```python
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
-obsera = LivekitObserve(agent_id="your-agent-id")
+whispey = LivekitObserve(agent_id="your-agent-id")
 
 # Start tracking
-session_id = obsera.start_session(session)
+session_id = whispey.start_session(session)
 
 # Export on shutdown
 async def shutdown():
-    await obsera.export(session_id)
+    await whispey.export(session_id)
 
 ctx.add_shutdown_callback(shutdown)
 ```
@@ -247,7 +247,7 @@ ctx.add_shutdown_callback(shutdown)
 ### With Custom Metadata
 
 ```python
-session_id = obsera.start_session(
+session_id = whispey.start_session(
     session,
     phone_number="+1234567890",
     customer_name="Jane Smith",
@@ -262,11 +262,11 @@ session_id = obsera.start_session(
 
 ```python
 # Get current data
-data = obsera.get_data(session_id)
+data = whispey.get_data(session_id)
 print(f"Current metrics: {data}")
 
 # Export with recording
-result = await obsera.export(
+result = await whispey.export(
     session_id,
     recording_url="https://storage.example.com/recording.mp3"
 )
@@ -293,10 +293,10 @@ result = await obsera.export(session_id)
 **API Authentication Error**
 ```bash
 # Check environment variable
-echo $OBSERA_API_KEY
+echo $WHISPEY_API_KEY
 
 # Set if missing
-export OBSERA_API_KEY="your_api_key_here"
+export WHISPEY_API_KEY="your_api_key_here"
 ```
 
 ## 📚 Related Documentation
@@ -307,4 +307,4 @@ export OBSERA_API_KEY="your_api_key_here"
 
 ---
 
-**Need help?** Join our [Discord community](https://discord.gg/pypeai) or email support@obsera.ai 
+**Need help?** Join our [Discord community](https://discord.gg/pypeai) or email support@whispey.ai 

@@ -1,10 +1,10 @@
 # 📊 Dashboard Tutorial
 
-Master the Obsera dashboard to analyze your voice AI performance and gain actionable insights.
+Master the Whispey dashboard to analyze your voice AI performance and gain actionable insights.
 
 ## 🎯 Dashboard Overview
 
-The Obsera dashboard provides comprehensive analytics for your voice AI applications:
+The Whispey dashboard provides comprehensive analytics for your voice AI applications:
 
 - **📈 Real-time Metrics** - Live performance monitoring
 - **💰 Cost Analysis** - Track spending across providers
@@ -289,7 +289,7 @@ Create personalized views for different stakeholders:
 #### Webhook Notifications
 ```
 🔔 Webhook Configuration
-URL: https://your-app.com/webhooks/obsera
+URL: https://your-app.com/webhooks/whispey
 Events: call_completed, cost_alert, performance_alert
 Secret: your_webhook_secret
 ```
@@ -340,8 +340,8 @@ Secret: your_webhook_secret
 ## 💬 Support
 
 - **💬 Discord**: [Join our community](https://discord.gg/pypeai)
-- **📧 Email**: support@obsera.ai
-- **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/obsera/issues)
+- **📧 Email**: support@whispey.ai
+- **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 
 ---
 

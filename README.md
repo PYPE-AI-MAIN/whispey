@@ -11,7 +11,7 @@
 
 **Professional voice analytics and observability for AI agents. Monitor, analyze, and improve your voice AI applications with beautiful dashboards and actionable insights.**
 
-[🚀 Get Started](#quick-start) • [📊 Live Demo](https://pype-voice-analytics-dashboard.vercel.app) • [📖 Documentation](https://pype-voice-analytics-dashboard.vercel.app/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/whispey)
+[🚀 Get Started](#quick-start) • [📊 Live Demo](https://www.whispey.xyz/) • [📖 Documentation](https://www.whispey.xyz/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/whispey)
 
 </div>
 

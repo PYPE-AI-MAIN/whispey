@@ -1,6 +1,6 @@
 # 🚀 Getting Started Guide
 
-Welcome to Obsera! This guide will help you get up and running with voice analytics for your AI agents in under 10 minutes.
+Welcome to Whispey! This guide will help you get up and running with voice analytics for your AI agents in under 10 minutes.
 
 ## 📋 Prerequisites
 
@@ -24,7 +24,7 @@ Before you begin, make sure you have:
 ### Step 2: Install the SDK
 
 ```bash
-pip install obsera
+pip install whispey
 ```
 
 ### Step 3: Set Up Environment
@@ -32,8 +32,8 @@ pip install obsera
 Create a `.env` file in your project root:
 
 ```env
-# Obsera Voice Analytics
-OBSERA_API_KEY=your_api_key_here
+# Whispey Voice Analytics
+WHISPEY_API_KEY=your_api_key_here
 ```
 
 ### Step 4: Integrate with Your Agent
@@ -42,13 +42,13 @@ OBSERA_API_KEY=your_api_key_here
 from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import AgentSession
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
 # Load environment variables
 load_dotenv()
 
-# Initialize Obsera
-obsera = LivekitObserve(agent_id="your-agent-id")
+# Initialize Whispey
+whispey = LivekitObserve(agent_id="your-agent-id")
 
 async def entrypoint(ctx: agents.JobContext):
     await ctx.connect()
@@ -61,8 +61,8 @@ async def entrypoint(ctx: agents.JobContext):
         # ... other configurations
     )
     
-    # Start Obsera tracking
-    session_id = obsera.start_session(
+    # Start Whispey tracking
+    session_id = whispey.start_session(
         session,
         phone_number="+1234567890",  # Optional
         customer_name="John Doe"     # Optional
@@ -70,7 +70,7 @@ async def entrypoint(ctx: agents.JobContext):
     
     # Export data on shutdown
     async def shutdown():
-        await obsera.export(session_id)
+        await whispey.export(session_id)
     
     ctx.add_shutdown_callback(shutdown)
     
@@ -88,14 +88,14 @@ Visit your dashboard at [https://pype-voice-analytics-dashboard.vercel.app](http
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OBSERA_API_KEY` | Yes | Your API key from the dashboard |
+| `WHISPEY_API_KEY` | Yes | Your API key from the dashboard |
 
 ### Session Metadata
 
 You can pass additional metadata when starting a session:
 
 ```python
-session_id = obsera.start_session(
+session_id = whispey.start_session(
     session,
     phone_number="+1234567890",        # Customer phone
     customer_name="Jane Smith",        # Customer name
@@ -108,7 +108,7 @@ session_id = obsera.start_session(
 
 ## 📊 What Gets Tracked
 
-Obsera automatically collects:
+Whispey automatically collects:
 
 - **🎙️ Speech-to-Text**: Audio duration, processing time, accuracy
 - **🧠 LLM**: Token usage, response time, model costs
@@ -126,9 +126,9 @@ Obsera automatically collects:
 ## 🆘 Need Help?
 
 - **💬 Discord**: [Join our community](https://discord.gg/pypeai)
-- **📧 Email**: support@obsera.ai
-- **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/obsera/issues)
+- **📧 Email**: support@whispey.ai
+- **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 
 ---
 
-**🎉 Congratulations!** You're now tracking voice analytics with Obsera. Your first call data should appear in the dashboard within minutes. 
+**🎉 Congratulations!** You're now tracking voice analytics with Whispey. Your first call data should appear in the dashboard within minutes. 

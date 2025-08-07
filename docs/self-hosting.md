@@ -1,6 +1,6 @@
 # 🏠 Self-hosting Guide
 
-Deploy Obsera on your own infrastructure for complete data control and privacy.
+Deploy Whispey on your own infrastructure for complete data control and privacy.
 
 ## 📋 Prerequisites
 
@@ -18,8 +18,8 @@ Before self-hosting, ensure you have:
 
 ```bash
 # Clone the repository
-git clone https://github.com/PYPE-AI-MAIN/obsera
-cd obsera
+git clone https://github.com/PYPE-AI-MAIN/whispey
+cd whispey
 
 # Copy environment template
 cp .env.example .env.local
@@ -35,8 +35,8 @@ docker-compose up -d
 
 ```bash
 # Clone the repository
-git clone https://github.com/PYPE-AI-MAIN/obsera
-cd obsera
+git clone https://github.com/PYPE-AI-MAIN/whispey
+cd whispey
 
 # Install dependencies
 npm install
@@ -65,7 +65,7 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 
 # API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:3000/api
-OBSERA_API_KEY=your_api_key_for_sdk
+WHISPEY_API_KEY=your_api_key_for_sdk
 
 # Optional: Analytics
 NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=your_ga_id
@@ -94,10 +94,10 @@ supabase db push
 sudo apt-get install postgresql postgresql-contrib
 
 # Create database
-sudo -u postgres createdb obsera
+sudo -u postgres createdb whispey
 
 # Run setup script
-psql -d obsera -f setup-supabase.sql
+psql -d whispey -f setup-supabase.sql
 ```
 
 ## 🔐 Authentication Setup
@@ -171,8 +171,8 @@ services:
   db:
     image: postgres:14
     environment:
-      POSTGRES_DB: obsera
-      POSTGRES_USER: obsera
+      POSTGRES_DB: whispey
+      POSTGRES_USER: whispey
       POSTGRES_PASSWORD: your_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -185,7 +185,7 @@ volumes:
 
 ```bash
 # Build the image
-docker build -t obsera .
+docker build -t whispey .
 
 # Run with Docker Compose
 docker-compose up -d
@@ -221,7 +221,7 @@ npm install -g pm2
 npm run build
 
 # Start with PM2
-pm2 start npm --name "obsera" -- start
+pm2 start npm --name "whispey" -- start
 
 # Save PM2 configuration
 pm2 save
@@ -267,7 +267,7 @@ curl https://your-domain.com/api/health
 
 # Monitor logs
 docker-compose logs -f app
-pm2 logs obsera
+pm2 logs whispey
 ```
 
 ### Database Maintenance
@@ -282,10 +282,10 @@ VACUUM ANALYZE;
 
 ```bash
 # Database backup
-pg_dump obsera > backup_$(date +%Y%m%d).sql
+pg_dump whispey > backup_$(date +%Y%m%d).sql
 
 # File backup
-tar -czf backup_$(date +%Y%m%d).tar.gz /path/to/obsera
+tar -czf backup_$(date +%Y%m%d).tar.gz /path/to/whispey
 ```
 
 ## 🔒 Security Considerations
@@ -340,7 +340,7 @@ server {
 sudo systemctl status postgresql
 
 # Test connection
-psql -h localhost -U obsera -d obsera
+psql -h localhost -U whispey -d whispey
 ```
 
 **Authentication Issues**
@@ -369,9 +369,9 @@ node --version  # Should be 18+
 ## 💬 Support
 
 - **💬 Discord**: [Join our community](https://discord.gg/pypeai)
-- **📧 Email**: support@obsera.ai
-- **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/obsera/issues)
+- **📧 Email**: support@whispey.ai
+- **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 
 ---
 
-**🎉 Your self-hosted Obsera instance is ready!** Visit your domain to start using the analytics platform. 
+**🎉 Your self-hosted Whispey instance is ready!** Visit your domain to start using the analytics platform. 
