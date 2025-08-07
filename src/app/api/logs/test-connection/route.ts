@@ -1,20 +1,19 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-import { sendResponse } from '../../../../lib/response';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
-  }
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
 
-  if (req.method !== 'GET') {
-    return sendResponse(res, 405, null, 'Method not allowed');
-  }
-
+export async function GET(request: NextRequest) {
   try {
     // Test Supabase connection
     const { data, error } = await supabase
@@ -24,17 +23,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       console.error('Supabase connection error:', error);
-      return sendResponse(res, 500, null, `Failed to connect to Supabase: ${error.message}`);
+      return NextResponse.json(
+        { success: false, error: `Failed to connect to Supabase: ${error.message}` },
+        { status: 500 }
+      );
     }
 
-    return sendResponse(res, 200, {
-      message: 'Connection successful',
-      timestamp: new Date().toISOString(),
-      environment: process.env.VERCEL_ENV || 'development'
-    });
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: 'Connection successful',
+        timestamp: new Date().toISOString(),
+        environment: process.env.VERCEL_ENV || 'development'
+      }
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Test connection error:', error);
-    return sendResponse(res, 500, null, 'Internal server error');
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

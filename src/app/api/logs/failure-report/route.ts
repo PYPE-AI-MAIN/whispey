@@ -1,24 +1,23 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/supabase';
-import { sendResponse } from '../../../../lib/response';
 import { verifyToken } from '../../../../lib/auth';
 import { FailureReportRequest } from '../../../../types/logs';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-pype-token');
-    return res.status(200).end();
-  }
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, x-pype-token',
+    },
+  });
+}
 
-  if (req.method !== 'POST') {
-    return sendResponse(res, 405, null, 'Method not allowed');
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const body: FailureReportRequest = req.body;
+    const body: FailureReportRequest = await request.json();
     const {
       token,
       call_id,
@@ -29,13 +28,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } = body;
 
     if (!token || !call_id || !error_message) {
-      return sendResponse(res, 400, null, 'Token, call_id, and error_message are required');
+      return NextResponse.json(
+        { success: false, error: 'Token, call_id, and error_message are required' },
+        { status: 400 }
+      );
     }
 
     // Verify token
     const tokenVerification = await verifyToken(token, environment);
     if (!tokenVerification.valid) {
-      return sendResponse(res, 401, null, tokenVerification.error || 'Token verification failed');
+      return NextResponse.json(
+        { success: false, error: tokenVerification.error || 'Token verification failed' },
+        { status: 401 }
+      );
     }
 
     // Create failure report log
@@ -65,16 +70,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (insertError) {
       console.error('Database insert error:', insertError);
-      return sendResponse(res, 500, null, 'Failed to save failure report');
+      return NextResponse.json(
+        { success: false, error: 'Failed to save failure report' },
+        { status: 500 }
+      );
     }
 
-    return sendResponse(res, 200, {
-      message: 'Failure report saved successfully',
-      log_id: insertedLog.id
-    });
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: 'Failure report saved successfully',
+        log_id: insertedLog.id
+      }
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Send failure report error:', error);
-    return sendResponse(res, 500, null, 'Internal server error');
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
