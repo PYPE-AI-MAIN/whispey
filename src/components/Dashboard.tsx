@@ -62,6 +62,13 @@ const formatDateDisplay = (date: Date) => {
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [breadcrumb, setBreadcrumb] = useState<{
+    project?: string;
+    item?: string;
+  }>({
+    project: '',
+    item: ''
+  })
   
   // Date filter state
   const [quickFilter, setQuickFilter] = useState('7d')
@@ -128,7 +135,18 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     filters: (shouldFetch && agent?.project_id) ? [{ column: 'id', operator: 'eq', value: agent.project_id }] : []
   })
 
+
+
   const project = (shouldFetch && agent?.project_id) ? projects?.[0] : null
+
+  useEffect(()=>{
+    if(project && agent.project_id){
+      setBreadcrumb({
+        project: project.name,
+        item: agent.name
+      })
+    }
+  },[agents,projects])
 
   const handleBack = () => {
     if (agent?.project_id) {
@@ -190,10 +208,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   ]
 
   // Prepare breadcrumb data for Header
-  const breadcrumb = agent ? {
-    project: project?.name || 'Project',
-    item: agent.name
-  } : undefined
+
 
   if (!shouldFetch) {
     return (

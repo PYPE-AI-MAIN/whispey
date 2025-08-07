@@ -1,8 +1,6 @@
 'use client'
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Tooltip } from 'recharts'
-import { EnhancedChartBuilder } from './EnhancedChartBuilder'
-
 import {
   Phone,
   Clock,
@@ -38,6 +36,28 @@ import {
 } from 'recharts'
 import { useOverviewQuery } from '../hooks/useOverviewQuery'
 import AgentCustomLogsView from './calls/AgentCustomLogsView'
+import { getUserProjectRole } from '@/services/getUserRole'
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Loader2, MoreHorizontal, Trash2 } from 'lucide-react'
+import { EnhancedChartBuilder } from './EnhancedChartBuilder'
+
+
+import { useDynamicFields } from '../hooks/useDynamicFields'
+import { useUser } from "@clerk/nextjs"
+import CustomTotalsBuilder from './CustomTotalBuilds'
+import { CustomTotalsService } from '@/services/customTotalService'
+import { CustomTotalConfig, CustomTotalResult } from '../types/customTotals'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Card, CardContent } from './ui/card'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
+
+
 
 interface OverviewProps {
   project: any
@@ -50,16 +70,209 @@ interface OverviewProps {
   isCustomRange?: boolean
 }
 
+const ICON_COMPONENTS = {
+  phone: Phone,
+  clock: Clock,
+  'dollar-sign': CurrencyDollar,
+  'trending-up': TrendUp,
+  calculator: Activity,
+  users: Users
+}
+
+const COLOR_CLASSES = {
+  blue: 'bg-blue-100 text-blue-600',
+  green: 'bg-green-100 text-green-600',
+  purple: 'bg-purple-100 text-purple-600',
+  orange: 'bg-orange-100 text-orange-600',
+  red: 'bg-red-100 text-red-600',
+  emerald: 'bg-emerald-100 text-emerald-600'
+}
+
+const subDays = (date: Date, days: number) => {
+  const result = new Date(date)
+  result.setDate(result.getDate() - days)
+  return result
+}
+
+const formatDateISO = (date: Date) => {
+  return date.toISOString().split('T')[0]
+}
+
+const formatDateDisplay = (date: Date) => {
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+const AVAILABLE_COLUMNS = [
+  { key: 'customer_number', label: 'Customer Number', type: 'text' as const },
+  { key: 'duration_seconds', label: 'Duration (seconds)', type: 'number' as const },
+  { key: 'avg_latency', label: 'Avg Latency', type: 'number' as const },
+  { key: 'call_started_at', label: 'Call Date', type: 'date' as const },
+  { key: 'call_ended_reason', label: 'Call Status', type: 'text' as const },
+  { key: 'total_llm_cost', label: 'LLM Cost', type: 'number' as const },
+  { key: 'total_tts_cost', label: 'TTS Cost', type: 'number' as const },
+  { key: 'total_stt_cost', label: 'STT Cost', type: 'number' as const },
+  { key: 'metadata', label: 'Metadata', type: 'jsonb' as const },
+  { key: 'transcription_metrics', label: 'Transcription Metrics', type: 'jsonb' as const }
+]
+
 const Overview: React.FC<OverviewProps> = ({ 
   project, 
   agent,
   dateRange
 }) => {
+
+  const [role, setRole] = useState<string | null>(null)
+  const [customTotals, setCustomTotals] = useState<CustomTotalConfig[]>([])
+  const [customTotalResults, setCustomTotalResults] = useState<CustomTotalResult[]>([])
+  const [loadingCustomTotals, setLoadingCustomTotals] = useState(false)
+  const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
+
+  const { user } = useUser()
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress
+
+
+
+
   const { data: analytics, loading, error } = useOverviewQuery({
     agentId: agent.id,
     dateFrom: dateRange.from,
     dateTo: dateRange.to
   })
+
+  const { 
+    metadataFields, 
+    transcriptionFields, 
+    loading: fieldsLoading,
+    error: fieldsError 
+  } = useDynamicFields(agent.id)
+
+
+  useEffect(() => {
+    if (userEmail) {
+      const getUserRole = async () => {
+        setRoleLoading(true)
+        try {
+          const userRole = await getUserProjectRole(userEmail, project.id)
+          setRole(userRole)
+        } catch (error) {
+          console.error('Failed to load user role:', error)
+          setRole('user') // Default to most restrictive role on error
+        } finally {
+          setRoleLoading(false)
+        }
+      }
+      getUserRole()
+    } else {
+      setRoleLoading(false)
+      setRole('user') // Default when no user email
+    }
+  }, [userEmail, project.id])
+
+
+
+  const loadCustomTotals = async () => {
+    try {
+      const configs = await CustomTotalsService.getCustomTotals(project.id, agent.id)
+      setCustomTotals(configs)
+    } catch (error) {
+      console.error('Failed to load custom totals:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (role !== null && !roleLoading) {
+      loadCustomTotals()
+    }
+  }, [role, roleLoading])
+
+  useEffect(() => {
+    if (customTotals.length > 0) {
+      calculateCustomTotals()
+    }
+  }, [customTotals, dateRange, role])
+
+  const calculateCustomTotals = async () => {
+    if (customTotals.length === 0) return
+    
+    setLoadingCustomTotals(true)
+    try {
+      const results = await Promise.all(
+        customTotals.map(config =>
+          CustomTotalsService.calculateCustomTotal(
+            config, 
+            agent.id, 
+            dateRange.from, 
+            dateRange.to
+          )
+        )
+      )
+
+      setCustomTotalResults(results)
+    } catch (error) {
+      console.error('Failed to calculate custom totals:', error)
+    } finally {
+      setLoadingCustomTotals(false)
+    }
+  }
+
+
+  const handleSaveCustomTotal = async (config: CustomTotalConfig) => {
+
+    try {
+      const result = await CustomTotalsService.saveCustomTotal(config, project.id, agent.id)
+      if (result.success) {
+        await loadCustomTotals() // Reload the list
+      } else {
+        alert(`Failed to save: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Failed to save custom total:', error)
+      alert('Failed to save custom total')
+    }
+  }
+
+  // Handle deleting custom total
+  const handleDeleteCustomTotal = async (configId: string) => {
+    if (!confirm('Are you sure you want to delete this custom total?')) return
+
+    try {
+      const result = await CustomTotalsService.deleteCustomTotal(configId)
+      if (result.success) {
+        await loadCustomTotals() // Reload the list
+      } else {
+        alert(`Failed to delete: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Failed to delete custom total:', error)
+      alert('Failed to delete custom total')
+    }
+  }
+
+  const formatCustomTotalValue = (result: CustomTotalResult, config: CustomTotalConfig) => {
+    if (result.error) return 'Error'
+    
+    const value = typeof result.value === 'number' ? result.value : parseFloat(result.value as string) || 0
+    
+    // Format based on aggregation type
+    switch (config.aggregation) {
+      case 'AVG':
+        return value.toFixed(2)
+      case 'SUM':
+        if (config.column.includes('cost')) {
+          return `₹${value.toFixed(2)}`
+        }
+        return value.toLocaleString()
+      case 'COUNT':
+      case 'COUNT_DISTINCT':
+        return value.toLocaleString()
+      default:
+        return value.toString()
+    }
+  }
 
   // Prepare chart data
   const successFailureData = (analytics?.successfulCalls !== undefined && analytics?.totalCalls !== undefined) ? [
@@ -71,7 +284,8 @@ const Overview: React.FC<OverviewProps> = ({
     ? (analytics.successfulCalls / analytics.totalCalls) * 100 
     : 0
 
-  if (loading) {
+
+  if (loading || roleLoading) {
     return (
       <div className="h-full bg-gray-25 flex items-center justify-center" style={{ backgroundColor: '#fafafa' }}>
         <div className="text-center space-y-6">
@@ -155,7 +369,9 @@ const Overview: React.FC<OverviewProps> = ({
               </div>
 
               {/* Total Cost */}
-              <div className="group">
+              
+            {role !== 'user' &&
+                <div className="group">
                 <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
                   <div className="p-5">
                     <div className="flex items-start justify-between mb-4">
@@ -174,9 +390,10 @@ const Overview: React.FC<OverviewProps> = ({
                   </div>
                 </div>
               </div>
+              }
 
               {/* Average Latency */}
-              <div className="group">
+              {role !== 'user' && <div className="group">
                 <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
                   <div className="p-5">
                     <div className="flex items-start justify-between mb-4">
@@ -194,7 +411,7 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Successful Calls */}
               <div className="group">
@@ -247,8 +464,102 @@ const Overview: React.FC<OverviewProps> = ({
                   </div>
                 </div>
               </div>
+
+
+            {customTotalResults.map((result) => {
+              const config = customTotals.find(c => c.id === result.configId)
+              if (!config) return null
+
+              const IconComponent = ICON_COMPONENTS[config.icon as keyof typeof ICON_COMPONENTS] || Users
+              const colorClass = COLOR_CLASSES[config.color as keyof typeof COLOR_CLASSES] || COLOR_CLASSES.blue
+
+              return (
+                <div key={config.id} className="group">
+                  <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`p-2 ${colorClass.replace('bg-', 'bg-').replace('text-', 'border-')} rounded-lg border`}>
+                          <IconComponent weight="regular" className={`w-5 h-5 ${colorClass.split(' ')[1]}`} />
+                        </div>
+                        
+                        {/* Action Menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 hover:bg-gray-100"
+                            >
+                              <MoreHorizontal className="h-3 w-3 text-gray-400" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleDeleteCustomTotal(config.id)}>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider truncate" title={config.name}>
+                          {config.name}
+                        </h3>
+                        <p className="text-2xl font-light text-gray-900 tracking-tight">
+                          {loadingCustomTotals ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            formatCustomTotalValue(result, config)
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-400 font-medium">
+                          {config.filters.length > 0 
+                            ? `${config.filters.length} filter${config.filters.length > 1 ? 's' : ''} (${config.filterLogic})`
+                            : 'No filters'
+                          }
+                        </p>
+                        {result.error && (
+                          <p className="text-xs text-red-500 mt-1">
+                            {result.error}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+
+            {userEmail && !fieldsLoading && (
+                    <div className="group">
+                      <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 cursor-pointer">
+                        <CustomTotalsBuilder
+                          agentId={agent.id}
+                          projectId={project.id}
+                          userEmail={userEmail}
+                          availableColumns={AVAILABLE_COLUMNS}
+                          dynamicMetadataFields={metadataFields}
+                          dynamicTranscriptionFields={transcriptionFields}
+                          onSave={handleSaveCustomTotal}
+                        />
+                      </div>
+                    </div>
+                  )}
             </div>
 
+            {process.env.NODE_ENV === 'development' && (
+              <Card className="border-yellow-200 bg-yellow-50">
+                <CardContent className="p-4">
+                  <div className="text-sm">
+                    <strong>Debug - Dynamic Fields:</strong>
+                    <div>Metadata: {metadataFields.join(', ') || 'None'}</div>
+                    <div>Transcription: {transcriptionFields.join(', ') || 'None'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             {/* 2x2 Chart Grid */}
             <div className="grid grid-cols-2 gap-6">
               {/* Daily Calls Chart */}
@@ -268,14 +579,20 @@ const Overview: React.FC<OverviewProps> = ({
                       <div className="text-right">
                         <div className="text-xs font-medium text-gray-500">Peak</div>
                         <div className="text-sm font-semibold text-gray-900">
-                          {analytics?.dailyData ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) : 0}
+                        {analytics?.dailyData && analytics.dailyData.length > 0 
+                        ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
+                        : 0
+                      }
                         </div>
                       </div>
                       <div className="w-px h-8 bg-gray-200"></div>
                       <div className="text-right">
                         <div className="text-xs font-medium text-gray-500">Avg</div>
                         <div className="text-sm font-semibold text-gray-900">
-                          {analytics?.dailyData ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) : 0}
+                        {analytics?.dailyData && analytics.dailyData.length > 0 
+                            ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
+                            : 0
+                          }
                         </div>
                       </div>
                     </div>
@@ -596,13 +913,19 @@ const Overview: React.FC<OverviewProps> = ({
             <div className="space-y-6">
               <AgentCustomLogsView
                 agentId={agent.id}
-                dateRange={dateRange}
+                dateRange={{
+                  from: dateRange.from,
+                  to: dateRange.to
+                }}
               />
 
               <EnhancedChartBuilder 
                 agentId={agent.id}
                 dateFrom={dateRange.from}
                 dateTo={dateRange.to}
+                metadataFields={[]}
+                transcriptionFields={[]}
+                fieldsLoading={false}
               />
             </div>
           </>

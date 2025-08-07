@@ -15,6 +15,9 @@ import { CostTooltip } from "../tool-tip/costToolTip"
 import { CallLog } from "../../types/logs"
 import { supabase } from "../../lib/supabase"
 import Papa from 'papaparse'
+import { useUser } from "@clerk/nextjs"
+import { getUserProjectRole } from "@/services/getUserRole"
+
 
 
 interface CallLogsProps {
@@ -164,9 +167,35 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     [],
   )
 
-  
+  const ROLE_RESTRICTIONS = {
+    user: [
+      'total_cost',
+      'total_llm_cost', 
+      'total_tts_cost',
+      'total_stt_cost',
+      'avg_latency'
+    ],
+    // Add other role restrictions as needed
+    // viewer: ['total_cost'],
+    // editor: [], // No restrictions
+    // admin: []  // No restrictions
+  }
+
+  const isColumnVisibleForRole = (columnKey: string, role: string | null): boolean => {
+    if (!role) return false
+    
+    const restrictedColumns = ROLE_RESTRICTIONS[role as keyof typeof ROLE_RESTRICTIONS]
+    if (!restrictedColumns) return true // If role not in restrictions, show all
+    
+    return !restrictedColumns.includes(columnKey)
+  }
+
+
+
+  const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null)
   const [activeFilters, setActiveFilters] = useState<FilterRule[]>([])
+  const [role, setRole] = useState<string | null>(null)
   const [visibleColumns, setVisibleColumns] = useState<{
     basic: string[]
     metadata: string[]
@@ -178,6 +207,12 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
   })
 
 
+
+  const getFilteredBasicColumns = useMemo(() => {
+    return basicColumns.filter(col => 
+      !col.hidden && isColumnVisibleForRole(col.key, role)
+    )
+  }, [role])
 
   // Convert FilterRule[] to Supabase filter format
   const convertToSupabaseFilters = (filters: FilterRule[]) => {
@@ -342,37 +377,82 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           : []
       }))
     }
-  
 
 
-  const queryOptions = useMemo(
-    () => ({
-      select: `
-      id,
-      call_id,
-      customer_number,
-      call_ended_reason,
-      call_started_at,
-      call_ended_at,
-      duration_seconds,
-      recording_url,
-      metadata,
-      environment,
-      transcript_type,
-      avg_latency,
-      transcript_json,
-      created_at,
-      transcription_metrics,
-      total_llm_cost,
-      total_tts_cost,
-      total_stt_cost
-    `,
+
+const { user } = useUser()
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress
+
+  // Load user role first
+  useEffect(() => {
+    if (userEmail) {
+      const getUserRole = async () => {
+        setRoleLoading(true)
+        try {
+          const userRole = await getUserProjectRole(userEmail, project.id)
+          setRole(userRole)
+        } catch (error) {
+          console.error('Failed to load user role:', error)
+          setRole('user') // Default to most restrictive role on error
+        } finally {
+          setRoleLoading(false)
+        }
+      }
+      getUserRole()
+    } else {
+      setRoleLoading(false)
+      setRole('user') // Default when no user email
+    }
+  }, [userEmail, project.id])
+
+  // Update visible columns when role changes
+  useEffect(() => {
+    if (role !== null) {
+      const allowedBasicColumns = getFilteredBasicColumns.map(col => col.key)
+      setVisibleColumns(prev => ({
+        ...prev,
+        basic: allowedBasicColumns
+      }))
+    }
+  }, [role, getFilteredBasicColumns])
+
+
+
+  const queryOptions = useMemo(() => {
+    // Build select clause based on role permissions
+    let selectColumns = [
+      'id',
+      'call_id',
+      'customer_number',
+      'call_ended_reason',
+      'call_started_at',
+      'call_ended_at',
+      'duration_seconds',
+      'recording_url',
+      'metadata',
+      'environment',
+      'transcript_type',
+      'transcript_json',
+      'created_at',
+      'transcription_metrics'
+    ]
+
+    // Add role-restricted columns only if user has permission
+    if (isColumnVisibleForRole('avg_latency', role)) {
+      selectColumns.push('avg_latency')
+    }
+    
+    if (isColumnVisibleForRole('total_llm_cost', role)) {
+      selectColumns.push('total_llm_cost', 'total_tts_cost', 'total_stt_cost')
+    }
+
+    return {
+      select: selectColumns.join(','),
       filters: convertToSupabaseFilters(activeFilters),
       orderBy: { column: "created_at", ascending: false },
       limit: 50,
-    }),
-    [agent.id, activeFilters],
-  )
+    }
+  }, [agent.id, activeFilters, role])
 
   
 
@@ -419,66 +499,213 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
   }, [dynamicColumns, basicColumns])
   
 
+  // Fixed handleDownloadCSV function
   const handleDownloadCSV = async () => {
     const { basic, metadata, transcription_metrics } = visibleColumns;
-  
-    // Build Supabase select string
-    // Always fetch metadata and transcription_metrics if you need their subfields
+
+    console.log('Download initiated with visible columns:', { basic, metadata, transcription_metrics });
+
+    // Always include id and agent_id for filtering, plus metadata and transcription_metrics if needed
     const selectColumns = [
-      ...(basic.filter(col => col !== "total_cost")), // Exclude total_cost from basic
-      ...(metadata.length ? ["metadata"] : []),
-      ...(transcription_metrics.length ? ["transcription_metrics"] : []),
-    ].join(",");
-  
-    // Build base query
-    let query = supabase
-      .from("pype_voice_call_logs")
-      .select(selectColumns);
-  
-    // Apply filters
-    for (const { column, operator, value } of convertToSupabaseFilters(activeFilters)) {
-      // Typesafe way, assuming only .eq, .ilike, .gte, .lte etc
-      // @ts-ignore
-      query = query[operator](column, value);
-    }
-  
-    // Fetch in chunks for large data sets
-    let allData: CallLog[] = [];
-    let page = 0;
-    const pageSize = 1000;
-    let done = false;
-  
-    while (!done) {
-      const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
-      if (error) {
-        alert("Failed to fetch data for export: " + error.message);
+      'id',
+      'agent_id',
+      ...basic.filter(col => col !== "total_cost"), // Exclude calculated field
+      ...(metadata.length > 0 ? ['metadata'] : []),
+      ...(transcription_metrics.length > 0 ? ['transcription_metrics'] : []),
+    ];
+
+    console.log('Select columns:', selectColumns);
+
+    try {
+      // Build base query with proper select
+      let query = supabase
+        .from("pype_voice_call_logs")
+        .select(selectColumns.join(','));
+
+      // Apply filters properly - FIXED VERSION
+      const filters = convertToSupabaseFilters(activeFilters);
+      console.log('Applying filters:', filters);
+
+      for (const filter of filters) {
+        switch (filter.operator) {
+          case 'eq':
+            query = query.eq(filter.column, filter.value);
+            break;
+          case 'ilike':
+            query = query.ilike(filter.column, filter.value);
+            break;
+          case 'gte':
+            query = query.gte(filter.column, filter.value);
+            break;
+          case 'lte':
+            query = query.lte(filter.column, filter.value);
+            break;
+          case 'gt':
+            query = query.gt(filter.column, filter.value);
+            break;
+          case 'lt':
+            query = query.lt(filter.column, filter.value);
+            break;
+          case 'not.is':
+            query = query.not(filter.column, 'is', filter.value);
+            break;
+          default:
+            console.warn(`Unknown operator: ${filter.operator}`);
+        }
+      }
+
+      // Order by created_at for consistency
+      query = query.order('created_at', { ascending: false });
+
+      // Fetch all data in chunks
+      let allData: CallLog[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMoreData = true;
+
+      console.log('Starting data fetch...');
+
+      while (hasMoreData) {
+        const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+        
+        if (error) {
+          console.error('Query error:', error);
+          alert("Failed to fetch data for export: " + error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data as unknown as CallLog[]);
+          console.log(`Fetched page ${page + 1}, total records: ${allData.length}`);
+          
+          // If we got less than pageSize, we're done
+          if (data.length < pageSize) {
+            hasMoreData = false;
+          } else {
+            page += 1;
+          }
+        } else {
+          hasMoreData = false;
+        }
+      }
+
+      console.log('Total records fetched:', allData.length);
+
+      if (allData.length === 0) {
+        alert("No data found to export");
         return;
       }
-      if (data) {
-        allData = allData.concat(data as unknown as CallLog[]);
-        if (data.length < pageSize) done = true;
-        else page += 1;
-      } else {
-        done = true;
+
+      // Debug: Check first record
+      console.log('Sample record:', allData[0]);
+      console.log('Sample metadata:', allData[0]?.metadata);
+      console.log('Sample transcription_metrics:', allData[0]?.transcription_metrics);
+
+      // Flatten data for CSV - FIXED VERSION
+      const csvData = allData.map((row, index) => {
+        const flattened = flattenAndPickColumnsFixed(row, basic, metadata, transcription_metrics);
+        
+        // Debug first few records
+        if (index < 3) {
+          console.log(`Flattened record ${index}:`, flattened);
+        }
+        
+        return flattened;
+      });
+
+      console.log('CSV headers would be:', Object.keys(csvData[0] || {}));
+
+      // Generate and download CSV
+      const csv = Papa.unparse(csvData);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `call_logs_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('CSV download completed');
+
+    } catch (error) {
+      console.error('Download error:', error);
+      alert("Failed to download CSV: " + (error as Error).message);
+    }
+  };
+
+  // Fixed flatten function with better debugging
+  function flattenAndPickColumnsFixed(
+    row: CallLog,
+    basic: string[],
+    metadata: string[],
+    transcription: string[]
+  ): Record<string, any> {
+    const flat: Record<string, any> = {};
+
+    console.log('Flattening row:', {
+      id: row.id,
+      hasMetadata: !!row.metadata,
+      hasTranscription: !!row.transcription_metrics,
+      metadataType: typeof row.metadata,
+      transcriptionType: typeof row.transcription_metrics
+    });
+
+    // Basic columns (exclude "total_cost" as it's calculated)
+    for (const key of basic) {
+      if (key in row && key !== 'total_cost') {
+        flat[key] = row[key as keyof CallLog];
       }
     }
-  
-    // Map/flatten for CSV according to selected columns
-    const csvData = allData.map((row) =>
-      flattenAndPickColumns(row, basic, metadata, transcription_metrics)
-    );
-  
-    // Build CSV and trigger download
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "call_logs.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+
+    // Add calculated total_cost if requested
+    if (basic.includes('total_cost')) {
+      const totalCost = (row.total_llm_cost || 0) + (row.total_tts_cost || 0) + (row.total_stt_cost || 0);
+      flat['total_cost'] = totalCost;
+    }
+
+    // Metadata columns - FIXED
+    if (row.metadata && typeof row.metadata === "object" && metadata.length > 0) {
+      console.log('Processing metadata fields:', metadata);
+      console.log('Available metadata keys:', Object.keys(row.metadata));
+      
+      for (const key of metadata) {
+        const value = row.metadata[key];
+        // Prefix with 'metadata_' to avoid column name conflicts
+        flat[`metadata_${key}`] = value !== undefined && value !== null 
+          ? (typeof value === 'object' ? JSON.stringify(value) : String(value))
+          : '';
+      }
+    } else if (metadata.length > 0) {
+      // Add empty values for missing metadata
+      for (const key of metadata) {
+        flat[`metadata_${key}`] = '';
+      }
+    }
+
+    // Transcription metrics columns - FIXED
+    if (row.transcription_metrics && typeof row.transcription_metrics === "object" && transcription.length > 0) {
+      console.log('Processing transcription fields:', transcription);
+      console.log('Available transcription keys:', Object.keys(row.transcription_metrics));
+      
+      for (const key of transcription) {
+        const value = row.transcription_metrics[key];
+        // Prefix with 'transcription_' to avoid column name conflicts
+        flat[`transcription_${key}`] = value !== undefined && value !== null 
+          ? (typeof value === 'object' ? JSON.stringify(value) : String(value))
+          : '';
+      }
+    } else if (transcription.length > 0) {
+      // Add empty values for missing transcription_metrics
+      for (const key of transcription) {
+        flat[`transcription_${key}`] = '';
+      }
+    }
+
+    console.log('Final flattened keys:', Object.keys(flat));
+    return flat;
+  }
 
   // Calculate total dynamic columns for table width
   const totalVisibleColumns = visibleColumns.metadata.length + visibleColumns.transcription_metrics.length

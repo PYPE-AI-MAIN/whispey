@@ -203,7 +203,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       }
 
       const url = `/api/campaign-logs?${params.toString()}`
-      console.log(`Fetching logs: ${url}`)
 
       const response = await fetch(url)
       
@@ -230,7 +229,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       setLogs(data.items)
       setPagination(data.pagination)
 
-      console.log(`Loaded ${data.items.length} logs (Page ${data.pagination.currentPage}/${data.pagination.totalPages})`)
 
     } catch (err: any) {
       console.error('Error fetching campaign logs:', err)

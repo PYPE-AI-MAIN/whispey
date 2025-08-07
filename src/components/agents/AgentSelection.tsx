@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -61,6 +61,13 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
   const [copiedAgentId, setCopiedAgentId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [breadcrumb, setBreadcrumb] = useState<{
+    project?: string;
+    item?: string;
+  }>({
+    project: '',
+    item: ''
+  })
   const router = useRouter()
 
   // Fetch project data
@@ -71,9 +78,18 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
 
   const project = projects?.[0]
 
-  const breadcrumb = project ? {
-    project: project.name,
-  } : undefined
+
+  useEffect(()=>{
+    if(projectId && project){
+      setBreadcrumb({
+        project: project.name,
+        item: 'Agents'
+      })
+    }
+  },[projectId,project])
+
+  
+
 
   // Fetch agents data
   const { data: agents, loading: agentsLoading, error: agentsError, refetch } = useSupabaseQuery('pype_voice_agents', {

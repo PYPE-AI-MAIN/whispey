@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   breadcrumb?: {
@@ -18,12 +19,23 @@ interface HeaderProps {
 
 function Header({ breadcrumb }: HeaderProps) {
   const pathname = usePathname();
+  const [breadcrumbState, setBreadcrumbState] = useState<{
+    project?: string;
+    item?: string;
+  } | null>(null);
   const { user } = useUser();
+
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
     return pathname.startsWith(path);
   };
+
+  useEffect(()=>{
+    if(breadcrumb){
+      setBreadcrumbState(breadcrumb)
+    }
+  },[breadcrumb])
 
   // Get user's display name
   const getUserDisplayName = () => {
@@ -54,7 +66,7 @@ function Header({ breadcrumb }: HeaderProps) {
               </Link>
 
               {/* Apple-Style Clean Breadcrumb */}
-              {breadcrumb && (
+              {breadcrumbState && (
                 <div className="flex items-center">
                   <div className="w-px h-6 bg-gray-200 mx-6"></div>
                   <nav className="flex items-center gap-2 text-sm">
@@ -65,20 +77,20 @@ function Header({ breadcrumb }: HeaderProps) {
                       Home
                     </Link>
                     
-                    {breadcrumb.project && (
+                    {breadcrumbState.project && (
                       <>
                         <ChevronRight className="w-4 h-4 text-gray-300" />
                         <span className="text-gray-900">
-                          {breadcrumb.project}
+                          {breadcrumbState.project}
                         </span>
                       </>
                     )}
                     
-                    {breadcrumb.item && (
+                    {breadcrumbState.item && (
                       <>
                         <ChevronRight className="w-4 h-4 text-gray-300" />
                         <span className="text-gray-900">
-                          {breadcrumb.item}
+                          {breadcrumbState.item}
                         </span>
                       </>
                     )}

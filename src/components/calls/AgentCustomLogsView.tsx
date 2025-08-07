@@ -372,9 +372,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     setError(null)
 
 
-    console.log("dateRange.to:", dateRange.to); // Should be "2025-08-04"
     const endOfDay = new Date(dateRange.to + "T23:59:59.999");
-    console.log("endOfDay:", endOfDay.toISOString());
 
 
     try {
@@ -514,9 +512,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     const interval = setInterval(async () => {
       try {
         const filters = convertToSupabaseFilters(currentFilters)
-        console.log("dateRange.to:", dateRange.to); // Should be "2025-08-04"
         const endOfDay = new Date(dateRange.to + "T23:59:59.999");
-        console.log("endOfDay:", endOfDay.toISOString());
         
         let query = supabase
           .from("pype_voice_call_logs")
@@ -533,7 +529,6 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
         }
   
         const { data, error } = await query
-        console.log(error)
         if (error) throw error
 
   

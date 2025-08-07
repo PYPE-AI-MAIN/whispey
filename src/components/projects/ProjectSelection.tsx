@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import TokenRegenerationConfirmDialog from '../TokenRegenerationConfirmDialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { ChevronRight, Settings, Loader2, AlertCircle, Search, Plus, FolderOpen, MoreHorizontal, Trash2, Key, Copy, Eye, EyeOff, RefreshCw, Users, Clock, Filter, SortDesc, Grid3X3, List, ExternalLink, Building2, Folder } from 'lucide-react'
-import { useSupabaseQuery } from '../../hooks/useSupabase'
 import ProjectCreationDialog from './ProjectCreationDialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import MemberManagementDialog from '../MemberManagmentDialog'
@@ -66,7 +65,8 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
     fetchProjects()
   }, [])
 
-  const refetch = fetchProjects
+
+  const refetch = fetchProjects;
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project.id)
@@ -97,6 +97,10 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to delete workspace')
       }
+
+      const result = await response.json()
+      
+      // Refresh the projects list
       refetch()
       setShowDeleteConfirm(null)
     } catch (error: unknown) {
@@ -123,7 +127,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
       const result = await response.json()
       setRegeneratedToken(result.api_token)
       setShowTokenDialog(project)
-      setShowRegenerateConfirm(null)
+      setShowRegenerateConfirm(null) // Close confirmation dialog
+      
+      // Refresh the projects list to get updated token_hash
       refetch()
     } catch (error: unknown) {
       console.error('Error regenerating token:', error)

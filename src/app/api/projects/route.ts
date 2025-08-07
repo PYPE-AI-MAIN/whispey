@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       .select('*')
       .single()
 
+
     if (projectError) {
       console.error('Error creating project:', projectError)
       return NextResponse.json(
