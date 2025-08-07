@@ -81,7 +81,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 await session.start(...)
 ```
 
-**📊 View your analytics:** [https://whispey.pypeai.com/](https://whispey.pypeai.com/)
+**📊 View your analytics:** [https://whispey.pypeai.com/](https://www.whispey.xyz/)
 
 ### Self-Hosted Installation
 
