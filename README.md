@@ -11,6 +11,17 @@
 
 **Professional voice analytics and observability for AI agents. Monitor, analyze, and improve your voice AI applications with beautiful dashboards and actionable insights.**
 
+
+<p align="center">
+  <img 
+    src="https://github.com/user-attachments/assets/36cdfc8f-a8a1-4c1f-b52e-14db353aa1cb" 
+    alt="livekit" 
+    width="500" 
+    style="border-radius: 60%; box-shadow: 0 0 12px rgba(0,0,0,0.2);" 
+  />
+</p>
+
+
 [🚀 Get Started](#quick-start) • [📊 Live Demo](https://www.whispey.xyz/) • [📖 Documentation](https://www.whispey.xyz/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/whispey)
 
 </div>
