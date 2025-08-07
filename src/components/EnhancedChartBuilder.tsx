@@ -279,6 +279,8 @@ export const useQuickFieldDiscovery = (agentId: string, dateFrom: string, dateTo
           .eq('id', agentId)
           .single()
 
+          console.log("debug agentData", agentData)
+
         // Get metadata fields from sample data
         const { data: sampleRecords } = await supabase
           .from('pype_voice_call_logs')
@@ -312,7 +314,7 @@ export const useQuickFieldDiscovery = (agentId: string, dateFrom: string, dateTo
       }
     }
 
-    if (agentId && dateFrom && dateTo) {
+    if (true) {
       discoverFields()
     }
   }, [agentId, dateFrom, dateTo])
@@ -325,9 +327,12 @@ interface EnhancedChartBuilderProps {
   agentId: string
   dateFrom: string
   dateTo: string
+  metadataFields:string[],
+  transcriptionFields:string[],
+  fieldsLoading:boolean
 }
 
-export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agentId, dateFrom, dateTo }) => {
+export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agentId, dateFrom, dateTo,metadataFields,transcriptionFields ,fieldsLoading}) => {
   const [charts, setCharts] = useState<ChartConfig[]>([])
   const [showBuilder, setShowBuilder] = useState(false)
   const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day')
@@ -336,7 +341,13 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
     color: '#3b82f6'
   })
 
-  const { fields, loading: fieldsLoading } = useQuickFieldDiscovery(agentId, dateFrom, dateTo)
+  console.log("debug metadataFields", metadataFields)
+
+
+  const fields = {
+    metadata: metadataFields,
+    transcription_metrics: transcriptionFields
+  }
 
   // Predefined table fields for quick access
   const tableFields = [

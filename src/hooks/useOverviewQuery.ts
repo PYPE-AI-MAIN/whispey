@@ -36,7 +36,6 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
     
         // 🔄 Call the PostgreSQL function to refresh the materialized view
         const { error: refreshError } = await supabase.rpc('refresh_call_summary')
-        console.log(refreshError)
         if (refreshError) throw refreshError
 
     
@@ -59,9 +58,9 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
           .order('call_date', { ascending: true })
             
 
-          console.log(queryError)
         if (queryError) throw queryError
-    
+            
+        
         const totalCalls = dailyStats?.reduce((sum, day) => sum + day.calls, 0) || 0
         const successfulCalls = dailyStats?.reduce((sum, day) => sum + day.successful_calls, 0) || 0
         const totalCost = dailyStats?.reduce((sum, day) => sum + day.total_cost, 0) || 0
