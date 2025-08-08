@@ -176,3 +176,237 @@ CREATE UNIQUE INDEX call_summary_agent_date_idx
 
 
 REFRESH MATERIALIZED VIEW CONCURRENTLY call_summary_materialized;
+
+
+-- Drop and recreate with corrected COUNT logic
+DROP FUNCTION IF EXISTS calculate_custom_total(UUID, TEXT, TEXT, TEXT, JSONB, TEXT, DATE, DATE);
+DROP FUNCTION IF EXISTS build_single_filter_condition(JSONB);
+
+CREATE OR REPLACE FUNCTION calculate_custom_total(
+  p_agent_id UUID,
+  p_aggregation TEXT,
+  p_column_name TEXT,
+  p_json_field TEXT DEFAULT NULL,
+  p_filters JSONB DEFAULT '[]'::jsonb,
+  p_filter_logic TEXT DEFAULT 'AND',
+  p_date_from DATE DEFAULT NULL,
+  p_date_to DATE DEFAULT NULL
+)
+RETURNS TABLE(
+  result NUMERIC,
+  error_message TEXT
+) AS $$
+DECLARE
+  base_query TEXT;
+  where_conditions TEXT[] := ARRAY[]::TEXT[];
+  filter_conditions TEXT[] := ARRAY[]::TEXT[];
+  final_where TEXT := '';
+  result_value NUMERIC := 0;
+  error_msg TEXT := NULL;
+  rec RECORD;
+  filter_item JSONB;
+  filter_condition TEXT;
+BEGIN
+  -- Normalize p_json_field
+  IF p_json_field = '' OR p_json_field = 'null' THEN
+    p_json_field := NULL;
+  END IF;
+
+  -- Build base query - FIXED LOGIC
+  IF p_aggregation = 'COUNT' THEN
+    -- For COUNT, don't add JSON field restrictions to base query
+    -- Let the filters handle the specific conditions
+    base_query := 'SELECT COUNT(*) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    
+  ELSIF p_aggregation = 'COUNT_DISTINCT' THEN
+    IF p_json_field IS NOT NULL THEN
+      -- Only for COUNT_DISTINCT do we need to ensure the field exists for the DISTINCT operation
+      base_query := 'SELECT COUNT(DISTINCT (' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ')) as result FROM pype_voice_call_logs WHERE agent_id = $1 AND ' || 
+                   quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' IS NOT NULL AND ' ||
+                   quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' != ''''';
+    ELSE
+      base_query := 'SELECT COUNT(DISTINCT ' || quote_ident(p_column_name) || ') as result FROM pype_voice_call_logs WHERE agent_id = $1 AND ' || quote_ident(p_column_name) || ' IS NOT NULL';
+    END IF;
+    
+  ELSIF p_aggregation = 'SUM' THEN
+    IF p_json_field IS NOT NULL THEN
+      base_query := 'SELECT COALESCE(SUM(CASE WHEN ' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' ~ ''^-?[0-9]+\.?[0-9]*$'' THEN (' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ')::NUMERIC ELSE 0 END), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    ELSE
+      base_query := 'SELECT COALESCE(SUM(' || quote_ident(p_column_name) || '), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    END IF;
+    
+  ELSIF p_aggregation = 'AVG' THEN
+    IF p_json_field IS NOT NULL THEN
+      base_query := 'SELECT COALESCE(AVG(CASE WHEN ' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' ~ ''^-?[0-9]+\.?[0-9]*$'' THEN (' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ')::NUMERIC ELSE NULL END), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    ELSE
+      base_query := 'SELECT COALESCE(AVG(' || quote_ident(p_column_name) || '), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    END IF;
+    
+  ELSIF p_aggregation = 'MIN' THEN
+    IF p_json_field IS NOT NULL THEN
+      base_query := 'SELECT COALESCE(MIN(CASE WHEN ' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' ~ ''^-?[0-9]+\.?[0-9]*$'' THEN (' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ')::NUMERIC ELSE NULL END), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    ELSE
+      base_query := 'SELECT COALESCE(MIN(' || quote_ident(p_column_name) || '), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    END IF;
+    
+  ELSIF p_aggregation = 'MAX' THEN
+    IF p_json_field IS NOT NULL THEN
+      base_query := 'SELECT COALESCE(MAX(CASE WHEN ' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' ~ ''^-?[0-9]+\.?[0-9]*$'' THEN (' || quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ')::NUMERIC ELSE NULL END), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    ELSE
+      base_query := 'SELECT COALESCE(MAX(' || quote_ident(p_column_name) || '), 0) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+    END IF;
+    
+  ELSE
+    error_msg := 'Unsupported aggregation type: ' || p_aggregation;
+    RETURN QUERY SELECT NULL::NUMERIC, error_msg;
+    RETURN;
+  END IF;
+
+  -- Add date range conditions to where_conditions (these are always AND)
+  IF p_date_from IS NOT NULL THEN
+    where_conditions := array_append(where_conditions, 
+      'call_started_at >= ' || quote_literal(p_date_from || ' 00:00:00'));
+  END IF;
+  
+  IF p_date_to IS NOT NULL THEN
+    where_conditions := array_append(where_conditions, 
+      'call_started_at <= ' || quote_literal(p_date_to || ' 23:59:59.999'));
+  END IF;
+
+  -- IMPORTANT: For COUNT operations with JSON fields, add the field existence check as a filter
+  -- This ensures we only count records where the field exists
+  IF p_aggregation = 'COUNT' AND p_json_field IS NOT NULL THEN
+    where_conditions := array_append(where_conditions,
+      quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' IS NOT NULL AND ' ||
+      quote_ident(p_column_name) || '->>' || quote_literal(p_json_field) || ' != ''''');
+  END IF;
+
+  -- Process custom filters separately
+  FOR filter_item IN SELECT * FROM jsonb_array_elements(p_filters)
+  LOOP
+    filter_condition := build_single_filter_condition(filter_item);
+    IF filter_condition IS NOT NULL AND filter_condition != '' THEN
+      filter_conditions := array_append(filter_conditions, filter_condition);
+    END IF;
+  END LOOP;
+
+  -- Build final WHERE clause
+  -- First add the basic where conditions (agent_id, dates, field existence, etc.)
+  final_where := '';
+  IF array_length(where_conditions, 1) > 0 THEN
+    final_where := ' AND ' || array_to_string(where_conditions, ' AND ');
+  END IF;
+
+  -- Then add the custom filter conditions with proper logic
+  IF array_length(filter_conditions, 1) > 0 THEN
+    IF p_filter_logic = 'OR' THEN
+      -- All custom filters joined with OR
+      final_where := final_where || ' AND (' || array_to_string(filter_conditions, ' OR ') || ')';
+    ELSE
+      -- All custom filters joined with AND (default)
+      final_where := final_where || ' AND (' || array_to_string(filter_conditions, ' AND ') || ')';
+    END IF;
+  END IF;
+
+  -- Add the WHERE clause to the base query
+  base_query := base_query || final_where;
+
+  -- Debug logging
+  RAISE NOTICE 'Final query: %', base_query;
+  RAISE NOTICE 'Filter conditions: %', filter_conditions;
+  RAISE NOTICE 'Where conditions: %', where_conditions;
+  RAISE NOTICE 'Filter logic: %', p_filter_logic;
+
+  -- Execute the query
+  BEGIN
+    EXECUTE base_query INTO rec USING p_agent_id;
+    result_value := rec.result;
+    RETURN QUERY SELECT COALESCE(result_value, 0), error_msg;
+  EXCEPTION WHEN OTHERS THEN
+    error_msg := 'Query execution error: ' || SQLERRM || ' | Query: ' || base_query;
+    RETURN QUERY SELECT NULL::NUMERIC, error_msg;
+  END;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper function to build individual filter conditions (unchanged)
+CREATE OR REPLACE FUNCTION build_single_filter_condition(filter_obj JSONB)
+RETURNS TEXT AS $$
+DECLARE
+  column_name TEXT;
+  json_field TEXT;
+  operation TEXT;
+  filter_value TEXT;
+  condition TEXT := '';
+BEGIN
+  -- Extract filter properties
+  column_name := filter_obj->>'column';
+  json_field := filter_obj->>'jsonField';
+  operation := filter_obj->>'operation';
+  filter_value := filter_obj->>'value';
+
+  -- Normalize empty strings to NULL
+  IF json_field = '' OR json_field = 'null' THEN
+    json_field := NULL;
+  END IF;
+
+  -- Validate required fields
+  IF column_name IS NULL OR operation IS NULL THEN
+    RETURN '';
+  END IF;
+
+  -- Build condition based on operation
+  CASE operation
+    WHEN 'equals', 'json_equals' THEN
+      IF json_field IS NOT NULL THEN
+        condition := quote_ident(column_name) || '->>' || quote_literal(json_field) || ' = ' || quote_literal(filter_value);
+      ELSE
+        condition := quote_ident(column_name) || ' = ' || quote_literal(filter_value);
+      END IF;
+    
+    WHEN 'contains', 'json_contains' THEN
+      IF json_field IS NOT NULL THEN
+        condition := quote_ident(column_name) || '->>' || quote_literal(json_field) || ' ILIKE ' || quote_literal('%' || filter_value || '%');
+      ELSE
+        condition := quote_ident(column_name) || ' ILIKE ' || quote_literal('%' || filter_value || '%');
+      END IF;
+    
+    WHEN 'starts_with' THEN
+      IF json_field IS NOT NULL THEN
+        condition := quote_ident(column_name) || '->>' || quote_literal(json_field) || ' ILIKE ' || quote_literal(filter_value || '%');
+      ELSE
+        condition := quote_ident(column_name) || ' ILIKE ' || quote_literal(filter_value || '%');
+      END IF;
+    
+    WHEN 'greater_than', 'json_greater_than' THEN
+      IF json_field IS NOT NULL THEN
+        condition := '(' || quote_ident(column_name) || '->>' || quote_literal(json_field) || ')::NUMERIC > ' || quote_literal(filter_value) || '::NUMERIC';
+      ELSE
+        condition := quote_ident(column_name) || ' > ' || quote_literal(filter_value) || '::NUMERIC';
+      END IF;
+    
+    WHEN 'less_than', 'json_less_than' THEN
+      IF json_field IS NOT NULL THEN
+        condition := '(' || quote_ident(column_name) || '->>' || quote_literal(json_field) || ')::NUMERIC < ' || quote_literal(filter_value) || '::NUMERIC';
+      ELSE
+        condition := quote_ident(column_name) || ' < ' || quote_literal(filter_value) || '::NUMERIC';
+      END IF;
+    
+    WHEN 'json_exists' THEN
+      IF json_field IS NOT NULL THEN
+        condition := quote_ident(column_name) || '->>' || quote_literal(json_field) || ' IS NOT NULL AND ' ||
+                    quote_ident(column_name) || '->>' || quote_literal(json_field) || ' != ''''';
+      ELSE
+        condition := quote_ident(column_name) || ' IS NOT NULL';
+      END IF;
+    
+    ELSE
+      condition := '';
+  END CASE;
+
+  -- Debug individual filter conditions
+  RAISE NOTICE 'Built filter condition: %', condition;
+
+  RETURN condition;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
