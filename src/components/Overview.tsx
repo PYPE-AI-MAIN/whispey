@@ -35,7 +35,6 @@ import {
   Cell
 } from 'recharts'
 import { useOverviewQuery } from '../hooks/useOverviewQuery'
-import AgentCustomLogsView from './calls/AgentCustomLogsView'
 import { getUserProjectRole } from '@/services/getUserRole'
 import { 
   DropdownMenu,
@@ -44,7 +43,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Loader2, MoreHorizontal, Trash2 } from 'lucide-react'
-import { EnhancedChartBuilder } from './EnhancedChartBuilder'
+import { EnhancedChartBuilder, ChartProvider } from './EnhancedChartBuilder'
+import { FloatingActionMenu } from './FloatingActionMenu'
 
 
 import { useDynamicFields } from '../hooks/useDynamicFields'
@@ -52,10 +52,8 @@ import { useUser } from "@clerk/nextjs"
 import CustomTotalsBuilder from './CustomTotalBuilds'
 import { CustomTotalsService } from '@/services/customTotalService'
 import { CustomTotalConfig, CustomTotalResult } from '../types/customTotals'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Card, CardContent } from './ui/card'
 import { Button } from './ui/button'
-import { Badge } from './ui/badge'
 
 
 
@@ -532,21 +530,7 @@ const Overview: React.FC<OverviewProps> = ({
             })}
 
 
-            {userEmail && !fieldsLoading && (
-                    <div className="group">
-                      <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 cursor-pointer">
-                        <CustomTotalsBuilder
-                          agentId={agent.id}
-                          projectId={project.id}
-                          userEmail={userEmail}
-                          availableColumns={AVAILABLE_COLUMNS}
-                          dynamicMetadataFields={metadataFields}
-                          dynamicTranscriptionFields={transcriptionFields}
-                          onSave={handleSaveCustomTotal}
-                        />
-                      </div>
-                    </div>
-                  )}
+
             </div>
 
             {process.env.NODE_ENV === 'development' && (
@@ -909,25 +893,32 @@ const Overview: React.FC<OverviewProps> = ({
               </div>
             </div>
 
-            {/* Additional Components */}
-            <div className="space-y-6">
-              <AgentCustomLogsView
-                agentId={agent.id}
-                dateRange={{
-                  from: dateRange.from,
-                  to: dateRange.to
-                }}
-              />
+            {/* Chart Analytics Section */}
+            <ChartProvider>
+              <div className="space-y-6">
+                <EnhancedChartBuilder 
+                  agentId={agent.id}
+                  dateFrom={dateRange.from}
+                  dateTo={dateRange.to}
+                  metadataFields={metadataFields}
+                  transcriptionFields={transcriptionFields}
+                  fieldsLoading={fieldsLoading}
+                />
 
-              <EnhancedChartBuilder 
-                agentId={agent.id}
-                dateFrom={dateRange.from}
-                dateTo={dateRange.to}
-                metadataFields={[]}
-                transcriptionFields={[]}
-                fieldsLoading={false}
-              />
-            </div>
+                {/* Floating Action Menu */}
+                {userEmail && !fieldsLoading && (
+                  <FloatingActionMenu
+                    metadataFields={metadataFields}
+                    transcriptionFields={transcriptionFields}
+                    agentId={agent.id}
+                    projectId={project.id}
+                    userEmail={userEmail}
+                    availableColumns={AVAILABLE_COLUMNS}
+                    onSaveCustomTotal={handleSaveCustomTotal}
+                  />
+                )}
+              </div>
+            </ChartProvider>
           </>
         ) : (
           <div className="h-full flex items-center justify-center">

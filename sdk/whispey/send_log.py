@@ -61,12 +61,23 @@ async def send_to_whispey(data):
     if "call_ended_at" in data:
         data["call_ended_at"] = convert_timestamp(data["call_ended_at"])
     
+    # Validate API key
+    if not WHISPEY_API_KEY:
+        error_msg = "WHISPEY_API_KEY environment variable not set"
+        print(f"❌ {error_msg}")
+        return {
+            "success": False,
+            "error": error_msg
+        }
     
-    # Headers
+    # Headers - ensure no None values
     headers = {
         "Content-Type": "application/json",
-        "x-whispey-token": WHISPEY_API_KEY
+        "x-pype-token": WHISPEY_API_KEY
     }
+    
+    # Validate headers
+    headers = {k: v for k, v in headers.items() if k is not None and v is not None}
     
     print(f"📤 Sending data to Whispey API...")
     print(f"Data keys: {list(data.keys())}")
@@ -100,7 +111,8 @@ async def send_to_whispey(data):
                         "data": result
                     }
                     
-    except json.JSONEncodeError as e:
+    except (TypeError, ValueError) as e:
+        # These are the actual exceptions json.dumps() raises
         error_msg = f"JSON serialization failed: {e}"
         print(f"❌ {error_msg}")
         return {

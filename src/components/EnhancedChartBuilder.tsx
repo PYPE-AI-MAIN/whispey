@@ -1,11 +1,12 @@
 // Enhanced chart hook - COUNT with multi-line support
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, createContext, useContext } from 'react'
 import { supabase } from '../lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { Plus, X, Loader2, TrendingUp } from 'lucide-react'
 
@@ -17,6 +18,7 @@ interface ChartConfig {
   chartType: 'line' | 'bar'
   filterValue?: string
   color: string
+  groupBy: 'day' | 'week' | 'month'
 }
 
 
@@ -37,13 +39,89 @@ interface ProcessedRecord {
   fieldValue: string
 }
 
+// Chart Context
+interface ChartContextType {
+  charts: ChartConfig[]
+  setCharts: React.Dispatch<React.SetStateAction<ChartConfig[]>>
+  newChart: Partial<ChartConfig>
+  setNewChart: React.Dispatch<React.SetStateAction<Partial<ChartConfig>>>
+  addChart: () => void
+  removeChart: (id: string) => void
+  updateChartGroupBy: (id: string, groupBy: 'day' | 'week' | 'month') => void
+}
+
+const ChartContext = createContext<ChartContextType | undefined>(undefined)
+
+export const useChartContext = () => {
+  const context = useContext(ChartContext)
+  if (!context) {
+    throw new Error('useChartContext must be used within a ChartProvider')
+  }
+  return context
+}
+
+// Chart Provider Component
+interface ChartProviderProps {
+  children: React.ReactNode
+}
+
+export const ChartProvider: React.FC<ChartProviderProps> = ({ children }) => {
+  const [charts, setCharts] = useState<ChartConfig[]>([])
+  const [newChart, setNewChart] = useState<Partial<ChartConfig>>({
+    chartType: 'line',
+    color: '#3b82f6',
+    groupBy: 'day'
+  })
+
+  const addChart = () => {
+    if (!newChart.field || !newChart.source) return
+
+    const chart: ChartConfig = {
+      id: Date.now().toString(),
+      title: newChart.title || `${newChart.field} Count${newChart.filterValue ? ` (${newChart.filterValue})` : ''}`,
+      field: newChart.field,
+      source: newChart.source as 'table' | 'metadata' | 'transcription_metrics',
+      chartType: newChart.chartType as 'line' | 'bar',
+      filterValue: newChart.filterValue,
+      color: newChart.color || '#3b82f6',
+      groupBy: newChart.groupBy as 'day' | 'week' | 'month' || 'day'
+    }
+
+    setCharts(prev => [...prev, chart])
+    setNewChart({ chartType: 'line', color: '#3b82f6', groupBy: 'day' })
+  }
+
+  const removeChart = (id: string) => {
+    setCharts(prev => prev.filter(c => c.id !== id))
+  }
+
+  const updateChartGroupBy = (id: string, groupBy: 'day' | 'week' | 'month') => {
+    setCharts(prev => prev.map(chart => 
+      chart.id === id ? { ...chart, groupBy } : chart
+    ))
+  }
+
+  return (
+    <ChartContext.Provider value={{
+      charts,
+      setCharts,
+      newChart,
+      setNewChart,
+      addChart,
+      removeChart,
+      updateChartGroupBy
+    }}>
+      {children}
+    </ChartContext.Provider>
+  )
+}
+
 
 export const useCountChartData = (
   config: ChartConfig,
   agentId: string,
   dateFrom: string,
-  dateTo: string,
-  groupBy: 'day' | 'week' | 'month' = 'day'
+  dateTo: string
 ) => {
   const [data, setData] = useState<ChartDataPoint[]>([])
   const [loading, setLoading] = useState(false)
@@ -122,7 +200,7 @@ export const useCountChartData = (
           // SINGLE LINE LOGIC: Just count by date
           const grouped = records.reduce((acc, record) => {
             const date = new Date(record.created_at)
-            const dateKey = getDateKey(date, groupBy)
+            const dateKey = getDateKey(date, config.groupBy)
 
             if (!acc[dateKey]) {
               acc[dateKey] = 0
@@ -170,8 +248,19 @@ export const useCountChartData = (
           }).filter((record: ProcessedRecord) => record.fieldValue !== 'null') // Remove null values
 
 
-          // Get unique values
-          const uniqueVals: string[] = [...new Set(processedRecords.map(r => r.fieldValue))].sort()
+          // Get unique values and their counts
+          const valueCounts = processedRecords.reduce((acc, record) => {
+            acc[record.fieldValue] = (acc[record.fieldValue] || 0) + 1
+            return acc
+          }, {} as { [key: string]: number })
+
+          // Sort by count (descending) and take top 10
+          const topValues = Object.entries(valueCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 10)
+            .map(([value]) => value)
+
+          const uniqueVals: string[] = topValues
           setUniqueValues(uniqueVals)
 
           if (uniqueVals.length === 0) {
@@ -179,11 +268,12 @@ export const useCountChartData = (
             return
           }
 
-          // Group by date AND field value
+          // Group by date AND field value (with "Others" for remaining values)
           const grouped = processedRecords.reduce((acc, record) => {
             const date = new Date(record.created_at)
-            const dateKey = getDateKey(date, groupBy)
-            const fieldValue = record.fieldValue
+            const dateKey = getDateKey(date, config.groupBy)
+            // Group less common values as "Others"
+            const fieldValue = uniqueVals.includes(record.fieldValue) ? record.fieldValue : 'Others'
 
             if (!acc[dateKey]) {
               acc[dateKey] = {}
@@ -195,6 +285,11 @@ export const useCountChartData = (
             return acc
           }, {} as { [date: string]: { [value: string]: number } })
 
+          // Add "Others" to uniqueVals if there are more than 10 total unique values
+          const allUniqueVals = Object.keys(valueCounts)
+          const finalUniqueVals = allUniqueVals.length > 10 ? [...uniqueVals, 'Others'] : uniqueVals
+          setUniqueValues(finalUniqueVals)
+
 
           // Convert to chart format
           const chartData: ChartDataPoint[] = Object.entries(grouped)
@@ -202,7 +297,7 @@ export const useCountChartData = (
               const dataPoint: ChartDataPoint = { date: dateKey }
               
               // Add count for each unique value (0 if missing)
-              uniqueVals.forEach(value => {
+              finalUniqueVals.forEach(value => {
                 dataPoint[value] = valueCounts[value] || 0
               })
               
@@ -223,7 +318,7 @@ export const useCountChartData = (
     }
 
     fetchChartData()
-  }, [config, agentId, dateFrom, dateTo, groupBy])
+  }, [config, agentId, dateFrom, dateTo])
 
   return { data, loading, error, uniqueValues }
 }
@@ -312,55 +407,39 @@ interface EnhancedChartBuilderProps {
   agentId: string
   dateFrom: string
   dateTo: string
-  metadataFields:string[],
-  transcriptionFields:string[],
-  fieldsLoading:boolean
+  metadataFields: string[]
+  transcriptionFields: string[]
+  fieldsLoading: boolean
 }
 
-export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agentId, dateFrom, dateTo,metadataFields,transcriptionFields ,fieldsLoading}) => {
-  const [charts, setCharts] = useState<ChartConfig[]>([])
-  const [showBuilder, setShowBuilder] = useState(false)
-  const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day')
-  const [newChart, setNewChart] = useState<Partial<ChartConfig>>({
-    chartType: 'line',
-    color: '#3b82f6'
-  })
+const EnhancedChartBuilderContent: React.FC<EnhancedChartBuilderProps> = ({ 
+  agentId, 
+  dateFrom, 
+  dateTo, 
+  metadataFields, 
+  transcriptionFields, 
+  fieldsLoading 
+}) => {
+  const { charts, removeChart, updateChartGroupBy } = useChartContext()
 
-
-
-  const fields = {
-    metadata: metadataFields,
-    transcription_metrics: transcriptionFields
-  }
-
-  // Predefined table fields for quick access
-  const tableFields = [
-    'call_ended_reason',
-    'transcript_type',
-    'environment'
-  ]
-
-  const addChart = () => {
-    if (!newChart.field || !newChart.source) return
-
-    const chart: ChartConfig = {
-      id: Date.now().toString(),
-      title: newChart.title || `${newChart.field} Count${newChart.filterValue ? ` (${newChart.filterValue})` : ''}`,
-      field: newChart.field,
-      source: newChart.source as any,
-      chartType: newChart.chartType as any,
-      filterValue: newChart.filterValue,
-      color: newChart.color || '#3b82f6'
-    }
-
-    setCharts(prev => [...prev, chart])
-    setNewChart({ chartType: 'line', color: '#3b82f6' })
-    setShowBuilder(false)
+  if (fieldsLoading) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-0 bg-gradient-to-r from-blue-50 to-purple-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              <span>Discovering available fields...</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   // Enhanced Chart Component with professional styling
   const ChartComponent = ({ config }: { config: ChartConfig }) => {
-    const { data, loading, error, uniqueValues } = useCountChartData(config, agentId, dateFrom, dateTo, groupBy)
+    const { data, loading, error, uniqueValues } = useCountChartData(config, agentId, dateFrom, dateTo)
 
     if (loading) {
       return (
@@ -429,7 +508,7 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
                 tickLine={false}
                 tick={{ fontSize: 12, fill: '#6b7280' }}
                 tickFormatter={(value) => {
-                  if (groupBy === 'day') {
+                  if (config.groupBy === 'day') {
                     return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   }
                   return value
@@ -454,17 +533,20 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
                 />
               ) : (
                 // Multiple lines for each unique value
-                uniqueValues.map((value, index) => (
-                  <Line
-                    key={value}
-                    type="monotone"
-                    dataKey={value}
-                    stroke={colors[index % colors.length]}
-                    strokeWidth={3}
-                    dot={{ fill: colors[index % colors.length], strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: colors[index % colors.length] }}
-                  />
-                ))
+                uniqueValues.map((value, index) => {
+                  const color = value === 'Others' ? '#9ca3af' : colors[index % colors.length]
+                  return (
+                    <Line
+                      key={value}
+                      type="monotone"
+                      dataKey={value}
+                      stroke={color}
+                      strokeWidth={3}
+                      dot={{ fill: color, strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: color }}
+                    />
+                  )
+                })
               )}
               {!config.filterValue && uniqueValues.length > 1 && (
                 <Legend 
@@ -481,7 +563,7 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
                 tickLine={false}
                 tick={{ fontSize: 12, fill: '#6b7280' }}
                 tickFormatter={(value) => {
-                  if (groupBy === 'day') {
+                  if (config.groupBy === 'day') {
                     return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   }
                   return value
@@ -503,15 +585,18 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
                 />
               ) : (
                 // Stacked bars for each unique value
-                uniqueValues.map((value, index) => (
-                  <Bar
-                    key={value}
-                    dataKey={value}
-                    stackId="stack"
-                    fill={colors[index % colors.length]}
-                    radius={index === uniqueValues.length - 1 ? [6, 6, 0, 0] : [0, 0, 0, 0]}
-                  />
-                ))
+                uniqueValues.map((value, index) => {
+                  const color = value === 'Others' ? '#9ca3af' : colors[index % colors.length]
+                  return (
+                    <Bar
+                      key={value}
+                      dataKey={value}
+                      stackId="stack"
+                      fill={color}
+                      radius={index === uniqueValues.length - 1 ? [6, 6, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  )
+                })
               )}
               {!config.filterValue && uniqueValues.length > 1 && (
                 <Legend 
@@ -542,56 +627,43 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
 
   return (
     <div className="space-y-6">
-      {/* Header with Group By Control */}
-      <Card className="border-0 bg-gradient-to-r from-blue-50 to-purple-50">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Count Analytics</h3>
-                <p className="text-sm text-gray-600">
-                  {fields.metadata.length} metadata fields • {fields.transcription_metrics.length} transcription fields
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Select value={groupBy} onValueChange={(value: any) => setGroupBy(value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">Daily</SelectItem>
-                  <SelectItem value="week">Weekly</SelectItem>
-                  <SelectItem value="month">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={() => setShowBuilder(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Chart
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Charts Grid */}
-      {charts.length > 0 && (
+      {charts.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {charts.map(chart => (
-            <Card key={chart.id} className="border-0 bg-white shadow-sm hover:shadow-md transition-shadow">
+            <Card key={chart.id} className="border border-gray-300 bg-white shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-semibold">{chart.title}</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCharts(prev => prev.filter(c => c.id !== chart.id))}
-                  className="text-gray-400 hover:text-red-500"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+                <div>
+                  <CardTitle className="text-lg font-semibold">{chart.title}</CardTitle>
+                  {!chart.filterValue && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Showing top 10 most frequent values
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select 
+                    value={chart.groupBy} 
+                    onValueChange={(value: 'day' | 'week' | 'month') => updateChartGroupBy(chart.id, value)}
+                  >
+                    <SelectTrigger className="w-24 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">Daily</SelectItem>
+                      <SelectItem value="week">Weekly</SelectItem>
+                      <SelectItem value="month">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeChart(chart.id)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="pt-0">
                 <ChartComponent config={chart} />
@@ -599,107 +671,22 @@ export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = ({ agen
             </Card>
           ))}
         </div>
-      )}
-
-      {/* Chart Builder Modal - Same as before */}
-      {showBuilder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Add Count Chart</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setShowBuilder(false)}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Source Selection */}
-              <div>
-                <Label>Data Source</Label>
-                <Select
-                  value={newChart.source}
-                  onValueChange={(value) => setNewChart(prev => ({ ...prev, source: value as any, field: undefined }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select data source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="table">Table Fields ({tableFields.length})</SelectItem>
-                    <SelectItem value="metadata">Metadata ({fields.metadata.length} fields)</SelectItem>
-                    <SelectItem value="transcription_metrics">Transcription ({fields.transcription_metrics.length} fields)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Field Selection */}
-              {newChart.source && (
-                <div>
-                  <Label>Field</Label>
-                  <Select
-                    value={newChart.field}
-                    onValueChange={(value) => setNewChart(prev => ({ ...prev, field: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select field" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(newChart.source === 'table' ? tableFields : fields[newChart.source as keyof typeof fields]).map(field => (
-                        <SelectItem key={field} value={field}>
-                          {field}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Filter Value */}
-              <div>
-                <Label>Filter Value (Optional)</Label>
-                <Input
-                  placeholder="e.g., 'Yes', 'completed', 'Successful'"
-                  value={newChart.filterValue || ''}
-                  onChange={(e) => setNewChart(prev => ({ ...prev, filterValue: e.target.value }))}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave empty to show multiple lines for all values
-                </p>
-              </div>
-
-              {/* Chart Type */}
-              <div>
-                <Label>Chart Type</Label>
-                <Select
-                  value={newChart.chartType}
-                  onValueChange={(value) => setNewChart(prev => ({ ...prev, chartType: value as any }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="line">Line Chart</SelectItem>
-                    <SelectItem value="bar">Bar Chart (Stacked)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setShowBuilder(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={addChart}
-                  disabled={!newChart.field || !newChart.source}
-                >
-                  Add Chart
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      ) : (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <TrendingUp className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Charts Yet</h3>
+          <p className="text-sm text-gray-500">
+            Click "+" right to create your first custom analytics chart
+          </p>
         </div>
       )}
     </div>
   )
+}
+
+// Main export component (now used within ChartProvider in parent)
+export const EnhancedChartBuilder: React.FC<EnhancedChartBuilderProps> = (props) => {
+  return <EnhancedChartBuilderContent {...props} />
 }
