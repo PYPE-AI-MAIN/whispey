@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash } from 'lucide-react';
+import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash, BookOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from "react";
 
@@ -101,6 +101,34 @@ function Header({ breadcrumb }: HeaderProps) {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
+              {/* Setup Instructions Link - New Addition */}
+              <Link
+                href="https://pypi.org/project/Whispey/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 transition-all duration-200 rounded-lg hover:bg-blue-50/50 border border-transparent hover:border-blue-100"
+              >
+                <BookOpen className="w-4 h-4 transition-transform group-hover:scale-110" />
+                <span className="hidden sm:inline">Setup instructions</span>
+                <span className="sm:hidden">Setup</span>
+                <svg 
+                  className="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                  />
+                </svg>
+              </Link>
+
+              {/* Vertical Separator */}
+              <div className="w-px h-5 bg-gray-200"></div>
+
               {/* Help Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
