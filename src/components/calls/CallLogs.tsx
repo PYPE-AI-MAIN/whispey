@@ -434,7 +434,11 @@ const { user } = useUser()
       'transcript_type',
       'transcript_json',
       'created_at',
-      'transcription_metrics'
+      'transcription_metrics',
+      'total_llm_cost',
+      'total_tts_cost',
+      'total_stt_cost',
+      'avg_latency'
     ]
 
     // Add role-restricted columns only if user has permission
@@ -458,6 +462,7 @@ const { user } = useUser()
 
   const { data: calls, loading, hasMore, error, loadMore, refresh } = useInfiniteScroll("pype_voice_call_logs", queryOptions)
 
+  console.log(calls)
   // Extract all unique keys from metadata and transcription_metrics across all calls
   const dynamicColumns = useMemo(() => {
     const metadataKeys = new Set<string>()
