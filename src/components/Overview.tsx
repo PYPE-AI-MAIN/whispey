@@ -936,46 +936,6 @@ const Overview: React.FC<OverviewProps> = ({
           </div>
         )}
       </div>
-
-      {/* 🎯 FLOATING ACTION BUTTON */}
-      {userEmail && !fieldsLoading && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                size="lg" 
-                className="rounded-full h-14 w-14 p-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-blue-600 hover:bg-blue-700 group relative"
-              >
-                <Plus className="w-6 h-6 transition-transform group-hover:rotate-90 duration-200" />
-                <span className="sr-only">Add Custom Metric</span>
-                
-                {/* Tooltip */}
-                <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                  <div className="bg-gray-900 text-white px-3 py-1 rounded-md text-sm whitespace-nowrap">
-                    Add Custom Metric
-                    <div className="absolute top-full right-3 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                  </div>
-                </div>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-96 p-0 mr-6 mb-4" align="end" side="top">
-              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <h3 className="font-semibold text-gray-900">Create Custom Metric</h3>
-                <p className="text-sm text-gray-600">Design a personalized analytics card</p>
-              </div>
-              <CustomTotalsBuilder
-                agentId={agent.id}
-                projectId={project.id}
-                userEmail={userEmail}
-                availableColumns={AVAILABLE_COLUMNS}
-                dynamicMetadataFields={metadataFields}
-                dynamicTranscriptionFields={transcriptionFields}
-                onSave={handleSaveCustomTotal}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      )}
     </div>
   )
 }
