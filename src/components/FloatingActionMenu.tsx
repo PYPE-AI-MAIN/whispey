@@ -56,7 +56,7 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
               {/* Custom Totals Option */}
               <div className="flex items-center gap-3">
                 <span className="bg-gray-900 text-white text-sm px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
-                  Custom Totals
+                  Custom Summary
                 </span>
                 <Dialog open={showCustomTotals} onOpenChange={setShowCustomTotals}>
                   <DialogTrigger asChild>
