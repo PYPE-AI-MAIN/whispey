@@ -132,7 +132,7 @@ export default function AuthPage() {
                 <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
-                <span>SOC 2 Compliant</span>
+                <span>Open Source</span>
               </div>
             </div>
             <p className="text-center text-xs text-slate-400 mt-4">
