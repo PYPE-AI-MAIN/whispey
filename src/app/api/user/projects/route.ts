@@ -1,7 +1,7 @@
 // app/api/user/projects/route.ts - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { MockDataService } from '@/lib/mockData'
+import { jsonFileService } from '@/lib/jsonFileService.server'
 
 function mapProject(
   project: any,
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User email not found' }, { status: 404 })
     }
 
-    // Get projects from mock data service for this user
-    const mockProjects = MockDataService.getProjects(userId)
+    // Get projects from file service (filter by owner)
+    const mockProjects = jsonFileService.getProjects().filter(p => p.owner_clerk_id === userId)
 
     // Format projects for frontend - since we're filtering by owner_clerk_id, all are owned projects
     const ownedProjects = mockProjects.map(project => {

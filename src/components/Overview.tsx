@@ -270,12 +270,13 @@ const Overview: React.FC<OverviewProps> = ({
   const handleSaveCustomTotal = async (config: CustomTotalConfig) => {
 
     try {
-      const result = await CustomTotalsService.saveCustomTotal(config, project.id, agent.id)
-      if (result.success) {
-        await loadCustomTotals() // Reload the list
-      } else {
-        alert(`Failed to save: ${result.error}`)
-      }
+      await CustomTotalsService.saveCustomTotal({
+        ...config,
+        createdBy: userEmail || 'unknown',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      await loadCustomTotals()
     } catch (error) {
       console.error('Failed to save custom total:', error)
       alert('Failed to save custom total')
@@ -287,11 +288,11 @@ const Overview: React.FC<OverviewProps> = ({
     if (!confirm('Are you sure you want to delete this custom total?')) return
 
     try {
-      const result = await CustomTotalsService.deleteCustomTotal(configId)
-      if (result.success) {
-        await loadCustomTotals() // Reload the list
+      const deleted = await CustomTotalsService.deleteCustomTotal(configId)
+      if (deleted) {
+        await loadCustomTotals()
       } else {
-        alert(`Failed to delete: ${result.error}`)
+        alert('Failed to delete')
       }
     } catch (error) {
       console.error('Failed to delete custom total:', error)
@@ -514,18 +515,32 @@ const Overview: React.FC<OverviewProps> = ({
 
               {/* Custom Overview Metrics */}
               {customOverviewMetrics.map((metric) => {
-                const IconComponent = ICON_COMPONENTS[metric.icon as keyof typeof ICON_COMPONENTS] || Target
-                const colorClass = COLOR_CLASSES[metric.color as keyof typeof COLOR_CLASSES] || COLOR_CLASSES.blue
+                const iconKey = (metric as any).icon as keyof typeof ICON_COMPONENTS
+                const colorKey = (metric as any).color as keyof typeof COLOR_CLASSES
+                const IconComponent = ICON_COMPONENTS[iconKey] || Target
+                const colorClass = COLOR_CLASSES[colorKey] || COLOR_CLASSES.blue
+                const change = (metric as any).change as number | undefined
+                const changeType = (metric as any).changeType as string | undefined
                 
                 const formatValue = (value: number | string) => {
                   if (typeof value === 'string') return value
-                  
-                  let formattedValue = value.toString()
-                  if (metric.unit === 'currency' || metric.prefix) {
-                    formattedValue = typeof value === 'number' ? value.toFixed(2) : value.toString()
+
+                  const unit = (metric as any).unit as string | undefined
+                  const prefix = (metric as any).prefix as string | undefined
+                  const suffix = (metric as any).suffix as string | undefined
+                  const isPercent = (metric as any).isPercent === true || (metric as any).type === 'percentage' || unit === 'percentage'
+
+                  let formattedValue = String(value)
+                  if (unit === 'currency' || prefix) {
+                    formattedValue = typeof value === 'number' ? value.toFixed(2) : String(value)
                   }
-                  
-                  return `${metric.prefix || ''}${formattedValue}${metric.suffix || ''}`
+                  if (isPercent) {
+                    const numeric = typeof value === 'number' ? value : parseFloat(String(value))
+                    formattedValue = isFinite(numeric) ? numeric.toString() : formattedValue
+                  }
+
+                  const finalSuffix = isPercent ? '%' : (suffix || '')
+                  return `${prefix || ''}${formattedValue}${finalSuffix}`
                 }
 
                 const getChangeColor = (changeType?: string) => {
@@ -552,12 +567,12 @@ const Overview: React.FC<OverviewProps> = ({
                           <div className={`p-2 ${colorClass.replace('text-', 'bg-').replace('-600', '-50')} rounded-lg border ${colorClass.replace('text-', 'border-').replace('-600', '-100')}`}>
                             <IconComponent weight="regular" className={`w-5 h-5 ${colorClass}`} />
                           </div>
-                          {metric.change !== undefined && (
+                          {change !== undefined && (
                             <div className="text-right">
-                              <div className={`flex items-center gap-1 px-2 py-1 rounded-md border ${getChangeColor(metric.changeType)}`}>
-                                {getChangeIcon(metric.changeType)}
+                              <div className={`flex items-center gap-1 px-2 py-1 rounded-md border ${getChangeColor(changeType)}`}>
+                                {getChangeIcon(changeType)}
                                 <span className="text-xs font-bold">
-                                  {metric.changeType === 'decrease' ? '' : '+'}{metric.change.toFixed(1)}%
+                                  {changeType === 'decrease' ? '' : '+'}{(change as number).toFixed(1)}%
                                 </span>
                               </div>
                             </div>
@@ -680,7 +695,7 @@ const Overview: React.FC<OverviewProps> = ({
                         <div className="text-xs font-medium text-gray-500">Peak</div>
                         <div className="text-sm font-semibold text-gray-900">
                         {analytics?.dailyData && analytics.dailyData.length > 0 
-                        ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
+                        ? Math.max(...analytics.dailyData.map((d: any) => d.calls || 0)) 
                         : 0
                       }
                         </div>
@@ -690,7 +705,10 @@ const Overview: React.FC<OverviewProps> = ({
                         <div className="text-xs font-medium text-gray-500">Avg</div>
                         <div className="text-sm font-semibold text-gray-900">
                         {analytics?.dailyData && analytics.dailyData.length > 0 
-                            ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
+                            ? Math.round(
+                                analytics.dailyData.reduce((sum: number, d: any) => sum + (d.calls || 0), 0) /
+                                analytics.dailyData.length
+                              ) 
                             : 0
                           }
                         </div>
@@ -784,6 +802,12 @@ const Overview: React.FC<OverviewProps> = ({
                     <div className="text-right">
                       <div className="text-xs font-medium text-gray-500">Success Rate</div>
                       <div className="text-2xl font-light text-green-600">{analytics ? successRate.toFixed(1) : '0.0'}%</div>
+                      {analytics && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          <span className="font-medium">{formatNumber(analytics.successfulCalls)} </span>
+                          successful of <span className="font-medium">{formatNumber(analytics.totalCalls)}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -820,14 +844,14 @@ const Overview: React.FC<OverviewProps> = ({
                                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                                 backdropFilter: 'blur(20px)'
                               }}
-                              formatter={(value, name) => [`${value} calls`, name]}
+                              formatter={(value, name) => [`${formatNumber(Number(value))} calls`, name as string]}
                             />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
                       {/* Center Statistics */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <div className="text-3xl font-light text-gray-900 mb-1">{analytics?.totalCalls || 0}</div>
+                        <div className="text-3xl font-light text-gray-900 mb-1">{analytics?.totalCalls ? formatNumber(analytics.totalCalls) : 0}</div>
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total</div>
                       </div>
                     </div>
@@ -836,12 +860,12 @@ const Overview: React.FC<OverviewProps> = ({
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#007AFF' }}></div>
                         <div className="text-sm font-medium text-gray-700">Successful</div>
-                        <div className="text-sm font-light text-gray-500">{analytics?.successfulCalls || 0}</div>
+                        <div className="text-sm font-light text-gray-500">{analytics?.successfulCalls ? formatNumber(analytics.successfulCalls) : 0}</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF3B30' }}></div>
                         <div className="text-sm font-medium text-gray-700">Failed</div>
-                        <div className="text-sm font-light text-gray-500">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
+                        <div className="text-sm font-light text-gray-500">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? formatNumber(analytics.totalCalls - analytics.successfulCalls) : 0}</div>
                       </div>
                     </div>
                   </div>

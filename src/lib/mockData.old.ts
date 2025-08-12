@@ -1,7 +1,7 @@
 // Mock Data Service - JSON File Persistent Storage!
 // Perfect for demos - data persists across sessions with JSON file storage
 
-import { jsonFileService } from './jsonFileService'
+// Note: Legacy file does not rely on file service directly
 
 // Types for our mock data
 export interface MockProject {
@@ -2063,17 +2063,15 @@ if (typeof window !== 'undefined') {
     console.log('🔄 MockDataService: Received data refresh event')
     const freshData = event.detail
     
-    // Update the singleton instance with fresh data
-    if (freshData.projects) mockDataStore.projects = freshData.projects
-    if (freshData.agents) mockDataStore.agents = freshData.agents  
-    if (freshData.callLogs) mockDataStore.callLogs = freshData.callLogs
-    if (freshData.users) mockDataStore.users = freshData.users
-    if (freshData.customOverviewMetrics) mockDataStore.customOverviewMetrics = freshData.customOverviewMetrics
-    
-    // Emit data change events to notify components
-    mockDataStore.emit('data:changed', { type: 'refresh', source: 'api' })
-    mockDataStore.emit('callLogs:changed', mockDataStore.callLogs)
-    
-    console.log('✅ MockDataService: Updated with fresh data')
+      // Update using public replacement methods which also emit change events
+      if (freshData.projects) MockDataService.replaceAllProjects(freshData.projects)
+      if (freshData.agents) MockDataService.replaceAllAgents(freshData.agents)
+      if (freshData.callLogs) MockDataService.replaceAllCallLogs(freshData.callLogs)
+      if (freshData.customOverviewMetrics) {
+        MockDataService.replaceAllCustomOverviewMetrics(freshData.customOverviewMetrics)
+      }
+      // Note: users update is intentionally skipped here (no public replace method)
+
+      console.log('✅ MockDataService: Updated with fresh data via public APIs')
   })
 }

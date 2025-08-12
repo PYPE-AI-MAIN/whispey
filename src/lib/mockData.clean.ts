@@ -316,7 +316,7 @@ class MockDataStore {
     console.log(`📊 Found agent:`, agent ? agent.name : 'No agent found')
     
     // Generate rich analytics data based on agent type and use case
-    return this.generateEnhancedAnalytics(agent, dateFrom, dateTo)
+    return this.generateEnhancedAnalytics(agent ?? null, dateFrom, dateTo)
   }
 
   private generateEnhancedAnalytics(agent: MockAgent | null, dateFrom?: string, dateTo?: string) {

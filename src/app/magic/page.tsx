@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Textarea } from '../../components/ui/textarea'
 import { Badge } from '../../components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { Switch } from '../../components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../../components/ui/dialog'
 import { 
   Trash2, 
@@ -141,6 +142,7 @@ export default function MagicPage() {
     name: '',
     value: 0,
     type: 'number',
+    isPercent: false,
     description: '',
     agentId: '',
     projectId: ''
@@ -271,6 +273,7 @@ export default function MagicPage() {
       name: '',
       value: 0,
       type: 'number',
+      isPercent: false,
       description: '',
       agentId: '',
       projectId: ''
@@ -284,6 +287,7 @@ export default function MagicPage() {
       name: metric.name,
       value: metric.value,
       type: metric.type,
+      isPercent: !!metric.isPercent,
       description: metric.description,
       agentId: metric.agentId || '',
       projectId: metric.projectId || ''
@@ -1665,8 +1669,8 @@ export default function MagicPage() {
                           <p className="text-gray-600 text-sm mb-3">{metric.description}</p>
                           <div className="flex items-center gap-4">
                             <div className="text-2xl font-bold text-purple-600">
-                              {metric.type === 'currency' ? `$${metric.value.toLocaleString()}` :
-                               metric.type === 'percentage' ? `${metric.value}%` :
+                              {metric.type === 'currency' ? `$${Number(metric.value).toLocaleString()}` :
+                               metric.type === 'percentage' || metric.isPercent ? `${Number(metric.value)}%` :
                                metric.value}
                             </div>
                             <div className="text-xs text-gray-500">
@@ -1828,7 +1832,7 @@ export default function MagicPage() {
                 placeholder="e.g., 24.5"
               />
             </div>
-            <div>
+                      <div>
               <Label htmlFor="metric-type" className="text-sm">Type</Label>
               <Select value={newMetric.type} onValueChange={(value) => setNewMetric({ ...newMetric, type: value })}>
                         <SelectTrigger>
@@ -1842,6 +1846,10 @@ export default function MagicPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="metric-percent" className="text-sm">Display as percent</Label>
+                        <Switch id="metric-percent" checked={newMetric.isPercent} onCheckedChange={(val) => setNewMetric({ ...newMetric, isPercent: !!val })} />
+                      </div>
                       <div>
               <Label htmlFor="metric-description" className="text-sm">Description</Label>
               <Textarea
@@ -1882,7 +1890,7 @@ export default function MagicPage() {
               <Button variant="outline" size="sm" onClick={() => {
                 setShowAddMetric(false)
                 setEditingItem(null)
-                setNewMetric({ name: '', value: 0, type: 'number', description: '', agentId: '', projectId: '' })
+                setNewMetric({ name: '', value: 0, type: 'number', isPercent: false, description: '', agentId: '', projectId: '' })
               }}>
                 Cancel
                 </Button>

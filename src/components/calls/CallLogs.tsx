@@ -507,141 +507,41 @@ const { user } = useUser()
   }, [dynamicColumns, basicColumns])
   
 
-  // Fixed handleDownloadCSV function
+  // Fixed handleDownloadCSV function (no supabase dependency)
   const handleDownloadCSV = async () => {
-    const { basic, metadata, transcription_metrics } = visibleColumns;
-
-    console.log('Download initiated with visible columns:', { basic, metadata, transcription_metrics });
-
-    // Always include id and agent_id for filtering, plus metadata and transcription_metrics if needed
-    const selectColumns = [
-      'id',
-      'agent_id',
-      ...basic.filter(col => col !== "total_cost"), // Exclude calculated field
-      ...(metadata.length > 0 ? ['metadata'] : []),
-      ...(transcription_metrics.length > 0 ? ['transcription_metrics'] : []),
-    ];
-
-    console.log('Select columns:', selectColumns);
-
     try {
-      // Build base query with proper select
-      let query = supabase
-        .from("pype_voice_call_logs")
-        .select(selectColumns.join(','));
+      const { basic, metadata, transcription_metrics } = visibleColumns
 
-      // Apply filters properly - FIXED VERSION
-      const filters = convertToSupabaseFilters(activeFilters);
-      console.log('Applying filters:', filters);
-
-      for (const filter of filters) {
-        switch (filter.operator) {
-          case 'eq':
-            query = query.eq(filter.column, filter.value);
-            break;
-          case 'ilike':
-            query = query.ilike(filter.column, filter.value);
-            break;
-          case 'gte':
-            query = query.gte(filter.column, filter.value);
-            break;
-          case 'lte':
-            query = query.lte(filter.column, filter.value);
-            break;
-          case 'gt':
-            query = query.gt(filter.column, filter.value);
-            break;
-          case 'lt':
-            query = query.lt(filter.column, filter.value);
-            break;
-          case 'not.is':
-            query = query.not(filter.column, 'is', filter.value);
-            break;
-          default:
-            console.warn(`Unknown operator: ${filter.operator}`);
-        }
+      // Use currently loaded calls for export (keeps export consistent with visible data)
+      if (!calls || calls.length === 0) {
+        alert('No data available to export')
+        return
       }
 
-      // Order by created_at for consistency
-      query = query.order('created_at', { ascending: false });
+      const csvData = (calls as CallLog[]).map((row, index) =>
+        flattenAndPickColumnsFixed(row, basic, metadata, transcription_metrics)
+      )
 
-      // Fetch all data in chunks
-      let allData: CallLog[] = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMoreData = true;
-
-      console.log('Starting data fetch...');
-
-      while (hasMoreData) {
-        const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
-        
-        if (error) {
-          console.error('Query error:', error);
-          alert("Failed to fetch data for export: " + error.message);
-          return;
-        }
-
-        if (data && data.length > 0) {
-          allData = allData.concat(data as unknown as CallLog[]);
-          console.log(`Fetched page ${page + 1}, total records: ${allData.length}`);
-          
-          // If we got less than pageSize, we're done
-          if (data.length < pageSize) {
-            hasMoreData = false;
-          } else {
-            page += 1;
-          }
-        } else {
-          hasMoreData = false;
-        }
+      if (csvData.length === 0) {
+        alert('No data available to export')
+        return
       }
 
-      console.log('Total records fetched:', allData.length);
-
-      if (allData.length === 0) {
-        alert("No data found to export");
-        return;
-      }
-
-      // Debug: Check first record
-      console.log('Sample record:', allData[0]);
-      console.log('Sample metadata:', allData[0]?.metadata);
-      console.log('Sample transcription_metrics:', allData[0]?.transcription_metrics);
-
-      // Flatten data for CSV - FIXED VERSION
-      const csvData = allData.map((row, index) => {
-        const flattened = flattenAndPickColumnsFixed(row, basic, metadata, transcription_metrics);
-        
-        // Debug first few records
-        if (index < 3) {
-          console.log(`Flattened record ${index}:`, flattened);
-        }
-        
-        return flattened;
-      });
-
-      console.log('CSV headers would be:', Object.keys(csvData[0] || {}));
-
-      // Generate and download CSV
-      const csv = Papa.unparse(csvData);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `call_logs_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      console.log('CSV download completed');
-
+      const csv = Papa.unparse(csvData)
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `call_logs_${new Date().toISOString().split('T')[0]}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Download error:', error);
-      alert("Failed to download CSV: " + (error as Error).message);
+      console.error('Download error:', error)
+      alert('Failed to download CSV: ' + (error as Error).message)
     }
-  };
+  }
 
   // Fixed flatten function with better debugging
   function flattenAndPickColumnsFixed(

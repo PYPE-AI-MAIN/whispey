@@ -3,17 +3,23 @@
 export interface CustomTotalConfig {
   id: string
   name: string
-  aggregation: string
-  column_name: string
-  json_field?: string
+  aggregation: 'SUM' | 'COUNT' | 'AVG' | 'MIN' | 'MAX' | 'COUNT_DISTINCT'
+  column: string
+  jsonField?: string
   filters: any[]
-  filter_logic: string
+  filterLogic: 'AND' | 'OR'
+  icon?: string
+  color?: string
+  dateRange?: { from: string; to: string }
+  createdBy: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CustomTotalResult {
-  id: string
-  name: string
-  value: number
+  configId: string
+  value: number | string
+  label: string
   error?: string
 }
 
@@ -30,9 +36,9 @@ export const CustomTotalsService = {
     dateTo: string
   ): Promise<CustomTotalResult> {
     return {
-      id: config.id,
-      name: config.name,
-      value: 0
+      configId: config.id,
+      value: 0,
+      label: config.name
     }
   },
 
@@ -41,6 +47,11 @@ export const CustomTotalsService = {
       ...config,
       id: `custom_${Date.now()}`
     }
+  },
+
+  async updateCustomTotal(id: string, updates: Partial<CustomTotalConfig>): Promise<{ success: true }> {
+    // Mock update – accept any update and return success
+    return { success: true }
   },
 
   async deleteCustomTotal(id: string): Promise<boolean> {

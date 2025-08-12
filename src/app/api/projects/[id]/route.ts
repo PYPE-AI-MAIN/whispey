@@ -84,7 +84,7 @@ export async function PUT(
     }
 
     // Check if project exists and user has access
-    const existingProject = MockDataService.getProjectById(id)
+    const existingProject = jsonFileService.getProjectById(id)
     if (!existingProject) {
       return NextResponse.json(
         { error: 'Project not found' },
@@ -99,8 +99,8 @@ export async function PUT(
       )
     }
 
-    // Update project using mock data service
-    const updatedProject = MockDataService.updateProject(id, body)
+    // Update project using JSON file service
+    const updatedProject = jsonFileService.updateProject(id, body)
     
     if (!updatedProject) {
       return NextResponse.json(
@@ -141,7 +141,7 @@ export async function DELETE(
     }
 
     // Check if project exists and user has access
-    const existingProject = MockDataService.getProjectById(id)
+    const existingProject = jsonFileService.getProjectById(id)
     if (!existingProject) {
       return NextResponse.json(
         { error: 'Project not found' },
@@ -156,8 +156,8 @@ export async function DELETE(
       )
     }
 
-    // Delete project using mock data service
-    const success = MockDataService.deleteProject(id)
+    // Delete project using JSON file service
+    const success = jsonFileService.deleteProject(id)
     
     if (!success) {
       return NextResponse.json(

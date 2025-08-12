@@ -1,6 +1,6 @@
 // Campaign API - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { MockDataService } from '@/lib/mockData'
+import { jsonFileService } from '@/lib/jsonFileService.server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify project exists
-    const project = MockDataService.getProjectById(projectId)
+    const project = jsonFileService.getProjectById(projectId)
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString()
     }
 
-    const updatedProject = MockDataService.updateProject(projectId, {
+    const updatedProject = jsonFileService.updateProject(projectId, {
       campaign_config: campaignConfig
     })
 

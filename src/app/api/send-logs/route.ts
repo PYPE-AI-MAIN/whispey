@@ -105,14 +105,14 @@ export async function POST(request: NextRequest) {
       total_llm_cost: body.total_llm_cost || 0
     }
 
-    const callLog = jsonFileService.createCallLog(callLogData)
+    const ok = jsonFileService.addCallLog(callLogData)
 
     console.log(`Successfully stored call log for call_id: ${body.call_id}`)
 
     return NextResponse.json({
       success: true,
       message: 'Call log stored successfully',
-      call_log_id: callLog.id,
+      call_log_id: callLogData.call_id,
       timestamp: new Date().toISOString()
     }, { status: 201 })
 

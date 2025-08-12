@@ -1,6 +1,6 @@
 // Schedule API - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { MockDataService } from '@/lib/mockData'
+import { jsonFileService } from '@/lib/jsonFileService.server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,14 +42,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if project exists
-    const project = MockDataService.getProjectById(project_id)
+    const project = jsonFileService.getProjectById(project_id)
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
     // Mock: simulate updating project retry configuration
     if (retry_config) {
-      const updatedProject = MockDataService.updateProject(project_id, {
+      const updatedProject = jsonFileService.updateProject(project_id, {
         retry_configuration: retry_config
       })
       

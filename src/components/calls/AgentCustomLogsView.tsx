@@ -220,19 +220,13 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
   // ===== API FUNCTIONS =====
   const fetchViews = useCallback(async (): Promise<void> => {
     try {
-      const { data, error } = await supabase
-        .from("pype_voice_agent_call_log_views")
-        .select("*")
-        .eq("agent_id", agentId)
-        .order("created_at", { ascending: false })
-
-      if (error) throw error
-      setViews(data || [])
+      // Mock: no persistence for views in mock mode
+      setViews([])
     } catch (err) {
       console.error("Failed to fetch views:", err)
       setError("Unable to load saved views. Please try again.")
     }
-  }, [agentId])
+  }, [])
 
   const convertToSupabaseFilters = useCallback(
     (filters: FilterRule[]) => {
@@ -376,28 +370,21 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
 
 
     try {
-      let query = supabase
-        .from("pype_voice_call_logs")
-        .select("*")
-        .eq("agent_id", agentId)
-        .gte("call_started_at", dateRange.from)
-        .lte("call_started_at", endOfDay.toISOString())
-
-      const filters = convertToSupabaseFilters(currentFilters)
-      for (const filter of filters) {
-        // @ts-ignore
-        query = query[filter.operator](filter.column, filter.value)
-      }
-
-      const from = pageNumber * PAGE_SIZE
-      const to = from + PAGE_SIZE - 1
-
-      query = query.order("call_started_at", { ascending: false })
-      query = query.range(from, to)
-
-      const { data, error } = await query
-
-      if (error) throw error
+      // Call API route backed by JSON file service
+      const response = await fetch('/api/logs/call-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_id: agentId,
+          page: pageNumber + 1,
+          limit: PAGE_SIZE,
+          date_from: dateRange.from,
+          date_to: endOfDay.toISOString(),
+        })
+      })
+      if (!response.ok) throw new Error('Failed to fetch call logs')
+      const json = await response.json()
+      const data = json?.data?.call_logs || []
 
       if (data.length < PAGE_SIZE) setHasMore(false)
 
@@ -414,7 +401,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
           })
         })
       }
-      
+
       setLoadingState(LoadingState.SUCCESS)
     } catch (err) {
       console.error("Failed to fetch call logs:", err)
@@ -507,48 +494,14 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const filters = convertToSupabaseFilters(currentFilters)
-        const endOfDay = new Date(dateRange.to + "T23:59:59.999");
-        
-        let query = supabase
-          .from("pype_voice_call_logs")
-          .select("*")
-          .eq("agent_id", agentId)
-          .gte("call_started_at", dateRange.from)
-          .lte("call_started_at", endOfDay.toISOString())
-          .order("call_started_at", { ascending: false })
-          .limit(PAGE_SIZE)
-  
-        for (const filter of filters) {
-          // @ts-ignore
-          query = query[filter.operator](filter.column, filter.value)
-        }
-  
-        const { data, error } = await query
-        if (error) throw error
-
-  
-        // Check if there's any new data not already in the list
-        if (data && data.length > 0) {
-          const latestExistingCallId = callLogs[0]?.call_id
-          const isNew = data.some((log) => log.call_id !== latestExistingCallId)
-  
-          if (isNew) {
-            // Append new logs at the beginning
-            setCallLogs((prev) => {
-              const ids = new Set(prev.map((log) => log.call_id))
-              const newOnes = data.filter((log) => !ids.has(log.call_id))
-              return [...newOnes, ...prev]
-            })
-          }
-        }
+        await fetchCallLogs(0, true)
       } catch (err) {
         console.error("Background refresh failed:", err)
       }
     }, 5 * 60 * 1000)
-  
+
     return () => clearInterval(interval)
-  }, [agentId, dateRange, currentFilters, callLogs, convertToSupabaseFilters])
+  }, [fetchCallLogs])
   
   
 

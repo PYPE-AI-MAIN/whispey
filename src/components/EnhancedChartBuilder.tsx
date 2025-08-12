@@ -136,53 +136,21 @@ export const useCountChartData = (
         setLoading(true)
         setError(null)
 
-        let query: any
-
-        if (config.filterValue) {
-          // SINGLE LINE: Filter for specific value, only need created_at
-          query = supabase
-            .from('pype_voice_call_logs')
-            .select('created_at')  // ✅ FIXED: Added .select()
-            .eq('agent_id', agentId)
-            .gte('created_at', `${dateFrom}T00:00:00`)
-            .lte('created_at', `${dateTo}T23:59:59`)
-          
-          if (config.source === 'table') {
-            query = query.eq(config.field, config.filterValue)
-          } else if (config.source === 'metadata') {
-            query = query.eq(`metadata->${config.field}`, config.filterValue)
-          } else if (config.source === 'transcription_metrics') {
-            query = query.eq(`transcription_metrics->${config.field}`, config.filterValue)
-          }
-        } else {
-          // MULTI-LINE: Need the actual field data to group by values
-          if (config.source === 'table') {
-            query = supabase
-              .from('pype_voice_call_logs')
-              .select(`created_at, ${config.field}`)  // ✅ FIXED: Added .select()
-              .eq('agent_id', agentId)
-              .gte('created_at', `${dateFrom}T00:00:00`)
-              .lte('created_at', `${dateTo}T23:59:59`)
-          } else if (config.source === 'metadata') {
-            query = supabase
-              .from('pype_voice_call_logs')
-              .select('created_at, metadata')  // ✅ FIXED: Added .select()
-              .eq('agent_id', agentId)
-              .gte('created_at', `${dateFrom}T00:00:00`)
-              .lte('created_at', `${dateTo}T23:59:59`)
-              .not(`metadata->${config.field}`, 'is', null)
-          } else if (config.source === 'transcription_metrics') {
-            query = supabase
-              .from('pype_voice_call_logs')
-              .select('created_at, transcription_metrics')  // ✅ FIXED: Added .select()
-              .eq('agent_id', agentId)
-              .gte('created_at', `${dateFrom}T00:00:00`)
-              .lte('created_at', `${dateTo}T23:59:59`)
-              .not(`transcription_metrics->${config.field}`, 'is', null)
-          }
-        }
-
-        const { data: records, error }: { data: DatabaseRecord[] | null, error: any } = await query
+        // Fetch via API backed by jsonFileService instead of Supabase
+        const response = await fetch('/api/logs/call-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agent_id: agentId,
+            page: 1,
+            limit: 10000,
+            date_from: `${dateFrom}T00:00:00`,
+            date_to: `${dateTo}T23:59:59`
+          })
+        })
+        if (!response.ok) throw new Error('Failed to fetch chart data')
+        const json = await response.json()
+        const records: DatabaseRecord[] = json?.data?.call_logs || []
 
         if (error) {
           console.error('❌ Query error:', error)
@@ -353,23 +321,29 @@ export const useQuickFieldDiscovery = (agentId: string, dateFrom: string, dateTo
       try {
         setLoading(true)
 
-        // Get transcription fields from agent configuration
-        const { data: agentData } = await supabase
-          .from('pype_voice_agents')
-          .select('field_extractor_keys')
-          .eq('id', agentId)
-          .single()
+        // Get transcription fields from agent configuration via API
+        let agentData: any = null
+        try {
+          const agentResp = await fetch(`/api/agents/${agentId}`)
+          if (agentResp.ok) {
+            agentData = await agentResp.json()
+          }
+        } catch {}
 
-
-        // Get metadata fields from sample data
-        const { data: sampleRecords } = await supabase
-          .from('pype_voice_call_logs')
-          .select('metadata')
-          .eq('agent_id', agentId)
-          .gte('created_at', `${dateFrom}T00:00:00`)
-          .lte('created_at', `${dateTo}T23:59:59`)
-          .not('metadata', 'is', null)
-          .limit(20)
+        // Get metadata fields from sample data via API
+        const logsResp = await fetch('/api/logs/call-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agent_id: agentId,
+            page: 1,
+            limit: 50,
+            date_from: `${dateFrom}T00:00:00`,
+            date_to: `${dateTo}T23:59:59`
+          })
+        })
+        const logsJson = logsResp.ok ? await logsResp.json() : { data: { call_logs: [] } }
+        const sampleRecords = logsJson?.data?.call_logs || []
 
         // Extract metadata field names
         const metadataKeys = new Set<string>()

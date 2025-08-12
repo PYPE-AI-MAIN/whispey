@@ -91,13 +91,12 @@ export async function POST(
       config.createdAt = new Date().toISOString()
       config.updatedAt = new Date().toISOString()
 
-      const result = await CustomTotalsService.saveCustomTotal(config, actualProjectId, actualAgentId)
+      const result = await CustomTotalsService.saveCustomTotal({
+        ...config,
+        // projectId and agentId can be tracked separately if the service supports it later
+      })
       
-      if (result.success) {
-        return Response.json({ success: true }, { status: 201 })
-      } else {
-        return Response.json({ error: result.error }, { status: 400 })
-      }
+      return Response.json({ success: true, config: result }, { status: 201 })
     }
   } catch (error) {
     console.error('Custom totals POST error:', error)
@@ -127,13 +126,8 @@ export async function PUT(
     const updates = await request.json()
     updates.updatedAt = new Date().toISOString()
 
-    const result = await CustomTotalsService.updateCustomTotal(configId, updates)
-    
-    if (result.success) {
-      return Response.json({ success: true })
-    } else {
-      return Response.json({ error: result.error }, { status: 400 })
-    }
+    await CustomTotalsService.updateCustomTotal(configId, updates)
+    return Response.json({ success: true })
   } catch (error) {
     console.error('Custom totals PUT error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
@@ -159,13 +153,11 @@ export async function DELETE(
   }
 
   try {
-    const result = await CustomTotalsService.deleteCustomTotal(configId)
-    
-    if (result.success) {
+    const deleted = await CustomTotalsService.deleteCustomTotal(configId)
+    if (deleted) {
       return Response.json({ success: true })
-    } else {
-      return Response.json({ error: result.error }, { status: 400 })
     }
+    return Response.json({ error: 'Failed to delete custom total' }, { status: 400 })
   } catch (error) {
     console.error('Custom totals DELETE error:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })

@@ -71,7 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   })
   
   // Date filter state
-  const [quickFilter, setQuickFilter] = useState('7d')
+  const [quickFilter, setQuickFilter] = useState('30d')
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 7),
     to: new Date()
@@ -382,15 +382,21 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                 })()}
                 isEnabled={!!agent?.field_extractor}
                 onSave={async (data, enabled) => {
-                  const { error } = await supabase
-                    .from('pype_voice_agents')
-                    .update({ field_extractor_prompt: JSON.stringify(data), field_extractor: enabled })
-                    .eq('id', agent.id)
-                  if (!error) {
+                  try {
+                    const payload = { field_extractor_prompt: JSON.stringify(data), field_extractor: enabled }
+                    const response = await fetch(`/api/agents/${agent.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(payload)
+                    })
+                    if (!response.ok) {
+                      const err = await response.json().catch(() => ({}))
+                      throw new Error(err.error || 'Failed to save config')
+                    }
                     alert('Saved field extractor config.')
                     refetchAgent()
-                  } else {
-                    alert('Error saving config: ' + error.message)
+                  } catch (e: any) {
+                    alert('Error saving config: ' + (e?.message || 'Unknown error'))
                   }
                 }}
               />

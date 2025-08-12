@@ -43,7 +43,17 @@ export async function getCurrentUserProfile(): Promise<{
       return { data: mockUserData, error: null }
     }
 
-    return { data: mockUser, error: null }
+    const mappedUser: PyveVoiceUser = {
+      // Intentionally omit 'id' because MockUser.id is string and PyveVoiceUser.id expects number
+      clerk_id: mockUser.clerk_id,
+      email: mockUser.email,
+      first_name: mockUser.first_name ?? null,
+      last_name: mockUser.last_name ?? null,
+      profile_image_url: mockUser.profile_image_url ?? null,
+      created_at: mockUser.created_at,
+      updated_at: mockUser.updated_at
+    }
+    return { data: mappedUser, error: null }
   } catch (error) {
     console.error('Error getting user profile:', error)
     return { data: null, error: 'Failed to get user profile' }

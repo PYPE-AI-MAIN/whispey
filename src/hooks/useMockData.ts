@@ -54,9 +54,8 @@ export const useMockQuery = (table: string, options: any = {}) => {
           break
         case 'pype_voice_metrics_logs':
           try {
-            // Check if there's a session_id filter to get specific transcript logs
-            const sessionIdFilter = options.filters?.find((f: any) => f.column === 'session_id' && f.operator === 'eq')
-            mockData = MockDataService.getTranscriptLogs(sessionIdFilter?.value) || []
+            // Transcript logs mock (no parameter support in current service)
+            mockData = MockDataService.getTranscriptLogs() || []
           } catch (e) {
             console.warn('Error fetching transcript logs:', e)
             mockData = []
@@ -307,16 +306,26 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: {
           conversionMetrics: analytics.conversionMetrics,
           
           // Legacy format for backward compatibility
-          dailyStats: analytics.dailyData.map(day => ({
-            call_date: day.date,
-            calls: day.calls,
-            total_minutes: day.minutes,
-            avg_latency: day.avg_latency,
-            unique_customers: day.calls,
-            successful_calls: day.successful,
-            success_rate: (day.successful / day.calls) * 100,
-            total_cost: day.cost
-          }))
+          dailyStats: analytics.dailyData.map((day: any) => {
+            const totalMinutes = typeof day.minutes === 'number'
+              ? day.minutes
+              : (typeof day.duration === 'number' ? day.duration : 0)
+            const successfulCalls = typeof day.successful === 'number' ? day.successful : 0
+            const callsCount = typeof day.calls === 'number' ? day.calls : 0
+            const avgLatency = typeof day.avg_latency === 'number' ? day.avg_latency : 0
+            const totalCost = typeof day.cost === 'number' ? day.cost : 0
+
+            return {
+              call_date: day.date,
+              calls: callsCount,
+              total_minutes: totalMinutes,
+              avg_latency: avgLatency,
+              unique_customers: callsCount,
+              successful_calls: successfulCalls,
+              success_rate: callsCount > 0 ? (successfulCalls / callsCount) * 100 : 0,
+              total_cost: totalCost
+            }
+          })
         }
 
         setData(overviewData)
