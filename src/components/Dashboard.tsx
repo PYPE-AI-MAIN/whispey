@@ -204,7 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'logs', label: 'Call Logs', icon: List },
-    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : [])
+    { id: 'campaign-logs', label: 'Campaign Logs', icon: Database }
   ]
 
   // Prepare breadcrumb data for Header
@@ -419,7 +419,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
         {activeTab === 'logs' && (
           <CallLogs project={project} agent={agent} onBack={handleBack} />
         )}
-        {activeTab === 'campaign-logs' && isEnhancedProject && (
+        {activeTab === 'campaign-logs' && (
           <CampaignLogs project={project} agent={agent} onBack={handleBack} />
         )}
       </div>
