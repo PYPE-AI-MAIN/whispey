@@ -27,7 +27,7 @@ import Header from '@/components/shared/Header'
 
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
-import { supabase } from '../lib/supabase'
+// Removed Supabase import - using mock data now
 
 interface DashboardProps {
   agentId: string
@@ -371,7 +371,15 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
               </div>
               
               <FieldExtractorDialog
-                initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
+                initialData={(() => {
+                  try {
+                    return JSON.parse(agent?.field_extractor_prompt || '[]')
+                  } catch (e) {
+                    // If it's not valid JSON, return empty array
+                    console.warn('Invalid JSON in field_extractor_prompt:', agent?.field_extractor_prompt)
+                    return []
+                  }
+                })()}
                 isEnabled={!!agent?.field_extractor}
                 onSave={async (data, enabled) => {
                   const { error } = await supabase

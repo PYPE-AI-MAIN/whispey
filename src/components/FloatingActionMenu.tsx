@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, TrendingUp, Calculator, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useChartContext } from './EnhancedChartBuilder'
 import CustomTotalsBuilder from './CustomTotalBuilds'
+import AdvancedCustomAnalytics from './AdvancedCustomAnalytics'
 
 interface FloatingActionMenuProps {
   // Chart Builder props
@@ -32,6 +33,7 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showCustomTotals, setShowCustomTotals] = useState(false)
+  const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false)
 
   return (
     <>
@@ -53,6 +55,32 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
                 />
               </div>
               
+              {/* Advanced Custom Analytics Option */}
+              <div className="flex items-center gap-3">
+                <span className="bg-gray-900 text-white text-sm px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
+                  Advanced Analytics
+                </span>
+                <Dialog open={showAdvancedAnalytics} onOpenChange={setShowAdvancedAnalytics}>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0"
+                    >
+                      <Calculator className="w-5 h-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                    <AdvancedCustomAnalytics
+                      agentId={agentId}
+                      projectId={projectId}
+                      metadataFields={metadataFields}
+                      transcriptionFields={transcriptionFields}
+                      onSave={onSaveCustomTotal}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+
               {/* Custom Totals Option */}
               <div className="flex items-center gap-3">
                 <span className="bg-gray-900 text-white text-sm px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
@@ -108,10 +136,16 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
 
       {/* Backdrop - invisible click area */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-        />
+        <div
+      className="fixed inset-0 z-40 bg-transparent"
+      style={{ pointerEvents: 'auto', background: 'transparent' }}
+      onWheel={(e) => {
+        // allow scroll to bubble to body
+        e.stopPropagation();
+      }}
+      onClick={() => setIsOpen(false)}
+    />
+
       )}
     </>
   )

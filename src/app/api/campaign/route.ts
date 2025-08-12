@@ -1,10 +1,6 @@
+// Campaign API - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { MockDataService } from '@/lib/mockData'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +20,6 @@ export async function POST(request: NextRequest) {
     if (!projectId) {
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 })
     }
-    
     
     if (!startDate || !endDate) {
       return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 })
@@ -48,102 +43,64 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify project exists
-    const { data: project, error: projectError } = await supabase
-      .from('pype_voice_projects')
-      .select('id')
-      .eq('id', projectId)
-      .single()
-
-    if (projectError || !project) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
+    const project = MockDataService.getProjectById(projectId)
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    console.log(`Starting campaign creation for project: ${projectId}`)
-
-    // Step 1: Update project with retry configuration
-    const { error: projectUpdateError } = await supabase
-      .from('pype_voice_projects')
-      .update({ retry_configuration: retryConfig })
-      .eq('id', projectId)
-
-    if (projectUpdateError) {
-      console.error('Error updating project retry config:', projectUpdateError)
-      return NextResponse.json({ error: 'Failed to update project configuration' }, { status: 500 })
-    }
-
-    console.log('Updated project retry configuration')
-
-
-    // Step 3: Upload CSV to S3
-    const s3FormData = new FormData()
-    s3FormData.append('file', csvFile)
-    s3FormData.append('project_id', projectId)
-
-    const s3Response = await fetch('https://nbekv3zxpi.execute-api.ap-south-1.amazonaws.com/dev/api/v1/s3/upload', {
-      method: 'POST',
-      body: s3FormData,
-    })
-
-    if (!s3Response.ok) {
-      console.error('Error uploading CSV to S3')
-      return NextResponse.json({ error: 'Failed to upload CSV file' }, { status: 500 })
-    }
-
-    const s3Data = await s3Response.json()
-    const s3Key = s3Data.s3Key || s3Data.key || s3Data.filePath
-    console.log(`Uploaded CSV to S3: ${s3Key}`)
-
-    // Step 4: Parse CSV data
+    // Mock: Process CSV file
     const csvText = await csvFile.text()
-    const lines = csvText.split('\n').filter(line => line.trim())
-    const headers = lines[0].split(',').map(h => h.trim())
-    
-    const callData = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim())
-      const obj: any = {}
-      headers.forEach((header, index) => {
-        obj[header] = values[index] || ''
-      })
-      return obj
-    })
+    const csvLines = csvText.split('\n').filter(line => line.trim())
+    const phoneNumbers = csvLines.slice(1) // Skip header
+      .map(line => line.split(',')[0]) // Assume phone number is first column
+      .filter(phone => phone && phone.trim())
 
-    console.log(`Parsed ${callData.length} call records from CSV`)
+    if (phoneNumbers.length === 0) {
+      return NextResponse.json({ error: 'No valid phone numbers found in CSV' }, { status: 400 })
+    }
 
-
-    // Step 5: Create schedule
-    const schedulePayload = {
+    // Mock: Update project with campaign config
+    const campaignConfig = {
       start_date: startDate,
       end_date: endDate,
       start_time: startTime,
       end_time: endTime,
-      concurrency: concurrency,
+      concurrency,
+      retry_config: retryConfig,
+      phone_numbers: phoneNumbers,
+      total_numbers: phoneNumbers.length,
+      created_at: new Date().toISOString()
     }
 
-    console.log(schedulePayload)
-
-
-    const scheduleResponse = await fetch('https://nbekv3zxpi.execute-api.ap-south-1.amazonaws.com/dev/api/v1/cron/create-schedule', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(schedulePayload),
+    const updatedProject = MockDataService.updateProject(projectId, {
+      campaign_config: campaignConfig
     })
 
-    console.log(scheduleResponse)
-    if (!scheduleResponse.ok) {
-      console.error('Error creating schedule')
-      return NextResponse.json({ error: 'Failed to create campaign schedule' }, { status: 500 })
+    if (!updatedProject) {
+      return NextResponse.json({ error: 'Failed to save campaign configuration' }, { status: 500 })
     }
 
-    const scheduleData = await scheduleResponse.json()
-    console.log(`Created campaign schedule: ${scheduleData.scheduleId || 'success'}`)
+    console.log(`Mock: Campaign created successfully for project ${projectId} with ${phoneNumbers.length} phone numbers`)
 
-
-    return NextResponse.json({}, { status: 201 })
+    return NextResponse.json({
+      success: true,
+      message: 'Campaign created successfully',
+      campaign: {
+        id: `campaign_${Date.now()}`,
+        project_id: projectId,
+        total_numbers: phoneNumbers.length,
+        config: campaignConfig
+      }
+    }, { status: 200 })
 
   } catch (error) {
-    console.error('Unexpected error creating campaign:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error creating campaign:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to create campaign',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
-} 
+}

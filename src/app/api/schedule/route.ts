@@ -1,10 +1,6 @@
+// Schedule API - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { MockDataService } from '@/lib/mockData'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +8,6 @@ export async function POST(request: NextRequest) {
     
     // Extract form data
     const { project_id, start_date, end_date, start_time, end_time, concurrency, retry_config } = body
-    console.log(project_id, start_date, end_date, start_time, end_time, concurrency, retry_config)
 
     // Validation
     if (!project_id) {
@@ -46,71 +41,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 1: Update project retry configuration if provided
-    if (retry_config && Object.keys(retry_config).length > 0) {
-      console.log('Updating project retry configuration:', retry_config)
-
-      const campaign_config = {endDate: end_date, startDate: start_date, dailyEndTime: end_time, dailyStartTime: start_time}
-      
-      
-      const { error: projectUpdateError } = await supabase
-        .from('pype_voice_projects')
-        .update({ retry_configuration: retry_config, campaign_config:campaign_config })
-        .eq('id', project_id)
-
-      if (projectUpdateError) {
-        console.error('Error updating project retry configuration:', projectUpdateError)
-        return NextResponse.json({ error: 'Failed to update project retry configuration' }, { status: 500 })
-      }
-      
-      console.log('Successfully updated project retry configuration')
+    // Check if project exists
+    const project = MockDataService.getProjectById(project_id)
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    console.log(`Creating schedule for project: ${project_id}`)
-    console.log(`Schedule: ${start_date} to ${end_date}, ${start_time}-${end_time}, concurrency: ${concurrencyNum}`)
+    // Mock: simulate updating project retry configuration
+    if (retry_config) {
+      const updatedProject = MockDataService.updateProject(project_id, {
+        retry_configuration: retry_config
+      })
+      
+      if (!updatedProject) {
+        return NextResponse.json({ error: 'Failed to update project configuration' }, { status: 500 })
+      }
+    }
 
-    // Create schedule payload
-    const schedulePayload = {
+    // Mock: simulate scheduling campaign
+    const mockSchedule = {
+      id: `schedule_${Date.now()}`,
+      project_id,
       start_date,
       end_date,
       start_time,
       end_time,
-      concurrency: concurrencyNum
+      concurrency: concurrencyNum,
+      retry_config: retry_config || {},
+      status: 'scheduled',
+      created_at: new Date().toISOString()
     }
 
-    // Call external schedule API
-    const scheduleResponse = await fetch('https://nbekv3zxpi.execute-api.ap-south-1.amazonaws.com/dev/api/v1/cron/create-schedule', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(schedulePayload),
-    })
-
-    if (!scheduleResponse.ok) {
-      const errorText = await scheduleResponse.text()
-      console.error('Schedule creation failed:', errorText)
-      return NextResponse.json({ error: 'Failed to create campaign schedule' }, { status: 500 })
-    }
-
-    const scheduleData = await scheduleResponse.json()
-    console.log('Schedule created successfully:', scheduleData)
+    console.log('Mock: Campaign scheduled successfully:', mockSchedule)
 
     return NextResponse.json({
-      message: 'Campaign schedule created successfully',
-      scheduleId: scheduleData.id,
-      schedule: {
-        start_date,
-        end_date,
-        start_time,
-        end_time,
-        concurrency: concurrencyNum
-      },
-      retry_configuration: retry_config
-    })
+      success: true,
+      message: 'Campaign scheduled successfully',
+      schedule: mockSchedule
+    }, { status: 200 })
 
   } catch (error) {
-    console.error('Error in schedule route:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error scheduling campaign:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to schedule campaign',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
 }

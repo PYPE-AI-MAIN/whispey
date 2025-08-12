@@ -1,6 +1,6 @@
 // Enhanced chart hook - COUNT with multi-line support
 import React, { useState, useEffect, createContext, useContext } from 'react'
-import { supabase } from '../lib/supabase'
+// Removed Supabase import - using mock data now
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'

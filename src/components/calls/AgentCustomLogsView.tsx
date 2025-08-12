@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import { supabase } from "../../lib/supabase"
+// Removed Supabase import - using mock data now
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -461,16 +461,13 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
     if (!viewName.trim()) return
 
     try {
-      const { error } = await supabase.from("pype_voice_agent_call_log_views").insert([
-        {
-          agent_id: agentId,
-          name: viewName.trim(),
-          filters: currentFilters,
-          visible_columns: currentColumns,
-        },
-      ])
-
-      if (error) throw error
+      // Mock: simulate saving view (in real app, this would save to database)
+      console.log("Mock: Saving view", {
+        agent_id: agentId,
+        name: viewName.trim(),
+        filters: currentFilters,
+        visible_columns: currentColumns,
+      })
 
       setViewName("")
       setIsCustomizeOpen(false)
@@ -483,9 +480,8 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
 
   const deleteView = useCallback(async (viewId: string): Promise<void> => {
     try {
-      const { error } = await supabase.from("pype_voice_agent_call_log_views").delete().eq("id", viewId)
-
-      if (error) throw error
+      // Mock: simulate deleting view (in real app, this would delete from database)
+      console.log("Mock: Deleting view", viewId)
 
       setViews((prev) => prev.filter((view) => view.id !== viewId))
 
@@ -889,7 +885,7 @@ const AgentCustomLogsView: React.FC<AgentCustomLogsViewProps> = ({ agentId, date
                         <TableCell className="font-medium text-gray-900">{call.customer_number}</TableCell>
                       )}
                       {currentColumns.basic.includes("call_id") && (
-                        <TableCell className="font-mono text-sm text-gray-600">{call.call_id.slice(-8)}</TableCell>
+                        <TableCell className="font-mono text-sm text-gray-600">{call.call_id?.slice(-8) || 'N/A'}</TableCell>
                       )}
                       {currentColumns.basic.includes("call_ended_reason") && (
                         <TableCell>

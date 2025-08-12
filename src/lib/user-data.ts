@@ -1,8 +1,6 @@
-// lib/user-data.ts
-import { supabase } from '../lib/supabase'
+// Mock User Data - No Database Required!
 import { auth, currentUser } from '@clerk/nextjs/server'
-
-
+import { MockDataService } from './mockData'
 
 export interface PyveVoiceUser {
   id?: number
@@ -15,50 +13,43 @@ export interface PyveVoiceUser {
   updated_at?: string
 }
 
-// Server-side function to get current user's data from your database
+// Server-side function to get current user's data from mock data
 export async function getCurrentUserProfile(): Promise<{
   data: PyveVoiceUser | null
   error: string | null
 }> {
   try {
     const { userId } = await auth()
-    
     if (!userId) {
       return { data: null, error: 'Not authenticated' }
     }
+
+    // Get user from mock data service
+    const mockUser = MockDataService.getUserByClerkId(userId)
     
-    const { data, error } = await supabase
-      .from('pype_voice_users')
-      .select('*')
-      .eq('clerk_id', userId)
-      .single()
-      
-    if (error) {
-      return { data: null, error: error.message }
+    if (!mockUser) {
+      // Return a default mock user
+      const user = await currentUser()
+      const mockUserData: PyveVoiceUser = {
+        id: 1,
+        clerk_id: userId,
+        email: user?.emailAddresses?.[0]?.emailAddress || 'demo@example.com',
+        first_name: user?.firstName || 'Demo',
+        last_name: user?.lastName || 'User',
+        profile_image_url: user?.imageUrl || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      return { data: mockUserData, error: null }
     }
-    
-    return { data: data as PyveVoiceUser, error: null }
+
+    return { data: mockUser, error: null }
   } catch (error) {
-    return { 
-      data: null, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }
+    console.error('Error getting user profile:', error)
+    return { data: null, error: 'Failed to get user profile' }
   }
 }
 
-// Server-side function to get current user from Clerk
 export async function getCurrentClerkUser() {
-  try {
-    const user = await currentUser()
-    return user
-  } catch (error) {
-    console.error('Error fetching current user:', error)
-    return null
-  }
-}
-
-// Client-side hook for React components
-export function useUserData() {
-  // This would be used in client components
-  // Implementation depends on your specific needs
+  return await currentUser()
 }

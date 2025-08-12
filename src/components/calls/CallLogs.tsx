@@ -13,7 +13,7 @@ import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
 import { CostTooltip } from "../tool-tip/costToolTip"
 import { CallLog } from "../../types/logs"
-import { supabase } from "../../lib/supabase"
+// Removed Supabase import - using mock data now
 import Papa from 'papaparse'
 import { useUser } from "@clerk/nextjs"
 import { getUserProjectRole } from "@/services/getUserRole"
@@ -468,17 +468,20 @@ const { user } = useUser()
     const metadataKeys = new Set<string>()
     const transcriptionKeys = new Set<string>()
 
-    calls.forEach((call: CallLog) => {
-      // Extract metadata keys
-      if (call.metadata && typeof call.metadata === 'object') {
-        Object.keys(call.metadata).forEach(key => metadataKeys.add(key))
-      }
+    // Defensive check - ensure calls is an array before iterating
+    if (Array.isArray(calls)) {
+      calls.forEach((call: CallLog) => {
+        // Extract metadata keys
+        if (call.metadata && typeof call.metadata === 'object') {
+          Object.keys(call.metadata).forEach(key => metadataKeys.add(key))
+        }
 
-      // Extract transcription_metrics keys
-      if (call.transcription_metrics && typeof call.transcription_metrics === 'object') {
-        Object.keys(call.transcription_metrics).forEach(key => transcriptionKeys.add(key))
-      }
-    })
+        // Extract transcription_metrics keys
+        if (call.transcription_metrics && typeof call.transcription_metrics === 'object') {
+          Object.keys(call.transcription_metrics).forEach(key => transcriptionKeys.add(key))
+        }
+      })
+    }
 
     return {
       metadata: Array.from(metadataKeys).sort(),
@@ -836,14 +839,14 @@ const { user } = useUser()
 
       {/* Horizontally Scrollable Table Container */}
       <div className="flex-1 overflow-y-auto min-h-0">
-      {loading && calls.length === 0 ? (
+      {loading && (!calls || calls.length === 0) ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center space-y-4">
               <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
               <p className="text-muted-foreground">Loading calls...</p>
             </div>
           </div>
-        ) : calls.length === 0 && !loading ? (
+        ) : (!calls || calls.length === 0) && !loading ? (
           <div className="text-center py-12">
             <Phone className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">
@@ -901,7 +904,7 @@ const { user } = useUser()
                   </TableRow>
                 </TableHeader>
                 <TableBody className="overflow-auto">
-                  {calls.map((call: CallLog) => (
+                  {calls?.map((call: CallLog) => (
                     <TableRow
                       key={call.id}
                       className={cn(
@@ -927,7 +930,7 @@ const { user } = useUser()
                   case "call_id":
                     value = (
                       <code className="text-xs bg-muted/60 px-3 py-1.5 rounded-md font-mono">
-                        {call.call_id.slice(-8)}
+                        {call.call_id?.slice(-8) || 'N/A'}
                       </code>
                     )
                     break
@@ -1019,9 +1022,9 @@ const { user } = useUser()
                 )}
 
                 {/* End of List */}
-                {!hasMore && calls.length > 0 && (
+                {!hasMore && calls && calls.length > 0 && (
                   <div className="py-4 text-muted-foreground text-sm border-t">
-                    All calls loaded ({calls.length} total)
+                    All calls loaded ({calls?.length || 0} total)
                   </div>
                 )}
             </div>

@@ -19,6 +19,7 @@ import {
   Percent,
   ArrowUp,
   ArrowDown,
+  Calculator,
 } from 'phosphor-react'
 
 import { 
@@ -46,14 +47,25 @@ import { Loader2, MoreHorizontal, Trash2 } from 'lucide-react'
 import { EnhancedChartBuilder, ChartProvider } from './EnhancedChartBuilder'
 import { FloatingActionMenu } from './FloatingActionMenu'
 
-
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { useUser } from "@clerk/nextjs"
-import CustomTotalsBuilder from './CustomTotalBuilds'
 import { CustomTotalsService } from '@/services/customTotalService'
 import { CustomTotalConfig, CustomTotalResult } from '../types/customTotals'
 import { Card, CardContent } from './ui/card'
+import { MockDataService, CustomOverviewMetric } from '../lib/mockData'
 import { Button } from './ui/button'
+
+// Helper function to format large numbers
+const formatNumber = (num: number): string => {
+  if (num >= 10000000) { // 10M+
+    return `${(num / 10000000).toFixed(1)}Cr` // Crores
+  } else if (num >= 100000) { // 1L+
+    return `${(num / 100000).toFixed(1)}L` // Lakhs
+  } else if (num >= 1000) { // 1K+
+    return `${(num / 1000).toFixed(1)}K` // Thousands
+  }
+  return num.toLocaleString()
+}
 
 
 
@@ -128,6 +140,10 @@ const Overview: React.FC<OverviewProps> = ({
   const [customTotalResults, setCustomTotalResults] = useState<CustomTotalResult[]>([])
   const [loadingCustomTotals, setLoadingCustomTotals] = useState(false)
   const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
+  const [customOverviewMetrics, setCustomOverviewMetrics] = useState<CustomOverviewMetric[]>([])
+  const [loadingCustomMetrics, setLoadingCustomMetrics] = useState(true)
+  
+
 
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
@@ -170,7 +186,40 @@ const Overview: React.FC<OverviewProps> = ({
     }
   }, [userEmail, project.id])
 
+  // Load custom overview metrics
+  useEffect(() => {
+    const loadCustomMetrics = async () => {
+      setLoadingCustomMetrics(true)
+      try {
+        const metrics = MockDataService?.getCustomOverviewMetrics ? MockDataService.getCustomOverviewMetrics(agent.id) : []
+        setCustomOverviewMetrics(metrics || [])
+      } catch (error) {
+        console.error('Error loading custom overview metrics:', error)
+        setCustomOverviewMetrics([])
+      } finally {
+        setLoadingCustomMetrics(false)
+      }
+    }
 
+    if (agent?.id) {
+      loadCustomMetrics()
+
+      // Listen for metrics changes
+      const handleMetricsChange = (changeData: { type: string; data: any }) => {
+        if (changeData.type === 'metrics' || changeData.type === 'all') {
+          console.log('🔄 Auto-refreshing custom metrics due to changes')
+          loadCustomMetrics()
+        }
+      }
+
+      MockDataService.on('data:changed', handleMetricsChange)
+
+      // Cleanup listener
+      return () => {
+        MockDataService.off('data:changed', handleMetricsChange)
+      }
+    }
+  }, [agent?.id])
 
   const loadCustomTotals = async () => {
     try {
@@ -336,7 +385,7 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Calls</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalCalls?.toLocaleString() || '0'}</p>
+                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalCalls ? formatNumber(analytics.totalCalls) : '0'}</p>
                       <p className="text-xs text-gray-400 font-medium">All time</p>
                     </div>
                   </div>
@@ -359,7 +408,7 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Minutes</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalMinutes?.toLocaleString() || '0'}</p>
+                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalMinutes ? formatNumber(analytics.totalMinutes) : '0'}</p>
                       <p className="text-xs text-gray-400 font-medium">Duration</p>
                     </div>
                   </div>
@@ -382,7 +431,7 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Cost</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">₹{analytics?.totalCost?.toFixed(2) || '0.00'}</p>
+                      <p className="text-2xl font-light text-gray-900 tracking-tight">₹{analytics?.totalCost ? formatNumber(analytics.totalCost) : '0.00'}</p>
                       <p className="text-xs text-gray-400 font-medium">Cumulative</p>
                     </div>
                   </div>
@@ -404,7 +453,7 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Response Time</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.averageLatency?.toFixed(2) || '0.00'}<span className="text-lg text-gray-400 ml-1">s</span></p>
+                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.averageLatency ? (analytics.averageLatency).toFixed(2) : '0.00'}<span className="text-lg text-gray-400 ml-1">s</span></p>
                       <p className="text-xs text-gray-400 font-medium">Performance</p>
                     </div>
                   </div>
@@ -430,7 +479,7 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Successful</h3>
-                      <p className="text-2xl font-light text-green-600 tracking-tight">{analytics?.successfulCalls?.toLocaleString() || '0'}</p>
+                      <p className="text-2xl font-light text-green-600 tracking-tight">{analytics?.successfulCalls ? formatNumber(analytics.successfulCalls) : '0'}</p>
                       <p className="text-xs text-gray-400 font-medium">Completed calls</p>
                     </div>
                   </div>
@@ -456,13 +505,80 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
                     <div className="space-y-1">
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Failed</h3>
-                      <p className="text-2xl font-light text-red-600 tracking-tight">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls).toLocaleString() : '0'}</p>
+                      <p className="text-2xl font-light text-red-600 tracking-tight">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? formatNumber(analytics.totalCalls - analytics.successfulCalls) : '0'}</p>
                       <p className="text-xs text-gray-400 font-medium">Incomplete calls</p>
                     </div>
                   </div>
                 </div>
               </div>
 
+              {/* Custom Overview Metrics */}
+              {customOverviewMetrics.map((metric) => {
+                const IconComponent = ICON_COMPONENTS[metric.icon as keyof typeof ICON_COMPONENTS] || Target
+                const colorClass = COLOR_CLASSES[metric.color as keyof typeof COLOR_CLASSES] || COLOR_CLASSES.blue
+                
+                const formatValue = (value: number | string) => {
+                  if (typeof value === 'string') return value
+                  
+                  let formattedValue = value.toString()
+                  if (metric.unit === 'currency' || metric.prefix) {
+                    formattedValue = typeof value === 'number' ? value.toFixed(2) : value.toString()
+                  }
+                  
+                  return `${metric.prefix || ''}${formattedValue}${metric.suffix || ''}`
+                }
+
+                const getChangeColor = (changeType?: string) => {
+                  switch (changeType) {
+                    case 'increase': return 'text-green-600 bg-green-50 border-green-100'
+                    case 'decrease': return 'text-red-600 bg-red-50 border-red-100'
+                    default: return 'text-gray-600 bg-gray-50 border-gray-100'
+                  }
+                }
+
+                const getChangeIcon = (changeType?: string) => {
+                  switch (changeType) {
+                    case 'increase': return <ArrowUp weight="bold" className="w-3 h-3" />
+                    case 'decrease': return <ArrowDown weight="bold" className="w-3 h-3" />
+                    default: return null
+                  }
+                }
+
+                return (
+                  <div key={metric.id} className="group">
+                    <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+                      <div className="p-5">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className={`p-2 ${colorClass.replace('text-', 'bg-').replace('-600', '-50')} rounded-lg border ${colorClass.replace('text-', 'border-').replace('-600', '-100')}`}>
+                            <IconComponent weight="regular" className={`w-5 h-5 ${colorClass}`} />
+                          </div>
+                          {metric.change !== undefined && (
+                            <div className="text-right">
+                              <div className={`flex items-center gap-1 px-2 py-1 rounded-md border ${getChangeColor(metric.changeType)}`}>
+                                {getChangeIcon(metric.changeType)}
+                                <span className="text-xs font-bold">
+                                  {metric.changeType === 'decrease' ? '' : '+'}{metric.change.toFixed(1)}%
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">{metric.name}</h3>
+                          <p className="text-2xl font-light text-gray-900 tracking-tight">
+                            {loadingCustomMetrics ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              formatValue(metric.value)
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-400 font-medium">{metric.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
 
             {customTotalResults.map((result) => {
               const config = customTotals.find(c => c.id === result.configId)
@@ -892,6 +1008,8 @@ const Overview: React.FC<OverviewProps> = ({
                 </div>
               </div>
             </div>
+
+
 
             {/* Chart Analytics Section */}
             <ChartProvider>

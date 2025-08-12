@@ -6,6 +6,7 @@ import {
 } from '@clerk/nextjs'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import { DataRefresher } from '@/components/DataRefresher'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -43,6 +44,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
         >
+          <DataRefresher />
           <main>
             <SignedOut>
               {/* This ensures auth pages don't show header */}

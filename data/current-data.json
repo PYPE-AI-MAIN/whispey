@@ -1,0 +1,969 @@
+{
+  "projects": [
+    {
+      "id": "proj_001",
+      "name": "Customer Support Hub",
+      "description": "AI-powered customer support agents handling inquiries, complaints, and technical support across multiple channels.",
+      "environment": "production",
+      "owner_clerk_id": "user_demo_123",
+      "created_at": "2024-01-15T10:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z",
+      "is_active": true,
+      "user_role": "owner",
+      "api_token": "sk_proj_001_demo_token_abc123"
+    },
+    {
+      "id": "proj_002",
+      "name": "Sales Outreach Campaign",
+      "description": "Automated sales calling system for lead qualification, appointment setting, and follow-up communications.",
+      "environment": "production",
+      "owner_clerk_id": "user_demo_123",
+      "created_at": "2024-01-10T14:30:00Z",
+      "updated_at": "2024-01-10T14:30:00Z",
+      "is_active": true,
+      "user_role": "owner",
+      "api_token": "sk_proj_002_demo_token_def456"
+    },
+    {
+      "id": "proj_003",
+      "name": "Healthcare Appointment Bot",
+      "description": "Medical appointment scheduling and patient communication system with HIPAA compliance features.",
+      "environment": "staging",
+      "owner_clerk_id": "user_demo_123",
+      "created_at": "2024-01-05T09:15:00Z",
+      "updated_at": "2024-01-05T09:15:00Z",
+      "is_active": true,
+      "user_role": "owner",
+      "api_token": "sk_proj_003_demo_token_ghi789"
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent_001",
+      "name": "Support Agent Alpha",
+      "agent_type": "inbound_support",
+      "configuration": {
+        "voice": "alloy",
+        "language": "en",
+        "response_time_target": 2000,
+        "max_call_duration": 1800,
+        "escalation_keywords": [
+          "manager",
+          "supervisor",
+          "complaint"
+        ]
+      },
+      "project_id": "proj_001",
+      "environment": "production",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract customer satisfaction, issue type, and resolution status from the conversation.",
+      "field_extractor_keys": [
+        "customer_satisfaction",
+        "issue_type",
+        "issue_resolved",
+        "escalation_required"
+      ]
+    },
+    {
+      "id": "agent_002",
+      "name": "Support Agent Beta",
+      "agent_type": "inbound_support",
+      "configuration": {
+        "voice": "echo",
+        "language": "en",
+        "response_time_target": 1500,
+        "max_call_duration": 1200,
+        "specialization": "technical_support"
+      },
+      "project_id": "proj_001",
+      "environment": "production",
+      "created_at": "2024-01-15T11:00:00Z",
+      "updated_at": "2024-01-15T11:00:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract technical issue details, solution provided, and customer technical level.",
+      "field_extractor_keys": [
+        "technical_level",
+        "issue_category",
+        "solution_provided",
+        "follow_up_needed"
+      ]
+    },
+    {
+      "id": "agent_003",
+      "name": "Sales Caller Pro",
+      "agent_type": "outbound_sales",
+      "configuration": {
+        "voice": "nova",
+        "language": "en",
+        "response_time_target": 1000,
+        "max_call_duration": 900,
+        "sales_script_version": "v2.1",
+        "qualification_criteria": [
+          "budget",
+          "timeline",
+          "decision_maker"
+        ]
+      },
+      "project_id": "proj_002",
+      "environment": "production",
+      "created_at": "2024-01-10T15:00:00Z",
+      "updated_at": "2024-01-10T15:00:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract lead qualification status, interest level, and next steps from the sales conversation.",
+      "field_extractor_keys": [
+        "lead_score",
+        "interest_level",
+        "budget_qualified",
+        "decision_timeframe",
+        "next_action"
+      ]
+    },
+    {
+      "id": "agent_004",
+      "name": "Appointment Assistant",
+      "agent_type": "appointment_scheduling",
+      "configuration": {
+        "voice": "shimmer",
+        "language": "en",
+        "response_time_target": 1200,
+        "max_call_duration": 600,
+        "appointment_types": [
+          "consultation",
+          "follow_up",
+          "procedure"
+        ],
+        "working_hours": "9:00-17:00"
+      },
+      "project_id": "proj_003",
+      "environment": "staging",
+      "created_at": "2024-01-05T10:00:00Z",
+      "updated_at": "2024-01-05T10:00:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract appointment details, patient preferences, and scheduling success from the conversation.",
+      "field_extractor_keys": [
+        "appointment_scheduled",
+        "preferred_time",
+        "appointment_type",
+        "patient_concerns",
+        "insurance_verified"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "user_001",
+      "clerk_id": "user_demo_123",
+      "email": "demo@example.com",
+      "first_name": "Demo",
+      "last_name": "User",
+      "profile_image_url": "https://via.placeholder.com/150",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "is_active": true
+    }
+  ],
+  "callLogs": [
+    {
+      "id": "call_001",
+      "call_id": "call_20240115_001",
+      "agent_id": "agent_001",
+      "customer_number": "+1234567890",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "user",
+          "content": "Hi, I'm having trouble with my account login.",
+          "timestamp": 1705320000
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your login issue. Can you tell me what specific error you're seeing?",
+          "timestamp": 1705320002
+        },
+        {
+          "role": "user",
+          "content": "It says my password is incorrect, but I'm sure it's right.",
+          "timestamp": 1705320010
+        },
+        {
+          "role": "assistant",
+          "content": "I understand how frustrating that can be. Let me help you reset your password securely. Can you verify your email address for me?",
+          "timestamp": 1705320012
+        }
+      ],
+      "metadata": {
+        "customer_satisfaction": 4,
+        "issue_type": "login_problem",
+        "issue_resolved": true,
+        "escalation_required": false,
+        "usage": {
+          "llm_prompt_tokens": 150,
+          "llm_completion_tokens": 85,
+          "tts_characters": 200,
+          "stt_audio_duration": 45.5
+        }
+      },
+      "dynamic_variables": {
+        "customer_tier": "premium",
+        "previous_calls": 2
+      },
+      "environment": "production",
+      "created_at": "2024-01-15T12:00:00Z",
+      "call_started_at": "2024-01-15T12:00:00Z",
+      "call_ended_at": "2024-01-15T12:02:30Z",
+      "duration_seconds": 150,
+      "recording_url": "https://example.com/recordings/call_001.mp3",
+      "avg_latency": 1200,
+      "transcription_metrics": {
+        "accuracy": 0.95,
+        "confidence": 0.88
+      },
+      "total_stt_cost": 0.05,
+      "total_tts_cost": 0.12,
+      "total_llm_cost": 0.08
+    },
+    {
+      "id": "call_001_02",
+      "call_id": "call_20240115_001_02",
+      "agent_id": "agent_001",
+      "customer_number": "+1234567891",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "user",
+          "content": "Hi, I need help with my billing statement. There's a charge I don't recognize.",
+          "timestamp": 1705325000
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you review your billing statement. Can you tell me the amount and date of the charge you're questioning?",
+          "timestamp": 1705325003
+        },
+        {
+          "role": "user",
+          "content": "It's $29.99 from last Tuesday. I don't remember making any purchases.",
+          "timestamp": 1705325015
+        },
+        {
+          "role": "assistant",
+          "content": "Let me look that up for you. I can see this charge is for your premium subscription upgrade that was processed on Tuesday. Would you like me to explain the features included?",
+          "timestamp": 1705325020
+        },
+        {
+          "role": "user",
+          "content": "Oh right, I did upgrade! Thanks for clarifying. Can you tell me how to access the premium features?",
+          "timestamp": 1705325035
+        },
+        {
+          "role": "assistant",
+          "content": "Absolutely! I'll send you a welcome email with all the premium feature details and setup instructions. Is there anything specific you'd like to try first?",
+          "timestamp": 1705325040
+        }
+      ],
+      "duration_seconds": 180,
+      "metadata": {
+        "customer_satisfaction": 5,
+        "issue_type": "billing_inquiry",
+        "issue_resolved": true,
+        "escalation_required": false,
+        "resolution_time": 180,
+        "customer_tier": "premium",
+        "usage": {
+          "llm_prompt_tokens": 200,
+          "llm_completion_tokens": 120,
+          "tts_characters": 350,
+          "stt_audio_duration": 180
+        }
+      },
+      "transcription_metrics": {
+        "transcript": "Customer inquiry about billing resolved successfully with premium upgrade explanation",
+        "duration": 180,
+        "call_ended_reason": "completed",
+        "accuracy": 0.97,
+        "confidence": 0.92
+      },
+      "created_at": "2024-01-15T14:30:00Z",
+      "call_started_at": "2024-01-15T14:30:00Z",
+      "call_ended_at": "2024-01-15T14:33:00Z",
+      "avg_latency": 1100,
+      "total_stt_cost": 0.08,
+      "total_tts_cost": 0.15,
+      "total_llm_cost": 0.12
+    },
+    {
+      "id": "call_001_03",
+      "call_id": "call_20240115_001_03",
+      "agent_id": "agent_001",
+      "customer_number": "+1234567892",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "user",
+          "content": "My account got locked and I can't access my dashboard.",
+          "timestamp": 1705330000
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry to hear about the account lock. Let me help you regain access. Can you verify your email address for me?",
+          "timestamp": 1705330005
+        },
+        {
+          "role": "user",
+          "content": "It's john.smith@email.com",
+          "timestamp": 1705330010
+        },
+        {
+          "role": "assistant",
+          "content": "Thank you. I can see your account was temporarily locked due to multiple failed login attempts. I'm unlocking it now and sending you a password reset link.",
+          "timestamp": 1705330015
+        },
+        {
+          "role": "user",
+          "content": "Great! How can I prevent this from happening again?",
+          "timestamp": 1705330025
+        },
+        {
+          "role": "assistant",
+          "content": "I recommend enabling two-factor authentication for better security. I can help you set that up right now if you'd like.",
+          "timestamp": 1705330030
+        }
+      ],
+      "duration_seconds": 210,
+      "metadata": {
+        "customer_satisfaction": 4,
+        "issue_type": "account_access",
+        "issue_resolved": true,
+        "escalation_required": false,
+        "resolution_time": 210,
+        "security_action": "account_unlocked",
+        "customer_tier": "standard",
+        "usage": {
+          "llm_prompt_tokens": 180,
+          "llm_completion_tokens": 95,
+          "tts_characters": 280,
+          "stt_audio_duration": 210
+        }
+      },
+      "transcription_metrics": {
+        "transcript": "Account lockout issue resolved with security recommendations provided",
+        "duration": 210,
+        "call_ended_reason": "completed",
+        "accuracy": 0.94,
+        "confidence": 0.89
+      },
+      "created_at": "2024-01-15T16:00:00Z",
+      "call_started_at": "2024-01-15T16:00:00Z",
+      "call_ended_at": "2024-01-15T16:03:30Z",
+      "avg_latency": 1300,
+      "total_stt_cost": 0.09,
+      "total_tts_cost": 0.14,
+      "total_llm_cost": 0.11
+    },
+    {
+      "id": "call_001_04",
+      "call_id": "call_20240115_001_04",
+      "agent_id": "agent_001",
+      "customer_number": "+1234567893",
+      "call_ended_reason": "failed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "user",
+          "content": "I'm having issues with the new update, everything is broken!",
+          "timestamp": 1705335000
+        },
+        {
+          "role": "assistant",
+          "content": "I understand your frustration with the update. Let me help troubleshoot the issues you're experiencing. What specific problems are you seeing?",
+          "timestamp": 1705335005
+        },
+        {
+          "role": "user",
+          "content": "The app keeps crashing when I try to upload files, and my data seems to be missing.",
+          "timestamp": 1705335015
+        },
+        {
+          "role": "assistant",
+          "content": "That sounds concerning. Let me escalate this to our technical team for immediate assistance. I'll also ensure your data is recovered safely.",
+          "timestamp": 1705335020
+        }
+      ],
+      "duration_seconds": 90,
+      "metadata": {
+        "customer_satisfaction": 2,
+        "issue_type": "technical_issue",
+        "issue_resolved": false,
+        "escalation_required": true,
+        "escalated_to": "technical_team",
+        "customer_tier": "enterprise",
+        "usage": {
+          "llm_prompt_tokens": 120,
+          "llm_completion_tokens": 60,
+          "tts_characters": 180,
+          "stt_audio_duration": 90
+        }
+      },
+      "transcription_metrics": {
+        "transcript": "Technical issue with app crashes and data concerns, escalated to technical team",
+        "duration": 90,
+        "call_ended_reason": "failed",
+        "accuracy": 0.91,
+        "confidence": 0.85
+      },
+      "created_at": "2024-01-15T17:30:00Z",
+      "call_started_at": "2024-01-15T17:30:00Z",
+      "call_ended_at": "2024-01-15T17:31:30Z",
+      "avg_latency": 1500,
+      "total_stt_cost": 0.04,
+      "total_tts_cost": 0.09,
+      "total_llm_cost": 0.07
+    },
+    {
+      "id": "call_002",
+      "call_id": "call_20240115_002",
+      "agent_id": "agent_002",
+      "customer_number": "+1234567891",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "user",
+          "content": "My internet connection keeps dropping every few minutes.",
+          "timestamp": 1705323600
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry to hear about the connection issues. Let me run some diagnostics to help identify the problem.",
+          "timestamp": 1705323602
+        }
+      ],
+      "metadata": {
+        "technical_level": "intermediate",
+        "issue_category": "connectivity",
+        "solution_provided": true,
+        "follow_up_needed": false,
+        "usage": {
+          "llm_prompt_tokens": 200,
+          "llm_completion_tokens": 120,
+          "tts_characters": 280,
+          "stt_audio_duration": 180.2
+        }
+      },
+      "dynamic_variables": {
+        "device_type": "router",
+        "connection_speed": "100mbps"
+      },
+      "environment": "production",
+      "created_at": "2024-01-15T13:00:00Z",
+      "call_started_at": "2024-01-15T13:00:00Z",
+      "call_ended_at": "2024-01-15T13:05:45Z",
+      "duration_seconds": 345,
+      "recording_url": "https://example.com/recordings/call_002.mp3",
+      "avg_latency": 950,
+      "transcription_metrics": {
+        "accuracy": 0.92,
+        "confidence": 0.85
+      },
+      "total_stt_cost": 0.12,
+      "total_tts_cost": 0.18,
+      "total_llm_cost": 0.15
+    },
+    {
+      "id": "call_003",
+      "call_id": "call_20240115_003",
+      "agent_id": "agent_003",
+      "customer_number": "+1555123456",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hi, this is Sarah from TechCorp Sales. I'm calling about your recent inquiry regarding our enterprise software solutions.",
+          "timestamp": 1705320000,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Yes, I'm interested. We're looking for something to manage our customer relationships better.",
+          "timestamp": 1705320005,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "Perfect! Our CRM solution is designed exactly for businesses like yours. It helps streamline customer interactions, track sales pipelines, and automate follow-ups. What's your current team size?",
+          "timestamp": 1705320012,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        },
+        {
+          "role": "user",
+          "content": "We have about 15 people in sales and customer service. How much does your solution cost?",
+          "timestamp": 1705320020,
+          "stt_metrics": {
+            "duration": 1.1,
+            "confidence": 0.95,
+            "processing_time": 0.165
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.092,
+            "confidence": 0.89
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "For a team of 15 users, our Professional plan would be ideal at $45 per user per month. That includes all core CRM features, reporting, and priority support. Would you like me to schedule a demo for your team?",
+          "timestamp": 1705320028,
+          "stt_metrics": {
+            "duration": 1.35,
+            "confidence": 0.98,
+            "processing_time": 0.21
+          },
+          "llm_metrics": {
+            "ttft": 0.45,
+            "tokens_per_second": 11,
+            "total_tokens": 58,
+            "response_time": 1.18
+          },
+          "tts_metrics": {
+            "ttfb": 0.17,
+            "audio_duration": 3.6,
+            "synthesis_time": 0.32
+          }
+        },
+        {
+          "role": "user",
+          "content": "That sounds reasonable. Yes, I'd like to see a demo. When can we schedule it?",
+          "timestamp": 1705320035,
+          "stt_metrics": {
+            "duration": 0.95,
+            "confidence": 0.96,
+            "processing_time": 0.135
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.078,
+            "confidence": 0.94
+          }
+        }
+      ],
+      "duration_seconds": 240,
+      "metadata": {
+        "lead_score": 92,
+        "interest_level": "very_high",
+        "budget_qualified": true,
+        "decision_timeframe": "within_month",
+        "next_action": "schedule_demo"
+      },
+      "transcription_metrics": {
+        "transcript": "Complete sales conversation with qualified lead",
+        "duration": 240,
+        "call_ended_reason": "completed"
+      },
+      "created_at": "2024-01-15T16:00:00Z",
+      "call_started_at": "2024-01-15T16:00:00Z",
+      "call_ended_at": "2024-01-15T16:04:00Z",
+      "avg_latency": 1.1,
+      "recording_url": "https://storage.example.com/recordings/call_20240115_003.mp3",
+      "total_stt_cost": 0.06,
+      "total_tts_cost": 0.24,
+      "total_llm_cost": 0.18,
+      "updated_at": "2025-08-12T16:50:29.852Z"
+    },
+    {
+      "id": "call_004",
+      "call_id": "call_20240115_004",
+      "agent_id": "agent_003",
+      "customer_number": "+1555234567",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Mike from TechCorp. I'm reaching out about our special promotion on business automation tools.",
+          "timestamp": 1705321000,
+          "stt_metrics": {
+            "duration": 1.1,
+            "confidence": 0.95,
+            "processing_time": 0.17
+          },
+          "llm_metrics": {
+            "ttft": 0.39,
+            "tokens_per_second": 13,
+            "total_tokens": 42,
+            "response_time": 0.82
+          },
+          "tts_metrics": {
+            "ttfb": 0.15,
+            "audio_duration": 2.6,
+            "synthesis_time": 0.22
+          }
+        },
+        {
+          "role": "user",
+          "content": "We use some basic tools but nothing comprehensive. What do you offer?",
+          "timestamp": 1705321008,
+          "stt_metrics": {
+            "duration": 1.05,
+            "confidence": 0.93,
+            "processing_time": 0.155
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.088,
+            "confidence": 0.91
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "Great question! We offer a complete automation suite that handles everything from lead generation to customer onboarding. Our current promotion gives you 30% off the first year. What's your biggest pain point with your current setup?",
+          "timestamp": 1705321015,
+          "stt_metrics": {
+            "duration": 1.3,
+            "confidence": 0.97,
+            "processing_time": 0.185
+          },
+          "llm_metrics": {
+            "ttft": 0.44,
+            "tokens_per_second": 12,
+            "total_tokens": 55,
+            "response_time": 1.1
+          },
+          "tts_metrics": {
+            "ttfb": 0.165,
+            "audio_duration": 3.4,
+            "synthesis_time": 0.29
+          }
+        },
+        {
+          "role": "user",
+          "content": "Mainly manual data entry and follow-ups. Everything takes too much time.",
+          "timestamp": 1705321023,
+          "stt_metrics": {
+            "duration": 0.92,
+            "confidence": 0.96,
+            "processing_time": 0.13
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.082,
+            "confidence": 0.93
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "Perfect! That's exactly what our automation handles. We can eliminate 80% of manual data entry and set up automatic follow-up sequences. Would you be interested in a quick 15-minute demo to see it in action?",
+          "timestamp": 1705321030,
+          "stt_metrics": {
+            "duration": 1.25,
+            "confidence": 0.98,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.41,
+            "tokens_per_second": 14,
+            "total_tokens": 51,
+            "response_time": 0.95
+          },
+          "tts_metrics": {
+            "ttfb": 0.155,
+            "audio_duration": 3.1,
+            "synthesis_time": 0.27
+          }
+        },
+        {
+          "role": "user",
+          "content": "Maybe, but I need to check with my team first. Can you send me some information?",
+          "timestamp": 1705321038,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.145
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.09,
+            "confidence": 0.88
+          }
+        }
+      ],
+      "duration_seconds": 180,
+      "metadata": {
+        "lead_score": 78,
+        "interest_level": "high",
+        "budget_qualified": false,
+        "decision_timeframe": "3_months",
+        "next_action": "send_info"
+      },
+      "transcription_metrics": {
+        "transcript": "Initial outreach call with moderate interest",
+        "duration": 180,
+        "call_ended_reason": "completed"
+      },
+      "created_at": "2024-01-15T17:30:00Z",
+      "call_started_at": "2024-01-15T17:30:00Z",
+      "call_ended_at": "2024-01-15T17:33:00Z",
+      "avg_latency": 1.3,
+      "recording_url": "https://storage.example.com/recordings/call_20240115_004.mp3",
+      "total_stt_cost": 0.05,
+      "total_tts_cost": 0.08,
+      "total_llm_cost": 0.12
+    },
+    {
+      "agent_id": "agent_003",
+      "customer_number": "+1555212397",
+      "call_ended_reason": "completed",
+      "duration_seconds": 60,
+      "avg_latency": 1.062,
+      "recording_url": "https://storage.example.com/recordings/call_1755017448198.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Sales Caller Pro. How can I help you today?",
+          "timestamp": 1755017448,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1755017453,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1755017460,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "1_3_months",
+        "interest_level": "medium",
+        "lead_score": 66,
+        "next_action": "follow_up_call"
+      },
+      "total_stt_cost": 0.068,
+      "total_tts_cost": 0.025,
+      "total_llm_cost": 0.129,
+      "id": "call_1755017453619",
+      "call_id": "call_1755017453619",
+      "created_at": "2025-08-12T16:50:53.619Z",
+      "call_started_at": "2025-08-12T16:50:53.619Z",
+      "call_ended_at": "2025-08-12T16:51:53.619Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Sales Caller Pro. How can I help yo...",
+        "duration": 60,
+        "call_ended_reason": "completed"
+      }
+    }
+  ],
+  "customOverviewMetrics": [
+    {
+      "id": "metric_001",
+      "name": "Lead Conversion Rate",
+      "value": 24.5,
+      "type": "percentage",
+      "description": "Percentage of calls that resulted in qualified leads",
+      "agentId": "agent_003",
+      "projectId": "proj_001",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z"
+    },
+    {
+      "id": "metric_002",
+      "name": "Average Deal Size",
+      "value": 12500,
+      "type": "currency",
+      "description": "Average potential deal value from qualified leads",
+      "agentId": "agent_003",
+      "projectId": "proj_001",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z"
+    },
+    {
+      "id": "metric_003",
+      "name": "Follow-up Required",
+      "value": 18,
+      "type": "number",
+      "description": "Number of prospects requiring follow-up calls",
+      "agentId": "agent_003",
+      "projectId": "proj_001",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z"
+    },
+    {
+      "id": "metric_004",
+      "name": "Average Call Quality",
+      "value": 4.2,
+      "type": "number",
+      "description": "Average call quality score (1-5 scale)",
+      "agentId": "agent_003",
+      "projectId": "proj_001",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z"
+    },
+    {
+      "id": "metric_005",
+      "name": "Customer Satisfaction",
+      "value": 92.3,
+      "type": "percentage",
+      "description": "Overall customer satisfaction rating",
+      "agentId": "agent_001",
+      "projectId": "proj_002",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z"
+    },
+    {
+      "id": "metric_006",
+      "name": "Issue Resolution Rate",
+      "value": 87.5,
+      "type": "percentage",
+      "description": "Percentage of issues resolved in first call",
+      "agentId": "agent_001",
+      "projectId": "proj_002",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z"
+    },
+    {
+      "name": "High Interest",
+      "value": 42,
+      "type": "number",
+      "description": "Budget Approval",
+      "agentId": "",
+      "projectId": "",
+      "id": "metric_1755017884826",
+      "createdAt": "2025-08-12T16:58:04.826Z",
+      "updatedAt": "2025-08-12T16:58:04.826Z"
+    },
+    {
+      "name": "High Interest",
+      "value": 42,
+      "type": "number",
+      "description": "Budget Approval",
+      "agentId": "agent_003",
+      "projectId": "proj_002",
+      "id": "metric_1755017927459",
+      "createdAt": "2025-08-12T16:58:47.459Z",
+      "updatedAt": "2025-08-12T16:58:47.459Z"
+    }
+  ],
+  "agentOverrideMetrics": [
+    {
+      "id": "override_agent_003",
+      "agentId": "agent_003",
+      "agentName": "Sales Caller Pro",
+      "totalCalls": 10000,
+      "totalMinutes": 27582,
+      "totalCost": 220656,
+      "averageResponseTime": 1.3,
+      "successRate": 78.5,
+      "successfulCalls": 9374,
+      "failedCalls": 626,
+      "peakDailyCalls": 100,
+      "avgDailyCalls": 85,
+      "latencyRangeMin": 0.8,
+      "latencyRangeMax": 1.8,
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2025-08-12T16:56:06.710Z"
+    },
+    {
+      "id": "override_agent_001",
+      "agentId": "agent_001",
+      "agentName": "Support Agent Alpha",
+      "totalCalls": 89,
+      "totalMinutes": 445,
+      "totalCost": 89.75,
+      "averageResponseTime": 0.8,
+      "successRate": 92.1,
+      "successfulCalls": 82,
+      "failedCalls": 7,
+      "peakDailyCalls": 18,
+      "avgDailyCalls": 12,
+      "latencyRangeMin": 0.5,
+      "latencyRangeMax": 1.2,
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z"
+    }
+  ]
+}

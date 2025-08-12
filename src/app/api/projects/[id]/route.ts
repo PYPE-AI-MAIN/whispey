@@ -1,15 +1,11 @@
+// Project by ID API - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { jsonFileService } from '@/lib/jsonFileService.server'
 import crypto from 'crypto'
-
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Generate a secure API token
 function generateApiToken(): string {
-  // Generate a random token with prefix for easy identification
   const randomBytes = crypto.randomBytes(32).toString('hex')
   return `pype_${randomBytes}`
 }
@@ -19,60 +15,47 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex')
 }
 
-export async function PUT(
+export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: projectId } = await params
-    const body = await request.json()
-    const { action } = body
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (!projectId) {
+    const { id } = await params
+
+    if (!id) {
       return NextResponse.json(
         { error: 'Project ID is required' },
         { status: 400 }
       )
     }
 
-    if (action === 'regenerate_token') {
-      // Generate new API token
-      const newApiToken = generateApiToken()
-      const newHashedToken = hashToken(newApiToken)
-
-      // Update the project with the new hashed token
-      const { data, error } = await supabase
-        .from('pype_voice_projects')
-        .update({ token_hash: newHashedToken })
-        .eq('id', projectId)
-        .select('*')
-        .single()
-
-      if (error) {
-        console.error('Error regenerating project token:', error)
-        return NextResponse.json(
-          { error: 'Failed to regenerate token' },
-          { status: 500 }
-        )
-      }
-
-      // Return project data with the new unhashed token
-      const response = {
-        ...data,
-        api_token: newApiToken // Include the unhashed token for display
-      }
-
-      console.log(`Successfully regenerated token for project "${data.name}"`)
-      return NextResponse.json(response, { status: 200 })
+    // Get project from JSON file service
+    const project = jsonFileService.getProjectById(id)
+    
+    if (!project) {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action' },
-      { status: 400 }
-    )
+    // Check if user has access to this project
+    if (project.owner_clerk_id !== userId) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
+    }
+
+    return NextResponse.json(project, { status: 200 })
 
   } catch (error) {
-    console.error('Unexpected error:', error)
+    console.error('Unexpected error fetching project:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -80,59 +63,54 @@ export async function PUT(
   }
 }
 
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: projectId } = await params
-    const body = await request.json()
-    const { retry_configuration } = body
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (!projectId) {
+    const { id } = await params
+    const body = await request.json()
+
+    if (!id) {
       return NextResponse.json(
         { error: 'Project ID is required' },
         { status: 400 }
       )
     }
 
-    // Validate retry_configuration if provided
-    if (retry_configuration) {
-      const validCodes = ['408', '480', '486', '504', '600']
-      for (const [code, minutes] of Object.entries(retry_configuration)) {
-        if (!validCodes.includes(code)) {
-          return NextResponse.json(
-            { error: `Invalid SIP code: ${code}` },
-            { status: 400 }
-          )
-        }
-        if (typeof minutes !== 'number' || minutes < 1 || minutes > 1440) {
-          return NextResponse.json(
-            { error: `Invalid retry minutes for ${code}: must be between 1 and 1440` },
-            { status: 400 }
-          )
-        }
-      }
+    // Check if project exists and user has access
+    const existingProject = MockDataService.getProjectById(id)
+    if (!existingProject) {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      )
     }
 
-    // Update the project with retry configuration
-    const { data, error } = await supabase
-      .from('pype_voice_projects')
-      .update({ retry_configuration })
-      .eq('id', projectId)
-      .select('*')
-      .single()
+    if (existingProject.owner_clerk_id !== userId) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
+    }
 
-    if (error) {
-      console.error('Error updating project:', error)
+    // Update project using mock data service
+    const updatedProject = MockDataService.updateProject(id, body)
+    
+    if (!updatedProject) {
       return NextResponse.json(
         { error: 'Failed to update project' },
         { status: 500 }
       )
     }
 
-    console.log(`Successfully updated retry configuration for project "${data.name}"`)
-    return NextResponse.json(data, { status: 200 })
+    console.log(`Successfully updated project with ID: ${id}`)
+    return NextResponse.json(updatedProject, { status: 200 })
 
   } catch (error) {
     console.error('Unexpected error updating project:', error)
@@ -148,110 +126,57 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: projectId } = await params
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (!projectId) {
+    const { id } = await params
+
+    if (!id) {
       return NextResponse.json(
         { error: 'Project ID is required' },
         { status: 400 }
       )
     }
 
-    // Start cascade deletion process
-    console.log(`Starting cascade delete for project: ${projectId}`)
-
-    // 1. Get all agents for this project first
-    const { data: agents, error: agentsError } = await supabase
-      .from('pype_voice_agents')
-      .select('id')
-      .eq('project_id', projectId)
-
-    if (agentsError) {
-      console.error('Error fetching agents:', agentsError)
+    // Check if project exists and user has access
+    const existingProject = MockDataService.getProjectById(id)
+    if (!existingProject) {
       return NextResponse.json(
-        { error: 'Failed to fetch project agents' },
-        { status: 500 }
+        { error: 'Project not found' },
+        { status: 404 }
       )
     }
 
-    const agentIds = agents?.map((agent: { id: string }) => agent.id) || []
-    console.log(`Found ${agentIds.length} agents to clean up`)
-
-    // 2. Delete call logs for all agents in this project
-    if (agentIds.length > 0) {
-      const { error: callLogsError } = await supabase
-        .from('pype_voice_call_logs')
-        .delete()
-        .in('agent_id', agentIds)
-
-      if (callLogsError) {
-        console.error('Error deleting call logs:', callLogsError)
-        return NextResponse.json(
-          { error: 'Failed to delete call logs' },
-          { status: 500 }
-        )
-      }
-      console.log('Successfully deleted call logs')
-
-      // 3. Delete metrics logs (adjust based on your schema relationships)
-      const { error: metricsError } = await supabase
-        .from('pype_voice_metrics_logs')
-        .delete()
-        .in('session_id', agentIds) // Adjust this field based on your actual schema
-
-      // Don't fail if metrics logs have different relationships
-      if (metricsError) {
-        console.warn('Warning: Could not delete metrics logs:', metricsError)
-      } else {
-        console.log('Successfully deleted metrics logs')
-      }
-    }
-
-    console.log('Successfully deleted auth tokens')
-
-    // 5. Delete all agents for this project
-    const { error: agentsDeleteError } = await supabase
-      .from('pype_voice_agents')
-      .delete()
-      .eq('project_id', projectId)
-
-    if (agentsDeleteError) {
-      console.error('Error deleting agents:', agentsDeleteError)
+    if (existingProject.owner_clerk_id !== userId) {
       return NextResponse.json(
-        { error: 'Failed to delete agents' },
-        { status: 500 }
+        { error: 'Access denied' },
+        { status: 403 }
       )
     }
-    console.log('Successfully deleted agents')
 
-    // 6. Finally, delete the project itself
-    const { error: projectError } = await supabase
-      .from('pype_voice_projects')
-      .delete()
-      .eq('id', projectId)
-
-    if (projectError) {
-      console.error('Error deleting project:', projectError)
+    // Delete project using mock data service
+    const success = MockDataService.deleteProject(id)
+    
+    if (!success) {
       return NextResponse.json(
         { error: 'Failed to delete project' },
         { status: 500 }
       )
     }
-    
-    console.log(`Successfully deleted project: ${projectId}`)
 
+    console.log(`Successfully deleted project with ID: ${id}`)
     return NextResponse.json(
-      { 
-        message: 'Project and all related data deleted successfully'
-      },
+      { success: true, message: 'Project deleted successfully' },
       { status: 200 }
     )
 
   } catch (error) {
-    console.error('Unexpected error during project deletion:', error)
+    console.error('Unexpected error deleting project:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-} 
+}

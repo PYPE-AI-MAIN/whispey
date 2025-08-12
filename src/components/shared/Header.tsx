@@ -1,12 +1,12 @@
 "use client"
 
-import { UserButton, SignedIn, useUser } from "@clerk/clerk-react";
+import { UserButton, SignedIn, SignedOut, useUser, useClerk } from "@clerk/clerk-react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash, BookOpen } from 'lucide-react';
+import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash, BookOpen, Sparkles } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from "react";
 
@@ -24,6 +24,7 @@ function Header({ breadcrumb }: HeaderProps) {
     item?: string;
   } | null>(null);
   const { user } = useUser();
+  const { signOut } = useClerk();
 
 
   const isActive = (path: string) => {
@@ -49,8 +50,9 @@ function Header({ breadcrumb }: HeaderProps) {
   };
 
   return (
-    <SignedIn>
-      <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/60 sticky top-0 z-50 shadow-sm">
+    // For demo purposes, we'll always show the header
+    // In production, this would be wrapped in <SignedIn>
+    <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/60 sticky top-0 z-50 shadow-sm">
         <div className="px-6 py-3">
           <div className="flex items-center justify-between max-w-[1600px] mx-auto">
             {/* Logo & Brand Section */}
@@ -147,6 +149,16 @@ function Header({ breadcrumb }: HeaderProps) {
                   </div>
                   <div className="py-1">
                     <DropdownMenuItem asChild>
+                      <Link href="/magic" className="flex items-center w-full px-3 py-2 hover:bg-purple-50 rounded-lg mx-1 border border-purple-200/50">
+                        <Sparkles className="w-4 h-4 mr-3 text-purple-600" />
+                        <div>
+                          <p className="font-medium text-purple-900">✨ Magic Editor</p>
+                          <p className="text-xs text-purple-600">Manage all dashboard data</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
                       <Link href="/docs" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
                         <FileText className="w-4 h-4 mr-3 text-blue-600" />
                         <div>
@@ -189,39 +201,21 @@ function Header({ breadcrumb }: HeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* User Profile Section */}
+              {/* Auth Section */}
               <div className="flex items-center gap-3 pl-4 ml-2 border-l border-gray-200">
-                <div className="hidden sm:flex flex-col items-end">
-                  <p className="text-sm font-semibold text-gray-900 leading-none">{getUserDisplayName()}</p>
-                </div>
-                
-                <div className="relative">
-                  <UserButton 
-                    appearance={{
-                      elements: {
-                        avatarBox: "w-9 h-9 ring-2 ring-gray-100 hover:ring-blue-200 transition-all duration-200 shadow-sm hover:shadow-md",
-                        userButtonPopoverCard: "shadow-2xl border border-gray-100 rounded-2xl backdrop-blur-sm bg-white/95",
-                        userButtonPopoverActionButton: "hover:bg-gray-50 rounded-xl transition-all duration-200 mx-1",
-                        userButtonPopoverActionButtonText: "text-gray-700 font-medium",
-                        userButtonPopoverFooter: "hidden",
-                        userButtonPopoverActions: "p-2"
-                      }
-                    }}
-                    userProfileProps={{
-                      appearance: {
-                        elements: {
-                          card: "shadow-2xl border border-gray-100 rounded-2xl",
-                          navbar: "bg-gray-50/80 rounded-t-2xl border-b border-gray-100",
-                          navbarButton: "text-gray-600 hover:text-gray-900 font-semibold transition-colors",
-                          headerTitle: "text-gray-900 font-bold text-lg",
-                          headerSubtitle: "text-gray-600 font-medium"
-                        }
-                      }
-                    }}
-                  />
-                  {/* Online Status Indicator */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-                </div>
+                <SignedIn>
+                  <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex flex-col items-end">
+                      <p className="text-sm font-semibold text-gray-900 leading-none">{getUserDisplayName()}</p>
+                    </div>
+                    <UserButton afterSignOutUrl="/" />
+                  </div>
+                </SignedIn>
+                <SignedOut>
+                  <Link href="/sign-in">
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">Sign in</Button>
+                  </Link>
+                </SignedOut>
               </div>
             </div>
           </div>
@@ -230,7 +224,6 @@ function Header({ breadcrumb }: HeaderProps) {
         {/* Subtle bottom gradient */}
         <div className="h-px bg-gradient-to-r from-transparent via-gray-200/50 to-transparent"></div>
       </header>
-    </SignedIn>
   );
 }
 

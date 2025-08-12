@@ -1,10 +1,6 @@
+// app/api/agents/route.ts - Demo Mode (No Authentication Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { jsonFileService } from '@/lib/jsonFileService.server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,47 +29,45 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify project exists
-    const { data: project, error: projectError } = await supabase
-      .from('pype_voice_projects')
-      .select('id')
-      .eq('id', project_id)
-      .single()
-
-    if (projectError || !project) {
+    // Verify project exists in JSON file service (demo mode)
+    const project = jsonFileService.getProjectById(project_id)
+    if (!project) {
       return NextResponse.json(
         { error: 'Invalid project ID' },
         { status: 400 }
       )
     }
 
-    // Create agent data
-    const agentData = {
+    // Create agent using JSON file service
+    const newAgent = {
+      id: `agent_${Date.now()}`,
       name: name.trim(),
       agent_type,
       configuration: configuration || {},
       project_id,
       environment: environment || 'dev',
-      is_active: true
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_active: true,
+      field_extractor: false,
+      field_extractor_keys: []
     }
 
-    // Insert agent into pype_voice_agents
-    const { data: agent, error: agentError } = await supabase
-      .from('pype_voice_agents')
-      .insert([agentData])
-      .select('*')
-      .single()
-
-    if (agentError) {
-      console.error('Error creating agent:', agentError)
+    const success = jsonFileService.addAgent(newAgent)
+    
+    if (!success) {
       return NextResponse.json(
         { error: 'Failed to create agent' },
         { status: 500 }
       )
     }
 
-    console.log(`Successfully created agent "${agent.name}"`)
-    return NextResponse.json(agent, { status: 201 })
+    console.log(`[DEMO MODE] Successfully created agent "${name}" with ID ${newAgent.id}`)
+
+    // Format response to match frontend expectations
+    const response = newAgent
+
+    return NextResponse.json(response, { status: 201 })
 
   } catch (error) {
     console.error('Unexpected error creating agent:', error)
@@ -82,4 +76,29 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const project_id = searchParams.get('project_id')
+
+    if (!project_id) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Get agents for the project from JSON file service
+    const agents = jsonFileService.getAgents(project_id)
+
+    console.log(`[DEMO MODE] Fetched ${agents.length} agents for project ${project_id}`)
+
+    return NextResponse.json(agents, { status: 200 })
+
+  } catch (error) {
+    console.error('Unexpected error fetching agents:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

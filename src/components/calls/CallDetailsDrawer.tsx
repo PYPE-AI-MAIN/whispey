@@ -39,38 +39,36 @@ interface CallDetailsDrawerProps {
 const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData, onClose }) => {
   const sessionId = callData?.id
 
-  const {
-    data: transcriptLogs,
-    loading,
-    error,
-  } = useSupabaseQuery("pype_voice_metrics_logs", {
-    select: "*",
-    filters: [{ column: "session_id", operator: "eq", value: sessionId }],
-    orderBy: { column: "unix_timestamp", ascending: true },
-  })
+  // For mock data, use transcript_json directly from callData
+  const transcriptLogs = useMemo(() => {
+    if (callData?.transcript_json && Array.isArray(callData.transcript_json)) {
+      return callData.transcript_json.map((item: any, index: number) => ({
+        id: `${callData.id}_${index}`,
+        session_id: callData.id,
+        turn_id: `turn_${index}`,
+        user_transcript: item.role === 'user' ? item.content : '',
+        agent_response: item.role === 'assistant' ? item.content : '',
+        stt_metrics: item.stt_metrics || { duration: 1.000, confidence: 0.95, processing_time: 0.150 },
+        llm_metrics: item.llm_metrics || { ttft: 0.400, tokens_per_second: 12, total_tokens: 50, response_time: 0.900 },
+        tts_metrics: item.tts_metrics || { ttfb: 0.160, audio_duration: 2.500, synthesis_time: 0.250 },
+        eou_metrics: item.eou_metrics || { end_of_utterance_delay: 0.080, confidence: 0.9 },
+        lesson_day: 1,
+        created_at: new Date(item.timestamp * 1000).toISOString(),
+        unix_timestamp: item.timestamp,
+        phone_number: callData.customer_number,
+        call_duration: callData.duration_seconds,
+        call_success: callData.call_ended_reason === 'completed',
+        lesson_completed: true
+      }))
+    }
+    return []
+  }, [callData])
+
+  const loading = false
+  const error = null
 
   
-  // Parse basic transcript_json if no metrics are available
-  const basicTranscript = useMemo(() => {
-    if (!callData?.transcript_json || transcriptLogs?.length > 0) return null
-    
-    try {
-      const transcript = Array.isArray(callData.transcript_json) 
-        ? callData.transcript_json 
-        : JSON.parse(callData.transcript_json)
-      
-      return transcript.map((item: any, index: number) => ({
-        id: `basic-${index}`,
-        role: item.role,
-        content: item.content,
-        timestamp: item.timestamp,
-        turn_id: index + 1
-      }))
-    } catch (e) {
-      console.error('Error parsing transcript_json:', e)
-      return null
-    }
-  }, [callData?.transcript_json, transcriptLogs])
+
   
   // Calculate conversation metrics
   const conversationMetrics = useMemo(() => {
@@ -524,37 +522,6 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                           </div>
                         </div>
                       )}
-                    </div>
-                  ))}
-                </div>
-              ) : basicTranscript?.length ? (
-                <div className="space-y-6">
-                  {/* Basic transcript display */}
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                    <p className="text-blue-800 text-sm font-medium">Basic Transcript</p>
-                    <p className="text-blue-700 text-xs">Simple conversation format without detailed metrics</p>
-                  </div>
-                  {basicTranscript.map((item: any) => (
-                    <div key={item.id} className="space-y-4">
-                      <div className="flex gap-4">
-                        <div className="flex-shrink-0 w-12 text-right">
-                          <div className="text-xs text-muted-foreground font-mono">
-                            {item.timestamp ? new Date(item.timestamp * 1000).toLocaleTimeString([], { 
-                              hour: '2-digit', 
-                              minute: '2-digit', 
-                              second: '2-digit' 
-                            }) : `${item.id}`}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant={item.role === 'user' ? 'outline' : 'secondary'} className="text-xs">
-                              {item.role === 'user' ? 'User' : item.role === 'assistant' ? 'Assistant' : item.role}
-                            </Badge>
-                          </div>
-                          <p className="text-sm leading-relaxed">{item.content}</p>
-                        </div>
-                      </div>
                     </div>
                   ))}
                 </div>

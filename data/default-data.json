@@ -1,0 +1,249 @@
+{
+  "projects": [
+    {
+      "id": "proj_001",
+      "name": "Customer Support Hub",
+      "description": "AI-powered customer support agents handling inquiries, complaints, and technical support across multiple channels.",
+      "environment": "production",
+      "owner_clerk_id": "user_demo_123",
+      "created_at": "2024-01-15T10:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z",
+      "is_active": true,
+      "user_role": "owner",
+      "api_token": "sk_proj_001_demo_token_abc123"
+    },
+    {
+      "id": "proj_002", 
+      "name": "Sales Outreach Campaign",
+      "description": "Automated sales calling system for lead qualification, appointment setting, and follow-up communications.",
+      "environment": "production",
+      "owner_clerk_id": "user_demo_123",
+      "created_at": "2024-01-10T14:30:00Z",
+      "updated_at": "2024-01-10T14:30:00Z",
+      "is_active": true,
+      "user_role": "owner",
+      "api_token": "sk_proj_002_demo_token_def456"
+    },
+    {
+      "id": "proj_003",
+      "name": "Healthcare Appointment Bot",
+      "description": "Medical appointment scheduling and patient communication system with HIPAA compliance features.",
+      "environment": "staging",
+      "owner_clerk_id": "user_demo_123", 
+      "created_at": "2024-01-05T09:15:00Z",
+      "updated_at": "2024-01-05T09:15:00Z",
+      "is_active": true,
+      "user_role": "owner",
+      "api_token": "sk_proj_003_demo_token_ghi789"
+    }
+  ],
+  "agents": [
+    {
+      "id": "agent_001",
+      "name": "Support Agent Alpha",
+      "agent_type": "inbound_support",
+      "configuration": {
+        "voice": "alloy",
+        "language": "en",
+        "response_time_target": 2000,
+        "max_call_duration": 1800,
+        "escalation_keywords": ["manager", "supervisor", "complaint"]
+      },
+      "project_id": "proj_001",
+      "environment": "production",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract customer satisfaction, issue type, and resolution status from the conversation.",
+      "field_extractor_keys": ["customer_satisfaction", "issue_type", "issue_resolved", "escalation_required"]
+    },
+    {
+      "id": "agent_002",
+      "name": "Support Agent Beta", 
+      "agent_type": "inbound_support",
+      "configuration": {
+        "voice": "echo",
+        "language": "en",
+        "response_time_target": 1500,
+        "max_call_duration": 1200,
+        "specialization": "technical_support"
+      },
+      "project_id": "proj_001",
+      "environment": "production",
+      "created_at": "2024-01-15T11:00:00Z",
+      "updated_at": "2024-01-15T11:00:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract technical issue details, solution provided, and customer technical level.",
+      "field_extractor_keys": ["technical_level", "issue_category", "solution_provided", "follow_up_needed"]
+    },
+    {
+      "id": "agent_003",
+      "name": "Sales Caller Pro",
+      "agent_type": "outbound_sales",
+      "configuration": {
+        "voice": "nova",
+        "language": "en", 
+        "response_time_target": 1000,
+        "max_call_duration": 900,
+        "sales_script_version": "v2.1",
+        "qualification_criteria": ["budget", "timeline", "decision_maker"]
+      },
+      "project_id": "proj_002",
+      "environment": "production",
+      "created_at": "2024-01-10T15:00:00Z",
+      "updated_at": "2024-01-10T15:00:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract lead qualification status, interest level, and next steps from the sales conversation.",
+      "field_extractor_keys": ["lead_score", "interest_level", "budget_qualified", "decision_timeframe", "next_action"]
+    },
+    {
+      "id": "agent_004",
+      "name": "Appointment Assistant",
+      "agent_type": "appointment_scheduling", 
+      "configuration": {
+        "voice": "shimmer",
+        "language": "en",
+        "response_time_target": 1200,
+        "max_call_duration": 600,
+        "appointment_types": ["consultation", "follow_up", "procedure"],
+        "working_hours": "9:00-17:00"
+      },
+      "project_id": "proj_003",
+      "environment": "staging",
+      "created_at": "2024-01-05T10:00:00Z",
+      "updated_at": "2024-01-05T10:00:00Z",
+      "is_active": true,
+      "field_extractor": true,
+      "field_extractor_prompt": "Extract appointment details, patient preferences, and scheduling success from the conversation.",
+      "field_extractor_keys": ["appointment_scheduled", "preferred_time", "appointment_type", "patient_concerns", "insurance_verified"]
+    }
+  ],
+  "users": [
+    {
+      "id": "user_001",
+      "clerk_id": "user_demo_123",
+      "email": "demo@example.com",
+      "first_name": "Demo",
+      "last_name": "User",
+      "profile_image_url": "https://via.placeholder.com/150",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "is_active": true
+    }
+  ],
+  "callLogs": [
+    {
+      "id": "call_001",
+      "call_id": "call_20240115_001",
+      "agent_id": "agent_001",
+      "customer_number": "+1234567890",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "user",
+          "content": "Hi, I'm having trouble with my account login.",
+          "timestamp": 1705320000
+        },
+        {
+          "role": "assistant", 
+          "content": "I'd be happy to help you with your login issue. Can you tell me what specific error you're seeing?",
+          "timestamp": 1705320002
+        },
+        {
+          "role": "user",
+          "content": "It says my password is incorrect, but I'm sure it's right.",
+          "timestamp": 1705320010
+        },
+        {
+          "role": "assistant",
+          "content": "I understand how frustrating that can be. Let me help you reset your password securely. Can you verify your email address for me?",
+          "timestamp": 1705320012
+        }
+      ],
+      "metadata": {
+        "customer_satisfaction": 4,
+        "issue_type": "login_problem",
+        "issue_resolved": true,
+        "escalation_required": false,
+        "usage": {
+          "llm_prompt_tokens": 150,
+          "llm_completion_tokens": 85,
+          "tts_characters": 200,
+          "stt_audio_duration": 45.5
+        }
+      },
+      "dynamic_variables": {
+        "customer_tier": "premium",
+        "previous_calls": 2
+      },
+      "environment": "production",
+      "created_at": "2024-01-15T12:00:00Z",
+      "call_started_at": "2024-01-15T12:00:00Z",
+      "call_ended_at": "2024-01-15T12:02:30Z",
+      "duration_seconds": 150,
+      "recording_url": "https://example.com/recordings/call_001.mp3",
+      "avg_latency": 1200,
+      "transcription_metrics": {
+        "accuracy": 0.95,
+        "confidence": 0.88
+      },
+      "total_stt_cost": 0.05,
+      "total_tts_cost": 0.12,
+      "total_llm_cost": 0.08
+    },
+    {
+      "id": "call_002",
+      "call_id": "call_20240115_002", 
+      "agent_id": "agent_002",
+      "customer_number": "+1234567891",
+      "call_ended_reason": "completed",
+      "transcript_type": "agent",
+      "transcript_json": [
+        {
+          "role": "user",
+          "content": "My internet connection keeps dropping every few minutes.",
+          "timestamp": 1705323600
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry to hear about the connection issues. Let me run some diagnostics to help identify the problem.",
+          "timestamp": 1705323602
+        }
+      ],
+      "metadata": {
+        "technical_level": "intermediate",
+        "issue_category": "connectivity",
+        "solution_provided": true,
+        "follow_up_needed": false,
+        "usage": {
+          "llm_prompt_tokens": 200,
+          "llm_completion_tokens": 120,
+          "tts_characters": 280,
+          "stt_audio_duration": 180.2
+        }
+      },
+      "dynamic_variables": {
+        "device_type": "router",
+        "connection_speed": "100mbps"
+      },
+      "environment": "production",
+      "created_at": "2024-01-15T13:00:00Z",
+      "call_started_at": "2024-01-15T13:00:00Z", 
+      "call_ended_at": "2024-01-15T13:05:45Z",
+      "duration_seconds": 345,
+      "recording_url": "https://example.com/recordings/call_002.mp3",
+      "avg_latency": 950,
+      "transcription_metrics": {
+        "accuracy": 0.92,
+        "confidence": 0.85
+      },
+      "total_stt_cost": 0.12,
+      "total_tts_cost": 0.18,
+      "total_llm_cost": 0.15
+    }
+  ]
+}

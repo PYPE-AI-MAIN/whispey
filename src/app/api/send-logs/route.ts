@@ -1,32 +1,28 @@
-// app/api/call-logs/route.ts
+// app/api/send-logs/route.ts - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { MockDataService } from '@/lib/mockData'
 import crypto from 'crypto'
 
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Helper function to verify token
+// Helper function to verify token (mock version)
 const verifyToken = async (token: string, environment = 'dev') => {
   try {
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+    // In mock mode, we'll accept any token that starts with 'pype_'
+    if (!token || !token.startsWith('pype_')) {
+      return { valid: false, error: 'Invalid token format' }
+    }
 
-    const { data: authToken, error } = await supabase
-      .from('pype_voice_projects')
-      .select('*')
-      .eq('token_hash', tokenHash)
-      .single()
+    // Get a demo project for the token
+    const projects = MockDataService.getProjects()
+    const project = projects[0] // Use first project for demo
 
-    if (error || !authToken) {
-      return { valid: false, error: 'Invalid or expired token' }
+    if (!project) {
+      return { valid: false, error: 'No demo project found' }
     }
 
     return { 
       valid: true, 
-      token: authToken,
-      project_id: authToken.id
+      token: { ...project, token_hash: token },
+      project_id: project.id
     }
   } catch (error) {
     console.error('Token verification error:', error)
@@ -36,49 +32,21 @@ const verifyToken = async (token: string, environment = 'dev') => {
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body
     const body = await request.json()
-    const token = request.headers.get('x-pype-token')
+    
+    // Extract authentication token from headers
+    const authHeader = request.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '') || body.token
 
-    const { 
-      call_id, 
-      customer_number, 
-      agent_id,
-      call_ended_reason, 
-      transcript_type, 
-      transcript_json, 
-      metadata, 
-      dynamic_variables, 
-      call_started_at, 
-      call_ended_at, 
-      duration_seconds, 
-      transcript_with_metrics,
-      recording_url,
-      voice_recording_url,
-      environment = 'dev'
-    } = body
-
-    console.log("body", body)
-
-    // Validate required fields
     if (!token) {
       return NextResponse.json(
-        { error: 'Token is required' },
-        { status: 400 }
+        { error: 'Authorization token is required' },
+        { status: 401 }
       )
     }
 
-    if (!call_id) {
-      return NextResponse.json(
-        { error: 'call_id is required' },
-        { status: 400 }
-      )
-    }
-
-    // Verify token
-    const tokenVerification = await verifyToken(token, environment)
-    console.log("tokenVerification", tokenVerification)
-
+    // Verify the token
+    const tokenVerification = await verifyToken(token, body.environment)
     if (!tokenVerification.valid) {
       return NextResponse.json(
         { error: tokenVerification.error },
@@ -86,122 +54,88 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { project_id } = tokenVerification
+    const projectId = tokenVerification.project_id
 
-    // Calculate average latency
-    let avgLatency = null
-
-    if (transcript_with_metrics && Array.isArray(transcript_with_metrics)) {
-      let latencySum = 0
-      let latencyCount = 0
-    
-      transcript_with_metrics.forEach(turn => {
-        const stt = turn?.stt_metrics?.duration || 0
-        const llm = turn?.llm_metrics?.ttft || 0
-        
-        // CORRECTED: Include full TTS duration, not just TTFB
-        const ttsFirstByte = turn?.tts_metrics?.ttfb || 0
-        const ttsDuration = turn?.tts_metrics?.duration || 0
-        const eouDuration = turn?.eou_metrics?.end_of_utterance_delay || 0
-        const ttsTotal = ttsFirstByte + ttsDuration
-    
-        const totalLatency = stt + llm + ttsTotal + eouDuration
-    
-        // Only include turns with valid metrics
-        if (totalLatency > 0) {
-          latencySum += totalLatency
-          latencyCount += 1
-        }
-      })
-    
-      avgLatency = latencyCount > 0 ? latencySum / latencyCount : null
-    }
-
-    console.log("calculated avgLatency", avgLatency)
-
-    // Prepare log data for Supabase
-    const logData = {
-      call_id,
-      agent_id,
-      customer_number,
-      call_ended_reason,
-      transcript_type,
-      transcript_json,
-      avg_latency: avgLatency,
-      metadata,
-      dynamic_variables,
-      environment,
-      call_started_at,
-      call_ended_at,
-      recording_url,
-      duration_seconds,
-      voice_recording_url,
-      created_at: new Date().toISOString()
-    }
-
-    // Insert log into Supabase
-    const { data: insertedLog, error: insertError } = await supabase
-      .from('pype_voice_call_logs')
-      .insert(logData)
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('Database insert error:', insertError)
-      return NextResponse.json(
-        { error: 'Failed to save call log' },
-        { status: 500 }
-      )
-    }
-
-    // Process metrics and insert into ClickHouse
-    if (transcript_with_metrics && Array.isArray(transcript_with_metrics)) {
-
-      // Also insert into Supabase for backup/compatibility
-      const conversationTurns = transcript_with_metrics.map(turn => ({
-        session_id: insertedLog.id,  
-        turn_id: turn.turn_id,
-        user_transcript: turn.user_transcript || '',
-        agent_response: turn.agent_response || '',
-        stt_metrics: turn.stt_metrics || {},
-        llm_metrics: turn.llm_metrics || {},
-        tts_metrics: turn.tts_metrics || {},
-        eou_metrics: turn.eou_metrics || {},
-        lesson_day: metadata?.lesson_day || 1,
-        phone_number: customer_number,
-        call_duration: duration_seconds,
-        call_success: call_ended_reason !== 'error',
-        lesson_completed: metadata?.lesson_completed || false,
-        created_at: new Date().toISOString(),
-        unix_timestamp: turn.timestamp
-      }))
- 
-      // Insert all conversation turns to Supabase
-      const { error: turnsError } = await supabase
-        .from('pype_voice_metrics_logs')
-        .insert(conversationTurns)
- 
-      if (turnsError) {
-        console.error('Error inserting conversation turns to Supabase:', turnsError)
-      } else {
-        console.log(`Inserted ${conversationTurns.length} conversation turns to Supabase`)
+    // Validate required fields
+    const requiredFields = ['call_id', 'agent_id', 'customer_number']
+    for (const field of requiredFields) {
+      if (!body[field]) {
+        return NextResponse.json(
+          { error: `Missing required field: ${field}` },
+          { status: 400 }
+        )
       }
     }
 
+    // Validate agent exists and belongs to the project
+    const agent = MockDataService.getAgentById(body.agent_id)
+    if (!agent) {
+      return NextResponse.json(
+        { error: 'Invalid agent_id' },
+        { status: 400 }
+      )
+    }
 
+    if (agent.project_id !== projectId) {
+      return NextResponse.json(
+        { error: 'Agent does not belong to the authenticated project' },
+        { status: 403 }
+      )
+    }
+
+    // Create call log entry using mock data service
+    const callLogData = {
+      call_id: body.call_id,
+      agent_id: body.agent_id,
+      customer_number: body.customer_number,
+      call_ended_reason: body.call_ended_reason || 'completed',
+      transcript_type: body.transcript_type || 'final',
+      transcript_json: body.transcript_json || {},
+      metadata: body.metadata || {},
+      dynamic_variables: body.dynamic_variables || {},
+      environment: body.environment || 'dev',
+      call_started_at: body.call_started_at || new Date().toISOString(),
+      call_ended_at: body.call_ended_at || new Date().toISOString(),
+      duration_seconds: body.duration_seconds || 0,
+      recording_url: body.recording_url || '',
+      avg_latency: body.avg_latency || 0,
+      transcription_metrics: body.transcription_metrics || {},
+      total_stt_cost: body.total_stt_cost || 0,
+      total_tts_cost: body.total_tts_cost || 0,
+      total_llm_cost: body.total_llm_cost || 0
+    }
+
+    const callLog = MockDataService.createCallLog(callLogData)
+
+    console.log(`Successfully stored call log for call_id: ${body.call_id}`)
 
     return NextResponse.json({
-      message: 'Call log saved successfully',
-      log_id: insertedLog.id,
-      agent_id: agent_id,
-      project_id: project_id
-    }, { status: 200 })
+      success: true,
+      message: 'Call log stored successfully',
+      call_log_id: callLog.id,
+      timestamp: new Date().toISOString()
+    }, { status: 201 })
 
   } catch (error) {
-    console.error('Send call log error:', error)
+    console.error('Error storing call log:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Failed to store call log',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
+}
+
+// Handle CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
 }

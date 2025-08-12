@@ -1,17 +1,26 @@
-import { supabase } from "@/lib/supabase"
+// Mock User Role Service - No Database Required!
 
-export async function getUserProjectRole(email: string, projectId: string) {
-  const { data, error } = await supabase
-    .from('pype_voice_email_project_mapping')
-    .select('role')
-    .eq('email', email)
-    .eq('project_id', projectId)
-    .eq('is_active', true)
-    .single()
+export async function getUserRole(userId: string, projectId: string): Promise<string> {
+  // Mock: always return 'owner' role
+  return 'owner'
+}
 
-  if (error) {
-    // You can handle error or return null/undefined
-    return null
+export async function checkUserAccess(userId: string, projectId: string): Promise<boolean> {
+  // Mock: always allow access
+  return true
+}
+
+export async function getUserPermissions(userId: string, projectId: string): Promise<any> {
+  // Mock: return full permissions
+  return {
+    read: true,
+    write: true,
+    delete: true,
+    admin: true
   }
-  return data?.role
+}
+
+export async function getUserProjectRole(userId: string, projectId: string): Promise<string> {
+  // Mock: always return 'owner' role (alias for getUserRole)
+  return 'owner'
 }
