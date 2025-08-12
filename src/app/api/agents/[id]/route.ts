@@ -101,7 +101,7 @@ export async function PUT(
     }
 
     // Check if agent exists
-    const existingAgent = MockDataService.getAgentById(id)
+    const existingAgent = jsonFileService.getAgentById(id)
     if (!existingAgent) {
       return NextResponse.json(
         { error: 'Agent not found' },
@@ -109,8 +109,8 @@ export async function PUT(
       )
     }
 
-    // Update agent using mock data service
-    const updatedAgent = MockDataService.updateAgent(id, body)
+    // Update agent using JSON file service
+    const updatedAgent = jsonFileService.updateAgent(id, body)
     
     if (!updatedAgent) {
       return NextResponse.json(

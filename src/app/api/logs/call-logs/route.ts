@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify agent exists
-    const agent = MockDataService.getAgentById(agent_id)
+    const agent = jsonFileService.getAgentById(agent_id)
     if (!agent) {
       return NextResponse.json(
         { error: 'Invalid agent ID' },
@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get call logs from mock data service
-    let callLogs = MockDataService.getCallLogs(agent_id)
+    // Get call logs from JSON file service
+    let callLogs = jsonFileService.getCallLogs(agent_id)
 
     // Apply filters
     if (call_status) {

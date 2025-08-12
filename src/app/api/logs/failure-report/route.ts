@@ -1,6 +1,6 @@
 // Failure Report API - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { MockDataService } from '@/lib/mockData'
+import { jsonFileService } from '@/lib/jsonFileService.server'
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify agent exists
-    const agent = MockDataService.getAgentById(agent_id)
+    const agent = jsonFileService.getAgentById(agent_id)
     if (!agent) {
       return NextResponse.json(
         { error: 'Agent not found' },
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get call logs from mock data service
-    const callLogs = MockDataService.getCallLogs(agent_id)
+    // Get call logs from JSON file service
+    const callLogs = jsonFileService.getCallLogs(agent_id)
     
     // Filter by date range if provided
     let filteredLogs = callLogs

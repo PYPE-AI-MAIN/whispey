@@ -1,6 +1,6 @@
 // app/api/send-logs/route.ts - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { MockDataService } from '@/lib/mockData'
+import { jsonFileService } from '@/lib/jsonFileService.server'
 import crypto from 'crypto'
 
 // Helper function to verify token (mock version)
@@ -12,7 +12,7 @@ const verifyToken = async (token: string, environment = 'dev') => {
     }
 
     // Get a demo project for the token
-    const projects = MockDataService.getProjects()
+    const projects = jsonFileService.getProjects()
     const project = projects[0] // Use first project for demo
 
     if (!project) {
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate agent exists and belongs to the project
-    const agent = MockDataService.getAgentById(body.agent_id)
+    const agent = jsonFileService.getAgentById(body.agent_id)
     if (!agent) {
       return NextResponse.json(
         { error: 'Invalid agent_id' },
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       total_llm_cost: body.total_llm_cost || 0
     }
 
-    const callLog = MockDataService.createCallLog(callLogData)
+    const callLog = jsonFileService.createCallLog(callLogData)
 
     console.log(`Successfully stored call log for call_id: ${body.call_id}`)
 

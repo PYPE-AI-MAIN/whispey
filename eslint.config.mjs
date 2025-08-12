@@ -1,3 +1,6 @@
+import { fixupConfigRules, fixupPluginRules } from "@eslint/compat";
+import compat from "@eslint/compat";
+
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 
@@ -12,3 +15,5 @@ const eslintConfig = [
     },
   },
 ];
+
+export default eslintConfig;
