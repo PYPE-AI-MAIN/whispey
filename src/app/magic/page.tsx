@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Textarea } from '../../components/ui/textarea'
 import { Badge } from '../../components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../../components/ui/dialog'
 import { 
   Trash2, 
   Plus, 
@@ -80,8 +80,12 @@ export default function MagicPage() {
   const [showAddCallLog, setShowAddCallLog] = useState(false)
   const [showJsonCallLog, setShowJsonCallLog] = useState(false)
   const [jsonCallLogInput, setJsonCallLogInput] = useState('')
+  const [jsonImportCopies, setJsonImportCopies] = useState<number>(1)
+  const [showDeleteAgentLogs, setShowDeleteAgentLogs] = useState(false)
+  const [deleteLogsAgentId, setDeleteLogsAgentId] = useState<string>('')
   const [showAddMetric, setShowAddMetric] = useState(false)
   const [showAddAgentOverride, setShowAddAgentOverride] = useState(false)
+  const [saveFeedback, setSaveFeedback] = useState<'idle' | 'saved'>('idle')
 
   // Form states
   const [newProject, setNewProject] = useState({
@@ -205,16 +209,9 @@ export default function MagicPage() {
         setJsonData(dataToSave)
         setJsonString(JSON.stringify(dataToSave, null, 2))
         setJsonError('')
-        
-        // Show success feedback
-        const originalText = 'Save Changes'
-        const saveButton = document.querySelector('[data-save-button]')
-        if (saveButton) {
-          saveButton.textContent = 'Saved!'
-          setTimeout(() => {
-            saveButton.textContent = originalText
-          }, 2000)
-        }
+        // Show success feedback via React state (avoid direct DOM mutations)
+        setSaveFeedback('saved')
+        setTimeout(() => setSaveFeedback('idle'), 2000)
       } else {
         setJsonError('Failed to save data')
       }
@@ -737,31 +734,67 @@ export default function MagicPage() {
     try {
       const callLogData = JSON.parse(jsonCallLogInput)
       
-      // Generate unique IDs
-      const timestamp = Date.now()
-      const finalCallLogData = {
-        ...callLogData,
-        id: `call_${timestamp}`,
-        call_id: callLogData.call_id || `call_${timestamp}`,
-        created_at: new Date().toISOString(),
-        call_started_at: new Date().toISOString(),
-        call_ended_at: new Date(Date.now() + (callLogData.duration_seconds * 1000)).toISOString(),
-        transcript_type: 'agent',
-        transcription_metrics: {
-          transcript: callLogData.transcript_json?.[0]?.content?.substring(0, 50) + '...' || 'Generated call log',
-          duration: callLogData.duration_seconds,
-          call_ended_reason: callLogData.call_ended_reason
+      const copies = Math.max(1, Number(jsonImportCopies) || 1)
+      const newLogs: any[] = []
+
+      for (let i = 0; i < copies; i++) {
+        const baseTs = Date.now() + i
+        const createdAt = new Date(baseTs).toISOString()
+        const startedAt = createdAt
+        // Randomize duration and timing when creating copies
+        const baseDuration: number = Number(callLogData.duration_seconds) || 120
+        const durationJitter = copies > 1 ? (0.9 + Math.random() * 0.3) : 1 // 0.9x - 1.2x
+        const finalDuration = Math.max(30, Math.round(baseDuration * durationJitter))
+        const endedAt = new Date(baseTs + finalDuration * 1000).toISOString()
+
+        // Randomize costs and latency for copies
+        const jitter = () => (copies > 1 ? (0.9 + Math.random() * 0.3) : 1)
+        const finalSttCost = Math.max(0, parseFloat((((Number(callLogData.total_stt_cost) || 0.05)) * jitter()).toFixed(3)))
+        const finalTtsCost = Math.max(0, parseFloat((((Number(callLogData.total_tts_cost) || 0.12)) * jitter()).toFixed(3)))
+        const finalLlmCost = Math.max(0, parseFloat((((Number(callLogData.total_llm_cost) || 0.08)) * jitter()).toFixed(3)))
+        const finalAvgLatency = copies > 1
+          ? parseFloat((0.8 + Math.random() * 0.5).toFixed(3)) // 0.8s - 1.3s
+          : (Number(callLogData.avg_latency) || 0.9)
+
+        // Randomize last 4 digits of phone if present
+        const randomizePhone = (phone?: string) => {
+          if (!phone) return phone as any
+          const rand4 = Math.floor(1000 + Math.random() * 9000).toString()
+          return phone.replace(/\d{4}(?!.*\d)/, rand4)
         }
+
+        const finalCallLogData = {
+          ...callLogData,
+          id: `call_${baseTs}`,
+          call_id: callLogData.call_id ? `${callLogData.call_id}_${i + 1}` : `call_${baseTs}`,
+          created_at: createdAt,
+          call_started_at: startedAt,
+          call_ended_at: endedAt,
+          transcript_type: 'agent',
+          duration_seconds: finalDuration,
+          avg_latency: finalAvgLatency,
+          total_stt_cost: finalSttCost,
+          total_tts_cost: finalTtsCost,
+          total_llm_cost: finalLlmCost,
+          customer_number: randomizePhone(callLogData.customer_number),
+          transcription_metrics: {
+            transcript: callLogData.transcript_json?.[0]?.content?.substring(0, 50) + '...' || 'Generated call log',
+            duration: finalDuration,
+            call_ended_reason: callLogData.call_ended_reason
+          }
+        }
+        newLogs.push(finalCallLogData)
       }
 
       const updatedData = {
         ...jsonData,
-        callLogs: [...jsonData.callLogs, finalCallLogData]
+        callLogs: [...jsonData.callLogs, ...newLogs]
       }
       
       setJsonData(updatedData)
       setJsonString(JSON.stringify(updatedData, null, 2))
       setJsonCallLogInput('')
+      setJsonImportCopies(1)
       setShowJsonCallLog(false)
       
     } catch (error) {
@@ -834,6 +867,18 @@ export default function MagicPage() {
     setShowAddCallLog(false)
   }
 
+  const deleteAllCallLogsForAgent = async () => {
+    if (!deleteLogsAgentId) return
+    const updatedData = {
+      ...jsonData,
+      callLogs: jsonData.callLogs.filter((c: any) => c.agent_id !== deleteLogsAgentId)
+    }
+    setJsonData(updatedData)
+    setJsonString(JSON.stringify(updatedData, null, 2))
+    setShowDeleteAgentLogs(false)
+    setDeleteLogsAgentId('')
+  }
+
   const deleteItem = (type: keyof JsonData, id: string) => {
     if (!confirm(`Delete this ${type.slice(0, -1)}?`)) return
 
@@ -901,29 +946,27 @@ export default function MagicPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gray-50">
         {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-purple-200 sticky top-0 z-50">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                <Wand2 className="h-6 w-6 text-white" />
-            </div>
+              <div className="w-9 h-9 bg-gray-900 rounded-md flex items-center justify-center">
+                <Wand2 className="h-5 w-5 text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  Magic Data Editor
-            </h1>
-                <p className="text-sm text-gray-600">Hands-free JSON data management</p>
-          </div>
-        </div>
+                <h1 className="text-xl font-semibold text-gray-900">Magic Data Editor</h1>
+                <p className="text-sm text-gray-500">Manage your JSON data</p>
+              </div>
+            </div>
 
             <div className="flex items-center gap-3">
             <Button 
                 onClick={() => setShowRaw(!showRaw)}
               variant="outline"
                 size="sm"
-                className="border-purple-200 hover:bg-purple-50"
+                className="border-gray-200 hover:bg-gray-50"
             >
                 {showRaw ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                 {showRaw ? 'Visual Mode' : 'Raw JSON'}
@@ -933,7 +976,7 @@ export default function MagicPage() {
                 onClick={copyToClipboard}
               variant="outline"
                 size="sm"
-                className="border-purple-200 hover:bg-purple-50"
+                className="border-gray-200 hover:bg-gray-50"
             >
                 {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
                 {copied ? 'Copied!' : 'Copy JSON'}
@@ -942,11 +985,21 @@ export default function MagicPage() {
           <Button 
                 onClick={saveData}
             disabled={saving}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                data-save-button
+            className="bg-gray-900 hover:bg-gray-800 text-white"
           >
-                {saving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : saveFeedback === 'saved' ? (
+                  'Saved!'
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
           </Button>
             </div>
         </div>
@@ -982,28 +1035,28 @@ export default function MagicPage() {
         ) : (
           // Visual Editor
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5 bg-white/80 border border-purple-200">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+            <TabsList className="flex w-full items-center gap-1 overflow-x-auto whitespace-nowrap bg-white border border-gray-200 rounded-md p-1">
+            <TabsTrigger value="overview" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
                 <Sparkles className="h-4 w-4" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="projects" className="flex items-center gap-2">
+            <TabsTrigger value="projects" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
                 <Building2 className="h-4 w-4" />
                 Projects ({jsonData.projects.length})
             </TabsTrigger>
-            <TabsTrigger value="agents" className="flex items-center gap-2">
+            <TabsTrigger value="agents" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
                 <Zap className="h-4 w-4" />
                 Agents ({jsonData.agents.length})
             </TabsTrigger>
-            <TabsTrigger value="callLogs" className="flex items-center gap-2">
+            <TabsTrigger value="callLogs" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
                 <Phone className="h-4 w-4" />
                 Call Logs ({jsonData.callLogs.length})
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
+              <TabsTrigger value="settings" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
                 <Settings className="h-4 w-4" />
                 Settings
             </TabsTrigger>
-            <TabsTrigger value="metrics" className="flex items-center gap-2">
+            <TabsTrigger value="metrics" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
                 <Sparkles className="h-4 w-4" />
                 Custom Metrics
             </TabsTrigger>
@@ -1012,78 +1065,74 @@ export default function MagicPage() {
           {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
+                <Card className="border-gray-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-purple-700">Projects</p>
-                        <p className="text-3xl font-bold text-purple-900">{jsonData.projects.length}</p>
+                        <p className="text-xs text-gray-500">Projects</p>
+                        <p className="text-xl font-semibold text-gray-900">{jsonData.projects.length}</p>
                     </div>
-                      <Building2 className="h-8 w-8 text-purple-600" />
+                      <Building2 className="h-5 w-5 text-gray-400" />
                   </div>
                 </CardContent>
               </Card>
               
-                <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+                <Card className="border-gray-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-blue-700">Agents</p>
-                        <p className="text-3xl font-bold text-blue-900">{jsonData.agents.length}</p>
+                        <p className="text-xs text-gray-500">Agents</p>
+                        <p className="text-xl font-semibold text-gray-900">{jsonData.agents.length}</p>
                     </div>
-                      <Zap className="h-8 w-8 text-blue-600" />
+                      <Zap className="h-5 w-5 text-gray-400" />
                   </div>
                 </CardContent>
               </Card>
               
-                <Card className="border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+                <Card className="border-gray-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-green-700">Call Logs</p>
-                        <p className="text-3xl font-bold text-green-900">{jsonData.callLogs.length}</p>
+                        <p className="text-xs text-gray-500">Call Logs</p>
+                        <p className="text-xl font-semibold text-gray-900">{jsonData.callLogs.length}</p>
                     </div>
-                      <Phone className="h-8 w-8 text-green-600" />
+                      <Phone className="h-5 w-5 text-gray-400" />
                   </div>
                 </CardContent>
               </Card>
               
-                <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100">
+                <Card className="border-gray-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-orange-700">Total Records</p>
-                        <p className="text-3xl font-bold text-orange-900">
+                        <p className="text-xs text-gray-500">Total Records</p>
+                        <p className="text-xl font-semibold text-gray-900">
                           {jsonData.projects.length + jsonData.agents.length + jsonData.callLogs.length}
                         </p>
                     </div>
-                      <Database className="h-8 w-8 text-orange-600" />
+                      <Database className="h-5 w-5 text-gray-400" />
                   </div>
                 </CardContent>
               </Card>
             </div>
             
-              <Card className="border-purple-200">
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+              <Card className="border-gray-200">
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold text-gray-900">Quick Actions</CardTitle>
               </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Button onClick={() => setShowAddProject(true)} className="bg-purple-600 hover:bg-purple-700">
-                      <Plus className="h-4 w-4 mr-2" />
-                    Add Project
+                    <Button onClick={() => setShowAddProject(true)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm">
+                      <Plus className="h-4 w-4 mr-2" /> Add Project
                   </Button>
-                    <Button onClick={() => setShowAddAgent(true)} className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="h-4 w-4 mr-2" />
-                    Add Agent
+                    <Button onClick={() => setShowAddAgent(true)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm">
+                      <Plus className="h-4 w-4 mr-2" /> Add Agent
                   </Button>
-                    <Button onClick={() => setShowAddCallLog(true)} className="bg-green-600 hover:bg-green-700">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Call Log
+                    <Button onClick={() => setShowAddCallLog(true)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm">
+                      <Plus className="h-4 w-4 mr-2" /> Add Call Log
                   </Button>
-                    <Button onClick={createBackup} variant="outline" className="border-purple-200">
-                      <Download className="h-4 w-4 mr-2" />
-                      Create Backup
+                    <Button onClick={createBackup} variant="outline" className="border-gray-200 text-sm">
+                      <Download className="h-4 w-4 mr-2" /> Create Backup
                   </Button>
                 </div>
               </CardContent>
@@ -1092,11 +1141,10 @@ export default function MagicPage() {
 
           {/* Projects Tab */}
             <TabsContent value="projects" className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Projects ({jsonData.projects.length})</h2>
-                <Button onClick={() => setShowAddProject(true)} className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Project
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-gray-900">Projects ({jsonData.projects.length})</h2>
+                <Button onClick={() => setShowAddProject(true)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm">
+                  <Plus className="h-4 w-4 mr-2" /> Add Project
                 </Button>
               </div>
             
@@ -1139,11 +1187,10 @@ export default function MagicPage() {
 
           {/* Agents Tab */}
             <TabsContent value="agents" className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Agents ({jsonData.agents.length})</h2>
-                <Button onClick={() => setShowAddAgent(true)} className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Agent
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-gray-900">Agents ({jsonData.agents.length})</h2>
+                <Button onClick={() => setShowAddAgent(true)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm">
+                  <Plus className="h-4 w-4 mr-2" /> Add Agent
                 </Button>
             </div>
             
@@ -1189,19 +1236,27 @@ export default function MagicPage() {
 
             {/* Call Logs Tab */}
             <TabsContent value="callLogs" className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Call Logs ({jsonData.callLogs.length})</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-gray-900">Call Logs ({jsonData.callLogs.length})</h2>
                 <div className="flex gap-2">
-                  <Button onClick={() => setShowAddCallLog(true)} className="bg-green-600 hover:bg-green-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Call Log
+                  <Button onClick={() => setShowAddCallLog(true)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm">
+                    <Plus className="h-4 w-4 mr-2" /> Add Call Log
                   </Button>
-                  <Button onClick={() => setShowJsonCallLog(true)} variant="outline" className="border-green-200 text-green-600 hover:bg-green-50">
-                    <FileText className="h-4 w-4 mr-2" />
-                    JSON Import
+                  <Button onClick={() => setShowJsonCallLog(true)} variant="outline" className="border-gray-200 text-sm">
+                    <FileText className="h-4 w-4 mr-2" /> JSON Import
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowDeleteAgentLogs(true)
+                      setDeleteLogsAgentId('')
+                    }}
+                    variant="outline"
+                    className="border-red-200 text-red-600 hover:bg-red-50 text-sm"
+                  >
+                    Delete Agent Logs
                   </Button>
                 </div>
-                    </div>
+              </div>
               
               <div className="space-y-4">
                 {jsonData.callLogs.map((callLog) => {
@@ -1662,13 +1717,14 @@ export default function MagicPage() {
 
       {/* Add Project Dialog */}
       <Dialog open={showAddProject} onOpenChange={setShowAddProject}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md border border-gray-200">
           <DialogHeader>
-            <DialogTitle>Add New Project</DialogTitle>
+            <DialogTitle className="text-base font-semibold text-gray-900">Add Project</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">Create a new project workspace.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
                       <div>
-              <Label htmlFor="project-name">Project Name</Label>
+              <Label htmlFor="project-name" className="text-sm">Project Name</Label>
                         <Input
                 id="project-name"
                 value={newProject.name}
@@ -1677,7 +1733,7 @@ export default function MagicPage() {
                         />
                       </div>
                       <div>
-              <Label htmlFor="project-description">Description</Label>
+              <Label htmlFor="project-description" className="text-sm">Description</Label>
               <Textarea
                 id="project-description"
                 value={newProject.description}
@@ -1687,7 +1743,7 @@ export default function MagicPage() {
                         />
                       </div>
             <div>
-              <Label htmlFor="project-environment">Environment</Label>
+              <Label htmlFor="project-environment" className="text-sm">Environment</Label>
               <Select value={newProject.environment} onValueChange={(value) => setNewProject({ ...newProject, environment: value })}>
                           <SelectTrigger>
                             <SelectValue />
@@ -1699,23 +1755,62 @@ export default function MagicPage() {
                           </SelectContent>
                         </Select>
                       </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowAddProject(false)}>Cancel</Button>
-              <Button onClick={addProject} disabled={!newProject.name.trim()}>Add Project</Button>
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" size="sm" onClick={() => setShowAddProject(false)}>Cancel</Button>
+              <Button size="sm" className="bg-gray-900 hover:bg-gray-800 text-white" onClick={addProject} disabled={!newProject.name.trim()}>Add Project</Button>
                     </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Agent Logs Dialog */}
+      <Dialog open={showDeleteAgentLogs} onOpenChange={setShowDeleteAgentLogs}>
+        <DialogContent className="max-w-md border border-gray-200">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-gray-900">Delete All Logs for Agent</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">This will permanently remove all call logs for the selected agent.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="delete-agent">Agent</Label>
+              <Select value={deleteLogsAgentId} onValueChange={setDeleteLogsAgentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jsonData.agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              This action cannot be undone.
+            </div>
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteAgentLogs(false)}>Cancel</Button>
+              <Button
+                size="sm" className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={deleteAllCallLogsForAgent}
+                disabled={!deleteLogsAgentId}
+              >
+                Delete All Logs
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Add Custom Metric Dialog */}
       <Dialog open={showAddMetric} onOpenChange={setShowAddMetric}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md border border-gray-200">
           <DialogHeader>
-            <DialogTitle>{editingItem ? 'Edit Custom Metric' : 'Add Custom Metric'}</DialogTitle>
+            <DialogTitle className="text-base font-semibold text-gray-900">{editingItem ? 'Edit Custom Metric' : 'Add Custom Metric'}</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">Define a metric to display in dashboards.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
                     <div>
-              <Label htmlFor="metric-name">Metric Name</Label>
+              <Label htmlFor="metric-name" className="text-sm">Metric Name</Label>
               <Input
                 id="metric-name"
                 value={newMetric.name}
@@ -1724,7 +1819,7 @@ export default function MagicPage() {
               />
             </div>
             <div>
-              <Label htmlFor="metric-value">Value</Label>
+              <Label htmlFor="metric-value" className="text-sm">Value</Label>
               <Input
                 id="metric-value"
                 type="number"
@@ -1734,7 +1829,7 @@ export default function MagicPage() {
               />
             </div>
             <div>
-              <Label htmlFor="metric-type">Type</Label>
+              <Label htmlFor="metric-type" className="text-sm">Type</Label>
               <Select value={newMetric.type} onValueChange={(value) => setNewMetric({ ...newMetric, type: value })}>
                         <SelectTrigger>
                           <SelectValue />
@@ -1748,7 +1843,7 @@ export default function MagicPage() {
                       </Select>
                     </div>
                       <div>
-              <Label htmlFor="metric-description">Description</Label>
+              <Label htmlFor="metric-description" className="text-sm">Description</Label>
               <Textarea
                 id="metric-description"
                 value={newMetric.description}
@@ -1758,7 +1853,7 @@ export default function MagicPage() {
               />
             </div>
             <div>
-              <Label htmlFor="metric-agent">Agent (Optional)</Label>
+              <Label htmlFor="metric-agent" className="text-sm">Agent (Optional)</Label>
               <Select value={newMetric.agentId} onValueChange={(value) => setNewMetric({ ...newMetric, agentId: value })}>
                           <SelectTrigger>
                   <SelectValue placeholder="Select an agent (or leave blank for all)" />
@@ -1771,7 +1866,7 @@ export default function MagicPage() {
                       </Select>
                     </div>
                       <div>
-              <Label htmlFor="metric-project">Project (Optional)</Label>
+              <Label htmlFor="metric-project" className="text-sm">Project (Optional)</Label>
               <Select value={newMetric.projectId} onValueChange={(value) => setNewMetric({ ...newMetric, projectId: value })}>
                           <SelectTrigger>
                   <SelectValue placeholder="Select a project (or leave blank for all)" />
@@ -1783,15 +1878,15 @@ export default function MagicPage() {
                           </SelectContent>
                         </Select>
                       </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => {
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" size="sm" onClick={() => {
                 setShowAddMetric(false)
                 setEditingItem(null)
                 setNewMetric({ name: '', value: 0, type: 'number', description: '', agentId: '', projectId: '' })
               }}>
                 Cancel
                 </Button>
-              <Button onClick={addMetric} disabled={!newMetric.name.trim()}>
+              <Button size="sm" className="bg-gray-900 hover:bg-gray-800 text-white" onClick={addMetric} disabled={!newMetric.name.trim()}>
                 {editingItem ? 'Update' : 'Add'} Metric
                 </Button>
                       </div>
@@ -1801,9 +1896,10 @@ export default function MagicPage() {
 
       {/* Add Agent Override Dialog */}
       <Dialog open={showAddAgentOverride} onOpenChange={setShowAddAgentOverride}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl border border-gray-200">
           <DialogHeader>
-            <DialogTitle>{editingItem ? 'Edit Agent Override' : 'Add Agent Override'}</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-gray-900">{editingItem ? 'Edit Agent Override' : 'Add Agent Override'}</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">Override computed analytics for an agent.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1950,7 +2046,7 @@ export default function MagicPage() {
               </div>
             </div>
             
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => {
                 setShowAddAgentOverride(false)
                 setEditingItem(null)
@@ -1971,7 +2067,7 @@ export default function MagicPage() {
               }}>
                 Cancel
               </Button>
-              <Button onClick={addAgentOverride} disabled={!newAgentOverride.agentId}>
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={addAgentOverride} disabled={!newAgentOverride.agentId}>
                 {editingItem ? 'Update' : 'Add'} Override
               </Button>
             </div>
@@ -1981,9 +2077,10 @@ export default function MagicPage() {
 
       {/* Add Agent Dialog */}
       <Dialog open={showAddAgent} onOpenChange={setShowAddAgent}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md border border-gray-200">
           <DialogHeader>
-            <DialogTitle>Add New Agent</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-gray-900">Add Agent</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">Create an agent within a project.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
                       <div>
@@ -2035,9 +2132,9 @@ export default function MagicPage() {
                           </SelectContent>
                         </Select>
                       </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => setShowAddAgent(false)}>Cancel</Button>
-              <Button onClick={addAgent} disabled={!newAgent.name.trim() || !newAgent.project_id}>Add Agent</Button>
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={addAgent} disabled={!newAgent.name.trim() || !newAgent.project_id}>Add Agent</Button>
                     </div>
             </div>
         </DialogContent>
@@ -2073,9 +2170,10 @@ export default function MagicPage() {
           ])
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-200">
           <DialogHeader>
-            <DialogTitle>Add New Call Log</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-gray-900">Add Call Log</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">Add a new call log with transcript and metadata.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -2308,9 +2406,9 @@ export default function MagicPage() {
                 />
       </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => setShowAddCallLog(false)}>Cancel</Button>
-              <Button onClick={addCallLog} disabled={!newCallLog.agent_id || !newCallLog.customer_number}>Add Call Log</Button>
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={addCallLog} disabled={!newCallLog.agent_id || !newCallLog.customer_number}>Add Call Log</Button>
             </div>
           </div>
         </DialogContent>
@@ -2323,26 +2421,63 @@ export default function MagicPage() {
           setJsonCallLogInput('')
         }
       }}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto border border-gray-200">
           <DialogHeader>
-            <DialogTitle>Import Call Log from JSON</DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Paste complete JSON data below. Call ID and timestamps will be auto-generated.
-            </p>
+            <DialogTitle className="text-lg font-semibold text-gray-900">Import Call Log from JSON</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">Paste complete JSON data. IDs and timestamps are auto-generated.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="agent-selector">Generate sample for agent</Label>
+                <Select onValueChange={(agentId) => setJsonCallLogInput(generateSampleCallLogJson(agentId))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose agent" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jsonData.agents.map(agent => (
+                      <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="json-copies">Number of copies</Label>
+                <Input
+                  id="json-copies"
+                  type="number"
+                  min={1}
+                  value={jsonImportCopies}
+                  onChange={(e) => setJsonImportCopies(parseInt(e.target.value) || 1)}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Unique IDs, timestamps, durations and costs per copy.</p>
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setJsonCallLogInput(generateSampleCallLogJson())}
+                >
+                  Generate Sample
+                </Button>
+              </div>
+            </div>
+
             <div>
-              <Label htmlFor="agent-selector">Select Agent (for sample generation)</Label>
-              <Select onValueChange={(agentId) => setJsonCallLogInput(generateSampleCallLogJson(agentId))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose agent to generate sample JSON" />
-                </SelectTrigger>
-                <SelectContent>
-                  {jsonData.agents.map(agent => (
-                    <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="json-input" className="mb-2 block">Call Log JSON Data</Label>
+              <Textarea
+                id="json-input"
+                value={jsonCallLogInput}
+                onChange={(e) => setJsonCallLogInput(e.target.value)}
+                placeholder="Paste your JSON call log data here..."
+                rows={18}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Required: agent_id, customer_number, call_ended_reason, duration_seconds, transcript_json, metadata
+              </p>
             </div>
             
             <div>
@@ -2370,15 +2505,15 @@ export default function MagicPage() {
               </p>
                   </div>
             
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => {
                 setShowJsonCallLog(false)
                 setJsonCallLogInput('')
               }}>
                 Cancel
               </Button>
-              <Button onClick={addCallLogFromJson} disabled={!jsonCallLogInput.trim()}>
-                Import Call Log
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={addCallLogFromJson} disabled={!jsonCallLogInput.trim()}>
+                {jsonImportCopies > 1 ? `Import ${jsonImportCopies} Call Logs` : 'Import Call Log'}
               </Button>
             </div>
           </div>
@@ -2393,9 +2528,10 @@ export default function MagicPage() {
           setEditCustomFields([])
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto border border-gray-200">
           <DialogHeader>
-            <DialogTitle>Edit Custom Fields - Call {editingCallLog?.call_id}</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-gray-900">Edit Call Custom Fields</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">Update the metadata fields associated with this call.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="border rounded-lg p-4 space-y-4">
@@ -2490,13 +2626,13 @@ export default function MagicPage() {
             </div>
       </div>
             
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => {
                 setShowEditCallLog(false)
                 setEditingCallLog(null)
                 setEditCustomFields([])
               }}>Cancel</Button>
-              <Button onClick={() => {
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white" onClick={() => {
                 if (!editingCallLog) return
                 
                 // Convert custom fields to metadata object
