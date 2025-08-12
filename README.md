@@ -6,8 +6,8 @@
 [![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/whispey.svg)](https://badge.fury.io/py/whispey)
 [![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
-[![Contributors](https://img.shields.io/github/contributors/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/whispey/graphs/contributors)
-[![Stars](https://img.shields.io/github/stars/obsera-ai/obsera)](https://github.com/PYPE-AI-MAIN/whispey/stargazers)
+[![Contributors](https://img.shields.io/github/contributors/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/graphs/contributors)
+[![Stars](https://img.shields.io/github/stars/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/stargazers)
 
 **Professional voice analytics and observability for AI agents. Monitor, analyze, and improve your voice AI applications with beautiful dashboards and actionable insights.**
 
