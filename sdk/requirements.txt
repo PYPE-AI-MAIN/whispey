@@ -1,3 +1,4 @@
 livekit-agents
 python-dotenv
-
+"livekit-agents[openai,deepgram,silero,cartesia,elevenlabs]"
+livekit-plugins-turn-detector

@@ -1,0 +1,2300 @@
+{
+  "resource": {
+    "attributes": {
+      "service.name": "livekit-agent",
+      "service.version": "1.0.0",
+      "session.id": "d20cc55d-61f0-4510-a58c-72014e473431"
+    }
+  },
+  "instrumentation_scope": {
+    "name": "livekit.agents.telemetry",
+    "version": "1.0.0"
+  },
+  "spans": [
+    {
+      "name": "start_agent_activity",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "bff6948e6dd9d65d",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092796857645000,
+      "end_time": 1755092796858751000,
+      "duration_ms": 1.106,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.agent_label": "__main__.HospitalAssistant"
+      },
+      "events": []
+    },
+    {
+      "name": "on_enter",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "fca386e10c3aaaa0",
+      "parent_id": "bff6948e6dd9d65d",
+      "start_time": 1755092796863177000,
+      "end_time": 1755092796863191000,
+      "duration_ms": 0.014,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.agent_label": "__main__.HospitalAssistant"
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "993d56110fada27b",
+      "parent_id": "defb87395eab2663",
+      "start_time": 1755092796876296000,
+      "end_time": 1755092798417660000,
+      "duration_ms": 1541.364,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "defb87395eab2663",
+      "parent_id": "c4dc8e82c77d6fef",
+      "start_time": 1755092796876256000,
+      "end_time": 1755092798421071000,
+      "duration_ms": 1544.815,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C466HT2ienjKeFSN9jpYhu6mp8AA6\",\"timestamp\":1755092798.4179819,\"duration\":1.5417637499049306,\"ttft\":1.1577007079031318,\"cancelled\":false,\"completion_tokens\":24,\"prompt_tokens\":374,\"prompt_cached_tokens\":0,\"total_tokens\":398,\"tokens_per_second\":15.566587294246546,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 374,
+        "gen_ai.usage.output_tokens": 24,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:46:38.033929+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092796876280000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041.\nGreet the caller warmly in English and introduce yourself as the AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n    \n    Say something like:\n    \"\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant. How can I help you today?\"\n    \n    Current time: Wednesday, August 13, 2025 at 07:16 PM\n    Caller phone: Unknown\n    \n    Be ready to help with:\n    - Doctor availability checks\n    - Hospital information  \n    - Simple appointment inquiries\n    - General questions\n    "
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092798419794000,
+          "attributes": {
+            "role": "assistant",
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant. How can I help you today?"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "c4dc8e82c77d6fef",
+      "parent_id": "d42cbd6aa21accfb",
+      "start_time": 1755092796871546000,
+      "end_time": 1755092798421183000,
+      "duration_ms": 1549.637,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\\nGreet the caller warmly in English and introduce yourself as the AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n    \\n    Say something like:\\n    \\\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant. How can I help you today?\\\"\\n    \\n    Current time: Wednesday, August 13, 2025 at 07:16 PM\\n    Caller phone: Unknown\\n    \\n    Be ready to help with:\\n    - Doctor availability checks\\n    - Hospital information  \\n    - Simple appointment inquiries\\n    - General questions\\n    \"], \"interrupted\": false, \"created_at\": 1755092796.8586009}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant. How can I help you today?",
+        "lk.response.function_calls": "[]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "8969d44a7eee9b70",
+      "parent_id": "61d17de1a19ac18c",
+      "start_time": 1755092797169466000,
+      "end_time": 1755092799226908000,
+      "duration_ms": 2057.442,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "61d17de1a19ac18c",
+      "parent_id": "da2095fea4304fef",
+      "start_time": 1755092797169441000,
+      "end_time": 1755092799227191000,
+      "duration_ms": 2057.75,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS",
+        "lk.tts_metrics": "{\"type\":\"tts_metrics\",\"label\":\"livekit.plugins.elevenlabs.tts.TTS\",\"request_id\":\"34deaaa2ae52\",\"timestamp\":1755092799.0489259,\"ttfb\":0.5792228750651702,\"duration\":0.6546089170733467,\"audio_duration\":5.616326530612244,\"cancelled\":false,\"characters_count\":81,\"streamed\":true,\"segment_id\":\"fd1959db6968\",\"speech_id\":null}",
+        "lk.input_text": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant. How can I help you today?"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "da2095fea4304fef",
+      "parent_id": "d42cbd6aa21accfb",
+      "start_time": 1755092797169230000,
+      "end_time": 1755092799227202000,
+      "duration_ms": 2057.972,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "1c5858af9e79f211",
+      "parent_id": "e25eb4ddecf3be6e",
+      "start_time": 1755092802225936000,
+      "end_time": 1755092802266762000,
+      "duration_ms": 40.826,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_6959ce9a7b1d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"created_at\": 1755092802.225814}]}",
+        "lk.eou.probability": 0.47919803857803345,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 0.4,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "e25eb4ddecf3be6e",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092802225899000,
+      "end_time": 1755092802266898000,
+      "duration_ms": 40.999,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "Scottish Hospital",
+        "lk.transcript_confidence": 0.89746094,
+        "lk.transcription_delay": 5.137938022613525,
+        "lk.end_of_utterance_delay": 5.1790289878845215
+      },
+      "events": []
+    },
+    {
+      "name": "agent_speaking",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "7a3cc6f3e383a0e4",
+      "parent_id": "d42cbd6aa21accfb",
+      "start_time": 1755092798985170000,
+      "end_time": 1755092802272123000,
+      "duration_ms": 3286.953,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092798.985176,
+        "lk.end_time": 1755092802.27212
+      },
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "90765621abacab848d761eb870ed1a65",
+      "span_id": "d42cbd6aa21accfb",
+      "parent_id": null,
+      "start_time": 1755092796868154000,
+      "end_time": 1755092802272695000,
+      "duration_ms": 5404.541,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_6d0d49a856c0",
+        "lk.instructions": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041.\nGreet the caller warmly in English and introduce yourself as the AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n    \n    Say something like:\n    \"\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant. How can I help you today?\"\n    \n    Current time: Wednesday, August 13, 2025 at 07:16 PM\n    Caller phone: Unknown\n    \n    Be ready to help with:\n    - Doctor availability checks\n    - Hospital information  \n    - Simple appointment inquiries\n    - General questions\n    ",
+        "lk.interrupted": true,
+        "lk.response.text": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+      },
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "222b929440ebcf9d",
+      "parent_id": "41c89b5eb2d31ca5",
+      "start_time": 1755092802776269000,
+      "end_time": 1755092802846869000,
+      "duration_ms": 70.6,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_d14c1b038834\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"created_at\": 1755092802.7752378}]}",
+        "lk.eou.probability": 0.0003382694558240473,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 6.0,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "41c89b5eb2d31ca5",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092802776184000,
+      "end_time": 1755092803111090000,
+      "duration_ms": 334.906,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "I'm not",
+        "lk.transcript_confidence": 0.93603516,
+        "lk.transcription_delay": 5.664489030838013,
+        "lk.end_of_utterance_delay": 6.000461101531982
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "93c7909edac094bb",
+      "parent_id": "ed4a6c283b73f90a",
+      "start_time": 1755092802268114000,
+      "end_time": 1755092803127061000,
+      "duration_ms": 858.947,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "ed4a6c283b73f90a",
+      "parent_id": "27441922b901a292",
+      "start_time": 1755092802268085000,
+      "end_time": 1755092803128124000,
+      "duration_ms": 860.039,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C466MAn9duq9HQWEaCiVnFENQgOGp\",\"timestamp\":1755092803.127712,\"duration\":0.8596298340708017,\"ttft\":0.7064665840007365,\"cancelled\":true,\"completion_tokens\":0,\"prompt_tokens\":0,\"prompt_cached_tokens\":0,\"total_tokens\":0,\"tokens_per_second\":0.0,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 0,
+        "gen_ai.usage.output_tokens": 0,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:46:42.974548+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092802268098000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092802268101000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092803127784000,
+          "attributes": {
+            "role": "assistant",
+            "content": "It seems you are looking for"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "27441922b901a292",
+      "parent_id": "9aa823ad2a0d3fd0",
+      "start_time": 1755092802267881000,
+      "end_time": 1755092803128147000,
+      "duration_ms": 860.266,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "cb38c8ad78258ee7",
+      "parent_id": "815d0f4be9447328",
+      "start_time": 1755092802272423000,
+      "end_time": 1755092803128445000,
+      "duration_ms": 856.022,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "815d0f4be9447328",
+      "parent_id": "b1994201b471d915",
+      "start_time": 1755092802272404000,
+      "end_time": 1755092803128840000,
+      "duration_ms": 856.436,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "b1994201b471d915",
+      "parent_id": "9aa823ad2a0d3fd0",
+      "start_time": 1755092802272266000,
+      "end_time": 1755092803128852000,
+      "duration_ms": 856.586,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "9aa823ad2a0d3fd0",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092802267656000,
+      "end_time": 1755092803129052000,
+      "duration_ms": 861.396,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_2b4813780624",
+        "lk.user_input": "Scottish Hospital",
+        "lk.interrupted": true,
+        "lk.response.text": ""
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "33d4e7b41e0724cb",
+      "parent_id": "19ef8c42c725ffd6",
+      "start_time": 1755092803114313000,
+      "end_time": 1755092804988109000,
+      "duration_ms": 1873.796,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "19ef8c42c725ffd6",
+      "parent_id": "8d41f11e01bc7445",
+      "start_time": 1755092803113497000,
+      "end_time": 1755092804989872000,
+      "duration_ms": 1876.375,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C466N9MtKHhiI2St7wu2CBOfA3kRf\",\"timestamp\":1755092804.9890938,\"duration\":1.87562295794487,\"ttft\":0.8622852079570293,\"cancelled\":false,\"completion_tokens\":32,\"prompt_tokens\":301,\"prompt_cached_tokens\":0,\"total_tokens\":333,\"tokens_per_second\":17.060998248316693,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 301,
+        "gen_ai.usage.output_tokens": 32,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:46:43.975746+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092803113532000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092803113543000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092803113549000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092803113554000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092804989202000,
+          "attributes": {
+            "role": "assistant",
+            "content": "I apologize for the confusion. How can I assist you today? If you have any questions or need information about \u0938\u094d\u092a\u0930\u094d\u0936 Hospital, feel free to ask!"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "8d41f11e01bc7445",
+      "parent_id": "934da8a31f5a7c6f",
+      "start_time": 1755092803112979000,
+      "end_time": 1755092804989950000,
+      "duration_ms": 1876.971,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "I apologize for the confusion. How can I assist you today? If you have any questions or need information about \u0938\u094d\u092a\u0930\u094d\u0936 Hospital, feel free to ask!",
+        "lk.response.function_calls": "[]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "de2e3e45c1edb4a5",
+      "parent_id": "1655d3398a72b629",
+      "start_time": 1755092803125839000,
+      "end_time": 1755092805375768000,
+      "duration_ms": 2249.929,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "1655d3398a72b629",
+      "parent_id": "4b35ff387326f956",
+      "start_time": 1755092803125785000,
+      "end_time": 1755092805376785000,
+      "duration_ms": 2251.0,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "4b35ff387326f956",
+      "parent_id": "934da8a31f5a7c6f",
+      "start_time": 1755092803125339000,
+      "end_time": 1755092805376806000,
+      "duration_ms": 2251.467,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "934da8a31f5a7c6f",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092803112457000,
+      "end_time": 1755092805377032000,
+      "duration_ms": 2264.575,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_a832d5199bef",
+        "lk.user_input": "I'm not",
+        "lk.interrupted": true,
+        "lk.response.text": ""
+      },
+      "events": []
+    },
+    {
+      "name": "user_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "be5877fd6da59388",
+      "parent_id": "64f6a49e079cc885",
+      "start_time": 1755092804977308000,
+      "end_time": 1755092805163834112,
+      "duration_ms": 186.526112,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092804.977314,
+        "lk.end_time": 1755092805.163834
+      },
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "cc2e0c1b70a7faaf",
+      "parent_id": "64f6a49e079cc885",
+      "start_time": 1755092805963376000,
+      "end_time": 1755092806021272000,
+      "duration_ms": 57.896,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_d511f1efe988\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"created_at\": 1755092805.963242}]}",
+        "lk.eou.probability": 0.2914184331893921,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 0.4,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "64f6a49e079cc885",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092804977189000,
+      "end_time": 1755092806021393000,
+      "duration_ms": 1044.204,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "Hello.",
+        "lk.transcript_confidence": 0.8742676,
+        "lk.transcription_delay": 0.7865281105041504,
+        "lk.end_of_utterance_delay": 0.8446860313415527
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "1f788b4e84f3577c",
+      "parent_id": "7c8ea68636ef0bf5",
+      "start_time": 1755092806022205000,
+      "end_time": 1755092807077236000,
+      "duration_ms": 1055.031,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "7c8ea68636ef0bf5",
+      "parent_id": "009b9bd8cf3496a0",
+      "start_time": 1755092806022173000,
+      "end_time": 1755092807078837000,
+      "duration_ms": 1056.664,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C466QbgWxw0zbF2SF9A4NPAdb241d\",\"timestamp\":1755092807.077916,\"duration\":1.0557435000082478,\"ttft\":0.8795801670057699,\"cancelled\":false,\"completion_tokens\":10,\"prompt_tokens\":307,\"prompt_cached_tokens\":0,\"total_tokens\":317,\"tokens_per_second\":9.471997696336162,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 307,
+        "gen_ai.usage.output_tokens": 10,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:46:46.901752+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092806022184000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092806022188000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092806022190000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092806022192000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092806022194000,
+          "attributes": {
+            "content": "Hello."
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092807078022000,
+          "attributes": {
+            "role": "assistant",
+            "content": "Hello! How can I assist you today?"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "009b9bd8cf3496a0",
+      "parent_id": "b3d7881a5077552d",
+      "start_time": 1755092806022010000,
+      "end_time": 1755092807078952000,
+      "duration_ms": 1056.942,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "Hello! How can I assist you today?",
+        "lk.response.function_calls": "[]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "0cc3a7f59697c78b",
+      "parent_id": "f78327ab2f7ffbff",
+      "start_time": 1755092806025514000,
+      "end_time": 1755092807980620000,
+      "duration_ms": 1955.106,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "f78327ab2f7ffbff",
+      "parent_id": "8f3a650263abd9d0",
+      "start_time": 1755092806025500000,
+      "end_time": 1755092807981071000,
+      "duration_ms": 1955.571,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS",
+        "lk.tts_metrics": "{\"type\":\"tts_metrics\",\"label\":\"livekit.plugins.elevenlabs.tts.TTS\",\"request_id\":\"114be6376c24\",\"timestamp\":1755092807.729677,\"ttfb\":0.477077207993716,\"duration\":0.5062090000137687,\"audio_duration\":2.1681632653061222,\"cancelled\":false,\"characters_count\":34,\"streamed\":true,\"segment_id\":\"5ea5b6088da2\",\"speech_id\":null}",
+        "lk.input_text": "Hello! How can I assist you today?"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "8f3a650263abd9d0",
+      "parent_id": "b3d7881a5077552d",
+      "start_time": 1755092806025419000,
+      "end_time": 1755092807981095000,
+      "duration_ms": 1955.676,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "agent_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "dd05c81dd6ef504c",
+      "parent_id": "b3d7881a5077552d",
+      "start_time": 1755092807701652000,
+      "end_time": 1755092809872865000,
+      "duration_ms": 2171.213,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092807.7016609,
+        "lk.end_time": 1755092809.872855
+      },
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "b3d7881a5077552d",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092806021859000,
+      "end_time": 1755092809873048000,
+      "duration_ms": 3851.189,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_4ce185a54e1e",
+        "lk.user_input": "Hello.",
+        "lk.interrupted": false,
+        "lk.response.text": "Hello! How can I assist you today?"
+      },
+      "events": []
+    },
+    {
+      "name": "user_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "ab302b7588a55520",
+      "parent_id": "024c0e757af7facd",
+      "start_time": 1755092811276200000,
+      "end_time": 1755092811466652928,
+      "duration_ms": 190.452928,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092811.2762082,
+        "lk.end_time": 1755092811.4666529
+      },
+      "events": []
+    },
+    {
+      "name": "user_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "854777b26c2ed420",
+      "parent_id": "024c0e757af7facd",
+      "start_time": 1755092814174144000,
+      "end_time": 1755092814961502720,
+      "duration_ms": 787.35872,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092814.1741529,
+        "lk.end_time": 1755092814.9615028
+      },
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "03fe56dfc02dea1c",
+      "parent_id": "024c0e757af7facd",
+      "start_time": 1755092815473756000,
+      "end_time": 1755092815554760000,
+      "duration_ms": 81.004,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_d45284660517\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"created_at\": 1755092815.473592}]}",
+        "lk.eou.probability": 0.019386325031518936,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 0.4,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "024c0e757af7facd",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092811276111000,
+      "end_time": 1755092815554811000,
+      "duration_ms": 4278.7,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "Can you book an appointment?",
+        "lk.transcript_confidence": 0.99902344,
+        "lk.transcription_delay": 0.5064969062805176,
+        "lk.end_of_utterance_delay": 0.5932447910308838
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "b9a9682a5e82509f",
+      "parent_id": "03fc21948f4764af",
+      "start_time": 1755092815555421000,
+      "end_time": 1755092817994648000,
+      "duration_ms": 2439.227,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "03fc21948f4764af",
+      "parent_id": "da7ac13854a1a8a1",
+      "start_time": 1755092815555389000,
+      "end_time": 1755092818000495000,
+      "duration_ms": 2445.106,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C466a0hPRmEw8eaM8K7D0rsuLwIEo\",\"timestamp\":1755092817.999666,\"duration\":2.4442601249320433,\"ttft\":1.0750917500117794,\"cancelled\":false,\"completion_tokens\":60,\"prompt_tokens\":330,\"prompt_cached_tokens\":0,\"total_tokens\":390,\"tokens_per_second\":24.547305496655415,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 330,
+        "gen_ai.usage.output_tokens": 60,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:46:56.630484+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092815555399000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092815555402000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092815555404000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092815555406000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092815555408000,
+          "attributes": {
+            "content": "Hello."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092815555409000,
+          "attributes": {
+            "content": "Hello! How can I assist you today?"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092815555411000,
+          "attributes": {
+            "content": "Can you book an appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092817999750000,
+          "attributes": {
+            "role": "assistant",
+            "content": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "da7ac13854a1a8a1",
+      "parent_id": "affe18b31b6180df",
+      "start_time": 1755092815555236000,
+      "end_time": 1755092818000565000,
+      "duration_ms": 2445.329,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking.",
+        "lk.response.function_calls": "[]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "77bdd91582494905",
+      "parent_id": "d567381098e7de83",
+      "start_time": 1755092815559098000,
+      "end_time": 1755092819837491000,
+      "duration_ms": 4278.393,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "d567381098e7de83",
+      "parent_id": "e396bad3f0280211",
+      "start_time": 1755092815559083000,
+      "end_time": 1755092819837672000,
+      "duration_ms": 4278.589,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS",
+        "lk.tts_metrics": "{\"type\":\"tts_metrics\",\"label\":\"livekit.plugins.elevenlabs.tts.TTS\",\"request_id\":\"65e79af981fa\",\"timestamp\":1755092819.623023,\"ttfb\":1.052098875050433,\"duration\":2.6766609590267763,\"audio_duration\":22.51755102040822,\"cancelled\":false,\"characters_count\":264,\"streamed\":true,\"segment_id\":\"1b6fdee700f2\",\"speech_id\":null}",
+        "lk.input_text": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "e396bad3f0280211",
+      "parent_id": "affe18b31b6180df",
+      "start_time": 1755092815559000000,
+      "end_time": 1755092819837678000,
+      "duration_ms": 4278.678,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "agent_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "73473c2580607934",
+      "parent_id": "affe18b31b6180df",
+      "start_time": 1755092817999410000,
+      "end_time": 1755092840518960000,
+      "duration_ms": 22519.55,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092817.999414,
+        "lk.end_time": 1755092840.51895
+      },
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "affe18b31b6180df",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092815555116000,
+      "end_time": 1755092840519260000,
+      "duration_ms": 24964.144,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_aa3c3e5aa1ce",
+        "lk.user_input": "Can you book an appointment?",
+        "lk.interrupted": false,
+        "lk.response.text": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+      },
+      "events": []
+    },
+    {
+      "name": "user_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "0b8828b4c3616adf",
+      "parent_id": "e58d89745e50321e",
+      "start_time": 1755092841082133000,
+      "end_time": 1755092845465829888,
+      "duration_ms": 4383.696888,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092841.0821362,
+        "lk.end_time": 1755092845.4658298
+      },
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "c371817591af51e6",
+      "parent_id": "e58d89745e50321e",
+      "start_time": 1755092845978274000,
+      "end_time": 1755092846130702000,
+      "duration_ms": 152.428,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_5e1ebe8c0a10\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"created_at\": 1755092845.978087}]}",
+        "lk.eou.probability": 0.05816362798213959,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 0.4,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "e58d89745e50321e",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092841082009000,
+      "end_time": 1755092846130757000,
+      "duration_ms": 5048.748,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "My name is Dipesh. Uh, mobile number",
+        "lk.transcript_confidence": 0.99609375,
+        "lk.transcription_delay": 0,
+        "lk.end_of_utterance_delay": 0.6648321151733398
+      },
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "bd5e2486c3a6143f",
+      "parent_id": "5bcaf44bba1778a7",
+      "start_time": 1755092846674594000,
+      "end_time": 1755092846828432000,
+      "duration_ms": 153.838,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}, {\"id\": \"item_5c3795d499b9\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"(626) 818-1226. Can you book the appointment?\"], \"interrupted\": false, \"created_at\": 1755092846.673981}]}",
+        "lk.eou.probability": 0.22956965863704681,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 0.4,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "5bcaf44bba1778a7",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092846674494000,
+      "end_time": 1755092846828485000,
+      "duration_ms": 153.991,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "(626) 818-1226. Can you book the appointment?",
+        "lk.transcript_confidence": 0.999442,
+        "lk.transcription_delay": 1.1830809116363525,
+        "lk.end_of_utterance_delay": 1.3379030227661133
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "5779228ad6f8a29d",
+      "parent_id": "6c1624b00e04232f",
+      "start_time": 1755092846132088000,
+      "end_time": 1755092846833724000,
+      "duration_ms": 701.636,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "6c1624b00e04232f",
+      "parent_id": "6b951f0e810e4c02",
+      "start_time": 1755092846132040000,
+      "end_time": 1755092846834028000,
+      "duration_ms": 701.988,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"\",\"timestamp\":1755092846.833843,\"duration\":0.7018112079240382,\"ttft\":-1.0,\"cancelled\":true,\"completion_tokens\":0,\"prompt_tokens\":0,\"prompt_cached_tokens\":0,\"total_tokens\":0,\"tokens_per_second\":0.0,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 0,
+        "gen_ai.usage.output_tokens": 0
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092846132056000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092846132064000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846132066000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846132068000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846132070000,
+          "attributes": {
+            "content": "Hello."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092846132072000,
+          "attributes": {
+            "content": "Hello! How can I assist you today?"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846132073000,
+          "attributes": {
+            "content": "Can you book an appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092846132075000,
+          "attributes": {
+            "content": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846132077000,
+          "attributes": {
+            "content": "My name is Dipesh. Uh, mobile number"
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092846833874000,
+          "attributes": {
+            "role": "assistant"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "6b951f0e810e4c02",
+      "parent_id": "7fca8956f5b563bf",
+      "start_time": 1755092846131812000,
+      "end_time": 1755092846834037000,
+      "duration_ms": 702.225,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "c34578c00bdc8671",
+      "parent_id": "13939e3056f41e36",
+      "start_time": 1755092846137710000,
+      "end_time": 1755092846834129000,
+      "duration_ms": 696.419,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "13939e3056f41e36",
+      "parent_id": "250bc9c145fe43bc",
+      "start_time": 1755092846137682000,
+      "end_time": 1755092846834218000,
+      "duration_ms": 696.536,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "250bc9c145fe43bc",
+      "parent_id": "7fca8956f5b563bf",
+      "start_time": 1755092846137183000,
+      "end_time": 1755092846834222000,
+      "duration_ms": 697.039,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "7fca8956f5b563bf",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092846131206000,
+      "end_time": 1755092846834319000,
+      "duration_ms": 703.113,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_b29f58b6bdc5",
+        "lk.user_input": "My name is Dipesh. Uh, mobile number",
+        "lk.interrupted": true
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "b3a520363ec24dd6",
+      "parent_id": "9f7fd32cfc4d9ce8",
+      "start_time": 1755092846829216000,
+      "end_time": 1755092849954753000,
+      "duration_ms": 3125.537,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "9f7fd32cfc4d9ce8",
+      "parent_id": "12133116e18237f1",
+      "start_time": 1755092846829178000,
+      "end_time": 1755092849955297000,
+      "duration_ms": 3126.119,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C4676iZbNQcFSzvtiIkEti0YZstty\",\"timestamp\":1755092849.954885,\"duration\":3.1256798750255257,\"ttft\":2.421944083063863,\"cancelled\":false,\"completion_tokens\":24,\"prompt_tokens\":426,\"prompt_cached_tokens\":0,\"total_tokens\":450,\"tokens_per_second\":7.678329502570702,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 426,
+        "gen_ai.usage.output_tokens": 24,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:47:29.251170+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092846829189000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092846829192000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846829194000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846829196000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846829198000,
+          "attributes": {
+            "content": "Hello."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092846829199000,
+          "attributes": {
+            "content": "Hello! How can I assist you today?"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846829201000,
+          "attributes": {
+            "content": "Can you book an appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092846829203000,
+          "attributes": {
+            "content": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846829204000,
+          "attributes": {
+            "content": "My name is Dipesh. Uh, mobile number"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092846829206000,
+          "attributes": {
+            "content": "(626) 818-1226. Can you book the appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092849954941000,
+          "attributes": {
+            "role": "assistant",
+            "content": "I still need the doctor's name and your preferred time slot to book the appointment. Could you please provide those details?"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "12133116e18237f1",
+      "parent_id": "9a6b4d43dee1627b",
+      "start_time": 1755092846829015000,
+      "end_time": 1755092849955329000,
+      "duration_ms": 3126.314,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}, {\"id\": \"item_f4f229c51b32\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"(626) 818-1226. Can you book the appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.999442, \"created_at\": 1755092846.828539}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "I still need the doctor's name and your preferred time slot to book the appointment. Could you please provide those details?",
+        "lk.response.function_calls": "[]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "aa4dd4e488e1267a",
+      "parent_id": "2f1523d86eada94e",
+      "start_time": 1755092846833053000,
+      "end_time": 1755092851182640000,
+      "duration_ms": 4349.587,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "2f1523d86eada94e",
+      "parent_id": "3f74775ca7621fd0",
+      "start_time": 1755092846833038000,
+      "end_time": 1755092851183461000,
+      "duration_ms": 4350.423,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS",
+        "lk.tts_metrics": "{\"type\":\"tts_metrics\",\"label\":\"livekit.plugins.elevenlabs.tts.TTS\",\"request_id\":\"122c6751827d\",\"timestamp\":1755092850.955604,\"ttfb\":0.9621812909608707,\"duration\":1.3509719159919769,\"audio_duration\":7.053061224489794,\"cancelled\":false,\"characters_count\":124,\"streamed\":true,\"segment_id\":\"5d7b375dc24b\",\"speech_id\":null}",
+        "lk.input_text": "I still need the doctor's name and your preferred time slot to book the appointment. Could you please provide those details?"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "3f74775ca7621fd0",
+      "parent_id": "9a6b4d43dee1627b",
+      "start_time": 1755092846832879000,
+      "end_time": 1755092851183504000,
+      "duration_ms": 4350.625,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "agent_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "3284b4ad8d2a93af",
+      "parent_id": "9a6b4d43dee1627b",
+      "start_time": 1755092850567374000,
+      "end_time": 1755092856033790000,
+      "duration_ms": 5466.416,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092850.5673769,
+        "lk.end_time": 1755092856.0337741
+      },
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "9a6b4d43dee1627b",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092846828885000,
+      "end_time": 1755092856034230000,
+      "duration_ms": 9205.345,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_d2d3df54691e",
+        "lk.user_input": "(626) 818-1226. Can you book the appointment?",
+        "lk.interrupted": true,
+        "lk.response.text": "I still need the doctor's name and your preferred time slot to book the appointment. Could you"
+      },
+      "events": []
+    },
+    {
+      "name": "user_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "677cbfc991227db2",
+      "parent_id": "670f3af2951cff41",
+      "start_time": 1755092855629798000,
+      "end_time": 1755092856018715904,
+      "duration_ms": 388.917904,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092855.629799,
+        "lk.end_time": 1755092856.0187159
+      },
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "49a969d9ae5109f3",
+      "parent_id": "670f3af2951cff41",
+      "start_time": 1755092856531659000,
+      "end_time": 1755092856703285000,
+      "duration_ms": 171.626,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}, {\"id\": \"item_f4f229c51b32\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"(626) 818-1226. Can you book the appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.999442, \"created_at\": 1755092846.828539}, {\"id\": \"item_88af48edc5d3\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I still need the doctor's name and your preferred time slot to book the appointment. Could you\"], \"interrupted\": true, \"created_at\": 1755092846.83439}, {\"id\": \"item_aa3a31751650\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Doctor name is Raj.\"], \"interrupted\": false, \"created_at\": 1755092856.531523}]}",
+        "lk.eou.probability": 0.00891305785626173,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 0.4,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "670f3af2951cff41",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092855629766000,
+      "end_time": 1755092856703440000,
+      "duration_ms": 1073.674,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "Doctor name is Raj.",
+        "lk.transcript_confidence": 0.9873047,
+        "lk.transcription_delay": 0.5126302242279053,
+        "lk.end_of_utterance_delay": 0.6845650672912598
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "e271a25ec0b696c4",
+      "parent_id": "bc9732281ab8b1c9",
+      "start_time": 1755092856705278000,
+      "end_time": 1755092858324163000,
+      "duration_ms": 1618.885,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "bc9732281ab8b1c9",
+      "parent_id": "2f841c3afa603f7e",
+      "start_time": 1755092856704774000,
+      "end_time": 1755092858326605000,
+      "duration_ms": 1621.831,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C467EnVcsm3loKCyqU2WrKYEmqdI2\",\"timestamp\":1755092858.3246799,\"duration\":1.6199038340710104,\"ttft\":0.9179839170537889,\"cancelled\":false,\"completion_tokens\":33,\"prompt_tokens\":457,\"prompt_cached_tokens\":0,\"total_tokens\":490,\"tokens_per_second\":20.371579661656266,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 457,
+        "gen_ai.usage.output_tokens": 33,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:47:37.622756+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092856704814000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092856704818000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092856704821000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092856704822000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092856704824000,
+          "attributes": {
+            "content": "Hello."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092856704826000,
+          "attributes": {
+            "content": "Hello! How can I assist you today?"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092856704829000,
+          "attributes": {
+            "content": "Can you book an appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092856704831000,
+          "attributes": {
+            "content": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092856704832000,
+          "attributes": {
+            "content": "My name is Dipesh. Uh, mobile number"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092856704835000,
+          "attributes": {
+            "content": "(626) 818-1226. Can you book the appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092856705260000,
+          "attributes": {
+            "content": "I still need the doctor's name and your preferred time slot to book the appointment. Could you"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092856705263000,
+          "attributes": {
+            "content": "Doctor name is Raj."
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092858324795000,
+          "attributes": {
+            "role": "assistant",
+            "content": "Thank you, Dipesh! I still need your preferred time slot for the appointment with Dr. Raj. Please provide that, and I'll proceed with the booking."
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "2f841c3afa603f7e",
+      "parent_id": "8641933b9fb3d158",
+      "start_time": 1755092856704517000,
+      "end_time": 1755092858326751000,
+      "duration_ms": 1622.234,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}, {\"id\": \"item_f4f229c51b32\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"(626) 818-1226. Can you book the appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.999442, \"created_at\": 1755092846.828539}, {\"id\": \"item_88af48edc5d3\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I still need the doctor's name and your preferred time slot to book the appointment. Could you\"], \"interrupted\": true, \"created_at\": 1755092846.83439}, {\"id\": \"item_1f3775df7f5e\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Doctor name is Raj.\"], \"interrupted\": false, \"transcript_confidence\": 0.9873047, \"created_at\": 1755092856.703585}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "Thank you, Dipesh! I still need your preferred time slot for the appointment with Dr. Raj. Please provide that, and I'll proceed with the booking.",
+        "lk.response.function_calls": "[]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "560cedda52cea39f",
+      "parent_id": "8e1608bd25087551",
+      "start_time": 1755092856709463000,
+      "end_time": 1755092858336277000,
+      "duration_ms": 1626.814,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "8e1608bd25087551",
+      "parent_id": "58794cf0ac44aa5c",
+      "start_time": 1755092856709382000,
+      "end_time": 1755092858336695000,
+      "duration_ms": 1627.313,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "58794cf0ac44aa5c",
+      "parent_id": "8641933b9fb3d158",
+      "start_time": 1755092856709201000,
+      "end_time": 1755092858336713000,
+      "duration_ms": 1627.512,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "8641933b9fb3d158",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092856704125000,
+      "end_time": 1755092858337284000,
+      "duration_ms": 1633.159,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_87e112b72267",
+        "lk.user_input": "Doctor name is Raj.",
+        "lk.interrupted": true,
+        "lk.response.text": ""
+      },
+      "events": []
+    },
+    {
+      "name": "user_speaking",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "9e2882a27babc867",
+      "parent_id": "f2a1a194f0d78557",
+      "start_time": 1755092857936681000,
+      "end_time": 1755092858819188736,
+      "duration_ms": 882.507736,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.start_time": 1755092857.9366841,
+        "lk.end_time": 1755092858.8191888
+      },
+      "events": []
+    },
+    {
+      "name": "eou_detection",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "cba2c74dccc4e481",
+      "parent_id": "f2a1a194f0d78557",
+      "start_time": 1755092859430981000,
+      "end_time": 1755092859595402000,
+      "duration_ms": 164.421,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}, {\"id\": \"item_f4f229c51b32\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"(626) 818-1226. Can you book the appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.999442, \"created_at\": 1755092846.828539}, {\"id\": \"item_88af48edc5d3\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I still need the doctor's name and your preferred time slot to book the appointment. Could you\"], \"interrupted\": true, \"created_at\": 1755092846.83439}, {\"id\": \"item_1f3775df7f5e\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Doctor name is Raj.\"], \"interrupted\": false, \"transcript_confidence\": 0.9873047, \"created_at\": 1755092856.703585}, {\"id\": \"item_b7015a9d5d4e\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"And time is 11AM.\"], \"interrupted\": false, \"created_at\": 1755092859.429485}]}",
+        "lk.eou.probability": 0.13725915551185608,
+        "lk.eou.unlikely_threshold": 0.0049000001,
+        "lk.eou.endpointing_delay": 0.4,
+        "lk.eou.language": "en-IN"
+      },
+      "events": []
+    },
+    {
+      "name": "user_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "f2a1a194f0d78557",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092857936622000,
+      "end_time": 1755092859595453000,
+      "duration_ms": 1658.831,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.user_transcript": "And time is 11AM.",
+        "lk.transcript_confidence": 1.0,
+        "lk.transcription_delay": 0.6094131469726562,
+        "lk.end_of_utterance_delay": 0.7761490345001221
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "4c5e26e99a49d883",
+      "parent_id": "43766aa67cf8fba3",
+      "start_time": 1755092859596115000,
+      "end_time": 1755092862423553000,
+      "duration_ms": 2827.438,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "43766aa67cf8fba3",
+      "parent_id": "ea0d1e794a51717c",
+      "start_time": 1755092859596071000,
+      "end_time": 1755092862424416000,
+      "duration_ms": 2828.345,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C467Hozm9TjepMrCtnv0dFMICHtdR\",\"timestamp\":1755092862.423736,\"duration\":2.8276423329953104,\"ttft\":2.816189624951221,\"cancelled\":false,\"completion_tokens\":36,\"prompt_tokens\":468,\"prompt_cached_tokens\":0,\"total_tokens\":504,\"tokens_per_second\":12.731454604396639,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 468,
+        "gen_ai.usage.output_tokens": 36,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:47:42.412286+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092859596084000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092859596087000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596089000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596091000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596092000,
+          "attributes": {
+            "content": "Hello."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092859596094000,
+          "attributes": {
+            "content": "Hello! How can I assist you today?"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596095000,
+          "attributes": {
+            "content": "Can you book an appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092859596097000,
+          "attributes": {
+            "content": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596098000,
+          "attributes": {
+            "content": "My name is Dipesh. Uh, mobile number"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596100000,
+          "attributes": {
+            "content": "(626) 818-1226. Can you book the appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092859596102000,
+          "attributes": {
+            "content": "I still need the doctor's name and your preferred time slot to book the appointment. Could you"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596103000,
+          "attributes": {
+            "content": "Doctor name is Raj."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092859596105000,
+          "attributes": {
+            "content": "And time is 11AM."
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092862423871000,
+          "attributes": {
+            "role": "assistant",
+            "tool_calls": [
+              "{\"function\": {\"name\": \"book_appointment_simple\", \"arguments\": \"{\\\"patient_name\\\":\\\"Dipesh\\\",\\\"doctor_name\\\":\\\"Raj\\\",\\\"time_slot\\\":\\\"11AM\\\",\\\"mobile\\\":\\\"6268181226\\\"}\"}, \"id\": \"call_kCM7FxbDKrrWEeuqCYiIVkzo\", \"type\": \"function\"}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "ea0d1e794a51717c",
+      "parent_id": "e7b4486f4f6665ed",
+      "start_time": 1755092859595881000,
+      "end_time": 1755092862424485000,
+      "duration_ms": 2828.604,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}, {\"id\": \"item_f4f229c51b32\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"(626) 818-1226. Can you book the appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.999442, \"created_at\": 1755092846.828539}, {\"id\": \"item_88af48edc5d3\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I still need the doctor's name and your preferred time slot to book the appointment. Could you\"], \"interrupted\": true, \"created_at\": 1755092846.83439}, {\"id\": \"item_1f3775df7f5e\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Doctor name is Raj.\"], \"interrupted\": false, \"transcript_confidence\": 0.9873047, \"created_at\": 1755092856.703585}, {\"id\": \"item_db67c69e460d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"And time is 11AM.\"], \"interrupted\": false, \"transcript_confidence\": 1.0, \"created_at\": 1755092859.595501}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "",
+        "lk.response.function_calls": "[{\"id\": \"item_d5c27e1612de/fnc_0\", \"call_id\": \"call_kCM7FxbDKrrWEeuqCYiIVkzo\", \"arguments\": \"{\\\"patient_name\\\":\\\"Dipesh\\\",\\\"doctor_name\\\":\\\"Raj\\\",\\\"time_slot\\\":\\\"11AM\\\",\\\"mobile\\\":\\\"6268181226\\\"}\", \"name\": \"book_appointment_simple\"}]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "af4239e060d24035",
+      "parent_id": "528bbe12073afb84",
+      "start_time": 1755092859599967000,
+      "end_time": 1755092862428663000,
+      "duration_ms": 2828.696,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "528bbe12073afb84",
+      "parent_id": "35b13933e5a4a5e0",
+      "start_time": 1755092859599953000,
+      "end_time": 1755092862430612000,
+      "duration_ms": 2830.659,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS",
+        "lk.input_text": ""
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "35b13933e5a4a5e0",
+      "parent_id": "e7b4486f4f6665ed",
+      "start_time": 1755092859599878000,
+      "end_time": 1755092862430637000,
+      "duration_ms": 2830.759,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    },
+    {
+      "name": "function_tool",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "8e65a59518693b27",
+      "parent_id": "e7b4486f4f6665ed",
+      "start_time": 1755092862428606000,
+      "end_time": 1755092863429765000,
+      "duration_ms": 1001.159,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.function_tool.name": "book_appointment_simple",
+        "lk.function_tool.arguments": "{\"patient_name\":\"Dipesh\",\"doctor_name\":\"Raj\",\"time_slot\":\"11AM\",\"mobile\":\"6268181226\"}",
+        "lk.function_tool.output": "\ud83c\udf89 Appointment Booked Successfully!\n\n\ud83d\udccb Details:\n\u2022 Appointment ID: APT20250813191743\n\u2022 Patient: Dipesh\n\u2022 Doctor: Raj\n\u2022 Time: 11AM\n\u2022 Mobile: 6268181226\n\u2022 Hospital: \u0938\u094d\u092a\u0930\u094d\u0936 Hospital\n\nPlease arrive 15 minutes early with a valid ID.\nFor changes, call +918448170041.",
+        "lk.function_tool.is_error": false
+      },
+      "events": []
+    },
+    {
+      "name": "assistant_turn",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "e7b4486f4f6665ed",
+      "parent_id": "2cc48b84b5824b8f",
+      "start_time": 1755092859595750000,
+      "end_time": 1755092863430973000,
+      "duration_ms": 3835.223,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.speech_id": "speech_fb170ea415a1",
+        "lk.user_input": "And time is 11AM.",
+        "lk.interrupted": false
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "3d64aa28e19c8736",
+      "parent_id": "d0569ec143de7b80",
+      "start_time": 1755092863432356000,
+      "end_time": 1755092866871258000,
+      "duration_ms": 3438.902,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "llm_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "d0569ec143de7b80",
+      "parent_id": "f45b0121cc2c3a71",
+      "start_time": 1755092863432140000,
+      "end_time": 1755092866872371000,
+      "duration_ms": 3440.231,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "gen_ai.request.model": "gpt-4o-mini",
+        "lk.llm_metrics": "{\"type\":\"llm_metrics\",\"label\":\"livekit.plugins.openai.llm.LLM\",\"request_id\":\"chatcmpl-C467LkMol2gX5QmG3CkYTbTubQgpz\",\"timestamp\":1755092866.871525,\"duration\":3.439377958071418,\"ttft\":0.7835909170098603,\"cancelled\":false,\"completion_tokens\":106,\"prompt_tokens\":592,\"prompt_cached_tokens\":0,\"total_tokens\":698,\"tokens_per_second\":30.81952646444184,\"speech_id\":null}",
+        "gen_ai.usage.input_tokens": 592,
+        "gen_ai.usage.output_tokens": 106,
+        "langfuse.observation.completion_start_time": "\"2025-08-13T13:47:44.215703+00:00\""
+      },
+      "events": [
+        {
+          "name": "gen_ai.system.message",
+          "timestamp": 1755092863432191000,
+          "attributes": {
+            "content": "You are a helpful AI assistant for \u0938\u094d\u092a\u0930\u094d\u0936 Hospital.\n            \n            You can help with:\n            - Checking doctor availability\n            - Getting hospital information\n            - Simple appointment inquiries\n            - General hospital queries\n            \n            Always be polite and helpful. If you cannot help with something,\n            direct them to contact reception at +918448170041."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092863432199000,
+          "attributes": {
+            "content": "\u0928\u092e\u0938\u094d\u0924\u0947! This is \u0938\u094d\u092a\u0930\u094d\u0936 Hospital. I'm your AI assistant."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432204000,
+          "attributes": {
+            "content": "Scottish Hospital"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432207000,
+          "attributes": {
+            "content": "I'm not"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432212000,
+          "attributes": {
+            "content": "Hello."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092863432216000,
+          "attributes": {
+            "content": "Hello! How can I assist you today?"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432220000,
+          "attributes": {
+            "content": "Can you book an appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092863432224000,
+          "attributes": {
+            "content": "I can help you with booking an appointment. Please provide me with the following details:\n\n1. Your name\n2. The doctor's name you want to see\n3. The preferred time slot\n4. Your mobile number\n\nOnce I have this information, I can proceed with the appointment booking."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432228000,
+          "attributes": {
+            "content": "My name is Dipesh. Uh, mobile number"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432233000,
+          "attributes": {
+            "content": "(626) 818-1226. Can you book the appointment?"
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092863432237000,
+          "attributes": {
+            "content": "I still need the doctor's name and your preferred time slot to book the appointment. Could you"
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432241000,
+          "attributes": {
+            "content": "Doctor name is Raj."
+          }
+        },
+        {
+          "name": "gen_ai.user.message",
+          "timestamp": 1755092863432245000,
+          "attributes": {
+            "content": "And time is 11AM."
+          }
+        },
+        {
+          "name": "gen_ai.assistant.message",
+          "timestamp": 1755092863432264000,
+          "attributes": {
+            "role": "assistant",
+            "tool_calls": [
+              "{\"function\": {\"name\": \"book_appointment_simple\", \"arguments\": \"{\\\"patient_name\\\":\\\"Dipesh\\\",\\\"doctor_name\\\":\\\"Raj\\\",\\\"time_slot\\\":\\\"11AM\\\",\\\"mobile\\\":\\\"6268181226\\\"}\"}, \"id\": \"call_kCM7FxbDKrrWEeuqCYiIVkzo\", \"type\": \"function\"}"
+            ]
+          }
+        },
+        {
+          "name": "gen_ai.tool.message",
+          "timestamp": 1755092863432270000,
+          "attributes": {
+            "content": "\ud83c\udf89 Appointment Booked Successfully!\n\n\ud83d\udccb Details:\n\u2022 Appointment ID: APT20250813191743\n\u2022 Patient: Dipesh\n\u2022 Doctor: Raj\n\u2022 Time: 11AM\n\u2022 Mobile: 6268181226\n\u2022 Hospital: \u0938\u094d\u092a\u0930\u094d\u0936 Hospital\n\nPlease arrive 15 minutes early with a valid ID.\nFor changes, call +918448170041.",
+            "name": "book_appointment_simple",
+            "id": "call_kCM7FxbDKrrWEeuqCYiIVkzo"
+          }
+        },
+        {
+          "name": "gen_ai.choice",
+          "timestamp": 1755092866871651000,
+          "attributes": {
+            "role": "assistant",
+            "content": "Your appointment has been successfully booked! Here are the details:\n\n- **Appointment ID:** APT20250813191743\n- **Patient Name:** Dipesh\n- **Doctor:** Raj\n- **Time:** 11 AM\n- **Mobile:** 6268181226\n- **Hospital:** \u0938\u094d\u092a\u0930\u094d\u0936 Hospital\n\nPlease arrive 15 minutes early with a valid ID. If you need to make any changes, feel free to call +918448170041. \n\nIs there anything else I can assist you with?"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "f45b0121cc2c3a71",
+      "parent_id": "1bea65d19afba53e",
+      "start_time": 1755092863431605000,
+      "end_time": 1755092866872433000,
+      "duration_ms": 3440.828,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.chat_ctx": "{\"items\": [{\"id\": \"lk.agent_task.instructions\", \"type\": \"message\", \"role\": \"system\", \"content\": [\"You are a helpful AI assistant for \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital.\\n            \\n            You can help with:\\n            - Checking doctor availability\\n            - Getting hospital information\\n            - Simple appointment inquiries\\n            - General hospital queries\\n            \\n            Always be polite and helpful. If you cannot help with something,\\n            direct them to contact reception at +918448170041.\"], \"interrupted\": false, \"created_at\": 1755092796.8586009}, {\"id\": \"item_b0fef979619b\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"\\u0928\\u092e\\u0938\\u094d\\u0924\\u0947! This is \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital. I'm your AI assistant.\"], \"interrupted\": true, \"created_at\": 1755092797.174478}, {\"id\": \"item_23f0cdc614a6\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Scottish Hospital\"], \"interrupted\": false, \"transcript_confidence\": 0.89746094, \"created_at\": 1755092802.266988}, {\"id\": \"item_654ec58ded7d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"I'm not\"], \"interrupted\": false, \"transcript_confidence\": 0.93603516, \"created_at\": 1755092803.1113842}, {\"id\": \"item_6d159f0f3b17\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Hello.\"], \"interrupted\": false, \"transcript_confidence\": 0.8742676, \"created_at\": 1755092806.021485}, {\"id\": \"item_90a1f03f7bcf\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"Hello! How can I assist you today?\"], \"interrupted\": false, \"created_at\": 1755092806.0260868}, {\"id\": \"item_01a8df7cc969\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Can you book an appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.99902344, \"created_at\": 1755092815.554857}, {\"id\": \"item_ae917d4fceeb\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I can help you with booking an appointment. Please provide me with the following details:\\n\\n1. Your name\\n2. The doctor's name you want to see\\n3. The preferred time slot\\n4. Your mobile number\\n\\nOnce I have this information, I can proceed with the appointment booking.\"], \"interrupted\": false, \"created_at\": 1755092815.5596008}, {\"id\": \"item_894a583d6221\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"My name is Dipesh. Uh, mobile number\"], \"interrupted\": false, \"transcript_confidence\": 0.99609375, \"created_at\": 1755092846.130809}, {\"id\": \"item_f4f229c51b32\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"(626) 818-1226. Can you book the appointment?\"], \"interrupted\": false, \"transcript_confidence\": 0.999442, \"created_at\": 1755092846.828539}, {\"id\": \"item_88af48edc5d3\", \"type\": \"message\", \"role\": \"assistant\", \"content\": [\"I still need the doctor's name and your preferred time slot to book the appointment. Could you\"], \"interrupted\": true, \"created_at\": 1755092846.83439}, {\"id\": \"item_1f3775df7f5e\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"Doctor name is Raj.\"], \"interrupted\": false, \"transcript_confidence\": 0.9873047, \"created_at\": 1755092856.703585}, {\"id\": \"item_db67c69e460d\", \"type\": \"message\", \"role\": \"user\", \"content\": [\"And time is 11AM.\"], \"interrupted\": false, \"transcript_confidence\": 1.0, \"created_at\": 1755092859.595501}, {\"id\": \"item_d5c27e1612de/fnc_0\", \"type\": \"function_call\", \"call_id\": \"call_kCM7FxbDKrrWEeuqCYiIVkzo\", \"arguments\": \"{\\\"patient_name\\\":\\\"Dipesh\\\",\\\"doctor_name\\\":\\\"Raj\\\",\\\"time_slot\\\":\\\"11AM\\\",\\\"mobile\\\":\\\"6268181226\\\"}\", \"name\": \"book_appointment_simple\", \"created_at\": 1755092862.412242}, {\"id\": \"item_50702b58de1b\", \"type\": \"function_call_output\", \"name\": \"book_appointment_simple\", \"call_id\": \"call_kCM7FxbDKrrWEeuqCYiIVkzo\", \"output\": \"\\ud83c\\udf89 Appointment Booked Successfully!\\n\\n\\ud83d\\udccb Details:\\n\\u2022 Appointment ID: APT20250813191743\\n\\u2022 Patient: Dipesh\\n\\u2022 Doctor: Raj\\n\\u2022 Time: 11AM\\n\\u2022 Mobile: 6268181226\\n\\u2022 Hospital: \\u0938\\u094d\\u092a\\u0930\\u094d\\u0936 Hospital\\n\\nPlease arrive 15 minutes early with a valid ID.\\nFor changes, call +918448170041.\", \"is_error\": false, \"created_at\": 1755092863.429704}]}",
+        "lk.function_tools": "[\"book_appointment_simple\", \"cancel_appointment\", \"check_doctor_availability_simple\", \"get_available_doctors\", \"get_current_time\", \"get_hospital_info\", \"get_patient_appointments\"]",
+        "lk.response.text": "Your appointment has been successfully booked! Here are the details:\n\n- **Appointment ID:** APT20250813191743\n- **Patient Name:** Dipesh\n- **Doctor:** Raj\n- **Time:** 11 AM\n- **Mobile:** 6268181226\n- **Hospital:** \u0938\u094d\u092a\u0930\u094d\u0936 Hospital\n\nPlease arrive 15 minutes early with a valid ID. If you need to make any changes, feel free to call +918448170041. \n\nIs there anything else I can assist you with?",
+        "lk.response.function_calls": "[]"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request_run",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "ba52862211f258f6",
+      "parent_id": "d501b6ad7e2e7c9d",
+      "start_time": 1755092863444962000,
+      "end_time": 1755092868116412000,
+      "duration_ms": 4671.45,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.retry_count": 0
+      },
+      "events": []
+    },
+    {
+      "name": "tts_request",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "d501b6ad7e2e7c9d",
+      "parent_id": "2725d69632da2378",
+      "start_time": 1755092863444932000,
+      "end_time": 1755092868116873000,
+      "duration_ms": 4671.941,
+      "status": "StatusCode.UNSET",
+      "attributes": {
+        "lk.tts.streaming": true,
+        "lk.tts.label": "livekit.plugins.elevenlabs.tts.TTS",
+        "lk.tts_metrics": "{\"type\":\"tts_metrics\",\"label\":\"livekit.plugins.elevenlabs.tts.TTS\",\"request_id\":\"50c3ae99ba3b\",\"timestamp\":1755092867.870699,\"ttfb\":0.9756342500913888,\"duration\":3.3435202090768144,\"audio_duration\":42.65795918367342,\"cancelled\":false,\"characters_count\":392,\"streamed\":true,\"segment_id\":\"4fbec231ac5e\",\"speech_id\":null}",
+        "lk.input_text": "Your appointment has been successfully booked! Here are the details:\n\n- **Appointment ID:** APT20250813191743\n- **Patient Name:** Dipesh\n- **Doctor:** Raj\n- **Time:** 11 AM\n- **Mobile:** 6268181226\n- **Hospital:** \u0938\u094d\u092a\u0930\u094d\u0936 Hospital\n\nPlease arrive 15 minutes early with a valid ID. If you need to make any changes, feel free to call +918448170041. \n\nIs there anything else I can assist you with?"
+      },
+      "events": []
+    },
+    {
+      "name": "tts_node",
+      "trace_id": "20ed44479a2d6e623a6444a9cc220276",
+      "span_id": "2725d69632da2378",
+      "parent_id": "1bea65d19afba53e",
+      "start_time": 1755092863444670000,
+      "end_time": 1755092868116897000,
+      "duration_ms": 4672.227,
+      "status": "StatusCode.UNSET",
+      "attributes": {},
+      "events": []
+    }
+  ],
+  "metadata": {
+    "session_id": "d20cc55d-61f0-4510-a58c-72014e473431",
+    "session_start_time": 1755092795.113795,
+    "session_end_time": 1755092879.535625,
+    "total_spans": 98,
+    "export_timestamp": "2025-08-13T19:17:59.535633"
+  },
+  "statistics": {
+    "total_session_duration_ms": 84421.82993888855,
+    "total_operation_duration_ms": 243731.49128800008,
+    "span_statistics": {
+      "start_agent_activity": {
+        "count": 1,
+        "total_duration_ms": 1.106,
+        "avg_duration_ms": 1.106,
+        "min_duration_ms": 1.106,
+        "max_duration_ms": 1.106
+      },
+      "on_enter": {
+        "count": 1,
+        "total_duration_ms": 0.014,
+        "avg_duration_ms": 0.014,
+        "min_duration_ms": 0.014,
+        "max_duration_ms": 0.014
+      },
+      "llm_request_run": {
+        "count": 10,
+        "total_duration_ms": 19480.763,
+        "avg_duration_ms": 1948.0763,
+        "min_duration_ms": 701.636,
+        "max_duration_ms": 3438.902
+      },
+      "llm_request": {
+        "count": 10,
+        "total_duration_ms": 19501.513,
+        "avg_duration_ms": 1950.1513,
+        "min_duration_ms": 701.988,
+        "max_duration_ms": 3440.231
+      },
+      "llm_node": {
+        "count": 10,
+        "total_duration_ms": 19509.350000000002,
+        "avg_duration_ms": 1950.9350000000002,
+        "min_duration_ms": 702.225,
+        "max_duration_ms": 3440.828
+      },
+      "tts_request_run": {
+        "count": 10,
+        "total_duration_ms": 25569.858,
+        "avg_duration_ms": 2556.9858,
+        "min_duration_ms": 696.419,
+        "max_duration_ms": 4671.45
+      },
+      "tts_request": {
+        "count": 10,
+        "total_duration_ms": 25576.218,
+        "avg_duration_ms": 2557.6218,
+        "min_duration_ms": 696.536,
+        "max_duration_ms": 4671.941
+      },
+      "tts_node": {
+        "count": 10,
+        "total_duration_ms": 25578.540999999997,
+        "avg_duration_ms": 2557.8540999999996,
+        "min_duration_ms": 697.039,
+        "max_duration_ms": 4672.227
+      },
+      "eou_detection": {
+        "count": 8,
+        "total_duration_ms": 892.6389999999999,
+        "avg_duration_ms": 111.57987499999999,
+        "min_duration_ms": 40.826,
+        "max_duration_ms": 171.626
+      },
+      "user_turn": {
+        "count": 8,
+        "total_duration_ms": 13634.052999999998,
+        "avg_duration_ms": 1704.2566249999998,
+        "min_duration_ms": 40.999,
+        "max_duration_ms": 5048.748
+      },
+      "agent_speaking": {
+        "count": 4,
+        "total_duration_ms": 33444.132,
+        "avg_duration_ms": 8361.033,
+        "min_duration_ms": 2171.213,
+        "max_duration_ms": 22519.55
+      },
+      "assistant_turn": {
+        "count": 9,
+        "total_duration_ms": 52722.685,
+        "avg_duration_ms": 5858.076111111111,
+        "min_duration_ms": 703.113,
+        "max_duration_ms": 24964.144
+      },
+      "user_speaking": {
+        "count": 6,
+        "total_duration_ms": 6819.460288,
+        "avg_duration_ms": 1136.5767146666667,
+        "min_duration_ms": 186.526112,
+        "max_duration_ms": 4383.696888
+      },
+      "function_tool": {
+        "count": 1,
+        "total_duration_ms": 1001.159,
+        "avg_duration_ms": 1001.159,
+        "min_duration_ms": 1001.159,
+        "max_duration_ms": 1001.159
+      }
+    }
+  }
+}
