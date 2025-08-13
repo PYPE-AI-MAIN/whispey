@@ -1,6 +1,6 @@
 // Campaign logs API - Mock Data Integration (No Database Required!)
 import { NextRequest, NextResponse } from 'next/server'
-import { MockDataService } from '@/lib/mockData'
+import { jsonFileService } from '@/lib/jsonFileService.server'
 
 // Helper functions
 function parseIntWithDefault(value: string | null, defaultValue: number, min?: number, max?: number): number {
@@ -48,8 +48,39 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('Campaign logs not available for this project', 403)
     }
 
-    // Get mock campaign logs per project (synthesized if none exist)
-    let campaignLogs = MockDataService.getCampaignLogs(project_id)
+    // Read current data from JSON file
+    const current = jsonFileService.readData() as any
+    const agents = current.agents || []
+    const agentIds = agents.filter((a: any) => a.project_id === project_id).map((a: any) => a.id)
+
+    // Prefer stored campaign logs and normalize
+    let campaignLogs = (current.campaignLogs || []).filter((log: any) => {
+      return (log.project_id === project_id) || (log.agent_id && agentIds.includes(log.agent_id))
+    }).map((c: any, idx: number) => ({
+      id: (c.id && String(c.id).trim().length > 0) ? c.id : `camp_${c.agent_id || 'na'}_${c.phoneNumber || idx}`,
+      ...c,
+      project_id: c.project_id || (agents.find((a: any) => a.id === c.agent_id)?.project_id)
+    }))
+
+    // Synthesize from call logs if none exist
+    if (campaignLogs.length === 0) {
+      const base = (current.callLogs || []).filter((cl: any) => agentIds.includes(cl.agent_id))
+      campaignLogs = base.map((cl: any, idx: number) => ({
+        id: `camp_${cl.agent_id}_${idx}`,
+        agent_id: cl.agent_id,
+        project_id: agents.find((a: any) => a.id === cl.agent_id)?.project_id,
+        phoneNumber: cl.customer_number,
+        alternative_number: '',
+        fpoName: 'Demo Org',
+        fpoLoginId: `FPO-${cl.agent_id.slice(-3)}`,
+        call_status: cl.call_ended_reason || 'completed',
+        real_attempt_count: Math.max(1, Math.round(1 + Math.random() * 2)),
+        system_error_count: Math.round(Math.random() * 1),
+        sourceFile: 'demo.csv',
+        createdAt: cl.created_at,
+        uploadedAt: cl.created_at
+      }))
+    }
     
     // Apply filters
     if (call_status) {
@@ -68,20 +99,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply sorting
-    campaignLogs.sort((a, b) => {
-      let aValue, bValue
+    campaignLogs.sort((a: any, b: any) => {
+      let aValue: any, bValue: any
       switch (sort_by) {
         case 'phoneNumber':
-          aValue = (a as any).phoneNumber || (a as any).customer_number
-          bValue = (b as any).phoneNumber || (b as any).customer_number
+          aValue = a.phoneNumber || a.customer_number
+          bValue = b.phoneNumber || b.customer_number
           break
         case 'call_status':
-          aValue = (a as any).call_status || (a as any).call_ended_reason
-          bValue = (b as any).call_status || (b as any).call_ended_reason
+          aValue = a.call_status || a.call_ended_reason
+          bValue = b.call_status || b.call_ended_reason
           break
         default:
-          aValue = new Date((a as any).createdAt || (a as any).created_at).getTime()
-          bValue = new Date((b as any).createdAt || (b as any).created_at).getTime()
+          aValue = new Date(a.createdAt || a.created_at).getTime()
+          bValue = new Date(b.createdAt || b.created_at).getTime()
       }
 
       if (sort_order === 'asc') {
@@ -156,24 +187,30 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('Campaign logs not available for this project', 403)
     }
 
-    // Use same logic as GET but with POST body filters
-    let campaignLogs = MockDataService.getCampaignLogs(projectId)
+    // Use file data
+    const current = jsonFileService.readData() as any
+    const agents = current.agents || []
+    const agentIds = agents.filter((a: any) => a.project_id === projectId).map((a: any) => a.id)
+    let campaignLogs = (current.campaignLogs || []).filter((log: any) => (log.project_id === projectId) || (log.agent_id && agentIds.includes(log.agent_id)))
     
     // Apply search
     if (search) {
       const searchLower = search.toLowerCase()
-      campaignLogs = campaignLogs.filter(log => 
-        log.customer_number.toLowerCase().includes(searchLower) ||
-        log.call_id.toLowerCase().includes(searchLower)
-      )
+      campaignLogs = campaignLogs.filter((log: any) => {
+        const phone = (log.phoneNumber || log.customer_number || '').toString().toLowerCase()
+        const name = (log.fpoName || '').toString().toLowerCase()
+        const login = (log.fpoLoginId || '').toString().toLowerCase()
+        const callId = (log.call_id || '').toString().toLowerCase()
+        return phone.includes(searchLower) || name.includes(searchLower) || login.includes(searchLower) || callId.includes(searchLower)
+      })
     }
 
     // Apply filters
     filters.forEach((filter: any) => {
       if (filter.field && filter.value) {
-        campaignLogs = campaignLogs.filter(log => {
+        campaignLogs = campaignLogs.filter((log: any) => {
           const fieldValue = (log as any)[filter.field]
-          return String(fieldValue).toLowerCase().includes(String(filter.value).toLowerCase())
+          return String(fieldValue ?? '').toLowerCase().includes(String(filter.value).toLowerCase())
         })
       }
     })

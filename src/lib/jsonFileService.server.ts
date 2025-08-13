@@ -11,6 +11,7 @@ export interface JsonData {
   agents: any[]
   users: any[]
   callLogs: any[]
+  campaignLogs?: any[]
 }
 
 export class JsonFileService {
@@ -68,7 +69,8 @@ export class JsonFileService {
         projects: [],
         agents: [],
         users: [],
-        callLogs: []
+        callLogs: [],
+        campaignLogs: []
       }
     }
   }
@@ -101,14 +103,17 @@ export class JsonFileService {
   public getDefaultData(): JsonData {
     try {
       const rawData = fs.readFileSync(DEFAULT_DATA_FILE, 'utf8')
-      return JSON.parse(rawData)
+      const parsed = JSON.parse(rawData)
+      if (!parsed.campaignLogs) parsed.campaignLogs = []
+      return parsed
     } catch (error) {
       console.error('Error reading default data file:', error)
       return {
         projects: [],
         agents: [],
         users: [],
-        callLogs: []
+        callLogs: [],
+        campaignLogs: []
       }
     }
   }
