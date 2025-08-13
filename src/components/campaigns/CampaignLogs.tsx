@@ -687,7 +687,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                 variant="outline" 
                 size="sm" 
                 onClick={exportLogs}
-                disabled={logs.length === 0}
+                disabled={(logs?.length ?? 0) === 0}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -709,7 +709,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                 variant="destructive" 
                 size="sm" 
                 onClick={() => setShowDeleteDialog(true)}
-                disabled={logs.length === 0 || loading}
+                disabled={(logs?.length ?? 0) === 0 || loading}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete All
@@ -788,12 +788,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
 
       {/* Table */}
       <main className="flex-1 overflow-hidden">
-        {loading && logs.length === 0 ? (
+        {loading && ((logs?.length ?? 0) === 0) ? (
           <div className="text-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
             <p className="text-gray-600">Loading campaign logs...</p>
           </div>
-        ) : logs.length === 0 ? (
+        ) : ((logs?.length ?? 0) === 0) ? (
           <div className="text-center py-12">
             <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No campaign logs found</h3>
@@ -826,8 +826,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                         </div>
                       </TableHead>
                       <TableHead className="w-[140px] font-semibold text-foreground">Alternative</TableHead>
-                      <TableHead className="w-[160px] font-semibold text-foreground">FPO Name</TableHead>
-                      <TableHead className="w-[120px] font-semibold text-foreground">FPO Login ID</TableHead>
+                      <TableHead className="w-[160px] font-semibold text-foreground">Name</TableHead>
+                      <TableHead className="w-[120px] font-semibold text-foreground">Login ID</TableHead>
                       <TableHead 
                         className="w-[100px] font-semibold text-foreground cursor-pointer hover:bg-muted/60"
                         onClick={() => handleSort('call_status')}
@@ -912,7 +912,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                   </TableBody>
                 </Table>
 
-                {loading && logs.length > 0 && (
+                {loading && ((logs?.length ?? 0) > 0) && (
                   <div className="text-center py-4">
                     <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
                     <p className="text-sm text-gray-600 mt-2">Loading more data...</p>

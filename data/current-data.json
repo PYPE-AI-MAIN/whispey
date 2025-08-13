@@ -4542,5 +4542,52 @@
       "createdAt": "2024-01-15T10:00:00Z",
       "updatedAt": "2024-01-15T10:00:00Z"
     }
+  ],
+  "campaignLogs": [
+    {
+      "project_id": "proj_002",
+      "id": "camp_agent_003_6268181226",
+      "agent_id": "agent_003",
+      "phoneNumber": "6268181226",
+      "alternative_number": "87612358487",
+      "fpoName": "Rahul Sharma ",
+      "fpoLoginId": "EDITOADLN",
+      "call_status": "completed",
+      "real_attempt_count": 4,
+      "system_error_count": 2,
+      "sourceFile": "demo.csv",
+      "createdAt": "2025-08-13T06:24:09.972Z",
+      "uploadedAt": "2025-08-13T06:24:09.972Z"
+    },
+    {
+      "project_id": "proj_002",
+      "id": "camp_agent_003_2132321323",
+      "agent_id": "agent_003",
+      "phoneNumber": "2132321323",
+      "alternative_number": "2321312321",
+      "fpoName": "1dkknklsanlk",
+      "fpoLoginId": "23iohoindon",
+      "call_status": "pending",
+      "real_attempt_count": 23,
+      "system_error_count": 20,
+      "sourceFile": "demo.csv",
+      "createdAt": "2025-08-13T06:25:04.921Z",
+      "uploadedAt": "2025-08-13T06:25:04.921Z"
+    },
+    {
+      "project_id": "proj_002",
+      "id": "camp_agent_003_2132372857",
+      "agent_id": "agent_003",
+      "phoneNumber": "2132372857",
+      "alternative_number": "2722789278",
+      "fpoName": "Deepesh",
+      "fpoLoginId": "daskgksjdak",
+      "call_status": "pending",
+      "real_attempt_count": 2,
+      "system_error_count": 10,
+      "sourceFile": "demo.csv",
+      "createdAt": "2025-08-13T06:34:32.334Z",
+      "uploadedAt": "2025-08-13T06:34:32.334Z"
+    }
   ]
 }

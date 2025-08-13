@@ -84,6 +84,7 @@ class MockDataStore {
   private agents: MockAgent[] = []
   private callLogs: MockCallLog[] = []
   private customOverviewMetrics: CustomOverviewMetric[] = []
+  private campaignLogs: any[] = []
   private agentOverrideMetrics: any[] = []
   private transcriptLogs: any[] = []
   private users: any[] = []
@@ -146,7 +147,8 @@ class MockDataStore {
         projects: apiData.projects?.length || 0,
         agents: apiData.agents?.length || 0,
         callLogs: apiData.callLogs?.length || 0,
-        customOverviewMetrics: apiData.customOverviewMetrics?.length || 0
+        customOverviewMetrics: apiData.customOverviewMetrics?.length || 0,
+        campaignLogs: apiData.campaignLogs?.length || 0
       })
       
       // Update internal data
@@ -154,6 +156,7 @@ class MockDataStore {
       if (apiData.agents) this.agents = apiData.agents
       if (apiData.callLogs) this.callLogs = apiData.callLogs
       if (apiData.customOverviewMetrics) this.customOverviewMetrics = apiData.customOverviewMetrics
+      if (apiData.campaignLogs) this.campaignLogs = apiData.campaignLogs
       if (apiData.agentOverrideMetrics) this.agentOverrideMetrics = apiData.agentOverrideMetrics
       if (apiData.transcriptLogs) this.transcriptLogs = apiData.transcriptLogs
       if (apiData.users) this.users = apiData.users
@@ -241,6 +244,7 @@ class MockDataStore {
 
     this.callLogs = []
     this.customOverviewMetrics = []
+    this.campaignLogs = []
     this.transcriptLogs = []
     this.users = this.getDefaultUsers()
   }
@@ -299,6 +303,67 @@ class MockDataStore {
     return this.callLogs
   }
 
+  // Campaign logs methods (demo)
+  getCampaignLogs(projectId?: string, agentId?: string): any[] {
+    // Prefer stored campaign logs and normalize missing fields
+    let logs = (this.campaignLogs || []).map((c: any, idx: number) => {
+      const agent = c.agent_id ? this.getAgentById(c.agent_id) : undefined
+      const ensuredId = c.id && String(c.id).trim().length > 0 ? c.id : `camp_${c.agent_id || 'na'}_${c.phoneNumber || idx}`
+      return {
+        project_id: c.project_id || agent?.project_id,
+        id: ensuredId,
+        ...c
+      }
+    })
+    if (projectId) {
+      logs = logs.filter((c: any) => c.project_id === projectId)
+    }
+    if (agentId) {
+      logs = logs.filter((c: any) => c.agent_id === agentId)
+    }
+
+    // If none stored for this filter, synthesize from callLogs
+    if (logs.length === 0) {
+      const base = this.getCallLogs(agentId)
+      logs = base.map(cl => ({
+        id: `camp_${cl.id}`,
+        agent_id: cl.agent_id,
+        project_id: this.getAgentById(cl.agent_id)?.project_id,
+        phoneNumber: cl.customer_number,
+        alternative_number: '',
+        fpoName: 'Demo Org',
+        fpoLoginId: `FPO-${cl.agent_id.slice(-3)}`,
+        call_status: cl.call_ended_reason || 'completed',
+        attempt_count: Math.max(1, Math.round(1 + Math.random() * 2)),
+        real_attempt_count: Math.max(1, Math.round(1 + Math.random() * 2)),
+        system_error_count: Math.round(Math.random() * 1),
+        sourceFile: 'demo.csv',
+        createdAt: cl.created_at,
+        uploadedAt: cl.created_at
+      }))
+    }
+    return logs
+  }
+
+  addCampaignLog(log: any) {
+    if (!this.campaignLogs) this.campaignLogs = []
+    this.campaignLogs.push({
+      id: log.id || `camp_${Date.now()}`,
+      ...log
+    })
+    this.emit('data:changed', { type: 'campaignLogs', data: this.campaignLogs })
+  }
+
+  replaceAllCampaignLogs(newLogs: any[]): boolean {
+    try {
+      this.campaignLogs = newLogs || []
+      this.emit('data:changed', { type: 'campaignLogs', data: this.campaignLogs })
+      return true
+    } catch {
+      return false
+    }
+  }
+
   // Analytics method - check for override metrics first, then calculate
   getAnalytics(agentId?: string, dateFrom?: string, dateTo?: string) {
     console.log(`📊 getAnalytics called with agentId: ${agentId}, callLogs available: ${this.callLogs?.length || 0}`)
@@ -308,7 +373,7 @@ class MockDataStore {
       const override = this.agentOverrideMetrics.find((o: any) => o.agentId === agentId)
       if (override) {
         console.log(`📊 Found override metrics for agent ${agentId}:`, override)
-        return this.generateOverrideAnalytics(override)
+        return this.generateOverrideAnalytics(override, dateFrom, dateTo)
       }
     }
     
@@ -384,7 +449,7 @@ class MockDataStore {
       totalCost,
       averageLatency,
       successRate,
-      dailyData: this.generateDailyData(logs),
+      dailyData: this.generateDailyData(logs, dateFrom, dateTo),
       hourlyDistribution: this.generateHourlyDistribution(logs),
       weeklyTrends: this.generateWeeklyTrends(logs),
       responseTimeDistribution: this.generateResponseTimeDistribution(logs),
@@ -393,19 +458,29 @@ class MockDataStore {
     }
   }
 
-  private generateOverrideAnalytics(override: any) {
+  private generateOverrideAnalytics(override: any, dateFrom?: string, dateTo?: string) {
     console.log(`📊 generateOverrideAnalytics: Using override data for agent ${override.agentId}`)
     
-    // Generate realistic daily data with randomization
-    const dailyData = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - (6 - i))
+    // Determine range length (default 30 days)
+    const now = new Date()
+    const start = dateFrom ? new Date(dateFrom) : new Date(now)
+    const end = dateTo ? new Date(dateTo) : new Date(now)
+    if (!dateFrom) {
+      // Default to last 30 days if not provided
+      start.setDate(end.getDate() - 29)
+    }
+    const msPerDay = 24 * 60 * 60 * 1000
+    const totalDays = Math.max(1, Math.floor((end.getTime() - start.getTime()) / msPerDay) + 1)
+
+    // Generate realistic daily data with randomization for full range
+    const dailyData = Array.from({ length: totalDays }, (_, idx) => {
+      const date = new Date(start.getTime() + idx * msPerDay)
       
       // Randomize daily calls (±30% variation from average)
       const dailyCalls = Math.round(override.avgDailyCalls * (0.7 + Math.random() * 0.6))
       
       // Randomize daily minutes (±25% variation)
-      const avgMinutesPerDay = override.totalMinutes / 7
+      const avgMinutesPerDay = override.totalMinutes / totalDays
       const dailyMinutes = Math.round(avgMinutesPerDay * (0.75 + Math.random() * 0.5))
       
       // Randomize latency within specified range
@@ -492,20 +567,48 @@ class MockDataStore {
   }
 
   // Helper methods for analytics generation
-  private generateDailyData(logs: MockCallLog[]) {
-    const dailyMap = new Map<string, number>()
+  private generateDailyData(logs: MockCallLog[], dateFrom?: string, dateTo?: string) {
+    // Aggregate per day
+    const aggregate = new Map<string, { calls: number; durationSec: number; latencySum: number; latencyCount: number }>()
     logs.forEach(log => {
       const date = new Date(log.created_at).toISOString().split('T')[0]
-      dailyMap.set(date, (dailyMap.get(date) || 0) + 1)
+      const current = aggregate.get(date) || { calls: 0, durationSec: 0, latencySum: 0, latencyCount: 0 }
+      current.calls += 1
+      current.durationSec += (log.duration_seconds || 0)
+      if (typeof log.avg_latency === 'number') {
+        current.latencySum += log.avg_latency
+        current.latencyCount += 1
+      }
+      aggregate.set(date, current)
     })
-    
-    return Array.from(dailyMap.entries()).map(([date, count]) => ({
-      date,
-      calls: count,
-      duration: logs
-        .filter(log => log.created_at.startsWith(date))
-        .reduce((sum, log) => sum + (log.duration_seconds || 0), 0)
-    }))
+
+    // Build continuous range
+    const now = new Date()
+    const start = dateFrom ? new Date(dateFrom) : new Date(now)
+    const end = dateTo ? new Date(dateTo) : new Date(now)
+    if (!dateFrom) {
+      // default to last 30 days
+      start.setDate(end.getDate() - 29)
+    }
+    const msPerDay = 24 * 60 * 60 * 1000
+    const out: Array<{ date: string; calls: number; minutes: number; duration: number; avg_latency: number }> = []
+    for (let t = start.getTime(); t <= end.getTime(); t += msPerDay) {
+      const d = new Date(t)
+      const key = d.toISOString().split('T')[0]
+      const agg = aggregate.get(key)
+      const durationSec = agg ? agg.durationSec : 0
+      const minutes = Math.round(durationSec / 60)
+      const avgLatency = agg && agg.latencyCount > 0 ? agg.latencySum / agg.latencyCount : 0
+      out.push({
+        date: key,
+        calls: agg ? agg.calls : 0,
+        minutes,
+        duration: durationSec,
+        avg_latency: avgLatency
+      })
+    }
+
+    return out
   }
 
   private generateHourlyDistribution(logs: MockCallLog[]) {

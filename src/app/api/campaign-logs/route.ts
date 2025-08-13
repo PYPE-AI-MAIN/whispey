@@ -48,20 +48,23 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('Campaign logs not available for this project', 403)
     }
 
-    // Get mock campaign logs (using call logs as sample data)
-    let campaignLogs = MockDataService.getCallLogs()
+    // Get mock campaign logs per project (synthesized if none exist)
+    let campaignLogs = MockDataService.getCampaignLogs(project_id)
     
     // Apply filters
     if (call_status) {
-      campaignLogs = campaignLogs.filter(log => log.call_ended_reason === call_status)
+      campaignLogs = campaignLogs.filter((log: any) => (log.call_status || log.call_ended_reason) === call_status)
     }
     
     if (search) {
       const searchLower = search.toLowerCase()
-      campaignLogs = campaignLogs.filter(log => 
-        log.customer_number.toLowerCase().includes(searchLower) ||
-        log.call_id.toLowerCase().includes(searchLower)
-      )
+      campaignLogs = campaignLogs.filter((log: any) => {
+        const phone = (log.phoneNumber || log.customer_number || '').toString().toLowerCase()
+        const name = (log.fpoName || '').toString().toLowerCase()
+        const login = (log.fpoLoginId || '').toString().toLowerCase()
+        const callId = (log.call_id || '').toString().toLowerCase()
+        return phone.includes(searchLower) || name.includes(searchLower) || login.includes(searchLower) || callId.includes(searchLower)
+      })
     }
 
     // Apply sorting
@@ -69,16 +72,16 @@ export async function GET(request: NextRequest) {
       let aValue, bValue
       switch (sort_by) {
         case 'phoneNumber':
-          aValue = a.customer_number
-          bValue = b.customer_number
+          aValue = (a as any).phoneNumber || (a as any).customer_number
+          bValue = (b as any).phoneNumber || (b as any).customer_number
           break
         case 'call_status':
-          aValue = a.call_ended_reason
-          bValue = b.call_ended_reason
+          aValue = (a as any).call_status || (a as any).call_ended_reason
+          bValue = (b as any).call_status || (b as any).call_ended_reason
           break
         default:
-          aValue = new Date(a.created_at).getTime()
-          bValue = new Date(b.created_at).getTime()
+          aValue = new Date((a as any).createdAt || (a as any).created_at).getTime()
+          bValue = new Date((b as any).createdAt || (b as any).created_at).getTime()
       }
 
       if (sort_order === 'asc') {
@@ -95,34 +98,34 @@ export async function GET(request: NextRequest) {
     const paginatedLogs = campaignLogs.slice(startIndex, endIndex)
 
     // Format response to match expected structure
-    const formattedLogs = paginatedLogs.map(log => ({
+    const formattedLogs = paginatedLogs.map((log: any) => ({
       id: log.id,
-      phoneNumber: log.customer_number,
-      call_status: log.call_ended_reason,
-      createdAt: log.created_at,
-      duration: log.duration_seconds,
-      cost: log.total_stt_cost + log.total_tts_cost + log.total_llm_cost
+      phoneNumber: log.phoneNumber || log.customer_number,
+      alternative_number: log.alternative_number || '',
+      fpoName: log.fpoName || 'Demo Org',
+      fpoLoginId: log.fpoLoginId || 'FPO-001',
+      call_status: log.call_status || log.call_ended_reason || 'completed',
+      real_attempt_count: log.real_attempt_count ?? 1,
+      system_error_count: log.system_error_count ?? 0,
+      createdAt: log.createdAt || log.created_at,
+      uploadedAt: log.uploadedAt || log.created_at,
+      sourceFile: log.sourceFile || 'demo.csv'
     }))
 
     const response = {
-      success: true,
-      data: {
-        items: formattedLogs,
-        pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(totalCount / limit),
-          totalCount,
-          hasNext: endIndex < totalCount,
-          hasPrevious: page > 1
-        },
-        summary: {
-          totalCalls: totalCount,
-          completedCalls: campaignLogs.filter(log => log.call_ended_reason === 'completed').length,
-          totalCost: campaignLogs.reduce((sum, log) => 
-            sum + log.total_stt_cost + log.total_tts_cost + log.total_llm_cost, 0
-          )
-        }
-      }
+      items: formattedLogs,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
+        itemsPerPage: limit,
+        hasNextPage: endIndex < totalCount,
+        hasPreviousPage: page > 1,
+        nextPage: endIndex < totalCount ? page + 1 : null,
+        previousPage: page > 1 ? page - 1 : null
+      },
+      filters: {},
+      scannedCount: totalCount
     }
 
     return NextResponse.json(response, { status: 200 })
@@ -154,7 +157,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use same logic as GET but with POST body filters
-    let campaignLogs = MockDataService.getCallLogs()
+    let campaignLogs = MockDataService.getCampaignLogs(projectId)
     
     // Apply search
     if (search) {
@@ -182,27 +185,34 @@ export async function POST(request: NextRequest) {
     const paginatedLogs = campaignLogs.slice(startIndex, endIndex)
 
     // Format response
-    const formattedLogs = paginatedLogs.map(log => ({
+    const formattedLogs = paginatedLogs.map((log: any) => ({
       id: log.id,
-      phoneNumber: log.customer_number,
-      call_status: log.call_ended_reason,
-      createdAt: log.created_at,
-      duration: log.duration_seconds,
-      cost: log.total_stt_cost + log.total_tts_cost + log.total_llm_cost
+      phoneNumber: log.phoneNumber || log.customer_number,
+      alternative_number: log.alternative_number || '',
+      fpoName: log.fpoName || 'Demo Org',
+      fpoLoginId: log.fpoLoginId || 'FPO-001',
+      call_status: log.call_status || log.call_ended_reason || 'completed',
+      real_attempt_count: log.real_attempt_count ?? 1,
+      system_error_count: log.system_error_count ?? 0,
+      createdAt: log.createdAt || log.created_at,
+      uploadedAt: log.uploadedAt || log.created_at,
+      sourceFile: log.sourceFile || 'demo.csv'
     }))
 
     const response = {
-      success: true,
-      data: {
-        items: formattedLogs,
-        pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(totalCount / limit),
-          totalCount,
-          hasNext: endIndex < totalCount,
-          hasPrevious: page > 1
-        }
-      }
+      items: formattedLogs,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
+        itemsPerPage: limit,
+        hasNextPage: endIndex < totalCount,
+        hasPreviousPage: page > 1,
+        nextPage: endIndex < totalCount ? page + 1 : null,
+        previousPage: page > 1 ? page - 1 : null
+      },
+      filters: {},
+      scannedCount: totalCount
     }
 
     return NextResponse.json(response, { status: 200 })

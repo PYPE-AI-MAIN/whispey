@@ -48,6 +48,7 @@ interface JsonData {
   agents: any[]
   users: any[]
   callLogs: any[]
+  campaignLogs: any[]
   customOverviewMetrics?: any[]
   agentOverrideMetrics?: any[]
 }
@@ -68,6 +69,7 @@ export default function MagicPage() {
     agents: [],
     users: [],
     callLogs: [],
+    campaignLogs: [],
     customOverviewMetrics: [],
     agentOverrideMetrics: []
   })
@@ -86,6 +88,21 @@ export default function MagicPage() {
   const [deleteLogsAgentId, setDeleteLogsAgentId] = useState<string>('')
   const [showAddMetric, setShowAddMetric] = useState(false)
   const [showAddAgentOverride, setShowAddAgentOverride] = useState(false)
+  const [showAddCampaignLog, setShowAddCampaignLog] = useState(false)
+  const [newCampaignLog, setNewCampaignLog] = useState<any>({
+    id: '',
+    agent_id: '',
+    phoneNumber: '',
+    alternative_number: '',
+    fpoName: '',
+    fpoLoginId: '',
+    call_status: 'pending',
+    real_attempt_count: 1,
+    system_error_count: 0,
+    sourceFile: 'demo.csv',
+    createdAt: new Date().toISOString(),
+    uploadedAt: new Date().toISOString()
+  })
   const [saveFeedback, setSaveFeedback] = useState<'idle' | 'saved'>('idle')
 
   // Form states
@@ -173,8 +190,8 @@ export default function MagicPage() {
       const response = await fetch('/api/data?type=current')
       if (response.ok) {
         const data = await response.json()
-        setJsonData(data)
-        setJsonString(JSON.stringify(data, null, 2))
+        setJsonData({ ...data, campaignLogs: data.campaignLogs || [] })
+        setJsonString(JSON.stringify({ ...data, campaignLogs: data.campaignLogs || [] }, null, 2))
         setJsonError('')
       }
     } catch (error) {
@@ -199,6 +216,22 @@ export default function MagicPage() {
           setSaving(false)
           return
         }
+      }
+
+      // Ensure campaign logs have stable IDs and inferred project_id before saving
+      if ((dataToSave as any).campaignLogs && Array.isArray((dataToSave as any).campaignLogs)) {
+        (dataToSave as any).campaignLogs = (dataToSave as any).campaignLogs.map((log: any, idx: number) => {
+          const ensuredId = log.id && String(log.id).trim().length > 0
+            ? log.id
+            : `camp_${log.agent_id || 'na'}_${log.phoneNumber || idx}`
+          // Infer project_id from selected agent if missing
+          const agent = (dataToSave as any).agents?.find((a: any) => a.id === log.agent_id)
+          return {
+            project_id: log.project_id || agent?.project_id,
+            ...log,
+            id: ensuredId
+          }
+        })
       }
 
       const response = await fetch('/api/data', {
@@ -506,6 +539,30 @@ export default function MagicPage() {
 
   const cancelEdit = () => {
     setEditingItem(null)
+  }
+
+  const addCampaignLog = () => {
+    const log = {
+      id: `camp_${Date.now()}`,
+      ...newCampaignLog,
+      createdAt: new Date().toISOString(),
+      uploadedAt: new Date().toISOString()
+    }
+    const updated = { ...jsonData, campaignLogs: [...(jsonData.campaignLogs || []), log] }
+    setJsonData(updated)
+    setJsonString(JSON.stringify(updated, null, 2))
+    setShowAddCampaignLog(false)
+    setNewCampaignLog({
+      id: '', agent_id: '', phoneNumber: '', alternative_number: '', fpoName: '', fpoLoginId: '',
+      call_status: 'pending', real_attempt_count: 1, system_error_count: 0, sourceFile: 'demo.csv',
+      createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString()
+    })
+  }
+
+  const deleteCampaignLog = (id: string) => {
+    const updated = { ...jsonData, campaignLogs: (jsonData.campaignLogs || []).filter((l: any) => l.id !== id) }
+    setJsonData(updated)
+    setJsonString(JSON.stringify(updated, null, 2))
   }
 
   // Add new item functions
@@ -1056,6 +1113,10 @@ export default function MagicPage() {
                 <Phone className="h-4 w-4" />
                 Call Logs ({jsonData.callLogs.length})
               </TabsTrigger>
+              <TabsTrigger value="campaignLogs" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
+                <Database className="h-4 w-4" />
+                Campaign Logs ({jsonData.campaignLogs.length})
+              </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md data-[state=active]:bg-gray-100 shrink-0">
                 <Settings className="h-4 w-4" />
                 Settings
@@ -1332,6 +1393,140 @@ export default function MagicPage() {
                 </Card>
                   )
                 })}
+            </div>
+          </TabsContent>
+
+          {/* Campaign Logs Tab */}
+          <TabsContent value="campaignLogs" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-900">Campaign Logs ({jsonData.campaignLogs.length})</h2>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowAddCampaignLog(true)} className="bg-gray-900 hover:bg-gray-800 text-white text-sm">
+                  <Plus className="h-4 w-4 mr-2" /> Add Campaign Log
+                </Button>
+              </div>
+            </div>
+            {/* Add Campaign Log Dialog */}
+            <Dialog open={showAddCampaignLog} onOpenChange={setShowAddCampaignLog}>
+              <DialogContent className="max-w-md border border-gray-200">
+                <DialogHeader>
+                  <DialogTitle className="text-base font-semibold text-gray-900">Add Campaign Log</DialogTitle>
+                  <DialogDescription className="text-xs text-gray-500">Create a dummy campaign log entry</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Agent</Label>
+                    <Select value={newCampaignLog.agent_id} onValueChange={(v) => setNewCampaignLog({ ...newCampaignLog, agent_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jsonData.agents.map((a: any) => (
+                          <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Phone Number</Label>
+                      <Input value={newCampaignLog.phoneNumber} onChange={(e) => setNewCampaignLog({ ...newCampaignLog, phoneNumber: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Alt Number</Label>
+                      <Input value={newCampaignLog.alternative_number} onChange={(e) => setNewCampaignLog({ ...newCampaignLog, alternative_number: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Name</Label>
+                      <Input value={newCampaignLog.fpoName} onChange={(e) => setNewCampaignLog({ ...newCampaignLog, fpoName: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Login ID</Label>
+                      <Input value={newCampaignLog.fpoLoginId} onChange={(e) => setNewCampaignLog({ ...newCampaignLog, fpoLoginId: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Status</Label>
+                      <Select value={newCampaignLog.call_status} onValueChange={(v) => setNewCampaignLog({ ...newCampaignLog, call_status: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">pending</SelectItem>
+                          <SelectItem value="completed">completed</SelectItem>
+                          <SelectItem value="failed">failed</SelectItem>
+                          <SelectItem value="in_progress">in_progress</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Source File</Label>
+                      <Input value={newCampaignLog.sourceFile} onChange={(e) => setNewCampaignLog({ ...newCampaignLog, sourceFile: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Attempts</Label>
+                      <Input type="number" value={newCampaignLog.real_attempt_count} onChange={(e) => setNewCampaignLog({ ...newCampaignLog, real_attempt_count: parseInt(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <Label>System Errors</Label>
+                      <Input type="number" value={newCampaignLog.system_error_count} onChange={(e) => setNewCampaignLog({ ...newCampaignLog, system_error_count: parseInt(e.target.value) || 0 })} />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 border-t pt-4">
+                    <Button variant="outline" size="sm" onClick={() => setShowAddCampaignLog(false)}>Cancel</Button>
+                    <Button size="sm" className="bg-gray-900 hover:bg-gray-800 text-white" onClick={addCampaignLog} disabled={!newCampaignLog.agent_id || !newCampaignLog.phoneNumber}>
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <div className="overflow-x-auto border rounded-lg">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-600">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Phone Number</th>
+                    <th className="px-4 py-2 text-left">Alt Number</th>
+                    <th className="px-4 py-2 text-left">Name</th>
+                    <th className="px-4 py-2 text-left">Login ID</th>
+                    <th className="px-4 py-2 text-left">Status</th>
+                    <th className="px-4 py-2 text-right">Attempts</th>
+                    <th className="px-4 py-2 text-right">Sys Errors</th>
+                    <th className="px-4 py-2 text-left">Source</th>
+                    <th className="px-4 py-2 text-left">Created</th>
+                    <th className="px-4 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {jsonData.campaignLogs.map((log: any, index: number) => (
+                    <tr key={log.id || `${log.phoneNumber || 'row'}-${index}`}>
+                      <td className="px-4 py-2">{log.phoneNumber}</td>
+                      <td className="px-4 py-2">{log.alternative_number || '-'}</td>
+                      <td className="px-4 py-2">{log.fpoName}</td>
+                      <td className="px-4 py-2">{log.fpoLoginId}</td>
+                      <td className="px-4 py-2">{log.call_status}</td>
+                      <td className="px-4 py-2 text-right">{log.real_attempt_count ?? 1}</td>
+                      <td className="px-4 py-2 text-right">{log.system_error_count ?? 0}</td>
+                      <td className="px-4 py-2">{log.sourceFile || 'demo.csv'}</td>
+                      <td className="px-4 py-2">{log.createdAt}</td>
+                      <td className="px-4 py-2 text-right">
+                        <Button variant="outline" size="sm" onClick={() => deleteCampaignLog(log.id)}>Delete</Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {jsonData.campaignLogs.length === 0 && (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">No campaign logs yet</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </TabsContent>
 
