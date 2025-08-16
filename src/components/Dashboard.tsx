@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +28,13 @@ import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
 import { supabase } from '../lib/supabase'
+import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface DashboardProps {
   agentId: string
@@ -36,6 +43,13 @@ interface DashboardProps {
 interface DateRange {
   from: Date | undefined
   to?: Date | undefined
+}
+
+interface VapiStatus {
+  connected: boolean
+  status: string
+  message: string
+  details?: any
 }
 
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
@@ -51,14 +65,6 @@ const formatDateISO = (date: Date) => {
   return date.toISOString().split('T')[0]
 }
 
-const formatDateDisplay = (date: Date) => {
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
-
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -69,6 +75,9 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     project: '',
     item: ''
   })
+  const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
+  const [vapiStatusLoading, setVapiStatusLoading] = useState(false)
+  const [connectingWebhook, setConnectingWebhook] = useState(false)
   
   // Date filter state
   const [quickFilter, setQuickFilter] = useState('7d')
@@ -77,6 +86,8 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     to: new Date()
   })
   const [isCustomRange, setIsCustomRange] = useState(false)
+
+
   
   const activeTab = searchParams.get('tab') || 'overview'
   const shouldFetch = agentId && agentId !== 'undefined' && agentId.trim() !== ''
@@ -123,12 +134,29 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     }
   }
 
+  
+
   const { data: agents, loading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
     select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id,field_extractor_prompt,field_extractor',
     filters: shouldFetch ? [{ column: 'id', operator: 'eq', value: agentId }] : []
   })
 
   const agent = shouldFetch ? agents?.[0] : null
+
+
+
+  const isVapiAgent = React.useMemo(() => {
+    if (!agent) return false
+    
+    const hasVapiKeys = Boolean(agent.vapi_api_key_encrypted && agent.vapi_project_key_encrypted)
+    const hasVapiConfig = Boolean(agent?.configuration?.vapi?.assistantId)
+    const isVapiType = agent.agent_type === 'vapi'
+    
+    return hasVapiKeys || hasVapiConfig || isVapiType
+  }, [agent])
+
+  console.log({agent})
+
 
   const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active',
@@ -210,6 +238,64 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // Prepare breadcrumb data for Header
 
 
+  const checkVapiStatus = useCallback(async () => {
+    if (!isVapiAgent || !agent?.id) return
+    
+    setVapiStatusLoading(true)
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/vapi/status`)
+      const data = await response.json()
+      setVapiStatus(data)
+    } catch (error) {
+      console.error('Failed to check Vapi status:', error)
+      setVapiStatus({
+        connected: false,
+        status: 'error',
+        message: 'Failed to check connection status'
+      })
+    } finally {
+      setVapiStatusLoading(false)
+    }
+  }, [isVapiAgent, agent?.id])
+
+
+  const handleWebhookSetup = async () => {
+    if (!agent?.id) return
+    
+    setConnectingWebhook(true)
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/vapi/setup-webhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to setup webhook')
+      }
+      
+      // Refresh status after successful setup
+      await checkVapiStatus()
+      
+      alert('Webhook configured successfully! Agent is now ready.')
+      
+    } catch (error) {
+      console.error('Failed to setup webhook:', error)
+      alert(error instanceof Error ? error.message : 'Failed to setup webhook')
+    } finally {
+      setConnectingWebhook(false)
+    }
+  }
+
+
+  useEffect(() => {
+    if (isVapiAgent && agent?.id) {
+      checkVapiStatus()
+    }
+  }, [checkVapiStatus, isVapiAgent, agent?.id])
+
+
   if (!shouldFetch) {
     return (
       <div className="h-screen flex flex-col bg-gray-50">
@@ -289,7 +375,18 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
               </button>
               
               <div className="flex items-center gap-4">
-                <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">{agent.name}</h1>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h1 className="text-2xl font-semibold text-gray-900 tracking-tight truncate max-w-[250px] cursor-default">
+                      {agent.name}
+                    </h1>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{agent.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
                 <div className="flex items-center gap-2">
                   <Badge className={`text-xs font-medium px-3 py-1 rounded-full ${getEnvironmentColor(agent.environment)}`}>
                     {agent.environment}
@@ -318,6 +415,52 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                   )
                 })}
               </div>
+
+              {isVapiAgent && (
+                <div className="relative">
+                  <Button
+                    onClick={() => {
+                      if (vapiStatus?.connected) {
+                        // Navigate to settings if connected
+                        router.push(`/agents/${agentId}/vapi`)
+                      } else {
+                        // Setup webhook if not connected
+                        handleWebhookSetup()
+                      }
+                    }}
+                    className="ml-4"
+                    variant="outline"
+                    disabled={vapiStatusLoading || connectingWebhook}
+                  >
+                    {vapiStatusLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : connectingWebhook ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : vapiStatus?.connected ? (
+                      <Bot className="w-4 h-4 mr-2" />
+                    ) : (
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                    )}
+                    
+                    {vapiStatusLoading ? 'Checking...' :
+                    connectingWebhook ? 'Connecting...' :
+                    vapiStatus?.connected ? 'Agent Settings' : 'Connect Webhook'}
+                  </Button>
+                  
+                  {/* Status indicator */}
+                  {!vapiStatusLoading && vapiStatus && (
+                    <div className="absolute -top-1 -right-1">
+                      {vapiStatus.connected ? (
+                        <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white" 
+                            title="Webhook connected" />
+                      ) : (
+                        <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white" 
+                            title="Setup required" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right: Refined Controls */}

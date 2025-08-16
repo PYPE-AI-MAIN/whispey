@@ -6,5 +6,9 @@ export default function ProjectAgentsPage() {
   const params = useParams()
   const projectId = params.projectid as string
 
-  return <AgentSelection projectId={projectId} />
-} 
+  return (
+    <>
+      <AgentSelection projectId={projectId} />
+    </>
+  )
+}
