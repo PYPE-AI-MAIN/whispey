@@ -113,13 +113,6 @@ class VapiDataTransformer {
 
       const messageData = webhookData.message!;
       
-      // console.log('🔍 RAW VAPI DATA CHECK:');
-      // console.log('startedAt:', messageData.startedAt);
-      // console.log('endedAt:', messageData.endedAt);
-      // console.log('durationSeconds:', messageData.durationSeconds);
-      // console.log('durationMs:', messageData.durationMs);
-      // console.log('messages count:', messageData.messages?.length || 0);
-      
       // Get performance metrics
       const performanceMetrics = messageData.performanceMetrics || messageData.artifact?.performanceMetrics;
       const turnLatencies = performanceMetrics?.turnLatencies || [];

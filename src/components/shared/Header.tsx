@@ -1,3 +1,4 @@
+// src/components/shared/Header.tsx
 "use client"
 
 import { UserButton, SignedIn, useUser } from "@clerk/clerk-react";

@@ -19,7 +19,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const projectId = params.id // UUID, no parseInt()
+    const { id: projectId } = await params // UUID, no parseInt()
 
     console.log("projectId",projectId)
 

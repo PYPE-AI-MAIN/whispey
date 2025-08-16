@@ -34,17 +34,17 @@ export async function POST(request: NextRequest) {
           }
         };
 
-        await Promise.all([
-          saveRawDataToJson(webhookData, 'raw'),
-          saveTransformedDataToJson(dbData, 'transformed')
-        ]);
+        // await Promise.all([
+        //   saveRawDataToJson(webhookData, 'raw'),
+        //   saveTransformedDataToJson(dbData, 'transformed')
+        // ]);
 
         if (xPypeToken) {
           await sendToPype(dbData, xPypeToken, agentId);
         }
         
       } else {
-        await saveRawDataToJson(webhookData, 'failed');
+        // await saveRawDataToJson(webhookData, 'failed');
       }
     }
 
@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     try {
-      const webhookData = await request.json();
-      await saveRawDataToJson(webhookData, 'error');
+      // const webhookData = await request.json(); 
+      // await saveRawDataToJson(webhookData, 'error');
     } catch (parseError) {
     }
     
@@ -119,38 +119,38 @@ async function sendToPype(dbData: DBCallData, xPypeToken: string, agentId: strin
   }
 }
 
-async function saveRawDataToJson(webhookData: VapiWebhookData, type: 'raw' | 'failed' | 'error') {
-  try {
-    const tmpDir = path.join(process.cwd(), 'tmp');
-    if (!existsSync(tmpDir)) {
-      await mkdir(tmpDir, { recursive: true });
-    }
+// async function saveRawDataToJson(webhookData: VapiWebhookData, type: 'raw' | 'failed' | 'error') {
+//   try {
+//     const tmpDir = path.join(process.cwd(), 'tmp');
+//     if (!existsSync(tmpDir)) {
+//       await mkdir(tmpDir, { recursive: true });
+//     }
 
-    const sanitizedData = {
-      ...webhookData,
-      message: webhookData.message ? {
-        ...webhookData.message,
-        assistant: webhookData.message.assistant ? {
-          ...webhookData.message.assistant,
-          metadata: webhookData.message.assistant.metadata ? {
-            ...webhookData.message.assistant.metadata,
-            xPypeToken: webhookData.message.assistant.metadata.xPypeToken ? '[REDACTED]' : undefined
-          } : undefined
-        } : undefined
-      } : undefined
-    };
+//     const sanitizedData = {
+//       ...webhookData,
+//       message: webhookData.message ? {
+//         ...webhookData.message,
+//         assistant: webhookData.message.assistant ? {
+//           ...webhookData.message.assistant,
+//           metadata: webhookData.message.assistant.metadata ? {
+//             ...webhookData.message.assistant.metadata,
+//             xPypeToken: webhookData.message.assistant.metadata.xPypeToken ? '[REDACTED]' : undefined
+//           } : undefined
+//         } : undefined
+//       } : undefined
+//     };
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const uuid = randomUUID();
-    const callId = webhookData.message?.call?.id || 'no-id';
-    const fileName = `vapi-${type}-${timestamp}-${callId}-${uuid.slice(0, 8)}.json`;
+//     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+//     const uuid = randomUUID();
+//     const callId = webhookData.message?.call?.id || 'no-id';
+//     const fileName = `vapi-${type}-${timestamp}-${callId}-${uuid.slice(0, 8)}.json`;
     
-    const filePath = path.join(tmpDir, fileName);
-    await writeFile(filePath, JSON.stringify(sanitizedData, null, 2), 'utf-8');
+//     const filePath = path.join(tmpDir, fileName);
+//     await writeFile(filePath, JSON.stringify(sanitizedData, null, 2), 'utf-8');
     
-  } catch (error) {
-  }
-}
+//   } catch (error) {
+//   }
+// }
 
 async function saveTransformedDataToJson(dbData: DBCallData, type: 'transformed') {
   try {
