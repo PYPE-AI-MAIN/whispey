@@ -65,6 +65,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
         }
 
         const data = await response.json()
+        
         console.log('📊 VapiDashboard: Agent data received:', data)
         
         if (data.success && data.vapi_assistant) {
