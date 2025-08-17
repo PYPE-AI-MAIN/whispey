@@ -1,40 +1,11 @@
 // src/app/api/agents/[id]/vapi/setup-webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import crypto from 'crypto'
+import { decryptApiKey } from '@/lib/vapi-encryption'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-const MASTER_KEY = process.env.VAPI_MASTER_KEY || 'your-master-key'
-
-// Decryption functions
-function generateProjectEncryptionKey(projectId: string): Buffer {
-  return crypto.pbkdf2Sync(projectId, MASTER_KEY, 100000, 32, 'sha512')
-}
-
-function decryptApiKey(encryptedData: string, projectId: string): string {
-  const algorithm = 'aes-256-gcm'
-  const key = generateProjectEncryptionKey(projectId)
-  
-  const parts = encryptedData.split(':')
-  if (parts.length !== 3) {
-    throw new Error('Invalid encrypted data format')
-  }
-  
-  const iv = Buffer.from(parts[0], 'hex')
-  const authTag = Buffer.from(parts[1], 'hex')
-  const encrypted = parts[2]
-  
-  const decipher = crypto.createDecipher(algorithm, key)
-  decipher.setAuthTag(authTag)
-  
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8')
-  decrypted += decipher.final('utf8')
-  
-  return decrypted
-}
 
 export async function POST(
   request: NextRequest,
@@ -85,15 +56,13 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Decrypt the keys
+    // Decrypt the keys using utility function
     let vapiApiKey: string
     let vapiProjectKey: string
     
     try {
       vapiApiKey = decryptApiKey(agent.vapi_api_key_encrypted, agent.project_id)
       vapiProjectKey = decryptApiKey(agent.vapi_project_key_encrypted, agent.project_id)
-      console.log('vapiApiKey', vapiApiKey)
-      console.log('vapiProjectKey', vapiProjectKey)
       console.log('🔐 Successfully decrypted Vapi keys for webhook setup')
     } catch (err) {
       console.error('❌ Failed to decrypt Vapi keys:', err)
