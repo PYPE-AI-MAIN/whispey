@@ -1,40 +1,11 @@
 // src/app/api/agents/[id]/vapi/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import crypto from 'crypto'
+import { decryptApiKey } from '@/lib/vapi-encryption'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-const MASTER_KEY = process.env.VAPI_MASTER_KEY || 'your-master-key'
-
-// Original working decryption functions
-function generateProjectEncryptionKey(projectId: string): Buffer {
-  return crypto.pbkdf2Sync(projectId, MASTER_KEY, 100000, 32, 'sha512')
-}
-
-function decryptApiKey(encryptedData: string, projectId: string): string {
-  const algorithm = 'aes-256-gcm'
-  const key = generateProjectEncryptionKey(projectId)
-  
-  const parts = encryptedData.split(':')
-  if (parts.length !== 3) {
-    throw new Error('Invalid encrypted data format')
-  }
-  
-  const iv = Buffer.from(parts[0], 'hex')
-  const authTag = Buffer.from(parts[1], 'hex')
-  const encrypted = parts[2]
-  
-  const decipher = crypto.createDecipher(algorithm, key)
-  decipher.setAuthTag(authTag)
-  
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8')
-  decrypted += decipher.final('utf8')
-  
-  return decrypted
-}
 
 export async function GET(
   request: NextRequest,
@@ -76,12 +47,12 @@ export async function GET(
       )
     }
 
-    // Decrypt the Vapi API keys using original working method
+    // Decrypt the Vapi API keys using unified utility
     let decryptedApiKey: string
 
     try {
       decryptedApiKey = decryptApiKey(agent.vapi_api_key_encrypted, agent.project_id)
-      console.log('🔐 Successfully decrypted Vapi API key using original method')
+      console.log('🔐 Successfully decrypted Vapi API key using unified method')
     } catch (decryptError) {
       console.error('❌ Failed to decrypt Vapi keys:', decryptError)
       return NextResponse.json(
@@ -173,7 +144,7 @@ export async function POST(
 
     console.log('📞 Making Vapi API call:', { agentId, action })
 
-    // Get agent and decrypt keys
+    // Get agent and decrypt keys using unified utility
     const { data: agent, error: agentError } = await supabase
       .from('pype_voice_agents')
       .select('vapi_api_key_encrypted, vapi_project_key_encrypted, project_id, configuration')
@@ -187,7 +158,17 @@ export async function POST(
       )
     }
 
-    const decryptedApiKey = decryptApiKey(agent.vapi_api_key_encrypted, agent.project_id)
+    let decryptedApiKey: string
+    try {
+      decryptedApiKey = decryptApiKey(agent.vapi_api_key_encrypted, agent.project_id)
+      console.log('🔐 Successfully decrypted API key for action')
+    } catch (decryptError) {
+      console.error('❌ Failed to decrypt API key for action:', decryptError)
+      return NextResponse.json(
+        { error: 'Failed to decrypt Vapi API key' },
+        { status: 500 }
+      )
+    }
 
     // Handle different Vapi actions
     switch (action) {
