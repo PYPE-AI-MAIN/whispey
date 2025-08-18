@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, CheckCircle, Bot, Phone, PhoneCall, Settings, ArrowRight, Copy, AlertCircle } from 'lucide-react'
+import { Loader2, CheckCircle, Bot, Phone, PhoneCall, Settings, ArrowRight, Copy, AlertCircle, Zap, Cpu } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface AgentCreationDialogProps {
@@ -38,8 +38,20 @@ interface VapiAssistant {
 }
 
 const PLATFORM_OPTIONS = [
-  { value: 'livekit', label: 'Livekit' },
-  { value: 'vapi', label: 'Vapi' }
+  { 
+    value: 'livekit', 
+    label: 'Livekit',
+    description: 'Build with our native platform',
+    icon: Cpu,
+    color: 'blue'
+  },
+  { 
+    value: 'vapi', 
+    label: 'Vapi',
+    description: 'Connect existing Vapi assistants',
+    icon: Zap,
+    color: 'purple'
+  }
 ]
 
 const AGENT_TYPES = [
@@ -71,6 +83,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<'form' | 'success'>('form')
   const [selectedPlatform, setSelectedPlatform] = useState('livekit')
+  const assistantSectionRef = useRef<HTMLDivElement>(null)
   
   // Livekit (regular) agent fields
   const [formData, setFormData] = useState({
@@ -101,6 +114,18 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
   const selectedAgentType = AGENT_TYPES.find(type => type.value === formData.agent_type)
 
+  // Scroll to assistant section after successful connection
+  useEffect(() => {
+    if (vapiData.availableAssistants.length > 0 && assistantSectionRef.current) {
+      setTimeout(() => {
+        assistantSectionRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'nearest' 
+        })
+      }, 100)
+    }
+  }, [vapiData.availableAssistants.length])
+
   const handleVapiConnect = async () => {
     if (!vapiData.apiKey.trim()) {
       setError('Vapi API key is required')
@@ -113,7 +138,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
     try {
       console.log('🔑 Connecting directly to Vapi API with key:', vapiData.apiKey.slice(0, 10) + '...')
       
-      // Call Vapi API directly - this is perfect for agent creation since we're just testing the key
+      // Call Vapi API directly - keeping original functionality
       const response = await fetch('https://api.vapi.ai/assistant', {
         method: 'GET',
         headers: {
@@ -275,281 +300,347 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[480px] p-0 gap-0 rounded-lg border border-gray-200 shadow-xl bg-white">
+      <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 shadow-2xl bg-white max-h-[90vh] flex flex-col">
         {currentStep === 'form' ? (
           <>
             {/* Header */}
-            <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div>
-                  <DialogTitle className="text-lg font-semibold text-gray-900">
-                    Create Agent
-                  </DialogTitle>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    Set up your AI agent
-                  </p>
+            <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl flex items-center justify-center border border-gray-100">
+                  <Bot className="w-6 h-6 text-gray-700" />
                 </div>
+                <DialogTitle className="text-lg font-semibold text-gray-900 mb-1">
+                  Create New Agent
+                </DialogTitle>
+                <p className="text-sm text-gray-600">
+                  Choose your platform and configure your AI agent
+                </p>
               </div>
             </DialogHeader>
 
-            {/* Form */}
-            <div className="px-6 py-5">
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Platform Selection */}
-                <div className="space-y-1.5">
+            {/* Scrollable Form Content */}
+            <div className="flex-1 overflow-y-auto px-6">
+              <div className="space-y-5 pb-6">
+                {/* Platform Selection - Compact Style */}
+                <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-900">
-                    Platform
+                    Select Platform
                   </label>
-                  <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PLATFORM_OPTIONS.map((platform) => (
-                        <SelectItem key={platform.value} value={platform.value}>
-                          {platform.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    {PLATFORM_OPTIONS.map((platform) => {
+                      const Icon = platform.icon
+                      const isSelected = selectedPlatform === platform.value
+                      
+                      return (
+                        <div
+                          key={platform.value}
+                          className={`relative flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all duration-200 flex-1 ${
+                            isSelected 
+                              ? platform.color === 'purple'
+                                ? 'border-purple-500 bg-purple-50'
+                                : 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                          onClick={() => setSelectedPlatform(platform.value)}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            isSelected 
+                              ? platform.color === 'purple'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-gray-900 text-sm">{platform.label}</div>
+                            <div className="text-xs text-gray-500 leading-tight">{platform.description}</div>
+                          </div>
+                          <input
+                            type="radio"
+                            name="platform"
+                            value={platform.value}
+                            checked={isSelected}
+                            onChange={() => setSelectedPlatform(platform.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            disabled={loading}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
 
-                {/* Livekit Fields (Default UI) */}
-                {selectedPlatform === 'livekit' && (
-                  <>
-                    {/* Agent Name */}
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-900">
-                        Agent Name
-                      </label>
-                      <Input
-                        placeholder="Customer Support Bot"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        disabled={loading}
-                        className="h-10 px-3 text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
-                      />
-                    </div>
-
-                    {/* Agent Type Selection */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-900">
-                        Type
-                      </label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {AGENT_TYPES.map((type) => {
-                          const Icon = type.icon
-                          const isSelected = formData.agent_type === type.value
-                          
-                          return (
-                            <div
-                              key={type.value}
-                              className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
-                                isSelected 
-                                  ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }`}
-                              onClick={() => setFormData({ ...formData, agent_type: type.value })}
-                            >
-                              <div className="text-center">
-                                <div className={`w-8 h-8 mx-auto mb-2 rounded-lg flex items-center justify-center ${
-                                  isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
-                                }`}>
-                                  <Icon className="w-4 h-4" />
-                                </div>
-                                <div className="text-xs font-medium text-gray-900 mb-0.5">{type.label}</div>
-                                <div className="text-xs text-gray-500 leading-tight">{type.description}</div>
-                              </div>
-                              <input
-                                type="radio"
-                                name="agent_type"
-                                value={type.value}
-                                checked={isSelected}
-                                onChange={() => setFormData({ ...formData, agent_type: type.value })}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                disabled={loading}
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-900">
-                        Description <span className="text-gray-500 font-normal">(optional)</span>
-                      </label>
-                      <textarea
-                        placeholder="Brief description of your agent..."
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        disabled={loading}
-                        rows={2}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-none transition-all placeholder:text-gray-500"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* Vapi Fields */}
-                {selectedPlatform === 'vapi' && (
-                  <>
-                    {/* Agent Name for Vapi */}
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-900">
-                        Agent Name
-                      </label>
-                      <Input
-                        placeholder="Customer Support Bot"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        disabled={loading}
-                        className="h-10 px-3 text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
-                      />
-                      <p className="text-xs text-gray-500">
-                        Choose a name for this agent (independent of Vapi assistant name)
+                {/* Platform-specific Content */}
+                <div className={`space-y-4 transition-all duration-300 ${
+                  selectedPlatform === 'vapi' ? 'bg-purple-50/50 -mx-6 px-6 py-4 rounded-lg border border-purple-100' : ''
+                }`}>
+                  
+                  {/* Agent Name - Always shown */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-900">
+                      Agent Name
+                    </label>
+                    <Input
+                      placeholder={selectedPlatform === 'vapi' ? "My Vapi Agent" : "Customer Support Bot"}
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      disabled={loading}
+                      className="h-10 px-3 text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                    />
+                    {selectedPlatform === 'vapi' && (
+                      <p className="text-xs text-purple-600">
+                        This name is for your dashboard (independent of Vapi assistant name)
                       </p>
-                    </div>
+                    )}
+                  </div>
 
-                    {/* Vapi API Key */}
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-medium text-gray-900">
-                        Vapi API Key (Private)
-                      </label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="password"
-                          value={vapiData.apiKey}
-                          onChange={(e) => setVapiData({ ...vapiData, apiKey: e.target.value })}
-                          disabled={loading || vapiData.connectLoading}
-                          className="flex-1 font-mono"
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleVapiConnect}
-                          disabled={loading || vapiData.connectLoading || !vapiData.apiKey.trim()}
-                          className="text-white"
-                          style={{ backgroundColor: '#328c81' }}
-                        >
-                          {vapiData.connectLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            'Connect'
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Get your API key from <a href="https://dashboard.vapi.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Vapi Dashboard</a>
-                      </p>
-                    </div>
-
-                    {/* Assistant Selection */}
-                    {vapiData.availableAssistants.length > 0 && (
-                      <div className="space-y-1.5">
+                  {/* Livekit Fields */}
+                  {selectedPlatform === 'livekit' && (
+                    <>
+                      {/* Agent Type Selection */}
+                      <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-900">
-                          Select Assistant
+                          Agent Type
                         </label>
-                        <Select value={vapiData.selectedAssistantId} onValueChange={(value) => setVapiData({ ...vapiData, selectedAssistantId: value })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose an assistant">
-                              {vapiData.selectedAssistantId && (
-                                <div className="flex items-center gap-2">
-                                  <Bot className="w-4 h-4 text-gray-500" />
-                                  <span>{vapiData.availableAssistants.find((a: VapiAssistant) => a.id === vapiData.selectedAssistantId)?.name}</span>
-                                </div>
-                              )}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {vapiData.availableAssistants.map((assistant: VapiAssistant) => (
-                              <SelectItem key={assistant.id} value={assistant.id}>
-                                <div className="flex items-center justify-between w-full">
-                                  <div className="flex items-center gap-2">
-                                    <Bot className="w-4 h-4 text-gray-500" />
-                                    <span>{assistant.name}</span>
+                        <div className="grid grid-cols-3 gap-2">
+                          {AGENT_TYPES.map((type) => {
+                            const Icon = type.icon
+                            const isSelected = formData.agent_type === type.value
+                            
+                            return (
+                              <div
+                                key={type.value}
+                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                  isSelected 
+                                    ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
+                                onClick={() => setFormData({ ...formData, agent_type: type.value })}
+                              >
+                                <div className="text-center">
+                                  <div className={`w-8 h-8 mx-auto mb-2 rounded-lg flex items-center justify-center ${
+                                    isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    <Icon className="w-4 h-4" />
                                   </div>
-                                  <div className="flex items-center gap-1 ml-2">
-                                    {assistant.voice?.provider && (
-                                      <Badge variant="outline" className="text-xs">
-                                        {assistant.voice.provider}
-                                      </Badge>
-                                    )}
-                                  </div>
+                                  <div className="text-xs font-medium text-gray-900 mb-0.5">{type.label}</div>
+                                  <div className="text-xs text-gray-500 leading-tight">{type.description}</div>
                                 </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500">
-                          Found {vapiData.availableAssistants.length} assistants in your account
-                        </p>
+                                <input
+                                  type="radio"
+                                  name="agent_type"
+                                  value={type.value}
+                                  checked={isSelected}
+                                  onChange={() => setFormData({ ...formData, agent_type: type.value })}
+                                  className="absolute inset-0 opacity-0 cursor-pointer"
+                                  disabled={loading}
+                                />
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
-                    )}
 
-                    {/* Project API Key */}
-                    {vapiData.selectedAssistantId && (
-                      <div className="space-y-1.5">
-                        <label htmlFor="project-api-key" className="block text-sm font-medium text-gray-900">
-                          Project API Key
+                      {/* Description */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-900">
+                          Description <span className="text-gray-500 font-normal">(optional)</span>
                         </label>
-                        <Input
-                          id="project-api-key"
-                          type="password"
-                          placeholder="Your project API key..."
-                          value={vapiData.projectApiKey}
-                          onChange={(e) => setVapiData({ ...vapiData, projectApiKey: e.target.value })}
+                        <textarea
+                          placeholder="Brief description of your agent..."
+                          value={formData.description}
+                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           disabled={loading}
-                          className="font-mono"
+                          rows={2}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-none transition-all placeholder:text-gray-500"
                         />
-                        <p className="text-xs text-gray-500">
-                          Your internal project API key for this integration
+                      </div>
+                    </>
+                  )}
+
+                  {/* Vapi Fields */}
+                  {selectedPlatform === 'vapi' && (
+                    <div className="space-y-4">
+                      {/* Step indicator for Vapi flow */}
+                      <div className="flex items-center text-xs text-purple-600 bg-white/60 rounded-lg p-3 border border-purple-200">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center font-medium">1</div>
+                          <span className="font-medium">Connect Vapi Account</span>
+                        </div>
+                        {vapiData.availableAssistants.length > 0 && (
+                          <>
+                            <ArrowRight className="w-3 h-3 mx-3 text-purple-400" />
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center font-medium">2</div>
+                              <span className="font-medium">Select Assistant</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Vapi API Key */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-900">
+                          <span className="flex items-center gap-2">
+                            Vapi Private Key
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                              Secure
+                            </Badge>
+                          </span>
+                        </label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="password"
+                            placeholder="sk-..."
+                            value={vapiData.apiKey}
+                            onChange={(e) => setVapiData({ ...vapiData, apiKey: e.target.value })}
+                            disabled={loading || vapiData.connectLoading}
+                            className="flex-1 h-10 font-mono text-sm bg-white border-purple-200 focus:border-purple-500 focus:ring-purple-500/20"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleVapiConnect}
+                            disabled={loading || vapiData.connectLoading || !vapiData.apiKey.trim()}
+                            className="h-10 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                          >
+                            {vapiData.connectLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              'Connect'
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Get your private key from{' '}
+                          <a 
+                            href="https://dashboard.vapi.ai" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-purple-600 hover:underline font-medium"
+                          >
+                            Vapi Dashboard
+                          </a>
                         </p>
                       </div>
-                    )}
-                  </>
-                )}
+
+                      {/* Assistant Selection - Full Width */}
+                      {vapiData.availableAssistants.length > 0 && (
+                        <div ref={assistantSectionRef} className="space-y-2 bg-white/60 rounded-lg p-4 border border-purple-200 -mx-2">
+                          <label className="block text-sm font-medium text-gray-900">
+                            Select Assistant
+                            <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
+                              {vapiData.availableAssistants.length} found
+                            </Badge>
+                          </label>
+                          <Select 
+                            value={vapiData.selectedAssistantId} 
+                            onValueChange={(value) => setVapiData({ ...vapiData, selectedAssistantId: value })}
+                          >
+                            <SelectTrigger className="h-10 bg-white border-purple-200 focus:border-purple-500 w-full">
+                              <SelectValue placeholder="Choose an assistant">
+                                {vapiData.selectedAssistantId && (
+                                  <div className="flex items-center gap-2">
+                                    <Bot className="w-4 h-4 text-purple-500" />
+                                    <span>{vapiData.availableAssistants.find((a: VapiAssistant) => a.id === vapiData.selectedAssistantId)?.name}</span>
+                                  </div>
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="w-full">
+                              {vapiData.availableAssistants.map((assistant: VapiAssistant) => (
+                                <SelectItem key={assistant.id} value={assistant.id}>
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
+                                        <Bot className="w-4 h-4 text-purple-600" />
+                                      </div>
+                                      <div>
+                                        <div className="font-medium text-gray-900">{assistant.name}</div>
+                                        {assistant.voice?.provider && (
+                                          <div className="text-xs text-gray-500">
+                                            Voice: {assistant.voice.provider}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Project API Key */}
+                      {vapiData.selectedAssistantId && (
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-900">
+                            Project API Key
+                          </label>
+                          <Input
+                            type="password"
+                            placeholder="Your project API key..."
+                            value={vapiData.projectApiKey}
+                            onChange={(e) => setVapiData({ ...vapiData, projectApiKey: e.target.value })}
+                            disabled={loading}
+                            className="h-10 font-mono bg-white border-purple-200 focus:border-purple-500 focus:ring-purple-500/20"
+                          />
+                          <p className="text-xs text-gray-600">
+                            Your internal project API key for this integration
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Error Message */}
                 {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
+                  <Alert variant="destructive" className="border-red-200 bg-red-50">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800">{error}</AlertDescription>
                   </Alert>
                 )}
+              </div>
+            </div>
 
-                {/* Actions */}
-                <div className="flex gap-3 pt-3">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={handleClose}
-                    disabled={loading || vapiData.connectLoading}
-                    className="flex-1 h-10 text-gray-700 border-gray-300 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit"
-                    disabled={
-                      loading || 
-                      vapiData.connectLoading ||
-                      (selectedPlatform === 'livekit' && !formData.name.trim()) ||
-                      (selectedPlatform === 'vapi' && (!formData.name.trim() || !vapiData.selectedAssistantId || !vapiData.projectApiKey.trim()))
-                    }
-                    className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create Agent'
-                    )}
-                  </Button>
-                </div>
-              </form>
+            {/* Sticky Footer with Actions */}
+            <div className="flex-shrink-0 px-6 py-4 bg-gray-50/50 border-t border-gray-200">
+              <div className="flex gap-3">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={handleClose}
+                  disabled={loading || vapiData.connectLoading}
+                  className="flex-1 h-10 text-gray-700 border-gray-300 hover:bg-gray-50"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={
+                    loading || 
+                    vapiData.connectLoading ||
+                    (selectedPlatform === 'livekit' && !formData.name.trim()) ||
+                    (selectedPlatform === 'vapi' && (!formData.name.trim() || !vapiData.selectedAssistantId || !vapiData.projectApiKey.trim()))
+                  }
+                  className={`flex-1 h-10 font-medium text-white ${
+                    selectedPlatform === 'vapi' 
+                      ? 'bg-purple-600 hover:bg-purple-700' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Agent'
+                  )}
+                </Button>
+              </div>
             </div>
           </>
         ) : (
