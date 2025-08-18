@@ -4,7 +4,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, Any, List
-from whispey.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
+from whispey.metrics_service import setup_session_event_handlers, safe_extract_transcript_data
 from whispey.metrics_service import setup_usage_collector, create_session_data
 from whispey.send_log import send_to_whispey
 from livekit.agents.telemetry import set_tracer_provider
@@ -22,7 +22,7 @@ _session_data_store = {}
 _telemetry_data_store = {}
 
 class JSONTelemetryExporter(SpanExporter):
-    """Custom exporter to capture telemetry data for JSON storage"""
+    """Your existing custom exporter - unchanged"""
     
     def __init__(self, session_id: str):
         self.session_id = session_id
@@ -70,17 +70,7 @@ class JSONTelemetryExporter(SpanExporter):
             _telemetry_data_store[self.session_id]["session_end"] = time.time()
 
 def setup_livekit_telemetry(telemetry_provider: str = "console", session_id: str = None):
-    """
-    Setup LiveKit telemetry with OpenTelemetry integration
-    
-    Args:
-        telemetry_provider: Where to send telemetry data
-            - "console": Print to console (default)
-            - "langfuse": Send to Langfuse (requires LANGFUSE_* env vars)
-            - "datadog": Send to Datadog (requires DATADOG_* env vars)
-            - "jaeger": Send to Jaeger (requires JAEGER_* env vars)
-            - "custom": Use custom OTLP endpoint (requires OTEL_* env vars)
-    """
+    """Your existing telemetry setup - unchanged"""
     import os
     
     try:
@@ -160,9 +150,10 @@ def setup_livekit_telemetry(telemetry_provider: str = "console", session_id: str
         return False
 
 def observe_session(session, agent_id, telemetry_provider="console", **kwargs):
+    """Your existing observe_session with enhanced data collection"""
     session_id = str(uuid.uuid4())
     
-    logger.info(f"🔗 Setting up Whispey-compatible metrics collection for session {session_id}")
+    logger.info(f"🔗 Setting up Enhanced Whispey-compatible metrics collection for session {session_id}")
     logger.info(f"📋 Dynamic parameters: {list(kwargs.keys())}")
     
     # Setup LiveKit telemetry
@@ -203,16 +194,15 @@ def observe_session(session, agent_id, telemetry_provider="console", **kwargs):
             error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
             end_session_manually(session_id, "completed", error_msg)
         
-        logger.info(f"✅ Whispey-compatible metrics collection active for session {session_id}")
+        logger.info(f"✅ Enhanced Whispey-compatible metrics collection active for session {session_id}")
         return session_id
         
     except Exception as e:
         logger.error(f"⚠️ Failed to set up metrics collection: {e}")
-        # Still return session_id so caller can handle gracefully
         return session_id
 
 def generate_whispey_data(session_id: str, status: str = "in_progress", error: str = None) -> Dict[str, Any]:
-    """Generate Whispey data for a session"""
+    """ENHANCED: Generate Whispey data with model and tool information"""
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found in data store")
         return {}
@@ -221,11 +211,14 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     current_time = time.time()
     start_time = session_info['start_time']
     
-    # Extract transcript data using your existing function
+    # Extract transcript data using enhanced function with telemetry
     session_data = session_info['session_data']
+    telemetry_spans = _telemetry_data_store.get(session_id, {}).get("spans", [])
+    
     if session_data:
         try:
-            safe_extract_transcript_data(session_data)
+            # NEW: Pass telemetry spans for automatic tool extraction
+            safe_extract_transcript_data(session_data, telemetry_spans)
         except Exception as e:
             logger.error(f"Error extracting transcript data: {e}")
     
@@ -248,7 +241,65 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     # Calculate duration
     duration = int(current_time - start_time)
     
-    # Prepare Whispey format data
+    # NEW: Enhanced analysis from transcript data
+    enhanced_analytics = {}
+    transcript_data = session_data.get("transcript_with_metrics", [])
+    
+    if transcript_data:
+        # Extract model usage analytics
+        model_usage = {
+            'stt_models': set(),
+            'llm_models': set(), 
+            'tts_models': set(),
+            'total_cost': 0.0,
+            'tool_calls_total': 0,
+            'tool_success_rate': 1.0
+        }
+        
+        total_tools = 0
+        successful_tools = 0
+        
+        for turn in transcript_data:
+            if not turn:  # ADD THIS LINE
+                continue 
+            # Collect model information
+            if turn.get('stt_metrics', {}).get('model_name'):
+                model_usage['stt_models'].add(turn['stt_metrics']['model_name'])
+            if turn.get('llm_metrics', {}).get('model_name'):
+                model_usage['llm_models'].add(turn['llm_metrics']['model_name'])
+            if turn.get('tts_metrics', {}).get('model_name'):
+                model_usage['tts_models'].add(turn['tts_metrics']['model_name'])
+            
+            # Collect cost information
+            if turn.get('cost_breakdown', {}).get('total_turn_cost'):
+                model_usage['total_cost'] += turn['cost_breakdown']['total_turn_cost']
+            
+            # Collect tool information
+            tool_calls = turn.get('tool_calls', [])
+            total_tools += len(tool_calls)
+            successful_tools += sum(1 for tool in tool_calls if tool.get('success', True))
+        
+        # Calculate tool success rate
+        if total_tools > 0:
+            model_usage['tool_success_rate'] = successful_tools / total_tools
+            model_usage['tool_calls_total'] = total_tools
+        
+        # Convert sets to lists for JSON serialization
+        model_usage['stt_models'] = list(model_usage['stt_models'])
+        model_usage['llm_models'] = list(model_usage['llm_models'])
+        model_usage['tts_models'] = list(model_usage['tts_models'])
+        
+        enhanced_analytics = {
+            'model_usage_summary': model_usage,
+            'conversation_quality': {
+                'total_turns': len(transcript_data),
+                'avg_cost_per_turn': model_usage['total_cost'] / len(transcript_data) if transcript_data else 0,
+                'models_used_count': len(model_usage['stt_models']) + len(model_usage['llm_models']) + len(model_usage['tts_models']),
+                'tools_reliability': model_usage['tool_success_rate']
+            }
+        }
+    
+    # Prepare enhanced Whispey format data
     whispey_data = {
         "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
         "agent_id": session_info['agent_id'],
@@ -261,11 +312,32 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "transcript_json": [],
         "transcript_with_metrics": [],
         "metadata": {
+            # Your existing usage data
             "usage": usage_summary,
             "duration_formatted": f"{duration // 60}m {duration % 60}s",
             "call_success": status == "completed",
             "error": error,
-            **session_info['dynamic_params']  # Include all dynamic parameters
+            
+            # NEW: Enhanced analytics
+            "enhanced_analytics": enhanced_analytics,
+            
+            # NEW: Session-level insights
+            "session_insights": {
+                "conversation_turns": len(transcript_data),
+                "total_session_cost": enhanced_analytics.get('model_usage_summary', {}).get('total_cost', 0),
+                "models_used": {
+                    "stt": enhanced_analytics.get('model_usage_summary', {}).get('stt_models', []),
+                    "llm": enhanced_analytics.get('model_usage_summary', {}).get('llm_models', []),
+                    "tts": enhanced_analytics.get('model_usage_summary', {}).get('tts_models', [])
+                },
+                "tools_performance": {
+                    "total_calls": enhanced_analytics.get('model_usage_summary', {}).get('tool_calls_total', 0),
+                    "success_rate": enhanced_analytics.get('model_usage_summary', {}).get('tool_success_rate', 1.0)
+                }
+            },
+            
+            # Your existing dynamic parameters
+            **session_info['dynamic_params']
         }
     }
     
@@ -298,7 +370,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     return whispey_data
 
 def get_session_whispey_data(session_id: str) -> Dict[str, Any]:
-    """Get Whispey-formatted data for a session"""
+    """Your existing function - unchanged"""
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found")
         return {}
@@ -313,7 +385,7 @@ def get_session_whispey_data(session_id: str) -> Dict[str, Any]:
     return generate_whispey_data(session_id)
 
 def end_session_manually(session_id: str, status: str = "completed", error: str = None):
-    """Manually end a session"""
+    """Your existing function - unchanged"""
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found for manual end")
         return
@@ -330,25 +402,13 @@ def end_session_manually(session_id: str, status: str = "completed", error: str 
     logger.info(f"📊 Session {session_id} ended - Whispey data prepared")
 
 def cleanup_session(session_id: str):
-    """Clean up session data"""
+    """Your existing function - unchanged"""
     if session_id in _session_data_store:
         del _session_data_store[session_id]
         logger.info(f"🗑️ Cleaned up session {session_id}")
 
 async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True, apikey: str = None, host_url: str | None = None) -> dict:
-    """
-    Send session data to Whispey API
-    
-    Args:
-        session_id: Session ID to send
-        recording_url: URL of the call recording
-        additional_transcript: Additional transcript data if needed
-        force_end: Whether to force end the session before sending (default: True)
-        apikey: Custom API key to use. If not provided, uses WHISPEY_API_KEY environment variable
-    
-    Returns:
-        dict: Response from Whispey API
-    """
+    """ENHANCED: Send session data to Whispey API with rich analytics"""
     logger.info(f"🚀 Starting send_session_to_whispey for {session_id}")
     
     if session_id not in _session_data_store:
@@ -382,12 +442,22 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         whispey_data["transcript_json"] = additional_transcript
         logger.info(f"📄 Added additional transcript with {len(additional_transcript)} items")
     
-    # Debug print
-    print("=== WHISPEY DATA FOR SENDING ===")
+    # NEW: Enhanced debug print with model and tool info
+    print("=== ENHANCED WHISPEY DATA FOR SENDING ===")
     print(f"Call ID: {whispey_data.get('call_id', 'N/A')}")
     print(f"Agent ID: {whispey_data.get('agent_id', 'N/A')}")
     print(f"Duration: {whispey_data.get('metadata', {}).get('duration_formatted', 'N/A')}")
     print(f"Usage: {whispey_data.get('metadata', {}).get('usage', {})}")
+    
+    # NEW: Show model and tool information
+    session_insights = whispey_data.get('metadata', {}).get('session_insights', {})
+    if session_insights:
+        print(f"Models Used: STT: {session_insights.get('models_used', {}).get('stt', [])}")
+        print(f"            LLM: {session_insights.get('models_used', {}).get('llm', [])}")
+        print(f"            TTS: {session_insights.get('models_used', {}).get('tts', [])}")
+        print(f"Tools: {session_insights.get('tools_performance', {}).get('total_calls', 0)} calls, {session_insights.get('tools_performance', {}).get('success_rate', 0):.1%} success")
+        print(f"Total Cost: ${session_insights.get('total_session_cost', 0):.4f}")
+    
     print("============================")
     
     # Send to Whispey
@@ -409,20 +479,20 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         traceback.print_exc()
         return {"success": False, "error": str(e)}
 
-# Utility functions
+# Your existing utility functions stay the same
 def get_latest_session():
-    """Get the most recent session data"""
+    """Your existing function - unchanged"""
     if _session_data_store:
         latest_id = max(_session_data_store.keys(), key=lambda x: _session_data_store[x]['start_time'])
         return latest_id, _session_data_store[latest_id]
     return None, None
 
 def get_all_active_sessions():
-    """Get all active session IDs"""
+    """Your existing function - unchanged"""
     return [sid for sid, data in _session_data_store.items() if data['call_active']]
 
 def cleanup_all_sessions():
-    """Clean up all sessions"""
+    """Your existing function - unchanged"""
     session_ids = list(_session_data_store.keys())
     for session_id in session_ids:
         end_session_manually(session_id, "cleanup")
@@ -430,7 +500,7 @@ def cleanup_all_sessions():
     logger.info(f"🗑️ Cleaned up {len(session_ids)} sessions")
 
 def debug_session_state(session_id: str = None):
-    """Debug helper to check session state"""
+    """Your existing function - unchanged"""
     if session_id:
         if session_id in _session_data_store:
             data = _session_data_store[session_id]
@@ -449,16 +519,7 @@ def debug_session_state(session_id: str = None):
             print(f"  {sid}: active={data['call_active']}, agent={data['agent_id']}")
 
 def save_telemetry_to_json(session_id: str, filename: str = None) -> str:
-    """
-    Save ONLY telemetry data (OpenTelemetry spans/traces) to JSON file
-    
-    Args:
-        session_id: Session ID to save telemetry for
-        filename: Optional custom filename
-    
-    Returns:
-        str: Path to saved JSON file or None if failed
-    """
+    """ENHANCED: Save telemetry data with model and tool analytics"""
     if session_id not in _telemetry_data_store:
         logger.warning(f"No telemetry data found for session {session_id}")
         return None
@@ -471,8 +532,8 @@ def save_telemetry_to_json(session_id: str, filename: str = None) -> str:
         if not telemetry_data.get("session_end"):
             telemetry_data["session_end"] = time.time()
         
-        # Create pure telemetry JSON structure
-        pure_telemetry = {
+        # Create enhanced telemetry JSON structure
+        enhanced_telemetry = {
             "resource": {
                 "attributes": {
                     "service.name": "livekit-agent",
@@ -494,9 +555,10 @@ def save_telemetry_to_json(session_id: str, filename: str = None) -> str:
             }
         }
         
-        # Add span statistics
+        # Add enhanced span statistics
         span_stats = {}
         total_duration = 0
+        model_operations = {'stt': 0, 'llm': 0, 'tts': 0, 'tool': 0}
         
         for span in telemetry_data.get("spans", []):
             span_name = span.get("name", "unknown")
@@ -516,6 +578,16 @@ def save_telemetry_to_json(session_id: str, filename: str = None) -> str:
             span_stats[span_name]["min_duration_ms"] = min(span_stats[span_name]["min_duration_ms"], duration)
             span_stats[span_name]["max_duration_ms"] = max(span_stats[span_name]["max_duration_ms"], duration)
             total_duration += duration
+            
+            # NEW: Count AI model operations
+            if 'stt' in span_name.lower():
+                model_operations['stt'] += 1
+            elif 'llm' in span_name.lower():
+                model_operations['llm'] += 1
+            elif 'tts' in span_name.lower():
+                model_operations['tts'] += 1
+            elif 'tool' in span_name.lower() or 'function' in span_name.lower():
+                model_operations['tool'] += 1
         
         # Calculate averages
         for stat in span_stats.values():
@@ -524,28 +596,38 @@ def save_telemetry_to_json(session_id: str, filename: str = None) -> str:
                 if stat["min_duration_ms"] == float('inf'):
                     stat["min_duration_ms"] = 0
         
-        pure_telemetry["statistics"] = {
+        enhanced_telemetry["statistics"] = {
             "total_session_duration_ms": (telemetry_data.get("session_end", time.time()) - telemetry_data.get("session_start", 0)) * 1000,
             "total_operation_duration_ms": total_duration,
-            "span_statistics": span_stats
+            "span_statistics": span_stats,
+            
+            # NEW: AI model operation counts
+            "ai_operations_summary": {
+                "stt_operations": model_operations['stt'],
+                "llm_operations": model_operations['llm'], 
+                "tts_operations": model_operations['tts'],
+                "tool_operations": model_operations['tool'],
+                "total_ai_operations": sum(model_operations.values())
+            }
         }
         
         # Generate filename
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"telemetry_spans_{session_id}_{timestamp}.json"
+            filename = f"enhanced_telemetry_{session_id}_{timestamp}.json"
         
-        # Save pure telemetry to file
+        # Save enhanced telemetry to file
         with open(filename, 'w') as f:
-            json.dump(pure_telemetry, f, indent=2, default=str)
+            json.dump(enhanced_telemetry, f, indent=2, default=str)
         
-        logger.info(f"📊 Pure telemetry data saved to: {filename}")
+        logger.info(f"📊 Enhanced telemetry data saved to: {filename}")
         logger.info(f"   - Total spans: {len(telemetry_data.get('spans', []))}")
         logger.info(f"   - Span types: {list(span_stats.keys())}")
         logger.info(f"   - Total operations duration: {total_duration:.2f}ms")
+        logger.info(f"   - AI operations: STT:{model_operations['stt']}, LLM:{model_operations['llm']}, TTS:{model_operations['tts']}, Tools:{model_operations['tool']}")
         
         return filename
         
     except Exception as e:
-        logger.error(f"❌ Failed to save telemetry data: {e}")
+        logger.error(f"❌ Failed to save enhanced telemetry data: {e}")
         return None
