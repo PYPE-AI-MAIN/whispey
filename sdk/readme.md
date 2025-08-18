@@ -12,13 +12,11 @@ Monitor, analyze, and gain insights from your AI voice agent conversations with 
 pip install whispey
 ```
 
-**📦 Available on PyPI:** [https://pypi.org/project/Whispey/1.4.0/](https://pypi.org/project/Whispey/1.4.0/)
-
 ### Get Your Credentials
 
-1. **Sign up** at [Whispey Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)
+1. **Sign up** at [Whispey Voice Analytics Dashboard](https://whispey.xyz/)
 2. **Get your Agent ID** from the dashboard
-3. **Generate your API Key** from your account 
+3. **Generate your API Key** from your workspace 
 
 ### Environment Setup
 
@@ -29,9 +27,27 @@ Create a `.env` file in your project root:
 WHISPEY_API_KEY=your_whispey_api_key_here
 ```
 
+## 🔧 Configuration
+
+### Required Environment Variables
+
+| Variable | Description | Where to Get |
+|----------|-------------|--------------|
+| `WHISPEY_API_KEY` | Your Whispey API authentication key | [Dashboard → API Keys](https://whispey.xyz/) |
+
+### Agent Configuration
+
+Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Whispey dashboard in your workspace.
+
+```python
+pype = LivekitObserve(
+    agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22"  # Your actual Agent ID
+)
+```
+
 ## 📖 Complete Implementation
 
-Here's a complete example of how to integrate Whispey into your LiveKit voice agent:
+Here's a complete example of how to integrate Whispey Observe into your LiveKit voice agent:
 
 ```python
 from dotenv import load_dotenv
@@ -54,9 +70,8 @@ import os
 load_dotenv()
 
 # 🎙️ Initialize Whispey with your Agent ID from the dashboard
-whispey = LivekitObserve(
-    agent_id="your-agent-id-from-dashboard"  # Get this from https://pype-voice-analytics-dashboard.vercel.app/
-)
+pype = LivekitObserve(
+    agent_id="your-agent-id-from-dashboard"  # Get this from https://whispey.xyz/
 
 class Assistant(Agent):
     def __init__(self) -> None:
@@ -86,22 +101,22 @@ async def entrypoint(ctx: agents.JobContext):
     )
     
     # 🚀 Start Whispey Voice Analytics
-session_id = whispey.start_session(
-    session,
-    phone_number="+1234567890",     # Optional: Customer phone number
-    customer_name="John Doe",       # Optional: Customer name
-    conversation_type="voice_call"  # Optional: Type of conversation
-)
+    session_id = pype.start_session(
+        session,
+        phone_number="+1234567890",     # Optional: Customer phone number
+        customer_name="John Doe",       # Optional: Customer name
+        conversation_type="voice_call"  # Optional: Type of conversation
+    )
     
     print(f"🎙️ Whispey Analytics started for session: {session_id}")
 
     # 📤 Export analytics data when session ends
     async def whispey_shutdown():
-    try:
-        result = await whispey.export(
-            session_id,
-            recording_url=""  # Optional: Add recording URL if available
-        )
+        try:
+            result = await pype.export(
+                session_id,
+                recording_url=""  # Optional: Add recording URL if available
+            )
             
             if result.get("success"):
                 print("✅ Successfully exported to Whispey Voice Analytics!")
@@ -133,24 +148,6 @@ if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
 ```
 
-## 🔧 Configuration
-
-### Required Environment Variables
-
-| Variable | Description | Where to Get |
-|----------|-------------|--------------|
-| `WHISPEY_API_KEY` | Your Whispey API authentication key | [Dashboard → API Keys](https://pype-voice-analytics-dashboard.vercel.app/) |
-
-### Agent Configuration
-
-Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Whispey dashboard:
-
-```python
-whispey = LivekitObserve(
-    agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22"  # Your actual Agent ID
-)
-```
-
 ## 📊 Features
 
 ### Automatic Metrics Collection
@@ -166,41 +163,11 @@ whispey = LivekitObserve(
 - **📈 Performance Insights**: Response times, token usage, audio quality
 - **🎯 Success Metrics**: Call completion, lesson progress, handoff detection
 
-### Session Metadata
-```python
-session_id = whispey.start_session(
-    session,
-    phone_number="+1234567890",        # Customer contact
-    customer_name="Jane Smith",        # Customer identification
-    conversation_type="voice_call",    # Call type
-    fpo_name="John Agent",            # Agent name
-    lesson_day=3,                     # Custom metadata
-    custom_field="any_value"          # Additional custom data
-)
-```
 
-## 🔍 Advanced Usage
-
-### Manual Session Control
-
-```python
-# Start session
-session_id = whispey.start_session(session, **metadata)
-
-# Get current session data (without exporting)
-current_data = whispey.get_data(session_id)
-print(f"Current metrics: {current_data}")
-
-# Manually end session
-whispey.end(session_id)
-
-# Export to Whispey platform
-result = await whispey.export(session_id, recording_url="https://...")
-```
 ## 📈 Dashboard Integration
 
 Once your data is exported, view detailed analytics at:
-**[Whispey Voice Analytics Dashboard](https://pype-voice-analytics-dashboard.vercel.app/)**
+**[Whispey Voice Analytics Dashboard](https://whispey.xyz/)**
 
 ### Available Analytics:
 - 📊 **Call Performance**: Response times, success rates
@@ -216,15 +183,8 @@ Once your data is exported, view detailed analytics at:
 **1. "Session not found" Error**
 ```python
 # Ensure session_id is stored correctly
-session_id = whispey.start_session(session)
+session_id = pype.start_session(session)
 print(f"Session ID: {session_id}")  # Save this for later use
-```
-
-**2. "No data available" Error**
-```python
-# Make sure session has activity before exporting
-await asyncio.sleep(1)  # Allow time for metrics collection
-result = await whispey.export(session_id)
 ```
 
 **3. API Authentication Error**
@@ -254,9 +214,8 @@ logging.basicConfig(level=logging.INFO)
 
 ## 🤝 Support
 
-- **Documentation**: [docs.whispey.ai](https://docs.whispey.ai)
-- **Dashboard**: [pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app/)
-- **Email**: support@whispey.ai
+- **Dashboard**: [https://whispey.xyz/](https://whispey.xyz/)
+- **Email**: deepesh@pypeai.com
 - **Issues**: [GitHub Issues](https://github.com/whispey-ai/whispey/issues)
 
 ## 📄 License
@@ -265,6 +224,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ by [Whispey Voice Analytics](https://whispey.ai)**
+**Built with ❤️ by [Whispey Voice Analytics](https://whispey.xyz/)**
 
 *Transform your voice agents with professional analytics and insights.*
