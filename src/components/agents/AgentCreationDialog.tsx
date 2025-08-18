@@ -50,7 +50,7 @@ const PLATFORM_OPTIONS = [
     label: 'Vapi',
     description: 'Connect existing Vapi assistants',
     icon: Zap,
-    color: 'purple'
+    color: 'green'
   }
 ]
 
@@ -306,7 +306,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
             {/* Header */}
             <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
               <div className="text-center">
-                <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl flex items-center justify-center border border-gray-100">
+                <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl flex items-center justify-center border border-gray-100">
                   <Bot className="w-6 h-6 text-gray-700" />
                 </div>
                 <DialogTitle className="text-lg font-semibold text-gray-900 mb-1">
@@ -336,8 +336,8 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                           key={platform.value}
                           className={`relative flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all duration-200 flex-1 ${
                             isSelected 
-                              ? platform.color === 'purple'
-                                ? 'border-purple-500 bg-purple-50'
+                              ? platform.color === 'green'
+                                ? 'border-[#328c81] bg-teal-50'
                                 : 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                           }`}
@@ -345,8 +345,8 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                         >
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             isSelected 
-                              ? platform.color === 'purple'
-                                ? 'bg-purple-600 text-white'
+                              ? platform.color === 'green'
+                                ? 'bg-[#328c81] text-white'
                                 : 'bg-blue-600 text-white'
                               : 'bg-gray-100 text-gray-600'
                           }`}>
@@ -373,7 +373,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
                 {/* Platform-specific Content */}
                 <div className={`space-y-4 transition-all duration-300 ${
-                  selectedPlatform === 'vapi' ? 'bg-purple-50/50 -mx-6 px-6 py-4 rounded-lg border border-purple-100' : ''
+                  selectedPlatform === 'vapi' ? 'bg-teal-50/50 px-4 py-4 rounded-lg border border-teal-100' : ''
                 }`}>
                   
                   {/* Agent Name - Always shown */}
@@ -389,7 +389,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                       className="h-10 px-3 text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
                     />
                     {selectedPlatform === 'vapi' && (
-                      <p className="text-xs text-purple-600">
+                      <p className="text-xs text-[#328c81]">
                         This name is for your dashboard (independent of Vapi assistant name)
                       </p>
                     )}
@@ -463,16 +463,16 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                   {selectedPlatform === 'vapi' && (
                     <div className="space-y-4">
                       {/* Step indicator for Vapi flow */}
-                      <div className="flex items-center text-xs text-purple-600 bg-white/60 rounded-lg p-3 border border-purple-200">
+                      <div className="flex items-center text-xs text-[#328c81] bg-white/60 rounded-lg p-3 border border-teal-200">
                         <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center font-medium">1</div>
+                          <div className="w-5 h-5 bg-[#328c81] text-white rounded-full flex items-center justify-center font-medium">1</div>
                           <span className="font-medium">Connect Vapi Account</span>
                         </div>
                         {vapiData.availableAssistants.length > 0 && (
                           <>
-                            <ArrowRight className="w-3 h-3 mx-3 text-purple-400" />
+                            <ArrowRight className="w-3 h-3 mx-3 text-teal-400" />
                             <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center font-medium">2</div>
+                              <div className="w-5 h-5 bg-[#328c81] text-white rounded-full flex items-center justify-center font-medium">2</div>
                               <span className="font-medium">Select Assistant</span>
                             </div>
                           </>
@@ -484,7 +484,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                         <label className="block text-sm font-medium text-gray-900">
                           <span className="flex items-center gap-2">
                             Vapi Private Key
-                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                            <Badge variant="outline" className="text-xs bg-teal-50 text-[#328c81] border-teal-200">
                               Secure
                             </Badge>
                           </span>
@@ -492,17 +492,17 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                         <div className="flex gap-2">
                           <Input
                             type="password"
-                            placeholder="sk-..."
+                            placeholder="Paste your Vapi private key here"
                             value={vapiData.apiKey}
                             onChange={(e) => setVapiData({ ...vapiData, apiKey: e.target.value })}
                             disabled={loading || vapiData.connectLoading}
-                            className="flex-1 h-10 font-mono text-sm bg-white border-purple-200 focus:border-purple-500 focus:ring-purple-500/20"
+                            className="flex-1 h-10 font-mono text-sm bg-white border-teal-200 focus:border-[#328c81] focus:ring-[#328c81]/20"
                           />
                           <Button
                             type="button"
                             onClick={handleVapiConnect}
                             disabled={loading || vapiData.connectLoading || !vapiData.apiKey.trim()}
-                            className="h-10 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                            className="h-10 px-4 bg-[#328c81] hover:bg-[#2a776e] text-white font-medium"
                           >
                             {vapiData.connectLoading ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -517,7 +517,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                             href="https://dashboard.vapi.ai" 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="text-purple-600 hover:underline font-medium"
+                            className="text-[#328c81] hover:underline font-medium"
                           >
                             Vapi Dashboard
                           </a>
@@ -526,7 +526,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
                       {/* Assistant Selection - Full Width */}
                       {vapiData.availableAssistants.length > 0 && (
-                        <div ref={assistantSectionRef} className="space-y-2 bg-white/60 rounded-lg p-4 border border-purple-200 -mx-2">
+                        <div ref={assistantSectionRef} className="space-y-2 bg-white/60 rounded-lg p-4 border border-teal-200 -mx-2">
                           <label className="block text-sm font-medium text-gray-900">
                             Select Assistant
                             <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
@@ -537,11 +537,11 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                             value={vapiData.selectedAssistantId} 
                             onValueChange={(value) => setVapiData({ ...vapiData, selectedAssistantId: value })}
                           >
-                            <SelectTrigger className="h-10 bg-white border-purple-200 focus:border-purple-500 w-full">
+                            <SelectTrigger className="h-10 bg-white border-teal-200 focus:border-[#328c81] w-full">
                               <SelectValue placeholder="Choose an assistant">
                                 {vapiData.selectedAssistantId && (
                                   <div className="flex items-center gap-2">
-                                    <Bot className="w-4 h-4 text-purple-500" />
+                                    <Bot className="w-4 h-4 text-[#328c81]" />
                                     <span>{vapiData.availableAssistants.find((a: VapiAssistant) => a.id === vapiData.selectedAssistantId)?.name}</span>
                                   </div>
                                 )}
@@ -552,8 +552,8 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                                 <SelectItem key={assistant.id} value={assistant.id}>
                                   <div className="flex items-center justify-between w-full">
                                     <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
-                                        <Bot className="w-4 h-4 text-purple-600" />
+                                      <div className="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center">
+                                        <Bot className="w-4 h-4 text-[#328c81]" />
                                       </div>
                                       <div>
                                         <div className="font-medium text-gray-900">{assistant.name}</div>
@@ -584,7 +584,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                             value={vapiData.projectApiKey}
                             onChange={(e) => setVapiData({ ...vapiData, projectApiKey: e.target.value })}
                             disabled={loading}
-                            className="h-10 font-mono bg-white border-purple-200 focus:border-purple-500 focus:ring-purple-500/20"
+                            className="h-10 font-mono bg-white border-teal-200 focus:border-[#328c81] focus:ring-[#328c81]/20"
                           />
                           <p className="text-xs text-gray-600">
                             Your internal project API key for this integration
@@ -627,7 +627,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                   }
                   className={`flex-1 h-10 font-medium text-white ${
                     selectedPlatform === 'vapi' 
-                      ? 'bg-purple-600 hover:bg-purple-700' 
+                      ? 'bg-[#328c81] hover:bg-[#2a776e]' 
                       : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
@@ -663,7 +663,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
                     {selectedPlatform === 'vapi' ? (
-                      <Bot className="w-5 h-5 text-purple-600" />
+                      <Bot className="w-5 h-5 text-[#328c81]" />
                     ) : (
                       selectedAgentType && <selectedAgentType.icon className="w-5 h-5 text-blue-600" />
                     )}
@@ -675,7 +675,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className={`text-xs ${
                         selectedPlatform === 'vapi' 
-                          ? 'bg-purple-50 text-purple-700 border-purple-200' 
+                          ? 'bg-teal-50 text-[#328c81] border-teal-200' 
                           : 'bg-blue-50 text-blue-700 border-blue-200'
                       }`}>
                         {selectedPlatform === 'vapi' ? 'Vapi Connected' : selectedAgentType?.label}
