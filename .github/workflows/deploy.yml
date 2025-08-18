@@ -1,0 +1,35 @@
+name: Deploy Whispey SDK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        working-directory: ./sdk
+        run: |
+          pip install build twine
+          pip install -r requirements.txt
+          
+      - name: Build SDK
+        working-directory: ./sdk
+        run: python -m build
+        
+      - name: Publish to PyPI
+        working-directory: ./sdk
+        run: twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
