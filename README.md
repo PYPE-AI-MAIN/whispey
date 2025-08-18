@@ -13,12 +13,14 @@
 
 
 <p align="center">
-  <img 
-    src="https://github.com/user-attachments/assets/36cdfc8f-a8a1-4c1f-b52e-14db353aa1cb" 
-    alt="livekit" 
-    width="500" 
-    style="border-radius: 60%; box-shadow: 0 0 12px rgba(0,0,0,0.2);" 
-  />
+  <a href="https://pypi.org/project/Whispey/">
+    <img 
+      src="https://github.com/user-attachments/assets/36cdfc8f-a8a1-4c1f-b52e-14db353aa1cb" 
+      alt="Whispey SDK" 
+      width="500" 
+      style="border-radius: 60%; box-shadow: 0 0 12px rgba(0,0,0,0.2);" 
+    />
+  </a>
 </p>
 
 
@@ -27,7 +29,7 @@
 </div>
 
 <div align="center">
-<img src="public/whispey.png" alt="Whispey Dashboard" width="400" height="400" />
+<img src="public/whispey.png" alt="Whispey Dashboard" width="500" height="400" />
 </div>
 
 ## ✨ Features
@@ -233,7 +235,7 @@ Found a security issue? Please email security@whispey.ai instead of opening a pu
 
 Need enterprise features like SSO, custom deployments, or dedicated support? 
 
-**Contact us:** enterprise@whispey.ai
+**Contact us:** dhruv@pypeai.com
 
 ## 📄 License
 
