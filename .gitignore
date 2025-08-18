@@ -55,6 +55,13 @@ __pycache__/
 venv/
 .env
 .env.local
+.venv/
+
+
+__pycache__
+pype_observe.egg-info
+pyproject.toml
+dist
 
 # IDE
 .vscode/

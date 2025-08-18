@@ -12,7 +12,7 @@ logger = logging.getLogger("observe_session")
 # Global session storage - store data, not class instances
 _session_data_store = {}
 
-def observe_session(session, agent_id,**kwargs):
+def observe_session(session, agent_id, host_url, **kwargs):
     session_id = str(uuid.uuid4())
     
     logger.info(f"🔗 Setting up Whispey-compatible metrics collection for session {session_id}")
@@ -185,7 +185,7 @@ def cleanup_session(session_id: str):
         del _session_data_store[session_id]
         logger.info(f"🗑️ Cleaned up session {session_id}")
 
-async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True) -> dict:
+async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True, apikey: str = None, api_url: str = None) -> dict:
     """
     Send session data to Whispey API
     
@@ -194,6 +194,8 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         recording_url: URL of the call recording
         additional_transcript: Additional transcript data if needed
         force_end: Whether to force end the session before sending (default: True)
+        apikey: Custom API key to use. If not provided, uses WHISPEY_API_KEY environment variable
+        api_url: Override the default API URL (e.g., your own host). Defaults to built-in Lambda URL
     
     Returns:
         dict: Response from Whispey API
@@ -242,7 +244,7 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     # Send to Whispey
     try:
         logger.info(f"📤 Sending to Whispey API...")
-        result = await send_to_whispey(whispey_data)
+        result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
         
         if result.get("success"):
             logger.info(f"✅ Successfully sent session {session_id} to Whispey")

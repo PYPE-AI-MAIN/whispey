@@ -5,16 +5,11 @@ from livekit.plugins import (
     openai,
     cartesia,
     deepgram,
-    noise_cancellation,
     silero,
     elevenlabs,
 )
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from whispey import LivekitObserve
-
-
-import base64
-import os
 
 
 load_dotenv()
@@ -58,7 +53,7 @@ async def entrypoint(ctx: agents.JobContext):
     # send session data to Whispey
     # Note: recording_url can be provided if you have a recording URL to attach 
     async def whispey_observe_shutdown():
-          await pype.export(session_id)
+          await pype.export(session_id, save_telemetry_json=True)
 
     ctx.add_shutdown_callback(whispey_observe_shutdown)
 
@@ -66,9 +61,7 @@ async def entrypoint(ctx: agents.JobContext):
     await session.start(
         room=ctx.room,
         agent=Assistant(),
-        room_input_options=RoomInputOptions(
-            noise_cancellation=noise_cancellation.BVC(), 
-        ),
+        room_input_options=RoomInputOptions(),
     )
 
     await session.generate_reply(

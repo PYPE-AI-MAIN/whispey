@@ -44,12 +44,13 @@ def convert_timestamp(timestamp_value):
     # Default: convert to string
     return str(timestamp_value)
 
-async def send_to_whispey(data):
+async def send_to_whispey(data, apikey=None, api_url=None):
     """
     Send data to Whispey API
     
     Args:
         data (dict): The data to send to the API
+        apikey (str, optional): Custom API key to use. If not provided, uses WHISPEY_API_KEY environment variable
     
     Returns:
         dict: Response from the API or error information
@@ -61,9 +62,12 @@ async def send_to_whispey(data):
     if "call_ended_at" in data:
         data["call_ended_at"] = convert_timestamp(data["call_ended_at"])
     
+    # Use custom API key if provided, otherwise fall back to environment variable
+    api_key_to_use = apikey if apikey is not None else WHISPEY_API_KEY
+    
     # Validate API key
-    if not WHISPEY_API_KEY:
-        error_msg = "WHISPEY_API_KEY environment variable not set"
+    if not api_key_to_use:
+        error_msg = "API key not provided and WHISPEY_API_KEY environment variable not set"
         print(f"❌ {error_msg}")
         return {
             "success": False,
@@ -73,7 +77,7 @@ async def send_to_whispey(data):
     # Headers - ensure no None values
     headers = {
         "Content-Type": "application/json",
-        "x-pype-token": WHISPEY_API_KEY
+        "x-pype-token": api_key_to_use
     }
     
     # Validate headers
@@ -85,13 +89,15 @@ async def send_to_whispey(data):
     print(f"Call ended at: {data.get('call_ended_at')}")
     
     try:
+        # Determine target URL (overrideable)
+        url_to_use = api_url if api_url else WHISPEY_API_URL
         # Test JSON serialization first
         json_str = json.dumps(data)
         print(f"✅ JSON serialization OK ({len(json_str)} chars)")
         
         # Send the request
         async with aiohttp.ClientSession() as session:
-            async with session.post(WHISPEY_API_URL, json=data, headers=headers) as response:
+            async with session.post(url_to_use, json=data, headers=headers) as response:
                 print(f"📡 Response status: {response.status}")
                 
                 if response.status >= 400:
