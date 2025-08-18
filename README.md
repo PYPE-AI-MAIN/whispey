@@ -227,9 +227,7 @@ Found a security issue? Please email security@whispey.ai instead of opening a pu
 
 - **🐛 Bug Reports:** [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 - **💡 Feature Requests:** [GitHub Discussions](https://github.com/whispey-ai/whispey/discussions)
-- **💬 Chat:** [Discord Community](https://discord.gg/pypeai)
 - **📧 Email:** deepesh@pypeai.com
-- **📱 Twitter:** [@WhispeyAI](https://twitter.com/WhispeyAI)
 
 ## 🏢 Enterprise
 
