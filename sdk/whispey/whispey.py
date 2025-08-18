@@ -99,6 +99,13 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     duration = int(current_time - start_time)
     
     # Prepare Whispey format data
+    # Exclude phone identifiers from metadata
+    dynamic_params: Dict[str, Any] = session_info['dynamic_params'] or {}
+    sanitized_dynamic_params = {
+        k: v for k, v in dynamic_params.items()
+        if k not in {"phone_number", "customer_number", "phone"}
+    }
+
     whispey_data = {
         "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
         "agent_id": session_info['agent_id'],
@@ -113,9 +120,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "metadata": {
             "usage": usage_summary,
             "duration_formatted": f"{duration // 60}m {duration % 60}s",
-            "call_success": status == "completed",
-            "error": error,
-            **session_info['dynamic_params']  # Include all dynamic parameters
+            **sanitized_dynamic_params  # Include dynamic parameters without phone identifiers
         }
     }
     

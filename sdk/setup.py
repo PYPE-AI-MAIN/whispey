@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="Whispey",
-    version="2.3.0",
+    version="2.4.0",
     author="Whispey AI Voice Analytics",
     author_email="deepesh@pypeai.com",
     description="Voice Analytics SDK for AI Agents",

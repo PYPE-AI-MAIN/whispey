@@ -14,7 +14,6 @@ from whispey import LivekitObserve
 
 load_dotenv()
 
-
 pype = LivekitObserve(agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22")
 
     
