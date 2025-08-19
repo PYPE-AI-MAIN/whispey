@@ -148,9 +148,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     retry_config: {
       '408': 60,
       '480': 60,
-      '486': 120,
+      '486': 60,
       '504': 60,
-      '600': 120
+      '600': 60
     }
   })
   
