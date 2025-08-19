@@ -13,7 +13,7 @@ const client = new DynamoDBClient({
 
 const docClient = DynamoDBDocumentClient.from(client)
 
-const TABLE_NAME = 'pype-samunnati-dynamodb'
+const TABLE_NAME = 'pype-samunnati-dynamodb-2'
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
 // Helper functions
