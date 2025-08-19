@@ -444,7 +444,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                     
                     {vapiStatusLoading ? 'Checking...' :
                     connectingWebhook ? 'Connecting...' :
-                    vapiStatus?.connected ? 'Agent Settings' : 'Connect Webhook'}
+                    vapiStatus?.connected ? 'Agent Settings' : 'Connect VAPI'}
                   </Button>
                   
                   {/* Status indicator */}
