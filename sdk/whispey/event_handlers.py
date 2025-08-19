@@ -4,7 +4,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from livekit.agents import metrics, MetricsCollectedEvent
 from livekit.agents.metrics import STTMetrics, LLMMetrics, TTSMetrics, EOUMetrics
-
+import re
 
 logger = logging.getLogger("kannada-tutor")
 
@@ -20,7 +20,9 @@ class ConversationTurn:
     eou_metrics: Optional[Dict[str, Any]] = None
     timestamp: float = field(default_factory=time.time)
     user_turn_complete: bool = False
+    bug_report: bool = False
     agent_turn_complete: bool = False
+
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -31,13 +33,14 @@ class ConversationTurn:
             'llm_metrics': self.llm_metrics,
             'tts_metrics': self.tts_metrics,
             'eou_metrics': self.eou_metrics,
-            'timestamp': self.timestamp
+            'timestamp': self.timestamp,
+            'bug_report': self.bug_report
         }
 
 class CorrectedTranscriptCollector:
     """Corrected collector that properly maps STT→user, TTS→agent"""
     
-    def __init__(self):
+    def __init__(self,bug_detector=None):
         self.turns: List[ConversationTurn] = []
         self.session_start_time = time.time()
         self.current_turn: Optional[ConversationTurn] = None
@@ -48,20 +51,39 @@ class CorrectedTranscriptCollector:
             'tts': None,
             'eou': None
         }
+        self.bug_detector = bug_detector
+
+    def _is_bug_report(self, text: str) -> bool:
+        """Check if user input is a bug report using SDK detector if available"""
+        if self.bug_detector:
+            return self.bug_detector._is_bug_report(text)
         
+        # Fallback to basic patterns if no SDK detector
+        patterns = [r'\bbug\s+report\b', r'\breport\s+bug\b', r'\bissue\s+report\b']
+        return any(re.search(pattern, text.lower()) for pattern in patterns)
+            
     def on_conversation_item_added(self, event):
         """Called when conversation item is added to history"""
         logger.info(f"🔍 CONVERSATION: {event.item.role} - {event.item.text_content[:50]}...")
         
         if event.item.role == "user":
             # User input - start new turn or update existing
+            if self._is_bug_report(event.item.text_content):
+                logger.info(f"🐛 Bug report detected: {event.item.text_content}")
+                
+                if self.turns:
+                    self.turns[-1].bug_report = True
+                    logger.info(f"🐛 Flagged turn {self.turns[-1].turn_id} as bug report")
+                
+                return  # Don't process as normal conversation
+            
             if not self.current_turn:
                 self.turn_counter += 1
                 self.current_turn = ConversationTurn(
                     turn_id=f"turn_{self.turn_counter}",
                     timestamp=time.time()
                 )
-            
+
             self.current_turn.user_transcript = event.item.text_content
             self.current_turn.user_turn_complete = True
             
@@ -94,12 +116,14 @@ class CorrectedTranscriptCollector:
             
             # Apply pending LLM metrics
             if self.pending_metrics['llm']:
+
                 self.current_turn.llm_metrics = self.pending_metrics['llm']
                 self.pending_metrics['llm'] = None
                 logger.info(f"🧠 Applied pending LLM metrics to turn {self.current_turn.turn_id}")
             
             # Apply pending TTS metrics (TTS metrics come AFTER agent response)
             if self.pending_metrics['tts']:
+
                 self.current_turn.tts_metrics = self.pending_metrics['tts']
                 self.pending_metrics['tts'] = None
                 logger.info(f"🗣️ Applied pending TTS metrics to turn {self.current_turn.turn_id}")
@@ -135,7 +159,6 @@ class CorrectedTranscriptCollector:
             elif self.turns and self.turns[-1].user_transcript and not self.turns[-1].stt_metrics:
                 self.turns[-1].stt_metrics = stt_data
                 logger.info(f"📊 Applied STT metrics to last turn {self.turns[-1].turn_id}")
-            
             # Otherwise store as pending
             else:
                 self.pending_metrics['stt'] = stt_data
@@ -268,11 +291,11 @@ class CorrectedTranscriptCollector:
         
         return "\n".join(lines)
 
-def setup_session_event_handlers(session, session_data, usage_collector, userdata):
+def setup_session_event_handlers(session, session_data, usage_collector, userdata,bug_detector):
     """Setup all session event handlers WITH CORRECTED transcript collector"""
-    
+
     # 🚀 CREATE CORRECTED TRANSCRIPT COLLECTOR
-    transcript_collector = CorrectedTranscriptCollector()
+    transcript_collector = CorrectedTranscriptCollector(bug_detector=bug_detector)
     
     # 🔧 STORE IT IN SESSION_DATA SO YOU CAN ACCESS IT LATER
     session_data["transcript_collector"] = transcript_collector
