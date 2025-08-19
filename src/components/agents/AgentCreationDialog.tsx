@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, CheckCircle, Bot, Phone, PhoneCall, Settings, ArrowRight, Copy, AlertCircle, Zap, Cpu } from 'lucide-react'
+import { Loader2, CheckCircle, Bot, Phone, PhoneCall, Settings, ArrowRight, Copy, AlertCircle, Zap, Cpu, Link as LinkIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface AgentCreationDialogProps {
@@ -81,7 +81,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   onAgentCreated,
   projectId
 }) => {
-  const [currentStep, setCurrentStep] = useState<'form' | 'success'>('form')
+  const [currentStep, setCurrentStep] = useState<'form' | 'creating' | 'connecting' | 'success'>('form')
   const [selectedPlatform, setSelectedPlatform] = useState('livekit')
   const assistantSectionRef = useRef<HTMLDivElement>(null)
   
@@ -111,6 +111,10 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [createdAgentData, setCreatedAgentData] = useState<any>(null)
   const [copiedId, setCopiedId] = useState(false)
+  const [webhookSetupStatus, setWebhookSetupStatus] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null)
 
   const selectedAgentType = AGENT_TYPES.find(type => type.value === formData.agent_type)
 
@@ -179,6 +183,40 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
     }
   }
 
+  // New function to setup webhook after agent creation
+  const setupVapiWebhook = async (agentId: string) => {
+    try {
+      console.log('🔗 Setting up Vapi webhook for agent:', agentId)
+      
+      const response = await fetch(`/api/agents/${agentId}/vapi/setup-webhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to setup webhook')
+      }
+      
+      console.log('✅ Webhook setup successful:', data)
+      setWebhookSetupStatus({
+        success: true,
+        message: 'Webhook configured successfully! Agent is ready to use.'
+      })
+      
+      return data
+      
+    } catch (error) {
+      console.error('❌ Failed to setup webhook:', error)
+      setWebhookSetupStatus({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to setup webhook'
+      })
+      throw error
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -204,6 +242,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
     }
 
     setLoading(true)
+    setCurrentStep('creating')
 
     try {
       let payload
@@ -222,14 +261,14 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       } else {
         const selectedAssistant = vapiData.availableAssistants.find((a: VapiAssistant) => a.id === vapiData.selectedAssistantId)
         payload = {
-          name: formData.name.trim(), // Use user-provided name, not assistant name
+          name: formData.name.trim(),
           agent_type: 'vapi',
           configuration: {
             vapi: {
               apiKey: vapiData.apiKey.trim(),
               projectApiKey: vapiData.projectApiKey.trim(),
               assistantId: vapiData.selectedAssistantId,
-              assistantName: selectedAssistant?.name, // Keep assistant name for reference
+              assistantName: selectedAssistant?.name,
               model: selectedAssistant?.model,
               voice: selectedAssistant?.voice
             }
@@ -240,6 +279,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
         }
       }
 
+      // Step 1: Create the agent
       const response = await fetch('/api/agents', {
         method: 'POST',
         headers: {
@@ -257,12 +297,30 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       console.log('✅ Agent created successfully:', data)
       
       setCreatedAgentData(data)
+
+      // Step 2: If it's a Vapi agent, automatically setup webhook
+      if (selectedPlatform === 'vapi') {
+        setCurrentStep('connecting')
+        setWebhookSetupStatus(null)
+        
+        try {
+          await setupVapiWebhook(data.id)
+          // Small delay to show the connecting state
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (webhookError) {
+          // Don't fail the entire process if webhook setup fails
+          // The agent is still created, user can setup webhook later
+          console.warn('⚠️ Webhook setup failed, but agent was created successfully')
+        }
+      }
+      
       setCurrentStep('success')
       
     } catch (err: unknown) {
       console.error('💥 Error creating agent:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to create agent'
       setError(errorMessage)
+      setCurrentStep('form')
     } finally {
       setLoading(false)
     }
@@ -277,6 +335,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       setError(null)
       setCreatedAgentData(null)
       setCopiedId(false)
+      setWebhookSetupStatus(null)
       onClose()
     }
   }
@@ -296,6 +355,65 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
         console.error('Failed to copy agent ID:', err)
       }
     }
+  }
+
+  // Render creating/connecting states
+  if (currentStep === 'creating' || currentStep === 'connecting') {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {}}>
+        <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 shadow-2xl bg-white">
+          <div className="px-6 py-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl flex items-center justify-center border border-gray-100">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+            
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {currentStep === 'creating' ? 'Creating Agent' : 'Connecting with Vapi'}
+            </h3>
+            
+            <p className="text-sm text-gray-600 mb-6">
+              {currentStep === 'creating' 
+                ? 'Setting up your new agent...' 
+                : 'Configuring webhook integration...'}
+            </p>
+
+            {selectedPlatform === 'vapi' && (
+              <div className="space-y-3 max-w-xs mx-auto">
+                <div className={`flex items-center gap-3 text-sm ${
+                  currentStep === 'creating' ? 'text-blue-600' : 'text-gray-500'
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    currentStep === 'creating' 
+                      ? 'bg-blue-100 text-blue-600' 
+                      : 'bg-green-100 text-green-600'
+                  }`}>
+                    {currentStep === 'creating' ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'}
+                  </div>
+                  <span className={currentStep === 'creating' ? 'font-medium' : ''}>
+                    Creating Agent
+                  </span>
+                </div>
+                
+                <div className={`flex items-center gap-3 text-sm ${
+                  currentStep === 'connecting' ? 'text-blue-600' : 'text-gray-400'
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    currentStep === 'connecting' 
+                      ? 'bg-blue-100 text-blue-600' 
+                      : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {currentStep === 'connecting' ? <Loader2 className="w-3 h-3 animate-spin" /> : '2'}
+                  </div>
+                  <span className={currentStep === 'connecting' ? 'font-medium' : ''}>
+                    Setting up Webhook
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   return (
@@ -637,7 +755,9 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                       Creating...
                     </>
                   ) : (
-                    'Create Agent'
+                    <>
+                      Create Agent
+                    </>
                   )}
                 </Button>
               </div>
@@ -651,7 +771,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <DialogTitle className="text-lg font-semibold text-gray-900 mb-1">
-                Agent Created
+                Agent Created Successfully!
               </DialogTitle>
               <p className="text-sm text-gray-600">
                 "{createdAgentData?.name}" is ready to use
@@ -686,6 +806,33 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Webhook Status for Vapi Agents */}
+                {selectedPlatform === 'vapi' && webhookSetupStatus && (
+                  <div className={`p-3 rounded-lg border mb-3 ${
+                    webhookSetupStatus.success 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-orange-50 border-orange-200'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {webhookSetupStatus.success ? (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <LinkIcon className="w-4 h-4 text-orange-600" />
+                      )}
+                      <span className={`text-sm font-medium ${
+                        webhookSetupStatus.success ? 'text-green-800' : 'text-orange-800'
+                      }`}>
+                        {webhookSetupStatus.success ? 'Webhook Connected' : 'Webhook Setup Needed'}
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-1 ${
+                      webhookSetupStatus.success ? 'text-green-700' : 'text-orange-700'
+                    }`}>
+                      {webhookSetupStatus.message}
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                   <span className="text-sm text-gray-600">Agent ID</span>
