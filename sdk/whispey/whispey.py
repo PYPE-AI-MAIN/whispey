@@ -12,7 +12,7 @@ logger = logging.getLogger("observe_session")
 # Global session storage - store data, not class instances
 _session_data_store = {}
 
-def observe_session(session, agent_id, host_url, **kwargs):
+def observe_session(session, agent_id,host_url,bug_detector=None, **kwargs):
     session_id = str(uuid.uuid4())
     
     logger.info(f"🔗 Setting up Whispey-compatible metrics collection for session {session_id}")
@@ -37,11 +37,13 @@ def observe_session(session, agent_id, host_url, **kwargs):
             'dynamic_params': kwargs,
             'agent_id': agent_id,
             'call_active': True,
-            'whispey_data': None
+            'whispey_data': None,
+            'bug_detector': bug_detector  # ADD THIS LINE
+
         }
         
         # Setup event handlers with session
-        setup_session_event_handlers(session, session_data, usage_collector, None)
+        setup_session_event_handlers(session, session_data, usage_collector, None,bug_detector)
         
         # Add custom handlers for Whispey integration
         @session.on("disconnected")

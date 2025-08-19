@@ -94,6 +94,18 @@ static async calculateCustomTotal(
       ? config.jsonField 
       : null;
 
+    console.log(
+      {
+        p_agent_id: agentId,
+        p_aggregation: config.aggregation,
+        p_column_name: config.column,
+        p_json_field: jsonField, // Pass null instead of empty string
+        p_filters: config.filters,
+        p_filter_logic: config.filterLogic,
+        p_date_from: dateFrom || null,
+        p_date_to: dateTo || null
+      }
+    )
 
     const { data, error } = await supabase
       .rpc('calculate_custom_total', {

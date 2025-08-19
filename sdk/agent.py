@@ -52,7 +52,7 @@ async def entrypoint(ctx: agents.JobContext):
     # send session data to Whispey
     # Note: recording_url can be provided if you have a recording URL to attach 
     async def whispey_observe_shutdown():
-          await pype.export(session_id, save_telemetry_json=True)
+          await pype.export(session_id)
 
     ctx.add_shutdown_callback(whispey_observe_shutdown)
 
