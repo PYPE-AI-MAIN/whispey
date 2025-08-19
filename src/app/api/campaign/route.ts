@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     s3FormData.append('file', csvFile)
     s3FormData.append('project_id', projectId)
 
-    const s3Response = await fetch('https://nbekv3zxpi.execute-api.ap-south-1.amazonaws.com/dev/api/v1/s3/upload', {
+    const s3Response = await fetch('https://3vakfucpd4.execute-api.ap-south-1.amazonaws.com/dev/api/v1/s3/upload', {
       method: 'POST',
       body: s3FormData,
     })
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     console.log(schedulePayload)
 
 
-    const scheduleResponse = await fetch('https://nbekv3zxpi.execute-api.ap-south-1.amazonaws.com/dev/api/v1/cron/create-schedule', {
+    const scheduleResponse = await fetch('https://3vakfucpd4.execute-api.ap-south-1.amazonaws.com/dev/api/v1/cron/create-schedule', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
