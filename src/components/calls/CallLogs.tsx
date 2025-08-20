@@ -790,6 +790,30 @@ const { user } = useUser()
     )
   }
 
+  // Show loading state until role is determined
+  if (roleLoading || role === null) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex-none p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center justify-between">
+            <div className="h-8 bg-muted animate-pulse rounded w-48"></div>
+            <div className="flex items-center gap-2">
+              <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
+              <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
+              <div className="h-8 bg-muted animate-pulse rounded w-8"></div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 mt-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground">Loading permissions...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Header with Filters and Column Selector */}
