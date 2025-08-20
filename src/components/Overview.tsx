@@ -283,7 +283,7 @@ const Overview: React.FC<OverviewProps> = ({
     : 0
 
 
-  if (loading || roleLoading) {
+  if (loading || roleLoading || role === null) {
     return (
       <div className="h-full bg-gray-25 flex items-center justify-center" style={{ backgroundColor: '#fafafa' }}>
         <div className="text-center space-y-6">
@@ -367,49 +367,50 @@ const Overview: React.FC<OverviewProps> = ({
               </div>
 
               {/* Total Cost */}
-              
-            {role !== 'user' &&
+              {role !== 'user' && (
                 <div className="group">
-                <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-2 bg-amber-50 rounded-lg border border-amber-100">
-                        <CurrencyDollar weight="regular" className="w-5 h-5 text-amber-600" />
+                  <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="p-2 bg-amber-50 rounded-lg border border-amber-100">
+                          <CurrencyDollar weight="regular" className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-medium text-gray-500">INR</span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs font-medium text-gray-500">INR</span>
+                      <div className="space-y-1">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Cost</h3>
+                        <p className="text-2xl font-light text-gray-900 tracking-tight">₹{analytics?.totalCost?.toFixed(2) || '0.00'}</p>
+                        <p className="text-xs text-gray-400 font-medium">Cumulative</p>
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Cost</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">₹{analytics?.totalCost?.toFixed(2) || '0.00'}</p>
-                      <p className="text-xs text-gray-400 font-medium">Cumulative</p>
                     </div>
                   </div>
                 </div>
-              </div>
-              }
+              )}
 
               {/* Average Latency */}
-              {role !== 'user' && <div className="group">
-                <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-2 bg-purple-50 rounded-lg border border-purple-100">
-                        <Lightning weight="regular" className="w-5 h-5 text-purple-600" />
+              {role !== 'user' && (
+                <div className="group">
+                  <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="p-2 bg-purple-50 rounded-lg border border-purple-100">
+                          <Lightning weight="regular" className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">avg</span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">avg</span>
+                      <div className="space-y-1">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Response Time</h3>
+                        <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.averageLatency?.toFixed(2) || '0.00'}<span className="text-lg text-gray-400 ml-1">s</span></p>
+                        <p className="text-xs text-gray-400 font-medium">Performance</p>
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Response Time</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.averageLatency?.toFixed(2) || '0.00'}<span className="text-lg text-gray-400 ml-1">s</span></p>
-                      <p className="text-xs text-gray-400 font-medium">Performance</p>
                     </div>
                   </div>
                 </div>
-              </div>}
+              )}
 
               {/* Successful Calls */}
               <div className="group">
