@@ -50,7 +50,7 @@ export class CustomTotalsService {
         .select('*')
         .eq('project_id', projectId)
         .eq('agent_id', agentId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
 
       if (error) {
         console.error('Error fetching custom totals:', error)
