@@ -148,6 +148,14 @@ const DynamicJsonCell: React.FC<{
 
 const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
 
+  // Convert string to camelCase
+  function toCamelCase(str: string) {
+    return str
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+(.)/g, (_, c) => c.toUpperCase())
+      .replace(/^./, c => c.toLowerCase())
+  }
+
   const basicColumns = useMemo(
     () => [
       { key: "customer_number", label: "Customer Number" },
@@ -191,8 +199,22 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
   }
 
 
-
-  const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
+    const dynamicColumnsKey = (() => {
+      try {
+        const prompt = agent?.field_extractor_prompt;
+        if (typeof prompt === 'string') {
+          const parsed = JSON.parse(prompt);
+          return Array.isArray(parsed) ? parsed.map((item: any) => toCamelCase(item.key)) : [];
+        } else if (Array.isArray(prompt)) {
+          return prompt.map((item: any) => toCamelCase(item.key));
+        }
+        return [];
+      } catch (error) {
+        console.error('Error parsing field_extractor_prompt:', error);
+        return [];
+      }
+    })();
+    const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null)
   const [activeFilters, setActiveFilters] = useState<FilterRule[]>([])
   const [role, setRole] = useState<string | null>(null)
@@ -205,6 +227,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     metadata: [],
     transcription_metrics: []
   })
+
+  console.log(dynamicColumnsKey)
 
 
 
@@ -412,6 +436,7 @@ const { user } = useUser()
       setVisibleColumns(prev => ({
         ...prev,
         basic: allowedBasicColumns
+
       }))
     }
   }, [role, getFilteredBasicColumns])
@@ -486,6 +511,8 @@ const { user } = useUser()
     }
   }, [calls])
 
+  console.log(dynamicColumns)
+
   // Initialize visible columns when dynamic columns change
   useEffect(() => {
     setVisibleColumns((prev) => ({
@@ -495,13 +522,9 @@ const { user } = useUser()
           (prev.metadata.length === 0 ? dynamicColumns.metadata : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col)))
         )
       ),
-      transcription_metrics: Array.from(
-        new Set(
-          (prev.transcription_metrics.length === 0 ? dynamicColumns.transcription_metrics : prev.transcription_metrics.filter((col) => dynamicColumns.transcription_metrics.includes(col)))
-        )
-      ),
+      transcription_metrics: dynamicColumnsKey
     }))
-  }, [dynamicColumns, basicColumns])
+  }, [dynamicColumns, basicColumns, JSON.stringify(dynamicColumnsKey)])
   
 
   // Fixed handleDownloadCSV function
@@ -823,7 +846,7 @@ const { user } = useUser()
             onFiltersChange={handleFiltersChange}
             onClear={handleClearFilters}
             availableMetadataFields={dynamicColumns.metadata}
-            availableTranscriptionFields={dynamicColumns.transcription_metrics}
+            availableTranscriptionFields={dynamicColumnsKey}
           />
           
           <div className="flex items-center gap-2">
@@ -839,7 +862,7 @@ const { user } = useUser()
               basicColumns={basicColumns.map((col) => col.key)}
               basicColumnLabels={Object.fromEntries(basicColumns.filter(col => !col.hidden).map((col) => [col.key, col.label]))}
               metadataColumns={dynamicColumns.metadata}
-              transcriptionColumns={dynamicColumns.transcription_metrics}
+              transcriptionColumns={dynamicColumnsKey}
               visibleColumns={visibleColumns}
               onColumnChange={handleColumnChange}
               onSelectAll={handleSelectAll}
