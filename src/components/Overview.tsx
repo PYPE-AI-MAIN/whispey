@@ -325,7 +325,7 @@ const Overview: React.FC<OverviewProps> = ({
       // Base select: include common columns + metadata/transcription as needed
       let query = supabase
         .from('pype_voice_call_logs')
-        .select('id,agent_id,customer_number,call_id,call_ended_reason,call_started_at,call_ended_at,duration_seconds,metadata,transcription_metrics,total_llm_cost,total_tts_cost,total_stt_cost,avg_latency,created_at')
+        .select('id,agent_id,customer_number,call_id,call_ended_reason,call_started_at,call_ended_at,duration_seconds,metadata,transcription_metrics,avg_latency,created_at')
         .order('created_at', { ascending: false })
         .limit(2000)
 
@@ -368,24 +368,57 @@ const Overview: React.FC<OverviewProps> = ({
         alert(`Failed to fetch logs: ${error.message}`)
         return
       }
+      
+      const asObj = (v: any): Record<string, any> => {
+        try {
+          if (!v) return {}
+          return typeof v === 'string' ? (JSON.parse(v) || {}) : v
+        } catch {
+          return {}
+        }
+      }
 
-      const rows = (data || []).map((row: any) => ({
-        id: row.id,
-        customer_number: row.customer_number,
-        call_id: row.call_id,
-        call_ended_reason: row.call_ended_reason,
-        call_started_at: row.call_started_at,
-        duration_seconds: row.duration_seconds,
-        total_cost: (row.total_llm_cost || 0) + (row.total_tts_cost || 0) + (row.total_stt_cost || 0),
-        avg_latency: row.avg_latency,
-        // optionally flatten selected json field if this total targets a json field
-        ...(config.jsonField && config.column === 'transcription_metrics' && row.transcription_metrics
-          ? { [config.jsonField]: row.transcription_metrics?.[config.jsonField] }
-          : {}),
-        ...(config.jsonField && config.column === 'metadata' && row.metadata
-          ? { [config.jsonField]: row.metadata?.[config.jsonField] }
-          : {}),
-      }))
+      const pickJsonValue = (obj: Record<string, any>, key?: string): any => {
+        if (!obj || !key) return undefined
+        if (key in obj) return obj[key]
+        const noSpace = key.replace(/\s+/g, '')
+        if (noSpace in obj) return obj[noSpace]
+        const lowerFirst = key.charAt(0).toLowerCase() + key.slice(1)
+        if (lowerFirst in obj) return obj[lowerFirst]
+        const found = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase())
+        return found ? obj[found] : undefined
+      }
+
+      const rows = (data || []).map((row: any) => {
+        const tm = asObj(row.transcription_metrics)
+        const md = asObj(row.metadata)
+        const flattenedMd = Object.fromEntries(Object.entries(md).map(([k, v]) => [
+          `metadata_${k}`, typeof v === 'object' ? JSON.stringify(v) : v
+        ]))
+        const flattenedTm = Object.fromEntries(Object.entries(tm).map(([k, v]) => [
+          `transcription_${k}`, typeof v === 'object' ? JSON.stringify(v) : v
+        ]))
+
+        return {
+          id: row.id,
+          customer_number: row.customer_number,
+          call_id: row.call_id,
+          call_ended_reason: row.call_ended_reason,
+          call_started_at: row.call_started_at,
+          duration_seconds: row.duration_seconds,
+          avg_latency: row.avg_latency,
+          ...flattenedMd,
+          ...flattenedTm,
+
+          ...(config.jsonField && config.column === 'transcription_metrics'
+            ? { [config.jsonField]: pickJsonValue(tm, config.jsonField) }
+            : {}),
+          ...(config.jsonField && config.column === 'metadata'
+            ? { [config.jsonField]: pickJsonValue(md, config.jsonField) }
+            : {}),
+        }
+      })
+
 
       if (!rows.length) {
         alert('No logs found for this custom total and date range.')
