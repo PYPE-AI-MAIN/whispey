@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase'
 import { CustomTotalConfig, CustomFilter, CustomTotalResult } from '../types/customTotals'
 
 export class CustomTotalsService {
-  
   // Save custom total configuration to database (unchanged)
   static async saveCustomTotal(
     config: CustomTotalConfig, 

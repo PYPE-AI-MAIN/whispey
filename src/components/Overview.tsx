@@ -42,7 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Loader2, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Trash2, Download } from 'lucide-react'
 import { EnhancedChartBuilder, ChartProvider } from './EnhancedChartBuilder'
 import { FloatingActionMenu } from './FloatingActionMenu'
 
@@ -54,6 +54,8 @@ import { CustomTotalsService } from '@/services/customTotalService'
 import { CustomTotalConfig, CustomTotalResult } from '../types/customTotals'
 import { Card, CardContent } from './ui/card'
 import { Button } from './ui/button'
+import { supabase } from '@/lib/supabase'
+import Papa from 'papaparse'
 
 
 
@@ -214,6 +216,180 @@ const Overview: React.FC<OverviewProps> = ({
       console.error('Failed to calculate custom totals:', error)
     } finally {
       setLoadingCustomTotals(false)
+    }
+  }
+
+  // Build PostgREST-friendly filters and OR string to mirror SQL logic (AND vs OR)
+  const buildFiltersForDownload = (
+    config: CustomTotalConfig,
+    agentId: string,
+    dateFrom?: string,
+    dateTo?: string
+  ) => {
+    const andFilters: { column: string; operator: string; value: any }[] = []
+
+    // Always constrain by agent and date range (ANDed)
+    andFilters.push({ column: 'agent_id', operator: 'eq', value: agentId })
+    if (dateFrom) andFilters.push({ column: 'call_started_at', operator: 'gte', value: `${dateFrom} 00:00:00` })
+    if (dateTo) andFilters.push({ column: 'call_started_at', operator: 'lte', value: `${dateTo} 23:59:59.999` })
+
+    const getColumnName = (col: string, jsonField?: string, forText?: boolean) => {
+      if (!jsonField) return col
+      return `${col}${forText ? '->>' : '->'}${jsonField}`
+    }
+
+    // COUNT/COUNT_DISTINCT existence checks when targeting JSON field, to match SQL
+    if ((config.aggregation === 'COUNT' || (config.aggregation === 'COUNT_DISTINCT' && !!config.jsonField)) && config.jsonField) {
+      const existsCol = getColumnName(config.column, config.jsonField, true)
+      andFilters.push({ column: existsCol, operator: 'not.is', value: null })
+      andFilters.push({ column: existsCol, operator: 'neq', value: '' })
+    }
+
+    // Build filter group based on filterLogic
+    const isTextOp = (op: string) => ['contains', 'json_contains', 'equals', 'json_equals', 'starts_with'].includes(op)
+
+    const toSimpleCond = (f: CustomTotalConfig['filters'][number]) => {
+      const col = getColumnName(f.column, f.jsonField, isTextOp(f.operation))
+      switch (f.operation) {
+        case 'equals':
+        case 'json_equals':
+          return { column: col, operator: 'eq', value: f.value }
+        case 'contains':
+        case 'json_contains':
+          return { column: col, operator: 'ilike', value: `%${f.value}%` }
+        case 'starts_with':
+          return { column: col, operator: 'ilike', value: `${f.value}%` }
+        case 'greater_than':
+        case 'json_greater_than':
+          return { column: col.includes('->') ? `${col}::numeric` : col, operator: 'gt', value: f.value }
+        case 'less_than':
+        case 'json_less_than':
+          return { column: col.includes('->') ? `${col}::numeric` : col, operator: 'lt', value: f.value }
+        case 'json_exists': {
+          // Represent as a nested and() for OR usage; for AND we add two filters
+          return { column: col, operator: 'json_exists', value: null }
+        }
+        default:
+          return null
+      }
+    }
+
+    const filters = (config.filters || []).map(toSimpleCond).filter(Boolean) as { column: string; operator: string; value: any }[]
+
+    let orString: string | null = null
+    if (config.filterLogic === 'OR' && filters.length > 0) {
+      const parts = filters.map(f => {
+        if (f.operator === 'json_exists') {
+          // and(col.not.is.null,col.neq.)
+          return `and(${f.column}.not.is.null,${f.column}.neq.)`
+        }
+        if (f.operator === 'eq') return `${f.column}.eq.${encodeURIComponent(String(f.value))}`
+        if (f.operator === 'ilike') return `${f.column}.ilike.*${encodeURIComponent(String(f.value).replace(/%/g, ''))}*`
+        if (f.operator === 'gt') return `${f.column}.gt.${encodeURIComponent(String(f.value))}`
+        if (f.operator === 'lt') return `${f.column}.lt.${encodeURIComponent(String(f.value))}`
+        return ''
+      }).filter(Boolean)
+      orString = parts.join(',') || null
+    } else {
+      // AND logic: merge into andFilters, expanding json_exists into two filters
+      for (const f of filters) {
+        if (f.operator === 'json_exists') {
+          andFilters.push({ column: f.column, operator: 'not.is', value: null })
+          andFilters.push({ column: f.column, operator: 'neq', value: '' })
+        } else {
+          andFilters.push(f)
+        }
+      }
+    }
+
+    return { andFilters, orString }
+  }
+
+  const handleDownloadCustomTotal = async (config: CustomTotalConfig) => {
+    try {
+      // Base select: include common columns + metadata/transcription as needed
+      let query = supabase
+        .from('pype_voice_call_logs')
+        .select('id,agent_id,customer_number,call_id,call_ended_reason,call_started_at,call_ended_at,duration_seconds,metadata,transcription_metrics,total_llm_cost,total_tts_cost,total_stt_cost,avg_latency,created_at')
+        .order('created_at', { ascending: false })
+        .limit(2000)
+
+      // Build filters mirroring SQL
+      const { andFilters, orString } = buildFiltersForDownload(config, agent.id, dateRange?.from, dateRange?.to)
+      for (const f of andFilters) {
+        switch (f.operator) {
+          case 'eq':
+            query = query.eq(f.column, f.value)
+            break
+          case 'ilike':
+            query = query.ilike(f.column, f.value)
+            break
+          case 'gte':
+            query = query.gte(f.column, f.value)
+            break
+          case 'lte':
+            query = query.lte(f.column, f.value)
+            break
+          case 'gt':
+            query = query.gt(f.column, f.value)
+            break
+          case 'lt':
+            query = query.lt(f.column, f.value)
+            break
+          case 'not.is':
+            query = query.not(f.column, 'is', f.value)
+            break
+          case 'neq':
+            query = query.neq(f.column, f.value)
+            break
+        }
+      }
+      if (orString) {
+        query = query.or(orString)
+      }
+
+      const { data, error } = await query
+      if (error) {
+        alert(`Failed to fetch logs: ${error.message}`)
+        return
+      }
+
+      const rows = (data || []).map((row: any) => ({
+        id: row.id,
+        customer_number: row.customer_number,
+        call_id: row.call_id,
+        call_ended_reason: row.call_ended_reason,
+        call_started_at: row.call_started_at,
+        duration_seconds: row.duration_seconds,
+        total_cost: (row.total_llm_cost || 0) + (row.total_tts_cost || 0) + (row.total_stt_cost || 0),
+        avg_latency: row.avg_latency,
+        // optionally flatten selected json field if this total targets a json field
+        ...(config.jsonField && config.column === 'transcription_metrics' && row.transcription_metrics
+          ? { [config.jsonField]: row.transcription_metrics?.[config.jsonField] }
+          : {}),
+        ...(config.jsonField && config.column === 'metadata' && row.metadata
+          ? { [config.jsonField]: row.metadata?.[config.jsonField] }
+          : {}),
+      }))
+
+      if (!rows.length) {
+        alert('No logs found for this custom total and date range.')
+        return
+      }
+
+      const csv = Papa.unparse(rows)
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${config.name.replace(/\s+/g, '_').toLowerCase()}_${dateRange.from}_to_${dateRange.to}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e: any) {
+      console.error(e)
+      alert('Failed to download CSV')
     }
   }
 
@@ -481,24 +657,35 @@ const Overview: React.FC<OverviewProps> = ({
                           <IconComponent weight="regular" className={`w-5 h-5 ${colorClass.split(' ')[1]}`} />
                         </div>
                         
-                        {/* Action Menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 hover:bg-gray-100"
-                            >
-                              <MoreHorizontal className="h-3 w-3 text-gray-400" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleDeleteCustomTotal(config.id)}>
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-gray-100"
+                            onClick={() => handleDownloadCustomTotal(config)}
+                            title="Download matching logs"
+                          >
+                            <Download className="h-3 w-3 text-gray-400" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 w-6 p-0 hover:bg-gray-100"
+                              >
+                                <MoreHorizontal className="h-3 w-3 text-gray-400" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleDeleteCustomTotal(config.id)}>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                       
                       <div className="space-y-1">
