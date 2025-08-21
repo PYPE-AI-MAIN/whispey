@@ -63,7 +63,7 @@ export class CustomTotalsService {
         aggregation: row.aggregation,
         column: row.column_name,
         jsonField: row.json_field,
-        filters: row.filters || [],
+        filters: typeof row.filters === 'string' ? (JSON.parse(row.filters) || []) : (row.filters || []),
         filterLogic: row.filter_logic,
         icon: row.icon || 'calculator',
         color: row.color || 'blue',

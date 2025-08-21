@@ -190,10 +190,25 @@ const Overview: React.FC<OverviewProps> = ({
   }, [role, roleLoading])
 
   useEffect(() => {
-    if (customTotals.length > 0) {
-      calculateCustomTotals()
+    const run = async () => {
+      if (customTotals.length === 0 || roleLoading) return
+      setLoadingCustomTotals(true)
+      try {
+        const results = await CustomTotalsService.batchCalculateCustomTotals(
+          customTotals,
+          agent.id,
+          dateRange.from,
+          dateRange.to
+        )
+        setCustomTotalResults(results)
+      } catch (e) {
+        console.error('Batch calc failed', e)
+      } finally {
+        setLoadingCustomTotals(false)
+      }
     }
-  }, [customTotals, dateRange, role])
+    run()
+  }, [customTotals, dateRange.from, dateRange.to, roleLoading, agent.id])
 
   const calculateCustomTotals = async () => {
     if (customTotals.length === 0) return
@@ -641,9 +656,8 @@ const Overview: React.FC<OverviewProps> = ({
               </div>
 
 
-            {customTotalResults.map((result) => {
-              const config = customTotals.find(c => c.id === result.configId)
-              if (!config) return null
+            {customTotals.map((config) => {
+              const result = customTotalResults.find(r => r.configId === config.id)
 
               const IconComponent = ICON_COMPONENTS[config.icon as keyof typeof ICON_COMPONENTS] || Users
               const colorClass = COLOR_CLASSES[config.color as keyof typeof COLOR_CLASSES] || COLOR_CLASSES.blue
@@ -656,7 +670,7 @@ const Overview: React.FC<OverviewProps> = ({
                         <div className={`p-2 ${colorClass.replace('bg-', 'bg-').replace('text-', 'border-')} rounded-lg border`}>
                           <IconComponent weight="regular" className={`w-5 h-5 ${colorClass.split(' ')[1]}`} />
                         </div>
-                        
+
                         {/* Actions */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
@@ -687,13 +701,13 @@ const Overview: React.FC<OverviewProps> = ({
                           </DropdownMenu>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-1">
                         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider truncate" title={config.name}>
                           {config.name}
                         </h3>
                         <p className="text-2xl font-light text-gray-900 tracking-tight">
-                          {loadingCustomTotals ? (
+                          {loadingCustomTotals || !result ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
                           ) : (
                             formatCustomTotalValue(result, config)
@@ -705,7 +719,7 @@ const Overview: React.FC<OverviewProps> = ({
                             : 'No filters'
                           }
                         </p>
-                        {result.error && (
+                        {result?.error && (
                           <p className="text-xs text-red-500 mt-1">
                             {result.error}
                           </p>
