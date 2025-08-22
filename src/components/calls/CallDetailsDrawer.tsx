@@ -355,7 +355,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                                         Bug Report #{index + 1}
                                       </div>
                                       <div className="text-xs text-gray-500 mb-2">
-                                        {report.total_messages} message{report.total_messages !== 1 ? 's' : ''} • {new Date(report.timestamp * 1000).toLocaleDateString()}
+                                        {new Date(report.timestamp * 1000).toLocaleString()}
                                       </div>
                                     </div>
                                   </div>
@@ -417,12 +417,44 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                                   {(() => {
                                     const currentReport = bugReportData[selectedBugReport]
                                     
-                                    // Find the agent message that was flagged as bug (has the "Reported Bug" badge)
-                                    const flaggedAgentTurn = transcriptLogs?.find((log: TranscriptLog) => 
-                                      checkBugReportFlags.has(log.turn_id) && log.agent_response
-                                    )
+                                    // ✅ FIXED: Find the specific flagged turn for THIS bug report
+                                    let flaggedAgentTurn = null
                                     
-                                    // Find the user message right before that flagged agent response
+                                    // Method 1: Use bug report timestamp to find the closest flagged turn before this report
+                                    if (currentReport.timestamp && transcriptLogs) {
+                                      const flaggedTurnsBeforeReport = transcriptLogs.filter((log: TranscriptLog) => 
+                                        checkBugReportFlags.has(log.turn_id) && 
+                                        log.agent_response && 
+                                        log.unix_timestamp <= currentReport.timestamp
+                                      )
+                                      
+                                      // Get the most recent flagged turn before this bug report
+                                      if (flaggedTurnsBeforeReport.length > 0) {
+                                        flaggedAgentTurn = flaggedTurnsBeforeReport[flaggedTurnsBeforeReport.length - 1]
+                                      }
+                                    }
+                                    
+                                    // Method 2: Alternative approach - use stored problematic message if available
+                                    if (!flaggedAgentTurn && currentReport.stored_problematic_message && transcriptLogs) {
+                                      flaggedAgentTurn = transcriptLogs.find((log: TranscriptLog) => 
+                                        log.agent_response === currentReport.stored_problematic_message &&
+                                        checkBugReportFlags.has(log.turn_id)
+                                      )
+                                    }
+                                    
+                                    // Method 3: Fallback - use bug report index to get corresponding flagged turn
+                                    if (!flaggedAgentTurn && transcriptLogs) {
+                                      const allFlaggedTurns = transcriptLogs.filter((log: TranscriptLog) => 
+                                        checkBugReportFlags.has(log.turn_id) && log.agent_response
+                                      )
+                                      
+                                      // Use the bug report index to get the corresponding flagged turn
+                                      if (allFlaggedTurns[selectedBugReport]) {
+                                        flaggedAgentTurn = allFlaggedTurns[selectedBugReport]
+                                      }
+                                    }
+                                    
+                                    // Find the user message that led to this specific flagged response
                                     const userMessageBeforeBug = flaggedAgentTurn ? 
                                       transcriptLogs?.find((log: TranscriptLog) => 
                                         log.turn_id === flaggedAgentTurn.turn_id && log.user_transcript
@@ -447,6 +479,10 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                                                   </Badge>
                                                   <span className="text-sm text-red-700">
                                                     Turn #{flaggedAgentTurn?.turn_id} • {flaggedAgentTurn ? formatConversationTime(flaggedAgentTurn.unix_timestamp) : ''}
+                                                  </span>
+                                                  {/* Debug info to verify correct matching */}
+                                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                    Bug Report #{selectedBugReport + 1}
                                                   </span>
                                                 </div>
                                               </div>
@@ -513,7 +549,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                                             <div className="px-6 py-4 border-b border-amber-100 bg-amber-50/50">
                                               <div className="flex items-center gap-3">
                                                 <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-semibold">
-                                                 𖢥
+                                                𖢥
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                   <Badge className="text-xs bg-amber-600 text-white">

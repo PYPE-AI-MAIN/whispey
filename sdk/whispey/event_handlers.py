@@ -340,7 +340,7 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
                 "type": "agent_response"
             })
             
-            # ✅ FIXED: Better handoff detection
+            # FIXED: Better handoff detection
             if any(phrase in event.item.text_content for phrase in [
                 "[Handing off to", "[Handing back to", "handoff_to_", "transfer_to_"
             ]):
