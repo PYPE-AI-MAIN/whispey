@@ -462,7 +462,7 @@ const { user } = useUser()
 
   const { data: calls, loading, hasMore, error, loadMore, refresh } = useInfiniteScroll("pype_voice_call_logs", queryOptions)
 
-  console.log(calls)
+  // console.log(calls)
   // Extract all unique keys from metadata and transcription_metrics across all calls
   const dynamicColumns = useMemo(() => {
     const metadataKeys = new Set<string>()

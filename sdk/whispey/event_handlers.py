@@ -1,3 +1,4 @@
+# sdk/whispey/event_handlers.py
 import time
 import logging
 from typing import Dict, List, Any, Optional
@@ -6,7 +7,7 @@ from livekit.agents import metrics, MetricsCollectedEvent
 from livekit.agents.metrics import STTMetrics, LLMMetrics, TTSMetrics, EOUMetrics
 import re
 
-logger = logging.getLogger("kannada-tutor")
+logger = logging.getLogger("whispey-sdk")
 
 @dataclass
 class ConversationTurn:
@@ -57,10 +58,8 @@ class CorrectedTranscriptCollector:
         """Check if user input is a bug report using SDK detector if available"""
         if self.bug_detector:
             return self.bug_detector._is_bug_report(text)
-        
-        # Fallback to basic patterns if no SDK detector
-        patterns = [r'\bbug\s+report\b', r'\breport\s+bug\b', r'\bissue\s+report\b']
-        return any(re.search(pattern, text.lower()) for pattern in patterns)
+
+        return False
             
     def on_conversation_item_added(self, event):
         """Called when conversation item is added to history"""
