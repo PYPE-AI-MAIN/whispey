@@ -9,4 +9,6 @@ opentelemetry-api
 opentelemetry-sdk
 opentelemetry-exporter-otlp
 python-dotenv
+livekit-plugins-sarvam
+livekit-plugins-noise-cancellation
 twine
