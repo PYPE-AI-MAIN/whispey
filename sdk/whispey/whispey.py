@@ -1,3 +1,4 @@
+# sdk/whispey/whispey.py
 import time
 import uuid
 import logging
@@ -151,6 +152,12 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
                             break
                     except Exception as e:
                         logger.debug(f"Could not extract transcript from {attr}: {e}")
+
+    if session_data:
+        if 'bug_reports' in session_data:
+            whispey_data["metadata"]["bug_reports"] = session_data['bug_reports']
+        if 'bug_flagged_turns' in session_data:
+            whispey_data["metadata"]["bug_flagged_turns"] = session_data['bug_flagged_turns']
     
     return whispey_data
 
