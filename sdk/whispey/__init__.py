@@ -1,6 +1,6 @@
 """Whispey Observe SDK - Voice Analytics for AI Agents"""
 
-__version__ = "2.1.3"
+__version__ = "2.1.1"
 __author__ = "Whispey AI Voice Analytics"
 
 import re
@@ -34,13 +34,13 @@ class LivekitObserve:
             self.enable_bug_reports = False
             config = {}
         
-        # Simple parameter handling - only support feedback_start_command and feedback_end_command
-        start_patterns = config.get('feedback_start_command', ['feedback start'])
-        end_patterns = config.get('feedback_end_command', ['feedback over'])
+        # Simple parameter handling - only support bug_start_command and bug_end_command
+        start_patterns = config.get('bug_start_command', ['fault report start']) # Default to 'fault report start'
+        end_patterns = config.get('bug_end_command', ['fault report over']) # Default to 'fault report over'
         
         # Convert to regex patterns
-        self.bug_report_patterns = self._convert_to_regex(start_patterns)
-        self.done_reporting_patterns = self._convert_to_regex(end_patterns)
+        self.bug_start_patterns = self._convert_to_regex(start_patterns)
+        self.bug_end_patterns = self._convert_to_regex(end_patterns)
         
         # Response messages
         self.bug_report_response = config.get(
@@ -57,11 +57,11 @@ class LivekitObserve:
         )
         self.collection_prompt = config.get(
             'collection_prompt',
-            "Got it. Any other details about this feedback?"
+            "Got it. Please say more details if you want or end the bug report mode."
         )
     
     def _convert_to_regex(self, patterns: List[str]) -> List[str]:
-        """Convert simple strings to regex patterns with Hindi support"""
+        """Convert simple strings to regex patterns with Hindi support and case-insensitive English"""
         regex_patterns = []
         for pattern in patterns:
             if pattern.startswith('r\'') or '\\b' in pattern:
@@ -75,8 +75,9 @@ class LivekitObserve:
                     escaped = re.escape(pattern)
                     regex_patterns.append(escaped)
                 else:
-                    # For English text, use word boundaries as before
-                    escaped = re.escape(pattern)
+                    # For English text, convert to lowercase, use word boundaries, and make case-insensitive
+                    pattern_lower = pattern.lower()
+                    escaped = re.escape(pattern_lower)
                     regex_patterns.append(f'\\b{escaped}\\b')
         
         return regex_patterns
@@ -85,13 +86,13 @@ class LivekitObserve:
         """Check if user input is a bug report"""
         if not self.enable_bug_reports or not text:
             return False
-        return any(re.search(pattern, text.lower()) for pattern in self.bug_report_patterns)
+        return any(re.search(pattern, text.lower()) for pattern in self.bug_start_patterns)
     
     def _is_done_reporting(self, text: str) -> bool:
         """Check if user is done reporting bugs"""
         if not text:
             return False
-        return any(re.search(pattern, text.lower()) for pattern in self.done_reporting_patterns)
+        return any(re.search(pattern, text.lower()) for pattern in self.bug_end_patterns)
     
     def start_session(self, session, **kwargs):
         """Start session with optional bug report functionality"""
@@ -148,36 +149,24 @@ class LivekitObserve:
                             continue
                         
                         transcript = transcript.strip()
-                        logger.info(f"🎙️ TRANSCRIPT: '{transcript}' (bug_mode: {agent._whispey_bug_report_mode})")
                         
-                        # CASE 1: User says "feedback over" - exit bug mode and repeat response
+                        # CASE 1: User says "bug over" - exit bug mode and repeat response
                         if agent._whispey_bug_report_mode and self._is_done_reporting(transcript):
-                            logger.info(f"🏁 FEEDBACK COMPLETE: {transcript}")
                             agent._whispey_bug_report_mode = False
                             
                             # Store all collected bug details
                             await self._store_bug_report_details(session_id, agent._whispey_bug_details)
-                            logger.info(f"📝 Stored {len(agent._whispey_bug_details)} bug report messages")
                             agent._whispey_bug_details = []
                             
-                            # Get the stored problematic message and repeat it
-                            repeated_message = await self._repeat_stored_message(session_id, session)
-                            if repeated_message:
-                                logger.info(f"✅ SUCCESSFULLY REPEATED: {repeated_message[:100]}...")
-                            else:
-                                logger.warning("⚠️ FAILED TO REPEAT MESSAGE")
-                            
-                            continue  # Don't process this as normal input
+                            # ✅ REPEAT the stored problematic message
+                            await self._repeat_stored_message(session_id, session)
+                            continue
                         
                         # CASE 2: User starts bug report with "feedback"
                         elif not agent._whispey_bug_report_mode and self._is_bug_report(transcript):
-                            logger.info(f"🐛 BUG REPORT DETECTED: {transcript}")
-                            
                             # Immediately capture and store the last agent message
                             captured_message = await self._capture_and_store_last_message(session_id)
                             if captured_message:
-                                logger.info(f"💾 CAPTURED PROBLEMATIC MESSAGE: {captured_message[:100]}...")
-                            else:
                                 logger.warning("⚠️ NO MESSAGE TO CAPTURE")
                             
                             # Enter bug collection mode
@@ -190,12 +179,10 @@ class LivekitObserve:
                             
                             # Ask for details
                             await session.say(self.bug_report_response, add_to_chat_ctx=False)
-                            logger.info(f"🤖 REQUESTED BUG DETAILS")
-                            continue  # Don't process this as normal input
+                            continue
                         
                         # CASE 3: User is providing bug details
                         elif agent._whispey_bug_report_mode:
-                            logger.info(f"📝 COLLECTING DETAILS: {transcript}")
                             
                             agent._whispey_bug_details.append({
                                 'type': 'bug_details',
@@ -205,18 +192,14 @@ class LivekitObserve:
                             
                             # Acknowledge and ask for more
                             await session.say(self.collection_prompt, add_to_chat_ctx=False)
-                            logger.info(f"🤖 ACKNOWLEDGED BUG DETAILS")
-                            continue  # Don't process this as normal input
+                            continue
                         
                         # CASE 4: Normal conversation
                         else:
-                            logger.info(f"💬 NORMAL CONVERSATION: {transcript}")
                             yield event
                 
                 # Replace agent's STT node
                 agent.stt_node = bug_aware_stt_node
-                
-                logger.info(f"✅ Simplified bug report handling enabled for session {session_id}")
             
             return await original_start(*args, **kwargs)
         
@@ -242,7 +225,6 @@ class LivekitObserve:
                         
                         # Flag the turn as a bug report
                         last_turn.bug_report = True
-                        logger.info(f"🐛 FLAGGED turn {last_turn.turn_id} as bug report")
                         
                         # Store the agent response for repetition
                         if last_turn.agent_response:
@@ -262,7 +244,6 @@ class LivekitObserve:
                             
                             return last_turn.agent_response
                 
-                logger.warning("⚠️ No recent turns or agent responses found to capture")
                 return None
                 
         except Exception as e:
@@ -278,7 +259,6 @@ class LivekitObserve:
                 from whispey import _session_data_store
             
             if session_id not in _session_data_store:
-                logger.error(f"❌ Session {session_id} not found in data store")
                 await session.say(self.fallback_message, add_to_chat_ctx=False)
                 return None
             
@@ -296,10 +276,9 @@ class LivekitObserve:
                 if stored_message and stored_message.strip():
                     full_repeat = f"{self.continuation_prefix}{stored_message}"
                     await session.say(full_repeat, add_to_chat_ctx=False)
-                    logger.info(f"✅ REPEATED from {source_desc}: {stored_message[:100]}...")
                     return stored_message
             
-            # Final fallback: try to get from recent turns
+            # fallback: try to get from recent turns
             if 'transcript_collector' in session_data:
                 collector = session_data['transcript_collector']
                 # Look back through recent turns for the last agent response
@@ -307,16 +286,12 @@ class LivekitObserve:
                     if turn.agent_response and turn.agent_response.strip():
                         full_repeat = f"{self.continuation_prefix}{turn.agent_response}"
                         await session.say(full_repeat, add_to_chat_ctx=False)
-                        logger.info(f"✅ REPEATED from recent turn {turn.turn_id}: {turn.agent_response[:100]}...")
                         return turn.agent_response
             
-            # Absolute fallback
-            logger.warning("⚠️ No stored message found, using default fallback")
             await session.say(self.fallback_message, add_to_chat_ctx=False)
             return None
             
         except Exception as e:
-            logger.error(f"❌ REPEAT ERROR: {e}")
             await session.say(self.fallback_message, add_to_chat_ctx=False)
             return None
     
@@ -342,7 +317,6 @@ class LivekitObserve:
                     'stored_problematic_message': session_data.get('captured_message_for_repeat', 'N/A')
                 })
                 
-                logger.info(f"📝 STORED COMPLETE BUG REPORT: {len(bug_details)} detail messages")
         except Exception as e:
             logger.error(f"❌ STORE BUG DETAILS ERROR: {e}")
     
