@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     headers.set('Access-Control-Allow-Origin', '*')
 
     // Return the audio file as a downloadable response
-    return new NextResponse(audioBuffer, {
+    return new NextResponse(new Uint8Array(audioBuffer), {
       status: 200,
       headers
     })
