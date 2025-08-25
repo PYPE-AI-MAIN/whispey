@@ -832,8 +832,6 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                         <div
                           className={cn(
                             "flex gap-4 group",
-                            log.user_transcript?.toLowerCase().includes("bug report") &&
-                              "bg-amber-50 rounded-lg p-3 border border-amber-200",
                           )}
                         >
                           <div className="flex-shrink-0 w-12 text-right">
@@ -846,15 +844,6 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                               <Badge variant="outline" className="text-xs">
                                 User
                               </Badge>
-                              {log.user_transcript?.toLowerCase().includes("bug report") && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs bg-amber-100 text-amber-800 border-amber-300"
-                                >
-                                  <AlertTriangle className="w-3 h-3 mr-1" />
-                                  Bug Report Trigger
-                                </Badge>
-                              )}
                             </div>
                             <p className="text-sm leading-relaxed">{log.user_transcript}</p>
 
