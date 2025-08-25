@@ -150,7 +150,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
         metrics.agentResponseLatencies.push(agentResponseTime)
       }
 
-      if (log.stt_metrics && log.tts_metrics) {
+      if (log.tts_metrics) {
         const sttTime = log.stt_metrics?.duration || 0
         const llmTime = log.llm_metrics?.ttft || 0
         const ttsTime = (log.tts_metrics?.ttfb || 0) + (log.tts_metrics?.duration || 0)
@@ -163,7 +163,6 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
 
       if (
         log.eou_metrics?.end_of_utterance_delay &&
-        log.stt_metrics?.duration &&
         log.llm_metrics?.ttft &&
         log.tts_metrics
       ) {
