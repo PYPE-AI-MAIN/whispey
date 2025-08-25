@@ -192,15 +192,35 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
     
     // If it's already a clean key (no URL), return as is
     if (!s3Key.includes('amazonaws.com')) {
-      return s3Key
+      // Also handle cases where a bare key was URL-encoded and/or has query params appended
+      const withoutQuery = s3Key.split('?')[0]
+      try {
+        // Decode percent-encoding once; do NOT translate '+' to space
+        const decodedOnce = decodeURIComponent(withoutQuery)
+        return decodedOnce
+      } catch {
+        return withoutQuery
+      }
     }
     
     // If it's a full URL, extract just the key part
     try {
       const url = new URL(s3Key)
-      const pathParts = url.pathname.split('/')
-      // Skip the first empty part and bucket name
-      return pathParts.slice(2).join('/')
+      const pathname = url.pathname || '/'
+      const host = url.hostname
+
+      // Handle virtual-hosted–style: https://<bucket>.s3.<region>.amazonaws.com/<key>
+      // In this case, the key is the pathname without the leading '/'
+      const isVirtualHosted = /\.s3[.-][^./]+\.amazonaws\.com$/i.test(host) || /\.s3\.amazonaws\.com$/i.test(host)
+      if (isVirtualHosted) {
+        // URL.pathname is already percent-decoded in WHATWG URL
+        return pathname.replace(/^\/+/, '')
+      }
+
+      // Handle path-style: https://s3.<region>.amazonaws.com/<bucket>/<key>
+      // Split on '/' and drop the leading empty segment and bucket segment
+      const parts = pathname.split('/') // ['', 'bucket', 'key', ...]
+      return parts.slice(2).join('/')
     } catch (e) {
       console.error('Failed to parse S3 URL:', e)
       return null
@@ -229,30 +249,36 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
     setError(null)
     
     try {
-      // Get the clean S3 key (without URL parameters)
+      // Ensure filename has proper extension
+      const finalFileName = getDownloadFileName(downloadFileName)
+
+      // If we have a direct/presigned URL, route via proxy GET to avoid CORS and preserve filename
+      if (downloadUrl.includes('amazonaws.com')) {
+        const proxy = `/api/audio-proxy?url=${encodeURIComponent(downloadUrl)}&filename=${encodeURIComponent(finalFileName)}`
+        const link = document.createElement('a')
+        link.href = proxy
+        link.download = finalFileName
+        link.style.display = 'none'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        setDownloadDialogOpen(false)
+        return
+      }
+
+      // Fallback: use our API with a clean S3 key
       const cleanS3Key = getCleanS3Key()
-      
       if (!cleanS3Key) {
         throw new Error("Invalid S3 key")
       }
-      
-      // Ensure filename has proper extension
-      const finalFileName = getDownloadFileName(downloadFileName)
-      
-      // Use the download API that fetches the file directly from S3
       const downloadApiUrl = `/api/audio-download?s3Key=${encodeURIComponent(cleanS3Key)}&filename=${encodeURIComponent(finalFileName)}`
-      
-      // Create a temporary link and trigger download
       const link = document.createElement('a')
       link.href = downloadApiUrl
       link.download = finalFileName
       link.style.display = 'none'
-      
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
-      // Close dialog after download attempt
       setDownloadDialogOpen(false)
     } catch (err) {
       console.error('Download failed:', err)

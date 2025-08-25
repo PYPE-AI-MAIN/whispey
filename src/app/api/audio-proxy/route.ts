@@ -132,6 +132,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const audioUrl = searchParams.get('url')
+    const filename = searchParams.get('filename') || undefined
 
     if (!audioUrl) {
       return NextResponse.json(
@@ -148,13 +149,6 @@ export async function GET(request: NextRequest) {
         { error: 'Invalid URL format' },
         { status: 400 }
       )
-    }
-
-    // Check if this is an S3 URL - if so, redirect to direct access
-    const isS3Url = audioUrl.includes('.s3.') || audioUrl.includes('.amazonaws.com')
-    if (isS3Url) {
-      // For S3 presigned URLs, redirect client to use the URL directly
-      return NextResponse.redirect(audioUrl)
     }
 
     console.log(`Audio Proxy GET: Streaming audio from ${audioUrl}`)
@@ -186,6 +180,9 @@ export async function GET(request: NextRequest) {
     
     headers.set('Accept-Ranges', 'bytes')
     headers.set('Cache-Control', 'public, max-age=3600')
+    if (filename) {
+      headers.set('Content-Disposition', `attachment; filename="${filename}"`)
+    }
     
     return new NextResponse(response.body, {
       status: 200,
