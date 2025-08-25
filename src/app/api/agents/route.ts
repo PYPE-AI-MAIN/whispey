@@ -42,14 +42,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    if (!platform || !['livekit', 'vapi'].includes(platform)) {
-      return NextResponse.json(
-        { error: 'Platform must be either "livekit" or "vapi"' },
-        { status: 400 }
-      )
-    }
-
+    
     // Additional validation for Vapi agents
     if (platform === 'vapi') {
       if (!configuration?.vapi?.apiKey || !configuration?.vapi?.assistantId || !configuration?.vapi?.projectApiKey) {
