@@ -167,7 +167,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
         label: "Total Cost (₹)",
       },
       { key: "call_started_at", label: "Start Time" },
-      { key: "avg_latency", label: "Avg Latency (ms)" },
+      { key: "avg_latency", label: "Avg Latency (ms)",hidden: true },
       { key: "total_llm_cost", label: "LLM Cost (₹)", hidden: true },
       { key: "total_tts_cost", label: "TTS Cost (₹)", hidden: true },
       { key: "total_stt_cost", label: "STT Cost (₹)", hidden: true }
@@ -1003,11 +1003,6 @@ const { user } = useUser()
                     break
                   case "call_started_at":
                     value = formatToIndianDateTime(call.call_started_at)
-                    break
-                  case "avg_latency":
-                    value = call?.avg_latency ? (
-                      <span className="font-mono">{call.avg_latency.toFixed(2)}s</span>
-                    ) : "-"
                     break
                   case "total_cost":
                     value = call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
