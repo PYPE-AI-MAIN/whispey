@@ -19,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Phone, Loader2, AlertCircle, CheckCircle, Flag, User, Building } from 'lucide-react'
+import { Phone, Loader2, AlertCircle, CheckCircle, Flag, User, Building, Monitor, Globe } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { WebCallWidget } from './WebCallWidget'
 
 interface CallDialogProps {
   assistantName: string
@@ -82,7 +84,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
   const [phoneNumber, setPhoneNumber] = useState('')
   const [customMessage, setCustomMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'success' | 'error'>('idle')
+  const [callStatus, setCallStatus] = useState<'idle' | 'connecting' | 'success' | 'error'>('idle')
   const [callId, setCallId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   
@@ -91,6 +93,8 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
   const [selectedPhoneNumberId, setSelectedPhoneNumberId] = useState<string>('')
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
   const [phoneNumberError, setPhoneNumberError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'phone' | 'web'>('phone')
+
 
   // Fetch available phone numbers when dialog opens
   useEffect(() => {
@@ -175,6 +179,8 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
     return number
   }
 
+
+
   const initiateCall = async () => {
     if (!validatePhoneNumber(phoneNumber)) {
       setError('Please enter a valid phone number')
@@ -188,7 +194,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
     setIsLoading(true)
     setError(null)
-    setCallStatus('calling')
+          setCallStatus('connecting')
 
     try {
       const cleanPhoneNumber = phoneNumber.replace(/\D/g, '')
@@ -270,7 +276,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           Call
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="w-5 h-5" />
@@ -284,7 +290,20 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           </DialogDescription>
         </DialogHeader>
 
-        {callStatus === 'idle' || callStatus === 'calling' ? (
+        <Tabs defaultValue="phone" className="w-full" onValueChange={(value) => setActiveTab(value as 'phone' | 'web')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="phone" className="flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Phone Call
+            </TabsTrigger>
+            <TabsTrigger value="web" className="flex items-center gap-2">
+              <Monitor className="h-4 w-4" />
+              Web Call
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="phone" className="space-y-4">
+            {callStatus === 'idle' || callStatus === 'connecting' ? (
           <div className="space-y-4">
             {/* Phone Number Selection */}
             <div className="space-y-3">
@@ -485,8 +504,40 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           </div>
         )}
 
+          </TabsContent>
+
+          <TabsContent value="web" className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Globe className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-blue-800 mb-2">Web Call</h3>
+              <p className="text-sm text-gray-600">
+                Start a browser-based voice conversation with {assistantName}
+              </p>
+            </div>
+            
+            <WebCallWidget
+              agentId={agentId}
+              assistantId={vapiAssistantId}
+              agentName={assistantName}
+              publicApiKey="64dc1d61-4156-42ea-aa75-fc86ff0f3ceb"
+              onCallStart={(callId) => {
+                console.log('🚀 Web call started in modal:', callId)
+              }}
+              onCallEnd={(callId, reason) => {
+                console.log('🛑 Web call ended in modal:', callId, 'reason:', reason)
+              }}
+              onTranscript={(transcript, role) => {
+                console.log('💬 Web call transcript:', role, transcript)
+              }}
+              hideStartButton={false}
+            />
+          </TabsContent>
+        </Tabs>
+
         <DialogFooter className="flex gap-2">
-          {callStatus === 'idle' || callStatus === 'calling' ? (
+          {callStatus === 'idle' || callStatus === 'connecting' ? (
             <>
               <Button
                 variant="outline"
@@ -495,30 +546,33 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
               >
                 Cancel
               </Button>
-              <Button
-                onClick={initiateCall}
-                disabled={
-                  isLoading || 
-                  !phoneNumber.trim() || 
-                  !validatePhoneNumber(phoneNumber) ||
-                  !selectedPhoneNumberId ||
-                  availablePhoneNumbers.length === 0
-                }
-                className="text-white"
-                style={{ backgroundColor: '#328c81' }}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Calling...
-                  </>
-                ) : (
-                  <>
-                    <Phone className="w-4 h-4 mr-2" />
-                    Start Call
-                  </>
-                )}
-              </Button>
+              {/* Only show Start Call button for phone calls */}
+              {activeTab === 'phone' && (
+                <Button
+                  onClick={initiateCall}
+                  disabled={
+                    isLoading || 
+                    !phoneNumber.trim() || 
+                    !validatePhoneNumber(phoneNumber) ||
+                    !selectedPhoneNumberId ||
+                    availablePhoneNumbers.length === 0
+                  }
+                  className="text-white"
+                  style={{ backgroundColor: '#328c81' }}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Calling...
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="w-4 w-4 mr-2" />
+                      Start Call
+                    </>
+                  )}
+                </Button>
+              )}
             </>
           ) : (
             <>
