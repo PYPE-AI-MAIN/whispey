@@ -14,12 +14,12 @@
     },
     {
       "id": "proj_002",
-      "name": "Sales Outreach Campaign",
+      "name": "Embassy Edge",
       "description": "Automated sales calling system for lead qualification, appointment setting, and follow-up communications.",
       "environment": "production",
       "owner_clerk_id": "user_demo_123",
       "created_at": "2024-01-10T14:30:00Z",
-      "updated_at": "2024-01-10T14:30:00Z",
+      "updated_at": "2025-08-26T07:26:39.995Z",
       "is_active": true,
       "user_role": "owner",
       "api_token": "sk_proj_002_demo_token_def456"
@@ -111,7 +111,7 @@
       "project_id": "proj_002",
       "environment": "production",
       "created_at": "2024-01-10T15:00:00Z",
-      "updated_at": "2024-01-10T15:00:00Z",
+      "updated_at": "2025-08-26T07:51:55.410Z",
       "is_active": true,
       "field_extractor": true,
       "field_extractor_prompt": "Extract lead qualification status, interest level, and next steps from the sales conversation.",
@@ -4423,52 +4423,629 @@
         "duration": 304,
         "call_ended_reason": "completed"
       }
+    },
+    {
+      "agent_id": "agent_001",
+      "customer_number": "+1555383890",
+      "call_ended_reason": "completed",
+      "duration_seconds": 93,
+      "avg_latency": 1.037,
+      "recording_url": "https://storage.example.com/recordings/call_1756193957344.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Support Agent Alpha. How can I help you today?",
+          "timestamp": 1756193957,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1756193962,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1756193969,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "within_month",
+        "interest_level": "very_high",
+        "lead_score": 94,
+        "next_action": "follow_up_call"
+      },
+      "total_stt_cost": 0.003,
+      "total_tts_cost": 0.116,
+      "total_llm_cost": 0.126,
+      "id": "call_1756193959815",
+      "call_id": "call_1756193959815",
+      "created_at": "2025-08-26T07:39:19.815Z",
+      "call_started_at": "2025-08-26T07:39:19.815Z",
+      "call_ended_at": "2025-08-26T07:40:52.815Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Support Agent Alpha. How can I help...",
+        "duration": 93,
+        "call_ended_reason": "completed"
+      }
+    },
+    {
+      "agent_id": "agent_001",
+      "customer_number": "+1555543122",
+      "call_ended_reason": "completed",
+      "duration_seconds": 308,
+      "avg_latency": 1.057,
+      "recording_url": "https://storage.example.com/recordings/call_1756193973213.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Support Agent Alpha. How can I help you today?",
+          "timestamp": 1756193973,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1756193978,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1756193985,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "1_3_months",
+        "interest_level": "high",
+        "lead_score": 92,
+        "next_action": "send_info"
+      },
+      "total_stt_cost": 0.005,
+      "total_tts_cost": 0.076,
+      "total_llm_cost": 0.014,
+      "id": "call_1756193975447",
+      "call_id": "call_1756193975447",
+      "created_at": "2025-08-26T07:39:35.447Z",
+      "call_started_at": "2025-08-26T07:39:35.447Z",
+      "call_ended_at": "2025-08-26T07:44:43.447Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Support Agent Alpha. How can I help...",
+        "duration": 308,
+        "call_ended_reason": "completed"
+      }
+    },
+    {
+      "agent_id": "agent_001",
+      "customer_number": "+1555297568",
+      "call_ended_reason": "completed",
+      "duration_seconds": 357,
+      "avg_latency": 1.197,
+      "recording_url": "https://storage.example.com/recordings/call_1756196095052.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Support Agent Alpha. How can I help you today?",
+          "timestamp": 1756196095,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1756196100,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1756196107,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "within_month",
+        "interest_level": "very_high",
+        "lead_score": 60,
+        "next_action": "schedule_demo"
+      },
+      "total_stt_cost": 0.012,
+      "total_tts_cost": 0.054,
+      "total_llm_cost": 0.022,
+      "id": "call_1756196098487",
+      "call_id": "call_1756196098487",
+      "created_at": "2025-08-26T08:14:58.487Z",
+      "call_started_at": "2025-08-26T08:14:58.487Z",
+      "call_ended_at": "2025-08-26T08:20:55.487Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Support Agent Alpha. How can I help...",
+        "duration": 357,
+        "call_ended_reason": "completed"
+      }
+    },
+    {
+      "agent_id": "agent_001",
+      "customer_number": "+1555292941",
+      "call_ended_reason": "completed",
+      "duration_seconds": 409,
+      "avg_latency": 1.285,
+      "recording_url": "https://storage.example.com/recordings/call_1756196095052.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Support Agent Alpha. How can I help you today?",
+          "timestamp": 1756196095,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1756196100,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1756196107,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "within_month",
+        "interest_level": "very_high",
+        "lead_score": 60,
+        "next_action": "schedule_demo"
+      },
+      "total_stt_cost": 0.013,
+      "total_tts_cost": 0.058,
+      "total_llm_cost": 0.025,
+      "id": "call_1756196098488",
+      "call_id": "call_1756196098488",
+      "created_at": "2025-08-26T08:14:58.488Z",
+      "call_started_at": "2025-08-26T08:14:58.488Z",
+      "call_ended_at": "2025-08-26T08:21:47.488Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Support Agent Alpha. How can I help...",
+        "duration": 409,
+        "call_ended_reason": "completed"
+      }
+    },
+    {
+      "agent_id": "agent_001",
+      "customer_number": "+1555297328",
+      "call_ended_reason": "completed",
+      "duration_seconds": 406,
+      "avg_latency": 1.033,
+      "recording_url": "https://storage.example.com/recordings/call_1756196095052.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Support Agent Alpha. How can I help you today?",
+          "timestamp": 1756196095,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1756196100,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1756196107,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "within_month",
+        "interest_level": "very_high",
+        "lead_score": 60,
+        "next_action": "schedule_demo"
+      },
+      "total_stt_cost": 0.013,
+      "total_tts_cost": 0.048,
+      "total_llm_cost": 0.022,
+      "id": "call_1756196098489",
+      "call_id": "call_1756196098489",
+      "created_at": "2025-08-26T08:14:58.489Z",
+      "call_started_at": "2025-08-26T08:14:58.489Z",
+      "call_ended_at": "2025-08-26T08:21:44.489Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Support Agent Alpha. How can I help...",
+        "duration": 406,
+        "call_ended_reason": "completed"
+      }
+    },
+    {
+      "agent_id": "agent_001",
+      "customer_number": "+1555297831",
+      "call_ended_reason": "completed",
+      "duration_seconds": 372,
+      "avg_latency": 1.252,
+      "recording_url": "https://storage.example.com/recordings/call_1756196095052.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Support Agent Alpha. How can I help you today?",
+          "timestamp": 1756196095,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1756196100,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1756196107,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "within_month",
+        "interest_level": "very_high",
+        "lead_score": 60,
+        "next_action": "schedule_demo"
+      },
+      "total_stt_cost": 0.011,
+      "total_tts_cost": 0.046,
+      "total_llm_cost": 0.024,
+      "id": "call_1756196098490",
+      "call_id": "call_1756196098490",
+      "created_at": "2025-08-26T08:14:58.490Z",
+      "call_started_at": "2025-08-26T08:14:58.490Z",
+      "call_ended_at": "2025-08-26T08:21:10.490Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Support Agent Alpha. How can I help...",
+        "duration": 372,
+        "call_ended_reason": "completed"
+      }
+    },
+    {
+      "agent_id": "agent_001",
+      "customer_number": "+1555296549",
+      "call_ended_reason": "completed",
+      "duration_seconds": 324,
+      "avg_latency": 0.942,
+      "recording_url": "https://storage.example.com/recordings/call_1756196095052.mp3",
+      "transcript_json": [
+        {
+          "role": "assistant",
+          "content": "Hello, this is Support Agent Alpha. How can I help you today?",
+          "timestamp": 1756196095,
+          "stt_metrics": {
+            "duration": 1.2,
+            "confidence": 0.96,
+            "processing_time": 0.18
+          },
+          "llm_metrics": {
+            "ttft": 0.42,
+            "tokens_per_second": 12,
+            "total_tokens": 48,
+            "response_time": 0.89
+          },
+          "tts_metrics": {
+            "ttfb": 0.16,
+            "audio_duration": 2.8,
+            "synthesis_time": 0.24
+          }
+        },
+        {
+          "role": "user",
+          "content": "Hi, I need help with my account.",
+          "timestamp": 1756196100,
+          "stt_metrics": {
+            "duration": 0.98,
+            "confidence": 0.94,
+            "processing_time": 0.14
+          },
+          "eou_metrics": {
+            "end_of_utterance_delay": 0.085,
+            "confidence": 0.92
+          }
+        },
+        {
+          "role": "assistant",
+          "content": "I'd be happy to help you with your account. What specific issue are you experiencing?",
+          "timestamp": 1756196107,
+          "stt_metrics": {
+            "duration": 1.4,
+            "confidence": 0.97,
+            "processing_time": 0.195
+          },
+          "llm_metrics": {
+            "ttft": 0.38,
+            "tokens_per_second": 14,
+            "total_tokens": 62,
+            "response_time": 1.05
+          },
+          "tts_metrics": {
+            "ttfb": 0.145,
+            "audio_duration": 3.2,
+            "synthesis_time": 0.28
+          }
+        }
+      ],
+      "metadata": {
+        "budget_qualified": false,
+        "decision_timeframe": "within_month",
+        "interest_level": "very_high",
+        "lead_score": 60,
+        "next_action": "schedule_demo"
+      },
+      "total_stt_cost": 0.013,
+      "total_tts_cost": 0.053,
+      "total_llm_cost": 0.025,
+      "id": "call_1756196098491",
+      "call_id": "call_1756196098491",
+      "created_at": "2025-08-26T08:14:58.491Z",
+      "call_started_at": "2025-08-26T08:14:58.491Z",
+      "call_ended_at": "2025-08-26T08:20:22.491Z",
+      "transcript_type": "agent",
+      "transcription_metrics": {
+        "transcript": "Hello, this is Support Agent Alpha. How can I help...",
+        "duration": 324,
+        "call_ended_reason": "completed"
+      }
     }
   ],
   "customOverviewMetrics": [
     {
-      "id": "metric_001",
-      "name": "Lead Conversion Rate",
-      "value": 24.5,
-      "type": "percentage",
-      "description": "Percentage of calls that resulted in qualified leads",
-      "agentId": "agent_003",
-      "projectId": "proj_001",
-      "createdAt": "2024-01-15T10:00:00Z",
-      "updatedAt": "2024-01-15T10:00:00Z"
-    },
-    {
-      "id": "metric_002",
-      "name": "Average Deal Size",
-      "value": 12500,
-      "type": "currency",
-      "description": "Average potential deal value from qualified leads",
-      "agentId": "agent_003",
-      "projectId": "proj_001",
-      "createdAt": "2024-01-15T10:00:00Z",
-      "updatedAt": "2024-01-15T10:00:00Z"
-    },
-    {
       "id": "metric_003",
       "name": "Follow-up Required",
-      "value": 18,
+      "value": 2823,
       "type": "number",
       "description": "Number of prospects requiring follow-up calls",
       "agentId": "agent_003",
       "projectId": "proj_001",
       "createdAt": "2024-01-15T10:00:00Z",
-      "updatedAt": "2024-01-15T10:00:00Z"
-    },
-    {
-      "id": "metric_004",
-      "name": "Average Call Quality",
-      "value": 4.2,
-      "type": "number",
-      "description": "Average call quality score (1-5 scale)",
-      "agentId": "agent_003",
-      "projectId": "proj_001",
-      "createdAt": "2024-01-15T10:00:00Z",
-      "updatedAt": "2024-01-15T10:00:00Z"
+      "updatedAt": "2025-08-26T07:58:38.192Z",
+      "isPercent": false
     },
     {
       "id": "metric_005",
@@ -4493,16 +5070,64 @@
       "updatedAt": "2024-01-15T10:00:00Z"
     },
     {
-      "name": "High Interest",
-      "value": 42,
-      "type": "percentage",
-      "description": "Budget Approval",
+      "name": "Qualified Lead",
+      "value": 2245,
+      "type": "number",
+      "isPercent": false,
+      "description": "budget fit, basic interest shown",
       "agentId": "agent_003",
       "projectId": "proj_002",
-      "id": "metric_1755017927459",
-      "createdAt": "2025-08-12T16:58:47.459Z",
-      "updatedAt": "2025-08-12T20:40:15.463Z",
-      "isPercent": true
+      "id": "metric_1756195149808",
+      "createdAt": "2025-08-26T07:59:09.808Z",
+      "updatedAt": "2025-08-26T07:59:32.677Z"
+    },
+    {
+      "name": " Interested In Visit ",
+      "value": 1623,
+      "type": "number",
+      "isPercent": false,
+      "description": "Verbally agree to explore further",
+      "agentId": "agent_003",
+      "projectId": "proj_002",
+      "id": "metric_1756195244438",
+      "createdAt": "2025-08-26T08:00:44.438Z",
+      "updatedAt": "2025-08-26T08:00:44.438Z"
+    },
+    {
+      "name": "Booked Visit AI",
+      "value": 1127,
+      "type": "number",
+      "isPercent": false,
+      "description": "lead agree to book with a sales agent on call",
+      "agentId": "agent_003",
+      "projectId": "proj_002",
+      "id": "metric_1756195409470",
+      "createdAt": "2025-08-26T08:03:29.470Z",
+      "updatedAt": "2025-08-26T08:03:29.470Z"
+    },
+    {
+      "name": "Book Visit Human",
+      "value": 494,
+      "type": "number",
+      "isPercent": false,
+      "description": "confirmed slot scheduled in CRM",
+      "agentId": "agent_003",
+      "projectId": "proj_002",
+      "id": "metric_1756195631203",
+      "createdAt": "2025-08-26T08:07:11.203Z",
+      "updatedAt": "2025-08-26T08:07:11.203Z"
+    },
+    {
+      "name": "Deal Progressed ",
+      "value": 21,
+      "type": "number",
+      "isPercent": false,
+      "description": "serious buyer in negotiation",
+      "agentId": "agent_003",
+      "projectId": "proj_002",
+      "id": "metric_1756195807501",
+      "createdAt": "2025-08-26T08:10:07.501Z",
+      "updatedAt": "2025-08-26T09:26:21.158Z"
     }
   ],
   "agentOverrideMetrics": [
@@ -4510,7 +5135,7 @@
       "id": "override_agent_003",
       "agentId": "agent_003",
       "agentName": "Sales Caller Pro",
-      "totalCalls": 10000,
+      "totalCalls": 11012,
       "totalMinutes": 27582,
       "totalCost": 220656,
       "averageResponseTime": 1.3,
@@ -4522,7 +5147,7 @@
       "latencyRangeMin": 0.8,
       "latencyRangeMax": 1.8,
       "createdAt": "2024-01-15T10:00:00Z",
-      "updatedAt": "2025-08-12T16:56:06.710Z"
+      "updatedAt": "2025-08-26T08:11:10.087Z"
     },
     {
       "id": "override_agent_001",

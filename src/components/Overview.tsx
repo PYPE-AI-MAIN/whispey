@@ -479,9 +479,9 @@ const Overview: React.FC<OverviewProps> = ({
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Successful</h3>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Answered</h3>
                       <p className="text-2xl font-light text-green-600 tracking-tight">{analytics?.successfulCalls ? formatNumber(analytics.successfulCalls) : '0'}</p>
-                      <p className="text-xs text-gray-400 font-medium">Completed calls</p>
+                      <p className="text-xs text-gray-400 font-medium">Answered calls</p>
                     </div>
                   </div>
                 </div>
@@ -659,22 +659,8 @@ const Overview: React.FC<OverviewProps> = ({
                 </div>
               )
             })}
-
-
-
             </div>
-
-            {process.env.NODE_ENV === 'development' && (
-              <Card className="border-yellow-200 bg-yellow-50">
-                <CardContent className="p-4">
-                  <div className="text-sm">
-                    <strong>Debug - Dynamic Fields:</strong>
-                    <div>Metadata: {metadataFields.join(', ') || 'None'}</div>
-                    <div>Transcription: {transcriptionFields.join(', ') || 'None'}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            
             {/* 2x2 Chart Grid */}
             <div className="grid grid-cols-2 gap-6">
               {/* Daily Calls Chart */}
@@ -859,7 +845,7 @@ const Overview: React.FC<OverviewProps> = ({
                     <div className="ml-8 space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#007AFF' }}></div>
-                        <div className="text-sm font-medium text-gray-700">Successful</div>
+                        <div className="text-sm font-medium text-gray-700">Answered</div>
                         <div className="text-sm font-light text-gray-500">{analytics?.successfulCalls ? formatNumber(analytics.successfulCalls) : 0}</div>
                       </div>
                       <div className="flex items-center gap-3">

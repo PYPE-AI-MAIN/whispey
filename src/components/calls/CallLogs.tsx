@@ -6,19 +6,1039 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react"
-import { useInfiniteScroll } from "../../hooks/useSupabase"
 import CallDetailsDrawer from "./CallDetailsDrawer"
 import CallFilter, { FilterRule } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
 import { CostTooltip } from "../tool-tip/costToolTip"
 import { CallLog } from "../../types/logs"
-// Removed Supabase import - using mock data now
 import Papa from 'papaparse'
 import { useUser } from "@clerk/nextjs"
 import { getUserProjectRole } from "@/services/getUserRole"
 
-
+// Dummy data for 20 call logs for Sales Caller Pro
+const DUMMY_CALLS: Omit<CallLog, 'agent_id'>[] = [
+  {
+    id: "1",
+    call_id: "call_001_abc123def456",
+    customer_number: "+91-9876543210",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-26T09:15:30Z",
+    call_ended_at: "2025-08-26T09:18:45Z",
+    duration_seconds: 195,
+    recording_url: "https://example.com/recordings/call_001.mp3",
+    total_llm_cost: 12.45,
+    total_tts_cost: 8.32,
+    total_stt_cost: 4.18,
+    avg_latency: 1.2,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T09:15:30Z",
+    metadata: {
+      prospect_name: "Rajesh Kumar",
+      lead_source: "facebook_ads",
+      property_type: "3bhk_apartment",
+      budget_range: "50-75L",
+      location_preference: "Whitefield",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 85
+    },
+    transcription_metrics: {
+      total_words: 312,
+      agent_words: 187,
+      prospect_words: 125,
+      avg_confidence: 0.94,
+      silence_percentage: 6.4,
+      agent_talk_ratio: 0.6,
+      interruptions_count: 3,
+      questions_asked_agent: 12,
+      questions_asked_prospect: 5,
+      positive_sentiment_words: 18,
+      negative_sentiment_words: 2,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 1,
+      interest_level_score: 0.78,
+      engagement_score: 0.82
+    }
+  },
+  {
+    id: "2",
+    call_id: "call_002_xyz789ghi012",
+    customer_number: "+91-8765432109",
+    call_ended_reason: "dropped",
+    call_started_at: "2025-08-26T08:45:15Z",
+    call_ended_at: "2025-08-26T08:46:23Z",
+    duration_seconds: 68,
+    recording_url: "https://example.com/recordings/call_002.mp3",
+    total_llm_cost: 3.15,
+    total_tts_cost: 1.98,
+    total_stt_cost: 1.05,
+    avg_latency: 2.1,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T08:45:15Z",
+    metadata: {
+      prospect_name: "Priya Sharma",
+      lead_source: "google_ads",
+      property_type: "2bhk_apartment",
+      budget_range: "30-40L",
+      location_preference: "Electronic City",
+      follow_up_required: true,
+      qualified_lead: false,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 25
+    },
+    transcription_metrics: {
+      total_words: 89,
+      agent_words: 65,
+      prospect_words: 24,
+      avg_confidence: 0.78,
+      silence_percentage: 12.1,
+      agent_talk_ratio: 0.73,
+      interruptions_count: 2,
+      questions_asked_agent: 5,
+      questions_asked_prospect: 1,
+      positive_sentiment_words: 2,
+      negative_sentiment_words: 6,
+      budget_mentioned: false,
+      location_mentioned: true,
+      timeline_mentioned: false,
+      objections_raised: 3,
+      interest_level_score: 0.15,
+      engagement_score: 0.28
+    }
+  },
+  {
+    id: "3",
+    call_id: "call_003_mno345pqr678",
+    customer_number: "+91-7654321098",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-26T10:30:00Z",
+    call_ended_at: "2025-08-26T10:35:42Z",
+    duration_seconds: 342,
+    recording_url: "https://example.com/recordings/call_003.mp3",
+    total_llm_cost: 18.78,
+    total_tts_cost: 12.56,
+    total_stt_cost: 6.34,
+    avg_latency: 0.9,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T10:30:00Z",
+    metadata: {
+      prospect_name: "Amit Patel",
+      lead_source: "referral",
+      property_type: "4bhk_villa",
+      budget_range: "1-1.5Cr",
+      location_preference: "Sarjapur Road",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: true,
+      deal_progressed: true,
+      lead_score: 92
+    },
+    transcription_metrics: {
+      total_words: 456,
+      agent_words: 298,
+      prospect_words: 158,
+      avg_confidence: 0.96,
+      silence_percentage: 4.2,
+      agent_talk_ratio: 0.65,
+      interruptions_count: 1,
+      questions_asked_agent: 15,
+      questions_asked_prospect: 8,
+      positive_sentiment_words: 28,
+      negative_sentiment_words: 1,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 0,
+      interest_level_score: 0.91,
+      engagement_score: 0.89
+    }
+  },
+  {
+    id: "4",
+    call_id: "call_004_def456ghi789",
+    customer_number: "+91-9123456780",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-26T11:15:20Z",
+    call_ended_at: "2025-08-26T11:18:35Z",
+    duration_seconds: 195,
+    recording_url: "https://example.com/recordings/call_004.mp3",
+    total_llm_cost: 11.25,
+    total_tts_cost: 7.89,
+    total_stt_cost: 3.92,
+    avg_latency: 1.4,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T11:15:20Z",
+    metadata: {
+      prospect_name: "Sneha Reddy",
+      lead_source: "website_form",
+      property_type: "2bhk_apartment",
+      budget_range: "40-50L",
+      location_preference: "Koramangala",
+      follow_up_required: true,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 68
+    },
+    transcription_metrics: {
+      total_words: 278,
+      agent_words: 165,
+      prospect_words: 113,
+      avg_confidence: 0.91,
+      silence_percentage: 7.8,
+      agent_talk_ratio: 0.59,
+      interruptions_count: 4,
+      questions_asked_agent: 10,
+      questions_asked_prospect: 6,
+      positive_sentiment_words: 14,
+      negative_sentiment_words: 3,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: false,
+      objections_raised: 2,
+      interest_level_score: 0.72,
+      engagement_score: 0.75
+    }
+  },
+  {
+    id: "5",
+    call_id: "call_005_jkl012mno345",
+    customer_number: "+91-8234567891",
+    call_ended_reason: "failed",
+    call_started_at: "2025-08-26T12:05:10Z",
+    call_ended_at: "2025-08-26T12:05:45Z",
+    duration_seconds: 35,
+    recording_url: "https://example.com/recordings/call_005.mp3",
+    total_llm_cost: 1.85,
+    total_tts_cost: 1.12,
+    total_stt_cost: 0.58,
+    avg_latency: 3.2,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T12:05:10Z",
+    metadata: {
+      prospect_name: "Unknown",
+      lead_source: "cold_calling",
+      property_type: "unknown",
+      budget_range: "unknown",
+      location_preference: "unknown",
+      follow_up_required: false,
+      qualified_lead: false,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 5
+    },
+    transcription_metrics: {
+      total_words: 42,
+      agent_words: 38,
+      prospect_words: 4,
+      avg_confidence: 0.65,
+      silence_percentage: 18.5,
+      agent_talk_ratio: 0.90,
+      interruptions_count: 1,
+      questions_asked_agent: 2,
+      questions_asked_prospect: 0,
+      positive_sentiment_words: 1,
+      negative_sentiment_words: 2,
+      budget_mentioned: false,
+      location_mentioned: false,
+      timeline_mentioned: false,
+      objections_raised: 1,
+      interest_level_score: 0.05,
+      engagement_score: 0.12
+    }
+  },
+  {
+    id: "6",
+    call_id: "call_006_pqr678stu901",
+    customer_number: "+91-7345678902",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-26T13:20:15Z",
+    call_ended_at: "2025-08-26T13:26:30Z",
+    duration_seconds: 375,
+    recording_url: "https://example.com/recordings/call_006.mp3",
+    total_llm_cost: 21.45,
+    total_tts_cost: 14.78,
+    total_stt_cost: 7.89,
+    avg_latency: 1.1,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T13:20:15Z",
+    metadata: {
+      prospect_name: "Vikram Singh",
+      lead_source: "linkedin",
+      property_type: "3bhk_apartment",
+      budget_range: "60-80L",
+      location_preference: "HSR Layout",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: true,
+      deal_progressed: false,
+      lead_score: 78
+    },
+    transcription_metrics: {
+      total_words: 523,
+      agent_words: 312,
+      prospect_words: 211,
+      avg_confidence: 0.93,
+      silence_percentage: 5.1,
+      agent_talk_ratio: 0.60,
+      interruptions_count: 2,
+      questions_asked_agent: 18,
+      questions_asked_prospect: 9,
+      positive_sentiment_words: 22,
+      negative_sentiment_words: 2,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 1,
+      interest_level_score: 0.84,
+      engagement_score: 0.87
+    }
+  },
+  {
+    id: "7",
+    call_id: "call_007_vwx234yza567",
+    customer_number: "+91-6456789013",
+    call_ended_reason: "dropped",
+    call_started_at: "2025-08-26T14:10:25Z",
+    call_ended_at: "2025-08-26T14:12:18Z",
+    duration_seconds: 113,
+    recording_url: "https://example.com/recordings/call_007.mp3",
+    total_llm_cost: 6.78,
+    total_tts_cost: 4.23,
+    total_stt_cost: 2.15,
+    avg_latency: 1.8,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T14:10:25Z",
+    metadata: {
+      prospect_name: "Anitha Krishnan",
+      lead_source: "facebook_ads",
+      property_type: "1bhk_apartment",
+      budget_range: "25-35L",
+      location_preference: "Marathahalli",
+      follow_up_required: true,
+      qualified_lead: false,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 35
+    },
+    transcription_metrics: {
+      total_words: 134,
+      agent_words: 89,
+      prospect_words: 45,
+      avg_confidence: 0.82,
+      silence_percentage: 9.7,
+      agent_talk_ratio: 0.66,
+      interruptions_count: 3,
+      questions_asked_agent: 6,
+      questions_asked_prospect: 2,
+      positive_sentiment_words: 5,
+      negative_sentiment_words: 4,
+      budget_mentioned: true,
+      location_mentioned: false,
+      timeline_mentioned: false,
+      objections_raised: 2,
+      interest_level_score: 0.42,
+      engagement_score: 0.38
+    }
+  },
+  {
+    id: "8",
+    call_id: "call_008_bcd890efg123",
+    customer_number: "+91-5567890124",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-26T15:30:40Z",
+    call_ended_at: "2025-08-26T15:34:25Z",
+    duration_seconds: 225,
+    recording_url: "https://example.com/recordings/call_008.mp3",
+    total_llm_cost: 13.67,
+    total_tts_cost: 9.34,
+    total_stt_cost: 4.78,
+    avg_latency: 1.3,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T15:30:40Z",
+    metadata: {
+      prospect_name: "Karthik Rao",
+      lead_source: "referral",
+      property_type: "2bhk_apartment",
+      budget_range: "45-55L",
+      location_preference: "Indiranagar",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 72
+    },
+    transcription_metrics: {
+      total_words: 345,
+      agent_words: 198,
+      prospect_words: 147,
+      avg_confidence: 0.89,
+      silence_percentage: 6.8,
+      agent_talk_ratio: 0.57,
+      interruptions_count: 2,
+      questions_asked_agent: 13,
+      questions_asked_prospect: 7,
+      positive_sentiment_words: 16,
+      negative_sentiment_words: 2,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 1,
+      interest_level_score: 0.76,
+      engagement_score: 0.79
+    }
+  },
+  {
+    id: "9",
+    call_id: "call_009_hij456klm789",
+    customer_number: "+91-4678901235",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-26T16:45:50Z",
+    call_ended_at: "2025-08-26T16:51:15Z",
+    duration_seconds: 325,
+    recording_url: "https://example.com/recordings/call_009.mp3",
+    total_llm_cost: 19.23,
+    total_tts_cost: 13.12,
+    total_stt_cost: 6.87,
+    avg_latency: 0.8,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T16:45:50Z",
+    metadata: {
+      prospect_name: "Deepika Menon",
+      lead_source: "google_ads",
+      property_type: "3bhk_villa",
+      budget_range: "80L-1Cr",
+      location_preference: "Bannerghatta Road",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: true,
+      deal_progressed: true,
+      lead_score: 88
+    },
+    transcription_metrics: {
+      total_words: 487,
+      agent_words: 289,
+      prospect_words: 198,
+      avg_confidence: 0.95,
+      silence_percentage: 4.5,
+      agent_talk_ratio: 0.59,
+      interruptions_count: 1,
+      questions_asked_agent: 16,
+      questions_asked_prospect: 11,
+      positive_sentiment_words: 25,
+      negative_sentiment_words: 1,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 0,
+      interest_level_score: 0.89,
+      engagement_score: 0.92
+    }
+  },
+  {
+    id: "10",
+    call_id: "call_010_nop012qrs345",
+    customer_number: "+91-3789012346",
+    call_ended_reason: "failed",
+    call_started_at: "2025-08-26T17:20:05Z",
+    call_ended_at: "2025-08-26T17:20:28Z",
+    duration_seconds: 23,
+    recording_url: "https://example.com/recordings/call_010.mp3",
+    total_llm_cost: 1.23,
+    total_tts_cost: 0.78,
+    total_stt_cost: 0.45,
+    avg_latency: 4.1,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-26T17:20:05Z",
+    metadata: {
+      prospect_name: "Unknown",
+      lead_source: "cold_calling",
+      property_type: "unknown",
+      budget_range: "unknown",
+      location_preference: "unknown",
+      follow_up_required: false,
+      qualified_lead: false,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 2
+    },
+    transcription_metrics: {
+      total_words: 18,
+      agent_words: 16,
+      prospect_words: 2,
+      avg_confidence: 0.55,
+      silence_percentage: 25.2,
+      agent_talk_ratio: 0.89,
+      interruptions_count: 1,
+      questions_asked_agent: 1,
+      questions_asked_prospect: 0,
+      positive_sentiment_words: 0,
+      negative_sentiment_words: 1,
+      budget_mentioned: false,
+      location_mentioned: false,
+      timeline_mentioned: false,
+      objections_raised: 1,
+      interest_level_score: 0.02,
+      engagement_score: 0.08
+    }
+  },
+  {
+    id: "11",
+    call_id: "call_011_tuv678wxy901",
+    customer_number: "+91-2890123457",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-25T09:30:15Z",
+    call_ended_at: "2025-08-25T09:35:42Z",
+    duration_seconds: 327,
+    recording_url: "https://example.com/recordings/call_011.mp3",
+    total_llm_cost: 18.92,
+    total_tts_cost: 12.87,
+    total_stt_cost: 6.73,
+    avg_latency: 1.0,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T09:30:15Z",
+    metadata: {
+      prospect_name: "Ravi Gupta",
+      lead_source: "website_form",
+      property_type: "4bhk_apartment",
+      budget_range: "70-90L",
+      location_preference: "JP Nagar",
+      follow_up_required: true,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 74
+    },
+    transcription_metrics: {
+      total_words: 428,
+      agent_words: 256,
+      prospect_words: 172,
+      avg_confidence: 0.92,
+      silence_percentage: 5.8,
+      agent_talk_ratio: 0.60,
+      interruptions_count: 3,
+      questions_asked_agent: 14,
+      questions_asked_prospect: 8,
+      positive_sentiment_words: 19,
+      negative_sentiment_words: 3,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: false,
+      objections_raised: 2,
+      interest_level_score: 0.73,
+      engagement_score: 0.78
+    }
+  },
+  {
+    id: "12",
+    call_id: "call_012_zab234cde567",
+    customer_number: "+91-1901234568",
+    call_ended_reason: "dropped",
+    call_started_at: "2025-08-25T10:15:20Z",
+    call_ended_at: "2025-08-25T10:16:45Z",
+    duration_seconds: 85,
+    recording_url: "https://example.com/recordings/call_012.mp3",
+    total_llm_cost: 4.67,
+    total_tts_cost: 2.98,
+    total_stt_cost: 1.54,
+    avg_latency: 2.3,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T10:15:20Z",
+    metadata: {
+      prospect_name: "Meera Joshi",
+      lead_source: "facebook_ads",
+      property_type: "2bhk_apartment",
+      budget_range: "35-45L",
+      location_preference: "Bellandur",
+      follow_up_required: true,
+      qualified_lead: false,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 28
+    },
+    transcription_metrics: {
+      total_words: 98,
+      agent_words: 72,
+      prospect_words: 26,
+      avg_confidence: 0.79,
+      silence_percentage: 11.3,
+      agent_talk_ratio: 0.73,
+      interruptions_count: 2,
+      questions_asked_agent: 4,
+      questions_asked_prospect: 1,
+      positive_sentiment_words: 3,
+      negative_sentiment_words: 5,
+      budget_mentioned: false,
+      location_mentioned: true,
+      timeline_mentioned: false,
+      objections_raised: 3,
+      interest_level_score: 0.32,
+      engagement_score: 0.29
+    }
+  },
+  {
+    id: "13",
+    call_id: "call_013_fgh890ijk123",
+    customer_number: "+91-9012345679",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-25T11:45:30Z",
+    call_ended_at: "2025-08-25T11:49:15Z",
+    duration_seconds: 225,
+    recording_url: "https://example.com/recordings/call_013.mp3",
+    total_llm_cost: 12.78,
+    total_tts_cost: 8.92,
+    total_stt_cost: 4.67,
+    avg_latency: 1.2,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T11:45:30Z",
+    metadata: {
+      prospect_name: "Suresh Nair",
+      lead_source: "linkedin",
+      property_type: "3bhk_apartment",
+      budget_range: "55-70L",
+      location_preference: "Hebbal",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 69
+    },
+    transcription_metrics: {
+      total_words: 298,
+      agent_words: 182,
+      prospect_words: 116,
+      avg_confidence: 0.88,
+      silence_percentage: 7.2,
+      agent_talk_ratio: 0.61,
+      interruptions_count: 2,
+      questions_asked_agent: 11,
+      questions_asked_prospect: 5,
+      positive_sentiment_words: 13,
+      negative_sentiment_words: 2,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 1,
+      interest_level_score: 0.71,
+      engagement_score: 0.74
+    }
+  },
+  {
+    id: "14",
+    call_id: "call_014_lmn456opq789",
+    customer_number: "+91-8123456780",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-25T13:10:45Z",
+    call_ended_at: "2025-08-25T13:17:20Z",
+    duration_seconds: 395,
+    recording_url: "https://example.com/recordings/call_014.mp3",
+    total_llm_cost: 23.45,
+    total_tts_cost: 15.89,
+    total_stt_cost: 8.23,
+    avg_latency: 0.7,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T13:10:45Z",
+    metadata: {
+      prospect_name: "Lakshmi Iyer",
+      lead_source: "referral",
+      property_type: "2bhk_villa",
+      budget_range: "65-85L",
+      location_preference: "Jayanagar",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: true,
+      deal_progressed: true,
+      lead_score: 89
+    },
+    transcription_metrics: {
+      total_words: 567,
+      agent_words: 342,
+      prospect_words: 225,
+      avg_confidence: 0.97,
+      silence_percentage: 3.8,
+      agent_talk_ratio: 0.60,
+      interruptions_count: 1,
+      questions_asked_agent: 19,
+      questions_asked_prospect: 12,
+      positive_sentiment_words: 31,
+      negative_sentiment_words: 0,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 0,
+      interest_level_score: 0.93,
+      engagement_score: 0.95
+    }
+  },
+  {
+    id: "15",
+    call_id: "call_015_rst012uvw345",
+    customer_number: "+91-7234567891",
+    call_ended_reason: "failed",
+    call_started_at: "2025-08-25T14:25:10Z",
+    call_ended_at: "2025-08-25T14:25:42Z",
+    duration_seconds: 32,
+    recording_url: "https://example.com/recordings/call_015.mp3",
+    total_llm_cost: 1.67,
+    total_tts_cost: 1.02,
+    total_stt_cost: 0.54,
+    avg_latency: 3.8,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T14:25:10Z",
+    metadata: {
+      prospect_name: "Unknown",
+      lead_source: "cold_calling",
+      property_type: "unknown",
+      budget_range: "unknown",
+      location_preference: "unknown",
+      follow_up_required: false,
+      qualified_lead: false,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 3
+    },
+    transcription_metrics: {
+      total_words: 25,
+      agent_words: 22,
+      prospect_words: 3,
+      avg_confidence: 0.48,
+      silence_percentage: 22.1,
+      agent_talk_ratio: 0.88,
+      interruptions_count: 1,
+      questions_asked_agent: 1,
+      questions_asked_prospect: 0,
+      positive_sentiment_words: 0,
+      negative_sentiment_words: 2,
+      budget_mentioned: false,
+      location_mentioned: false,
+      timeline_mentioned: false,
+      objections_raised: 1,
+      interest_level_score: 0.03,
+      engagement_score: 0.09
+    }
+  },
+  {
+    id: "16",
+    call_id: "call_016_xyz678abc901",
+    customer_number: "+91-6345678902",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-25T15:40:25Z",
+    call_ended_at: "2025-08-25T15:44:18Z",
+    duration_seconds: 233,
+    recording_url: "https://example.com/recordings/call_016.mp3",
+    total_llm_cost: 14.23,
+    total_tts_cost: 9.78,
+    total_stt_cost: 5.12,
+    avg_latency: 1.1,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T15:40:25Z",
+    metadata: {
+      prospect_name: "Arjun Malhotra",
+      lead_source: "google_ads",
+      property_type: "1bhk_apartment",
+      budget_range: "28-38L",
+      location_preference: "Bommanahalli",
+      follow_up_required: true,
+      qualified_lead: true,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 58
+    },
+    transcription_metrics: {
+      total_words: 276,
+      agent_words: 168,
+      prospect_words: 108,
+      avg_confidence: 0.86,
+      silence_percentage: 8.4,
+      agent_talk_ratio: 0.61,
+      interruptions_count: 3,
+      questions_asked_agent: 9,
+      questions_asked_prospect: 4,
+      positive_sentiment_words: 11,
+      negative_sentiment_words: 4,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: false,
+      objections_raised: 2,
+      interest_level_score: 0.62,
+      engagement_score: 0.65
+    }
+  },
+  {
+    id: "17",
+    call_id: "call_017_def234ghi567",
+    customer_number: "+91-5456789013",
+    call_ended_reason: "dropped",
+    call_started_at: "2025-08-25T16:55:35Z",
+    call_ended_at: "2025-08-25T16:57:12Z",
+    duration_seconds: 97,
+    recording_url: "https://example.com/recordings/call_017.mp3",
+    total_llm_cost: 5.43,
+    total_tts_cost: 3.67,
+    total_stt_cost: 1.89,
+    avg_latency: 1.9,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T16:55:35Z",
+    metadata: {
+      prospect_name: "Kavya Shetty",
+      lead_source: "website_form",
+      property_type: "3bhk_apartment",
+      budget_range: "52-68L",
+      location_preference: "Yeshwantpur",
+      follow_up_required: true,
+      qualified_lead: false,
+      interested_in_visit: false,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 31
+    },
+    transcription_metrics: {
+      total_words: 112,
+      agent_words: 78,
+      prospect_words: 34,
+      avg_confidence: 0.81,
+      silence_percentage: 10.5,
+      agent_talk_ratio: 0.70,
+      interruptions_count: 2,
+      questions_asked_agent: 5,
+      questions_asked_prospect: 2,
+      positive_sentiment_words: 4,
+      negative_sentiment_words: 6,
+      budget_mentioned: false,
+      location_mentioned: true,
+      timeline_mentioned: false,
+      objections_raised: 3,
+      interest_level_score: 0.35,
+      engagement_score: 0.33
+    }
+  },
+  {
+    id: "18",
+    call_id: "call_018_jkl890mno123",
+    customer_number: "+91-4567890124",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-25T17:30:50Z",
+    call_ended_at: "2025-08-25T17:35:28Z",
+    duration_seconds: 278,
+    recording_url: "https://example.com/recordings/call_018.mp3",
+    total_llm_cost: 16.34,
+    total_tts_cost: 11.23,
+    total_stt_cost: 5.89,
+    avg_latency: 1.0,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-25T17:30:50Z",
+    metadata: {
+      prospect_name: "Manoj Kumar",
+      lead_source: "referral",
+      property_type: "2bhk_apartment",
+      budget_range: "42-52L",
+      location_preference: "BTM Layout",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 71
+    },
+    transcription_metrics: {
+      total_words: 367,
+      agent_words: 223,
+      prospect_words: 144,
+      avg_confidence: 0.90,
+      silence_percentage: 6.1,
+      agent_talk_ratio: 0.61,
+      interruptions_count: 2,
+      questions_asked_agent: 12,
+      questions_asked_prospect: 6,
+      positive_sentiment_words: 17,
+      negative_sentiment_words: 2,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 1,
+      interest_level_score: 0.75,
+      engagement_score: 0.78
+    }
+  },
+  {
+    id: "19",
+    call_id: "call_019_pqr456stu789",
+    customer_number: "+91-3678901235",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-24T09:20:15Z",
+    call_ended_at: "2025-08-24T09:27:42Z",
+    duration_seconds: 447,
+    recording_url: "https://example.com/recordings/call_019.mp3",
+    total_llm_cost: 26.78,
+    total_tts_cost: 18.34,
+    total_stt_cost: 9.67,
+    avg_latency: 0.6,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-24T09:20:15Z",
+    metadata: {
+      prospect_name: "Shreya Rao",
+      lead_source: "linkedin",
+      property_type: "4bhk_villa",
+      budget_range: "1.2-1.8Cr",
+      location_preference: "Whitefield",
+      follow_up_required: false,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: true,
+      visit_booked_human: true,
+      deal_progressed: true,
+      lead_score: 94
+    },
+    transcription_metrics: {
+      total_words: 634,
+      agent_words: 378,
+      prospect_words: 256,
+      avg_confidence: 0.98,
+      silence_percentage: 2.9,
+      agent_talk_ratio: 0.60,
+      interruptions_count: 0,
+      questions_asked_agent: 21,
+      questions_asked_prospect: 14,
+      positive_sentiment_words: 38,
+      negative_sentiment_words: 0,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: true,
+      objections_raised: 0,
+      interest_level_score: 0.96,
+      engagement_score: 0.98
+    }
+  },
+  {
+    id: "20",
+    call_id: "call_020_vwx012yza345",
+    customer_number: "+91-2789012346",
+    call_ended_reason: "completed",
+    call_started_at: "2025-08-24T10:45:30Z",
+    call_ended_at: "2025-08-24T10:49:15Z",
+    duration_seconds: 225,
+    recording_url: "https://example.com/recordings/call_020.mp3",
+    total_llm_cost: 13.21,
+    total_tts_cost: 9.12,
+    total_stt_cost: 4.76,
+    avg_latency: 1.2,
+    environment: "production",
+    transcript_type: "automated",
+    transcript_json: {},
+    created_at: "2025-08-24T10:45:30Z",
+    metadata: {
+      prospect_name: "Naveen Reddy",
+      lead_source: "facebook_ads",
+      property_type: "3bhk_apartment",
+      budget_range: "58-75L",
+      location_preference: "Electronic City",
+      follow_up_required: true,
+      qualified_lead: true,
+      interested_in_visit: true,
+      visit_booked_ai: false,
+      visit_booked_human: false,
+      deal_progressed: false,
+      lead_score: 66
+    },
+    transcription_metrics: {
+      total_words: 289,
+      agent_words: 174,
+      prospect_words: 115,
+      avg_confidence: 0.87,
+      silence_percentage: 7.5,
+      agent_talk_ratio: 0.60,
+      interruptions_count: 3,
+      questions_asked_agent: 10,
+      questions_asked_prospect: 5,
+      positive_sentiment_words: 12,
+      negative_sentiment_words: 3,
+      budget_mentioned: true,
+      location_mentioned: true,
+      timeline_mentioned: false,
+      objections_raised: 2,
+      interest_level_score: 0.68,
+      engagement_score: 0.72
+    }
+  }
+]
 
 interface CallLogsProps {
   project: any
@@ -53,8 +1073,6 @@ function flattenAndPickColumns(
 
   return flat;
 }
-
-
 
 const TruncatedText: React.FC<{ 
   text: string; 
@@ -142,10 +1160,6 @@ const DynamicJsonCell: React.FC<{
   )
 }
 
-
-
-
-
 const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
 
   const basicColumns = useMemo(
@@ -190,8 +1204,6 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     return !restrictedColumns.includes(columnKey)
   }
 
-
-
   const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null)
   const [activeFilters, setActiveFilters] = useState<FilterRule[]>([])
@@ -205,8 +1217,6 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     metadata: [],
     transcription_metrics: []
   })
-
-
 
   const getFilteredBasicColumns = useMemo(() => {
     return basicColumns.filter(col => 
@@ -378,9 +1388,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
       }))
     }
 
-
-
-const { user } = useUser()
+  const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
   // Load user role first
@@ -415,8 +1423,6 @@ const { user } = useUser()
       }))
     }
   }, [role, getFilteredBasicColumns])
-
-
 
   const queryOptions = useMemo(() => {
     // Build select clause based on role permissions
@@ -458,9 +1464,53 @@ const { user } = useUser()
     }
   }, [agent.id, activeFilters, role])
 
-  
+  // Mock implementation to replace useInfiniteScroll with dummy data
+  const [calls, setCalls] = useState<CallLog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const { data: calls, loading, hasMore, error, loadMore, refresh } = useInfiniteScroll("pype_voice_call_logs", queryOptions)
+  // Simulate loading and filtering dummy data
+  useEffect(() => {
+    setLoading(true)
+    setTimeout(() => {
+      let filteredCalls = DUMMY_CALLS
+      
+      // Apply basic filtering (simplified)
+      if (activeFilters.length > 0) {
+        filteredCalls = DUMMY_CALLS.filter(call => {
+          return activeFilters.every(filter => {
+            if (filter.column === 'call_ended_reason') {
+              return call.call_ended_reason === filter.value
+            }
+            if (filter.column === 'customer_number') {
+              return call.customer_number.includes(filter.value)
+            }
+            // Add more filter logic as needed
+            return true
+          })
+        })
+      }
+      
+      const withAgent = filteredCalls.map((call) => ({ ...call, agent_id: agent.id }))
+      setCalls(withAgent as CallLog[])
+      setHasMore(false)
+      setLoading(false)
+    }, 500) // Simulate network delay
+  }, [activeFilters])
+
+  const loadMore = () => {
+    // Mock implementation - no more data to load
+  }
+
+  const refresh = () => {
+    setLoading(true)
+    setTimeout(() => {
+      const withAgent = DUMMY_CALLS.map((call) => ({ ...call, agent_id: agent.id }))
+      setCalls(withAgent as CallLog[])
+      setLoading(false)
+    }, 300)
+  }
 
   console.log(calls)
   // Extract all unique keys from metadata and transcription_metrics across all calls
@@ -506,7 +1556,6 @@ const { user } = useUser()
     }))
   }, [dynamicColumns, basicColumns])
   
-
   // Fixed handleDownloadCSV function (no supabase dependency)
   const handleDownloadCSV = async () => {
     try {
@@ -657,7 +1706,6 @@ const { user } = useUser()
   const handleRefresh = () => {
     refresh()
   }
-
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
