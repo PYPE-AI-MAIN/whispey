@@ -11,6 +11,7 @@ import { useSupabaseQuery } from "../../hooks/useSupabase"
 import AudioPlayer from "../AudioPlayer"
 import { extractS3Key } from "../../utils/s3"
 import { cn } from "@/lib/utils"
+import ObservabilityButton from "../observabilty/ObservabilityButton"
 
 interface TranscriptLog {
   id: string
@@ -22,6 +23,13 @@ interface TranscriptLog {
   llm_metrics: any
   tts_metrics: any
   eou_metrics: any
+  // ADD these new trace fields
+  trace_id?: string
+  otel_spans?: any[]
+  tool_calls?: any[]
+  trace_duration_ms?: number
+  trace_cost_usd?: number
+  // existing fields
   lesson_day: number
   created_at: string
   unix_timestamp: number
@@ -52,6 +60,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
     filters: [{ column: "session_id", operator: "eq", value: sessionId }],
     orderBy: { column: "unix_timestamp", ascending: true },
   })
+
 
   // Parse bug report data from metadata
   const bugReportData = useMemo(() => {
@@ -655,6 +664,10 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                 <Download className="w-4 h-4 mr-2" />
                 Export
               </Button>
+              <ObservabilityButton 
+                sessionId={sessionId || callData?.id} 
+                agentId={callData?.agent_id} 
+              />
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
               </Button>
