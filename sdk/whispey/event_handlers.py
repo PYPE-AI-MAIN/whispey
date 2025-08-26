@@ -7,6 +7,7 @@ from livekit.agents import metrics, MetricsCollectedEvent
 from livekit.agents.metrics import STTMetrics, LLMMetrics, TTSMetrics, EOUMetrics
 import re
 import uuid
+import json
 
 logger = logging.getLogger("whispey-sdk")
 
@@ -24,6 +25,7 @@ class ConversationTurn:
     user_turn_complete: bool = False
     bug_report: bool = False
     agent_turn_complete: bool = False
+    turn_configuration: Optional[Dict[str, Any]] = None
     
     # Trace fields
     trace_id: Optional[str] = None
@@ -54,7 +56,8 @@ class ConversationTurn:
             'otel_spans': self.otel_spans,
             'tool_calls': self.tool_calls,
             'trace_duration_ms': self.trace_duration_ms,
-            'trace_cost_usd': self.trace_cost_usd
+            'trace_cost_usd': self.trace_cost_usd,
+            'turn_configuration': self.turn_configuration
         }
         
         # Add enhanced fields only if they have data
@@ -142,19 +145,40 @@ class CorrectedTranscriptCollector:
         if self.bug_detector:
             return self.bug_detector._is_bug_report(text)
         return False
-            
+
+
     def on_conversation_item_added(self, event):
         """Called when conversation item is added - enhanced data extraction from conversation"""
-        logger.info(f"🔍 CONVERSATION: {event.item.role} - {event.item.text_content[:50]}...")
+        logger.info(f"CONVERSATION: {event.item.role} - {event.item.text_content[:50]}...")
         
+        if not self.current_turn:
+            self.turn_counter += 1
+            self.current_turn = ConversationTurn(
+                turn_id=f"turn_{self.turn_counter}",
+                timestamp=time.time()
+            )
+            self._ensure_trace_id(self.current_turn)
+            
+            # FIXED: Inject complete configuration into the turn
+            if hasattr(self, '_session_data') and self._session_data:
+                config = self._session_data.get('complete_configuration')
+                if config:
+                    self.current_turn.turn_configuration = config
+                    logger.info(f"SUCCESS: Injected configuration into turn {self.current_turn.turn_id}")
+                else:
+                    logger.warning(f"FAIL: No complete_configuration found for turn {self.current_turn.turn_id}")
+            else:
+                logger.warning(f"FAIL: No _session_data attribute for turn {self.current_turn.turn_id}")
+
         if event.item.role == "user":
             if self._is_bug_report(event.item.text_content):
-                logger.info(f"🐛 Bug report detected: {event.item.text_content}")
+                logger.info(f"Bug report detected: {event.item.text_content}")
                 if self.turns:
                     self.turns[-1].bug_report = True
-                    logger.info(f"🐛 Flagged turn {self.turns[-1].turn_id} as bug report")
+                    logger.info(f"Flagged turn {self.turns[-1].turn_id} as bug report")
                 return
             
+            # Ensure we have a current turn (shouldn't be needed but safety check)
             if not self.current_turn:
                 self.turn_counter += 1
                 self.current_turn = ConversationTurn(
@@ -162,6 +186,12 @@ class CorrectedTranscriptCollector:
                     timestamp=time.time()
                 )
                 self._ensure_trace_id(self.current_turn)
+                
+                # Re-inject configuration if needed
+                if hasattr(self, '_session_data') and self._session_data:
+                    config = self._session_data.get('complete_configuration')
+                    if config:
+                        self.current_turn.turn_configuration = config
 
             self.current_turn.user_transcript = event.item.text_content
             self.current_turn.user_turn_complete = True
@@ -170,19 +200,19 @@ class CorrectedTranscriptCollector:
             if self.pending_metrics['stt']:
                 self.current_turn.stt_metrics = self.pending_metrics['stt']
                 self.pending_metrics['stt'] = None
-                logger.info(f"📊 Applied pending STT metrics to turn {self.current_turn.turn_id}")
+                logger.info(f"Applied pending STT metrics to turn {self.current_turn.turn_id}")
             
             if self.pending_metrics['eou']:
                 self.current_turn.eou_metrics = self.pending_metrics['eou']
                 self.pending_metrics['eou'] = None
-                logger.info(f"⏱️ Applied pending EOU metrics to turn {self.current_turn.turn_id}")
+                logger.info(f"Applied pending EOU metrics to turn {self.current_turn.turn_id}")
             
             # Extract enhanced STT data from what we can infer
             self._extract_enhanced_stt_from_conversation(event)
-                
-            logger.info(f"👤 User input for turn {self.current_turn.turn_id}: {event.item.text_content[:50]}...")
+            logger.info(f"User input for turn {self.current_turn.turn_id}: {event.item.text_content[:50]}...")
             
         elif event.item.role == "assistant":
+            # Ensure we have a current turn
             if not self.current_turn:
                 self.turn_counter += 1
                 self.current_turn = ConversationTurn(
@@ -190,6 +220,12 @@ class CorrectedTranscriptCollector:
                     timestamp=time.time()
                 )
                 self._ensure_trace_id(self.current_turn)
+                
+                # Inject configuration
+                if hasattr(self, '_session_data') and self._session_data:
+                    config = self._session_data.get('complete_configuration')
+                    if config:
+                        self.current_turn.turn_configuration = config
             
             self.current_turn.agent_response = event.item.text_content
             self.current_turn.agent_turn_complete = True
@@ -198,24 +234,28 @@ class CorrectedTranscriptCollector:
             if self.pending_metrics['llm']:
                 self.current_turn.llm_metrics = self.pending_metrics['llm']
                 self.pending_metrics['llm'] = None
-                logger.info(f"🧠 Applied pending LLM metrics to turn {self.current_turn.turn_id}")
+                logger.info(f"Applied pending LLM metrics to turn {self.current_turn.turn_id}")
             
             if self.pending_metrics['tts']:
                 self.current_turn.tts_metrics = self.pending_metrics['tts']
                 self.pending_metrics['tts'] = None
-                logger.info(f"🗣️ Applied pending TTS metrics to turn {self.current_turn.turn_id}")
+                logger.info(f"Applied pending TTS metrics to turn {self.current_turn.turn_id}")
             
             # Extract enhanced data from conversation and session context
             self._extract_enhanced_llm_from_conversation(event)
             self._extract_enhanced_tts_from_conversation(event)
             
-            logger.info(f"🤖 Agent response for turn {self.current_turn.turn_id}: {event.item.text_content[:50]}...")
+            logger.info(f"Agent response for turn {self.current_turn.turn_id}: {event.item.text_content[:50]}...")
             
             # Turn is complete
             self.turns.append(self.current_turn)
-            logger.info(f"✅ Completed turn {self.current_turn.turn_id}")
+            logger.info(f"Completed turn {self.current_turn.turn_id}")
             self.current_turn = None
-    
+
+
+
+
+
     def on_metrics_collected(self, metrics_event):
         """Called when metrics are collected - extract enhanced data from metrics"""
         metrics_obj = metrics_event.metrics
@@ -345,16 +385,23 @@ class CorrectedTranscriptCollector:
         except Exception as e:
             logger.error(f"❌ Error extracting enhanced STT data: {e}")
 
+    
     def _extract_enhanced_stt_from_metrics(self, metrics_obj):
-        """Extract enhanced STT data from metrics object"""
+        """Extract enhanced STT data from metrics object with complete configuration"""
         try:
-            # Get model info from session data
+            # Get from complete configuration instead of simple session data
             model_name = 'unknown'
             provider = 'unknown'
+            full_stt_config = {}
             
             if hasattr(self, '_session_data') and self._session_data:
-                model_name = self._session_data.get('detected_stt_model', 'unknown')
-                provider = self._session_data.get('detected_stt_provider', 'unknown')
+                complete_config = self._session_data.get('complete_configuration', {})
+                stt_config = complete_config.get('stt_configuration', {})
+                structured = stt_config.get('structured_config', {})
+                
+                model_name = structured.get('model', 'unknown')
+                provider = stt_config.get('provider_detection', 'unknown')
+                full_stt_config = structured
             
             enhanced_data = {
                 'model_name': model_name,
@@ -362,7 +409,14 @@ class CorrectedTranscriptCollector:
                 'audio_duration': getattr(metrics_obj, 'audio_duration', 0),
                 'processing_time': getattr(metrics_obj, 'duration', 0),
                 'request_id': getattr(metrics_obj, 'request_id', None),
-                'timestamp': getattr(metrics_obj, 'timestamp', time.time())
+                'timestamp': getattr(metrics_obj, 'timestamp', time.time()),
+                'full_stt_configuration': full_stt_config,
+                'language': full_stt_config.get('language'),
+                'detect_language': full_stt_config.get('detect_language'),
+                'interim_results': full_stt_config.get('interim_results'),
+                'punctuate': full_stt_config.get('punctuate'),
+                'sample_rate': full_stt_config.get('sample_rate'),
+                'channels': full_stt_config.get('channels')
             }
             
             # Update current turn if it exists
@@ -370,10 +424,12 @@ class CorrectedTranscriptCollector:
                 if not self.current_turn.enhanced_stt_data:
                     self.current_turn.enhanced_stt_data = {}
                 self.current_turn.enhanced_stt_data.update(enhanced_data)
-                logger.info(f"📊 Enhanced STT metrics: {model_name} (provider: {provider})")
+                logger.info(f"Enhanced STT metrics: {model_name} (provider: {provider})")
                 
         except Exception as e:
-            logger.error(f"❌ Error extracting enhanced STT metrics: {e}")
+            logger.error(f"Error extracting enhanced STT metrics: {e}")
+
+
 
     def _extract_enhanced_llm_from_conversation(self, event):
         """Extract enhanced LLM data from conversation context"""
@@ -397,16 +453,25 @@ class CorrectedTranscriptCollector:
         except Exception as e:
             logger.error(f"❌ Error extracting enhanced LLM data: {e}")
 
+
+
+
     def _extract_enhanced_llm_from_metrics(self, metrics_obj):
-        """Extract enhanced LLM data from metrics object"""
+        """Extract enhanced LLM data from metrics object with complete configuration"""
         try:
-            # Get model info from session data
+            # Get from complete configuration instead of simple session data
             model_name = 'unknown'
             provider = 'unknown'
+            full_llm_config = {}
             
             if hasattr(self, '_session_data') and self._session_data:
-                model_name = self._session_data.get('detected_llm_model', 'unknown')
-                provider = self._session_data.get('detected_llm_provider', 'unknown')
+                complete_config = self._session_data.get('complete_configuration', {})
+                llm_config = complete_config.get('llm_configuration', {})
+                structured = llm_config.get('structured_config', {})
+                
+                model_name = structured.get('model', 'unknown')
+                provider = llm_config.get('provider_detection', 'unknown')
+                full_llm_config = structured
             
             enhanced_data = {
                 'model_name': model_name,
@@ -417,7 +482,16 @@ class CorrectedTranscriptCollector:
                 'ttft': getattr(metrics_obj, 'ttft', 0),
                 'tokens_per_second': getattr(metrics_obj, 'tokens_per_second', 0),
                 'request_id': getattr(metrics_obj, 'request_id', None),
-                'timestamp': getattr(metrics_obj, 'timestamp', time.time())
+                'timestamp': getattr(metrics_obj, 'timestamp', time.time()),
+                'full_llm_configuration': full_llm_config,
+                'temperature': full_llm_config.get('temperature'),
+                'max_tokens': full_llm_config.get('max_tokens'),
+                'top_p': full_llm_config.get('top_p'),
+                'top_k': full_llm_config.get('top_k'),
+                'presence_penalty': full_llm_config.get('presence_penalty'),
+                'frequency_penalty': full_llm_config.get('frequency_penalty'),
+                'stop': full_llm_config.get('stop'),
+                'stream': full_llm_config.get('stream')
             }
             
             # Update current turn if it exists
@@ -425,11 +499,14 @@ class CorrectedTranscriptCollector:
                 if not self.current_turn.enhanced_llm_data:
                     self.current_turn.enhanced_llm_data = {}
                 self.current_turn.enhanced_llm_data.update(enhanced_data)
-                logger.info(f"🧠 Enhanced LLM metrics: {model_name} (provider: {provider})")
+                logger.info(f"Enhanced LLM metrics: {model_name} (provider: {provider}, temp: {enhanced_data['temperature']})")
                 
         except Exception as e:
-            logger.error(f"❌ Error extracting enhanced LLM metrics: {e}")
+            logger.error(f"Error extracting enhanced LLM metrics: {e}")
 
+
+
+ 
     def _extract_enhanced_tts_from_conversation(self, event):
         """Extract enhanced TTS data from conversation context"""
         if not self.current_turn:
@@ -452,18 +529,27 @@ class CorrectedTranscriptCollector:
         except Exception as e:
             logger.error(f"❌ Error extracting enhanced TTS data: {e}")
 
+
+
+
     def _extract_enhanced_tts_from_metrics(self, metrics_obj):
-        """Extract enhanced TTS data from metrics object"""
+        """Extract enhanced TTS data from metrics object with complete configuration"""
         try:
-            # Get model info from session data
+            # Get from complete configuration instead of simple session data
             voice_id = 'unknown'
             model_name = 'unknown'
             provider = 'unknown'
+            full_tts_config = {}
             
             if hasattr(self, '_session_data') and self._session_data:
-                voice_id = self._session_data.get('detected_tts_voice', 'unknown')
-                model_name = self._session_data.get('detected_tts_model', 'unknown')
-                provider = self._session_data.get('detected_tts_provider', 'unknown')
+                complete_config = self._session_data.get('complete_configuration', {})
+                tts_config = complete_config.get('tts_configuration', {})
+                structured = tts_config.get('structured_config', {})
+                
+                voice_id = structured.get('voice_id') or structured.get('voice', 'unknown')
+                model_name = structured.get('model', 'unknown')
+                provider = tts_config.get('provider_detection', 'unknown')
+                full_tts_config = structured
             
             enhanced_data = {
                 'voice_id': voice_id,
@@ -473,7 +559,16 @@ class CorrectedTranscriptCollector:
                 'audio_duration': getattr(metrics_obj, 'audio_duration', 0),
                 'ttfb': getattr(metrics_obj, 'ttfb', 0),
                 'request_id': getattr(metrics_obj, 'request_id', None),
-                'timestamp': getattr(metrics_obj, 'timestamp', time.time())
+                'timestamp': getattr(metrics_obj, 'timestamp', time.time()),
+                'full_tts_configuration': full_tts_config,
+                'voice_settings': full_tts_config.get('voice_settings'),
+                'stability': full_tts_config.get('stability'),
+                'similarity_boost': full_tts_config.get('similarity_boost'),
+                'style': full_tts_config.get('style'),
+                'use_speaker_boost': full_tts_config.get('use_speaker_boost'),
+                'speed': full_tts_config.get('speed'),
+                'format': full_tts_config.get('format'),
+                'sample_rate': full_tts_config.get('sample_rate')
             }
             
             # Update current turn if it exists
@@ -481,11 +576,13 @@ class CorrectedTranscriptCollector:
                 if not self.current_turn.enhanced_tts_data:
                     self.current_turn.enhanced_tts_data = {}
                 self.current_turn.enhanced_tts_data.update(enhanced_data)
-                logger.info(f"🗣️ Enhanced TTS metrics: {voice_id} (provider: {provider})")
+                logger.info(f"Enhanced TTS metrics: {voice_id} (provider: {provider}, model: {model_name})")
                 
         except Exception as e:
-            logger.error(f"❌ Error extracting enhanced TTS metrics: {e}")
+            logger.error(f"Error extracting enhanced TTS metrics: {e}")
 
+
+  
     # State tracking methods - these work well
     def capture_user_state_change(self, old_state: str, new_state: str):
         """Capture user state changes (speaking, silent, away)"""
@@ -601,7 +698,13 @@ class CorrectedTranscriptCollector:
     def set_session_data_reference(self, session_data):
         """Set reference to session data for model detection"""
         self._session_data = session_data
-        logger.info("🔧 Session data reference set for enhanced model detection")
+        logger.info("Session data reference set for enhanced model detection")
+        
+        # CRITICAL DEBUG: Log what we actually have
+        if session_data and 'complete_configuration' in session_data:
+            logger.info("Session data HAS complete_configuration")
+        else:
+            logger.info("Session data MISSING complete_configuration")
 
     def _finalize_trace_data(self, turn: ConversationTurn):
         """Calculate trace duration and cost for a completed turn"""
@@ -735,32 +838,31 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
     """Setup all session event handlers with transcript collector"""
 
     transcript_collector = CorrectedTranscriptCollector(bug_detector=bug_detector)
-    transcript_collector.set_session_data_reference(session_data)
     session_data["transcript_collector"] = transcript_collector
 
-    def setup_instrumentation_when_ready():
-        """Setup instrumentation when agent becomes available"""
-        try:
-            agent_sources = [
-                getattr(session, '_agent', None),
-                getattr(session, 'agent', None), 
-                getattr(session, '_current_agent', None)
-            ]
-            
-            agent = next((a for a in agent_sources if a is not None), None)
-            
-            if agent:
-                logger.info(f"🔧 Found agent: {type(agent).__name__}")
-                transcript_collector.enable_enhanced_instrumentation(session, agent)
-                extract_model_info_from_session(session, transcript_collector, session_data)
-                return True
-            else:
-                logger.info("🔧 Agent not yet available - will try again when session starts")
-                return False
-                
-        except Exception as e:
-            logger.error(f"⚠️ instrumentation setup failed: {e}")
-            return False
+    # EXTRACT CONFIGURATION FIRST - BEFORE setting reference
+    try:
+        extract_complete_session_configuration(session, session_data)
+        logger.info("Configuration extracted immediately during setup")
+    except Exception as e:
+        logger.error(f"Failed to extract configuration during setup: {e}")
+
+    # NOW SET THE REFERENCE (after configuration exists)
+    transcript_collector.set_session_data_reference(session_data)
+
+    @session.on("conversation_item_added") 
+    def on_conversation_item_added(event):
+        transcript_collector.on_conversation_item_added(event)
+    
+    # Verify the reference was set correctly
+    if hasattr(transcript_collector, '_session_data') and transcript_collector._session_data:
+        config = transcript_collector._session_data.get('complete_configuration')
+        if config:
+            logger.info("Configuration reference verified in transcript collector")
+        else:
+            logger.error("Configuration reference missing in transcript collector")
+    else:
+        logger.error("Session data reference not set in transcript collector")
 
     if not setup_instrumentation_when_ready():
         original_start = getattr(session, 'start', None)
@@ -771,7 +873,7 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
                 if agent:
                     logger.info(f"🔧 Found agent during start: {type(agent).__name__}")
                     transcript_collector.enable_enhanced_instrumentation(session, agent)
-                    extract_model_info_from_session(session, transcript_collector, session_data)
+                    extract_complete_session_configuration(session, session_data)
                 return result
             session.start = enhanced_start
 
@@ -910,154 +1012,279 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
         elif isinstance(ev.metrics, metrics.STTMetrics):
             logger.info(f"🎙️ STT: {ev.metrics.audio_duration:.2f}s audio processed in {ev.metrics.duration:.2f}s")
 
-    @session.on("conversation_item_added")
-    def on_conversation_item_added(event):
-        """Track conversation flow for metrics"""
-        transcript_collector.on_conversation_item_added(event)
-        
-        if event.item.role == "user":
-            logger.info(f"👤 User: {event.item.text_content[:50]}...")
-            session_data["user_messages"].append({
-                "timestamp": time.time(),
-                "content": event.item.text_content,
-                "type": "user_input"
-            })
-        elif event.item.role == "assistant":
-            logger.info(f"🤖 Agent: {event.item.text_content[:50]}...")
-            session_data["agent_messages"].append({
-                "timestamp": time.time(), 
-                "content": event.item.text_content,
-                "type": "agent_response"
-            })
-            
-            if any(phrase in event.item.text_content for phrase in [
-                "[Handing off to", "[Handing back to", "handoff_to_", "transfer_to_"
-            ]):
-                session_data["handoffs"] += 1
-                logger.info(f"🔄 Handoff detected - Total: {session_data['handoffs']}")
 
-    @session.on("close")
-    def on_session_close(event):
-        """Mark session as completed or failed"""
-        session_data["call_success"] = event.error is None
-        if event.error:
-            session_data["errors"].append(f"Session Error: {event.error}")
-        
-        if userdata and userdata.current_lesson_step == "lesson_completed":
-            session_data["lesson_completed"] = True
-            
-        logger.info(f"📊 Session ended - Success: {session_data['call_success']}, Lesson completed: {session_data['lesson_completed']}")
 
-def extract_model_info_from_session(session, transcript_collector, session_data):
-    """Extract model information from session components and store in session_data"""
-    try:
-        logger.info("🔍 Extracting model info from session...")
+def extract_complete_session_configuration(session, session_data):
+    """Extract EVERYTHING - complete configuration capture with proper STT/TTS extraction"""
+    
+    def make_serializable(obj):
+        """Convert non-serializable objects to serializable format - improved version"""
+        if obj is None:
+            return None
         
-        model_info = {
-            'stt_models': [],
-            'llm_models': [],
-            'tts_models': [],
-            'pipeline_info': {}
+        # Handle primitive types
+        if isinstance(obj, (str, int, float, bool)):
+            return obj
+        
+        # Handle lists and tuples
+        if isinstance(obj, (list, tuple)):
+            return [make_serializable(item) for item in obj]
+        
+        # Handle dictionaries
+        if isinstance(obj, dict):
+            return {str(k): make_serializable(v) for k, v in obj.items() if not str(k).startswith('_')}
+        
+        # Handle objects with __dict__
+        if hasattr(obj, '__dict__'):
+            return {k: make_serializable(v) for k, v in vars(obj).items() if not k.startswith('_')}
+        
+        # Handle other types by converting to string
+        try:
+            # Try to see if it's already JSON serializable
+            import json
+            json.dumps(obj)
+            return obj
+        except (TypeError, ValueError):
+            # Convert to string representation
+            return str(obj)
+    
+    def filter_not_given(config_dict):
+        """Remove NOT_GIVEN values from configuration"""
+        return {k: v for k, v in config_dict.items() if str(v) != 'NOT_GIVEN' and v is not None}
+    
+    complete_config = {
+        'timestamp': time.time(),
+        'llm_configuration': {},
+        'stt_configuration': {},
+        'tts_configuration': {},
+        'session_metadata': {},
+        'pipeline_configuration': {}
+    }
+    
+    # LLM Configuration - existing code works well
+    if hasattr(session, 'llm') and session.llm:
+        llm_obj = session.llm
+        llm_config = {
+            'model': getattr(llm_obj, 'model', None),
         }
         
-        if hasattr(session, 'llm') and session.llm:
-            llm_model = getattr(session.llm, 'model', 'unknown')
-            provider = 'unknown'
+        if hasattr(llm_obj, '_opts') and llm_obj._opts:
+            opts = llm_obj._opts
+            llm_config.update({
+                'temperature': getattr(opts, 'temperature', None),
+                'max_completion_tokens': getattr(opts, 'max_completion_tokens', None),
+                'user': getattr(opts, 'user', None),
+                'parallel_tool_calls': getattr(opts, 'parallel_tool_calls', None),
+                'tool_choice': getattr(opts, 'tool_choice', None),
+                'store': getattr(opts, 'store', None),
+                'service_tier': getattr(opts, 'service_tier', None),
+            })
             
-            if hasattr(session.llm, '__module__'):
-                module_path = session.llm.__module__
-                if 'openai' in module_path.lower():
-                    provider = 'openai'
-                elif 'anthropic' in module_path.lower():
-                    provider = 'anthropic'
-                elif 'elevenlabs' in module_path.lower():
-                    provider = 'elevenlabs'
-                elif 'sarvam' in module_path.lower():
-                    provider = 'sarvam'
-            
-            if provider == 'unknown':
-                provider = detect_provider_from_model_name(llm_model)
-            
-            llm_info = {
-                'class': type(session.llm).__name__,
-                'provider': provider,
-                'model': llm_model,
-                'module': getattr(session.llm, '__module__', 'unknown')
-            }
-            model_info['llm_models'].append(llm_info)
-            logger.info(f"🧠 LLM: {llm_info['class']} (model: {llm_info['model']}, provider: {llm_info['provider']})")
+        llm_config = filter_not_given(llm_config)
         
-        if hasattr(session, 'stt') and session.stt:
-            stt_model = getattr(session.stt, 'model', 'unknown')
-            provider = 'unknown'
-            if hasattr(session.stt, '__module__'):
-                module_path = session.stt.__module__
-                if 'sarvam' in module_path.lower():
-                    provider = 'sarvam'
-                elif 'openai' in module_path.lower():
-                    provider = 'openai'
-                elif 'deepgram' in module_path.lower():
-                    provider = 'deepgram'
-            
-            if provider == 'unknown':
-                provider = detect_provider_from_model_name(stt_model)
-                
-            stt_info = {
-                'class': type(session.stt).__name__,
-                'provider': provider,
-                'model': stt_model,
-                'module': getattr(session.stt, '__module__', 'unknown')
-            }
-            model_info['stt_models'].append(stt_info)
-            logger.info(f"📊 STT: {stt_info['class']} (model: {stt_info['model']}, provider: {stt_info['provider']})")
+        if hasattr(llm_obj, '_client') and llm_obj._client:
+            client = llm_obj._client
+            if hasattr(client, 'timeout'):
+                timeout_val = getattr(client, 'timeout')
+                llm_config['timeout'] = make_serializable(timeout_val)
         
-        if hasattr(session, 'tts') and session.tts:
-            tts_model = getattr(session.tts, 'model', 'unknown')
-            tts_voice = getattr(session.tts, 'voice_id', 'unknown')
-            provider = 'unknown'
-            if hasattr(session.tts, '__module__'):
-                module_path = session.tts.__module__
-                if 'elevenlabs' in module_path.lower():
-                    provider = 'elevenlabs'
-                elif 'openai' in module_path.lower():
-                    provider = 'openai'
-                elif 'cartesia' in module_path.lower():
-                    provider = 'cartesia'
-            
-            if provider == 'unknown':
-                provider = detect_provider_from_model_name(tts_model)
-                
-            tts_info = {
-                'class': type(session.tts).__name__,
-                'provider': provider,
-                'model': tts_model,
-                'voice': tts_voice,
-                'module': getattr(session.tts, '__module__', 'unknown')
-            }
-            model_info['tts_models'].append(tts_info)
-            logger.info(f"🗣️ TTS: {tts_info['class']} (model: {tts_info['model']}, voice: {tts_info['voice']}, provider: {tts_info['provider']})")
-        
-        session_data['extracted_model_info'] = model_info
-        
-        if model_info['llm_models']:
-            session_data['detected_llm_model'] = model_info['llm_models'][0]['model']
-            session_data['detected_llm_provider'] = model_info['llm_models'][0]['provider']
-        if model_info['tts_models']:
-            session_data['detected_tts_model'] = model_info['tts_models'][0]['model']
-            session_data['detected_tts_voice'] = model_info['tts_models'][0]['voice']
-            session_data['detected_tts_provider'] = model_info['tts_models'][0]['provider']
-        if model_info['stt_models']:
-            session_data['detected_stt_model'] = model_info['stt_models'][0]['model']
-            session_data['detected_stt_provider'] = model_info['stt_models'][0]['provider']
-        
-        logger.info(f"✅ Model info extraction complete")
-        
-    except Exception as e:
-        logger.error(f"⚠️ Error extracting model info: {e}")
-        session_data['extracted_model_info'] = {
-            'error': str(e),
-            'stt_models': [], 'llm_models': [], 'tts_models': [], 'pipeline_info': {}
+        complete_config['llm_configuration'] = {
+            'structured_config': llm_config,
+            'class_info': {
+                'class_name': type(llm_obj).__name__,
+                'module': llm_obj.__module__,
+            },
+            'provider_detection': detect_provider_from_model_name(llm_config.get('model'))
         }
+    
+    # STT Configuration - Enhanced extraction
+    if hasattr(session, 'stt') and session.stt:
+        stt_obj = session.stt
+        stt_config = {}
+        
+        # Direct attributes from object
+        direct_attrs = ['model', 'language', 'sample_rate', 'channels', 'capabilities', 'label']
+        for attr in direct_attrs:
+            if hasattr(stt_obj, attr):
+                val = getattr(stt_obj, attr)
+                stt_config[attr] = make_serializable(val)
+        
+        # Extract from _opts (this is where the real config is stored)
+        if hasattr(stt_obj, '_opts') and stt_obj._opts:
+            opts = stt_obj._opts
+            
+            # Common STT options based on your debug output
+            opts_attrs = [
+                'language', 'model', 'api_key', 'base_url',
+                'sample_rate', 'channels', 'encoding', 'format',
+                'detect_language', 'interim_results', 'punctuate',
+                'profanity_filter', 'redact_pii', 'smart_formatting',
+                'utterance_end_ms', 'vad_turnoff', 'keywords'
+            ]
+            
+            for attr in opts_attrs:
+                if hasattr(opts, attr):
+                    val = getattr(opts, attr)
+                    if attr == 'api_key':
+                        # Mask API key for security
+                        stt_config[attr] = f"{str(val)[:8]}..." if val else None
+                    else:
+                        stt_config[attr] = make_serializable(val)
+        
+        stt_config = filter_not_given(stt_config)
+        
+        complete_config['stt_configuration'] = {
+            'structured_config': stt_config,
+            'class_info': {
+                'class_name': type(stt_obj).__name__,
+                'module': stt_obj.__module__,
+            },
+            'provider_detection': detect_provider_from_model_name(stt_config.get('model')),
+            'capabilities': make_serializable(getattr(stt_obj, 'capabilities', None))
+        }
+    
+    # TTS Configuration - Enhanced extraction
+    if hasattr(session, 'tts') and session.tts:
+        tts_obj = session.tts
+        tts_config = {}
+        
+        # Direct attributes from object
+        direct_attrs = ['voice_id', 'model', 'language', 'sample_rate', 'num_channels', 'capabilities', 'label']
+        for attr in direct_attrs:
+            if hasattr(tts_obj, attr):
+                val = getattr(tts_obj, attr)
+                tts_config[attr] = make_serializable(val)
+        
+        # Extract from _opts (this is where the real config is stored)
+        if hasattr(tts_obj, '_opts') and tts_obj._opts:
+            opts = tts_obj._opts
+            
+            # Common TTS options based on your debug output
+            opts_attrs = [
+                'voice_id', 'voice', 'model', 'language', 'api_key', 'base_url',
+                'sample_rate', 'encoding', 'format', 'speed', 'pitch', 'volume',
+                'streaming_latency', 'chunk_length_schedule', 'enable_ssml_parsing',
+                'inactivity_timeout', 'sync_alignment', 'auto_mode'
+            ]
+            
+            for attr in opts_attrs:
+                if hasattr(opts, attr):
+                    val = getattr(opts, attr)
+                    if attr == 'api_key':
+                        # Mask API key for security
+                        tts_config[attr] = f"{str(val)[:8]}..." if val else None
+                    else:
+                        tts_config[attr] = make_serializable(val)
+            
+            # Special handling for voice_settings (nested object)
+            if hasattr(opts, 'voice_settings') and opts.voice_settings:
+                voice_settings = opts.voice_settings
+                tts_config['voice_settings'] = {}
+                
+                voice_settings_attrs = [
+                    'stability', 'similarity_boost', 'style', 'speed', 
+                    'use_speaker_boost', 'optimize_streaming_latency'
+                ]
+                
+                for attr in voice_settings_attrs:
+                    if hasattr(voice_settings, attr):
+                        val = getattr(voice_settings, attr)
+                        tts_config['voice_settings'][attr] = make_serializable(val)
+                
+                # Remove empty voice_settings
+                if not tts_config['voice_settings']:
+                    del tts_config['voice_settings']
+            
+            # Special handling for word_tokenizer
+            if hasattr(opts, 'word_tokenizer') and opts.word_tokenizer:
+                tokenizer = opts.word_tokenizer
+                tts_config['word_tokenizer'] = {
+                    'class_name': type(tokenizer).__name__,
+                    'module': tokenizer.__module__
+                }
+        
+        tts_config = filter_not_given(tts_config)
+        
+        complete_config['tts_configuration'] = {
+            'structured_config': tts_config,
+            'class_info': {
+                'class_name': type(tts_obj).__name__,
+                'module': tts_obj.__module__,
+            },
+            'provider_detection': detect_provider_from_model_name(tts_config.get('model') or tts_config.get('voice_id')),
+            'capabilities': make_serializable(getattr(tts_obj, 'capabilities', None))
+        }
+    
+    # VAD Configuration (based on actual debug output)
+    if hasattr(session, 'vad') and session.vad:
+        vad_obj = session.vad
+        vad_config = {}
+        
+        # Extract from _opts where the real config is stored
+        if hasattr(vad_obj, '_opts') and vad_obj._opts:
+            opts = vad_obj._opts
+            
+            # Based on debug output: _VADOptions(min_speech_duration=0.05, min_silence_duration=0.4, prefix_padding_duration=0.5, max_buffered_speech=60.0, activation_threshold=0.5, sample_rate=16000)
+            vad_opts_attrs = [
+                'min_speech_duration', 'min_silence_duration', 'prefix_padding_duration', 
+                'max_buffered_speech', 'activation_threshold', 'sample_rate'
+            ]
+            
+            for attr in vad_opts_attrs:
+                if hasattr(opts, attr):
+                    val = getattr(opts, attr)
+                    vad_config[attr] = make_serializable(val)
+        
+        # Also get capabilities
+        if hasattr(vad_obj, 'capabilities') and vad_obj.capabilities:
+            vad_config['capabilities'] = make_serializable(vad_obj.capabilities)
+        
+        if vad_config:
+            complete_config['vad_configuration'] = {
+                'structured_config': vad_config,
+                'class_info': {
+                    'class_name': type(vad_obj).__name__,
+                    'module': vad_obj.__module__,
+                }
+            }
+    
+    # Session metadata - with serialization safety
+    session_attrs = {}
+    for key, value in vars(session).items():
+        if not key.startswith('_'):
+            session_attrs[key] = make_serializable(value)
+    
+    complete_config['session_metadata'] = {
+        'session_attributes': session_attrs,
+        'session_class': type(session).__name__,
+        'session_module': session.__module__,
+        'room_name': getattr(session, 'room', {}).get('name') if hasattr(session, 'room') else None
+    }
+    
+    # Store in session data
+    session_data['complete_configuration'] = complete_config
+    
+    # Log what we captured
+    stt_model = complete_config['stt_configuration']['structured_config'].get('model', 'unknown')
+    stt_lang = complete_config['stt_configuration']['structured_config'].get('language', 'unknown')
+    tts_voice = complete_config['tts_configuration']['structured_config'].get('voice_id', 'unknown')
+    tts_model = complete_config['tts_configuration']['structured_config'].get('model', 'unknown')
+    llm_temp = complete_config['llm_configuration']['structured_config'].get('temperature', 'unknown')
+    vad_threshold = complete_config.get('vad_configuration', {}).get('structured_config', {}).get('activation_threshold', 'unknown')
+    
+    logger.info(f"Complete configuration captured:")
+    logger.info(f"  STT: {stt_model} ({stt_lang})")
+    logger.info(f"  TTS: {tts_voice} ({tts_model})")  
+    logger.info(f"  LLM: temp={llm_temp}")
+    logger.info(f"  VAD: threshold={vad_threshold}")
+    
+    return complete_config
+
+
+def setup_instrumentation_when_ready():
+    """Check if instrumentation setup is ready - currently returns False to use fallback"""
+    return False
+
 
 def detect_provider_from_model_name(model_name: str) -> str:
     """Detect provider from model name"""

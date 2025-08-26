@@ -1,11 +1,10 @@
-// src/components/observability/TraceDetailSheet.tsx
+// src/components/observability/EnhancedTraceDetailSheet.tsx
 "use client"
 
-import { X, Clock, Brain, Mic, Volume2, Activity, Copy, Wrench, CheckCircle, XCircle, ChevronDown, ChevronRight, Phone, Calendar } from "lucide-react"
+import { X, Brain, Mic, Volume2, Activity, Copy, Wrench, ArrowRight, ArrowDown, ChevronDown, ChevronRight, Clock, Zap, Settings, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 
@@ -15,25 +14,51 @@ interface TraceDetailSheetProps {
   onClose: () => void
 }
 
-const TraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, trace, onClose }) => {
+const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, trace, onClose }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null)
-  const [expandedSections, setExpandedSections] = useState({
-    toolCalls: true,
-    spans: false,
-    metrics: true,
-    conversation: true
-  })
-
+  const [selectedView, setSelectedView] = useState<string>('pipeline')
+  const [selectedNode, setSelectedNode] = useState<string>('stt')
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['pipeline']))
 
   useEffect(() => {
     if (trace && isOpen) {
       console.log({trace})
+      // Set first active stage as default selected node
+      const firstActiveStage = pipelineStages.find(stage => stage.active)
+      if (firstActiveStage) {
+        setSelectedNode(firstActiveStage.id)
+      }
     }
   }, [trace, isOpen])
 
-  
-
   if (!isOpen || !trace) return null
+
+  const formatTimestamp = (timestamp: number) => {
+    // Handle both seconds and milliseconds timestamps
+    const timestampMs = timestamp > 1e12 ? timestamp : timestamp * 1000;
+    const date = new Date(timestampMs);
+    
+    // Check if it's a valid date
+    if (isNaN(date.getTime())) {
+      return `Invalid timestamp: ${timestamp}`;
+    }
+    
+    // Get clean timezone abbreviation (IST, EST, PST etc.)
+    const timeZoneAbbr = date.toLocaleTimeString('en-US', { 
+      timeZoneName: 'short' 
+    }).split(' ').pop() || 'Local';
+    
+    // Simple format: Aug 27, 14:36:00 IST (user's timezone)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }) + ', ' + date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + ` ${timeZoneAbbr}`;
+  };
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
@@ -50,442 +75,672 @@ const TraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, trace, onCl
     return `$${cost.toFixed(6)}`
   }
 
-  const parseArguments = (args: any) => {
-    if (typeof args === 'string') {
-      try {
-        return JSON.parse(args)
-      } catch {
-        return args
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections)
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section)
+    } else {
+      newExpanded.add(section)
+    }
+    setExpandedSections(newExpanded)
+  }
+
+  // Extract configuration data
+  const sttConfig = trace.turn_configuration?.stt_configuration?.structured_config
+  const llmConfig = trace.turn_configuration?.llm_configuration?.structured_config
+  const ttsConfig = trace.turn_configuration?.tts_configuration?.structured_config
+  const vadConfig = trace.turn_configuration?.vad_configuration?.structured_config
+  
+  // Extract enhanced data
+  const enhancedSTT = trace.enhanced_data?.enhanced_stt_data
+  const enhancedLLM = trace.enhanced_data?.enhanced_llm_data
+  const enhancedTTS = trace.enhanced_data?.enhanced_tts_data
+  const stateEvents = trace.enhanced_data?.state_events || []
+
+  // Pipeline stages with comprehensive data
+  const pipelineStages = [
+    {
+      id: 'vad',
+      name: 'VAD',
+      icon: <Activity className="w-3 h-3" />,
+      color: 'orange',
+      active: !!vadConfig,
+      config: vadConfig,
+      metrics: null,
+      inputType: 'Audio Stream',
+      outputType: 'Speech Events',
+      status: vadConfig ? 'active' : 'inactive'
+    },
+    {
+      id: 'stt',
+      name: 'STT',
+      icon: <Mic className="w-3 h-3" />,
+      color: 'blue',
+      active: !!trace.user_transcript,
+      config: sttConfig,
+      metrics: trace.stt_metrics,
+      enhanced: enhancedSTT,
+      inputType: 'Audio',
+      outputType: 'Text',
+      inputData: `${trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s audio`,
+      outputData: trace.user_transcript,
+      status: trace.stt_metrics ? 'success' : 'missing'
+    },
+    {
+      id: 'llm',
+      name: 'LLM',
+      icon: <Brain className="w-3 h-3" />,
+      color: 'purple',
+      active: !!trace.agent_response,
+      config: llmConfig,
+      metrics: trace.llm_metrics,
+      enhanced: enhancedLLM,
+      tools: trace.tool_calls || [],
+      inputType: 'Text',
+      outputType: 'Text',
+      inputData: trace.user_transcript,
+      outputData: trace.agent_response,
+      status: trace.llm_metrics ? 'success' : 'missing'
+    },
+    {
+      id: 'tts',
+      name: 'TTS',
+      icon: <Volume2 className="w-3 h-3" />,
+      color: 'green',
+      active: !!trace.tts_metrics,
+      config: ttsConfig,
+      metrics: trace.tts_metrics,
+      enhanced: enhancedTTS,
+      inputType: 'Text',
+      outputType: 'Audio',
+      inputData: trace.agent_response,
+      outputData: `${trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s audio`,
+      status: trace.tts_metrics ? 'success' : 'missing'
+    }
+  ]
+
+  const renderNodeSelector = () => (
+    <div className="space-y-2">
+      {pipelineStages.filter(stage => stage.active).map((stage) => (
+        <button
+          key={stage.id}
+          onClick={() => setSelectedNode(stage.id)}
+          className={cn(
+            "w-full p-3 rounded-lg border text-left transition-all hover:shadow-sm",
+            selectedNode === stage.id
+              ? "border-blue-500 bg-blue-50 shadow-sm"
+              : "border-gray-200 bg-white hover:border-gray-300"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center border",
+              `bg-${stage.color}-50 border-${stage.color}-200 text-${stage.color}-600`
+            )}>
+              {stage.icon}
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-sm flex items-center gap-2">
+                {stage.name}
+                {stage.tools && stage.tools.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Wrench className="w-3 h-3 text-blue-600" />
+                    <span className="text-xs text-blue-600 font-medium">{stage.tools.length}</span>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-gray-500">
+                {stage.status === 'success' && (
+                  <span className="text-green-600">✓ Completed</span>
+                )}
+                {stage.status === 'missing' && (
+                  <span className="text-gray-500">No data</span>
+                )}
+                {stage.status === 'active' && (
+                  <span className="text-orange-600">● Active</span>
+                )}
+              </div>
+            </div>
+            {stage.metrics && (
+              <div className="text-right">
+                <div className="text-xs font-mono text-gray-600">
+                  {stage.id === 'stt' && `${stage.metrics.duration?.toFixed(2)}s`}
+                  {stage.id === 'llm' && `${stage.metrics.ttft?.toFixed(2)}s`}
+                  {stage.id === 'tts' && `${stage.metrics.ttfb?.toFixed(2)}s`}
+                </div>
+              </div>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  )
+
+  const renderNodeDetails = () => {
+    const selectedStage = pipelineStages.find(stage => stage.id === selectedNode)
+    if (!selectedStage) return null
+
+    return (
+      <div className="space-y-4">
+        {/* Node Header */}
+        <div className="flex items-center gap-3 pb-4 border-b">
+          <div className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center border",
+            `bg-${selectedStage.color}-50 border-${selectedStage.color}-200 text-${selectedStage.color}-600`
+          )}>
+            {selectedStage.icon}
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg">{selectedStage.name} Processing</h3>
+            <p className="text-sm text-gray-600">{selectedStage.inputType} → {selectedStage.outputType}</p>
+          </div>
+          {selectedStage.status && (
+            <Badge variant={selectedStage.status === 'success' ? 'default' : 'secondary'} className="ml-auto">
+              {selectedStage.status}
+            </Badge>
+          )}
+        </div>
+
+        {/* Input/Output Flow */}
+        <div className="space-y-4">
+          {/* Skip VAD input/output as it's not useful */}
+          {selectedStage.id !== 'vad' && (
+            <>
+              {/* Input Section */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  Input
+                  {selectedStage.id === 'stt' && trace.stt_metrics?.audio_duration && (
+                    <span className="text-xs text-gray-500 ml-auto">
+                      Audio stream • <code className="bg-gray-100 px-1 rounded">{trace.stt_metrics.audio_duration.toFixed(1)}s</code>
+                    </span>
+                  )}
+                  {selectedStage.id === 'tts' && trace.tts_metrics?.audio_duration && (
+                    <span className="text-xs text-gray-500 ml-auto">
+                      Text length: <code className="bg-gray-100 px-1 rounded">{trace.agent_response?.length || 0} chars</code>
+                    </span>
+                  )}
+                </h4>
+                {selectedStage.id === 'stt' && (
+                  <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
+                    Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  </div>
+                )}
+                {selectedStage.id === 'llm' && (
+                  <div className="bg-blue-50 border-l-4 border-blue-500 pl-3 py-2 text-sm">
+                    "{trace.user_transcript || 'No input'}"
+                  </div>
+                )}
+                {selectedStage.id === 'tts' && (
+                  <div className="bg-purple-50 border-l-4 border-purple-500 pl-3 py-2 text-sm max-h-32 overflow-y-auto">
+                    "{trace.agent_response || 'No text'}"
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-center">
+                <ArrowDown className="w-5 h-5 text-gray-400" />
+              </div>
+
+              {/* Output Section */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  Output
+                </h4>
+                {selectedStage.id === 'stt' && (
+                  <div className="bg-green-50 border-l-4 border-green-500 pl-3 py-2 text-sm">
+                    "{trace.user_transcript || 'No transcription'}"
+                  </div>
+                )}
+                {selectedStage.id === 'llm' && (
+                  <div className="bg-green-50 border-l-4 border-green-500 pl-3 py-2 text-sm max-h-40 overflow-y-auto">
+                    "{trace.agent_response || 'No response'}"
+                  </div>
+                )}
+                {selectedStage.id === 'tts' && (
+                  <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
+                    Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Tool Calls for LLM - Show prominently after input/output */}
+        {selectedStage.id === 'llm' && selectedStage.tools && selectedStage.tools.length > 0 && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-blue-600" />
+              Tool Executions ({selectedStage.tools.length})
+            </h4>
+            <div className="space-y-3">
+              {selectedStage.tools.map((tool: any, index: number) => (
+                <div key={index} className="bg-white border rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center">
+                        <Wrench className="w-3 h-3 text-blue-600" />
+                      </div>
+                      <span className="font-mono text-sm font-medium">{tool.name}</span>
+                      <Badge variant={tool.status === 'success' ? 'default' : 'destructive'} className="text-xs">
+                        {tool.status}
+                      </Badge>
+                    </div>
+                    <span className="text-xs text-gray-500 font-mono">
+                      {tool.execution_duration_ms ? formatDuration(tool.execution_duration_ms) : '< 1ms'}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-gray-600 font-medium min-w-[4rem]">Args:</span>
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 break-all">
+                        {JSON.stringify(tool.arguments, null, 1)}
+                      </code>
+                    </div>
+                    
+                    {tool.result && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-gray-600 font-medium min-w-[4rem]">Result:</span>
+                        <code className="text-xs bg-green-50 border border-green-200 px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto">
+                          {typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 1)}
+                        </code>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {selectedStage.metrics && (
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3">Performance Metrics</h4>
+            <div className="grid grid-cols-2 gap-4">
+            {Object.entries(selectedStage.metrics).map(([key, value]) => (
+              <div key={key} className="bg-white rounded p-3">
+                <div className="text-xs text-gray-500 capitalize">{key.replace(/_/g, ' ')}</div>
+                <div className="font-mono text-sm font-medium">
+                  {key.includes('duration') || key.includes('ttft') || key.includes('ttfb') 
+                    ? `${typeof value === 'number' ? value.toFixed(3) : value}s`
+                    : key.includes('timestamp') 
+                      ? formatTimestamp(typeof value === 'number' ? value : parseFloat(String(value)))
+                      : typeof value === 'number' ? value.toLocaleString() : String(value)}
+                </div>
+              </div>
+            ))}
+            </div>
+          </div>
+        )}
+
+        {/* Configuration */}
+        {selectedStage.config && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3">Configuration</h4>
+            <div className="bg-white rounded p-3">
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                {selectedStage.id === 'vad' && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Activation Threshold:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.activation_threshold}</code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Min Speech Duration:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.min_speech_duration}s</code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Update Interval:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.capabilities?.update_interval}s</code>
+                    </div>
+                  </>
+                )}
+                {selectedStage.id === 'stt' && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Model:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.model}</code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Language:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.language}</code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Streaming:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.capabilities?.streaming ? 'Yes' : 'No'}</code>
+                    </div>
+                  </>
+                )}
+                {selectedStage.id === 'llm' && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Model:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.model}</code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Temperature:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.temperature}</code>
+                    </div>
+                    {selectedStage.metrics && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Prompt Tokens:</span>
+                        <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.metrics.prompt_tokens}</code>
+                      </div>
+                    )}
+                    {selectedStage.metrics && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Completion Tokens:</span>
+                        <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.metrics.completion_tokens}</code>
+                      </div>
+                    )}
+                  </>
+                )}
+                {selectedStage.id === 'tts' && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Voice ID:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.voice_id?.slice(0, 12)}...</code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Model:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.model}</code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Speed:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">{selectedStage.config.voice_settings?.speed}</code>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Performance Metrics */}
+      </div>
+    )
+  }
+
+  // const renderStateTimeline = () => (
+  //   <div className="space-y-4">
+  //     <div className="flex items-center justify-between">
+  //       <h4 className="text-lg font-semibold flex items-center gap-2">
+  //         <Clock className="w-5 h-5" />
+  //         State Timeline
+  //       </h4>
+  //       <Badge variant="outline">{stateEvents.length} events</Badge>
+  //     </div>
+      
+  //     {stateEvents.length > 0 ? (
+  //       <div className="relative">
+  //         {/* Timeline line */}
+  //         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+          
+  //         <div className="space-y-4">
+  //           {stateEvents.map((event: any, index: number) => (
+  //             <div key={index} className="relative flex items-start gap-4">
+  //               {/* Timeline dot */}
+  //               <div className="relative z-10 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+  //                 <div className="w-2 h-2 rounded-full bg-white"></div>
+  //               </div>
+                
+  //               {/* Event content */}
+  //               <div className="flex-1 bg-white border rounded-lg p-4 shadow-sm">
+  //                 <div className="flex items-center justify-between mb-2">
+  //                   <div className="flex items-center gap-2">
+  //                     <span className="font-medium capitalize text-sm">
+  //                       {event.type.replace('_', ' ')}
+  //                     </span>
+  //                     <Badge variant="outline" className="text-xs">
+  //                       {event.old_state} → {event.new_state}
+  //                     </Badge>
+  //                   </div>
+  //                   <span className="text-xs text-gray-500">
+  //                     {new Date(event.timestamp * 1000).toLocaleTimeString()}
+  //                   </span>
+  //                 </div>
+                  
+  //                 {event.metadata && (
+  //                   <div className="text-xs text-gray-600 bg-gray-50 rounded p-2 mt-2">
+  //                     <pre>{JSON.stringify(event.metadata, null, 2)}</pre>
+  //                   </div>
+  //                 )}
+  //               </div>
+  //             </div>
+  //           ))}
+  //         </div>
+  //       </div>
+  //     ) : (
+  //       <div className="text-center py-12 text-gray-500">
+  //         <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+  //         <p className="text-sm">No state events recorded for this trace</p>
+  //       </div>
+  //     )}
+  //   </div>
+  // )
+
+  const renderEnhancedInsights = () => {
+    // Calculate actual pipeline duration from stage metrics
+    const calculatePipelineDuration = () => {
+      let totalMs = 0;
+      
+      // STT duration (convert to ms if needed)
+      if (trace.stt_metrics?.duration) {
+        totalMs += trace.stt_metrics.duration * 1000; // Convert seconds to ms
       }
+      
+      // LLM TTFT (convert to ms if needed)
+      if (trace.llm_metrics?.ttft) {
+        totalMs += trace.llm_metrics.ttft * 1000; // Convert seconds to ms
+      }
+      
+      // TTS TTFB (convert to ms if needed)  
+      if (trace.tts_metrics?.ttfb) {
+        totalMs += trace.tts_metrics.ttfb * 1000; // Convert seconds to ms
+      }
+      
+      return totalMs;
     }
-    return args || {}
-  }
 
-  const totalToolCalls = trace.tool_calls?.length || 0
-  const successfulTools = trace.tool_calls?.filter((tool: any) => 
-    tool.status === 'success' || tool.success !== false
-  ).length || 0
-
-  const getAllMetrics = () => {
-    const metrics = []
-    if (trace.stt_metrics && Object.keys(trace.stt_metrics).length > 0) {
-      metrics.push({ type: 'Speech-to-Text', data: trace.stt_metrics, icon: <Mic className="w-4 h-4" />, color: 'text-blue-600' })
-    }
-    if (trace.llm_metrics && Object.keys(trace.llm_metrics).length > 0) {
-      metrics.push({ type: 'Language Model', data: trace.llm_metrics, icon: <Brain className="w-4 h-4" />, color: 'text-purple-600' })
-    }
-    if (trace.tts_metrics && Object.keys(trace.tts_metrics).length > 0) {
-      metrics.push({ type: 'Text-to-Speech', data: trace.tts_metrics, icon: <Volume2 className="w-4 h-4" />, color: 'text-green-600' })
-    }
-    if (trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0) {
-      metrics.push({ type: 'End of Utterance', data: trace.eou_metrics, icon: <Clock className="w-4 h-4" />, color: 'text-amber-600' })
-    }
-    return metrics
-  }
-
-  const formatMetricValue = (key: string, value: any) => {
-    if (key.includes('duration') || key.includes('delay') || key.includes('ttft') || key.includes('ttfb')) {
-      return typeof value === 'number' ? formatDuration(value * 1000) : value
-    }
-    if (key.includes('tokens') || key.includes('characters')) {
-      return typeof value === 'number' ? value.toLocaleString() : value
-    }
-    if (key.includes('timestamp')) {
-      return typeof value === 'number' ? new Date(value * 1000).toLocaleString() : value
-    }
-    if (typeof value === 'number' && value < 1) {
-      return value.toFixed(3)
-    }
-    return value
-  }
-
-  const getTraceStatus = () => {
-    const spans = trace.otel_spans || []
-    const toolErrors = trace.tool_calls?.some((tool: any) => tool.status === 'error' || tool.success === false)
-    const callFailed = trace.call_success === false
+    const actualPipelineDuration = calculatePipelineDuration();
     
-    if (spans.some((span: any) => span.status === "error") || toolErrors || callFailed) return "error"
-    if (spans.some((span: any) => span.status === "warning") || !trace.call_success) return "warning"
-    return "success"
+    return (
+      <div className="space-y-6">
+        {/* Cost Breakdown */}
+        {trace.trace_cost_usd && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h4 className="text-lg font-semibold mb-4">Cost Breakdown</h4>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center p-3 bg-white rounded border">
+                <span className="font-medium">Total Trace Cost:</span>
+                <span className="font-mono text-lg text-green-600">{formatCost(parseFloat(trace.trace_cost_usd))}</span>
+              </div>
+              {trace.otel_spans && trace.otel_spans.map((span: any, index: number) => (
+                <div key={index} className="flex justify-between items-center p-2 bg-white rounded text-sm">
+                  <span className="text-gray-600">{span.operation}:</span>
+                  <span className="font-mono">~{formatCost(parseFloat(trace.trace_cost_usd) / trace.otel_spans.length)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Latency Analysis */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="text-lg font-semibold mb-4">Latency Analysis</h4>
+          <div className="space-y-3">
+            {pipelineStages.filter(s => s.metrics).map(stage => (
+              <div key={stage.id} className="flex justify-between items-center p-3 bg-white rounded">
+                <div className="flex items-center gap-2">
+                  <div className={`w-4 h-4 rounded bg-${stage.color}-100 flex items-center justify-center`}>
+                    {stage.icon}
+                  </div>
+                  <span className="font-medium capitalize">{stage.name}:</span>
+                </div>
+                <span className="font-mono text-sm">
+                  {stage.id === 'stt' && stage.metrics?.duration && formatDuration(stage.metrics.duration * 1000)}
+                  {stage.id === 'llm' && stage.metrics?.ttft && formatDuration(stage.metrics.ttft * 1000)}
+                  {stage.id === 'tts' && stage.metrics?.ttfb && formatDuration(stage.metrics.ttfb * 1000)}
+                </span>
+              </div>
+            ))}
+            <div className="flex justify-between items-center p-3 bg-white rounded border-2 border-blue-200 font-medium">
+              <span>Actual Pipeline Duration:</span>
+              <span className="font-mono text-lg text-blue-600">{formatDuration(actualPipelineDuration)}</span>
+            </div>
+            {/* {trace.trace_duration_ms && trace.trace_duration_ms !== actualPipelineDuration && (
+              <div className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm text-gray-600">
+                <span>Total Trace Time (includes overhead):</span>
+                <span className="font-mono">{formatDuration(trace.trace_duration_ms)}</span>
+              </div>
+            )} */}
+          </div>
+        </div>
+
+        {/* Session Information */}
+        <div className="bg-gray-50 border rounded-lg p-4">
+          <h4 className="text-lg font-semibold mb-4">Session Information</h4>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex justify-between items-center p-3 bg-white rounded">
+              <span className="text-gray-600">Session ID:</span>
+              <div className="flex items-center gap-2">
+                <code className="text-sm bg-gray-100 px-2 py-1 rounded">{trace.session_id.slice(0, 16)}...</code>
+                <Button variant="ghost" size="sm" onClick={() => copyToClipboard(trace.session_id, 'session_id')}>
+                  {copiedField === 'session_id' ? "✓" : <Copy className="w-3 h-3" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-white rounded">
+              <span className="text-gray-600">Trace ID:</span>
+              <div className="flex items-center gap-2">
+                <code className="text-sm bg-gray-100 px-2 py-1 rounded">{trace.trace_id?.slice(0, 16)}...</code>
+                <Button variant="ghost" size="sm" onClick={() => copyToClipboard(trace.trace_id, 'trace_id')}>
+                  {copiedField === 'trace_id' ? "✓" : <Copy className="w-3 h-3" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-white rounded">
+              <span className="text-gray-600">Turn ID:</span>
+              <code className="text-sm bg-gray-100 px-2 py-1 rounded">{trace.turn_id}</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const status = getTraceStatus()
-  const allMetrics = getAllMetrics()
+  const viewTabs = [
+    { id: 'pipeline', name: 'Pipeline Flow', icon: <Zap className="w-4 h-4" /> },
+    // { id: 'timeline', name: 'Timeline', icon: <Clock className="w-4 h-4" /> },
+    { id: 'config', name: 'Config', icon: <Settings className="w-4 h-4" /> },
+    { id: 'insights', name: 'Cost & Metrics', icon: <MessageSquare className="w-4 h-4" /> }
+  ]
 
   return (
     <TooltipProvider>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="fixed inset-y-0 right-0 w-[65%] bg-white border-l shadow-xl z-50 flex flex-col">
+      <div className="fixed inset-y-0 right-0 w-[90%] bg-white border-l shadow-xl z-50 flex flex-col">
         {/* Header */}
-        <div className="border-b bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3">
+        <div className="border-b bg-white px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center",
-                status === 'error' ? 'bg-red-100 text-red-600' : 
-                status === 'warning' ? 'bg-amber-100 text-amber-600' : 
-                'bg-green-100 text-green-600'
-              )}>
-                <Activity className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Activity className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-gray-900">Turn #{trace.turn_id}</h2>
-                  {trace.lesson_day && (
-                    <Badge variant="outline" className="text-xs">Day {trace.lesson_day}</Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  {trace.trace_id ? (
-                    <code className="font-mono">{trace.trace_id.slice(0, 20)}...</code>
-                  ) : (
-                    <code className="font-mono">Session: {trace.session_id.slice(0, 16)}...</code>
-                  )}
-                  {trace.phone_number && (
-                    <>
-                      <span>•</span>
-                      <div className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        <span>{trace.phone_number}</span>
-                      </div>
-                    </>
-                  )}
+                <h2 className="text-lg font-semibold text-gray-900">Turn Analysis: {trace.turn_id}</h2>
+                <div className="text-sm text-gray-500">
+                  {trace.user_transcript && trace.agent_response 
+                    ? 'Complete conversation turn with full pipeline data'
+                    : 'Partial conversation turn'
+                  }
                 </div>
               </div>
             </div>
+            
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => copyToClipboard(trace.trace_id || trace.id, 'trace_id')}
-              >
-                {copiedField === 'trace_id' ? "✓" : <Copy className="w-3 h-3" />}
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(trace.trace_id || trace.id, 'trace_id')}>
+                {copiedField === 'trace_id' ? "✓" : <Copy className="w-4 h-4" />}
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+              <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="border-b bg-white px-4 py-2">
-          <div className="flex items-center gap-6 text-xs">
-            <div className="flex items-center gap-1">
-              <span className="text-gray-500">Duration:</span>
-              <span className="font-semibold text-blue-600">
-                {trace.trace_duration_ms ? formatDuration(trace.trace_duration_ms) : "N/A"}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-500">Cost:</span>
-              <span className="font-semibold text-purple-600">
-                {trace.trace_cost_usd ? formatCost(parseFloat(trace.trace_cost_usd)) : "N/A"}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-500">Tools:</span>
-              <span className="font-semibold text-orange-600">{totalToolCalls}</span>
-              {totalToolCalls > 0 && (
-                <span className="text-gray-400">
-                  ({successfulTools} success)
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-500">Spans:</span>
-              <span className="font-semibold text-green-600">{trace.otel_spans?.length || 0}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-500">Call Status:</span>
-              <Badge variant={trace.call_success === false ? "destructive" : "secondary"} className="text-xs">
-                {trace.call_success === false ? "Failed" : "Success"}
-              </Badge>
-            </div>
+        {/* View Tabs */}
+        <div className="border-b bg-white">
+          <div className="px-6">
+            <nav className="flex space-x-4">
+              {viewTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedView(tab.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px",
+                    selectedView === tab.id
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  )}
+                >
+                  {tab.icon}
+                  {tab.name}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4 space-y-4">
-            {/* Conversation */}
-            {(trace.user_transcript || trace.agent_response) && (
-              <div>
-                <button 
-                  onClick={() => setExpandedSections(prev => ({ ...prev, conversation: !prev.conversation }))}
-                  className="flex items-center gap-2 w-full text-left py-1 hover:bg-gray-50 rounded px-1"
-                >
-                  {expandedSections.conversation ? 
-                    <ChevronDown className="w-4 h-4 text-gray-400" /> : 
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  }
-                  <span className="text-sm font-medium text-gray-900">Conversation</span>
-                </button>
-                
-                {expandedSections.conversation && (
-                  <div className="mt-3 space-y-3">
-                    {trace.user_transcript && (
-                      <div className="border-l-3 border-blue-500 pl-4 py-2 bg-blue-50/30">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">U</div>
-                          <span className="text-xs font-medium text-blue-700">User</span>
-                          <span className="text-xs text-gray-400">{new Date(trace.created_at).toLocaleTimeString()}</span>
-                        </div>
-                        <p className="text-sm text-gray-800 leading-relaxed">{trace.user_transcript}</p>
-                      </div>
-                    )}
-
-                    {trace.agent_response && (
-                      <div className="border-l-3 border-gray-400 pl-4 py-2 bg-gray-50/30">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-5 h-5 rounded-full bg-gray-500 text-white text-[10px] flex items-center justify-center font-bold">A</div>
-                          <span className="text-xs font-medium text-gray-700">Assistant</span>
-                          <span className="text-xs text-gray-400">{new Date(trace.created_at).toLocaleTimeString()}</span>
-                        </div>
-                        <p className="text-sm text-gray-800 leading-relaxed">{trace.agent_response}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+          {selectedView === 'pipeline' && (
+            <div className="flex h-full">
+              {/* Left Panel - Node Selector */}
+              <div className="w-80 border-r bg-gray-50 p-4">
+                <h3 className="font-medium text-sm mb-4 text-gray-700">Pipeline Stages</h3>
+                {renderNodeSelector()}
               </div>
-            )}
-
-            <Separator />
-
-            {/* Metrics */}
-            {allMetrics.length > 0 && (
-              <div>
-                <button 
-                  onClick={() => setExpandedSections(prev => ({ ...prev, metrics: !prev.metrics }))}
-                  className="flex items-center gap-2 w-full text-left py-1 hover:bg-gray-50 rounded px-1"
-                >
-                  {expandedSections.metrics ? 
-                    <ChevronDown className="w-4 h-4 text-gray-400" /> : 
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  }
-                  <span className="text-sm font-medium text-gray-900">
-                    Performance Metrics ({allMetrics.length})
-                  </span>
-                </button>
-                
-                {expandedSections.metrics && (
-                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {allMetrics.map((metric, index) => (
-                      <div key={index} className="border rounded-lg bg-white p-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className={cn("w-5 h-5 rounded flex items-center justify-center bg-gray-100", metric.color)}>
-                            {metric.icon}
-                          </div>
-                          <span className="text-sm font-medium">{metric.type}</span>
-                        </div>
-                        <div className="space-y-1">
-                          {Object.entries(metric.data).map(([key, value]) => (
-                            <div key={key} className="flex justify-between text-xs">
-                              <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
-                              <span className="font-mono text-gray-900">
-                                {formatMetricValue(key, value)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Tool Calls */}
-            {trace.tool_calls && trace.tool_calls.length > 0 && (
-              <div>
-                <button 
-                  onClick={() => setExpandedSections(prev => ({ ...prev, toolCalls: !prev.toolCalls }))}
-                  className="flex items-center gap-2 w-full text-left py-1 hover:bg-gray-50 rounded px-1"
-                >
-                  {expandedSections.toolCalls ? 
-                    <ChevronDown className="w-4 h-4 text-gray-400" /> : 
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  }
-                  <span className="text-sm font-medium text-gray-900">
-                    Tool Executions ({totalToolCalls})
-                  </span>
-                  {successfulTools === totalToolCalls ? (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <XCircle className="w-4 h-4 text-red-500" />
-                  )}
-                </button>
-                
-                {expandedSections.toolCalls && (
-                  <div className="mt-3 space-y-3">
-                    {trace.tool_calls.map((tool: any, index: number) => {
-                      const isSuccess = tool.status === 'success' || tool.success !== false
-                      const parsedArgs = parseArguments(tool.arguments || tool.raw_arguments)
-                      
-                      return (
-                        <div key={index} className="border rounded-lg bg-white">
-                          <div className="px-3 py-2 bg-gray-50/50 border-b flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className={cn(
-                                "w-5 h-5 rounded flex items-center justify-center",
-                                isSuccess ? "bg-green-100" : "bg-red-100"
-                              )}>
-                                {isSuccess ? 
-                                  <CheckCircle className="w-3 h-3 text-green-600" /> : 
-                                  <XCircle className="w-3 h-3 text-red-600" />
-                                }
-                              </div>
-                              <span className="text-sm font-medium">{tool.name || tool.function_name}</span>
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                #{index + 1}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              {tool.execution_duration_ms && (
-                                <span>{formatDuration(tool.execution_duration_ms)}</span>
-                              )}
-                              <span>{tool.result_length || String(tool.result || '').length || 0} chars</span>
-                            </div>
-                          </div>
-
-                          <div className="p-3 space-y-3">
-                            {/* Arguments */}
-                            <div>
-                              <div className="text-xs font-medium text-gray-600 mb-1">Arguments</div>
-                              <div className="bg-gray-50 rounded px-3 py-2 text-xs font-mono text-gray-800 overflow-x-auto">
-                                <pre>{JSON.stringify(parsedArgs, null, 2)}</pre>
-                              </div>
-                            </div>
-
-                            {/* Result */}
-                            {tool.result && (
-                              <div>
-                                <div className="text-xs font-medium text-gray-600 mb-1">Result</div>
-                                <div className="bg-green-50 border border-green-200 rounded px-3 py-2 text-xs text-gray-800 max-h-32 overflow-y-auto">
-                                  {String(tool.result)}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Error */}
-                            {tool.error && (
-                              <div>
-                                <div className="text-xs font-medium text-red-600 mb-1">Error</div>
-                                <div className="bg-red-50 border border-red-200 rounded px-3 py-2 text-xs text-red-800">
-                                  {tool.error}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <Separator />
-
-            {/* OpenTelemetry Spans */}
-            {trace.otel_spans && trace.otel_spans.length > 0 && (
-              <div>
-                <button 
-                  onClick={() => setExpandedSections(prev => ({ ...prev, spans: !prev.spans }))}
-                  className="flex items-center gap-2 w-full text-left py-1 hover:bg-gray-50 rounded px-1"
-                >
-                  {expandedSections.spans ? 
-                    <ChevronDown className="w-4 h-4 text-gray-400" /> : 
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  }
-                  <span className="text-sm font-medium text-gray-900">
-                    OpenTelemetry Spans ({trace.otel_spans.length})
-                  </span>
-                </button>
-                
-                {expandedSections.spans && (
-                  <div className="mt-3 space-y-2">
-                    {trace.otel_spans.map((span: any, index: number) => {
-                      const getOperationIcon = (op: string) => {
-                        if (op.includes('stt')) return <Mic className="w-3 h-3" />
-                        if (op.includes('llm')) return <Brain className="w-3 h-3" />
-                        if (op.includes('tts')) return <Volume2 className="w-3 h-3" />
-                        if (op.includes('tool')) return <Wrench className="w-3 h-3" />
-                        return <Activity className="w-3 h-3" />
-                      }
-
-                      return (
-                        <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded hover:bg-gray-100">
-                          <div className="flex items-center gap-3">
-                            <div className="text-blue-600">
-                              {getOperationIcon(span.operation)}
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium capitalize">
-                                {span.operation.replace(/_/g, ' ')}
-                              </div>
-                              {span.span_id && (
-                                <div className="text-xs text-gray-500 font-mono">
-                                  {span.span_id}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs font-mono">
-                              {formatDuration(span.duration_ms || 0)}
-                            </div>
-                            <div className={cn(
-                              "text-xs",
-                              span.status === 'error' ? 'text-red-600' : 'text-green-600'
-                            )}>
-                              {span.status || 'success'}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Session Info */}
-            <div>
-              <span className="text-sm font-medium text-gray-900 mb-2 block">Session Details</span>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs bg-gray-50 rounded-lg p-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Session ID:</span>
-                  <code className="text-gray-800">{trace.session_id}</code>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Created:</span>
-                  <span className="text-gray-800">{new Date(trace.created_at).toLocaleString()}</span>
-                </div>
-                {trace.unix_timestamp && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Unix Time:</span>
-                    <span className="text-gray-800">{trace.unix_timestamp}</span>
-                  </div>
-                )}
+              
+              {/* Right Panel - Node Details */}
+              <div className="flex-1 p-6">
+                {renderNodeDetails()}
               </div>
             </div>
-          </div>
+          )}
+          
+          {/* {selectedView === 'timeline' && (
+            <div className="p-6">
+              {renderStateTimeline()}
+            </div>
+          )} */}
+          
+          {selectedView === 'config' && (
+            <div className="p-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Raw Configuration Data</h3>
+                <pre className="bg-gray-50 p-4 rounded text-xs overflow-auto max-h-[70vh] border">
+                  {JSON.stringify(trace.turn_configuration, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+          
+          {selectedView === 'insights' && (
+            <div className="p-6">
+              {renderEnhancedInsights()}
+            </div>
+          )}
         </div>
       </div>
     </TooltipProvider>
   )
 }
 
-export default TraceDetailSheet
+export default EnhancedTraceDetailSheet
