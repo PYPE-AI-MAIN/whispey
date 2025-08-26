@@ -109,6 +109,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         if k not in {"phone_number", "customer_number", "phone"}
     }
 
+    # FIXED: Define whispey_data at function level, not inside if block
     whispey_data = {
         "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
         "agent_id": session_info['agent_id'],
@@ -123,6 +124,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "metadata": {
             "usage": usage_summary,
             "duration_formatted": f"{duration // 60}m {duration % 60}s",
+            "complete_configuration": session_data.get('complete_configuration') if session_data else None,
             **sanitized_dynamic_params  # Include dynamic parameters without phone identifiers
         }
     }
@@ -131,9 +133,19 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     if session_data:
         transcript_data = session_data.get("transcript_with_metrics", [])
         
+        # VERIFICATION: Check if turns have configuration
+        config_count = sum(1 for turn in transcript_data if turn.get('turn_configuration'))
+        logger.info(f"Configuration verification: {config_count}/{len(transcript_data)} turns have configuration")
+        
         # NEW: Ensure trace fields are included in each turn
         enhanced_transcript = []
         for turn in transcript_data:
+            # Verify configuration exists
+            if not turn.get('turn_configuration'):
+                logger.warning(f"Turn {turn.get('turn_id', 'unknown')} missing configuration!")
+                # Try to inject from session level as fallback
+                turn['turn_configuration'] = session_data.get('complete_configuration')
+            
             # Add trace fields to each turn if they exist
             enhanced_turn = {
                 **turn,  # All existing fields
@@ -169,7 +181,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
                     except Exception as e:
                         logger.debug(f"Could not extract transcript from {attr}: {e}")
 
-    if session_data:
+        # Add bug report data if available
         if 'bug_reports' in session_data:
             whispey_data["metadata"]["bug_reports"] = session_data['bug_reports']
         if 'bug_flagged_turns' in session_data:
