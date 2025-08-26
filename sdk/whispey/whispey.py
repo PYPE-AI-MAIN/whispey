@@ -129,7 +129,23 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     
     # Add transcript data if available
     if session_data:
-        whispey_data["transcript_with_metrics"] = session_data.get("transcript_with_metrics", [])
+        transcript_data = session_data.get("transcript_with_metrics", [])
+        
+        # NEW: Ensure trace fields are included in each turn
+        enhanced_transcript = []
+        for turn in transcript_data:
+            # Add trace fields to each turn if they exist
+            enhanced_turn = {
+                **turn,  # All existing fields
+                'trace_id': turn.get('trace_id'),
+                'otel_spans': turn.get('otel_spans', []),
+                'tool_calls': turn.get('tool_calls', []),
+                'trace_duration_ms': turn.get('trace_duration_ms'),
+                'trace_cost_usd': turn.get('trace_cost_usd')
+            }
+            enhanced_transcript.append(enhanced_turn)
+        
+        whispey_data["transcript_with_metrics"] = enhanced_transcript
         
         # Extract transcript_json from session history if available
         if hasattr(session_data, 'history'):

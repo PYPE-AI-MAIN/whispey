@@ -1,3 +1,4 @@
+# sdk/whispey/__init__.py
 """Whispey Observe SDK - Voice Analytics for AI Agents"""
 
 __version__ = "2.1.1"
@@ -57,7 +58,7 @@ class LivekitObserve:
         )
         self.collection_prompt = config.get(
             'collection_prompt',
-            "Got it. Please say more details if you want or end the bug report mode."
+            "Anything else?"
         )
     
     def _convert_to_regex(self, patterns: List[str]) -> List[str]:
