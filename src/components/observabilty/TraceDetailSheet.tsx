@@ -96,6 +96,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
   const enhancedLLM = trace.enhanced_data?.enhanced_llm_data
   const enhancedTTS = trace.enhanced_data?.enhanced_tts_data
   const stateEvents = trace.enhanced_data?.state_events || []
+  const llmRequests = trace.enhanced_data?.llm_requests || []
 
   // Pipeline stages with comprehensive data
   const pipelineStages = [
@@ -136,6 +137,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       metrics: trace.llm_metrics,
       enhanced: enhancedLLM,
       tools: trace.tool_calls || [],
+      llmRequests: llmRequests,
       inputType: 'Text',
       outputType: 'Text',
       inputData: trace.user_transcript,
@@ -186,6 +188,12 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                   <div className="flex items-center gap-1">
                     <Wrench className="w-3 h-3 text-blue-600" />
                     <span className="text-xs text-blue-600 font-medium">{stage.tools.length}</span>
+                  </div>
+                )}
+                {stage.llmRequests && stage.llmRequests.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3 text-purple-600" />
+                    <span className="text-xs text-purple-600 font-medium">{stage.llmRequests.length}</span>
                   </div>
                 )}
               </div>
@@ -309,7 +317,99 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
           )}
         </div>
 
-        {/* Tool Calls for LLM - Show prominently after input/output */}
+        {/* LLM Prompt Data - Show FIRST for LLM */}
+        {selectedStage.id === 'llm' && selectedStage.llmRequests && selectedStage.llmRequests.length > 0 && (
+          <div className="bg-purple-50 border-l-4 border-purple-500 rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-purple-600" />
+              LLM Prompts & Instructions ({selectedStage.llmRequests.length} requests)
+            </h4>
+            {selectedStage.llmRequests.map((request: any, index: number) => (
+              <div key={index} className="bg-white border rounded-lg p-3 shadow-sm mb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded bg-purple-100 flex items-center justify-center">
+                      <Brain className="w-3 h-3 text-purple-600" />
+                    </div>
+                    <span className="font-mono text-sm font-medium">{request.method}</span>
+                    <Badge variant={request.response?.success ? 'default' : 'destructive'} className="text-xs">
+                      {request.response?.success ? 'success' : request.response?.error ? 'error' : 'pending'}
+                    </Badge>
+                  </div>
+                  <span className="text-xs text-gray-500 font-mono">
+                    {new Date(request.timestamp * 1000).toLocaleTimeString()}
+                  </span>
+                </div>
+                
+                {/* Show Messages Array */}
+                {request.messages && request.messages.length > 0 && (
+                  <div className="space-y-3">
+                    <h5 className="text-xs font-medium text-gray-700">Messages ({request.messages.length}):</h5>
+                    {request.messages.map((message: any, msgIndex: number) => (
+                      <div key={msgIndex} className="border-l-2 pl-3 py-2 text-xs">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge 
+                            variant={message.role === 'system' ? 'secondary' : message.role === 'user' ? 'default' : 'outline'} 
+                            className="text-xs"
+                          >
+                            {message.role}
+                          </Badge>
+                          <span className="text-gray-500">{message.type}</span>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded text-xs max-h-32 overflow-y-auto">
+                          <pre className="whitespace-pre-wrap break-words">
+                            {typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 1)}
+                          </pre>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Show Model Config */}
+                {request.model_config && Object.keys(request.model_config).length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <h5 className="text-xs font-medium text-gray-700 mb-2">Model Configuration:</h5>
+                    <div className="bg-gray-50 p-2 rounded">
+                      <pre className="text-xs overflow-x-auto">
+                        {JSON.stringify(request.model_config, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show Response if available */}
+                {request.response && (
+                  <div className="mt-3 pt-3 border-t">
+                    <h5 className="text-xs font-medium text-gray-700 mb-2">Response:</h5>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Success:</span>
+                        <Badge variant={request.response.success ? 'default' : 'destructive'} className="text-xs">
+                          {request.response.success ? 'Yes' : 'No'}
+                        </Badge>
+                      </div>
+                      {request.response.result_content && (
+                        <div className="bg-green-50 p-2 rounded max-h-24 overflow-y-auto">
+                          <pre className="whitespace-pre-wrap break-words text-xs">
+                            {request.response.result_content}
+                          </pre>
+                        </div>
+                      )}
+                      {request.response.error && (
+                        <div className="bg-red-50 p-2 rounded">
+                          <span className="text-red-600 text-xs">{request.response.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Tool Calls for LLM - Show after prompts */}
         {selectedStage.id === 'llm' && selectedStage.tools && selectedStage.tools.length > 0 && (
           <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
             <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
@@ -356,6 +456,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
             </div>
           </div>
         )}
+
         {selectedStage.metrics && (
           <div className="bg-blue-50 rounded-lg p-4">
             <h4 className="font-medium text-sm mb-3">Performance Metrics</h4>
@@ -464,64 +565,6 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
     )
   }
 
-  // const renderStateTimeline = () => (
-  //   <div className="space-y-4">
-  //     <div className="flex items-center justify-between">
-  //       <h4 className="text-lg font-semibold flex items-center gap-2">
-  //         <Clock className="w-5 h-5" />
-  //         State Timeline
-  //       </h4>
-  //       <Badge variant="outline">{stateEvents.length} events</Badge>
-  //     </div>
-      
-  //     {stateEvents.length > 0 ? (
-  //       <div className="relative">
-  //         {/* Timeline line */}
-  //         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-          
-  //         <div className="space-y-4">
-  //           {stateEvents.map((event: any, index: number) => (
-  //             <div key={index} className="relative flex items-start gap-4">
-  //               {/* Timeline dot */}
-  //               <div className="relative z-10 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-  //                 <div className="w-2 h-2 rounded-full bg-white"></div>
-  //               </div>
-                
-  //               {/* Event content */}
-  //               <div className="flex-1 bg-white border rounded-lg p-4 shadow-sm">
-  //                 <div className="flex items-center justify-between mb-2">
-  //                   <div className="flex items-center gap-2">
-  //                     <span className="font-medium capitalize text-sm">
-  //                       {event.type.replace('_', ' ')}
-  //                     </span>
-  //                     <Badge variant="outline" className="text-xs">
-  //                       {event.old_state} → {event.new_state}
-  //                     </Badge>
-  //                   </div>
-  //                   <span className="text-xs text-gray-500">
-  //                     {new Date(event.timestamp * 1000).toLocaleTimeString()}
-  //                   </span>
-  //                 </div>
-                  
-  //                 {event.metadata && (
-  //                   <div className="text-xs text-gray-600 bg-gray-50 rounded p-2 mt-2">
-  //                     <pre>{JSON.stringify(event.metadata, null, 2)}</pre>
-  //                   </div>
-  //                 )}
-  //               </div>
-  //             </div>
-  //           ))}
-  //         </div>
-  //       </div>
-  //     ) : (
-  //       <div className="text-center py-12 text-gray-500">
-  //         <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-  //         <p className="text-sm">No state events recorded for this trace</p>
-  //       </div>
-  //     )}
-  //   </div>
-  // )
-
   const renderEnhancedInsights = () => {
     // Calculate actual pipeline duration from stage metrics
     const calculatePipelineDuration = () => {
@@ -591,12 +634,6 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
               <span>Actual Pipeline Duration:</span>
               <span className="font-mono text-lg text-blue-600">{formatDuration(actualPipelineDuration)}</span>
             </div>
-            {/* {trace.trace_duration_ms && trace.trace_duration_ms !== actualPipelineDuration && (
-              <div className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm text-gray-600">
-                <span>Total Trace Time (includes overhead):</span>
-                <span className="font-mono">{formatDuration(trace.trace_duration_ms)}</span>
-              </div>
-            )} */}
           </div>
         </div>
 
@@ -634,7 +671,6 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
 
   const viewTabs = [
     { id: 'pipeline', name: 'Pipeline Flow', icon: <Zap className="w-4 h-4" /> },
-    // { id: 'timeline', name: 'Timeline', icon: <Clock className="w-4 h-4" /> },
     { id: 'config', name: 'Config', icon: <Settings className="w-4 h-4" /> },
     { id: 'insights', name: 'Cost & Metrics', icon: <MessageSquare className="w-4 h-4" /> }
   ]
@@ -714,12 +750,6 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
               </div>
             </div>
           )}
-          
-          {/* {selectedView === 'timeline' && (
-            <div className="p-6">
-              {renderStateTimeline()}
-            </div>
-          )} */}
           
           {selectedView === 'config' && (
             <div className="p-6">
