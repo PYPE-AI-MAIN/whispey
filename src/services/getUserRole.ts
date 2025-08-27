@@ -9,9 +9,8 @@ export async function getUserProjectRole(email: string, projectId: string) {
     .eq('is_active', true)
     .single()
 
-  if (error) {
-    // You can handle error or return null/undefined
-    return null
+  if (error || !data?.role) {
+    return 'user'
   }
-  return data?.role
+  return data.role
 }

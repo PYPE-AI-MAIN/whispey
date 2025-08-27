@@ -42,9 +42,12 @@ interface CampaignLog {
   fpoName: string
   fpoLoginId: string
   call_status: string
+  masterMobileNo
+ :string
   attempt_count: number
   sourceFile: string
   createdAt: string
+  alternateMobile:string
   uploadedAt: string
   real_attempt_count: number
   system_error_count: number
@@ -145,9 +148,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     retry_config: {
       '408': 60,
       '480': 60,
-      '486': 120,
+      '486': 60,
       '504': 60,
-      '600': 120
+      '600': 60
     }
   })
   
@@ -861,12 +864,13 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                               <Phone className="w-4 h-4 text-primary" />
                             </div>
-                            <span className="font-medium">{log.phoneNumber}</span>
+                            <span className="font-medium">{log.masterMobileNo
+}</span>
                           </div>
                         </TableCell>
 
                         <TableCell className="py-4">
-                          <span className="text-sm text-gray-600">{log.alternative_number || '-'}</span>
+                          <span className="text-sm text-gray-600">{log.alternateMobile || '-'}</span>
                         </TableCell>
 
                         <TableCell className="py-4">

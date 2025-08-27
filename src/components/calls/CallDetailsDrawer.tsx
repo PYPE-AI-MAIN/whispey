@@ -159,7 +159,7 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
         metrics.agentResponseLatencies.push(agentResponseTime)
       }
 
-      if (log.stt_metrics && log.tts_metrics) {
+      if (log.tts_metrics) {
         const sttTime = log.stt_metrics?.duration || 0
         const llmTime = log.llm_metrics?.ttft || 0
         const ttsTime = (log.tts_metrics?.ttfb || 0) + (log.tts_metrics?.duration || 0)
@@ -172,7 +172,6 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
 
       if (
         log.eou_metrics?.end_of_utterance_delay &&
-        log.stt_metrics?.duration &&
         log.llm_metrics?.ttft &&
         log.tts_metrics
       ) {
@@ -186,14 +185,23 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
     })
 
     const calculateStats = (values: number[]) => {
-      if (values.length === 0) return { avg: 0, min: 0, max: 0, count: 0, p95: 0 }
+      if (values.length === 0) return { avg: 0, min: 0, max: 0, count: 0, p50: 0, p75: 0 }
+      
       const sorted = [...values].sort((a, b) => a - b)
       const avg = values.reduce((sum, val) => sum + val, 0) / values.length
       const min = Math.min(...values)
       const max = Math.max(...values)
-      const p95Index = Math.floor(sorted.length * 0.95)
-      const p95 = sorted[p95Index] || 0
-      return { avg, min, max, count: values.length, p95 }
+      
+      // Calculate percentiles
+      const getPercentile = (arr: number[], percentile: number) => {
+        const index = Math.ceil((percentile / 100) * arr.length) - 1
+        return arr[Math.max(0, Math.min(index, arr.length - 1))] || 0
+      }
+      
+      const p50 = getPercentile(sorted, 50)  // Median
+      const p75 = getPercentile(sorted, 75)
+      
+      return { avg, min, max, count: values.length, p50, p75 }
     }
 
     return {
@@ -205,9 +213,9 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
       agentResponseStats: calculateStats(metrics.agentResponseLatencies),
       totalTurnStats: calculateStats(metrics.totalTurnLatencies),
       endToEndStats: calculateStats(metrics.endToEndLatencies),
-      avgTotalLatency: calculateStats(metrics.totalTurnLatencies).avg,
-      avgAgentResponseTime: calculateStats(metrics.agentResponseLatencies).avg,
-      avgEndToEndLatency: calculateStats(metrics.endToEndLatencies).avg,
+      p50TotalLatency: calculateStats(metrics.totalTurnLatencies).p50,
+      p50AgentResponseTime: calculateStats(metrics.agentResponseLatencies).p50,
+      p50EndToEndLatency: calculateStats(metrics.endToEndLatencies).p50,
     }
   }, [transcriptLogs])
 
@@ -698,17 +706,27 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
               </div>
               <div className="text-sm text-muted-foreground">Duration</div>
             </div>
-            <div className="text-center">
-              <div
-                className={cn(
-                  "text-2xl font-bold",
-                  conversationMetrics ? getLatencyColor(conversationMetrics.avgEndToEndLatency, "total") : "",
-                )}
-              >
-                {conversationMetrics ? formatDuration(conversationMetrics.avgEndToEndLatency) : "N/A"}
-              </div>
-              <div className="text-sm text-muted-foreground">Avg Latency</div>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-center cursor-help">
+                  <div
+                    className={cn(
+                      "text-2xl font-bold",
+                      conversationMetrics ? getLatencyColor(conversationMetrics.endToEndStats.p75, "total") : "",
+                    )}
+                  >
+                    {conversationMetrics ? formatDuration(conversationMetrics.endToEndStats.p75) : "N/A"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">P75 Latency</div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-center">
+                  <div className="font-medium">75th Percentile Latency</div>
+                  <div className="text-xs text-muted-foreground">75% of responses were faster than this</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
             <div className="text-center">
               <div
                 className={cn(
@@ -730,21 +748,30 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="text-center p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-help">
-                      <div
-                        className={cn(
-                          "text-lg font-semibold",
-                          getLatencyColor(conversationMetrics.sttStats.avg, "stt"),
-                        )}
-                      >
-                        {formatDuration(conversationMetrics.sttStats.avg)}
+                      <div className="space-y-1">
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.sttStats.p50, "stt"),
+                          )}
+                        >
+                          P50: {formatDuration(conversationMetrics.sttStats.p50)}
+                        </div>
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.sttStats.p75, "stt"),
+                          )}
+                        >
+                          P75: {formatDuration(conversationMetrics.sttStats.p75)}
+                        </div>
                       </div>
                       <div className="text-xs text-muted-foreground">STT</div>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-center">
-                      <div className="font-medium">Speech-to-Text</div>
-                      <div className="text-xs text-muted-foreground">Time to convert speech to text</div>
+                      <div className="font-medium">Speech-to-Text Latency</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -752,21 +779,30 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="text-center p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-help">
-                      <div
-                        className={cn(
-                          "text-lg font-semibold",
-                          getLatencyColor(conversationMetrics.llmStats.avg, "llm"),
-                        )}
-                      >
-                        {formatDuration(conversationMetrics.llmStats.avg)}
+                      <div className="space-y-1">
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.llmStats.p50, "llm"),
+                          )}
+                        >
+                          P50: {formatDuration(conversationMetrics.llmStats.p50)}
+                        </div>
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.llmStats.p75, "llm"),
+                          )}
+                        >
+                          P75: {formatDuration(conversationMetrics.llmStats.p75)}
+                        </div>
                       </div>
                       <div className="text-xs text-muted-foreground">LLM</div>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-center">
-                      <div className="font-medium">Language Model</div>
-                      <div className="text-xs text-muted-foreground">Time to generate response</div>
+                      <div className="font-medium">Language Model Latency</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -774,21 +810,30 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="text-center p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-help">
-                      <div
-                        className={cn(
-                          "text-lg font-semibold",
-                          getLatencyColor(conversationMetrics.ttsStats.avg, "tts"),
-                        )}
-                      >
-                        {formatDuration(conversationMetrics.ttsStats.avg)}
+                      <div className="space-y-1">
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.ttsStats.p50, "tts"),
+                          )}
+                        >
+                          P50: {formatDuration(conversationMetrics.ttsStats.p50)}
+                        </div>
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.ttsStats.p75, "tts"),
+                          )}
+                        >
+                          P75: {formatDuration(conversationMetrics.ttsStats.p75)}
+                        </div>
                       </div>
                       <div className="text-xs text-muted-foreground">TTS</div>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-center">
-                      <div className="font-medium">Text-to-Speech</div>
-                      <div className="text-xs text-muted-foreground">Time to convert text to speech</div>
+                      <div className="font-medium">Text-to-Speech Latency</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -796,21 +841,30 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="text-center p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-help">
-                      <div
-                        className={cn(
-                          "text-lg font-semibold",
-                          getLatencyColor(conversationMetrics.eouStats.avg, "eou"),
-                        )}
-                      >
-                        {formatDuration(conversationMetrics.eouStats.avg)}
+                      <div className="space-y-1">
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.eouStats.p50, "eou"),
+                          )}
+                        >
+                          P50: {formatDuration(conversationMetrics.eouStats.p50)}
+                        </div>
+                        <div
+                          className={cn(
+                            "text-sm font-semibold",
+                            getLatencyColor(conversationMetrics.eouStats.p75, "eou"),
+                          )}
+                        >
+                          P75: {formatDuration(conversationMetrics.eouStats.p75)}
+                        </div>
                       </div>
                       <div className="text-xs text-muted-foreground">EOU</div>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-center">
-                      <div className="font-medium">End of Utterance</div>
-                      <div className="text-xs text-muted-foreground">Time to detect speech end</div>
+                      <div className="font-medium">End of Utterance Latency</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>

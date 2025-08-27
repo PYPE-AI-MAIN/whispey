@@ -13,9 +13,8 @@ export async function POST(
 ) {
   try {
     const { id: agentId } = await params
-    console.log('🔗 Setting up webhook for agent:', agentId)
 
-    // 1. Get agent data from database
+    // Get agent data from database
     const { data: agent, error: agentError } = await supabase
       .from('pype_voice_agents')
       .select('id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, project_id')
@@ -30,7 +29,7 @@ export async function POST(
       )
     }
 
-    // 2. Check if this is a Vapi agent
+    // Check if this is a Vapi agent
     const isVapiAgent = agent.agent_type === 'vapi' || 
                        Boolean(agent.configuration?.vapi?.assistantId) ||
                        Boolean(agent.vapi_api_key_encrypted)
@@ -42,7 +41,7 @@ export async function POST(
       )
     }
 
-    // 3. Get required credentials and decrypt
+    // Get required credentials and decrypt
     const assistantId = agent.configuration?.vapi?.assistantId
 
     if (!agent.vapi_api_key_encrypted || !agent.vapi_project_key_encrypted || !assistantId) {
@@ -71,22 +70,38 @@ export async function POST(
       }, { status: 500 })
     }
 
-    // 4. Prepare webhook configuration
+    // Prepare webhook configuration
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.whispey.xyz'}/api/vapi/webhook`
     
     const webhookConfig = {
       serverUrl: webhookUrl,
       serverMessages: ["end-of-call-report", "status-update"],
+      server: {
+        url: webhookUrl,
+        timeoutSeconds: 20
+      },
+      hooks: [
+        {
+          on: "call.ending",
+          do: [
+            {
+              type: "tool",
+              tool: {
+                type: "apiRequest",
+                method: "POST",
+                url: webhookUrl
+              }
+            }
+          ]
+        }
+      ],
       metadata: {
         agentId: agentId,
         xPypeToken: vapiProjectKey
       }
     }
 
-    console.log('🔗 Setting up webhook for assistant:', assistantId)
-    console.log('📝 Webhook config:', webhookConfig)
-
-    // 5. Call Vapi API to setup webhook
+    // Call Vapi API to setup webhook
     const vapiResponse = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
       method: 'PATCH',
       headers: {
@@ -119,7 +134,6 @@ export async function POST(
     }
 
     const updatedAssistant = await vapiResponse.json()
-    console.log('✅ Webhook setup successful:', updatedAssistant)
 
     return NextResponse.json({
       success: true,
@@ -131,7 +145,9 @@ export async function POST(
       assistant: {
         id: updatedAssistant.id,
         name: updatedAssistant.name,
-        serverUrl: updatedAssistant.serverUrl
+        serverUrl: updatedAssistant.serverUrl,
+        serverConfigUrl: updatedAssistant.server?.url,
+        hooksConfigured: updatedAssistant.hooks?.length || 0
       }
     })
 
