@@ -39,20 +39,79 @@ interface TraceLog {
   lesson_day?: number
   call_success?: boolean
   lesson_completed?: boolean
+  bug_report?: boolean
+  // Add metadata field for bug reports
+  metadata?: any
 }
 
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }) => {
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false)
 
+  // Get call data to access bug report metadata
+  const { data: callData } = useSupabaseQuery("pype_voice_call_logs", {
+    select: "id, metadata, call_id",
+    filters: sessionId 
+      ? [{ column: "id", operator: "eq", value: sessionId }]
+      : [{ column: "agent_id", operator: "eq", value: agentId }],
+    orderBy: { column: "created_at", ascending: false }
+  })
+
   // trace data
-  const { data: traceData, loading, error } = useSupabaseQuery("pype_voice_metrics_logs", {
+  const {
+    data: traceData,
+    loading,
+    error,
+  } = useSupabaseQuery("pype_voice_metrics_logs", {
     select: "*",
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
-    orderBy: { column: "created_at", ascending: false }
+    orderBy: { column: "unix_timestamp", ascending: true }
   })
+
+  // Extract bug report data from call metadata
+  const bugReportData = useMemo(() => {
+    if (!callData?.length) return null
+    
+    const call = callData[0] // Get the first call (should be the one we're viewing)
+    if (!call?.metadata) return null
+
+    try {
+      const metadata = typeof call.metadata === "string" ? JSON.parse(call.metadata) : call.metadata
+      return {
+        bug_reports: metadata?.bug_reports || null,
+        bug_flagged_turns: metadata?.bug_flagged_turns || null
+      }
+    } catch (e) {
+      return null
+    }
+  }, [callData])
+
+  // Check for bug report flags
+  const checkBugReportFlags = useMemo(() => {
+    const bugReportTurnIds = new Set()
+
+    // Use metadata bug_flagged_turns
+    if (bugReportData?.bug_flagged_turns && Array.isArray(bugReportData.bug_flagged_turns)) {
+      bugReportData.bug_flagged_turns.forEach((flaggedTurn: any) => {
+        if (flaggedTurn.turn_id) {
+          bugReportTurnIds.add(flaggedTurn.turn_id.toString())
+        }
+      })
+    }
+
+    // Fallback: Check transcript logs for explicit bug_report flags
+    if (traceData?.length) {
+      traceData.forEach((log: TraceLog) => {
+        if (log.bug_report === true) {
+          bugReportTurnIds.add(log.turn_id.toString())
+        }
+      })
+    }
+
+    return bugReportTurnIds
+  }, [traceData, bugReportData])
 
   // Filter and process data
   const processedTraces = useMemo(() => {
@@ -62,10 +121,30 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
       item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
     )
   
+    filtered.sort((a, b) => {
+      const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
+      const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
+      return aTurnNum - bTurnNum
+    })
+  
     return filtered
   }, [traceData, filters])
 
+
+  console.log('Bug Report Data:', {
+    bug_reports: bugReportData?.bug_reports,
+    bug_flagged_turns: bugReportData?.bug_flagged_turns
+  })
+
+  
+
+
   const getTraceStatus = (trace: TraceLog) => {
+    // Check if this turn is flagged for bug reports
+    if (checkBugReportFlags.has(trace.turn_id.toString())) {
+      return "bug_report"
+    }
+
     const spans = trace.otel_spans || []
     const toolErrors = trace.tool_calls?.some(tool => tool.status === 'error' || tool.success === false)
     const hasLLMError = trace.llm_metrics && Object.keys(trace.llm_metrics).length === 0
@@ -171,10 +250,33 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
     return total
   }
 
-  const handleRowClick = (trace: TraceLog) => {
-    setSelectedTrace(trace)
-    setIsDetailSheetOpen(true)
+
+const handleRowClick = (trace: TraceLog) => {
+  const hasBugReport = checkBugReportFlags.has(trace.turn_id.toString())
+  
+  const relevantBugReports = bugReportData?.bug_reports?.filter((report: any) => {
+    const reportFlaggedTurns = bugReportData?.bug_flagged_turns?.filter(
+      (flaggedTurn: any) => flaggedTurn.bug_report_id === report.id || 
+      flaggedTurn.timestamp === report.timestamp
+    ) || []
+    
+    return reportFlaggedTurns.some((flaggedTurn: any) => 
+      flaggedTurn.turn_id.toString() === trace.turn_id.toString()
+    )
+  }) || []
+
+  const enrichedTrace = {
+    ...trace,
+    bug_report: hasBugReport,
+    bug_report_data: {
+      ...bugReportData,
+      bug_reports: relevantBugReports
+    }
   }
+  
+  setSelectedTrace(enrichedTrace)
+  setIsDetailSheetOpen(true)
+}
 
   if (loading) {
     return (
@@ -193,9 +295,6 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
       </div>
     )
   }
-
-
-  
 
   return (
     <>
@@ -235,14 +334,18 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
                 const mainOp = getMainOperation(trace)
                 const metrics = getMetricsInfo(trace)
                 const duration = getTotalDuration(trace)
-
-                console.log({trace})
+                const hasBugReport = checkBugReportFlags.has(trace.turn_id.toString())
                 
                 return (
                   <div
                     key={trace.id}
                     onClick={() => handleRowClick(trace)}
-                    className="grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50/30 cursor-pointer border-l-2 border-l-transparent hover:border-l-blue-500 transition-all text-sm"
+                    className={cn(
+                      "grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50/30 cursor-pointer border-l-2 transition-all text-sm",
+                      hasBugReport
+                        ? "border-l-red-500 bg-red-50/50 hover:bg-red-50/70"
+                        : "border-l-transparent hover:border-l-blue-500"
+                    )}
                   >
                     {/* Trace Info */}
                     <div className="col-span-2 space-y-1">
@@ -253,6 +356,14 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
                         <div className="font-mono text-xs text-blue-600 font-semibold">
                           {trace.trace_id ? `${trace.trace_id.slice(0, 8)}...` : `Turn-${trace.turn_id}`}
                         </div>
+                        {hasBugReport && (
+                          <div className="flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-red-600" />
+                            <Badge variant="destructive" className="text-xs px-1 py-0">
+                              Bug
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                       <div className="text-xs text-gray-400 space-y-0.5">
                         <div>Session: {trace.session_id.slice(-8)}</div>
@@ -271,9 +382,21 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
                         </div>
                       )}
                       {trace.agent_response && (
-                        <div className="text-xs">
-                          <span className="text-gray-500 font-medium">←</span>
-                          <span className="ml-1 text-gray-600">{truncateText(trace.agent_response, 60)}</span>
+                        <div className={cn(
+                          "text-xs",
+                          hasBugReport && "text-red-700 font-medium"
+                        )}>
+                          <span className={cn(
+                            "font-medium",
+                            hasBugReport ? "text-red-600" : "text-gray-500"
+                          )}>←</span>
+                          <span className={cn(
+                            "ml-1",
+                            hasBugReport ? "text-red-800" : "text-gray-600"
+                          )}>{truncateText(trace.agent_response, 60)}</span>
+                          {hasBugReport && (
+                            <span className="ml-2 text-red-600 font-medium">[REPORTED]</span>
+                          )}
                         </div>
                       )}
                       {!trace.user_transcript && !trace.agent_response && (
@@ -332,7 +455,9 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
                     {/* Status */}
                     <div className="col-span-1">
                       <div className="flex items-center">
-                        {status === "error" ? (
+                        {status === "bug_report" ? (
+                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                        ) : status === "error" ? (
                           <XCircle className="w-4 h-4 text-red-500" />
                         ) : status === "warning" ? (
                           <AlertTriangle className="w-4 h-4 text-amber-500" />

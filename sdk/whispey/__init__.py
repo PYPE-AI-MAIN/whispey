@@ -19,11 +19,14 @@ class LivekitObserve:
         agent_id="whispey-agent",
         apikey=None, 
         host_url=None, 
-        bug_reports: Union[bool, Dict[str, Any]] = False
+        bug_reports: Union[bool, Dict[str, Any]] = False,
+        enable_otel: bool = False,  # ADD THIS LINE
     ):
         self.agent_id = agent_id
         self.apikey = apikey
         self.host_url = host_url
+        self.enable_otel = enable_otel        # ADD THIS LINE
+        self.spans_data = []  
         
         # Handle bug_reports parameter
         if bug_reports is not False:
@@ -61,48 +64,54 @@ class LivekitObserve:
             'collection_prompt',
             "Anything else?"
         )
-    
-    def _convert_to_regex(self, patterns: List[str]) -> List[str]:
-        """Convert simple strings to regex patterns with Hindi support and case-insensitive English"""
-        regex_patterns = []
-        for pattern in patterns:
-            if pattern.startswith('r\'') or '\\b' in pattern:
-                regex_patterns.append(pattern)
-            else:
-                # Check if pattern contains Hindi characters (Devanagari script)
-                hindi_chars = re.search(r'[\u0900-\u097F]', pattern)
-                
-                if hindi_chars:
-                    # For Hindi text, don't use word boundaries, just escape and match literally
-                    escaped = re.escape(pattern)
-                    regex_patterns.append(escaped)
-                else:
-                    # For English text, convert to lowercase, use word boundaries, and make case-insensitive
-                    pattern_lower = pattern.lower()
-                    escaped = re.escape(pattern_lower)
-                    regex_patterns.append(f'\\b{escaped}\\b')
+
+    def _setup_telemetry(self, session_id):
+        if not self.enable_otel:
+            return None
         
-        return regex_patterns
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        
+        tracer_provider = TracerProvider()
+        
+        # Custom span processor to capture spans
+        class WhispeySpanProcessor(BatchSpanProcessor):
+            def __init__(self, whispey_instance):
+                self.whispey = whispey_instance
+                super().__init__(OTLPSpanExporter(endpoint="http://localhost:3000/dev/send-call-logs"))
+            
+            def on_end(self, span):
+                # Store simplified version for export
+                self.whispey.spans_data.append({
+                    'name': span.name,
+                    'start_time': span.start_time,
+                    'end_time': span.end_time,
+                    'attributes': dict(span.attributes) if span.attributes else {},
+                    'status': span.status.status_code.name if span.status else None,
+                })
+                
+                super().on_end(span)
+        
+        tracer_provider.add_span_processor(WhispeySpanProcessor(self))
+
+        # Set the tracer provider using LiveKit's method
+        from livekit.agents.telemetry import set_tracer_provider
+        set_tracer_provider(tracer_provider, metadata={'session_id': session_id})
     
-    def _is_bug_report(self, text: str) -> bool:
-        """Check if user input is a bug report"""
-        if not self.enable_bug_reports or not text:
-            return False
-        return any(re.search(pattern, text.lower()) for pattern in self.bug_start_patterns)
-    
-    def _is_done_reporting(self, text: str) -> bool:
-        """Check if user is done reporting bugs"""
-        if not text:
-            return False
-        return any(re.search(pattern, text.lower()) for pattern in self.bug_end_patterns)
     
     def start_session(self, session, **kwargs):
         """Start session with prompt capture"""
         bug_detector = self if self.enable_bug_reports else None
-        session_id = observe_session(session, self.agent_id, self.host_url, bug_detector=bug_detector, **kwargs)
-        
-        if self.enable_bug_reports:
-            self._setup_bug_report_handling(session, session_id)
+        session_id = observe_session(
+            session, 
+            self.agent_id, 
+            self.host_url, 
+            bug_detector=bug_detector,
+            enable_otel=self.enable_otel,  # Pass this
+            telemetry_instance=self,  # Pass the whole instance
+            **kwargs
+        )
         
         self._setup_prompt_capture(session, session_id)
         
@@ -131,9 +140,6 @@ class LivekitObserve:
             return await original_start(*args, **kwargs)
         
         session.start = wrapped_start
-
-
-
 
 
     def _capture_prompt_data(self, session_id, chat_ctx, tools, agent):
@@ -262,9 +268,50 @@ class LivekitObserve:
             import traceback
             traceback.print_exc()
 
-
-
-
+    def _convert_to_regex(self, patterns: List[str]) -> List[str]:
+        """Convert simple strings to regex patterns with Hindi support and case-insensitive English"""
+        regex_patterns = []
+        for pattern in patterns:
+            if pattern.startswith('r\'') or '\\b' in pattern:
+                regex_patterns.append(pattern)
+            else:
+                # Check if pattern contains Hindi characters (Devanagari script)
+                hindi_chars = re.search(r'[\u0900-\u097F]', pattern)
+                
+                if hindi_chars:
+                    # For Hindi text, don't use word boundaries, just escape and match literally
+                    escaped = re.escape(pattern)
+                    regex_patterns.append(escaped)
+                else:
+                    # For English text, convert to lowercase, use word boundaries, and make case-insensitive
+                    pattern_lower = pattern.lower()
+                    escaped = re.escape(pattern_lower)
+                    regex_patterns.append(f'\\b{escaped}\\b')
+        
+        return regex_patterns
+    
+    def _is_bug_report(self, text: str) -> bool:
+        """Check if user input is a bug report"""
+        if not self.enable_bug_reports or not text:
+            return False
+        return any(re.search(pattern, text.lower()) for pattern in self.bug_start_patterns)
+    
+    def _is_done_reporting(self, text: str) -> bool:
+        """Check if user is done reporting bugs"""
+        if not text:
+            return False
+        return any(re.search(pattern, text.lower()) for pattern in self.bug_end_patterns)
+    
+    def start_session(self, session, **kwargs):
+        """Start session with optional bug report functionality"""
+        bug_detector = self if self.enable_bug_reports else None
+        session_id = observe_session(session, self.agent_id, self.host_url, bug_detector=bug_detector, **kwargs)
+        
+        if self.enable_bug_reports:
+            self._setup_bug_report_handling(session, session_id)
+        
+        return session_id
+    
     def _setup_bug_report_handling(self, session, session_id):
         """Setup simplified bug report handling - STT interception only"""
         
@@ -480,14 +527,22 @@ class LivekitObserve:
                 
         except Exception as e:
             logger.error(f"❌ STORE BUG DETAILS ERROR: {e}")
+
+
     
     async def export(self, session_id, recording_url="", save_telemetry_json=False):
         """Export session data to Whispey"""
+        
+        # Add telemetry spans to the export if available
+        extra_data = {}
+        if hasattr(self, 'spans_data') and self.spans_data:
+            extra_data['telemetry_spans'] = self.spans_data
+        
         return await send_session_to_whispey(
             session_id, 
             recording_url, 
             apikey=self.apikey, 
-            api_url=self.host_url
+            api_url=self.host_url,
         )
 
 __all__ = ['LivekitObserve', 'observe_session', 'send_session_to_whispey']

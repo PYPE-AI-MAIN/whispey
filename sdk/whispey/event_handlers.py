@@ -150,10 +150,75 @@ class CorrectedTranscriptCollector:
         return False
 
 
+
+    def _send_bug_response_immediately(self):
+        """Send bug response immediately and interrupt current TTS"""
+        if self.bug_detector and hasattr(self, '_session'):
+            response = self.bug_detector.bug_report_response
+            try:
+                # Cancel any ongoing TTS
+                if hasattr(self._session, 'cancel_say'):
+                    self._session.cancel_say()
+                elif hasattr(self._session, 'stop_audio'):
+                    self._session.stop_audio()
+                
+                # Send the bug response without adding to chat context
+                self._session.say(response, add_to_chat_ctx=False)
+                logger.info(f"🐛 Sent bug response: {response}")
+            except Exception as e:
+                logger.error(f"❌ Failed to send bug response: {e}")
+        else:
+            logger.warning("Cannot send bug response - no bug_detector or session")
+
+
+
+    def _send_collection_response_immediately(self):
+        """Send collection response immediately"""
+        if self.bug_detector and hasattr(self, '_session'):
+            response = self.bug_detector.collection_prompt
+            try:
+                self._session.say(response, add_to_chat_ctx=False)
+                logger.info(f"📝 Sent collection prompt: {response}")
+            except Exception as e:
+                logger.error(f"❌ Failed to send collection response: {e}")
+        else:
+            logger.warning("Cannot send collection response - no bug_detector or session")
+
+    def _repeat_stored_message_immediately(self):
+        """Repeat stored message immediately with continuation prefix"""
+        if (self.bug_detector and hasattr(self, '_session') and 
+            hasattr(self, '_stored_message') and self._stored_message):
+            
+            full_message = f"{self.bug_detector.continuation_prefix}{self._stored_message}"
+            try:
+                self._session.say(full_message, add_to_chat_ctx=False)
+                logger.info(f"🔄 Repeated stored message: {full_message[:50]}...")
+            except Exception as e:
+                logger.error(f"❌ Failed to repeat stored message: {e}")
+                # Fallback
+                try:
+                    self._session.say(self.bug_detector.fallback_message, add_to_chat_ctx=False)
+                    logger.info(f"🔄 Sent fallback: {self.bug_detector.fallback_message}")
+                except:
+                    logger.error("❌ Complete failure to send any response")
+        else:
+            logger.warning("Cannot repeat stored message - missing components")
+
+
+
+ 
     def on_conversation_item_added(self, event):
         """Called when conversation item is added - enhanced data extraction from conversation"""
         logger.info(f"CONVERSATION: {event.item.role} - {event.item.text_content[:50]}...")
-        
+
+        # Initialize bug tracking state if not exists
+        if not hasattr(self, '_bug_collection_mode'):
+            self._bug_collection_mode = False
+            self._bug_details = []
+            self._stored_message = None
+            self._intercepted_messages = {}
+            self._bug_report_ended = {}
+
         if not self.current_turn:
             self.turn_counter += 1
             self.current_turn = ConversationTurn(
@@ -162,26 +227,114 @@ class CorrectedTranscriptCollector:
             )
             self._ensure_trace_id(self.current_turn)
             
-            # FIXED: Inject complete configuration into the turn
+            # Inject complete configuration into the turn
             if hasattr(self, '_session_data') and self._session_data:
                 config = self._session_data.get('complete_configuration')
                 if config:
                     self.current_turn.turn_configuration = config
                     logger.info(f"SUCCESS: Injected configuration into turn {self.current_turn.turn_id}")
-                else:
-                    logger.warning(f"FAIL: No complete_configuration found for turn {self.current_turn.turn_id}")
-            else:
-                logger.warning(f"FAIL: No _session_data attribute for turn {self.current_turn.turn_id}")
 
         if event.item.role == "user":
-            if self._is_bug_report(event.item.text_content):
-                logger.info(f"Bug report detected: {event.item.text_content}")
-                if self.turns:
-                    self.turns[-1].bug_report = True
-                    logger.info(f"Flagged turn {self.turns[-1].turn_id} as bug report")
+            original_text = event.item.text_content
+            
+            # Determine if this message should be intercepted
+            should_intercept = False
+            
+            # CHECK 1: Initial bug report detection
+            if self._is_bug_report(original_text) and not self._bug_collection_mode:
+                logger.info(f"🐛 INITIAL BUG REPORT: {original_text}")
+                
+                # Store the last agent message for later repetition
+                if self.turns and len(self.turns) > 0:
+                    last_turn = self.turns[-1]
+                    if last_turn.agent_response:
+                        self._stored_message = last_turn.agent_response
+                        last_turn.bug_report = True
+                        logger.info(f"📝 Stored problematic message: {self._stored_message[:50]}...")
+                
+                # Enter bug collection mode
+                self._bug_collection_mode = True
+                self._bug_details = [{
+                    'type': 'initial_report',
+                    'text': original_text,
+                    'timestamp': time.time()
+                }]
+                
+                # Mark for interception
+                should_intercept = True
+                self._intercepted_messages[event.item.id] = original_text
+                
+                # Send immediate bug response
+                self._send_bug_response_immediately()
+                logger.info("🐛 Entered bug collection mode")
+                
+            # CHECK 2: Bug end detection
+            elif self._bug_collection_mode and self._is_done_reporting(original_text):
+                logger.info(f"🏁 BUG REPORT ENDED: {original_text}")
+                
+                # Store final bug details
+                self._bug_details.append({
+                    'type': 'bug_end',
+                    'text': original_text,
+                    'timestamp': time.time()
+                })
+                
+                # Exit bug collection mode
+                self._bug_collection_mode = False
+                self._store_bug_details_in_session()
+                
+                # Mark for interception
+                should_intercept = True
+                self._bug_report_ended[event.item.id] = original_text
+                
+                # Repeat the stored message
+                self._repeat_stored_message_immediately()
+                logger.info("🏁 Exited bug collection mode")
+                
+            # CHECK 3: Continue collecting bug details
+            elif self._bug_collection_mode:
+                logger.info(f"📝 COLLECTING BUG DETAILS: {original_text}")
+                
+                # Store additional bug details
+                self._bug_details.append({
+                    'type': 'bug_details',
+                    'text': original_text,
+                    'timestamp': time.time()
+                })
+                
+                # Mark for interception
+                should_intercept = True
+                self._intercepted_messages[event.item.id] = original_text
+                
+                # Send collection prompt
+                self._send_collection_response_immediately()
+                
+            # NORMAL PROCESSING: Only if message wasn't intercepted
+            if not should_intercept:
+                self.current_turn.user_transcript = original_text
+                self.current_turn.user_turn_complete = True
+                
+                # Apply pending metrics
+                if self.pending_metrics['stt']:
+                    self.current_turn.stt_metrics = self.pending_metrics['stt']
+                    self.pending_metrics['stt'] = None
+                
+                if self.pending_metrics['eou']:
+                    self.current_turn.eou_metrics = self.pending_metrics['eou']
+                    self.pending_metrics['eou'] = None
+                
+                self._extract_enhanced_stt_from_conversation(event)
+                logger.info(f"👤 Normal user input: {original_text[:50]}...")
+            else:
+                logger.info(f"🚫 Message intercepted for bug handling: {original_text[:50]}...")
+                
+        elif event.item.role == "assistant":
+            # Skip assistant processing during bug collection
+            if self._bug_collection_mode:
+                logger.info("🤖 Skipping assistant response - in bug collection mode")
                 return
             
-            # Ensure we have a current turn (shouldn't be needed but safety check)
+            # Normal assistant processing
             if not self.current_turn:
                 self.turn_counter += 1
                 self.current_turn = ConversationTurn(
@@ -190,41 +343,6 @@ class CorrectedTranscriptCollector:
                 )
                 self._ensure_trace_id(self.current_turn)
                 
-                # Re-inject configuration if needed
-                if hasattr(self, '_session_data') and self._session_data:
-                    config = self._session_data.get('complete_configuration')
-                    if config:
-                        self.current_turn.turn_configuration = config
-
-            self.current_turn.user_transcript = event.item.text_content
-            self.current_turn.user_turn_complete = True
-            
-            # Apply pending metrics
-            if self.pending_metrics['stt']:
-                self.current_turn.stt_metrics = self.pending_metrics['stt']
-                self.pending_metrics['stt'] = None
-                logger.info(f"Applied pending STT metrics to turn {self.current_turn.turn_id}")
-            
-            if self.pending_metrics['eou']:
-                self.current_turn.eou_metrics = self.pending_metrics['eou']
-                self.pending_metrics['eou'] = None
-                logger.info(f"Applied pending EOU metrics to turn {self.current_turn.turn_id}")
-            
-            # Extract enhanced STT data from what we can infer
-            self._extract_enhanced_stt_from_conversation(event)
-            logger.info(f"User input for turn {self.current_turn.turn_id}: {event.item.text_content[:50]}...")
-            
-        elif event.item.role == "assistant":
-            # Ensure we have a current turn
-            if not self.current_turn:
-                self.turn_counter += 1
-                self.current_turn = ConversationTurn(
-                    turn_id=f"turn_{self.turn_counter}",
-                    timestamp=time.time()
-                )
-                self._ensure_trace_id(self.current_turn)
-                
-                # Inject configuration
                 if hasattr(self, '_session_data') and self._session_data:
                     config = self._session_data.get('complete_configuration')
                     if config:
@@ -233,35 +351,32 @@ class CorrectedTranscriptCollector:
             self.current_turn.agent_response = event.item.text_content
             self.current_turn.agent_turn_complete = True
             
-            # NEW: Associate prompt data with this turn
+            # Associate prompt data
             if hasattr(self, '_session_data') and self._session_data:
                 prompt_captures = self._session_data.get('prompt_captures', [])
                 if prompt_captures:
-                    # Find the most recent prompt capture for this turn
                     self.current_turn.prompt_data = prompt_captures[-1]
-                    logger.info(f"Associated prompt data with turn {self.current_turn.turn_id}")
             
             # Apply pending metrics
             if self.pending_metrics['llm']:
                 self.current_turn.llm_metrics = self.pending_metrics['llm']
                 self.pending_metrics['llm'] = None
-                logger.info(f"Applied pending LLM metrics to turn {self.current_turn.turn_id}")
             
             if self.pending_metrics['tts']:
                 self.current_turn.tts_metrics = self.pending_metrics['tts']
                 self.pending_metrics['tts'] = None
-                logger.info(f"Applied pending TTS metrics to turn {self.current_turn.turn_id}")
             
-            # Extract enhanced data from conversation and session context
             self._extract_enhanced_llm_from_conversation(event)
             self._extract_enhanced_tts_from_conversation(event)
             
-            logger.info(f"Agent response for turn {self.current_turn.turn_id}: {event.item.text_content[:50]}...")
-            
-            # Turn is complete
+            # Complete the turn
             self.turns.append(self.current_turn)
-            logger.info(f"Completed turn {self.current_turn.turn_id}")
+            logger.info(f"✅ Completed turn {self.current_turn.turn_id}")
             self.current_turn = None
+
+
+
+
 
 
 
@@ -843,10 +958,52 @@ class CorrectedTranscriptCollector:
         
         return "\n".join(lines)
 
+
+    def _is_done_reporting(self, text: str) -> bool:
+        """Check if user is done reporting bugs"""
+        if self.bug_detector:
+            return self.bug_detector._is_done_reporting(text)
+        return False
+
+    def _store_bug_details_in_session(self):
+        """Store all collected bug details in session data"""
+        if hasattr(self, '_session_data') and self._session_data and hasattr(self, '_bug_details'):
+            if 'bug_reports' not in self._session_data:
+                self._session_data['bug_reports'] = []
+            
+            bug_report_entry = {
+                'report_id': f"bug_report_{len(self._session_data['bug_reports']) + 1}",
+                'timestamp': time.time(),
+                'details': self._bug_details.copy(),
+                'total_messages': len(self._bug_details),
+                'stored_problematic_message': getattr(self, '_stored_message', None),
+                'status': 'completed'
+            }
+            
+            self._session_data['bug_reports'].append(bug_report_entry)
+            logger.info(f"💾 Stored bug report with {len(self._bug_details)} messages")
+            
+            # Clear bug details for next report
+            self._bug_details = []
+        else:
+            logger.warning("Cannot store bug details - missing session_data or bug_details")
+
+
+    def _store_session_reference(self):
+        """Store session reference for sending responses"""
+        # This will be set by the setup function
+        pass
+
+
 def setup_session_event_handlers(session, session_data, usage_collector, userdata, bug_detector):
     """Setup all session event handlers with transcript collector"""
 
     transcript_collector = CorrectedTranscriptCollector(bug_detector=bug_detector)
+    session_data["transcript_collector"] = transcript_collector
+
+    transcript_collector._session = session
+    transcript_collector._session_data = session_data
+
     session_data["transcript_collector"] = transcript_collector
 
     # EXTRACT CONFIGURATION FIRST - BEFORE setting reference
@@ -862,29 +1019,20 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
     @session.on("conversation_item_added") 
     def on_conversation_item_added(event):
         transcript_collector.on_conversation_item_added(event)
-    
-    # Verify the reference was set correctly
-    if hasattr(transcript_collector, '_session_data') and transcript_collector._session_data:
-        config = transcript_collector._session_data.get('complete_configuration')
-        if config:
-            logger.info("Configuration reference verified in transcript collector")
-        else:
-            logger.error("Configuration reference missing in transcript collector")
-    else:
-        logger.error("Session data reference not set in transcript collector")
+        
+        # Send any pending bug responses
+        if hasattr(transcript_collector, '_pending_bug_response') and transcript_collector._pending_bug_response:
+            response_to_send = transcript_collector._pending_bug_response
+            transcript_collector._pending_bug_response = None  # clear first
 
-    if not setup_instrumentation_when_ready():
-        original_start = getattr(session, 'start', None)
-        if original_start:
-            async def enhanced_start(*args, **kwargs):
-                result = await original_start(*args, **kwargs)
-                agent = kwargs.get('agent')
-                if agent:
-                    logger.info(f"🔧 Found agent during start: {type(agent).__name__}")
-                    transcript_collector.enable_enhanced_instrumentation(session, agent)
-                    extract_complete_session_configuration(session, session_data)
-                return result
-            session.start = enhanced_start
+            try:
+                session.say(response_to_send, add_to_chat_ctx=False)
+                logger.info(f"✅ Sent bug response: {response_to_send}")
+            except Exception as e:
+                logger.error(f"❌ Failed to send bug response: {e}")
+            
+            # Create the async task
+            send_bug_response()
 
     # Rest of the event handlers remain the same...
     @session.on("agent_started_speaking")
