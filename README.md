@@ -1,5 +1,5 @@
 # Whispey – Voice AI Observability Platform
-
+ 
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -24,12 +24,13 @@
 </p>
 
 
+
 [🚀 Get Started](#quick-start) • [📊 Live Demo](https://www.whispey.xyz/) • [📖 Documentation](https://www.whispey.xyz/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/whispey)
 
 </div>
 
 <div align="center">
-<img src="public/whispey.png" alt="Whispey Dashboard" width="500" height="400" />
+<img src="https://github.com/user-attachments/assets/0b62b51b-4cce-408e-8d38-43389026e53b" alt="Whispey Dashboard" width="600" height="600" />
 </div>
 
 ## ✨ Features

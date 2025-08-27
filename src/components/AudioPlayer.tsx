@@ -2,9 +2,12 @@
 
 import type React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { Play, Pause, Loader2, AlertCircle } from "lucide-react"
+import { Play, Pause, Loader2, AlertCircle, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 interface AudioPlayerProps {
@@ -16,15 +19,18 @@ interface AudioPlayerProps {
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className }) => {
 
-  console.log(url)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isReady, setIsReady] = useState(false)
   const [audioData, setAudioData] = useState<number[]>([])
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [downloadFileName, setDownloadFileName] = useState("")
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -136,6 +142,158 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
       }
     }
   }, [isPlaying, getAudioUrl])
+
+  // Generate default filename
+  const getDefaultFileName = useCallback(() => {
+    if (s3Key) {
+      // Handle both S3 keys and full URLs
+      let key = s3Key
+      
+      // If it's a full URL, extract just the key part
+      if (s3Key.includes('amazonaws.com')) {
+        try {
+          const url = new URL(s3Key)
+          // Remove the bucket name and get just the key path
+          const pathParts = url.pathname.split('/')
+          // Skip the first empty part and bucket name
+          key = pathParts.slice(2).join('/')
+        } catch (e) {
+          console.error('Failed to parse S3 URL:', e)
+        }
+      }
+      
+      // Extract filename from the key and convert to .mp3
+      const keyParts = key.split('/')
+      const fileName = keyParts[keyParts.length - 1]
+      if (fileName && fileName.includes('.')) {
+        // Replace any extension with .mp3
+        const nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.'))
+        return `${nameWithoutExtension}.mp3`
+      }
+    }
+    return `call-${callId}.mp3`
+  }, [s3Key, callId])
+
+  // Ensure filename has proper extension
+  const getDownloadFileName = useCallback((userFileName: string) => {
+    // If user provided a filename with extension, use it as is
+    if (userFileName.includes('.')) {
+      return userFileName
+    }
+    
+    // Always add .mp3 extension by default
+    return `${userFileName}.mp3`
+  }, [])
+
+  // Extract clean S3 key from URL or key
+  const getCleanS3Key = useCallback(() => {
+    if (!s3Key) return null
+    
+    // If it's already a clean key (no URL), return as is
+    if (!s3Key.includes('amazonaws.com')) {
+      // Also handle cases where a bare key was URL-encoded and/or has query params appended
+      const withoutQuery = s3Key.split('?')[0]
+      try {
+        // Decode percent-encoding once; do NOT translate '+' to space
+        const decodedOnce = decodeURIComponent(withoutQuery)
+        return decodedOnce
+      } catch {
+        return withoutQuery
+      }
+    }
+    
+    // If it's a full URL, extract just the key part
+    try {
+      const url = new URL(s3Key)
+      const pathname = url.pathname || '/'
+      const host = url.hostname
+
+      // Handle virtual-hosted–style: https://<bucket>.s3.<region>.amazonaws.com/<key>
+      // In this case, the key is the pathname without the leading '/'
+      const isVirtualHosted = /\.s3[.-][^./]+\.amazonaws\.com$/i.test(host) || /\.s3\.amazonaws\.com$/i.test(host)
+      if (isVirtualHosted) {
+        // URL.pathname is already percent-decoded in WHATWG URL
+        return pathname.replace(/^\/+/, '')
+      }
+
+      // Handle path-style: https://s3.<region>.amazonaws.com/<bucket>/<key>
+      // Split on '/' and drop the leading empty segment and bucket segment
+      const parts = pathname.split('/') // ['', 'bucket', 'key', ...]
+      return parts.slice(2).join('/')
+    } catch (e) {
+      console.error('Failed to parse S3 URL:', e)
+      return null
+    }
+  }, [s3Key])
+
+  // Handle download dialog open
+  const handleDownloadClick = useCallback(async () => {
+    setDownloadDialogOpen(true)
+    setDownloadFileName(getDefaultFileName())
+    
+    try {
+      const url = await getAudioUrl()
+      setDownloadUrl(url)
+    } catch (err) {
+      console.error('Failed to get download URL:', err)
+      setError("Failed to prepare download")
+    }
+  }, [getAudioUrl, getDefaultFileName])
+
+  // Handle actual download
+  const handleDownload = useCallback(async () => {
+    if (!downloadUrl || isDownloading) return
+    
+    setIsDownloading(true)
+    setError(null)
+    
+    try {
+      // Ensure filename has proper extension
+      const finalFileName = getDownloadFileName(downloadFileName)
+
+      // If we have a direct/presigned URL, route via proxy GET to avoid CORS and preserve filename
+      if (downloadUrl.includes('amazonaws.com')) {
+        const proxy = `/api/audio-proxy?url=${encodeURIComponent(downloadUrl)}&filename=${encodeURIComponent(finalFileName)}`
+        const link = document.createElement('a')
+        link.href = proxy
+        link.download = finalFileName
+        link.style.display = 'none'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        setDownloadDialogOpen(false)
+        return
+      }
+
+      // Fallback: use our API with a clean S3 key
+      const cleanS3Key = getCleanS3Key()
+      if (!cleanS3Key) {
+        throw new Error("Invalid S3 key")
+      }
+      const downloadApiUrl = `/api/audio-download?s3Key=${encodeURIComponent(cleanS3Key)}&filename=${encodeURIComponent(finalFileName)}`
+      const link = document.createElement('a')
+      link.href = downloadApiUrl
+      link.download = finalFileName
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setDownloadDialogOpen(false)
+    } catch (err) {
+      console.error('Download failed:', err)
+      setError("Download failed: " + (err instanceof Error ? err.message : 'Unknown error'))
+    } finally {
+      setIsDownloading(false)
+    }
+  }, [downloadUrl, downloadFileName, isDownloading, getCleanS3Key, getDownloadFileName])
+
+  // Handle dialog close
+  const handleDialogClose = useCallback(() => {
+    setDownloadDialogOpen(false)
+    setDownloadFileName("")
+    setDownloadUrl(null)
+    setError(null)
+  }, [])
 
   // Draw waveform
   const drawWaveform = useCallback(() => {
@@ -286,6 +444,110 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
             <Play className="w-3 h-3 ml-0.5" />
           )}
         </Button>
+
+        {/* Download Button with Dialog */}
+        <Dialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              onClick={handleDownloadClick}
+              disabled={isLoading}
+              size="sm"
+              className="w-8 h-8 rounded-full p-0 flex-shrink-0"
+              variant="outline"
+              title="Download audio file"
+            >
+              <Download className="w-3 h-3" />
+            </Button>
+          </DialogTrigger>
+          
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Download className="w-5 h-5" />
+                Download Audio File
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* File Name Input */}
+              <div className="space-y-2">
+                <Label htmlFor="filename">File Name</Label>
+                <Input
+                  id="filename"
+                  value={downloadFileName}
+                  onChange={(e) => setDownloadFileName(e.target.value)}
+                  placeholder="Enter file name..."
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  File will be downloaded as MP3 format
+                </p>
+              </div>
+
+              {/* URL Preview */}
+              {downloadUrl && (
+                <div className="space-y-2">
+                  <Label>Download Source</Label>
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-xs text-muted-foreground break-all">
+                      {downloadUrl.includes('amazonaws.com') ? 'AWS S3 URL' : 'Direct URL'}
+                    </p>
+                    <p className="text-xs font-mono break-all mt-1">
+                      {downloadUrl.length > 50 ? `${downloadUrl.substring(0, 50)}...` : downloadUrl}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Download Instructions */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-xs text-blue-800">
+                  <strong>Download Instructions:</strong>
+                </p>
+                <ul className="text-xs text-blue-700 mt-1 space-y-1">
+                  <li>• Click "Download" to download the audio file</li>
+                  <li>• The .mp3 extension will be added automatically if not provided</li>
+                  <li>• File will be saved to your Downloads folder</li>
+                </ul>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={handleDownload}
+                  disabled={isDownloading || !downloadUrl || !downloadFileName.trim()}
+                  className="flex-1"
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDialogClose}
+                  disabled={isDownloading}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Waveform */}
         <div className="flex-1 relative">

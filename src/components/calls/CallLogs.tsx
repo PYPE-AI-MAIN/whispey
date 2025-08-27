@@ -150,6 +150,13 @@ const DynamicJsonCell: React.FC<{
 const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
 
   const router = useRouter()
+  // Convert string to camelCase
+  function toCamelCase(str: string) {
+    return str
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+(.)/g, (_, c) => c.toUpperCase())
+      .replace(/^./, c => c.toLowerCase())
+  }
 
   const basicColumns = useMemo(
     () => [
@@ -162,7 +169,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
         label: "Total Cost (₹)",
       },
       { key: "call_started_at", label: "Start Time" },
-      { key: "avg_latency", label: "Avg Latency (ms)" },
+      { key: "avg_latency", label: "Avg Latency (ms)",hidden: true },
       { key: "total_llm_cost", label: "LLM Cost (₹)", hidden: true },
       { key: "total_tts_cost", label: "TTS Cost (₹)", hidden: true },
       { key: "total_stt_cost", label: "STT Cost (₹)", hidden: true }
@@ -194,8 +201,22 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
   }
 
 
-
-  const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
+    const dynamicColumnsKey = (() => {
+      try {
+        const prompt = agent?.field_extractor_prompt;
+        if (typeof prompt === 'string') {
+          const parsed = JSON.parse(prompt);
+          return Array.isArray(parsed) ? parsed.map((item: any) => toCamelCase(item.key)) : [];
+        } else if (Array.isArray(prompt)) {
+          return prompt.map((item: any) => toCamelCase(item.key));
+        }
+        return [];
+      } catch (error) {
+        console.error('Error parsing field_extractor_prompt:', error);
+        return [];
+      }
+    })();
+    const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null)
   const [activeFilters, setActiveFilters] = useState<FilterRule[]>([])
   const [role, setRole] = useState<string | null>(null)
@@ -208,6 +229,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     metadata: [],
     transcription_metrics: []
   })
+
+  console.log(dynamicColumnsKey)
 
 
 
@@ -415,6 +438,7 @@ const { user } = useUser()
       setVisibleColumns(prev => ({
         ...prev,
         basic: allowedBasicColumns
+
       }))
     }
   }, [role, getFilteredBasicColumns])
@@ -489,6 +513,8 @@ const { user } = useUser()
     }
   }, [calls])
 
+  console.log(dynamicColumns)
+
   // Initialize visible columns when dynamic columns change
   useEffect(() => {
     setVisibleColumns((prev) => ({
@@ -498,13 +524,9 @@ const { user } = useUser()
           (prev.metadata.length === 0 ? dynamicColumns.metadata : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col)))
         )
       ),
-      transcription_metrics: Array.from(
-        new Set(
-          (prev.transcription_metrics.length === 0 ? dynamicColumns.transcription_metrics : prev.transcription_metrics.filter((col) => dynamicColumns.transcription_metrics.includes(col)))
-        )
-      ),
+      transcription_metrics: dynamicColumnsKey
     }))
-  }, [dynamicColumns, basicColumns])
+  }, [dynamicColumns, basicColumns, JSON.stringify(dynamicColumnsKey)])
   
 
   // Fixed handleDownloadCSV function
@@ -793,6 +815,30 @@ const { user } = useUser()
     )
   }
 
+  // Show loading state until role is determined
+  if (roleLoading || role === null) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex-none p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center justify-between">
+            <div className="h-8 bg-muted animate-pulse rounded w-48"></div>
+            <div className="flex items-center gap-2">
+              <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
+              <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
+              <div className="h-8 bg-muted animate-pulse rounded w-8"></div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 mt-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground">Loading permissions...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Header with Filters and Column Selector */}
@@ -802,7 +848,7 @@ const { user } = useUser()
             onFiltersChange={handleFiltersChange}
             onClear={handleClearFilters}
             availableMetadataFields={dynamicColumns.metadata}
-            availableTranscriptionFields={dynamicColumns.transcription_metrics}
+            availableTranscriptionFields={dynamicColumnsKey}
           />
           
           <div className="flex items-center gap-2">
@@ -818,7 +864,7 @@ const { user } = useUser()
               basicColumns={basicColumns.map((col) => col.key)}
               basicColumnLabels={Object.fromEntries(basicColumns.filter(col => !col.hidden).map((col) => [col.key, col.label]))}
               metadataColumns={dynamicColumns.metadata}
-              transcriptionColumns={dynamicColumns.transcription_metrics}
+              transcriptionColumns={dynamicColumnsKey}
               visibleColumns={visibleColumns}
               onColumnChange={handleColumnChange}
               onSelectAll={handleSelectAll}
@@ -962,11 +1008,6 @@ const { user } = useUser()
                     break
                   case "call_started_at":
                     value = formatToIndianDateTime(call.call_started_at)
-                    break
-                  case "avg_latency":
-                    value = call?.avg_latency ? (
-                      <span className="font-mono">{call.avg_latency.toFixed(2)}s</span>
-                    ) : "-"
                     break
                   case "total_cost":
                     value = call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (

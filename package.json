@@ -39,6 +39,7 @@
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.51.0",
+    "@vapi-ai/web": "^2.3.9",
     "aws-sdk": "^2.1692.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
