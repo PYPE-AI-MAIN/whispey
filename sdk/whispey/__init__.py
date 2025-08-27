@@ -8,6 +8,7 @@ import re
 import logging
 from typing import List, Optional, AsyncIterable, Any, Union, Dict
 from .whispey import observe_session, send_session_to_whispey
+import time
 
 logger = logging.getLogger("whispey-sdk")
 
@@ -96,15 +97,174 @@ class LivekitObserve:
         return any(re.search(pattern, text.lower()) for pattern in self.bug_end_patterns)
     
     def start_session(self, session, **kwargs):
-        """Start session with optional bug report functionality"""
+        """Start session with prompt capture"""
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(session, self.agent_id, self.host_url, bug_detector=bug_detector, **kwargs)
         
         if self.enable_bug_reports:
             self._setup_bug_report_handling(session, session_id)
         
+        self._setup_prompt_capture(session, session_id)
+        
         return session_id
-    
+
+    def _setup_prompt_capture(self, session, session_id):
+        """Setup prompt data capture by wrapping session.start"""
+        original_start = session.start
+        
+        async def wrapped_start(*args, **kwargs):
+            agent = kwargs.get('agent') or (args[0] if args else None)
+            
+            if agent:
+                # Wrap the agent's llm_node method
+                original_llm_node = agent.llm_node
+                
+                def wrapped_llm_node(chat_ctx, tools, model_settings):
+                    # Capture prompt data here
+                    self._capture_prompt_data(session_id, chat_ctx, tools, agent)
+                    
+                    # Call original llm_node
+                    return original_llm_node(chat_ctx, tools, model_settings)
+                
+                agent.llm_node = wrapped_llm_node
+            
+            return await original_start(*args, **kwargs)
+        
+        session.start = wrapped_start
+
+
+
+
+
+    def _capture_prompt_data(self, session_id, chat_ctx, tools, agent):
+        """Capture the prompt data when LLM is called"""
+        try:
+            from .whispey import _session_data_store
+            
+            if session_id not in _session_data_store:
+                return
+                
+            session_info = _session_data_store[session_id]
+            session_data = session_info.get('session_data', {})
+            
+            conversation_history = []
+            
+            if hasattr(chat_ctx, 'messages') and chat_ctx.messages:
+                for msg in chat_ctx.messages:
+                    conversation_history.append({
+                        'role': str(msg.role),
+                        'content': str(msg.content) if msg.content else None,
+                        'id': getattr(msg, 'id', None),
+                        'name': getattr(msg, 'name', None),
+                        'timestamp': getattr(msg, 'timestamp', None)
+                    })
+            
+            # Method 2: Try items if messages doesn't exist
+            elif hasattr(chat_ctx, 'items') and chat_ctx.items:
+                for item in chat_ctx.items:
+                    conversation_history.append({
+                        'role': str(item.role) if hasattr(item, 'role') else 'unknown',
+                        'content': str(item.content) if hasattr(item, 'content') and item.content else str(item.text_content) if hasattr(item, 'text_content') else None,
+                        'id': getattr(item, 'id', None)
+                    })
+            
+            # Method 3: Try to access via _items or other internal attributes
+            elif hasattr(chat_ctx, '_items') and chat_ctx._items:
+                for item in chat_ctx._items:
+                    conversation_history.append({
+                        'role': str(getattr(item, 'role', 'unknown')),
+                        'content': str(getattr(item, 'content', None) or getattr(item, 'text_content', None) or ''),
+                        'id': getattr(item, 'id', None)
+                    })
+            
+            # Debug: Log what we found in chat_ctx
+            chat_ctx_attrs = [attr for attr in dir(chat_ctx) if not attr.startswith('_')]
+            logger.debug(f"Chat context attributes: {chat_ctx_attrs}")
+            
+            # Get system instructions from agent
+            system_instructions = getattr(agent, 'instructions', None) or getattr(agent, '_instructions', None)
+            
+            # Get available tools - improved extraction
+            available_tools = []
+            for tool in tools:
+                # Try multiple ways to extract tool info
+                tool_name = None
+                tool_description = None
+                
+                # Method 1: Direct attributes
+                if hasattr(tool, 'name') and tool.name:
+                    tool_name = str(tool.name)
+                if hasattr(tool, 'description') and tool.description:
+                    tool_description = str(tool.description)
+                
+                # Method 2: Check info attribute
+                if hasattr(tool, 'info'):
+                    info = tool.info
+                    if hasattr(info, 'name') and info.name:
+                        tool_name = str(info.name)
+                    if hasattr(info, 'description') and info.description:
+                        tool_description = str(info.description)
+                
+                # Method 3: Check function attribute for function tools
+                if hasattr(tool, 'function'):
+                    func = tool.function
+                    if hasattr(func, '__name__'):
+                        tool_name = func.__name__
+                    if hasattr(func, '__doc__') and func.__doc__:
+                        tool_description = func.__doc__.strip()
+                
+                # Method 4: Check _func attribute
+                if hasattr(tool, '_func'):
+                    func = tool._func
+                    if hasattr(func, '__name__') and not tool_name:
+                        tool_name = func.__name__
+                    if hasattr(func, '__doc__') and func.__doc__ and not tool_description:
+                        tool_description = func.__doc__.strip()
+                
+                # Method 5: Extract from callable
+                if callable(tool) and hasattr(tool, '__name__') and not tool_name:
+                    tool_name = tool.__name__
+                if callable(tool) and hasattr(tool, '__doc__') and tool.__doc__ and not tool_description:
+                    tool_description = tool.__doc__.strip()
+                
+                available_tools.append({
+                    'name': tool_name or 'unknown_tool',
+                    'description': tool_description or 'No description available',
+                    'tool_type': type(tool).__name__
+                })
+            
+            # Store prompt data
+            prompt_data = {
+                'system_instructions': system_instructions,
+                'conversation_history': conversation_history,
+                'available_tools': available_tools,
+                'timestamp': time.time(),
+                'context_length': len(conversation_history),
+                'tools_count': len(available_tools)
+            }
+            
+            # Add to session data
+            if 'prompt_captures' not in session_data:
+                session_data['prompt_captures'] = []
+            
+            session_data['prompt_captures'].append(prompt_data)
+            
+            logger.info(f"Captured prompt data: {len(conversation_history)} messages, {len(available_tools)} tools")
+            
+            # Debug logging
+            if conversation_history:
+                logger.debug(f"Sample conversation history: {conversation_history[0] if conversation_history else 'None'}")
+            if available_tools:
+                logger.debug(f"Sample tool: {available_tools[0] if available_tools else 'None'}")
+            
+        except Exception as e:
+            logger.error(f"Error capturing prompt data: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+
+
     def _setup_bug_report_handling(self, session, session_id):
         """Setup simplified bug report handling - STT interception only"""
         

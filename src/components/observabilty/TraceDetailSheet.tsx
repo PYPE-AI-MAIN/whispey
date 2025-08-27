@@ -18,6 +18,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [selectedView, setSelectedView] = useState<string>('pipeline')
   const [selectedNode, setSelectedNode] = useState<string>('stt')
+  const [llmActiveTab, setLlmActiveTab] = useState<'overview' | 'prompt' | 'tools'>('overview')
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['pipeline']))
 
   useEffect(() => {
@@ -317,95 +318,153 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
           )}
         </div>
 
-        {/* LLM Prompt Data - Show FIRST for LLM */}
-        {selectedStage.id === 'llm' && selectedStage.llmRequests && selectedStage.llmRequests.length > 0 && (
-          <div className="bg-purple-50 border-l-4 border-purple-500 rounded-lg p-4">
-            <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-purple-600" />
-              LLM Prompts & Instructions ({selectedStage.llmRequests.length} requests)
-            </h4>
-            {selectedStage.llmRequests.map((request: any, index: number) => (
-              <div key={index} className="bg-white border rounded-lg p-3 shadow-sm mb-3">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-purple-100 flex items-center justify-center">
-                      <Brain className="w-3 h-3 text-purple-600" />
+        {/* LLM Prompt Data - Enhanced Design */}
+        {selectedStage.id === 'llm' && trace.enhanced_data?.prompt_data && (
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-base flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-purple-600" />
+                Complete Prompt Context
+              </h4>
+              <Badge variant="secondary" className="text-xs">
+                {trace.enhanced_data.prompt_data.conversation_history?.length || 0} messages
+              </Badge>
+            </div>
+
+            {/* System Instructions */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                <span className="text-sm font-medium text-gray-700">System Instructions</span>
+              </div>
+              <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-lg p-3">
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                  {trace.enhanced_data.prompt_data.system_instructions || 'No system instructions'}
+                </pre>
+              </div>
+            </div>
+
+            {/* Available Tools */}
+            {trace.enhanced_data.prompt_data.available_tools?.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <span className="text-sm font-medium text-gray-700">Available Tools</span>
+                  <Badge variant="outline" className="text-xs">
+                    {trace.enhanced_data.prompt_data.available_tools.length}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {trace.enhanced_data.prompt_data.available_tools.map((tool: any, idx: number) => (
+                    <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <code className="text-sm font-semibold text-blue-800">{tool.name}</code>
+                        <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                          {tool.tool_type}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        {tool.description}
+                      </p>
                     </div>
-                    <span className="font-mono text-sm font-medium">{request.method}</span>
-                    <Badge variant={request.response?.success ? 'default' : 'destructive'} className="text-xs">
-                      {request.response?.success ? 'success' : request.response?.error ? 'error' : 'pending'}
-                    </Badge>
-                  </div>
-                  <span className="text-xs text-gray-500 font-mono">
-                    {new Date(request.timestamp * 1000).toLocaleTimeString()}
-                  </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Conversation History */}
+            {trace.enhanced_data.prompt_data.conversation_history?.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-sm font-medium text-gray-700">Conversation History</span>
+                  <Badge variant="outline" className="text-xs">
+                    {trace.enhanced_data.prompt_data.conversation_history.length} messages
+                  </Badge>
                 </div>
                 
-                {/* Show Messages Array */}
-                {request.messages && request.messages.length > 0 && (
-                  <div className="space-y-3">
-                    <h5 className="text-xs font-medium text-gray-700">Messages ({request.messages.length}):</h5>
-                    {request.messages.map((message: any, msgIndex: number) => (
-                      <div key={msgIndex} className="border-l-2 pl-3 py-2 text-xs">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge 
-                            variant={message.role === 'system' ? 'secondary' : message.role === 'user' ? 'default' : 'outline'} 
-                            className="text-xs"
-                          >
-                            {message.role}
-                          </Badge>
-                          <span className="text-gray-500">{message.type}</span>
-                        </div>
-                        <div className="bg-gray-50 p-2 rounded text-xs max-h-32 overflow-y-auto">
-                          <pre className="whitespace-pre-wrap break-words">
-                            {typeof message.content === 'string' ? message.content : JSON.stringify(message.content, null, 1)}
-                          </pre>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="space-y-2 max-h-80 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-white">
+                  {trace.enhanced_data.prompt_data.conversation_history.map((message: any, idx: number) => {
+                    // Parse content if it's a string array
+                    let displayContent = message.content;
+                    if (typeof message.content === 'string' && message.content.startsWith('[')) {
+                      try {
+                        const parsed = JSON.parse(message.content);
+                        displayContent = Array.isArray(parsed) ? parsed[0] : parsed;
+                      } catch {
+                        displayContent = message.content;
+                      }
+                    }
 
-                {/* Show Model Config */}
-                {request.model_config && Object.keys(request.model_config).length > 0 && (
-                  <div className="mt-3 pt-3 border-t">
-                    <h5 className="text-xs font-medium text-gray-700 mb-2">Model Configuration:</h5>
-                    <div className="bg-gray-50 p-2 rounded">
-                      <pre className="text-xs overflow-x-auto">
-                        {JSON.stringify(request.model_config, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                )}
+                    const roleColors = {
+                      'system': 'bg-amber-50 border-amber-200 text-amber-800',
+                      'user': 'bg-blue-50 border-blue-200 text-blue-800', 
+                      'assistant': 'bg-green-50 border-green-200 text-green-800',
+                      'unknown': 'bg-gray-50 border-gray-200 text-gray-600'
+                    };
 
-                {/* Show Response if available */}
-                {request.response && (
-                  <div className="mt-3 pt-3 border-t">
-                    <h5 className="text-xs font-medium text-gray-700 mb-2">Response:</h5>
-                    <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Success:</span>
-                        <Badge variant={request.response.success ? 'default' : 'destructive'} className="text-xs">
-                          {request.response.success ? 'Yes' : 'No'}
-                        </Badge>
+                    return (
+                      <div key={idx} className={`border rounded-lg p-3 ${roleColors[message.role as keyof typeof roleColors] || roleColors.unknown}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={message.role === 'system' ? 'secondary' : 'outline'}
+                              className="text-xs"
+                            >
+                              {message.role}
+                            </Badge>
+                            {message.id && (
+                              <span className="text-xs font-mono text-gray-500">
+                                {message.id.slice(0, 12)}...
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">#{idx + 1}</span>
+                        </div>
+                        
+                        {displayContent ? (
+                          <div className="text-sm leading-relaxed">
+                            <pre className="whitespace-pre-wrap font-sans">
+                              {typeof displayContent === 'string' ? displayContent : JSON.stringify(displayContent, null, 2)}
+                            </pre>
+                          </div>
+                        ) : (
+                          <div className="text-xs italic text-gray-500">
+                            [Empty content - likely a function call or system event]
+                          </div>
+                        )}
                       </div>
-                      {request.response.result_content && (
-                        <div className="bg-green-50 p-2 rounded max-h-24 overflow-y-auto">
-                          <pre className="whitespace-pre-wrap break-words text-xs">
-                            {request.response.result_content}
-                          </pre>
-                        </div>
-                      )}
-                      {request.response.error && (
-                        <div className="bg-red-50 p-2 rounded">
-                          <span className="text-red-600 text-xs">{request.response.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* Context Summary */}
+            <div className="mt-4 pt-4 border-t border-purple-200">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="bg-white rounded-lg p-3 border">
+                  <div className="text-xs text-gray-500">Context Length</div>
+                  <div className="font-mono font-semibold">
+                    {trace.enhanced_data.prompt_data.context_length || 0}
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border">
+                  <div className="text-xs text-gray-500">Tools Available</div>
+                  <div className="font-mono font-semibold">
+                    {trace.enhanced_data.prompt_data.tools_count || 0}
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border">
+                  <div className="text-xs text-gray-500">Captured</div>
+                  <div className="font-mono font-semibold text-xs">
+                    {trace.enhanced_data.prompt_data.timestamp ? 
+                      new Date(trace.enhanced_data.prompt_data.timestamp * 1000).toLocaleTimeString() : 'N/A'
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
