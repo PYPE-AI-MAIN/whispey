@@ -50,7 +50,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
 
   // Get call data to access bug report metadata
   const { data: callData } = useSupabaseQuery("pype_voice_call_logs", {
-    select: "id, metadata, call_id",
+    select: "id, metadata, call_id, recording_url",
     filters: sessionId 
       ? [{ column: "id", operator: "eq", value: sessionId }]
       : [{ column: "agent_id", operator: "eq", value: agentId }],
@@ -131,14 +131,6 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
   }, [traceData, filters])
 
 
-  console.log('Bug Report Data:', {
-    bug_reports: bugReportData?.bug_reports,
-    bug_flagged_turns: bugReportData?.bug_flagged_turns
-  })
-
-  
-
-
   const getTraceStatus = (trace: TraceLog) => {
     // Check if this turn is flagged for bug reports
     if (checkBugReportFlags.has(trace.turn_id.toString())) {
@@ -185,10 +177,9 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
   }
 
   const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`
+    if (ms < 1000) return `${ms.toFixed(1)}ms`
     return `${(ms / 1000).toFixed(2)}s`
   }
-
   const formatCost = (cost: number) => {
     if (cost < 0.000001) return "~$0"
     return `$${cost.toFixed(6)}`

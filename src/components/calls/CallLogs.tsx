@@ -230,10 +230,6 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     transcription_metrics: []
   })
 
-  console.log(dynamicColumnsKey)
-
-
-
   const getFilteredBasicColumns = useMemo(() => {
     return basicColumns.filter(col => 
       !col.hidden && isColumnVisibleForRole(col.key, role)

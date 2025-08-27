@@ -1,0 +1,392 @@
+// src/components/observability/ObservabilityStats.tsx
+"use client"
+
+import { useMemo } from "react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useSupabaseQuery } from "../../hooks/useSupabase"
+import { cn } from "@/lib/utils"
+import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio } from "lucide-react"
+
+interface ObservabilityStatsProps {
+  sessionId?: string
+  agentId: string
+  callData?: any[]
+}
+
+interface TranscriptLog {
+  id: string
+  session_id: string
+  turn_id: string
+  user_transcript: string
+  agent_response: string
+  stt_metrics: any
+  llm_metrics: any
+  tts_metrics: any
+  eou_metrics: any
+  created_at: string
+  unix_timestamp: number
+  bug_report?: boolean
+}
+
+const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agentId, callData }) => {
+  const {
+    data: transcriptLogs,
+    loading: transcriptLoading,
+  } = useSupabaseQuery("pype_voice_metrics_logs", {
+    select: "*",
+    filters: sessionId 
+      ? [{ column: "session_id", operator: "eq", value: sessionId }]
+      : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
+    orderBy: { column: "unix_timestamp", ascending: true },
+  })
+
+  const bugReportData = useMemo(() => {
+    if (!callData?.length) return null
+    try {
+      const call = callData[0]
+      if (!call?.metadata) return null
+      const metadata = typeof call.metadata === "string" ? JSON.parse(call.metadata) : call.metadata
+      return metadata?.bug_reports || null
+    } catch (e) {
+      return null
+    }
+  }, [callData])
+
+  const conversationMetrics: any = useMemo(() => {
+    if (!transcriptLogs?.length) return null
+
+    const metrics = {
+      stt: [] as number[],
+      llm: [] as number[],
+      tts: [] as number[],
+      eou: [] as number[],
+      agentResponseLatencies: [] as number[],
+      totalTurnLatencies: [] as number[],
+      endToEndLatencies: [] as number[],
+      totalTurns: transcriptLogs.length,
+    }
+
+    transcriptLogs.forEach((log: TranscriptLog) => {
+      if (log.stt_metrics?.duration) metrics.stt.push(log.stt_metrics.duration)
+      if (log.llm_metrics?.ttft) metrics.llm.push(log.llm_metrics.ttft)
+      if (log.tts_metrics?.ttfb) metrics.tts.push(log.tts_metrics.ttfb)
+      if (log.eou_metrics?.end_of_utterance_delay) metrics.eou.push(log.eou_metrics.end_of_utterance_delay)
+
+      if (log.user_transcript && log.agent_response && log.llm_metrics?.ttft && log.tts_metrics) {
+        const llmTime = log.llm_metrics.ttft || 0
+        const ttsTime = (log.tts_metrics.ttfb || 0) + (log.tts_metrics.duration || 0)
+        const agentResponseTime = llmTime + ttsTime
+        metrics.agentResponseLatencies.push(agentResponseTime)
+      }
+
+      if (log.tts_metrics) {
+        const sttTime = log.stt_metrics?.duration || 0
+        const llmTime = log.llm_metrics?.ttft || 0
+        const ttsTime = (log.tts_metrics?.ttfb || 0) + (log.tts_metrics?.duration || 0)
+        const totalTurnTime = llmTime + ttsTime + sttTime
+
+        if (totalTurnTime > 0) {
+          metrics.totalTurnLatencies.push(totalTurnTime)
+        }
+      }
+
+      if (
+        log.eou_metrics?.end_of_utterance_delay &&
+        log.llm_metrics?.ttft &&
+        log.tts_metrics
+      ) {
+        const eouTime = log.eou_metrics.end_of_utterance_delay || 0
+        const sttTime = log.stt_metrics.duration || 0
+        const llmTime = log.llm_metrics.ttft || 0
+        const ttsTime = (log.tts_metrics?.ttfb || 0) + (log.tts_metrics?.duration || 0)
+        const endToEndTime = eouTime + sttTime + llmTime + ttsTime
+        metrics.endToEndLatencies.push(endToEndTime)
+      }
+    })
+
+    const calculateStats = (values: number[]) => {
+      if (values.length === 0) return { avg: 0, min: 0, max: 0, count: 0, p50: 0, p75: 0 }
+      
+      const sorted = [...values].sort((a, b) => a - b)
+      const avg = values.reduce((sum, val) => sum + val, 0) / values.length
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      
+      const getPercentile = (arr: number[], percentile: number) => {
+        const index = Math.ceil((percentile / 100) * arr.length) - 1
+        return arr[Math.max(0, Math.min(index, arr.length - 1))] || 0
+      }
+      
+      const p50 = getPercentile(sorted, 50)
+      const p75 = getPercentile(sorted, 75)
+      
+      return { avg, min, max, count: values.length, p50, p75 }
+    }
+
+    return {
+      ...metrics,
+      sttStats: calculateStats(metrics.stt),
+      llmStats: calculateStats(metrics.llm),
+      ttsStats: calculateStats(metrics.tts),
+      eouStats: calculateStats(metrics.eou),
+      agentResponseStats: calculateStats(metrics.agentResponseLatencies),
+      totalTurnStats: calculateStats(metrics.totalTurnLatencies),
+      endToEndStats: calculateStats(metrics.endToEndLatencies),
+      p50TotalLatency: calculateStats(metrics.totalTurnLatencies).p50,
+      p50AgentResponseTime: calculateStats(metrics.agentResponseLatencies).p50,
+      p50EndToEndLatency: calculateStats(metrics.endToEndLatencies).p50,
+    }
+  }, [transcriptLogs])
+
+  const getLatencyColor = (value: number, type: "stt" | "llm" | "tts" | "eou" | "total" | "e2e") => {
+    const thresholds = {
+      stt: { good: 1, fair: 2 },
+      llm: { good: 1, fair: 3 },
+      tts: { good: 1, fair: 2 },
+      eou: { good: 0.5, fair: 1.5 },
+      total: { good: 3, fair: 6 },
+      e2e: { good: 4, fair: 8 },
+    }
+    const threshold = thresholds[type]
+    if (value <= threshold.good) return "text-emerald-600"
+    if (value <= threshold.fair) return "text-amber-600"
+    return "text-red-600"
+  }
+
+  const formatDuration = (seconds: number) => {
+    if (seconds < 1) return `${(seconds * 1000).toFixed(0)}ms`
+    return `${seconds.toFixed(1)}s`
+  }
+
+  const formatCallDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`
+  }
+
+  if (transcriptLoading) {
+    return (
+      <div className="px-6 py-3 border-b bg-slate-50/30">
+        <div className="animate-pulse">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-4 bg-slate-200 rounded w-32"></div>
+            <div className="h-3 bg-slate-200 rounded w-20"></div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-slate-200 rounded"></div>
+                  <div className="h-4 bg-slate-200 rounded w-12"></div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="text-center">
+                  <div className="h-3 bg-slate-200 rounded w-8 mb-1"></div>
+                  <div className="h-3 bg-slate-200 rounded w-6"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const callDuration = callData?.[0]?.duration_seconds || 0
+  const bugCount = bugReportData?.length || 0
+  const turnCount = transcriptLogs?.length || 0
+
+  return (
+    <TooltipProvider>
+      <div className="px-6 py-3 border-b bg-slate-50/30">
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-700">Session Overview</h3>
+            <div className="text-xs text-slate-500">
+              {sessionId ? `Session ${sessionId.slice(0, 8)}...` : `Agent ${agentId.slice(0, 8)}...`}
+            </div>
+          </div>
+          
+          {/* Stats Grid */}
+          <div className="flex items-center justify-between">
+            {/* Primary Stats */}
+            <div className="flex items-center gap-8">
+              {/* Turns */}
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-slate-500" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg font-bold text-slate-900">{turnCount}</span>
+                  <span className="text-xs text-slate-500">turns</span>
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-500" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg font-bold text-slate-900">{formatCallDuration(callDuration)}</span>
+                  <span className="text-xs text-slate-500">duration</span>
+                </div>
+              </div>
+
+              {/* Overall P75 Latency */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help">
+                    <Activity className="w-4 h-4 text-slate-500" />
+                    <div className="flex items-baseline gap-1">
+                      <span className={cn(
+                        "text-lg font-bold",
+                        conversationMetrics ? getLatencyColor(conversationMetrics.endToEndStats.p75, "e2e") : "text-slate-900"
+                      )}>
+                        {conversationMetrics?.endToEndStats.p75 > 0 ? formatDuration(conversationMetrics.endToEndStats.p75) : "N/A"}
+                      </span>
+                      <span className="text-xs text-slate-500">p75</span>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <div className="text-xs">
+                    <div className="font-medium">75th Percentile End-to-End Latency</div>
+                    <div className="text-slate-400">75% of responses were faster</div>
+                    {conversationMetrics?.endToEndStats.p50 > 0 && (
+                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.endToEndStats.p50)}</div>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Bug Reports */}
+              <div className={cn(
+                "flex items-center gap-2",
+                bugCount > 0 && "px-2 py-1 bg-amber-100 rounded-md"
+              )}>
+                <AlertTriangle className={cn(
+                  "w-4 h-4",
+                  bugCount > 0 ? "text-amber-600" : "text-slate-500"
+                )} />
+                <div className="flex items-baseline gap-1">
+                  <span className={cn(
+                    "text-lg font-bold",
+                    bugCount > 0 ? "text-amber-700" : "text-slate-900"
+                  )}>
+                    {bugCount}
+                  </span>
+                  <span className={cn(
+                    "text-xs",
+                    bugCount > 0 ? "text-amber-600" : "text-slate-500"
+                  )}>
+                    bugs
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Performance Breakdown */}
+            {conversationMetrics && (
+              <div className="flex items-center gap-6 text-xs">
+                {/* STT */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 cursor-help">
+                      <Mic className="w-3 h-3 text-slate-400" />
+                      <div className="text-right">
+                        <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
+                          {formatDuration(conversationMetrics.sttStats.p75)}
+                        </div>
+                        <div className="text-slate-400 text-xs">STT P75</div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs">
+                      <div className="font-medium">Speech-to-Text Performance</div>
+                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
+                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
+                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* LLM */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 cursor-help">
+                      <Brain className="w-3 h-3 text-slate-400" />
+                      <div className="text-right">
+                        <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.llmStats.p75, "llm"))}>
+                          {formatDuration(conversationMetrics.llmStats.p75)}
+                        </div>
+                        <div className="text-slate-400 text-xs">LLM P75</div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs">
+                      <div className="font-medium">Language Model Performance</div>
+                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.llmStats.p50)}</div>
+                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.llmStats.p75)}</div>
+                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.llmStats.avg)}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* TTS */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 cursor-help">
+                      <Volume2 className="w-3 h-3 text-slate-400" />
+                      <div className="text-right">
+                        <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.ttsStats.p75, "tts"))}>
+                          {formatDuration(conversationMetrics.ttsStats.p75)}
+                        </div>
+                        <div className="text-slate-400 text-xs">TTS P75</div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs">
+                      <div className="font-medium">Text-to-Speech Performance</div>
+                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.ttsStats.p50)}</div>
+                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.ttsStats.p75)}</div>
+                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.ttsStats.avg)}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* EOU */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 cursor-help">
+                      <Radio className="w-3 h-3 text-slate-400" />
+                      <div className="text-right">
+                        <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.eouStats.p75, "eou"))}>
+                          {formatDuration(conversationMetrics.eouStats.p75)}
+                        </div>
+                        <div className="text-slate-400 text-xs">EOU P75</div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs">
+                      <div className="font-medium">End of Utterance Performance</div>
+                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.eouStats.p50)}</div>
+                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.eouStats.p75)}</div>
+                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.eouStats.avg)}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
+  )
+}
+
+export default ObservabilityStats

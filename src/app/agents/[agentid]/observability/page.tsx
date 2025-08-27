@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import TracesTable from "@/components/observabilty/TracesTable"
 import ObservabilityFilters from "@/components/observabilty/ObservabilityFilters"
-import { useState, use } from "react"
+import { useState, use, useEffect } from "react"
+import { extractS3Key } from "@/utils/s3"
+import AudioPlayer from "@/components/AudioPlayer"
+import { useSupabaseQuery } from "@/hooks/useSupabase"
+import ObservabilityStats from "@/components/observabilty/ObservabilityStats"
 
 interface ObservabilityPageProps {
   params: Promise<{ agentId: string }>
@@ -17,12 +21,56 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   const router = useRouter()
   const resolvedParams = use(params)
   const resolvedSearchParams = use(searchParams || Promise.resolve({} as { session_id?: string }))
+  const sessionId = resolvedSearchParams?.session_id
   
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
     timeRange: "24h"
   })
+
+  // Build query filters based on whether we have sessionId or agentId
+  const queryFilters = sessionId 
+    ? [{ column: "id", operator: "eq", value: sessionId }]
+    : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentId }]
+
+  console.log('Query filters:', queryFilters)
+
+  const { data: callData, loading: callLoading, error: callError } = useSupabaseQuery("pype_voice_call_logs", {
+    select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata",
+    filters: queryFilters,
+    orderBy: { column: "created_at", ascending: false },
+    limit: 1
+  })
+
+  // Debug logging
+  useEffect(() => {
+    console.log('=== OBSERVABILITY DEBUG ===')
+    console.log('Session ID:', sessionId)
+    console.log('Agent ID:', resolvedParams.agentId)
+    console.log('Query Filters:', queryFilters)
+    console.log('Call Data:', callData)
+    console.log('Call Loading:', callLoading)
+    console.log('Call Error:', callError)
+    
+    if (callData && callData.length > 0) {
+      const call = callData[0]
+      console.log('First call recording_url:', call.recording_url)
+      console.log('Recording URL length:', call.recording_url?.length || 0)
+      console.log('Is recording_url empty?', !call.recording_url || call.recording_url.trim() === '')
+    } else if (!callLoading) {
+      console.log('No call data found for filters:', queryFilters)
+    }
+    console.log('=== END DEBUG ===')
+  }, [callData, callLoading, callError, sessionId, resolvedParams.agentId])
+
+  // Get the recording URL from the first call
+  const recordingUrl = callData && callData.length > 0 ? callData[0].recording_url : null
+  const callInfo = callData && callData.length > 0 ? callData[0] : null
+
+  // Check if URL might be expired (for signed URLs)
+  const isSignedUrl = recordingUrl && recordingUrl.includes('X-Amz-Signature')
+  const isUrlExpired = isSignedUrl && recordingUrl.includes('X-Amz-Expires=604800') // 7 days
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -43,8 +91,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
               <div>
                 <h1 className="text-2xl font-semibold">Observability Dashboard</h1>
                 <p className="text-sm text-muted-foreground">
-                  OpenTelemetry traces for agent {resolvedParams.agentId}
-                  {resolvedSearchParams?.session_id && ` • Session ${resolvedSearchParams.session_id.slice(0, 8)}...`}
+                  {sessionId && `Session ${sessionId.slice(0, 8)}...`}
                 </p>
               </div>
             </div>
@@ -52,19 +99,40 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
         </div>
       </div>
 
+
+
+      {/* Audio Player - show if we have a recording URL */}
+      {recordingUrl && !callLoading && (
+        <div className="px-6 py-4 border-b bg-gray-50">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Call Recording</h3>
+          <AudioPlayer
+            s3Key={extractS3Key(recordingUrl)}
+            url={recordingUrl}
+            callId={callInfo?.id}
+          />
+        </div>
+      )}
+
+
       {/* Filters */}
-      <ObservabilityFilters
+      {/* <ObservabilityFilters
         filters={filters}
         onFiltersChange={setFilters}
         agentId={resolvedParams.agentId}
-        sessionId={resolvedSearchParams?.session_id}
+        sessionId={sessionId}
+      /> */}
+
+      <ObservabilityStats
+        sessionId={sessionId}
+        agentId={resolvedParams.agentId}
+        callData={callData}
       />
 
       {/* Main Content */}
       <div className="flex-1 min-h-0">
         <TracesTable
           agentId={resolvedParams.agentId}
-          sessionId={resolvedSearchParams?.session_id}
+          sessionId={sessionId}
           filters={filters}
         />
       </div>
