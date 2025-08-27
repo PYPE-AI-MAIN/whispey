@@ -8,6 +8,7 @@ from livekit.agents.metrics import STTMetrics, LLMMetrics, TTSMetrics, EOUMetric
 import re
 import uuid
 import json
+import time 
 
 logger = logging.getLogger("whispey-sdk")
 
@@ -39,6 +40,7 @@ class ConversationTurn:
     enhanced_llm_data: Optional[Dict[str, Any]] = None  
     enhanced_tts_data: Optional[Dict[str, Any]] = None
     state_events: List[Dict[str, Any]] = field(default_factory=list)
+    prompt_data: Optional[Dict[str, Any]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary - backwards compatible"""
@@ -65,7 +67,8 @@ class ConversationTurn:
             'enhanced_stt_data': self.enhanced_stt_data,
             'enhanced_llm_data': self.enhanced_llm_data,
             'enhanced_tts_data': self.enhanced_tts_data,
-            'state_events': self.state_events
+            'state_events': self.state_events,
+            'prompt_data': self.prompt_data
         }
         
         for key, value in enhanced_fields.items():
@@ -230,6 +233,14 @@ class CorrectedTranscriptCollector:
             self.current_turn.agent_response = event.item.text_content
             self.current_turn.agent_turn_complete = True
             
+            # NEW: Associate prompt data with this turn
+            if hasattr(self, '_session_data') and self._session_data:
+                prompt_captures = self._session_data.get('prompt_captures', [])
+                if prompt_captures:
+                    # Find the most recent prompt capture for this turn
+                    self.current_turn.prompt_data = prompt_captures[-1]
+                    logger.info(f"Associated prompt data with turn {self.current_turn.turn_id}")
+            
             # Apply pending metrics
             if self.pending_metrics['llm']:
                 self.current_turn.llm_metrics = self.pending_metrics['llm']
@@ -251,8 +262,6 @@ class CorrectedTranscriptCollector:
             self.turns.append(self.current_turn)
             logger.info(f"Completed turn {self.current_turn.turn_id}")
             self.current_turn = None
-
-
 
 
 
@@ -1126,8 +1135,7 @@ def extract_complete_session_configuration(session, session_data):
                 if hasattr(opts, attr):
                     val = getattr(opts, attr)
                     if attr == 'api_key':
-                        # Mask API key for security
-                        stt_config[attr] = f"{str(val)[:8]}..." if val else None
+                        stt_config[attr] = "masked"
                     else:
                         stt_config[attr] = make_serializable(val)
         
@@ -1171,8 +1179,7 @@ def extract_complete_session_configuration(session, session_data):
                 if hasattr(opts, attr):
                     val = getattr(opts, attr)
                     if attr == 'api_key':
-                        # Mask API key for security
-                        tts_config[attr] = f"{str(val)[:8]}..." if val else None
+                        tts_config[attr] = "masked"
                     else:
                         tts_config[attr] = make_serializable(val)
             
