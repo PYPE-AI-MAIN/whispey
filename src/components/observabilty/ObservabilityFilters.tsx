@@ -93,21 +93,14 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
               <div className="text-lg font-semibold text-purple-600">${stats.totalCost.toFixed(4)}</div>
               <div className="text-xs text-muted-foreground">Total Cost</div>
             </div>
-            <div className="text-center">
-              <div className={`text-lg font-semibold ${stats.errorCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {stats.errorCount}
-              </div>
-              <div className="text-xs text-muted-foreground">Errors</div>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="px-6 py-4">
+      {/* <div className="px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -118,7 +111,6 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
               />
             </div>
 
-            {/* Status Filter */}
             <Select value={filters.status} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-40">
                 <Filter className="w-4 h-4 mr-2" />
@@ -132,7 +124,6 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
               </SelectContent>
             </Select>
 
-            {/* Time Range */}
             <Select value={filters.timeRange} onValueChange={handleTimeRangeChange}>
               <SelectTrigger className="w-36">
                 <Calendar className="w-4 h-4 mr-2" />
@@ -147,7 +138,6 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
               </SelectContent>
             </Select>
 
-            {/* Active Filters */}
             <div className="flex items-center gap-2">
               {filters.search && (
                 <Badge variant="secondary" className="text-xs">
@@ -167,7 +157,6 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={exportTraces}>
               <Download className="w-4 h-4 mr-2" />
@@ -175,7 +164,7 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
             </Button>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }
