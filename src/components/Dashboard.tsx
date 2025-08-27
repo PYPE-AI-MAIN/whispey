@@ -155,8 +155,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     return hasVapiKeys || hasVapiConfig || isVapiType
   }, [agent])
 
-  console.log({agent})
-
 
   const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active',

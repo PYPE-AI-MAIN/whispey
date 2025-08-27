@@ -13,7 +13,8 @@ logger = logging.getLogger("observe_session")
 # Global session storage - store data, not class instances
 _session_data_store = {}
 
-def observe_session(session, agent_id,host_url,bug_detector=None, **kwargs):
+
+def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=False, otel_endpoint=None, telemetry_instance=None, **kwargs):
     session_id = str(uuid.uuid4())
     
     logger.info(f"🔗 Setting up Whispey-compatible metrics collection for session {session_id}")
@@ -39,12 +40,17 @@ def observe_session(session, agent_id,host_url,bug_detector=None, **kwargs):
             'agent_id': agent_id,
             'call_active': True,
             'whispey_data': None,
-            'bug_detector': bug_detector  # ADD THIS LINE
-
+            'bug_detector': bug_detector,
+            'telemetry_instance': telemetry_instance  # Store telemetry instance
         }
         
+        # Setup telemetry if enabled
+        if enable_otel and telemetry_instance:
+            logger.info(f"🔧 Setting up OpenTelemetry for session {session_id}")
+            telemetry_instance._setup_telemetry(session_id)
+        
         # Setup event handlers with session
-        setup_session_event_handlers(session, session_data, usage_collector, None,bug_detector)
+        setup_session_event_handlers(session, session_data, usage_collector, None, bug_detector)
         
         # Add custom handlers for Whispey integration
         @session.on("disconnected")
@@ -109,6 +115,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         if k not in {"phone_number", "customer_number", "phone"}
     }
 
+    # FIXED: Define whispey_data at function level, not inside if block
     whispey_data = {
         "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
         "agent_id": session_info['agent_id'],
@@ -123,13 +130,40 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "metadata": {
             "usage": usage_summary,
             "duration_formatted": f"{duration // 60}m {duration % 60}s",
+            "complete_configuration": session_data.get('complete_configuration') if session_data else None,
             **sanitized_dynamic_params  # Include dynamic parameters without phone identifiers
         }
     }
     
     # Add transcript data if available
     if session_data:
-        whispey_data["transcript_with_metrics"] = session_data.get("transcript_with_metrics", [])
+        transcript_data = session_data.get("transcript_with_metrics", [])
+        
+        # VERIFICATION: Check if turns have configuration
+        config_count = sum(1 for turn in transcript_data if turn.get('turn_configuration'))
+        logger.info(f"Configuration verification: {config_count}/{len(transcript_data)} turns have configuration")
+        
+        # NEW: Ensure trace fields are included in each turn
+        enhanced_transcript = []
+        for turn in transcript_data:
+            # Verify configuration exists
+            if not turn.get('turn_configuration'):
+                logger.warning(f"Turn {turn.get('turn_id', 'unknown')} missing configuration!")
+                # Try to inject from session level as fallback
+                turn['turn_configuration'] = session_data.get('complete_configuration')
+            
+            # Add trace fields to each turn if they exist
+            enhanced_turn = {
+                **turn,  # All existing fields
+                'trace_id': turn.get('trace_id'),
+                'otel_spans': turn.get('otel_spans', []),
+                'tool_calls': turn.get('tool_calls', []),
+                'trace_duration_ms': turn.get('trace_duration_ms'),
+                'trace_cost_usd': turn.get('trace_cost_usd')
+            }
+            enhanced_transcript.append(enhanced_turn)
+        
+        whispey_data["transcript_with_metrics"] = enhanced_transcript
         
         # Extract transcript_json from session history if available
         if hasattr(session_data, 'history'):
@@ -153,7 +187,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
                     except Exception as e:
                         logger.debug(f"Could not extract transcript from {attr}: {e}")
 
-    if session_data:
+        # Add bug report data if available
         if 'bug_reports' in session_data:
             whispey_data["metadata"]["bug_reports"] = session_data['bug_reports']
         if 'bug_flagged_turns' in session_data:
@@ -199,7 +233,256 @@ def cleanup_session(session_id: str):
         del _session_data_store[session_id]
         logger.info(f"🗑️ Cleaned up session {session_id}")
 
-async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True, apikey: str = None, api_url: str = None) -> dict:
+
+
+
+
+
+def categorize_span(span_name: str) -> str:
+    """Categorize span by operation type for easier filtering"""
+    if not span_name:
+        return "other"
+        
+    name_lower = span_name.lower()
+    
+    if any(x in name_lower for x in ['llm_request', 'llm_node', 'llm']):
+        return "llm"
+    elif any(x in name_lower for x in ['tts_request', 'tts_node', 'tts']):
+        return "tts"
+    elif any(x in name_lower for x in ['stt_request', 'stt_node', 'stt']):
+        return "stt"
+    elif 'function_tool' in name_lower or 'tool' in name_lower:
+        return "tool"
+    elif 'user_turn' in name_lower or 'user_speaking' in name_lower:
+        return "user_interaction"
+    elif 'assistant_turn' in name_lower or 'agent_speaking' in name_lower:
+        return "assistant_interaction"
+    elif 'session' in name_lower:
+        return "session_management"
+    else:
+        return "other"
+
+def calculate_duration_ms(span) -> float:
+    """Calculate span duration in milliseconds"""
+    try:
+        start_time = span.get('start_time', 0)
+        end_time = span.get('end_time', 0)
+        
+        if start_time and end_time and end_time > start_time:
+            # Assume timestamps are in nanoseconds, convert to milliseconds
+            return (end_time - start_time) / 1_000_000
+        
+        # Fallback to duration if available
+        duration = span.get('duration', 0)
+        if duration > 0:
+            return duration * 1000  # Convert seconds to milliseconds
+            
+        return 0
+    except Exception:
+        return 0
+
+def extract_key_attributes(span) -> dict:
+    """Extract only the most important attributes for analysis"""
+    try:
+        attributes = span.get('attributes', {})
+        
+        # Handle string attributes (sometimes they're stringified)
+        if isinstance(attributes, str):
+            try:
+                import json
+                attributes = json.loads(attributes)
+            except:
+                return {}
+        
+        if not isinstance(attributes, dict):
+            return {}
+        
+        # Extract key attributes that are useful for analysis
+        key_attrs = {}
+        important_keys = [
+            'session_id', 'lk.user_transcript', 'lk.response.text', 
+            'gen_ai.request.model', 'lk.speech_id', 'lk.interrupted',
+            'gen_ai.usage.input_tokens', 'gen_ai.usage.output_tokens',
+            'lk.tts.streaming', 'lk.input_text', 'model_name',
+            'prompt_tokens', 'completion_tokens', 'characters_count',
+            'audio_duration', 'request_id', 'error'
+        ]
+        
+        for key in important_keys:
+            if key in attributes:
+                key_attrs[key] = attributes[key]
+        
+        return key_attrs
+    except Exception:
+        return {}
+
+def generate_span_id(span) -> str:
+    """Generate a unique span ID"""
+    try:
+        # Try to use existing span_id or create one
+        if 'span_id' in span:
+            return str(span['span_id'])
+        
+        # Generate from name and timestamp
+        name = span.get('name', 'unknown')
+        timestamp = span.get('start_time', time.time())
+        return f"span_{name}_{int(timestamp)}"[:64]  # Limit length
+    except Exception:
+        return f"span_unknown_{int(time.time())}"
+
+def extract_trace_id(span) -> str:
+    """Extract trace ID from span"""
+    try:
+        if 'trace_id' in span:
+            return str(span['trace_id'])
+        
+        # Check in attributes
+        attributes = span.get('attributes', {})
+        if isinstance(attributes, dict) and 'trace_id' in attributes:
+            return str(attributes['trace_id'])
+        
+        return None
+    except Exception:
+        return None
+
+def build_critical_path(spans) -> list:
+    """Build the critical path of main conversation flow"""
+    try:
+        if not spans:
+            return []
+        
+        critical_spans = []
+        
+        # Sort spans by start time
+        sorted_spans = sorted(spans, key=lambda x: x.get('start_time', 0))
+        
+        # Focus on main conversation flow operations
+        for span in sorted_spans:
+            operation_type = span.get('operation_type', 'other')
+            if operation_type in ['user_interaction', 'assistant_interaction', 'llm', 'tts', 'stt', 'tool']:
+                critical_spans.append({
+                    "name": span.get('name', 'unknown'),
+                    "operation_type": operation_type,
+                    "duration_ms": span.get('duration_ms', 0),
+                    "start_time": span.get('start_time', 0)
+                })
+        
+        return critical_spans
+    except Exception as e:
+        logger.error(f"Error building critical path: {e}")
+        return []
+
+def structure_telemetry_data(session_id: str) -> Dict[str, Any]:
+    """Structure telemetry spans data for better analysis"""
+    try:
+        telemetry_data = {
+            "session_traces": [],
+            "performance_metrics": {
+                "total_spans": 0,
+                "avg_llm_latency": 0,
+                "avg_tts_latency": 0,
+                "avg_stt_latency": 0,
+                "total_tool_calls": 0
+            },
+            "span_summary": {
+                "by_operation": {},
+                "by_turn": {},
+                "critical_path": []
+            }
+        }
+        
+        if session_id not in _session_data_store:
+            return telemetry_data
+            
+        session_info = _session_data_store[session_id]
+        telemetry_instance = session_info.get('telemetry_instance')
+        
+        if not telemetry_instance or not hasattr(telemetry_instance, 'spans_data'):
+            logger.info(f"No telemetry instance or spans data for session {session_id}")
+            return telemetry_data
+            
+        spans = telemetry_instance.spans_data
+        if not spans:
+            logger.info(f"No spans available for session {session_id}")
+            return telemetry_data
+            
+        logger.info(f"Processing {len(spans)} telemetry spans for session {session_id}")
+        
+        # Categorize spans by operation type
+        operation_counts = {}
+        latency_sums = {"llm": [], "tts": [], "stt": [], "tool": []}
+        
+        structured_spans = []
+        
+        for span in spans:
+            try:
+                # Categorize the span
+                span_name = span.get('name', 'unknown')
+                span_type = categorize_span(span_name)
+                duration_ms = calculate_duration_ms(span)
+                
+                # Create structured span
+                structured_span = {
+                    "span_id": generate_span_id(span),
+                    "trace_id": extract_trace_id(span),
+                    "name": span_name,
+                    "operation_type": span_type,
+                    "start_time": span.get('start_time'),
+                    "end_time": span.get('end_time'),
+                    "duration_ms": duration_ms,
+                    "attributes": extract_key_attributes(span),
+                    "status": span.get('status', 'UNSET')
+                }
+                structured_spans.append(structured_span)
+                
+                # Aggregate metrics
+                operation_counts[span_type] = operation_counts.get(span_type, 0) + 1
+                
+                # Collect latencies by type
+                if span_type in latency_sums and duration_ms > 0:
+                    latency_sums[span_type].append(duration_ms)
+                    
+            except Exception as e:
+                logger.error(f"Error processing span {span}: {e}")
+                continue
+        
+        # Build the structured data
+        telemetry_data["session_traces"] = structured_spans
+        telemetry_data["span_summary"]["by_operation"] = operation_counts
+        
+        # Calculate performance metrics
+        telemetry_data["performance_metrics"] = {
+            "total_spans": len(structured_spans),
+            "avg_llm_latency": sum(latency_sums["llm"]) / len(latency_sums["llm"]) if latency_sums["llm"] else 0,
+            "avg_tts_latency": sum(latency_sums["tts"]) / len(latency_sums["tts"]) if latency_sums["tts"] else 0,
+            "avg_stt_latency": sum(latency_sums["stt"]) / len(latency_sums["stt"]) if latency_sums["stt"] else 0,
+            "total_tool_calls": operation_counts.get("tool", 0),
+            "total_user_interactions": operation_counts.get("user_interaction", 0),
+            "total_assistant_interactions": operation_counts.get("assistant_interaction", 0)
+        }
+        
+        # Build critical path
+        telemetry_data["span_summary"]["critical_path"] = build_critical_path(structured_spans)
+        
+        logger.info(f"Structured telemetry data: {len(structured_spans)} spans, "
+                   f"{telemetry_data['performance_metrics']['total_tool_calls']} tool calls")
+        
+        return telemetry_data
+        
+    except Exception as e:
+        logger.error(f"Error structuring telemetry data: {e}")
+        return {
+            "session_traces": [],
+            "performance_metrics": {"total_spans": 0, "avg_llm_latency": 0, "avg_tts_latency": 0, "avg_stt_latency": 0, "total_tool_calls": 0},
+            "span_summary": {"by_operation": {}, "by_turn": {}, "critical_path": []}
+        }
+
+
+
+
+
+
+async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True, apikey: str = None, api_url: str = None, **extra_data) -> dict:
     """
     Send session data to Whispey API
     
@@ -231,6 +514,11 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     
     # Get whispey data
     whispey_data = get_session_whispey_data(session_id)
+
+    # REPLACE the simple telemetry_spans assignment with structured data
+    structured_telemetry = structure_telemetry_data(session_id)
+    whispey_data["telemetry_data"] = structured_telemetry
+
     
     logger.info(f"📊 Generated whispey data with keys: {list(whispey_data.keys()) if whispey_data else 'Empty'}")
     
@@ -247,12 +535,14 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         whispey_data["transcript_json"] = additional_transcript
         logger.info(f"📄 Added additional transcript with {len(additional_transcript)} items")
     
-    # Debug print
+    # Debug print - include telemetry summary
     print("=== WHISPEY DATA FOR SENDING ===")
     print(f"Call ID: {whispey_data.get('call_id', 'N/A')}")
     print(f"Agent ID: {whispey_data.get('agent_id', 'N/A')}")
     print(f"Duration: {whispey_data.get('metadata', {}).get('duration_formatted', 'N/A')}")
     print(f"Usage: {whispey_data.get('metadata', {}).get('usage', {})}")
+    print(f"Telemetry Spans: {structured_telemetry['performance_metrics']['total_spans']}")
+    print(f"Tool Calls: {structured_telemetry['performance_metrics']['total_tool_calls']}")
     print("============================")
     
     # Send to Whispey
@@ -273,6 +563,11 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         import traceback
         traceback.print_exc()
         return {"success": False, "error": str(e)}
+
+
+
+
+
 
 # Utility functions
 def get_latest_session():

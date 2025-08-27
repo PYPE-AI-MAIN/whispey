@@ -37,7 +37,6 @@ function AgentDashboardContent() {
       setError(null)
 
       try {
-        console.log('🔍 Fetching agent data for ID:', id)
 
         // Fetch agent data from your database
         const response = await fetch(`/api/agents/${id}`)
@@ -48,21 +47,12 @@ function AgentDashboardContent() {
         }
 
         const data = await response.json()
-        console.log('📊 Agent data received:', data)
 
         setAgentData(data)
 
         const hasVapiKeys = Boolean(data.vapi_api_key_encrypted && data.vapi_project_key_encrypted)
         const hasVapiConfig = Boolean(data.configuration?.vapi?.assistantId)
         const isVapi = hasVapiKeys || hasVapiConfig || data.agent_type === 'vapi'
-
-        console.log('🤖 Agent type detection:', {
-          agent_type: data.agent_type,
-          hasVapiKeys,
-          hasVapiConfig,
-          isVapi,
-          configuration: data.configuration
-        })
 
         setIsVapiAgent(isVapi)
 

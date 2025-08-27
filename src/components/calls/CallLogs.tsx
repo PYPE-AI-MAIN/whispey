@@ -17,6 +17,7 @@ import { supabase } from "../../lib/supabase"
 import Papa from 'papaparse'
 import { useUser } from "@clerk/nextjs"
 import { getUserProjectRole } from "@/services/getUserRole"
+import { useRouter } from "next/navigation"
 
 
 
@@ -148,6 +149,7 @@ const DynamicJsonCell: React.FC<{
 
 const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
 
+  const router = useRouter()
   // Convert string to camelCase
   function toCamelCase(str: string) {
     return str
@@ -955,7 +957,10 @@ const { user } = useUser()
                         "cursor-pointer hover:bg-muted/30 transition-all duration-200 border-b border-border/50",
                         selectedCall?.id === call.id && "bg-muted/50",
                       )}
-                      onClick={() => setSelectedCall(call)}
+                      onClick={() => {
+                        console.log({call})
+                        router.push(`/agents/${call?.id}/observability?session_id=${call?.id}`)
+                      }}
                     >
               {visibleColumns.basic.map((key) => {
                 let value: React.ReactNode = "-"
