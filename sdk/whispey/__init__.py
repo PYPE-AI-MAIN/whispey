@@ -101,19 +101,22 @@ class LivekitObserve:
     
     
     def start_session(self, session, **kwargs):
-        """Start session with prompt capture"""
+        """Start session with prompt capture AND bug report functionality"""
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(
             session, 
             self.agent_id, 
             self.host_url, 
             bug_detector=bug_detector,
-            enable_otel=self.enable_otel,  # Pass this
-            telemetry_instance=self,  # Pass the whole instance
+            enable_otel=self.enable_otel,
+            telemetry_instance=self,
             **kwargs
         )
         
         self._setup_prompt_capture(session, session_id)
+        
+        if self.enable_bug_reports:
+            self._setup_bug_report_handling(session, session_id)
         
         return session_id
 
@@ -301,16 +304,7 @@ class LivekitObserve:
         if not text:
             return False
         return any(re.search(pattern, text.lower()) for pattern in self.bug_end_patterns)
-    
-    def start_session(self, session, **kwargs):
-        """Start session with optional bug report functionality"""
-        bug_detector = self if self.enable_bug_reports else None
-        session_id = observe_session(session, self.agent_id, self.host_url, bug_detector=bug_detector, **kwargs)
-        
-        if self.enable_bug_reports:
-            self._setup_bug_report_handling(session, session_id)
-        
-        return session_id
+
     
     def _setup_bug_report_handling(self, session, session_id):
         """Setup simplified bug report handling - STT interception only"""
