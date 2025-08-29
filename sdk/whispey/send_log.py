@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
+# WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
+WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"
 WHISPEY_API_KEY = os.getenv("WHISPEY_API_KEY")
 
 def convert_timestamp(timestamp_value):
@@ -111,7 +112,6 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     }
                 else:
                     result = await response.json()
-                    print(f"✅ Success! Response: {json.dumps(result, indent=2)}")
                     return {
                         "success": True,
                         "status": response.status,

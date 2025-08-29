@@ -1,0 +1,263 @@
+---
+title: Bug Reporting
+description: Real-time feedback system for voice conversations
+---
+
+## Overview
+
+Whispey's bug reporting system enables users to provide real-time feedback during voice conversations by flagging problematic agent responses. The system automatically captures context, collects detailed feedback, and seamlessly continues the conversation where it left off.
+
+## Quick Start
+
+### Basic Setup
+
+```python
+from whispey import LivekitObserve
+
+# Enable bug reporting with minimal configuration
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    bug_reports=True  # Uses default trigger phrases
+)
+
+session_id = whispey.start_session(session)
+```
+
+### Default Behavior
+
+With `bug_reports=True`, users can say:
+
+- **"bug start"** to start feedback collection
+- **"bug over"** to end feedback and resume conversation
+
+The system automatically uses default messages:
+
+- Response: "Thanks for reporting that. Please tell me the issue?"
+- Collection prompt: "Anything else?"
+- Continuation: "So, as I was saying, [original response]"
+
+## How It Works
+
+### Workflow Example
+
+```
+User: "What's the weather today?"
+Agent: "I can help you cook pasta recipes" [PROBLEMATIC RESPONSE]
+User: "report issue"
+Agent: "Please describe the issue you encountered."
+User: "You talked about cooking when I asked about weather"
+Agent: "Got it, anything else?"
+User: "issue resolved"
+Agent: "So, as I was saying, the weather today is sunny and 75°F"
+```
+
+### Core Mechanism
+
+1. **Issue Detection**: User speaks configured trigger phrase
+2. **Context Capture**: System immediately stores the problematic agent response
+3. **Feedback Collection**: Agent prompts for details about the issue
+4. **Data Storage**: All feedback is collected and tagged to the specific turn
+5. **Conversation Continuation**: Agent repeats the original response and continues normally
+
+## Configuration
+
+### Custom Trigger Phrases
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    bug_reports={
+        "bug_start_command": ["report issue", "there's a problem"],
+        "bug_end_command": ["issue resolved", "problem fixed"]
+    }
+)
+```
+
+### Complete Configuration
+
+```python
+bug_reports={
+    "bug_start_command": ["report issue", "there's a problem", "feedback start"],
+    "bug_end_command": ["issue resolved", "problem fixed", "feedback over"],
+    "response": "Please describe the issue.",
+    "collection_prompt": "Got it, anything else?",
+    "continuation_prefix": "So, as I was saying, ",
+    "fallback_message": "Let me continue our conversation."
+}
+```
+
+## Advanced Configurations
+
+### Multi-language Support
+
+```python
+bug_reports={
+    "bug_start_command": [
+        # English
+        "report issue", "there's a problem", "this is wrong",
+        # Hindi
+        "समस्या रिपोर्ट करें", "गलत जवाब", "ये ठीक नहीं है",
+        # Spanish
+        "reportar problema", "esto está mal", "hay un error"
+    ],
+    "bug_end_command": [
+        # English
+        "issue resolved", "problem fixed", "that's all",
+        # Hindi
+        "समस्या हल हो गई", "ठीक हो गया", "बस इतना ही",
+        # Spanish
+        "problema resuelto", "está arreglado", "eso es todo"
+    ],
+    "response": "मुझे समझ आ गया कि कोई समस्या है। कृपया बताएं क्या गलत हुआ। I understand there's an issue. Please tell me what went wrong.",
+    "collection_prompt": "और कुछ? Anything else?",
+    "continuation_prefix": "आपके सुझाव के लिए धन्यवाद। अब वापस आपके सवाल पर - Thank you for the feedback. Back to your question - "
+}
+```
+
+### Professional Support Configuration
+
+```python
+bug_reports={
+    "bug_start_command": ["escalate", "I need help", "this isn't working"],
+    "bug_end_command": ["thank you", "that's all", "resolved"],
+    "response": "I understand you're experiencing an issue. Please tell me what's not working correctly so I can improve.",
+    "collection_prompt": "Is there any other detail you'd like to share about this issue?",
+    "continuation_prefix": "Thank you for that feedback. Now, returning to your question - "
+}
+```
+
+### Regex Pattern Support
+
+```python
+bug_reports={
+    "bug_start_command": [
+        "report issue",
+        r"\bthat's wrong\b",           # Word boundary matching
+        r"this (is|seems) incorrect",   # Multiple word options
+        "समस्या रिपोर्ट करें"            # Unicode support
+    ],
+    "bug_end_command": [
+        "issue resolved",
+        r"\b(done|finished|complete)\b"
+    ]
+}
+```
+
+## Data Structure
+
+### Bug Report Storage
+
+```python
+{
+    "bug_reports": [
+        {
+            "timestamp": 1703123456.789,
+            "details": [
+                {
+                    "type": "initial_report",
+                    "text": "report issue",
+                    "timestamp": 1703123456.789
+                },
+                {
+                    "type": "bug_details",
+                    "text": "You talked about cooking when I asked about weather",
+                    "timestamp": 1703123457.123
+                },
+                {
+                    "type": "bug_end",
+                    "text": "issue resolved",
+                    "timestamp": 1703123460.456
+                }
+            ],
+            "total_messages": 3,
+            "stored_problematic_message": "I can help you cook pasta recipes"
+        }
+    ],
+    "bug_flagged_turns": [
+        {
+            "turn_id": "turn_3",
+            "agent_message": "I can help you cook pasta recipes",
+            "flagged_at": 1703123456.789
+        }
+    ]
+}
+```
+
+### Turn Flagging
+
+Turns with reported issues are marked with:
+
+```python
+{
+    "turn_id": "turn_3",
+    "user_transcript": "What's the weather today?",
+    "agent_response": "I can help you cook pasta recipes",
+    "bug_report": true,  # Flagged as problematic
+    "stt_metrics": {...},
+    "llm_metrics": {...},
+    "tts_metrics": {...}
+}
+```
+
+## Error Handling
+
+### Fallback Strategies
+
+```python
+bug_reports={
+    "bug_start_command": ["report issue"],
+    "bug_end_command": ["issue resolved"],
+
+    # Fallback strategies
+    "fallback_message": "I apologize for any confusion. Let me try to help you differently.",
+    "max_feedback_turns": 5,                   # Limit feedback collection length
+    "timeout_seconds": 120,                    # Auto-end if feedback takes too long
+    "enable_context_recovery": True,           # Try multiple recovery methods
+    "graceful_degradation": True,              # Continue even if context capture fails
+
+    # Error responses
+    "context_loss_message": "I want to help, but I may have lost track of our conversation. Can you repeat your question?",
+    "system_error_message": "I'm experiencing a technical issue. Let me try to continue helping you.",
+    "recovery_attempts": 3                     # Number of recovery attempts
+}
+```
+
+## Use Cases
+
+### Customer Service
+
+- **Issue Escalation**: Users can flag when responses don't address their concern
+- **Quality Assurance**: Systematic collection of problematic interactions
+- **Agent Improvement**: Feedback drives training data for model improvement
+
+### Educational Agents
+
+- **Learning Feedback**: Students can report when explanations are unclear
+- **Content Correction**: Flag incorrect or misleading information
+- **Personalization**: Adapt teaching style based on feedback patterns
+
+### Healthcare Applications
+
+- **Safety Monitoring**: Users can report potentially harmful medical advice
+- **Accuracy Verification**: Flag medical information that seems incorrect
+- **Compliance Tracking**: Monitor for responses that violate healthcare guidelines
+
+## Dashboard Integration
+
+### Bug Report View
+
+The dashboard provides a dedicated bug report analysis interface showing:
+
+- **Flagged Turn Context**: Complete conversation context around the reported issue
+- **User Feedback**: All collected feedback messages and details
+- **Response Analysis**: The problematic agent response that was flagged
+- **Metadata**: Timestamps, turn IDs, and session information
+
+### Visual Indicators
+
+- **Red highlighting** for flagged conversation turns
+- **Bug badges** on problematic responses
+- **Timeline view** of feedback collection process
+- **Context preservation** showing original conversation flow

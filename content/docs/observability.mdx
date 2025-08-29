@@ -1,0 +1,268 @@
+---
+title: Observability
+description: Comprehensive monitoring and telemetry for LiveKit voice agents
+---
+
+## Overview
+
+Whispey Observability provides comprehensive monitoring for LiveKit voice agents, capturing detailed metrics and telemetry data from every conversation turn. It tracks the complete pipeline from speech-to-text through language model processing to text-to-speech output.
+
+## Core Components
+
+### Conversation Turn Tracking
+
+Every user-agent interaction is captured as a structured turn containing:
+
+- **User transcript** with STT processing metrics
+- **Agent response** with LLM and TTS metrics
+- **Tool executions** with arguments and results
+- **Performance data** including latency and costs
+- **Configuration details** for all pipeline components
+
+### Pipeline Configuration Capture
+
+Automatically extracts complete configuration from your voice pipeline:
+
+- **STT Configuration**: Model, language, sample rate, interim results
+- **LLM Configuration**: Model, temperature, max tokens, provider settings
+- **TTS Configuration**: Voice ID, model, voice settings, speed
+- **VAD Configuration**: Activation thresholds, speech duration settings
+
+### OpenTelemetry Integration
+
+When enabled with `enable_otel=True`, captures comprehensive telemetry spans:
+
+- **STT Spans**: Audio processing with duration and model info
+- **LLM Spans**: Token usage, latency, and request details
+- **TTS Spans**: Character counts, synthesis timing
+- **Tool Spans**: Function executions with performance metrics
+
+## SDK Integration
+
+```python
+from whispey import LivekitObserve
+
+# Initialize with observability
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    enable_otel=True  # Enable telemetry capture
+)
+
+# Start monitoring session
+session_id = whispey.start_session(
+    session
+)
+
+# Export data after session
+await whispey.export(session_id)
+```
+
+## Dashboard Features
+
+### TracesTable Component
+
+Main interface showing conversation turns with:
+
+- **Turn-by-turn view** of all conversations
+- **Status indicators** (success/warning/error)
+- **Performance metrics** (duration, cost, operations)
+- **Search and filtering** capabilities
+- **Real-time updates** as conversations happen
+
+### Enhanced Trace Detail Sheet
+
+Detailed analysis of individual turns:
+
+- **Pipeline Flow View**: Visual STT → LLM → TTS representation
+- **Complete Prompt Context**: Full system instructions and conversation history
+- **Tool Executions**: Function calls with arguments and results
+- **Cost Breakdown**: Per-operation pricing analysis
+- **Configuration Details**: Complete model and parameter settings
+
+## Performance Monitoring
+
+### Key Metrics
+
+- **STT Metrics**: Audio duration, processing time, transcription accuracy
+- **LLM Metrics**: Token usage, time to first token, generation speed
+- **TTS Metrics**: Character count, time to first byte, audio duration
+- **Overall Latency**: End-to-end conversation response time
+
+### Cost Tracking
+
+Dynamic pricing calculation for:
+
+- **OpenAI Models**: GPT-4o, GPT-4o-mini, Whisper, TTS voices
+- **Anthropic Models**: Claude 3.5 Sonnet, Haiku
+- **ElevenLabs Voices**: Premium voice synthesis
+- **Google Models**: Gemini Pro, Flash
+- **Other Providers**: Deepgram, Azure, Cartesia
+
+## Tool Call Monitoring
+
+Automatic tracking of function tool executions:
+
+```python
+{
+    "name": "get_weather",
+    "arguments": {"location": "San Francisco"},
+    "execution_duration_ms": 1250,
+    "status": "success",
+    "result": "The weather is 72°F and sunny",
+    "result_length": 42
+}
+```
+
+## Enhanced Data Collection
+
+Beyond basic metrics, captures:
+
+- **Model Detection**: Automatic identification of providers and versions
+- **Voice Configuration**: Complete TTS voice settings and parameters
+- **Conversation Context**: Full chat history sent to language models
+- **State Transitions**: User and agent state changes during conversations
+- **Error Handling**: Detailed error information and failure modes
+
+## Export and Analysis
+
+Session data export includes:
+
+- **Complete conversation turns** with all metrics
+- **Telemetry spans** for detailed performance analysis
+- **Configuration snapshots** for reproducibility
+- **Cost calculations** with provider-specific pricing
+- **Performance summaries** and aggregate statistics
+
+The exported data integrates with the Whispey dashboard for visualization, analysis, and long-term tracking of voice agent performance.
+
+## Configuration Options
+
+### Basic Observability
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    enable_otel=True  # Enable OpenTelemetry
+)
+```
+
+### Advanced Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    enable_otel=True,
+    observability_config={
+        "capture_prompts": True,        # Store full conversation context
+        "capture_configs": True,        # Store pipeline configuration
+        "capture_tools": True,          # Track function executions
+        "capture_costs": True,          # Calculate and track costs
+        "capture_errors": True,         # Detailed error tracking
+        "span_sampling": 1.0            # Sample rate for telemetry spans
+    }
+)
+```
+
+## Data Structure
+
+### Turn Data Format
+
+```python
+{
+    "turn_id": "turn_123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "user_transcript": "What's the weather like?",
+    "agent_response": "The weather is sunny and 75°F",
+    "stt_metrics": {
+        "audio_duration_ms": 1500,
+        "processing_time_ms": 800,
+        "model": "nova-3",
+        "language": "en"
+    },
+    "llm_metrics": {
+        "input_tokens": 45,
+        "output_tokens": 12,
+        "total_tokens": 57,
+        "time_to_first_token_ms": 1200,
+        "model": "gpt-4o-mini",
+        "temperature": 0.7
+    },
+    "tts_metrics": {
+        "character_count": 32,
+        "time_to_first_byte_ms": 500,
+        "audio_duration_ms": 2000,
+        "voice_id": "H8bdWZHK2OgZwTN7ponr",
+        "model": "eleven_flash_v2_5"
+    },
+    "tool_executions": [
+        {
+            "name": "get_weather",
+            "arguments": {"location": "San Francisco"},
+            "execution_duration_ms": 1250,
+            "status": "success",
+            "result": "The weather is 72°F and sunny"
+        }
+    ],
+    "costs": {
+        "stt_cost": 0.0015,
+        "llm_cost": 0.0008,
+        "tts_cost": 0.0020,
+        "total_cost": 0.0043
+    },
+    "status": "success"
+}
+```
+
+### Telemetry Spans
+
+When OpenTelemetry is enabled, spans are created for each operation:
+
+```python
+{
+    "span_id": "span_456",
+    "trace_id": "trace_789",
+    "operation_name": "stt_processing",
+    "start_time": "2024-01-15T10:30:00.123Z",
+    "end_time": "2024-01-15T10:30:00.923Z",
+    "duration_ms": 800,
+    "attributes": {
+        "model": "nova-3",
+        "language": "en",
+        "audio_duration_ms": 1500,
+        "provider": "deepgram"
+    }
+}
+```
+
+## Use Cases
+
+### Performance Optimization
+
+- **Identify bottlenecks** in the voice pipeline
+- **Optimize model selection** based on cost and performance
+- **Monitor response times** and set up alerts
+- **Track error rates** and improve reliability
+
+### Cost Management
+
+- **Monitor spending** across different providers
+- **Optimize token usage** for cost efficiency
+- **Compare provider costs** for the same functionality
+- **Set up cost alerts** and budgets
+
+### Quality Assurance
+
+- **Track conversation quality** metrics
+- **Monitor transcription accuracy**
+- **Analyze user satisfaction** patterns
+- **Identify improvement opportunities**
+
+### Debugging and Troubleshooting
+
+- **Trace conversation flow** through the pipeline
+- **Debug tool execution** issues
+- **Analyze error patterns** and root causes
+- **Reproduce issues** with complete context

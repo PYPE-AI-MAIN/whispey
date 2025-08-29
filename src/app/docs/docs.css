@@ -1,0 +1,13 @@
+/* Import the complete Fumadocs stylesheet */
+@import 'fumadocs-ui/style.css';
+
+/* Then add your customizations */
+@source '../../node_modules/fumadocs-ui/dist/**/*.js';
+
+.fumadocs-container {
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --background: #ffffff;
+  --foreground: #1f2937;
+  /* Your other customizations */
+}
