@@ -1,0 +1,69 @@
+---
+title: Quick Start
+description: Get started with Whispey in minutes
+---
+
+## Installation
+
+Install Whispey using pip:
+
+```bash
+pip install whispey
+```
+
+Or install from [PyPI](https://pypi.org/project/Whispey/):
+
+```bash
+pip install Whispey
+```
+
+## Get Your Credentials
+
+1. Sign up at [Whispey Dashboard](https://www.whispey.xyz/)
+2. Get your Agent ID from the dashboard
+3. Generate your API Key from your workspace
+
+## Environment Setup
+
+Create a `.env` file in your project root:
+
+```bash
+# Whispey Voice Analytics
+WHISPEY_API_KEY=your_whispey_api_key_here
+```
+
+## Basic Integration
+
+Here's a minimal example to get started:
+
+```python
+from dotenv import load_dotenv
+from livekit import agents
+from whispey import LivekitObserve
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Whispey
+whispey = LivekitObserve(
+    agent_id="your-agent-id-from-dashboard",  # Get this from dashboard
+    api_key=os.getenv("WHISPEY_API_KEY")
+)
+
+# Start tracking a session
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    phone_number="+1234567890",  # Optional
+    customer_name="John Doe"     # Optional
+)
+
+# Export data when done
+await whispey.export(session_id)
+```
+
+## Next Steps
+
+- Read the [Complete Implementation](/docs/complete-implementation) guide
+- Explore [Configuration](/docs/configuration) options
+- Check out [Examples](/docs/examples) for use cases

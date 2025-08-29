@@ -1,0 +1,104 @@
+---
+title: Configuration
+description: Configure Whispey for your environment
+---
+
+## Required Environment Variables
+
+| Variable | Description | Where to Get |
+|----------|-------------|--------------|
+| `WHISPEY_API_KEY` | Your Whispey API authentication key | Dashboard → API Keys |
+
+## Agent Configuration
+
+Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Whispey dashboard in your workspace.
+
+```python
+whispey = LivekitObserve(
+    agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22"  # Your actual Agent ID
+)
+```
+
+## Advanced Configuration
+
+### Session Metadata
+
+You can add additional metadata to your sessions for better analytics:
+
+```python
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    phone_number="+1234567890",        # Customer phone number
+    customer_name="John Doe",          # Customer name
+    conversation_type="voice_call",    # Type of conversation
+    metadata={
+        "department": "support",
+        "priority": "high",
+        "language": "en"
+    }
+)
+```
+
+### Environment Setup
+
+For production environments, ensure proper environment variable management:
+
+```bash
+# Development
+export WHISPEY_API_KEY="your_api_key_here"
+
+# Production (use your deployment platform's secrets management)
+# Heroku, Vercel, AWS, etc.
+```
+
+### Logging Configuration
+
+Enable detailed logging for debugging:
+
+```python
+import logging
+
+# Set logging level
+logging.basicConfig(level=logging.INFO)
+
+# Your Whispey code here - you'll see detailed logs
+```
+
+## Security Best Practices
+
+1. **Never commit API keys** to version control
+2. **Use environment variables** for sensitive data
+3. **Rotate API keys** regularly
+4. **Monitor usage** through the dashboard
+5. **Implement proper error handling** for failed exports
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Session not found" Error**
+   ```python
+   # Ensure session_id is stored correctly
+   session_id = whispey.start_session(session)
+   print(f"Session ID: {session_id}")  # Save this for later use
+   ```
+
+2. **API Authentication Error**
+   ```bash
+   # Check your .env file
+   echo $WHISPEY_API_KEY
+   
+   # Ensure API key is set in environment
+   export WHISPEY_API_KEY="your_api_key_here"
+   ```
+
+3. **Export Failures**
+   ```python
+   # Always handle export errors gracefully
+   try:
+       result = await whispey.export(session_id)
+       if not result.get("success"):
+           print(f"Export failed: {result.get('error')}")
+   except Exception as e:
+       print(f"Export error: {e}")
+   ```
