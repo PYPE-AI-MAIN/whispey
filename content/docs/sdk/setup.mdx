@@ -1,0 +1,168 @@
+---
+title: SDK Setup
+description: Install and configure the Whispey SDK
+---
+
+## Installation
+
+Install the Whispey SDK using pip:
+
+```bash
+pip install whispey
+```
+
+Or install from [PyPI](https://pypi.org/project/Whispey/):
+
+```bash
+pip install Whispey
+```
+
+## Environment Configuration
+
+Create a `.env` file in your project root:
+
+```bash
+# Whispey Configuration
+WHISPEY_API_KEY=your_whispey_api_key_here
+WHISPEY_AGENT_ID=your_agent_id_from_dashboard
+```
+
+Get your credentials from the [Whispey Dashboard](https://www.whispey.xyz/).
+
+## Basic Setup
+
+### Simple Integration
+
+```python
+from dotenv import load_dotenv
+from whispey import LivekitObserve
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Whispey
+whispey = LivekitObserve(
+    agent_id=os.getenv("WHISPEY_AGENT_ID"),
+    api_key=os.getenv("WHISPEY_API_KEY")
+)
+
+# Start tracking a session
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    phone_number="+1234567890",  # Optional
+    customer_name="John Doe"     # Optional
+)
+
+# Export data when done
+await whispey.export(session_id)
+```
+
+## Advanced Configuration
+
+### Custom Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    base_url="https://api.whispey.xyz",  # Custom API endpoint
+    timeout=30,                          # Request timeout in seconds
+    retry_attempts=3                     # Number of retry attempts
+)
+```
+
+### Session Metadata
+
+```python
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    phone_number="+1234567890",
+    customer_name="John Doe",
+    conversation_type="customer_support",
+    metadata={
+        "department": "technical_support",
+        "priority": "high",
+        "language": "en",
+        "tags": ["escalation", "urgent"]
+    }
+)
+```
+
+## SDK Methods Reference
+
+### LivekitObserve Constructor
+
+```python
+LivekitObserve(
+    agent_id: str,           # Required: Your agent ID from dashboard
+    api_key: str = None,     # Optional: API key (can use env var)
+    base_url: str = None,    # Optional: Custom API endpoint
+    timeout: int = 30,       # Optional: Request timeout in seconds
+    retry_attempts: int = 3, # Optional: Number of retry attempts
+    bug_reports: bool|dict = False  # Optional: Bug reporting configuration
+)
+```
+
+### start_session
+
+Start tracking a new session:
+
+```python
+session_id = whispey.start_session(
+    session,                    # Required: LiveKit session object
+    phone_number: str = None,   # Optional: Customer phone number
+    customer_name: str = None,  # Optional: Customer name
+    conversation_type: str = None,  # Optional: Type of conversation
+    metadata: dict = None       # Optional: Additional metadata
+)
+```
+
+### export
+
+Export session data:
+
+```python
+result = await whispey.export(
+    session_id,                 # Required: Session ID from start_session
+    recording_url: str = None,  # Optional: Recording URL
+    metadata: dict = None       # Optional: Additional metadata
+)
+```
+
+### track_event
+
+Track custom events:
+
+```python
+whispey.track_event(
+    session_id,                 # Required: Session ID
+    event_name,                 # Required: Event name
+    event_data: dict = None     # Optional: Event data
+)
+```
+
+### track_metric
+
+Track custom metrics:
+
+```python
+whispey.track_metric(
+    session_id,                 # Required: Session ID
+    metric_name,                # Required: Metric name
+    metric_value,               # Required: Metric value
+    metric_type: str = "counter"  # Optional: Metric type
+)
+```
+
+## Next Steps
+
+- Learn about [Bug Reporting](/docs/sdk/bug-reporting) feature
+- Explore [Advanced Features](/docs/sdk/features)
+- Check out [Examples](/docs/examples) for real-world usage
+
+## Resources
+
+- **Website**: [https://www.whispey.xyz/](https://www.whispey.xyz/)
+- **PyPI**: [https://pypi.org/project/Whispey/](https://pypi.org/project/Whispey/)
+- **GitHub**: [https://github.com/whispey/whispey](https://github.com/whispey/whispey)

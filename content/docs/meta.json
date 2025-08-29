@@ -1,0 +1,13 @@
+{
+  "title": "Whispey Documentation",
+  "pages": [
+    "index",
+    "quick-start",
+    "sdk",
+    "configuration",
+    "complete-implementation",
+    "observability",
+    "examples",
+    "api-reference"
+  ]
+}

@@ -1,0 +1,199 @@
+---
+title: API Reference
+description: Complete API documentation for Whispey
+---
+
+## Authentication
+
+All API requests require authentication using your Whispey API key:
+
+```python
+from whispey import LivekitObserve
+
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key"
+)
+```
+
+## Core Endpoints
+
+### Get Agent Analytics
+
+Retrieve analytics data for your agent:
+
+```python
+# Get analytics for a specific session
+analytics = await whispey.get_analytics(session_id)
+
+# Get analytics for a date range
+analytics = await whispey.get_analytics(
+    start_date="2024-01-01",
+    end_date="2024-01-31"
+)
+```
+
+### Get Call Logs
+
+Retrieve detailed call logs:
+
+```python
+# Get logs for a specific session
+logs = await whispey.get_call_logs(session_id)
+
+# Get logs with filters
+logs = await whispey.get_call_logs(
+    session_id=session_id,
+    include_transcript=True,
+    include_metrics=True
+)
+```
+
+### Export Session Data
+
+Export complete session data:
+
+```python
+# Basic export
+result = await whispey.export(session_id)
+
+# Export with additional data
+result = await whispey.export(
+    session_id,
+    recording_url="https://example.com/recording.mp3",
+    metadata={
+        "tags": ["support", "urgent"],
+        "notes": "Customer escalation"
+    }
+)
+```
+
+## SDK Methods
+
+### LivekitObserve Constructor
+
+```python
+LivekitObserve(
+    agent_id: str,           # Required: Your agent ID from dashboard
+    api_key: str = None,     # Optional: API key (can use env var)
+    base_url: str = None     # Optional: Custom API endpoint
+)
+```
+
+### start_session
+
+Start tracking a new session:
+
+```python
+session_id = whispey.start_session(
+    session,                    # Required: LiveKit session object
+    phone_number: str = None,   # Optional: Customer phone number
+    customer_name: str = None,  # Optional: Customer name
+    conversation_type: str = None,  # Optional: Type of conversation
+    metadata: dict = None       # Optional: Additional metadata
+)
+```
+
+### export
+
+Export session data:
+
+```python
+result = await whispey.export(
+    session_id,                 # Required: Session ID from start_session
+    recording_url: str = None,  # Optional: Recording URL
+    metadata: dict = None       # Optional: Additional metadata
+)
+```
+
+### track_event
+
+Track custom events:
+
+```python
+whispey.track_event(
+    session_id,                 # Required: Session ID
+    event_name,                 # Required: Event name
+    event_data: dict = None     # Optional: Event data
+)
+```
+
+### track_metric
+
+Track custom metrics:
+
+```python
+whispey.track_metric(
+    session_id,                 # Required: Session ID
+    metric_name,                # Required: Metric name
+    metric_value,               # Required: Metric value
+    metric_type: str = "counter"  # Optional: Metric type
+)
+```
+
+## Error Codes
+
+| Code | Description | Solution |
+|------|-------------|----------|
+| `AUTH_ERROR` | Invalid API key | Check your API key in environment variables |
+| `AGENT_NOT_FOUND` | Agent ID not found | Verify agent ID in dashboard |
+| `SESSION_NOT_FOUND` | Session ID not found | Ensure session was started properly |
+| `EXPORT_FAILED` | Export operation failed | Check network connection and retry |
+| `INVALID_REQUEST` | Invalid request parameters | Verify request format |
+
+## Rate Limits
+
+- **API Calls**: 1000 requests per minute per API key
+- **Session Exports**: 100 exports per minute per agent
+- **Data Retrieval**: 500 requests per minute per agent
+
+## SDK Examples
+
+### Basic Usage
+
+```python
+from whispey import LivekitObserve
+import os
+
+# Initialize
+whispey = LivekitObserve(
+    agent_id=os.getenv("WHISPEY_AGENT_ID"),
+    api_key=os.getenv("WHISPEY_API_KEY")
+)
+
+# Start session
+session_id = whispey.start_session(your_session)
+
+# Track custom events
+whispey.track_event(session_id, "user_completed_task", {"task": "booking"})
+
+# Export data
+result = await whispey.export(session_id)
+```
+
+### Advanced Usage
+
+```python
+# Custom metadata
+session_id = whispey.start_session(
+    session,
+    phone_number="+1234567890",
+    customer_name="John Doe",
+    metadata={
+        "department": "sales",
+        "priority": "high",
+        "language": "en"
+    }
+)
+
+# Track multiple events
+whispey.track_event(session_id, "call_started")
+whispey.track_event(session_id, "user_identified", {"user_type": "premium"})
+whispey.track_event(session_id, "call_ended", {"duration": 300})
+
+# Export with recording
+result = await whispey.export(
+    session_id,
+    recording_url="https://storage.example.com/recording.mp3"
+)
+```
