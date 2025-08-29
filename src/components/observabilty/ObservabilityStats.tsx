@@ -45,8 +45,12 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
     try {
       const call = callData[0]
       if (!call?.metadata) return null
-      const metadata = typeof call.metadata === "string" ? JSON.parse(call.metadata) : call.metadata
-      return metadata?.bug_reports || null
+      
+      const metadata = typeof call.metadata === "string" ? JSON.parse(call?.metadata?.toString() || "") : call?.metadata
+
+      const bugData = metadata?.bug_flagged_turns || null
+      console.log({bugData})
+      return metadata?.bug_flagged_turns || null
     } catch (e) {
       return null
     }
@@ -65,6 +69,8 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       endToEndLatencies: [] as number[],
       totalTurns: transcriptLogs.length,
     }
+
+
 
     transcriptLogs.forEach((log: TranscriptLog) => {
       if (log.stt_metrics?.duration) metrics.stt.push(log.stt_metrics.duration)
@@ -196,7 +202,8 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
   }
 
   const callDuration = callData?.[0]?.duration_seconds || 0
-  const bugCount = bugReportData?.length || 0
+  const bugCount = Array.isArray(bugReportData) ? bugReportData.length : 0
+  console.log({bugReportData, callData})
   const turnCount = transcriptLogs?.length || 0
 
   return (

@@ -23,6 +23,12 @@ class ModelPricingCalculator:
                 'output_cost_per_1m': 0.60,   # $0.60 per 1M output tokens
                 'type': 'llm'
             },
+            'gpt-4.1-mini': {
+                'provider': 'openai',
+                'input_cost_per_1m': 0.15,   # Same as gpt-4o-mini
+                'output_cost_per_1m': 0.60,
+                'type': 'llm'
+            },
             'gpt-4-turbo': {
                 'provider': 'openai',
                 'input_cost_per_1m': 10.00,

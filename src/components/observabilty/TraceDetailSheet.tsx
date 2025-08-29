@@ -35,11 +35,45 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [selectedView, setSelectedView] = useState<string>("pipeline")
   const [selectedNode, setSelectedNode] = useState<string>("stt")
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["pipeline"]))
 
   useEffect(() => {
     if (trace && isOpen) {
-      console.log({ trace })
+      console.log({
+        // Base trace data
+        trace_id: trace.trace_id,
+        session_id: trace.session_id,
+        turn_id: trace.turn_id,
+        unix_timestamp: trace.unix_timestamp,
+        user_transcript: trace.user_transcript,
+        agent_response: trace.agent_response,
+        
+        // Metrics
+        stt_metrics: trace.stt_metrics,
+        llm_metrics: trace.llm_metrics,
+        tts_metrics: trace.tts_metrics,
+        
+        // Configuration
+        turn_configuration: trace.turn_configuration,
+        
+        // OTEL Spans
+        otel_spans: trace.otel_spans,
+        
+        // Tool calls
+        tool_calls: trace.tool_calls,
+        
+        // Enhanced data
+        enhanced_data: trace.enhanced_data,
+        
+        // Bug report data
+        bug_report: trace.bug_report,
+        bug_report_data: trace.bug_report_data,
+        
+        // Cost data
+        trace_cost_usd: trace.trace_cost_usd,
+        
+        // All other available properties
+        ...trace
+      })
       // Set first active stage as default selected node
       const firstActiveStage = pipelineStages.find((stage) => stage.active)
       if (firstActiveStage) {
@@ -105,22 +139,12 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
   }
 
   const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`
+    if (ms < 1000) return `${ms.toFixed(3)}ms`
     return `${(ms / 1000).toFixed(3)}s`
   }
 
   const formatCost = (cost: number) => {
-    return `$${cost.toFixed(6)}`
-  }
-
-  const toggleSection = (section: string) => {
-    const newExpanded = new Set(expandedSections)
-    if (newExpanded.has(section)) {
-      newExpanded.delete(section)
-    } else {
-      newExpanded.add(section)
-    }
-    setExpandedSections(newExpanded)
+    return `$${cost.toFixed(3)}`
   }
 
   // Extract configuration data
@@ -1051,6 +1075,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       </div>
     )
   }
+
 
   const viewTabs = [
     { id: "pipeline", name: "Pipeline Flow", icon: <Zap className="w-4 h-4" /> },

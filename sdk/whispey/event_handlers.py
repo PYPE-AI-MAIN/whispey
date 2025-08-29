@@ -4,7 +4,7 @@ import logging
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from livekit.agents import metrics, MetricsCollectedEvent
-from livekit.agents.metrics import STTMetrics, LLMMetrics, TTSMetrics, EOUMetrics
+from livekit.agents.metrics import STTMetrics, LLMMetrics, TTSMetrics, EOUMetrics, VADMetrics
 import re
 import uuid
 import json
@@ -28,6 +28,7 @@ class ConversationTurn:
     agent_turn_complete: bool = False
     turn_configuration: Optional[Dict[str, Any]] = None
     
+    
     # Trace fields
     trace_id: Optional[str] = None
     otel_spans: List[Dict[str, Any]] = field(default_factory=list)
@@ -41,6 +42,7 @@ class ConversationTurn:
     enhanced_tts_data: Optional[Dict[str, Any]] = None
     state_events: List[Dict[str, Any]] = field(default_factory=list)
     prompt_data: Optional[Dict[str, Any]] = None
+    enhanced_vad_data: Optional[Dict[str, Any]] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary - backwards compatible"""
@@ -68,7 +70,8 @@ class ConversationTurn:
             'enhanced_llm_data': self.enhanced_llm_data,
             'enhanced_tts_data': self.enhanced_tts_data,
             'state_events': self.state_events,
-            'prompt_data': self.prompt_data
+            'prompt_data': self.prompt_data,
+            'enhanced_vad_data': self.enhanced_vad_data
         }
         
         for key, value in enhanced_fields.items():
@@ -99,8 +102,88 @@ class CorrectedTranscriptCollector:
         self.current_user_state = "listening"
         self.current_agent_state = "initializing"
 
+        self._stored_telemetry_instance = None
+
+
+    def _extract_enhanced_vad_from_metrics(self, metrics_obj):
+        """Extract enhanced VAD data from metrics object with complete configuration"""
+        try:
+            # Get VAD configuration
+            vad_config = {}
+            if hasattr(self, '_session_data') and self._session_data:
+                complete_config = self._session_data.get('complete_configuration', {})
+                vad_config = complete_config.get('vad_configuration', {}).get('structured_config', {})
+            
+            enhanced_data = {
+                'activation_threshold': vad_config.get('activation_threshold', 0.5),
+                'min_speech_duration': vad_config.get('min_speech_duration', 0.05),
+                'min_silence_duration': vad_config.get('min_silence_duration', 0.4),
+                'sample_rate': vad_config.get('sample_rate', 16000),
+                'speech_probability': getattr(metrics_obj, 'speech_probability', None),
+                'voice_activity_detected': getattr(metrics_obj, 'voice_activity_detected', None),
+                'silence_duration': getattr(metrics_obj, 'silence_duration', None),
+                'speech_duration': getattr(metrics_obj, 'speech_duration', None),
+                'timestamp': getattr(metrics_obj, 'timestamp', time.time()),
+                'full_vad_configuration': vad_config
+            }
+            
+            if self.current_turn:
+                if not self.current_turn.enhanced_vad_data:
+                    self.current_turn.enhanced_vad_data = {}
+                self.current_turn.enhanced_vad_data.update(enhanced_data)
+                
+        except Exception as e:
+            logger.error(f"Error extracting enhanced VAD metrics: {e}")
+
+    def _extract_enhanced_vad_from_state_events(self):
+        """Extract VAD insights from state change events"""
+        if not self.current_turn or not self.current_turn.state_events:
+            return
+            
+        try:
+            user_states = [e for e in self.current_turn.state_events if e['type'] == 'user_state']
+            
+            speech_periods = []
+            silence_periods = []
+            
+            for i, event in enumerate(user_states):
+                if event['new_state'] == 'speaking':
+                    # Calculate silence before speaking
+                    if i > 0 and user_states[i-1]['new_state'] == 'silent':
+                        silence_duration = event['timestamp'] - user_states[i-1]['timestamp']
+                        silence_periods.append(silence_duration)
+                elif event['new_state'] == 'silent':
+                    # Calculate speech duration
+                    if i > 0 and user_states[i-1]['new_state'] == 'speaking':
+                        speech_duration = event['timestamp'] - user_states[i-1]['timestamp']
+                        speech_periods.append(speech_duration)
+            
+            vad_insights = {
+                'total_speech_periods': len(speech_periods),
+                'total_silence_periods': len(silence_periods),
+                'avg_speech_duration': sum(speech_periods) / len(speech_periods) if speech_periods else 0,
+                'avg_silence_duration': sum(silence_periods) / len(silence_periods) if silence_periods else 0,
+                'speech_to_silence_ratio': len(speech_periods) / len(silence_periods) if silence_periods else float('inf'),
+                'state_transitions': len(user_states)
+            }
+            
+            if not self.current_turn.enhanced_vad_data:
+                self.current_turn.enhanced_vad_data = {}
+            self.current_turn.enhanced_vad_data.update(vad_insights)
+            
+        except Exception as e:
+            logger.error(f"Error extracting VAD insights from state events: {e}")
+    
+
+
+
+
     def _create_trace_span(self, metrics_obj, operation_name: str) -> Dict[str, Any]:
-        """Create a trace span from metrics object - UNCHANGED"""
+        """Create a trace span from metrics object - with detailed logging"""
+        print(f"\n--- Creating {operation_name.upper()} span ---")
+        print(f"Metrics object type: {type(metrics_obj)}")
+        print(f"Available attributes: {[attr for attr in dir(metrics_obj) if not attr.startswith('_')]}")
+        
         span_data = {
             "span_id": f"span_{operation_name}_{uuid.uuid4().hex[:8]}",
             "operation": operation_name,
@@ -110,33 +193,43 @@ class CorrectedTranscriptCollector:
             "metadata": {}
         }
         
-        if operation_name == "stt":
-            span_data["metadata"] = {
-                "audio_duration": getattr(metrics_obj, 'audio_duration', 0),
-                "request_id": getattr(metrics_obj, 'request_id', None)
-            }
-        elif operation_name == "llm":
-            span_data["metadata"] = {
+        # Log what metadata we're extracting
+        if operation_name == "llm":
+            metadata = {
                 "prompt_tokens": getattr(metrics_obj, 'prompt_tokens', 0),
                 "completion_tokens": getattr(metrics_obj, 'completion_tokens', 0),
                 "ttft": getattr(metrics_obj, 'ttft', 0),
                 "tokens_per_second": getattr(metrics_obj, 'tokens_per_second', 0),
                 "request_id": getattr(metrics_obj, 'request_id', None)
             }
-        elif operation_name == "tts":
-            span_data["metadata"] = {
-                "characters_count": getattr(metrics_obj, 'characters_count', 0),
-                "audio_duration": getattr(metrics_obj, 'audio_duration', 0),
-                "ttfb": getattr(metrics_obj, 'ttfb', 0),
-                "request_id": getattr(metrics_obj, 'request_id', None)
-            }
-        elif operation_name == "eou":
-            span_data["metadata"] = {
-                "end_of_utterance_delay": getattr(metrics_obj, 'end_of_utterance_delay', 0),
-                "transcription_delay": getattr(metrics_obj, 'transcription_delay', 0)
-            }
+            print(f"LLM Metadata extracted: {metadata}")
+            
+            # CHECK: Does metrics_obj have any prompt-related attributes?
+            prompt_attrs = [attr for attr in dir(metrics_obj) if 'prompt' in attr.lower() or 'message' in attr.lower() or 'context' in attr.lower()]
+            if prompt_attrs:
+                print(f"FOUND prompt-related attributes: {prompt_attrs}")
+                for attr in prompt_attrs:
+                    try:
+                        value = getattr(metrics_obj, attr)
+                        print(f"  {attr}: {str(value)[:100]}...")
+                    except:
+                        print(f"  {attr}: <unable to access>")
+            else:
+                print("NO prompt-related attributes found in metrics object")
+            
+            span_data["metadata"] = metadata
+        
+        print(f"Final span data: {span_data}")
+        print("--- End span creation ---\n")
         
         return span_data
+
+
+
+
+
+
+
 
     def _ensure_trace_id(self, turn: ConversationTurn):
         """Ensure the turn has a trace ID - UNCHANGED"""
@@ -341,12 +434,15 @@ class CorrectedTranscriptCollector:
                     turn_id=f"turn_{self.turn_counter}",
                     timestamp=time.time()
                 )
-                self._ensure_trace_id(self.current_turn)
                 
+                # Update the telemetry instance's turn context
                 if hasattr(self, '_session_data') and self._session_data:
-                    config = self._session_data.get('complete_configuration')
-                    if config:
-                        self.current_turn.turn_configuration = config
+                    telemetry_instance = self._session_data.get('telemetry_instance')
+                    if telemetry_instance:
+                        telemetry_instance._update_turn_context(
+                            self.current_turn.turn_id, 
+                            self.turn_counter
+                        )
             
             self.current_turn.agent_response = event.item.text_content
             self.current_turn.agent_turn_complete = True
@@ -368,6 +464,7 @@ class CorrectedTranscriptCollector:
             
             self._extract_enhanced_llm_from_conversation(event)
             self._extract_enhanced_tts_from_conversation(event)
+            self._extract_enhanced_vad_from_state_events()
             
             # Complete the turn
             self.turns.append(self.current_turn)
@@ -377,92 +474,251 @@ class CorrectedTranscriptCollector:
 
 
 
+    def _extract_model_from_llm_metrics(self, metrics_obj):
+        """Extract model name directly from LLM metrics object"""
+        # Try direct attributes first
+        # log metrics_obj
+
+        logger.info(f"LLM Metrics: {metrics_obj}")
+
+        if hasattr(metrics_obj, 'model') and metrics_obj.model:
+            return str(metrics_obj.model)
+        
+        # Try session configuration as fallback
+        if hasattr(self, '_session_data') and self._session_data:
+            complete_config = self._session_data.get('complete_configuration', {})
+            llm_config = complete_config.get('llm_configuration', {})
+            structured = llm_config.get('structured_config', {})
+            model = structured.get('model')
+            if model and model != 'unknown':
+                return model
+        
+        return 'unknown'
+
+    def _extract_model_from_tts_metrics(self, metrics_obj):
+        """Extract model/voice from TTS metrics object"""
+        # Try session configuration
+        if hasattr(self, '_session_data') and self._session_data:
+            complete_config = self._session_data.get('complete_configuration', {})
+            tts_config = complete_config.get('tts_configuration', {})
+            structured = tts_config.get('structured_config', {})
+            voice = structured.get('voice_id') or structured.get('voice') or structured.get('model')
+            if voice and voice != 'unknown':
+                return voice
+        
+        return 'unknown'
+
+    def _extract_model_from_stt_metrics(self, metrics_obj):
+        """Extract model name from STT metrics object"""
+        # Try session configuration
+        if hasattr(self, '_session_data') and self._session_data:
+            complete_config = self._session_data.get('complete_configuration', {})
+            stt_config = complete_config.get('stt_configuration', {})
+            structured = stt_config.get('structured_config', {})
+            model = structured.get('model')
+            if model and model != 'unknown':
+                return model
+        
+        return 'unknown'
+
+    def _calculate_llm_cost_immediately(self, metrics_obj, model_name):
+        """Calculate LLM cost immediately when metrics arrive"""
+        try:
+            from whispey.pricing_calculator import get_pricing_calculator
+            calculator = get_pricing_calculator()
+            cost, explanation = calculator.calculate_llm_cost(
+                model_name, 
+                metrics_obj.prompt_tokens, 
+                metrics_obj.completion_tokens
+            )
+            logger.info(f"LLM Cost calculated immediately: ${cost:.6f} ({explanation})")
+            return cost
+        except Exception as e:
+            logger.error(f"Error calculating LLM cost: {e}")
+            return 0.0
+
+    def _calculate_tts_cost_immediately(self, metrics_obj, model_name):
+        """Calculate TTS cost immediately when metrics arrive"""
+        try:
+            from whispey.pricing_calculator import get_pricing_calculator
+            calculator = get_pricing_calculator()
+            cost, explanation = calculator.calculate_tts_cost(
+                model_name, 
+                metrics_obj.characters_count
+            )
+            logger.info(f"TTS Cost calculated immediately: ${cost:.6f} ({explanation})")
+            return cost
+        except Exception as e:
+            logger.error(f"Error calculating TTS cost: {e}")
+            return 0.0
+
+    def _calculate_stt_cost_immediately(self, metrics_obj, model_name):
+        """Calculate STT cost immediately when metrics arrive"""
+        try:
+            from whispey.pricing_calculator import get_pricing_calculator
+            calculator = get_pricing_calculator()
+            cost, explanation = calculator.calculate_stt_cost(
+                model_name, 
+                metrics_obj.audio_duration
+            )
+            logger.info(f"STT Cost calculated immediately: ${cost:.6f} ({explanation})")
+            return cost
+        except Exception as e:
+            logger.error(f"Error calculating STT cost: {e}")
+            return 0.0
 
 
+
+
+
+    
 
     def on_metrics_collected(self, metrics_event):
-        """Called when metrics are collected - extract enhanced data from metrics"""
+        """Enhanced metrics collection with immediate cost calculation using provider data"""
         metrics_obj = metrics_event.metrics
-        logger.info(f"📈 METRICS: {type(metrics_obj).__name__}")
+        logger.info(f"METRICS: {type(metrics_obj).__name__}")
+        
+        # Store metrics for session-level processing
+        metrics_data = {
+            'metrics_obj': metrics_obj,
+            'request_id': getattr(metrics_obj, 'request_id', None),
+            'timestamp': time.time(),
+            'type': type(metrics_obj).__name__
+        }
+        
+        if not hasattr(self, '_pending_metrics_for_spans'):
+            self._pending_metrics_for_spans = []
+        self._pending_metrics_for_spans.append(metrics_data)
         
         if isinstance(metrics_obj, STTMetrics):
+            # First extract enhanced metrics to get provider and model info
+            enhanced_data = self._extract_enhanced_stt_from_metrics(metrics_obj)
+            
+            # Log comprehensive STT metrics
+            all_attrs = {attr: getattr(metrics_obj, attr, 'MISSING') for attr in dir(metrics_obj) if not attr.startswith('_')}
+            logger.info(f"STT Metrics: {all_attrs}")
+            
+            # Use enhanced data for model and provider info
+            model_name = enhanced_data.get('model', 'unknown') if enhanced_data else self._extract_model_from_stt_metrics(metrics_obj)
+            provider = enhanced_data.get('provider', 'unknown') if enhanced_data else 'unknown'
+            
+            # Calculate cost using enhanced data
+            cost = self._calculate_stt_cost_with_provider(metrics_obj, model_name, provider)
+            
+            # Log in structured format
+            duration = getattr(metrics_obj, 'duration', 'N/A')
+            audio_duration = getattr(metrics_obj, 'audio_duration', 'N/A')
+            request_id = getattr(metrics_obj, 'request_id', 'N/A')
+            timestamp = getattr(metrics_obj, 'timestamp', 'N/A')
+            
+            logger.info(f"STT Metrics: type='stt_metrics' provider='{provider}' model='{model_name}' "
+                       f"request_id='{request_id}' timestamp={timestamp} duration={duration} "
+                       f"audio_duration={audio_duration}")
+            logger.info(f"💰 STT Cost ({provider}/{model_name}): {audio_duration}s audio = ${cost:.6f}")
+            
             stt_data = {
                 'audio_duration': metrics_obj.audio_duration,
                 'duration': metrics_obj.duration,
                 'timestamp': metrics_obj.timestamp,
-                'request_id': metrics_obj.request_id
+                'request_id': metrics_obj.request_id,
+                'model_used': model_name,
+                'provider': provider,
+                'calculated_cost': cost
             }
             
             if self.current_turn and self.current_turn.user_transcript and not self.current_turn.stt_metrics:
                 self.current_turn.stt_metrics = stt_data
-                logger.info(f"📊 Applied STT metrics to current turn {self.current_turn.turn_id}")
+                logger.info(f"Applied STT metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
-                span = self._create_trace_span(metrics_obj, "stt")
-                self.current_turn.otel_spans.append(span)
             elif self.turns and self.turns[-1].user_transcript and not self.turns[-1].stt_metrics:
                 self.turns[-1].stt_metrics = stt_data
-                logger.info(f"📊 Applied STT metrics to last turn {self.turns[-1].turn_id}")
+                logger.info(f"Applied STT metrics to last turn {self.turns[-1].turn_id}")
                 self._ensure_trace_id(self.turns[-1])
-                span = self._create_trace_span(metrics_obj, "stt")
-                self.turns[-1].otel_spans.append(span)
             else:
                 self.pending_metrics['stt'] = stt_data
-                logger.info("📊 Stored STT metrics as pending")
+                logger.info("Stored STT metrics as pending")
             
-            # Extract enhanced STT data from metrics
-            self._extract_enhanced_stt_from_metrics(metrics_obj)
-                
         elif isinstance(metrics_obj, LLMMetrics):
+            # First extract enhanced metrics to get provider and model info
+            enhanced_data = self._extract_enhanced_llm_from_metrics(metrics_obj)
+            
+            # Use enhanced data for model and provider info
+            model_name = enhanced_data.get('model', 'unknown') if enhanced_data else self._extract_model_from_llm_metrics(metrics_obj)
+            provider = enhanced_data.get('provider', 'unknown') if enhanced_data else 'unknown'
+            
+            # Calculate cost using enhanced data
+            cost = self._calculate_llm_cost_with_provider(metrics_obj, model_name, provider)
+            
             llm_data = {
                 'prompt_tokens': metrics_obj.prompt_tokens,
                 'completion_tokens': metrics_obj.completion_tokens,
                 'ttft': metrics_obj.ttft,
                 'tokens_per_second': metrics_obj.tokens_per_second,
                 'timestamp': metrics_obj.timestamp,
-                'request_id': metrics_obj.request_id
+                'request_id': metrics_obj.request_id,
+                'model_used': model_name,
+                'provider': provider,
+                'calculated_cost': cost
             }
             
             if self.current_turn and not self.current_turn.llm_metrics:
                 self.current_turn.llm_metrics = llm_data
-                logger.info(f"🧠 Applied LLM metrics to current turn {self.current_turn.turn_id}")
+                logger.info(f"Applied LLM metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
-                span = self._create_trace_span(metrics_obj, "llm")
-                self.current_turn.otel_spans.append(span)
             else:
                 self.pending_metrics['llm'] = llm_data
-                logger.info("🧠 Stored LLM metrics as pending")
+                logger.info("Stored LLM metrics as pending")
             
-            # Extract enhanced LLM data from metrics
-            self._extract_enhanced_llm_from_metrics(metrics_obj)
-                
         elif isinstance(metrics_obj, TTSMetrics):
+            # First extract enhanced metrics to get provider and model info
+            enhanced_data = self._extract_enhanced_tts_from_metrics(metrics_obj)
+            
+            # Log comprehensive TTS metrics
+            all_attrs = {attr: getattr(metrics_obj, attr, 'MISSING') for attr in dir(metrics_obj) if not attr.startswith('_')}
+            logger.info(f"TTS Metrics: {all_attrs}")
+            
+            # Use enhanced data for model and provider info
+            model_name = enhanced_data.get('model', 'unknown') if enhanced_data else self._extract_model_from_tts_metrics(metrics_obj)
+            provider = enhanced_data.get('provider', 'unknown') if enhanced_data else 'unknown'
+            
+            # Calculate cost using enhanced data
+            cost = self._calculate_tts_cost_with_provider(metrics_obj, model_name, provider)
+            
+            # Log in structured format
+            characters_count = getattr(metrics_obj, 'characters_count', 'N/A')
+            audio_duration = getattr(metrics_obj, 'audio_duration', 'N/A')
+            ttfb = getattr(metrics_obj, 'ttfb', 'N/A')
+            request_id = getattr(metrics_obj, 'request_id', 'N/A')
+            timestamp = getattr(metrics_obj, 'timestamp', 'N/A')
+            
+            logger.info(f"TTS Metrics: type='tts_metrics' provider='{provider}' model='{model_name}' "
+                       f"request_id='{request_id}' timestamp={timestamp} characters_count={characters_count} "
+                       f"audio_duration={audio_duration} ttfb={ttfb}")
+            logger.info(f"💰 TTS Cost ({provider}/{model_name}): {characters_count} chars = ${cost:.6f}")
+            
             tts_data = {
                 'characters_count': metrics_obj.characters_count,
                 'audio_duration': metrics_obj.audio_duration,
                 'ttfb': metrics_obj.ttfb,
                 'timestamp': metrics_obj.timestamp,
-                'request_id': metrics_obj.request_id
+                'request_id': metrics_obj.request_id,
+                'model_used': model_name,
+                'provider': provider,
+                'calculated_cost': cost
             }
             
             if self.current_turn and self.current_turn.agent_response and not self.current_turn.tts_metrics:
                 self.current_turn.tts_metrics = tts_data
-                logger.info(f"🗣️ Applied TTS metrics to current turn {self.current_turn.turn_id}")
+                logger.info(f"Applied TTS metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
-                span = self._create_trace_span(metrics_obj, "tts")
-                self.current_turn.otel_spans.append(span)
             elif self.turns and self.turns[-1].agent_response and not self.turns[-1].tts_metrics:
                 self.turns[-1].tts_metrics = tts_data
-                logger.info(f"🗣️ Applied TTS metrics to last turn {self.turns[-1].turn_id}")
+                logger.info(f"Applied TTS metrics to last turn {self.turns[-1].turn_id}")
                 self._ensure_trace_id(self.turns[-1])
-                span = self._create_trace_span(metrics_obj, "tts")
-                self.turns[-1].otel_spans.append(span)
             else:
                 self.pending_metrics['tts'] = tts_data
-                logger.info("🗣️ Stored TTS metrics as pending")
+                logger.info("Stored TTS metrics as pending")
             
-            # Extract enhanced TTS data from metrics
-            self._extract_enhanced_tts_from_metrics(metrics_obj)
-                
         elif isinstance(metrics_obj, EOUMetrics):
             eou_data = {
                 'end_of_utterance_delay': metrics_obj.end_of_utterance_delay,
@@ -472,20 +728,394 @@ class CorrectedTranscriptCollector:
             
             if self.current_turn and self.current_turn.user_transcript and not self.current_turn.eou_metrics:
                 self.current_turn.eou_metrics = eou_data
-                logger.info(f"⏱️ Applied EOU metrics to current turn {self.current_turn.turn_id}")
+                logger.info(f"Applied EOU metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
-                span = self._create_trace_span(metrics_obj, "eou")
-                self.current_turn.otel_spans.append(span)
             elif self.turns and self.turns[-1].user_transcript and not self.turns[-1].eou_metrics:
                 self.turns[-1].eou_metrics = eou_data
-                logger.info(f"⏱️ Applied EOU metrics to last turn {self.turns[-1].turn_id}")
+                logger.info(f"Applied EOU metrics to last turn {self.turns[-1].turn_id}")
                 self._ensure_trace_id(self.turns[-1])
-                span = self._create_trace_span(metrics_obj, "eou")
-                self.turns[-1].otel_spans.append(span)
             else:
                 self.pending_metrics['eou'] = eou_data
-                logger.info("⏱️ Stored EOU metrics as pending")
+                logger.info("Stored EOU metrics as pending")
 
+        elif isinstance(metrics_obj, VADMetrics):
+            vad_data = {
+                'speech_probability': getattr(metrics_obj, 'speech_probability', None),
+                'voice_activity_detected': getattr(metrics_obj, 'voice_activity_detected', None),
+                'silence_duration': getattr(metrics_obj, 'silence_duration', None),
+                'speech_duration': getattr(metrics_obj, 'speech_duration', None),
+                'timestamp': getattr(metrics_obj, 'timestamp', time.time())
+            }
+            
+            if not hasattr(self, '_vad_events'):
+                self._vad_events = []
+            self._vad_events.append(vad_data)
+            
+            self._extract_enhanced_vad_from_metrics(metrics_obj)
+        
+        logger.debug(f"Stored {type(metrics_obj).__name__} for session-level processing")
+
+    def _calculate_stt_cost_with_provider(self, metrics_obj, model_name, provider):
+        """Calculate STT cost using provider and model information"""
+        audio_duration = getattr(metrics_obj, 'audio_duration', 0)
+        
+        # Define your cost structure based on provider/model
+        cost_rates = {
+            'sarvam': {
+                'saarika:v2.5': 0.00002,  # per second
+            },
+            'openai': {
+                'whisper-1': 0.006 / 60,  # $0.006 per minute = per second
+            }
+            # Add more providers/models as needed
+        }
+        
+        rate = cost_rates.get(provider, {}).get(model_name, 0.00001)  # default rate
+        return audio_duration * rate
+
+    def _calculate_tts_cost_with_provider(self, metrics_obj, model_name, provider):
+        """Calculate TTS cost using provider and model information"""
+        characters_count = getattr(metrics_obj, 'characters_count', 0)
+        
+        # Define your cost structure based on provider/model
+        cost_rates = {
+            'elevenlabs': {
+                'eleven_flash_v2_5': 0.0001,  # per 1000 characters
+            },
+            'openai': {
+                'tts-1': 0.015 / 1000,  # $0.015 per 1000 characters
+                'tts-1-hd': 0.030 / 1000,  # $0.030 per 1000 characters
+            }
+            # Add more providers/models as needed
+        }
+        
+        rate = cost_rates.get(provider, {}).get(model_name, 0.00001)  # default rate
+        return characters_count * rate
+
+    def _calculate_llm_cost_with_provider(self, metrics_obj, model_name, provider):
+        """Calculate LLM cost using provider and model information"""
+        prompt_tokens = getattr(metrics_obj, 'prompt_tokens', 0)
+        completion_tokens = getattr(metrics_obj, 'completion_tokens', 0)
+        
+        # Define your cost structure based on provider/model
+        cost_rates = {
+            'openai': {
+                'gpt-4.1-mini': {
+                    'input': 0.15 / 1000000,  # per token
+                    'output': 0.6 / 1000000,  # per token
+                },
+                'gpt-4o': {
+                    'input': 2.5 / 1000000,
+                    'output': 10.0 / 1000000,
+                }
+            }
+            # Add more providers/models as needed
+        }
+        
+        rates = cost_rates.get(provider, {}).get(model_name, {'input': 0.00001, 'output': 0.00001})
+        return (prompt_tokens * rates['input']) + (completion_tokens * rates['output'])
+
+
+
+
+
+
+    def finalize_session(self):
+        """Enhanced finalization with comprehensive span assignment"""
+        logger.info(f"FINALIZING SESSION: {len(self.turns)} turns completed")
+        
+        if self.current_turn:
+            self.turns.append(self.current_turn)
+            self.current_turn = None
+            logger.info("Added current turn to completed turns")
+        
+        if self._stored_telemetry_instance and hasattr(self._stored_telemetry_instance, 'spans_data'):
+            logger.info(f"Using stored telemetry instance with {len(self._stored_telemetry_instance.spans_data)} spans")
+            self._assign_session_spans_to_turns_direct(self._stored_telemetry_instance)
+        else:
+            logger.error("No stored telemetry instance available for span assignment")
+        
+        # Apply remaining pending metrics
+        if self.pending_metrics['tts'] and self.turns:
+            for turn in reversed(self.turns):
+                if turn.agent_response and not turn.tts_metrics:
+                    turn.tts_metrics = self.pending_metrics['tts']
+                    logger.info(f"Applied final TTS metrics to turn {turn.turn_id}")
+                    break
+                    
+        if self.pending_metrics['stt'] and self.turns:
+            for turn in reversed(self.turns):
+                if turn.user_transcript and not turn.stt_metrics:
+                    turn.stt_metrics = self.pending_metrics['stt']
+                    logger.info(f"Applied final STT metrics to turn {turn.turn_id}")
+                    break
+        
+        if self.pending_metrics['llm'] and self.turns:
+            for turn in reversed(self.turns):
+                if turn.agent_response and not turn.llm_metrics:
+                    turn.llm_metrics = self.pending_metrics['llm']
+                    logger.info(f"Applied final LLM metrics to turn {turn.turn_id}")
+                    break
+        
+        if self.pending_metrics['eou'] and self.turns:
+            for turn in reversed(self.turns):
+                if turn.user_transcript and not turn.eou_metrics:
+                    turn.eou_metrics = self.pending_metrics['eou']
+                    logger.info(f"Applied final EOU metrics to turn {turn.turn_id}")
+                    break
+        
+        # Finalize trace data for each turn
+        for turn in self.turns:
+            self._finalize_trace_data(turn)
+        
+        logger.info(f"SESSION FINALIZATION COMPLETE: {len(self.turns)} turns processed")
+
+
+    def _assign_session_spans_to_turns(self):
+        """Debug version - Fixed span assignment focusing on real request_ids"""
+        logger.info("\n=== PYTHON SPAN ASSIGNMENT DEBUG ===")
+        
+        if not (hasattr(self, '_session_data') and self._session_data):
+            logger.error("No session data for span assignment")
+            return
+            
+        telemetry_instance = self._session_data.get('telemetry_instance')
+        if not (telemetry_instance and hasattr(telemetry_instance, 'spans_data')):
+            logger.error("No telemetry instance found for span assignment")
+            return
+        
+        all_spans = telemetry_instance.spans_data
+        logger.info(f"Processing {len(all_spans)} total spans for {len(self.turns)} turns")
+        
+        # Debug: Print all span request_ids
+        logger.info("All spans with request_ids:")
+        for i, span in enumerate(all_spans):
+            req_id = span.get('request_id')
+            name = span.get('name', 'unknown')
+            source = span.get('request_id_source', 'unknown')
+            logger.info(f"  {i+1}. {name}: {req_id} (source: {source})")
+        
+        # Filter spans to only those with real request_ids
+        real_spans = [span for span in all_spans if span.get('request_id_source') in ['nested_json', 'direct_attribute']]
+        logger.info(f"Found {len(real_spans)} spans with real request_ids")
+        
+        assigned_count = 0
+        
+        for turn in self.turns:
+            logger.info(f"\nProcessing {turn.turn_id}:")
+            
+            if turn.otel_spans and len(turn.otel_spans) > 0:
+                logger.info(f"  Already has {len(turn.otel_spans)} spans, skipping")
+                continue
+                
+            # Get turn's request_ids
+            turn_request_ids = {}
+            if turn.stt_metrics and turn.stt_metrics.get('request_id'):
+                turn_request_ids['stt'] = turn.stt_metrics['request_id']
+            if turn.llm_metrics and turn.llm_metrics.get('request_id'):
+                turn_request_ids['llm'] = turn.llm_metrics['request_id']
+            if turn.tts_metrics and turn.tts_metrics.get('request_id'):
+                turn_request_ids['tts'] = turn.tts_metrics['request_id']
+            
+            logger.info(f"  Turn request_ids: {turn_request_ids}")
+            
+            # Find exact matches in real spans
+            matched_spans = []
+            for span in real_spans:
+                span_request_id = span.get('request_id')
+                span_name = span.get('name', '')
+                
+                logger.info(f"    Checking span {span_name} with request_id: {span_request_id}")
+                
+                # Check if this span's request_id matches any turn request_id
+                for turn_type, turn_request_id in turn_request_ids.items():
+                    logger.info(f"      Comparing {span_request_id} == {turn_request_id}? {span_request_id == turn_request_id}")
+                    
+                    if span_request_id == turn_request_id:
+                        logger.info(f"      MATCH! Checking span type...")
+                        
+                        # Check span type matches turn type
+                        type_match = False
+                        if turn_type == 'llm' and 'llm_request' in span_name:
+                            type_match = True
+                        elif turn_type == 'tts' and 'tts_request' in span_name:
+                            type_match = True
+                        elif turn_type == 'stt' and 'stt_request' in span_name:
+                            type_match = True
+                        
+                        logger.info(f"      Type match ({turn_type} -> {span_name}): {type_match}")
+                        
+                        if type_match:
+                            clean_span = self._create_clean_span_data(span, span_request_id)
+                            matched_spans.append(clean_span)
+                            logger.info(f"      ADDED: {span_name} ({span_request_id})")
+                            assigned_count += 1
+                            break
+                        else:
+                            logger.info(f"      Type mismatch, skipped")
+            
+            if matched_spans:
+                turn.otel_spans.extend(matched_spans)
+        
+
+
+
+
+    def _find_matching_otel_spans(self, request_id, operation_type):
+        """Enhanced span matching with multiple strategies"""
+        matching_spans = []
+        
+        if not (hasattr(self, '_session_data') and self._session_data):
+            return matching_spans
+            
+        telemetry_instance = self._session_data.get('telemetry_instance')
+        if not (telemetry_instance and hasattr(telemetry_instance, 'spans_data')):
+            return matching_spans
+
+
+        current_time = time.time()
+        recent_threshold = current_time - 30  # 30 seconds window
+
+        for span in telemetry_instance.spans_data:
+            span_name = span.get('name', 'unknown')
+            span_op_type = self._categorize_span_operation(span_name)
+            span_request_id = span.get('request_id')
+            span_request_id_source = span.get('request_id_source', 'unknown')
+            
+            # Strategy 1: Exact request_id match
+            if request_id and span_request_id == request_id and span_op_type == operation_type:
+                clean_span = self._create_clean_span_data(span, request_id)
+                matching_spans.append(clean_span)
+                logger.info(f"Exact match found: {span_name} (source: {span_request_id_source})")
+                continue
+            
+            # Strategy 2: Partial request_id match (for synthetic IDs)
+            if (request_id and span_request_id and 
+                len(request_id) >= 8 and len(span_request_id) >= 8 and
+                (request_id[:8] == span_request_id[:8] or request_id[-8:] == span_request_id[-8:]) and
+                span_op_type == operation_type):
+                clean_span = self._create_clean_span_data(span, request_id)
+                matching_spans.append(clean_span)
+                logger.info(f"Partial match found: {span_name} (source: {span_request_id_source})")
+                continue
+            
+            # Strategy 3: Recent spans of same operation type (fallback)
+            span_captured_time = span.get('captured_at', 0)
+            if (not matching_spans and 
+                span_op_type == operation_type and 
+                span_captured_time > recent_threshold):
+                clean_span = self._create_clean_span_data(span, request_id)
+                matching_spans.append(clean_span)
+                logger.info(f"Recent fallback match: {span_name} (captured {current_time - span_captured_time:.1f}s ago)")
+        
+        logger.info(f"Found {len(matching_spans)} OTEL spans for {operation_type}")
+        return matching_spans
+
+    def _is_span_already_assigned(self, span_id):
+        """Check if a span is already assigned to any turn"""
+        for turn in self.turns:
+            for span in turn.otel_spans:
+                if span.get('span_id') == span_id:
+                    return True
+        
+        if self.current_turn:
+            for span in self.current_turn.otel_spans:
+                if span.get('span_id') == span_id:
+                    return True
+        
+        return False
+
+    def _categorize_span_operation(self, span_name):
+        """Categorize span by name to match operation types"""
+        if not span_name:
+            return "other"
+            
+        name_lower = span_name.lower()
+        
+        if any(x in name_lower for x in ['llm', 'chat', 'completion', 'gpt']):
+            return "llm"
+        elif any(x in name_lower for x in ['tts', 'text_to_speech', 'synthesize']):
+            return "tts" 
+        elif any(x in name_lower for x in ['stt', 'speech_to_text', 'transcribe']):
+            return "stt"
+        elif any(x in name_lower for x in ['function_tool', 'tool_call']):
+            return "tool"
+        else:
+            return "other"
+
+
+    def _extract_request_id_from_span(self, span):
+        """Extract request_id from span using multiple methods"""
+        span_attrs = span.get('attributes', {})
+        
+        # Check direct request_id
+        if span_attrs.get('request_id'):
+            return span_attrs.get('request_id')
+        
+        # Check gen_ai attributes
+        if span_attrs.get('gen_ai.request.id') or span_attrs.get('gen_ai.request_id'):
+            return span_attrs.get('gen_ai.request.id') or span_attrs.get('gen_ai.request_id')
+        
+        # Check in nested JSON metrics
+        for metrics_key in ['lk.llm_metrics', 'lk.tts_metrics', 'lk.stt_metrics']:
+            metrics_attr = span_attrs.get(metrics_key, '')
+            if isinstance(metrics_attr, str) and 'request_id' in metrics_attr:
+                try:
+                    import json
+                    metrics_data = json.loads(metrics_attr)
+                    if metrics_data.get('request_id'):
+                        return metrics_data.get('request_id')
+                except:
+                    pass
+        
+        return None
+
+    
+    def _extract_metadata_for_cost_calculation(self, span, operation_type):
+        """Extract metadata needed for cost calculation from span and turn data"""
+        metadata = {}
+        
+        if operation_type == 'llm' and self.current_turn:
+            # Get from turn's LLM metrics or enhanced data
+            if self.current_turn.llm_metrics:
+                metadata.update({
+                    'model_name': self.current_turn.enhanced_llm_data.get('model_name', 'unknown') if self.current_turn.enhanced_llm_data else 'unknown',
+                    'prompt_tokens': self.current_turn.llm_metrics.get('prompt_tokens', 0),
+                    'completion_tokens': self.current_turn.llm_metrics.get('completion_tokens', 0)
+                })
+        
+        elif operation_type == 'tts' and self.current_turn:
+            if self.current_turn.tts_metrics:
+                metadata.update({
+                    'model_name': self.current_turn.enhanced_tts_data.get('voice_id', 'unknown') if self.current_turn.enhanced_tts_data else 'unknown',
+                    'characters_count': self.current_turn.tts_metrics.get('characters_count', 0)
+                })
+        
+        return metadata
+
+    def _create_clean_span_data(self, span, request_id):
+        """Create clean span data preserving all important information"""
+        operation_type = self._categorize_span_operation(span.get('name', ''))
+
+        return {
+            'span_id': span.get('context', {}).get('span_id') or f"otel_{int(time.time())}",
+            'trace_id': span.get('context', {}).get('trace_id'),
+            'name': span.get('name', 'unknown'),
+            'operation_type': self._categorize_span_operation(span.get('name', '')),
+            'operation': operation_type,
+            'start_time': span.get('start_time_ns', 0),
+            'end_time': span.get('end_time_ns', 0),
+            'duration_ms': span.get('duration_ms', 0),
+            'attributes': span.get('attributes', {}),
+            'events': span.get('events', []),
+            'status': span.get('status', {}),
+            'request_id': request_id,
+            'source': 'otel_capture',
+            'metadata': self._extract_metadata_for_cost_calculation(span, operation_type)
+        }
+
+
+   
     # Extract enhanced data from available sources, not pipeline interception
     def _extract_enhanced_stt_from_conversation(self, event):
         """Extract enhanced STT data from conversation context"""
@@ -581,21 +1211,50 @@ class CorrectedTranscriptCollector:
 
 
     def _extract_enhanced_llm_from_metrics(self, metrics_obj):
-        """Extract enhanced LLM data from metrics object with complete configuration"""
+        """Extract enhanced LLM data from metrics object with direct model extraction"""
         try:
-            # Get from complete configuration instead of simple session data
+            # STEP 1: Extract model name directly from metrics_obj first
             model_name = 'unknown'
             provider = 'unknown'
-            full_llm_config = {}
             
-            if hasattr(self, '_session_data') and self._session_data:
+            # Try direct extraction from metrics object
+            if hasattr(metrics_obj, 'model') and metrics_obj.model:
+                model_name = str(metrics_obj.model)
+                logger.info(f"Found model in metrics_obj.model: {model_name}")
+            
+            # Try other possible attribute names on metrics_obj
+            elif hasattr(metrics_obj, '__dict__'):
+                for attr_name in ['model_name', 'llm_model', '_model']:
+                    if hasattr(metrics_obj, attr_name):
+                        attr_value = getattr(metrics_obj, attr_name)
+                        if attr_value and str(attr_value) != 'unknown':
+                            model_name = str(attr_value)
+                            logger.info(f"Found model in metrics_obj.{attr_name}: {model_name}")
+                            break
+            
+            # STEP 2: Fallback to session configuration only if still unknown
+            full_llm_config = {}
+            if model_name == 'unknown' and hasattr(self, '_session_data') and self._session_data:
                 complete_config = self._session_data.get('complete_configuration', {})
                 llm_config = complete_config.get('llm_configuration', {})
                 structured = llm_config.get('structured_config', {})
-                
-                model_name = structured.get('model', 'unknown')
-                provider = llm_config.get('provider_detection', 'unknown')
                 full_llm_config = structured
+                
+                config_model = structured.get('model')
+                if config_model and config_model != 'unknown':
+                    model_name = config_model
+                    logger.info(f"Found model in session config: {model_name}")
+                
+                provider = llm_config.get('provider_detection', 'unknown')
+            
+            # STEP 3: Detect provider from model name if not found in config
+            if provider == 'unknown':
+                if 'gpt' in model_name.lower() or 'openai' in model_name.lower():
+                    provider = 'openai'
+                elif 'claude' in model_name.lower() or 'anthropic' in model_name.lower():
+                    provider = 'anthropic'
+                elif 'gemini' in model_name.lower() or 'palm' in model_name.lower():
+                    provider = 'google'
             
             enhanced_data = {
                 'model_name': model_name,
@@ -627,6 +1286,8 @@ class CorrectedTranscriptCollector:
                 
         except Exception as e:
             logger.error(f"Error extracting enhanced LLM metrics: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 
@@ -771,29 +1432,267 @@ class CorrectedTranscriptCollector:
         except Exception as e:
             logger.error(f"⚠️ Could not set up state handlers: {e}")
 
-    # Rest of the methods remain unchanged...
+
+    def _assign_session_spans_to_turns(self):
+        """Assign session-level spans to turns at the end"""
+        if not (hasattr(self, '_session_data') and self._session_data):
+            logger.warning("No session data for span assignment")
+            return
+            
+        telemetry_instance = self._session_data.get('telemetry_instance')
+        if not (telemetry_instance and hasattr(telemetry_instance, 'spans_data')):
+            logger.warning("No telemetry instance found for span assignment")
+            return
+        
+        all_spans = telemetry_instance.spans_data
+        logger.info(f"FINALIZATION: Assigning {len(all_spans)} session spans to {len(self.turns)} turns")
+        
+        # Track assigned spans to avoid duplicates
+        assigned_span_ids = set()
+        
+        for turn in self.turns:
+            # Skip turns that already have spans
+            if turn.otel_spans and len(turn.otel_spans) > 0:
+                for span in turn.otel_spans:
+                    assigned_span_ids.add(span.get('span_id', ''))
+                continue
+            
+            turn_spans = []
+            
+            # Collect all request_ids for this turn
+            turn_request_ids = {}
+            if turn.stt_metrics and turn.stt_metrics.get('request_id'):
+                turn_request_ids['stt'] = turn.stt_metrics['request_id']
+            if turn.llm_metrics and turn.llm_metrics.get('request_id'):
+                turn_request_ids['llm'] = turn.llm_metrics['request_id']
+            if turn.tts_metrics and turn.tts_metrics.get('request_id'):
+                turn_request_ids['tts'] = turn.tts_metrics['request_id']
+            
+            logger.info(f"Turn {turn.turn_id} request_ids: {turn_request_ids}")
+            
+            # Strategy 1: Match by exact request_id
+            for span in all_spans:
+                span_id = span.get('context', {}).get('span_id', '') or span.get('span_id', '')
+                if span_id in assigned_span_ids:
+                    continue
+                    
+                span_request_id = span.get('request_id')
+                span_name = span.get('name', '')
+                span_op_type = self._categorize_span_operation(span_name)
+                
+                # Check if this span's request_id matches any of the turn's request_ids
+                for turn_op_type, turn_request_id in turn_request_ids.items():
+                    if span_request_id == turn_request_id and span_op_type == turn_op_type:
+                        clean_span = self._create_clean_span_data(span, turn_request_id)
+                        turn_spans.append(clean_span)
+                        assigned_span_ids.add(span_id)
+                        logger.info(f"EXACT MATCH: {span_name} -> turn {turn.turn_id}")
+                        break
+            
+            # Strategy 2: If no exact matches, try partial matching
+            if not turn_spans:
+                for span in all_spans:
+                    span_id = span.get('context', {}).get('span_id', '') or span.get('span_id', '')
+                    if span_id in assigned_span_ids:
+                        continue
+                        
+                    span_request_id = span.get('request_id')
+                    if not span_request_id:
+                        continue
+                    
+                    # Check partial matches (last 8 chars)
+                    for turn_op_type, turn_request_id in turn_request_ids.items():
+                        if (len(turn_request_id) >= 8 and len(span_request_id) >= 8 and
+                            turn_request_id[-8:] == span_request_id[-8:]):
+                            clean_span = self._create_clean_span_data(span, turn_request_id)
+                            turn_spans.append(clean_span)
+                            assigned_span_ids.add(span_id)
+                            logger.info(f"PARTIAL MATCH: {span.get('name')} -> turn {turn.turn_id}")
+                            break
+            
+            # Strategy 3: Time-based fallback
+            if not turn_spans:
+                turn_time = turn.timestamp
+                time_window = 20.0  # 20 second window
+                
+                candidates = []
+                for span in all_spans:
+                    span_id = span.get('context', {}).get('span_id', '') or span.get('span_id', '')
+                    if span_id in assigned_span_ids:
+                        continue
+                        
+                    span_time = span.get('captured_at', 0)
+                    if span_time and abs(span_time - turn_time) < time_window:
+                        candidates.append((abs(span_time - turn_time), span))
+                
+                # Sort by time distance and take closest 3
+                candidates.sort(key=lambda x: x[0])
+                for _, span in candidates[:3]:
+                    span_id = span.get('context', {}).get('span_id', '') or span.get('span_id', '')
+                    clean_span = self._create_clean_span_data(span, None)
+                    turn_spans.append(clean_span)
+                    assigned_span_ids.add(span_id)
+                    logger.info(f"TIME MATCH: {span.get('name')} -> turn {turn.turn_id}")
+            
+            # Assign spans to turn
+            if turn_spans:
+                turn.otel_spans.extend(turn_spans)
+                logger.info(f"ASSIGNED {len(turn_spans)} spans to turn {turn.turn_id}")
+            else:
+                logger.warning(f"NO SPANS assigned to turn {turn.turn_id}")
+        
+        # Log final assignment summary
+        total_assigned = sum(len(turn.otel_spans) for turn in self.turns)
+        logger.info(f"FINALIZATION COMPLETE: {total_assigned} spans assigned across {len(self.turns)} turns")
+
+
+
+
     def finalize_session(self):
-        """Apply any remaining pending metrics"""
+        """Enhanced finalization with comprehensive span assignment"""
+        logger.info(f"FINALIZING SESSION: {len(self.turns)} turns completed")
+        
         if self.current_turn:
             self.turns.append(self.current_turn)
             self.current_turn = None
-            
+            logger.info("Added current turn to completed turns")
+        
+        # CRITICAL: Get telemetry instance BEFORE session cleanup
+        telemetry_instance = None
+        if hasattr(self, '_session_data') and self._session_data:
+            telemetry_instance = self._session_data.get('telemetry_instance')
+            if telemetry_instance:
+                logger.info(f"Found telemetry instance with {len(getattr(telemetry_instance, 'spans_data', []))} spans")
+            else:
+                logger.warning("Telemetry instance is None in session data")
+        else:
+            logger.warning("No session data available during finalization")
+        
+        # Assign spans if we have telemetry data
+        if telemetry_instance and hasattr(telemetry_instance, 'spans_data'):
+            self._assign_session_spans_to_turns_direct(telemetry_instance)
+        else:
+            logger.error("Cannot assign spans - no telemetry instance available")
+        
+        # Apply remaining pending metrics
         if self.pending_metrics['tts'] and self.turns:
             for turn in reversed(self.turns):
                 if turn.agent_response and not turn.tts_metrics:
                     turn.tts_metrics = self.pending_metrics['tts']
-                    logger.info(f"🗣️ Applied final TTS metrics to turn {turn.turn_id}")
+                    logger.info(f"Applied final TTS metrics to turn {turn.turn_id}")
                     break
                     
         if self.pending_metrics['stt'] and self.turns:
             for turn in reversed(self.turns):
                 if turn.user_transcript and not turn.stt_metrics:
                     turn.stt_metrics = self.pending_metrics['stt']
-                    logger.info(f"📊 Applied final STT metrics to turn {turn.turn_id}")
+                    logger.info(f"Applied final STT metrics to turn {turn.turn_id}")
                     break
         
+        if self.pending_metrics['llm'] and self.turns:
+            for turn in reversed(self.turns):
+                if turn.agent_response and not turn.llm_metrics:
+                    turn.llm_metrics = self.pending_metrics['llm']
+                    logger.info(f"Applied final LLM metrics to turn {turn.turn_id}")
+                    break
+        
+        if self.pending_metrics['eou'] and self.turns:
+            for turn in reversed(self.turns):
+                if turn.user_transcript and not turn.eou_metrics:
+                    turn.eou_metrics = self.pending_metrics['eou']
+                    logger.info(f"Applied final EOU metrics to turn {turn.turn_id}")
+                    break
+        
+        # Finalize trace data for each turn
         for turn in self.turns:
             self._finalize_trace_data(turn)
+        
+        logger.info(f"SESSION FINALIZATION COMPLETE: {len(self.turns)} turns processed")
+
+    def _assign_session_spans_to_turns_direct(self, telemetry_instance):
+        """Direct span assignment with telemetry instance passed in"""
+        all_spans = telemetry_instance.spans_data
+        logger.info(f"SPAN ASSIGNMENT: Processing {len(all_spans)} spans for {len(self.turns)} turns")
+        
+        # Debug: Print all span request_ids
+        logger.info("All spans with request_ids:")
+        for i, span in enumerate(all_spans):
+            req_id = span.get('request_id')
+            name = span.get('name', 'unknown')
+            source = span.get('request_id_source', 'unknown')
+            logger.info(f"  {i+1}. {name}: {req_id} (source: {source})")
+        
+        # Filter spans to only those with real request_ids
+        real_spans = [span for span in all_spans if span.get('request_id_source') in ['nested_json', 'direct_attribute']]
+        logger.info(f"Found {len(real_spans)} spans with real request_ids")
+        
+        assigned_count = 0
+        
+        for turn in self.turns:
+            logger.info(f"Processing {turn.turn_id}:")
+            
+            if turn.otel_spans and len(turn.otel_spans) > 0:
+                logger.info(f"  Already has {len(turn.otel_spans)} spans, skipping")
+                continue
+                
+            # Get turn's request_ids
+            turn_request_ids = {}
+            if turn.stt_metrics and turn.stt_metrics.get('request_id'):
+                turn_request_ids['stt'] = turn.stt_metrics['request_id']
+            if turn.llm_metrics and turn.llm_metrics.get('request_id'):
+                turn_request_ids['llm'] = turn.llm_metrics['request_id']
+            if turn.tts_metrics and turn.tts_metrics.get('request_id'):
+                turn_request_ids['tts'] = turn.tts_metrics['request_id']
+            
+            logger.info(f"  Turn request_ids: {turn_request_ids}")
+            
+            # Find exact matches in real spans
+            matched_spans = []
+            for span in real_spans:
+                span_request_id = span.get('request_id')
+                span_name = span.get('name', '')
+                
+                logger.info(f"    Checking span {span_name} with request_id: {span_request_id}")
+                
+                # Check if this span's request_id matches any turn request_id
+                for turn_type, turn_request_id in turn_request_ids.items():
+                    logger.info(f"      Comparing {span_request_id} == {turn_request_id}? {span_request_id == turn_request_id}")
+                    
+                    if span_request_id == turn_request_id:
+                        logger.info(f"      MATCH! Checking span type...")
+                        
+                        # Check span type matches turn type
+                        type_match = False
+                        if turn_type == 'llm' and 'llm_request' in span_name:
+                            type_match = True
+                        elif turn_type == 'tts' and 'tts_request' in span_name:
+                            type_match = True
+                        elif turn_type == 'stt' and 'stt_request' in span_name:
+                            type_match = True
+                        
+                        logger.info(f"      Type match ({turn_type} -> {span_name}): {type_match}")
+                        
+                        if type_match:
+                            clean_span = self._create_clean_span_data(span, span_request_id)
+                            matched_spans.append(clean_span)
+                            logger.info(f"      ADDED: {span_name} ({span_request_id})")
+                            assigned_count += 1
+                            break
+                        else:
+                            logger.info(f"      Type mismatch, skipped")
+            
+            if matched_spans:
+                turn.otel_spans.extend(matched_spans)
+                logger.info(f"  Assigned {len(matched_spans)} spans to {turn.turn_id}")
+            else:
+                logger.info(f"  NO SPANS matched for {turn.turn_id}")
+        
+        logger.info(f"ASSIGNMENT COMPLETE: {assigned_count} primary spans assigned")
+
+    
+
+
+
 
     def _fallback_cost_calculation(self, turn: ConversationTurn):
         """Fallback cost calculation if dynamic pricing fails"""
@@ -819,6 +1718,8 @@ class CorrectedTranscriptCollector:
         
         turn.trace_cost_usd = round(total_cost, 6)
 
+    
+
     def set_session_data_reference(self, session_data):
         """Set reference to session data for model detection"""
         self._session_data = session_data
@@ -829,82 +1730,72 @@ class CorrectedTranscriptCollector:
             logger.info("Session data HAS complete_configuration")
         else:
             logger.info("Session data MISSING complete_configuration")
+        
+        # NEW: Store telemetry instance reference immediately
+        if session_data:
+            telemetry_instance = session_data.get('telemetry_instance')
+            if telemetry_instance:
+                self._stored_telemetry_instance = telemetry_instance
+                logger.info(f"Stored telemetry instance reference with {len(getattr(telemetry_instance, 'spans_data', []))} spans")
+            else:
+                logger.warning("No telemetry instance found in session data")
+
+
 
     def _finalize_trace_data(self, turn: ConversationTurn):
         """Calculate trace duration and cost for a completed turn"""
         if not turn.otel_spans:
             return
+
+        start_times_ns = []
+        end_times_ns = []
+            
+        for span in turn.otel_spans:
+            start_ns = span.get('start_time_ns', 0) or span.get('start_time', 0)
+            end_ns = span.get('end_time_ns', 0) or span.get('end_time', 0)
+                
+            if start_ns and end_ns:
+                start_times_ns.append(start_ns)
+                end_times_ns.append(end_ns)
+            elif start_ns and span.get('duration_ms', 0):
+                # Fallback: calculate end time from start + duration
+                duration_ns = span.get('duration_ms', 0) * 1_000_000  # Convert ms to ns
+                start_times_ns.append(start_ns)
+                end_times_ns.append(start_ns + duration_ns)
+            
+        if start_times_ns and end_times_ns:
+            # Convert to seconds and calculate duration
+            earliest_start = min(start_times_ns) / 1_000_000_000
+            latest_end = max(end_times_ns) / 1_000_000_000
+            duration_seconds = latest_end - earliest_start
+            
+            # Sanity check - reject durations over 1 hour
+            if duration_seconds > 3600:
+                logger.warning(f"Abnormally long trace duration: {duration_seconds:.3f}s, capping to 60s")
+                duration_seconds = 60.0
+            
+            # Store as seconds with 3 decimal places (millisecond precision)
+            turn.trace_duration_s = round(duration_seconds, 3)
+            logger.info(f"Trace duration: {turn.trace_duration_s}s for turn {turn.turn_id}")
         
-        # Calculate total trace duration
-        if turn.otel_spans:
-            start_times = [span.get('start_time', 0) for span in turn.otel_spans]
-            end_times = []
-            
-            for span in turn.otel_spans:
-                start_time = span.get('start_time', 0)
-                duration_ms = span.get('duration_ms', 0)
-                end_time = start_time + (duration_ms / 1000)
-                end_times.append(end_time)
-            
-            if start_times and end_times:
-                total_duration = (max(end_times) - min(start_times)) * 1000
-                turn.trace_duration_ms = int(total_duration)
+        # Use pre-calculated costs from metrics instead of dynamic pricing
+        total_cost = 0.0
         
-        # Calculate cost using dynamic pricing
-        try:
-            from .pricing_calculator import calculate_dynamic_cost
-            
-            total_cost = 0.0
-            
-            for span in turn.otel_spans:
-                metadata = span.get('metadata', {})
-                operation = span.get('operation', '')
-                
-                # Enhanced metadata collection from turn data
-                enhanced_metadata = metadata.copy()
-                
-                if operation == 'llm':
-                    model_sources = [
-                        metadata.get('model_name'),
-                        turn.enhanced_llm_data.get('model_name') if turn.enhanced_llm_data else None,
-                        self._session_data.get('detected_llm_model') if hasattr(self, '_session_data') and self._session_data else None,
-                    ]
-                    model_name = next((m for m in model_sources if m and m != 'unknown'), 'unknown')
-                    enhanced_metadata['model_name'] = model_name
-                    
-                elif operation == 'tts':
-                    voice_sources = [
-                        metadata.get('voice_id'),
-                        turn.enhanced_tts_data.get('voice_id') if turn.enhanced_tts_data else None,
-                        self._session_data.get('detected_tts_voice') if hasattr(self, '_session_data') and self._session_data else None,
-                    ]
-                    voice_name = next((v for v in voice_sources if v and v != 'unknown'), 'unknown')
-                    enhanced_metadata['model_name'] = voice_name
-                    
-                elif operation == 'stt':
-                    model_sources = [
-                        metadata.get('model_name'),
-                        turn.enhanced_stt_data.get('model_name') if turn.enhanced_stt_data else None,
-                        self._session_data.get('detected_stt_model') if hasattr(self, '_session_data') and self._session_data else None,
-                    ]
-                    model_name = next((m for m in model_sources if m and m != 'unknown'), 'unknown')
-                    enhanced_metadata['model_name'] = model_name
-                
-                span['metadata'] = enhanced_metadata
-                span_cost, cost_explanation = calculate_dynamic_cost(span)
-                total_cost += span_cost
-                
-                logger.info(f"💰 {operation.upper()} cost: ${span_cost:.6f} ({cost_explanation})")
-            
-            turn.trace_cost_usd = round(total_cost, 6)
-            logger.info(f"💰 Total trace cost: ${turn.trace_cost_usd} for turn {turn.turn_id}")
-            
-        except ImportError:
-            logger.warning("💰 Dynamic pricing not available, using fallback calculation")
-            self._fallback_cost_calculation(turn)
-        except Exception as e:
-            logger.error(f"💰 Error in dynamic cost calculation: {e}")
-            self._fallback_cost_calculation(turn)
+        if turn.llm_metrics and 'calculated_cost' in turn.llm_metrics:
+            total_cost += turn.llm_metrics['calculated_cost']
+            logger.info(f"LLM cost from metrics: ${turn.llm_metrics['calculated_cost']:.6f}")
+        
+        if turn.tts_metrics and 'calculated_cost' in turn.tts_metrics:
+            total_cost += turn.tts_metrics['calculated_cost']
+            logger.info(f"TTS cost from metrics: ${turn.tts_metrics['calculated_cost']:.6f}")
+        
+        if turn.stt_metrics and 'calculated_cost' in turn.stt_metrics:
+            total_cost += turn.stt_metrics['calculated_cost']
+            logger.info(f"STT cost from metrics: ${turn.stt_metrics['calculated_cost']:.6f}")
+        
+        turn.trace_cost_usd = round(total_cost, 6)
+        logger.info(f"Total trace cost: ${turn.trace_cost_usd} for turn {turn.turn_id}")
+
 
     def get_turns_array(self) -> List[Dict[str, Any]]:
         """Get the array of conversation turns with transcripts and metrics"""
@@ -1418,6 +2309,7 @@ def extract_complete_session_configuration(session, session_data):
     
     # Store in session data
     session_data['complete_configuration'] = complete_config
+    session_data['telemetry_instance'] = telemetry_instance
     
     # Log what we captured
     stt_model = complete_config['stt_configuration']['structured_config'].get('model', 'unknown')
