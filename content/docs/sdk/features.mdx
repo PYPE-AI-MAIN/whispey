@@ -1,0 +1,352 @@
+---
+title: Advanced Features
+description: Advanced SDK features and capabilities
+---
+
+## Event Tracking
+
+Track custom events throughout your conversation to gain deeper insights into user behavior and agent performance.
+
+### Basic Event Tracking
+
+```python
+# Track user actions
+whispey.track_event(session_id, "user_completed_task", {
+    "task": "booking_appointment",
+    "duration": 45,
+    "success": True
+})
+
+# Track system events
+whispey.track_event(session_id, "agent_response_generated", {
+    "response_type": "information",
+    "confidence": 0.85,
+    "model_used": "gpt-4o-mini"
+})
+```
+
+### Custom Event Types
+
+```python
+# User interaction events
+whispey.track_event(session_id, "user_interaction", {
+    "type": "button_click",
+    "button": "schedule_demo",
+    "timestamp": datetime.now().isoformat()
+})
+
+# Business logic events
+whispey.track_event(session_id, "business_action", {
+    "action": "lead_qualified",
+    "lead_score": 85,
+    "source": "website_form"
+})
+
+# Error events
+whispey.track_event(session_id, "error_occurred", {
+    "error_type": "api_timeout",
+    "service": "payment_processor",
+    "retry_count": 2
+})
+```
+
+## Custom Metrics
+
+Track quantitative data points to monitor performance and costs.
+
+### Counter Metrics
+
+```python
+# Track usage counters
+whispey.track_metric(session_id, "api_calls", 1, "counter")
+whispey.track_metric(session_id, "tokens_used", 1500, "counter")
+whispey.track_metric(session_id, "user_questions", 1, "counter")
+```
+
+### Gauge Metrics
+
+```python
+# Track current values
+whispey.track_metric(session_id, "response_time", 2.5, "gauge")
+whispey.track_metric(session_id, "user_satisfaction", 4.2, "gauge")
+whispey.track_metric(session_id, "conversation_quality", 8.5, "gauge")
+```
+
+### Histogram Metrics
+
+```python
+# Track distribution of values
+whispey.track_metric(session_id, "processing_time", 180, "histogram")
+whispey.track_metric(session_id, "error_rate", 0.02, "histogram")
+whispey.track_metric(session_id, "cost_per_conversation", 0.15, "histogram")
+```
+
+## Session Metadata
+
+Enrich your analytics with detailed session information.
+
+### Basic Metadata
+
+```python
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    phone_number="+1234567890",
+    customer_name="John Doe",
+    conversation_type="customer_support",
+    metadata={
+        "department": "technical_support",
+        "priority": "high",
+        "language": "en",
+        "tags": ["escalation", "urgent"]
+    }
+)
+```
+
+### Advanced Metadata
+
+```python
+metadata = {
+    # User information
+    "user_id": "user_12345",
+    "user_type": "premium",
+    "account_tier": "enterprise",
+    
+    # Session context
+    "session_type": "voice_call",
+    "channel": "phone",
+    "device_type": "mobile",
+    
+    # Business context
+    "product": "mobile_app",
+    "feature": "login_support",
+    "campaign": "q4_2024_support",
+    
+    # Technical context
+    "agent_version": "2.1.0",
+    "model_config": "gpt-4o-mini",
+    "region": "us-east-1",
+    
+    # Custom fields
+    "custom_field_1": "value_1",
+    "custom_field_2": "value_2"
+}
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    metadata=metadata
+)
+```
+
+## Real-time Analytics
+
+Monitor your conversations in real-time with live metrics and alerts.
+
+### Performance Monitoring
+
+```python
+# Track real-time performance metrics
+whispey.track_metric(session_id, "current_response_time", response_time, "gauge")
+whispey.track_metric(session_id, "active_conversations", 1, "counter")
+whispey.track_metric(session_id, "error_rate", error_percentage, "gauge")
+
+# Set up performance alerts
+if response_time > 5.0:
+    whispey.track_event(session_id, "performance_alert", {
+        "metric": "response_time",
+        "threshold": 5.0,
+        "current_value": response_time
+    })
+```
+
+### Cost Tracking
+
+```python
+# Monitor costs in real-time
+whispey.track_metric(session_id, "current_cost", 0.045, "gauge")
+whispey.track_metric(session_id, "cost_per_minute", 0.015, "gauge")
+
+# Alert on cost thresholds
+if current_cost > 1.0:
+    whispey.track_event(session_id, "cost_alert", {
+        "threshold": 1.0,
+        "current_cost": current_cost,
+        "action": "consider_escalation"
+    })
+```
+
+## Multi-Agent Support
+
+Track and compare performance across multiple agents.
+
+### Agent Comparison
+
+```python
+# Initialize multiple agents
+agents = {
+    "support_agent": LivekitObserve(agent_id="support-001"),
+    "sales_agent": LivekitObserve(agent_id="sales-001"),
+    "billing_agent": LivekitObserve(agent_id="billing-001")
+}
+
+# Track consistent metrics across agents
+for agent_name, agent in agents.items():
+    session_id = agent.start_session(
+        session=your_livekit_session,
+        metadata={"agent_name": agent_name, "test_scenario": "customer_inquiry"}
+    )
+    
+    # Track standardized metrics
+    agent.track_metric(session_id, "response_time", response_time, "gauge")
+    agent.track_metric(session_id, "user_satisfaction", satisfaction_score, "gauge")
+    agent.track_metric(session_id, "resolution_rate", resolution_rate, "gauge")
+```
+
+### Agent Performance Analysis
+
+```python
+# Track agent-specific events
+whispey.track_event(session_id, "agent_performance", {
+    "agent_id": "support-001",
+    "metric": "first_call_resolution",
+    "value": True,
+    "duration": 180
+})
+
+# Compare agent performance
+whispey.track_event(session_id, "agent_comparison", {
+    "agents": ["support-001", "sales-001"],
+    "metric": "response_time",
+    "values": [2.1, 3.5],
+    "winner": "support-001"
+})
+```
+
+## Integration Hooks
+
+Connect Whispey with your existing systems and workflows.
+
+### Custom Analytics Integration
+
+```python
+# Hook into custom analytics systems
+def custom_analytics_handler(event_data):
+    # Send to your analytics platform
+    analytics_api.send_event(event_data)
+
+# Register custom handlers
+whispey.register_event_handler("session_started", custom_analytics_handler)
+whispey.register_event_handler("session_ended", custom_analytics_handler)
+```
+
+### Webhook Integration
+
+```python
+# Configure webhooks for real-time notifications
+whispey.configure_webhooks({
+    "session_started": "https://your-api.com/webhooks/session-start",
+    "session_ended": "https://your-api.com/webhooks/session-end",
+    "bug_reported": "https://your-api.com/webhooks/bug-report",
+    "cost_threshold": "https://your-api.com/webhooks/cost-alert"
+})
+```
+
+### Database Integration
+
+```python
+# Store analytics data in your database
+def database_handler(session_data):
+    db.analytics.insert_one({
+        "session_id": session_data["session_id"],
+        "metrics": session_data["metrics"],
+        "events": session_data["events"],
+        "timestamp": datetime.now()
+    })
+
+whispey.register_data_handler(database_handler)
+```
+
+## Error Handling and Recovery
+
+Robust error handling for production environments.
+
+### Graceful Degradation
+
+```python
+# Configure error handling
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    error_handling={
+        "retry_attempts": 3,
+        "retry_delay": 1.0,
+        "graceful_degradation": True,
+        "fallback_mode": "local_logging"
+    }
+)
+```
+
+### Custom Error Handlers
+
+```python
+def custom_error_handler(error):
+    # Log error to your system
+    logger.error(f"Whispey error: {error}")
+    
+    # Send alert to your team
+    alert_system.send_alert(f"Analytics error: {error}")
+    
+    # Continue with fallback
+    return {"status": "fallback", "message": "Using local logging"}
+
+whispey.register_error_handler(custom_error_handler)
+```
+
+## Performance Optimization
+
+Optimize your analytics for high-performance applications.
+
+### Batch Processing
+
+```python
+# Enable batch processing for high-volume scenarios
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    batch_processing={
+        "enabled": True,
+        "batch_size": 100,
+        "flush_interval": 30,  # seconds
+        "max_queue_size": 1000
+    }
+)
+```
+
+### Caching
+
+```python
+# Enable caching for frequently accessed data
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    caching={
+        "enabled": True,
+        "cache_ttl": 3600,  # 1 hour
+        "cache_size": 1000
+    }
+)
+```
+
+### Compression
+
+```python
+# Enable data compression for network efficiency
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    api_key="your-api-key",
+    compression={
+        "enabled": True,
+        "algorithm": "gzip",
+        "min_size": 1024  # bytes
+    }
+)
+```

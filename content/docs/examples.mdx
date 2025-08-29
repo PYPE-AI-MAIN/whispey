@@ -1,0 +1,213 @@
+---
+title: Examples
+description: Real-world examples and use cases for Whispey
+---
+
+## Customer Support Agent
+
+Track and analyze customer support conversations to improve response quality and resolution rates.
+
+```python
+from whispey import LivekitObserve
+
+# Initialize Whispey
+whispey = LivekitObserve(agent_id="support-agent-001")
+
+# Start session with customer info
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    customer_name="Sarah Johnson",
+    conversation_type="customer_support",
+    metadata={
+        "department": "technical_support",
+        "priority": "medium",
+        "product": "mobile_app"
+    }
+)
+
+# Track support-specific events
+whispey.track_event(session_id, "issue_identified", {"category": "login_problem"})
+whispey.track_event(session_id, "solution_provided", {"method": "password_reset"})
+whispey.track_event(session_id, "issue_resolved", {"resolution_time": 180})
+
+# Export with resolution data
+await whispey.export(session_id, metadata={"resolution": "successful"})
+```
+
+## Sales Assistant
+
+Monitor sales conversations to track conversion rates and optimize sales strategies.
+
+```python
+# Initialize for sales tracking
+whispey = LivekitObserve(agent_id="sales-agent-002")
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    customer_name="Mike Chen",
+    conversation_type="sales_call",
+    metadata={
+        "product": "enterprise_plan",
+        "lead_source": "website",
+        "budget_range": "5000-10000"
+    }
+)
+
+# Track sales funnel events
+whispey.track_event(session_id, "lead_qualified", {"score": 85})
+whispey.track_event(session_id, "demo_scheduled", {"date": "2024-02-15"})
+whispey.track_event(session_id, "proposal_sent", {"value": 7500})
+
+# Export sales data
+await whispey.export(session_id, metadata={"sales_stage": "proposal"})
+```
+
+## Appointment Scheduler
+
+Optimize appointment booking conversations for better user experience.
+
+```python
+# Initialize for appointment tracking
+whispey = LivekitObserve(agent_id="scheduler-003")
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    conversation_type="appointment_booking",
+    metadata={
+        "service_type": "consultation",
+        "location": "downtown_office"
+    }
+)
+
+# Track booking flow
+whispey.track_event(session_id, "service_selected", {"service": "consultation"})
+whispey.track_event(session_id, "date_selected", {"date": "2024-02-20"})
+whispey.track_event(session_id, "appointment_confirmed", {"confirmation_id": "APT-12345"})
+
+# Export booking data
+await whispey.export(session_id, metadata={"booking_status": "confirmed"})
+```
+
+## Multi-Agent Analytics
+
+Compare performance across multiple agents and identify best practices.
+
+```python
+# Track multiple agents
+agents = {
+    "agent_1": LivekitObserve(agent_id="agent-001"),
+    "agent_2": LivekitObserve(agent_id="agent-002"),
+    "agent_3": LivekitObserve(agent_id="agent-003")
+}
+
+# Start sessions for comparison
+sessions = {}
+for name, agent in agents.items():
+    sessions[name] = agent.start_session(
+        session=your_livekit_session,
+        metadata={"agent_name": name, "test_scenario": "customer_inquiry"}
+    )
+
+# Track consistent metrics across agents
+for name, session_id in sessions.items():
+    whispey.track_event(session_id, "conversation_started")
+    whispey.track_event(session_id, "response_generated")
+    whispey.track_event(session_id, "conversation_ended")
+
+# Export all sessions for comparison
+for name, session_id in sessions.items():
+    await agents[name].export(session_id)
+```
+
+## Cost Optimization
+
+Monitor and optimize costs across different AI providers and models.
+
+```python
+# Initialize with cost tracking
+whispey = LivekitObserve(agent_id="cost-optimized-004")
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    metadata={
+        "model_config": "gpt-4o-mini",
+        "provider": "openai",
+        "cost_tracking": True
+    }
+)
+
+# Track cost-related events
+whispey.track_metric(session_id, "tokens_used", 1500, "counter")
+whispey.track_metric(session_id, "api_calls", 1, "counter")
+whispey.track_metric(session_id, "response_time", 2.5, "gauge")
+
+# Export with cost analysis
+await whispey.export(session_id, metadata={
+    "estimated_cost": 0.045,
+    "cost_per_conversation": 0.015
+})
+```
+
+## Dashboard Integration
+
+Integrate Whispey analytics with your existing dashboard and reporting systems.
+
+```python
+# Initialize for dashboard integration
+whispey = LivekitObserve(agent_id="dashboard-integration-005")
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    metadata={
+        "dashboard_id": "main_dashboard",
+        "reporting_frequency": "real_time"
+    }
+)
+
+# Track dashboard-specific metrics
+whispey.track_metric(session_id, "conversation_quality_score", 8.5, "gauge")
+whispey.track_metric(session_id, "customer_satisfaction", 4.2, "gauge")
+whispey.track_metric(session_id, "resolution_time", 180, "histogram")
+
+# Export for dashboard consumption
+result = await whispey.export(session_id, metadata={
+    "dashboard_update": True,
+    "alert_threshold": 7.0
+})
+
+# Send to dashboard API
+if result.get("success"):
+    dashboard_data = {
+        "session_id": session_id,
+        "metrics": result.get("data", {}),
+        "timestamp": datetime.now().isoformat()
+    }
+    # Send to your dashboard API
+    await send_to_dashboard(dashboard_data)
+```
+
+## Best Practices
+
+### Event Tracking
+- Use consistent event names across all agents
+- Include relevant metadata with each event
+- Track both user actions and system responses
+- Monitor error rates and failure points
+
+### Metrics Collection
+- Focus on actionable metrics that drive improvements
+- Track both quantitative (time, cost) and qualitative (satisfaction) metrics
+- Set up alerts for performance thresholds
+- Regular analysis of trends and patterns
+
+### Privacy and Compliance
+- Ensure customer data is handled according to privacy regulations
+- Implement data retention policies
+- Use anonymized data for analytics where possible
+- Regular security audits of data handling
+
+### Performance Optimization
+- Monitor response times and optimize slow operations
+- Track token usage to manage costs effectively
+- Analyze conversation patterns to improve agent responses
+- Regular review of analytics to identify improvement opportunities

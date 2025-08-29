@@ -25,8 +25,6 @@ export const metadata: Metadata = {
   },
 }
 
-
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -39,13 +37,12 @@ export default function RootLayout({
         }
       }}
     >
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
         >
           <main>
             <SignedOut>
-              {/* This ensures auth pages don't show header */}
               <div className="min-h-screen">
                 {children}
               </div>

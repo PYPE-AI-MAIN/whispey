@@ -1,0 +1,128 @@
+---
+title: Complete Implementation
+description: Full LiveKit integration example with Whispey
+---
+
+## LiveKit Integration Example
+
+Here's a complete example of how to integrate Whispey Observe into your LiveKit voice agent:
+
+```python
+from dotenv import load_dotenv
+from livekit import agents
+from livekit.agents import AgentSession, Agent, RoomInputOptions
+from livekit.plugins import (
+    openai,
+    deepgram,
+    noise_cancellation,
+    silero,
+    elevenlabs,
+)
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from whispey import LivekitObserve
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Whispey with your Agent ID from the dashboard
+whispey = LivekitObserve(
+    agent_id="your-agent-id-from-dashboard"  # Get this from dashboard
+)
+
+class Assistant(Agent):
+    def __init__(self) -> None:
+        super().__init__(instructions="You are a helpful voice AI assistant.")
+
+async def entrypoint(ctx: agents.JobContext):
+    await ctx.connect()
+        
+    # Configure your AI agent session
+    session = AgentSession(
+        stt=deepgram.STT(model="nova-3", language="multi"),
+        llm=openai.LLM(model="gpt-4o-mini"),
+        tts=elevenlabs.TTS(
+            voice_id="H8bdWZHK2OgZwTN7ponr",
+            model="eleven_flash_v2_5",
+            language="hi",  # Adjust language as needed
+            voice_settings=elevenlabs.VoiceSettings(
+                similarity_boost=1,
+                stability=0.7,
+                style=0.7,
+                use_speaker_boost=False,
+                speed=1.1
+            )
+        ),
+        vad=silero.VAD.load(),
+        turn_detection=MultilingualModel(),
+    )
+    
+    # Start Whispey Voice Analytics
+    session_id = whispey.start_session(
+        session,
+        phone_number="+1234567890",     # Optional: Customer phone number
+        customer_name="John Doe",       # Optional: Customer name
+        conversation_type="voice_call"  # Optional: Type of conversation
+    )
+    
+    print(f"Whispey Analytics started for session: {session_id}")
+
+    # Export analytics data when session ends
+    async def whispey_shutdown():
+        try:
+            result = await whispey.export(
+                session_id,
+                recording_url=""  # Optional: Add recording URL if available
+            )
+            
+            if result.get("success"):
+                print("Successfully exported to Whispey Voice Analytics!")
+                print(f"Log ID: {result.get('data', {}).get('log_id')}")
+            else:
+                print(f"Export failed: {result.get('error')}")
+                
+        except Exception as e:
+            print(f"Export error: {e}")
+
+    # Register cleanup callback
+    ctx.add_shutdown_callback(whispey_shutdown)
+
+    # Start the agent session
+    await session.start(
+        room=ctx.room,
+        agent=Assistant(),
+        room_input_options=RoomInputOptions(
+            noise_cancellation=noise_cancellation.BVC(), 
+        ),
+    )
+
+    # Generate initial greeting
+    await session.generate_reply(
+        instructions="Greet the user and offer your assistance."
+    )
+
+if __name__ == "__main__":
+    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
+```
+
+## Key Components
+
+### Session Configuration
+- **STT**: Deepgram for speech-to-text
+- **LLM**: OpenAI GPT-4 for language processing
+- **TTS**: ElevenLabs for text-to-speech
+- **VAD**: Silero for voice activity detection
+- **Turn Detection**: Multilingual model for conversation flow
+
+### Whispey Integration
+- **Session Tracking**: Automatic metrics collection
+- **Data Export**: Complete analytics export
+- **Error Handling**: Graceful failure handling
+- **Cleanup**: Proper session cleanup on shutdown
+
+### Analytics Features
+- Real-time metrics collection
+- Conversation transcript
+- Performance insights
+- Cost tracking
+- Quality metrics

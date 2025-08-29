@@ -49,6 +49,7 @@ interface TraceLog {
 }
 
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }) => {
+
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("turns");

@@ -102,16 +102,16 @@ function Header({ breadcrumb }: HeaderProps) {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Setup Instructions Link - New Addition */}
+              {/* Docs Button */}
               <Link
-                href="https://pypi.org/project/Whispey/"
+                href="/docs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 transition-all duration-200 rounded-lg hover:bg-blue-50/50 border border-transparent hover:border-blue-100"
               >
                 <BookOpen className="w-4 h-4 transition-transform group-hover:scale-110" />
-                <span className="hidden sm:inline">Setup instructions</span>
-                <span className="sm:hidden">Setup</span>
+                <span className="hidden sm:inline">Docs</span>
+                <span className="sm:hidden">Docs</span>
                 <svg 
                   className="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" 
                   fill="none" 
@@ -147,15 +147,6 @@ function Header({ breadcrumb }: HeaderProps) {
                     <p className="text-xs text-gray-500 mt-0.5">Get support and documentation</p>
                   </div>
                   <div className="py-1">
-                    <DropdownMenuItem asChild>
-                      <Link href="/docs" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
-                        <FileText className="w-4 h-4 mr-3 text-blue-600" />
-                        <div>
-                          <p className="font-medium text-gray-900">Documentation</p>
-                          <p className="text-xs text-gray-500">API guides and tutorials</p>
-                        </div>
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/api-reference" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
                         <Zap className="w-4 h-4 mr-3 text-yellow-600" />
