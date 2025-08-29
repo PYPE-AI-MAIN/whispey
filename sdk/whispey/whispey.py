@@ -17,9 +17,6 @@ _session_data_store = {}
 def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=False, otel_endpoint=None, telemetry_instance=None, **kwargs):
     session_id = str(uuid.uuid4())
     
-    logger.info(f"🔗 Setting up Whispey-compatible metrics collection for session {session_id}")
-    logger.info(f"📋 Dynamic parameters: {list(kwargs.keys())}")
-    
     try:        
         # Setup session data and usage collector using your existing functions
         usage_collector = setup_usage_collector()
@@ -27,6 +24,9 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
             type('MockContext', (), {'room': type('MockRoom', (), {'name': session_id})})(), 
             time.time()
         )
+        
+        if telemetry_instance:
+            session_data['telemetry_instance'] = telemetry_instance
         
         # Update session data with all dynamic parameters
         session_data.update(kwargs)
@@ -62,7 +62,6 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
             error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
             end_session_manually(session_id, "completed", error_msg)
         
-        logger.info(f"✅ Whispey-compatible metrics collection active for session {session_id}")
         return session_id
         
     except Exception as e:
@@ -372,8 +371,9 @@ def build_critical_path(spans) -> list:
         logger.error(f"Error building critical path: {e}")
         return []
 
+
 def structure_telemetry_data(session_id: str) -> Dict[str, Any]:
-    """Structure telemetry spans data for better analysis"""
+    """Structure telemetry spans data for better analysis - PRESERVE ALL ORIGINAL DATA"""
     try:
         telemetry_data = {
             "session_traces": [],
@@ -408,51 +408,39 @@ def structure_telemetry_data(session_id: str) -> Dict[str, Any]:
             
         logger.info(f"Processing {len(spans)} telemetry spans for session {session_id}")
         
-        # Categorize spans by operation type
         operation_counts = {}
         latency_sums = {"llm": [], "tts": [], "stt": [], "tool": []}
         
-        structured_spans = []
-        
+        # PRESERVE ALL ORIGINAL SPAN DATA - don't clean/filter
         for span in spans:
             try:
-                # Categorize the span
+                # Add operation_type categorization but keep everything else
                 span_name = span.get('name', 'unknown')
-                span_type = categorize_span(span_name)
+                operation_type = categorize_span(span_name)
+                
+                # Keep the entire original span, just add our categorization
+                enhanced_span = dict(span)  # Copy all original data
+                enhanced_span['operation_type'] = operation_type
+                enhanced_span['source'] = 'otel_capture'
+                
+                telemetry_data["session_traces"].append(enhanced_span)
+                
+                # Collect metrics for summary
+                operation_counts[operation_type] = operation_counts.get(operation_type, 0) + 1
+                
+                # Calculate duration if available
                 duration_ms = calculate_duration_ms(span)
-                
-                # Create structured span
-                structured_span = {
-                    "span_id": generate_span_id(span),
-                    "trace_id": extract_trace_id(span),
-                    "name": span_name,
-                    "operation_type": span_type,
-                    "start_time": span.get('start_time'),
-                    "end_time": span.get('end_time'),
-                    "duration_ms": duration_ms,
-                    "attributes": extract_key_attributes(span),
-                    "status": span.get('status', 'UNSET')
-                }
-                structured_spans.append(structured_span)
-                
-                # Aggregate metrics
-                operation_counts[span_type] = operation_counts.get(span_type, 0) + 1
-                
-                # Collect latencies by type
-                if span_type in latency_sums and duration_ms > 0:
-                    latency_sums[span_type].append(duration_ms)
+                if duration_ms > 0 and operation_type in latency_sums:
+                    latency_sums[operation_type].append(duration_ms)
                     
             except Exception as e:
                 logger.error(f"Error processing span {span}: {e}")
                 continue
         
-        # Build the structured data
-        telemetry_data["session_traces"] = structured_spans
+        # Build summary metrics
         telemetry_data["span_summary"]["by_operation"] = operation_counts
-        
-        # Calculate performance metrics
         telemetry_data["performance_metrics"] = {
-            "total_spans": len(structured_spans),
+            "total_spans": len(telemetry_data["session_traces"]),
             "avg_llm_latency": sum(latency_sums["llm"]) / len(latency_sums["llm"]) if latency_sums["llm"] else 0,
             "avg_tts_latency": sum(latency_sums["tts"]) / len(latency_sums["tts"]) if latency_sums["tts"] else 0,
             "avg_stt_latency": sum(latency_sums["stt"]) / len(latency_sums["stt"]) if latency_sums["stt"] else 0,
@@ -461,11 +449,14 @@ def structure_telemetry_data(session_id: str) -> Dict[str, Any]:
             "total_assistant_interactions": operation_counts.get("assistant_interaction", 0)
         }
         
-        # Build critical path
-        telemetry_data["span_summary"]["critical_path"] = build_critical_path(structured_spans)
-        
-        logger.info(f"Structured telemetry data: {len(structured_spans)} spans, "
-                   f"{telemetry_data['performance_metrics']['total_tool_calls']} tool calls")
+        # Build critical path (fix the sorting issue)
+        try:
+            sorted_spans = [s for s in telemetry_data["session_traces"] if s.get('start_time_ns')]
+            sorted_spans.sort(key=lambda x: x.get('start_time_ns', 0))
+            telemetry_data["span_summary"]["critical_path"] = build_critical_path(sorted_spans)
+        except Exception as e:
+            logger.error(f"Error building critical path: {e}")
+            telemetry_data["span_summary"]["critical_path"] = []
         
         return telemetry_data
         
@@ -476,7 +467,6 @@ def structure_telemetry_data(session_id: str) -> Dict[str, Any]:
             "performance_metrics": {"total_spans": 0, "avg_llm_latency": 0, "avg_tts_latency": 0, "avg_stt_latency": 0, "total_tool_calls": 0},
             "span_summary": {"by_operation": {}, "by_turn": {}, "critical_path": []}
         }
-
 
 
 
@@ -535,17 +525,7 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         whispey_data["transcript_json"] = additional_transcript
         logger.info(f"📄 Added additional transcript with {len(additional_transcript)} items")
     
-    # Debug print - include telemetry summary
-    print("=== WHISPEY DATA FOR SENDING ===")
-    print(f"Call ID: {whispey_data.get('call_id', 'N/A')}")
-    print(f"Agent ID: {whispey_data.get('agent_id', 'N/A')}")
-    print(f"Duration: {whispey_data.get('metadata', {}).get('duration_formatted', 'N/A')}")
-    print(f"Usage: {whispey_data.get('metadata', {}).get('usage', {})}")
-    print(f"Telemetry Spans: {structured_telemetry['performance_metrics']['total_spans']}")
-    print(f"Tool Calls: {structured_telemetry['performance_metrics']['total_tool_calls']}")
-    print("============================")
     
-    # Send to Whispey
     try:
         logger.info(f"📤 Sending to Whispey API...")
         result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
