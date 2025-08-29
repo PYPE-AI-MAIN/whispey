@@ -22,7 +22,7 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
   const [selectedSpan, setSelectedSpan] = useState<any>(null);
   const [expandedTurns, setExpandedTurns] = useState<Set<string>>(new Set());
 
-  const { data: spans, loading: spansLoading } = useSessionSpans(trace?.id);
+  const { data: spans, loading: spansLoading } = useSessionSpans(trace);
 
   // Helper functions defined before useMemo
   const getTurnType = (span: any): ConversationTurn['type'] => {

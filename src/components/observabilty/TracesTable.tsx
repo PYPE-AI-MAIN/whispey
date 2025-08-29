@@ -49,28 +49,30 @@ interface TraceLog {
 }
 
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }) => {
-
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("turns");
 
 
-  const { data: sessionTrace, loading: traceLoading } = useSessionTrace(sessionId || "");
+  const { data: sessionTrace, loading: traceLoading } = useSessionTrace(sessionId || null);
   const { data: sessionSpans, loading: spansLoading } = useSessionSpans(sessionTrace);
+
 
   // Get call data to access bug report metadata
   const { data: callData } = useSupabaseQuery("pype_voice_call_logs", {
-    select: "id, metadata, call_id, recording_url",
+    select: "*",
     filters: sessionId 
       ? [{ column: "id", operator: "eq", value: sessionId }]
       : [{ column: "agent_id", operator: "eq", value: agentId }],
     orderBy: { column: "created_at", ascending: false }
   })
 
+  console.log({callData})
+
   // trace data
   const {
     data: traceData,
-    loading,
+    loading: traceDataLoading,
     error,
   } = useSupabaseQuery("pype_voice_metrics_logs", {
     select: "*",
@@ -279,7 +281,7 @@ const handleRowClick = (trace: TraceLog) => {
   setIsDetailSheetOpen(true)
 }
 
-  if (loading) {
+  if (traceDataLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-sm text-gray-500">Loading traces...</div>
@@ -314,6 +316,8 @@ const handleRowClick = (trace: TraceLog) => {
             >
               Conversation Turns ({processedTraces.length})
             </button>
+            {sessionSpans && sessionSpans.length > 0 && (
+              <>
             <button 
               onClick={() => setActiveTab("trace")}
               className={cn(
@@ -336,6 +340,7 @@ const handleRowClick = (trace: TraceLog) => {
             >
               Timeline View ({sessionSpans?.length || 0} spans)
             </button>
+            </>)}
           </nav>
         </div>
   
@@ -545,6 +550,9 @@ const handleRowClick = (trace: TraceLog) => {
           setSelectedTrace(null)
         }}
       />
+
+
+      
     </>
   )
 }
