@@ -20,15 +20,18 @@ class LivekitObserve:
         apikey=None, 
         host_url=None, 
         bug_reports: Union[bool, Dict[str, Any]] = False,
-        enable_otel: bool = False,  # ADD THIS LINE
+        enable_otel: bool = False,
     ):
         self.agent_id = agent_id
         self.apikey = apikey
         self.host_url = host_url
-        self.enable_otel = enable_otel        # ADD THIS LINE
+        self.enable_otel = enable_otel
         self.spans_data = []  
+        self._current_turn_context = {
+            'turn_id': None,
+            'turn_sequence': 0
+        }
         
-        # Handle bug_reports parameter
         if bug_reports is not False:
             self.enable_bug_reports = True
             if isinstance(bug_reports, dict):
@@ -39,15 +42,12 @@ class LivekitObserve:
             self.enable_bug_reports = False
             config = {}
         
-        # Simple parameter handling - only support bug_start_command and bug_end_command
-        start_patterns = config.get('bug_start_command', ['fault report start']) # Default to 'fault report start'
-        end_patterns = config.get('bug_end_command', ['fault report over']) # Default to 'fault report over'
+        start_patterns = config.get('bug_start_command', ['feedback start'])
+        end_patterns = config.get('bug_end_command', ['feedback over'])
         
-        # Convert to regex patterns
         self.bug_start_patterns = self._convert_to_regex(start_patterns)
         self.bug_end_patterns = self._convert_to_regex(end_patterns)
         
-        # Response messages
         self.bug_report_response = config.get(
             'response', 
             "Thanks for reporting that. Please tell me the issue?"
@@ -65,43 +65,252 @@ class LivekitObserve:
             "Anything else?"
         )
 
+    def _update_turn_context(self, turn_id, sequence=None):
+        """Update the current turn context"""
+        self._current_turn_context = {
+            'turn_id': turn_id,
+            'turn_sequence': sequence or (self._current_turn_context.get('turn_sequence', 0) + 1)
+        }
+    
+
+
     def _setup_telemetry(self, session_id):
         if not self.enable_otel:
             return None
+        
         
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         
         tracer_provider = TracerProvider()
+
         
-        # Custom span processor to capture spans
         class WhispeySpanProcessor(BatchSpanProcessor):
             def __init__(self, whispey_instance):
                 self.whispey = whispey_instance
-                super().__init__(OTLPSpanExporter(endpoint="http://localhost:3000/dev/send-call-logs"))
+                exporter = OTLPSpanExporter(
+                    endpoint="http://localhost:3000/dev/send-call-log",
+                    headers={"Content-Type": "application/json"}
+                )
+                super().__init__(exporter)
+
+            
+
+        
+            def _get_current_turn_id(self):
+                """Get current conversation turn ID"""
+                if hasattr(self.whispey, '_current_turn_context'):
+                    return self.whispey._current_turn_context.get('turn_id')
+                return 'unknown_turn'
+
+            def _get_turn_sequence_number(self):
+                """Get the sequence number of the current turn"""
+                if hasattr(self.whispey, '_current_turn_context'):
+                    return self.whispey._current_turn_context.get('turn_sequence', 0)
+                return 0
+
             
             def on_end(self, span):
-                # Store simplified version for export
-                self.whispey.spans_data.append({
-                    'name': span.name,
-                    'start_time': span.start_time,
-                    'end_time': span.end_time,
-                    'attributes': dict(span.attributes) if span.attributes else {},
-                    'status': span.status.status_code.name if span.status else None,
-                })
+                # Enhanced request_id extraction
+                request_id = self._extract_request_id_comprehensive(span)
                 
+                if span.attributes:
+                    for key, value in span.attributes.items():
+                        value_str = str(value)
+                        if len(value_str) > 200:
+                            value_str = value_str[:200] + "... [truncated]"
+                        
+                    
+                
+                if span.events:
+                    for event in span.events:
+                        if event.attributes:
+                            for key, value in event.attributes.items():
+                                value_str = str(value)
+                                if len(value_str) > 200:
+                                    value_str = value_str[:200] + "... [truncated]"
+                                print(f"    {key}: {value_str}")
+                        else:
+                            print("    No event attributes")
+                
+                if hasattr(span, 'resource') and span.resource and span.resource.attributes:
+                    for key, value in span.resource.attributes.items():
+                        value_str = str(value)
+                        if len(value_str) > 200:
+                            value_str = value_str[:200] + "... [truncated]"
+                        
+                
+                
+                duration_ns = (span.end_time - span.start_time) if span.start_time and span.end_time else 0
+                duration_ms = duration_ns / 1_000_000
+                
+                
+                comprehensive_span_data = {
+                    'name': span.name,
+                    'start_time_ns': span.start_time,
+                    'end_time_ns': span.end_time, 
+                    'duration_ns': duration_ns,
+                    'duration_ms': duration_ms,
+                    'duration_seconds': duration_ms / 1000,
+                    
+                    'status': {
+                        'code': span.status.status_code.value if span.status else 0,
+                        'name': span.status.status_code.name if span.status else 'UNSET',
+                        'description': getattr(span.status, 'description', None) if span.status else None
+                    },
+                    
+                    'attributes': dict(span.attributes) if span.attributes else {},
+                    
+                    'events': [
+                        {
+                            'name': event.name,
+                            'timestamp': getattr(event, 'timestamp', None),
+                            'attributes': dict(event.attributes) if event.attributes else {}
+                        }
+                        for event in span.events
+                    ] if span.events else [],
+                    
+                    'context': {
+                        'trace_id': hex(span.get_span_context().trace_id) if hasattr(span, 'get_span_context') else None,
+                        'span_id': hex(span.get_span_context().span_id) if hasattr(span, 'get_span_context') else None,
+                        'trace_flags': int(span.get_span_context().trace_flags) if hasattr(span, 'get_span_context') and hasattr(span.get_span_context(), 'trace_flags') else None
+                    } if hasattr(span, 'get_span_context') else {},
+                    
+                    'parent_span_id': hex(span.parent.span_id) if span.parent and hasattr(span.parent, 'span_id') else None,
+                    'resource': dict(span.resource.attributes) if hasattr(span, 'resource') and span.resource and span.resource.attributes else {},
+                    
+                    'links': [
+                        {
+                            'context': {
+                                'trace_id': hex(link.context.trace_id) if hasattr(link.context, 'trace_id') else None,
+                                'span_id': hex(link.context.span_id) if hasattr(link.context, 'span_id') else None
+                            },
+                            'attributes': dict(link.attributes) if link.attributes else {}
+                        }
+                        for link in span.links
+                    ] if hasattr(span, 'links') and span.links else [],
+                    
+                    'instrumentation_scope': {
+                        'name': span.instrumentation_scope.name if hasattr(span, 'instrumentation_scope') and span.instrumentation_scope else None,
+                        'version': getattr(span.instrumentation_scope, 'version', None) if hasattr(span, 'instrumentation_scope') and span.instrumentation_scope else None,
+                        'schema_url': getattr(span.instrumentation_scope, 'schema_url', None) if hasattr(span, 'instrumentation_scope') and span.instrumentation_scope else None
+                    },
+                    
+                    'kind': span.kind.name if hasattr(span, 'kind') and span.kind else 'INTERNAL',
+                    
+                    'exceptions': [
+                        {
+                            'type': event.attributes.get('exception.type'),
+                            'message': event.attributes.get('exception.message'),
+                            'stacktrace': event.attributes.get('exception.stacktrace'),
+                            'timestamp': getattr(event, 'timestamp', None)
+                        }
+                        for event in (span.events or [])
+                        if event.name == 'exception' and event.attributes
+                    ],
+                    
+                    # Enhanced request_id handling
+                    'request_id': request_id,
+                    'request_id_source': self._get_request_id_source(span, request_id),
+                    'captured_at': time.time(),
+                    'sdk_version': '2.1.1',
+                    'conversation_turn_id': self._get_current_turn_id(),  # Add this
+                    'turn_sequence': self._get_turn_sequence_number(),
+                }
+                
+                self.whispey.spans_data.append(comprehensive_span_data)
                 super().on_end(span)
+            
+            def _extract_request_id_comprehensive(self, span):
+                """Enhanced request_id extraction with multiple fallback methods"""
+                span_attrs = span.attributes or {}
+                
+                # Method 1: Direct request_id attributes
+                direct_keys = ['request_id', 'lk.request_id', 'gen_ai.request.id', 'gen_ai.request_id']
+                for key in direct_keys:
+                    if span_attrs.get(key):
+                        return str(span_attrs[key])
+                
+                # Method 2: Extract from nested JSON in attributes
+                json_keys = ['lk.llm_metrics', 'lk.tts_metrics', 'lk.stt_metrics']
+                for key in json_keys:
+                    if key in span_attrs:
+                        try:
+                            import json
+                            metrics_data = json.loads(str(span_attrs[key]))
+                            if isinstance(metrics_data, dict) and metrics_data.get('request_id'):
+                                return str(metrics_data['request_id'])
+                        except:
+                            continue
+                
+                # Method 3: Extract from events
+                events = span.events or []
+                for event in events:
+                    event_attrs = event.attributes or {}
+                    for key in direct_keys:
+                        if event_attrs.get(key):
+                            return str(event_attrs[key])
+                
+                # Method 4: Generate deterministic ID from span characteristics
+                span_name = span.name or 'unknown'
+                start_time = span.start_time or 0
+                
+                if span_name and start_time:
+                    import hashlib
+                    context = span.get_span_context() if hasattr(span, 'get_span_context') else None
+                    span_id = hex(context.span_id) if context else str(start_time)
+                    content = f"{span_name}_{start_time}_{span_id}"
+                    synthetic_id = hashlib.md5(content.encode()).hexdigest()[:16]
+                    return synthetic_id
+                
+                return None
+            
+            def _get_request_id_source(self, span, request_id):
+                """Determine how the request_id was obtained"""
+                if not request_id:
+                    return 'none'
+                
+                span_attrs = span.attributes or {}
+                direct_keys = ['request_id', 'lk.request_id', 'gen_ai.request.id', 'gen_ai.request_id']
+                
+                if any(span_attrs.get(key) for key in direct_keys):
+                    return 'direct_attribute'
+                
+                json_keys = ['lk.llm_metrics', 'lk.tts_metrics', 'lk.stt_metrics']
+                for key in json_keys:
+                    if key in span_attrs:
+                        try:
+                            import json
+                            metrics_data = json.loads(str(span_attrs[key]))
+                            if isinstance(metrics_data, dict) and metrics_data.get('request_id'):
+                                return 'nested_json'
+                        except:
+                            continue
+                
+                events = span.events or []
+                for event in events:
+                    event_attrs = event.attributes or {}
+                    if any(event_attrs.get(key) for key in direct_keys):
+                        return 'event_attribute'
+                
+                return 'synthetic'
         
         tracer_provider.add_span_processor(WhispeySpanProcessor(self))
 
-        # Set the tracer provider using LiveKit's method
         from livekit.agents.telemetry import set_tracer_provider
         set_tracer_provider(tracer_provider, metadata={'session_id': session_id})
-    
+
+
+
     
     def start_session(self, session, **kwargs):
-        """Start session with prompt capture AND bug report functionality"""
+        """Start session with earlier telemetry setup"""
+        # Setup telemetry BEFORE observe_session if enabled
+        temp_session_id = f"temp_{int(time.time())}"
+        if self.enable_otel:
+            self._setup_telemetry(temp_session_id)
+        
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(
             session, 
@@ -112,6 +321,11 @@ class LivekitObserve:
             telemetry_instance=self,
             **kwargs
         )
+        
+        # Re-setup telemetry with actual session_id if different
+        if self.enable_otel and session_id != temp_session_id:
+            logger.info(f"Re-setting up telemetry with actual session ID: {session_id}")
+            self._setup_telemetry(session_id)
         
         self._setup_prompt_capture(session, session_id)
         

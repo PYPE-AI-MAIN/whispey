@@ -34,7 +34,6 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     ? [{ column: "id", operator: "eq", value: sessionId }]
     : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentId }]
 
-  console.log('Query filters:', queryFilters)
 
   const { data: callData, loading: callLoading, error: callError } = useSupabaseQuery("pype_voice_call_logs", {
     select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata",
@@ -42,27 +41,6 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     orderBy: { column: "created_at", ascending: false },
     limit: 1
   })
-
-  // Debug logging
-  useEffect(() => {
-    console.log('=== OBSERVABILITY DEBUG ===')
-    console.log('Session ID:', sessionId)
-    console.log('Agent ID:', resolvedParams.agentId)
-    console.log('Query Filters:', queryFilters)
-    console.log('Call Data:', callData)
-    console.log('Call Loading:', callLoading)
-    console.log('Call Error:', callError)
-    
-    if (callData && callData.length > 0) {
-      const call = callData[0]
-      console.log('First call recording_url:', call.recording_url)
-      console.log('Recording URL length:', call.recording_url?.length || 0)
-      console.log('Is recording_url empty?', !call.recording_url || call.recording_url.trim() === '')
-    } else if (!callLoading) {
-      console.log('No call data found for filters:', queryFilters)
-    }
-    console.log('=== END DEBUG ===')
-  }, [callData, callLoading, callError, sessionId, resolvedParams.agentId])
 
   // Get the recording URL from the first call
   const recordingUrl = callData && callData.length > 0 ? callData[0].recording_url : null
