@@ -90,7 +90,7 @@ class LivekitObserve:
             def __init__(self, whispey_instance):
                 self.whispey = whispey_instance
                 exporter = OTLPSpanExporter(
-                    endpoint="https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log",
+                    endpoint="http://localhost:3000/dev/send-call-log",
                     headers={"Content-Type": "application/json"}
                 )
                 super().__init__(exporter)
