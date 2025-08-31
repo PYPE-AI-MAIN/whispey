@@ -5,6 +5,7 @@ import {
   SignedOut,
 } from '@clerk/nextjs'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { PostHogProvider } from './providers'
 import './globals.css'
 
 const geistSans = Geist({
@@ -41,6 +42,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
         >
+      <PostHogProvider>
           <main>
             <SignedOut>
               <div className="min-h-screen">
@@ -51,6 +53,7 @@ export default function RootLayout({
               {children}
             </SignedIn>
           </main>
+          </PostHogProvider>
         </body>
       </html>
     </ClerkProvider>
