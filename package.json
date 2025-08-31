@@ -55,6 +55,8 @@
     "openai": "^5.12.2",
     "papaparse": "^5.5.3",
     "phosphor-react": "^1.4.1",
+    "posthog-js": "^1.261.0",
+    "posthog-node": "^5.8.1",
     "react": "^19.1.0",
     "react-day-picker": "^9.8.1",
     "react-dom": "^19.1.0",
