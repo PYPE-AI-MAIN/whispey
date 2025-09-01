@@ -41,7 +41,10 @@
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.51.0",
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/mdx": "^2.0.13",
+    "@types/node": "^24.3.0",
+    "@types/papaparse": "^5.3.16",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vapi-ai/web": "^2.3.9",
@@ -77,9 +80,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@mdx-js/rollup": "^3.1.0",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20",
-    "@types/papaparse": "^5.3.16",
     "eslint-config-next": "15.4.1",
     "tailwindcss": "^4.1.12"
   }
