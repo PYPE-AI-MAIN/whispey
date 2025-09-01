@@ -203,7 +203,6 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
 
   const callDuration = callData?.[0]?.duration_seconds || 0
   const bugCount = Array.isArray(bugReportData) ? bugReportData.length : 0
-  console.log({bugReportData, callData})
   const turnCount = transcriptLogs?.length || 0
 
   return (

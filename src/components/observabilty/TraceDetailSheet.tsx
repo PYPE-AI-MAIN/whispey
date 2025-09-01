@@ -152,6 +152,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
   const llmConfig = trace.turn_configuration?.llm_configuration?.structured_config
   const ttsConfig = trace.turn_configuration?.tts_configuration?.structured_config
   const vadConfig = trace.turn_configuration?.vad_configuration?.structured_config
+  const eouConfig = trace.turn_configuration?.eou_configuration?.structured_config
 
   // Extract enhanced data
   const enhancedSTT = trace.enhanced_data?.enhanced_stt_data
@@ -173,6 +174,18 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       inputType: "Audio Stream",
       outputType: "Speech Events",
       status: vadConfig ? "active" : "inactive",
+    },
+    {
+      id: "eou",
+      name: "EOU",
+      icon: <Activity className="w-3 h-3" />,
+      color: "orange",
+      active: !!trace.eou_metrics,
+      config: eouConfig,
+      metrics: trace.eou_metrics,
+      inputType: "Audio Stream",
+      outputType: "Speech Events",
+      status: trace.eou_metrics ? "success" : "inactive",
     },
     {
       id: "stt",
@@ -220,8 +233,12 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       inputData: trace.agent_response,
       outputData: `${trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s audio`,
       status: trace.tts_metrics ? "success" : "missing",
-    },
+    }
   ]
+
+  // log for eou config and all
+  console.log({eouConfig, trace})
+
 
   const renderNodeSelector = () => (
     <div className="space-y-2">
@@ -272,6 +289,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
               {stage.metrics && (
                 <div className="text-right">
                   <div className="text-xs font-mono text-gray-600">
+                    {stage.id === "eou" && `${stage.metrics.end_of_utterance_delay?.toFixed(2)}s`}
                     {stage.id === "stt" && `${stage.metrics.duration?.toFixed(2)}s`}
                     {stage.id === "llm" && `${stage.metrics.ttft?.toFixed(2)}s`}
                     {stage.id === "tts" && `${stage.metrics.ttfb?.toFixed(2)}s`}
@@ -315,8 +333,8 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
 
         {/* Input/Output Flow */}
         <div className="space-y-4">
-          {/* Skip VAD input/output as it's not useful */}
-          {selectedStage.id !== "vad" && (
+          {/* Skip VAD and EOU input/output as they're real-time monitoring, not transformative */}
+          {selectedStage.id !== "vad" && selectedStage.id !== "eou" && (
             <>
               {/* Input Section */}
               <div className="space-y-3">
@@ -380,6 +398,41 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                 )}
               </div>
             </>
+          )}
+          
+          {/* Special handling for EOU - show detection timing instead of input/output */}
+          {selectedStage.id === "eou" && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-orange-600" />
+                End of Utterance Detection
+              </h4>
+              <div className="space-y-3">
+                {/* <div className="bg-white border rounded-lg p-3">
+                  <div className="text-xs text-gray-500 mb-1">Transcription Delay</div>
+                  <div className="font-mono text-sm font-medium">
+                    {trace.eou_metrics?.transcription_delay ? 
+                      formatDuration(trace.eou_metrics.transcription_delay * 1000) : 
+                      "No data"}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Time from audio end to transcription completion
+                  </div>
+                </div> */}
+                
+                <div className="bg-white border rounded-lg p-3">
+                  <div className="text-xs text-gray-500 mb-1">EOU Detection Delay</div>
+                  <div className="font-mono text-sm font-medium text-orange-600">
+                    {trace.eou_metrics?.end_of_utterance_delay ? 
+                      formatDuration(trace.eou_metrics.end_of_utterance_delay * 1000) : 
+                      "No data"}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Time to detect the user stopped speaking
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -623,6 +676,28 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                     </div>
                   </>
                 )}
+                {selectedStage.id === "eou" && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Detection Mode:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">
+                        {selectedStage.config?.detection_mode || "Voice Activity"}
+                      </code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Silence Threshold:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">
+                        {selectedStage.config?.silence_threshold || "Default"}
+                      </code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Min Duration:</span>
+                      <code className="bg-gray-100 px-1 rounded text-xs">
+                        {selectedStage.config?.min_duration || "Auto"}s
+                      </code>
+                    </div>
+                  </>
+                )}
                 {selectedStage.id === "stt" && (
                   <>
                     <div className="flex justify-between">
@@ -687,6 +762,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                     </div>
                   </>
                 )}
+
               </div>
             </div>
           </div>
@@ -715,6 +791,10 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       // TTS TTFB (convert to ms if needed)
       if (trace.tts_metrics?.ttfb) {
         totalMs += trace.tts_metrics.ttfb * 1000 // Convert seconds to ms
+      }
+
+      if (trace.eou_metrics?.end_of_utterance_delay) {
+        totalMs += trace.eou_metrics.end_of_utterance_delay * 1000
       }
 
       return totalMs
@@ -766,6 +846,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                     {stage.id === "stt" && stage.metrics?.duration && formatDuration(stage.metrics.duration * 1000)}
                     {stage.id === "llm" && stage.metrics?.ttft && formatDuration(stage.metrics.ttft * 1000)}
                     {stage.id === "tts" && stage.metrics?.ttfb && formatDuration(stage.metrics.ttfb * 1000)}
+                    {stage.id === "eou" && stage.metrics?.end_of_utterance_delay && formatDuration(stage.metrics.end_of_utterance_delay * 1000)}
                   </span>
                 </div>
               ))}

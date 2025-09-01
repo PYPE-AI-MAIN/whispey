@@ -124,9 +124,9 @@ import {
                 <Clock className="w-4 h-4" />
                 <span className="text-sm opacity-80">Timestamp</span>
               </div>
-              <div className="text-sm font-mono">
-                {formatTimestamp(span.captured_at || 0)}
-              </div>
+              {/* <div className="text-sm font-mono">
+                {formatTimestamp(span?.captured_at || 0)}
+              </div> */}
             </div>
             
             <div className="bg-white/10 rounded-lg p-3">
