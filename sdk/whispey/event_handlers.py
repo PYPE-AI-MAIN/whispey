@@ -479,7 +479,6 @@ class CorrectedTranscriptCollector:
         # Try direct attributes first
         # log metrics_obj
 
-        logger.info(f"LLM Metrics: {metrics_obj}")
 
         if hasattr(metrics_obj, 'model') and metrics_obj.model:
             return str(metrics_obj.model)
@@ -576,7 +575,6 @@ class CorrectedTranscriptCollector:
     def on_metrics_collected(self, metrics_event):
         """Enhanced metrics collection with immediate cost calculation using provider data"""
         metrics_obj = metrics_event.metrics
-        logger.info(f"METRICS: {type(metrics_obj).__name__}")
         
         # Store metrics for session-level processing
         metrics_data = {
@@ -596,7 +594,6 @@ class CorrectedTranscriptCollector:
             
             # Log comprehensive STT metrics
             all_attrs = {attr: getattr(metrics_obj, attr, 'MISSING') for attr in dir(metrics_obj) if not attr.startswith('_')}
-            logger.info(f"STT Metrics: {all_attrs}")
             
             # Use enhanced data for model and provider info
             model_name = enhanced_data.get('model', 'unknown') if enhanced_data else self._extract_model_from_stt_metrics(metrics_obj)
@@ -606,15 +603,10 @@ class CorrectedTranscriptCollector:
             cost = self._calculate_stt_cost_with_provider(metrics_obj, model_name, provider)
             
             # Log in structured format
-            duration = getattr(metrics_obj, 'duration', 'N/A')
             audio_duration = getattr(metrics_obj, 'audio_duration', 'N/A')
             request_id = getattr(metrics_obj, 'request_id', 'N/A')
             timestamp = getattr(metrics_obj, 'timestamp', 'N/A')
             
-            logger.info(f"STT Metrics: type='stt_metrics' provider='{provider}' model='{model_name}' "
-                       f"request_id='{request_id}' timestamp={timestamp} duration={duration} "
-                       f"audio_duration={audio_duration}")
-            logger.info(f"💰 STT Cost ({provider}/{model_name}): {audio_duration}s audio = ${cost:.6f}")
             
             stt_data = {
                 'audio_duration': metrics_obj.audio_duration,
@@ -628,15 +620,12 @@ class CorrectedTranscriptCollector:
             
             if self.current_turn and self.current_turn.user_transcript and not self.current_turn.stt_metrics:
                 self.current_turn.stt_metrics = stt_data
-                logger.info(f"Applied STT metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
             elif self.turns and self.turns[-1].user_transcript and not self.turns[-1].stt_metrics:
                 self.turns[-1].stt_metrics = stt_data
-                logger.info(f"Applied STT metrics to last turn {self.turns[-1].turn_id}")
                 self._ensure_trace_id(self.turns[-1])
             else:
                 self.pending_metrics['stt'] = stt_data
-                logger.info("Stored STT metrics as pending")
             
         elif isinstance(metrics_obj, LLMMetrics):
             # First extract enhanced metrics to get provider and model info
@@ -663,19 +652,13 @@ class CorrectedTranscriptCollector:
             
             if self.current_turn and not self.current_turn.llm_metrics:
                 self.current_turn.llm_metrics = llm_data
-                logger.info(f"Applied LLM metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
             else:
                 self.pending_metrics['llm'] = llm_data
-                logger.info("Stored LLM metrics as pending")
             
         elif isinstance(metrics_obj, TTSMetrics):
             # First extract enhanced metrics to get provider and model info
             enhanced_data = self._extract_enhanced_tts_from_metrics(metrics_obj)
-            
-            # Log comprehensive TTS metrics
-            all_attrs = {attr: getattr(metrics_obj, attr, 'MISSING') for attr in dir(metrics_obj) if not attr.startswith('_')}
-            logger.info(f"TTS Metrics: {all_attrs}")
             
             # Use enhanced data for model and provider info
             model_name = enhanced_data.get('model', 'unknown') if enhanced_data else self._extract_model_from_tts_metrics(metrics_obj)
@@ -684,17 +667,6 @@ class CorrectedTranscriptCollector:
             # Calculate cost using enhanced data
             cost = self._calculate_tts_cost_with_provider(metrics_obj, model_name, provider)
             
-            # Log in structured format
-            characters_count = getattr(metrics_obj, 'characters_count', 'N/A')
-            audio_duration = getattr(metrics_obj, 'audio_duration', 'N/A')
-            ttfb = getattr(metrics_obj, 'ttfb', 'N/A')
-            request_id = getattr(metrics_obj, 'request_id', 'N/A')
-            timestamp = getattr(metrics_obj, 'timestamp', 'N/A')
-            
-            logger.info(f"TTS Metrics: type='tts_metrics' provider='{provider}' model='{model_name}' "
-                       f"request_id='{request_id}' timestamp={timestamp} characters_count={characters_count} "
-                       f"audio_duration={audio_duration} ttfb={ttfb}")
-            logger.info(f"💰 TTS Cost ({provider}/{model_name}): {characters_count} chars = ${cost:.6f}")
             
             tts_data = {
                 'characters_count': metrics_obj.characters_count,
@@ -709,15 +681,12 @@ class CorrectedTranscriptCollector:
             
             if self.current_turn and self.current_turn.agent_response and not self.current_turn.tts_metrics:
                 self.current_turn.tts_metrics = tts_data
-                logger.info(f"Applied TTS metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
             elif self.turns and self.turns[-1].agent_response and not self.turns[-1].tts_metrics:
                 self.turns[-1].tts_metrics = tts_data
-                logger.info(f"Applied TTS metrics to last turn {self.turns[-1].turn_id}")
                 self._ensure_trace_id(self.turns[-1])
             else:
                 self.pending_metrics['tts'] = tts_data
-                logger.info("Stored TTS metrics as pending")
             
         elif isinstance(metrics_obj, EOUMetrics):
             eou_data = {
@@ -728,15 +697,12 @@ class CorrectedTranscriptCollector:
             
             if self.current_turn and self.current_turn.user_transcript and not self.current_turn.eou_metrics:
                 self.current_turn.eou_metrics = eou_data
-                logger.info(f"Applied EOU metrics to current turn {self.current_turn.turn_id}")
                 self._ensure_trace_id(self.current_turn)
             elif self.turns and self.turns[-1].user_transcript and not self.turns[-1].eou_metrics:
                 self.turns[-1].eou_metrics = eou_data
-                logger.info(f"Applied EOU metrics to last turn {self.turns[-1].turn_id}")
                 self._ensure_trace_id(self.turns[-1])
             else:
                 self.pending_metrics['eou'] = eou_data
-                logger.info("Stored EOU metrics as pending")
 
         elif isinstance(metrics_obj, VADMetrics):
             vad_data = {
@@ -753,7 +719,6 @@ class CorrectedTranscriptCollector:
             
             self._extract_enhanced_vad_from_metrics(metrics_obj)
         
-        logger.debug(f"Stored {type(metrics_obj).__name__} for session-level processing")
 
     def _calculate_stt_cost_with_provider(self, metrics_obj, model_name, provider):
         """Calculate STT cost using provider and model information"""
@@ -854,7 +819,6 @@ class CorrectedTranscriptCollector:
             for turn in reversed(self.turns):
                 if turn.agent_response and not turn.llm_metrics:
                     turn.llm_metrics = self.pending_metrics['llm']
-                    logger.info(f"Applied final LLM metrics to turn {turn.turn_id}")
                     break
         
         if self.pending_metrics['eou'] and self.turns:
@@ -1202,7 +1166,6 @@ class CorrectedTranscriptCollector:
             }
             
             self.current_turn.enhanced_llm_data = enhanced_data
-            logger.info(f"🧠 Extracted LLM data from conversation: {enhanced_data['word_count']} words")
             
         except Exception as e:
             logger.error(f"❌ Error extracting enhanced LLM data: {e}")
@@ -1243,7 +1206,6 @@ class CorrectedTranscriptCollector:
                 config_model = structured.get('model')
                 if config_model and config_model != 'unknown':
                     model_name = config_model
-                    logger.info(f"Found model in session config: {model_name}")
                 
                 provider = llm_config.get('provider_detection', 'unknown')
             
@@ -1282,7 +1244,6 @@ class CorrectedTranscriptCollector:
                 if not self.current_turn.enhanced_llm_data:
                     self.current_turn.enhanced_llm_data = {}
                 self.current_turn.enhanced_llm_data.update(enhanced_data)
-                logger.info(f"Enhanced LLM metrics: {model_name} (provider: {provider}, temp: {enhanced_data['temperature']})")
                 
         except Exception as e:
             logger.error(f"Error extracting enhanced LLM metrics: {e}")
@@ -1309,7 +1270,6 @@ class CorrectedTranscriptCollector:
             }
             
             self.current_turn.enhanced_tts_data = enhanced_data
-            logger.info(f"🗣️ Extracted TTS data from conversation: {enhanced_data['character_count']} chars")
             
         except Exception as e:
             logger.error(f"❌ Error extracting enhanced TTS data: {e}")
@@ -1593,7 +1553,6 @@ class CorrectedTranscriptCollector:
             for turn in reversed(self.turns):
                 if turn.agent_response and not turn.llm_metrics:
                     turn.llm_metrics = self.pending_metrics['llm']
-                    logger.info(f"Applied final LLM metrics to turn {turn.turn_id}")
                     break
         
         if self.pending_metrics['eou'] and self.turns:
@@ -2039,11 +1998,6 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
                 transcript_collector._ensure_trace_id(transcript_collector.current_turn)
                 transcript_collector.current_turn.otel_spans.append(tool_span)
                 
-                status_emoji = "✅" if output_details['success'] else "❌"
-                logger.info(f"🔧 {status_emoji} Tool executed: {func_call.name}")
-                logger.info(f"   📥 Arguments: {parsed_arguments}")
-                logger.info(f"   📤 Result: {tool_data['result_length']} chars")
-                logger.info(f"   ⏱️ Duration: {execution_duration*1000:.1f}ms")
                 if output_details['error']:
                     logger.error(f"   💥 Error: {output_details['error']}")
     
@@ -2052,13 +2006,6 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
         usage_collector.collect(ev.metrics)
         metrics.log_metrics(ev.metrics)
         transcript_collector.on_metrics_collected(ev)
-        
-        if isinstance(ev.metrics, metrics.LLMMetrics):
-            logger.info(f"🧠 LLM: {ev.metrics.prompt_tokens} prompt + {ev.metrics.completion_tokens} completion tokens, TTFT: {ev.metrics.ttft:.2f}s")
-        elif isinstance(ev.metrics, metrics.TTSMetrics):
-            logger.info(f"🗣️ TTS: {ev.metrics.characters_count} chars, Duration: {ev.metrics.audio_duration:.2f}s, TTFB: {ev.metrics.ttfb:.2f}s")
-        elif isinstance(ev.metrics, metrics.STTMetrics):
-            logger.info(f"🎙️ STT: {ev.metrics.audio_duration:.2f}s audio processed in {ev.metrics.duration:.2f}s")
 
 
 
@@ -2310,20 +2257,6 @@ def extract_complete_session_configuration(session, session_data):
     # Store in session data
     session_data['complete_configuration'] = complete_config
     session_data['telemetry_instance'] = telemetry_instance
-    
-    # Log what we captured
-    stt_model = complete_config['stt_configuration']['structured_config'].get('model', 'unknown')
-    stt_lang = complete_config['stt_configuration']['structured_config'].get('language', 'unknown')
-    tts_voice = complete_config['tts_configuration']['structured_config'].get('voice_id', 'unknown')
-    tts_model = complete_config['tts_configuration']['structured_config'].get('model', 'unknown')
-    llm_temp = complete_config['llm_configuration']['structured_config'].get('temperature', 'unknown')
-    vad_threshold = complete_config.get('vad_configuration', {}).get('structured_config', {}).get('activation_threshold', 'unknown')
-    
-    logger.info(f"Complete configuration captured:")
-    logger.info(f"  STT: {stt_model} ({stt_lang})")
-    logger.info(f"  TTS: {tts_voice} ({tts_model})")  
-    logger.info(f"  LLM: temp={llm_temp}")
-    logger.info(f"  VAD: threshold={vad_threshold}")
     
     return complete_config
 
