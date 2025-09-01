@@ -21,5 +21,4 @@ const config = {
   skipTrailingSlashRedirect: true,
 };
 
-// export default withMDX(config);
-export default config;
+export default withMDX(config);
