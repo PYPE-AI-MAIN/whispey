@@ -1,11 +1,7 @@
 // src/components/observability/ObservabilityFilters.tsx
 "use client"
 
-import { Search, Calendar, Filter, Download, BarChart3 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { BarChart3 } from "lucide-react"
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import { useMemo } from "react"
 
