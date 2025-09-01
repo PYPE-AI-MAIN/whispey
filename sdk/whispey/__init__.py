@@ -324,7 +324,6 @@ class LivekitObserve:
         
         # Re-setup telemetry with actual session_id if different
         if self.enable_otel and session_id != temp_session_id:
-            logger.info(f"Re-setting up telemetry with actual session ID: {session_id}")
             self._setup_telemetry(session_id)
         
         self._setup_prompt_capture(session, session_id)
@@ -472,13 +471,7 @@ class LivekitObserve:
             
             session_data['prompt_captures'].append(prompt_data)
             
-            logger.info(f"Captured prompt data: {len(conversation_history)} messages, {len(available_tools)} tools")
-            
-            # Debug logging
-            if conversation_history:
-                logger.debug(f"Sample conversation history: {conversation_history[0] if conversation_history else 'None'}")
-            if available_tools:
-                logger.debug(f"Sample tool: {available_tools[0] if available_tools else 'None'}")
+
             
         except Exception as e:
             logger.error(f"Error capturing prompt data: {e}")
@@ -541,78 +534,102 @@ class LivekitObserve:
                 
                 # Simple STT node with bug report detection
                 async def bug_aware_stt_node(audio_stream, model_settings):
-                    """STT node with bug report detection - simplified version"""
+                    """STT node with bug report detection - Universal await approach"""
                     
-                    # Get original STT events
-                    if agent._whispey_original_stt_node:
-                        stt_events = agent._whispey_original_stt_node(audio_stream, model_settings)
-                    else:
-                        from livekit.agents import Agent
-                        stt_events = Agent.default_stt_node(agent, audio_stream, model_settings)
-                    
-                    async for event in stt_events:
-                        # Extract transcript from various event types
-                        transcript = None
-                        if hasattr(event, 'alternatives') and event.alternatives:
-                            transcript = event.alternatives[0].text
-                        elif hasattr(event, 'text'):
-                            transcript = event.text
-                        elif isinstance(event, str):
-                            transcript = event
-                        
-                        if not transcript or not transcript.strip():
-                            yield event
-                            continue
-                        
-                        transcript = transcript.strip()
-                        
-                        # CASE 1: User says "bug over" - exit bug mode and repeat response
-                        if agent._whispey_bug_report_mode and self._is_done_reporting(transcript):
-                            agent._whispey_bug_report_mode = False
-                            
-                            # Store all collected bug details
-                            await self._store_bug_report_details(session_id, agent._whispey_bug_details)
-                            agent._whispey_bug_details = []
-                            
-                            # ✅ REPEAT the stored problematic message
-                            await self._repeat_stored_message(session_id, session)
-                            continue
-                        
-                        # CASE 2: User starts bug report with "feedback"
-                        elif not agent._whispey_bug_report_mode and self._is_bug_report(transcript):
-                            # Immediately capture and store the last agent message
-                            captured_message = await self._capture_and_store_last_message(session_id)
-                            if captured_message:
-                                logger.warning("⚠️ NO MESSAGE TO CAPTURE")
-                            
-                            # Enter bug collection mode
-                            agent._whispey_bug_report_mode = True
-                            agent._whispey_bug_details = [{
-                                'type': 'initial_report',
-                                'text': transcript,
-                                'timestamp': __import__('time').time()
-                            }]
-                            
-                            # Ask for details
-                            await session.say(self.bug_report_response, add_to_chat_ctx=False)
-                            continue
-                        
-                        # CASE 3: User is providing bug details
-                        elif agent._whispey_bug_report_mode:
-                            
-                            agent._whispey_bug_details.append({
-                                'type': 'bug_details',
-                                'text': transcript,
-                                'timestamp': __import__('time').time()
-                            })
-                            
-                            # Acknowledge and ask for more
-                            await session.say(self.collection_prompt, add_to_chat_ctx=False)
-                            continue
-                        
-                        # CASE 4: Normal conversation
+                    try:
+                        # Get original STT result
+                        if agent._whispey_original_stt_node:
+                            stt_result = agent._whispey_original_stt_node(audio_stream, model_settings)
                         else:
-                            yield event
+                            from livekit.agents import Agent
+                            stt_result = Agent.default_stt_node(agent, audio_stream, model_settings)
+                        
+                        # STRATEGY: Always try await first
+                        try:
+                            # Try awaiting (this should work for v1.2.6, might work for v1.2.4)
+                            stt_events = await stt_result
+                        except TypeError as e:
+                            # If await fails (async generator can't be awaited in v1.2.4)
+                            if "can't be used in 'await' expression" in str(e):
+                                stt_events = stt_result
+                            else:
+                                raise e  # Different TypeError, re-raise it
+                        
+                        # Now we should have an async generator in both cases
+                        async for event in stt_events:
+                            # Your existing bug detection logic here...
+                            transcript = None
+                            if hasattr(event, 'alternatives') and event.alternatives:
+                                transcript = event.alternatives[0].text
+                            elif hasattr(event, 'text'):
+                                transcript = event.text
+                            elif isinstance(event, str):
+                                transcript = event
+                            
+                            if not transcript or not transcript.strip():
+                                yield event
+                                continue
+                            
+                            transcript = transcript.strip()
+                            
+                            # Handle bug reporting cases
+                            if agent._whispey_bug_report_mode and self._is_done_reporting(transcript):
+                                agent._whispey_bug_report_mode = False
+                                await self._store_bug_report_details(session_id, agent._whispey_bug_details)
+                                agent._whispey_bug_details = []
+                                await self._repeat_stored_message(session_id, session)
+                                continue
+                            
+                            elif not agent._whispey_bug_report_mode and self._is_bug_report(transcript):
+                                captured_message = await self._capture_and_store_last_message(session_id)
+                                if not captured_message:
+                                    logger.warning("No message to capture")
+                                
+                                agent._whispey_bug_report_mode = True
+                                agent._whispey_bug_details = [{
+                                    'type': 'initial_report',
+                                    'text': transcript,
+                                    'timestamp': __import__('time').time()
+                                }]
+                                
+                                await session.say(self.bug_report_response, add_to_chat_ctx=False)
+                                continue
+                            
+                            elif agent._whispey_bug_report_mode:
+                                agent._whispey_bug_details.append({
+                                    'type': 'bug_details',
+                                    'text': transcript,
+                                    'timestamp': __import__('time').time()
+                                })
+                                
+                                await session.say(self.collection_prompt, add_to_chat_ctx=False)
+                                continue
+                            
+                            else:
+                                yield event
+                                
+                    except Exception as e:
+                        logger.error(f"STT node wrapper failed: {e}")
+                        # Ultimate fallback: try to use original STT without modification
+                        try:
+                            if agent._whispey_original_stt_node:
+                                fallback_result = agent._whispey_original_stt_node(audio_stream, model_settings)
+                            else:
+                                from livekit.agents import Agent
+                                fallback_result = Agent.default_stt_node(agent, audio_stream, model_settings)
+                            
+                            # Apply same await strategy to fallback
+                            try:
+                                fallback_events = await fallback_result
+                            except TypeError:
+                                fallback_events = fallback_result
+                            
+                            async for event in fallback_events:
+                                yield event
+                                
+                        except Exception as fallback_error:
+                            logger.error(f"Fallback STT also failed: {fallback_error}")
+                            raise fallback_error
                 
                 # Replace agent's STT node
                 agent.stt_node = bug_aware_stt_node

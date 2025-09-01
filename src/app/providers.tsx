@@ -8,6 +8,7 @@ import { useUser } from '@clerk/nextjs'
 
 import posthog from 'posthog-js'
 import { PostHogProvider as PHProvider } from 'posthog-js/react'
+import { blacklistedEmails } from "@/utils/constants"
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser()
@@ -17,7 +18,19 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
       person_profiles: 'identified_only',
-      defaults: '2025-05-24',
+      before_send: (event: any) => {
+        // Check multiple possible email properties
+        const userEmail = event.properties?.$user_email || 
+                         event.properties?.email || 
+                         event.properties?.$email ||
+                         posthog.get_property('email'); // Get from identified user properties
+        
+        if (userEmail && blacklistedEmails.includes(userEmail.toLowerCase())) {
+          console.log('🚫 Blocking event for blacklisted email:', userEmail);
+          return null; // Don't send this event
+        }
+        return event;
+      },
       // Disable automatic pageview tracking until user is identified
       capture_pageview: false,
     })
@@ -36,19 +49,24 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         id: user.id, 
         email: userEmail, 
         firstName: user.firstName,
-        emailAddresses: user.emailAddresses 
       })
       
       if (userEmail) {
+        // Check if user is blacklisted before identifying
+        if (blacklistedEmails.includes(userEmail.toLowerCase())) {
+          console.log('🚫 User email is blacklisted, skipping PostHog identification:', userEmail);
+          // Optionally disable session recording for blacklisted users
+          posthog.stopSessionRecording();
+          return;
+        }
+
         console.log('🔄 Resetting PostHog identity before identification...')
-        // First reset any existing identity to ensure clean identification
         posthog.reset()
         
-        // Small delay to ensure reset is processed
         setTimeout(() => {
           console.log('🎯 Identifying user in PostHog with email:', userEmail)
           
-          // Identify user in PostHog with email as the unique identifier
+          // Identify user in PostHog
           posthog.identify(userEmail, {
             email: userEmail,
             firstName: user.firstName,
@@ -61,27 +79,14 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           // Enable pageview tracking after identification
           posthog.capture('$pageview')
           
-          // Session recording will automatically work for identified users
           console.log('✅ PostHog user identified with email:', userEmail)
-          console.log('📊 PostHog current distinct_id:', posthog.get_distinct_id())
-          
-          // Verify the identification worked
-          setTimeout(() => {
-            console.log('🔍 Post-identification verification:', {
-              distinct_id: posthog.get_distinct_id(),
-              is_identified: posthog.get_distinct_id() === userEmail
-            })
-          }, 500)
         }, 100)
       } else {
         console.warn('⚠️ No email found for user, cannot identify in PostHog')
-        console.log('👤 User object:', user)
       }
     } else if (isLoaded && !user) {
-      // User signed out, reset PostHog identity
       console.log('🔄 User signed out, resetting PostHog identity')
       posthog.reset()
-      console.log('🔄 PostHog identity reset (user signed out)')
     }
   }, [user, isLoaded])
 
