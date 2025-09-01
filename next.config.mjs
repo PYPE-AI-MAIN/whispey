@@ -1,10 +1,18 @@
 import { createMDX } from 'fumadocs-mdx/next';
+import path from 'path';
 
 const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
   reactStrictMode: true,
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve('./src'),
+    };
+    return config;
+  },
   async rewrites() {
     return [
       {
@@ -12,12 +20,11 @@ const config = {
         destination: 'https://us-assets.i.posthog.com/static/:path*',
       },
       {
-        source: '/ingest/:path*',
+        source: '/ingest/:path*', 
         destination: 'https://us.i.posthog.com/:path*',
       },
     ];
   },
-  // This is required to support PostHog trailing slash API requests
   skipTrailingSlashRedirect: true,
 };
 
