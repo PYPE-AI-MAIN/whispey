@@ -9,10 +9,23 @@ import { useUser } from '@clerk/nextjs'
 import posthog from 'posthog-js'
 import { PostHogProvider as PHProvider } from 'posthog-js/react'
 
-function PostHogUserIdentifier() {
+export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser()
-  const posthog = usePostHog()
 
+  useEffect(() => {
+    // Initialize PostHog
+    posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+      person_profiles: 'identified_only',
+      defaults: '2025-05-24',
+      // Disable automatic pageview tracking until user is identified
+      capture_pageview: false,
+    })
+    
+    console.log('🚀 PostHog initialized')
+  }, [])
+
+  // Handle user identification after PostHog is initialized
   useEffect(() => {
     console.log('🔍 PostHogUserIdentifier effect triggered:', { isLoaded, hasUser: !!user })
     
@@ -70,15 +83,10 @@ function PostHogUserIdentifier() {
       posthog.reset()
       console.log('🔄 PostHog identity reset (user signed out)')
     }
-  }, [user, isLoaded, posthog])
+  }, [user, isLoaded])
 
-  return null // This component doesn't render anything
-}
-
-export function PostHogProvider({ children }: { children: React.ReactNode }) {
   return (
     <PHProvider client={posthog}>
-      <PostHogUserIdentifier />
       {children}
     </PHProvider>
   )
