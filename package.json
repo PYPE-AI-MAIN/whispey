@@ -69,7 +69,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@mdx-js/rollup": "^3.1.0",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.1.12",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.16",
