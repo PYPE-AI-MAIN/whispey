@@ -6,4 +6,8 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
   defaults: '2025-05-24',
   capture_exceptions: true, // This enables capturing exceptions using Error Tracking
   debug: process.env.NODE_ENV === "development",
+  // Disable automatic pageview tracking until user is identified
+  capture_pageview: false,
+  // Keep session recording enabled but it will only work for identified users
+  person_profiles: 'identified_only',
 });
