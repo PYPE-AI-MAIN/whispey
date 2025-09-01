@@ -40,6 +40,7 @@
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.51.0",
+    "@tailwindcss/postcss": "^4.1.12",
     "@types/mdx": "^2.0.13",
     "@vapi-ai/web": "^2.3.9",
     "aws-sdk": "^2.1692.0",
@@ -69,7 +70,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@mdx-js/rollup": "^3.1.0",
-    "@tailwindcss/postcss": "^4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.16",
