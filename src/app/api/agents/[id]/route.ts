@@ -15,8 +15,6 @@ export async function GET(
   try {
     const { id: agentId } = await params
 
-    console.log('🔍 Fetching agent with ID:', agentId)
-
     // Fetch agent data from database
     const { data: agent, error } = await supabase
       .from('pype_voice_agents')
@@ -38,13 +36,6 @@ export async function GET(
         { status: 404 }
       )
     }
-
-    console.log('✅ Agent found:', {
-      id: agent.id,
-      name: agent.name,
-      agent_type: agent.agent_type,
-      hasVapiKeys: Boolean(agent.vapi_api_key_encrypted)
-    })
 
     // Return agent data (without exposing encrypted keys)
     const agentResponse = {
@@ -95,7 +86,6 @@ export async function DELETE(
     }
 
     // Start cascade deletion process
-    console.log(`Starting cascade delete for agent: ${agentId}`)
 
     // 1. Delete call logs for this agent
     const { error: callLogsError } = await supabase
