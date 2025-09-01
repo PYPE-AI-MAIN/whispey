@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-# WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
-WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"
+WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
+# WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"
 WHISPEY_API_KEY = os.getenv("WHISPEY_API_KEY")
 
 def convert_timestamp(timestamp_value):
