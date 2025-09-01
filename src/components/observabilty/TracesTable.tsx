@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2 } from "lucide-react"
+import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity } from "lucide-react"
 import { OTelSpan } from "@/types/openTelemetry";
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import TraceDetailSheet from "./TraceDetailSheet"
@@ -166,12 +166,14 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
     if (trace.llm_metrics && Object.keys(trace.llm_metrics).length > 0) return "llm"
     if (trace.stt_metrics && Object.keys(trace.stt_metrics).length > 0) return "stt"
     if (trace.tts_metrics && Object.keys(trace.tts_metrics).length > 0) return "tts"
+    if (trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0) return "eou"
     return "general"
   }
 
   const getOperationIcon = (operation: string) => {
     switch (operation) {
       case "tool": return <Wrench className="w-3 h-3" />
+      case "eou": return <Activity className="w-3 h-3" />
       case "llm": return <Brain className="w-3 h-3" />
       case "stt": return <Mic className="w-3 h-3" />
       case "tts": return <Volume2 className="w-3 h-3" />
@@ -185,6 +187,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
       case "llm": return "text-purple-600"
       case "stt": return "text-blue-600"
       case "tts": return "text-green-600"
+      case "eou": return "text-orange-600"
       default: return "text-gray-600"
     }
   }
@@ -232,24 +235,27 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
     if (trace.tts_metrics && Object.keys(trace.tts_metrics).length > 0) {
       metrics.push({ type: 'TTS', ttfb: trace.tts_metrics.ttfb })
     }
+    if (trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0) {
+      metrics.push({ type: 'EOU', delay: trace.eou_metrics.end_of_utterance_delay })
+    }
     return metrics
   }
 
   const getTotalDuration = (trace: TraceLog) => {
     // Try to get duration from trace_duration_ms first
     if (trace.trace_duration_ms) return trace.trace_duration_ms
-
-    
+  
     // Calculate from spans
     if (trace.otel_spans?.length) {
       return trace.otel_spans.reduce((total, span) => total + ((span.duration_ns || 0) / 1_000_000), 0)
     }
     
-    // Calculate from individual metrics
+    // Calculate from individual metrics (including EOU)
     let total = 0
     if (trace.stt_metrics?.duration) total += trace.stt_metrics.duration * 1000 // Convert to ms
     if (trace.llm_metrics?.ttft) total += trace.llm_metrics.ttft * 1000
     if (trace.tts_metrics?.ttfb) total += trace.tts_metrics.ttfb * 1000
+    if (trace.eou_metrics?.end_of_utterance_delay) total += trace.eou_metrics.end_of_utterance_delay * 1000 // Add EOU delay
     
     return total
   }
@@ -384,6 +390,7 @@ const handleRowClick = (trace: TraceLog) => {
                     const metrics = getMetricsInfo(trace)
                     const duration = getTotalDuration(trace)
                     const hasBugReport = checkBugReportFlags.has(trace.turn_id.toString())
+                    const spansLength = trace.otel_spans?.length || 0
                     
                     return (
                       <div
@@ -477,7 +484,7 @@ const handleRowClick = (trace: TraceLog) => {
                             )}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {trace.otel_spans?.length || 0} spans
+                            {spansLength > 0 ? `${spansLength} spans` : ""}
                           </div>
                         </div>
   

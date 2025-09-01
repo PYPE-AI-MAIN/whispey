@@ -78,73 +78,30 @@ class LivekitObserve:
         if not self.enable_otel:
             return None
         
+        from opentelemetry.sdk.trace import TracerProvider, SpanProcessor
+        import time
+        import uuid
+        import logging
         
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        logger = logging.getLogger("whispey-sdk")
         
         tracer_provider = TracerProvider()
 
-        
-        class WhispeySpanProcessor(BatchSpanProcessor):
+        class WhispeySpanCollector(SpanProcessor):
+            """Custom span processor that only collects spans without exporting them"""
+            
             def __init__(self, whispey_instance):
                 self.whispey = whispey_instance
-                exporter = OTLPSpanExporter(
-                    endpoint="https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log",
-                    headers={"Content-Type": "application/json"}
-                )
-                super().__init__(exporter)
 
-            
+            def on_start(self, span, parent_context=None):
+                pass
 
-        
-            def _get_current_turn_id(self):
-                """Get current conversation turn ID"""
-                if hasattr(self.whispey, '_current_turn_context'):
-                    return self.whispey._current_turn_context.get('turn_id')
-                return 'unknown_turn'
-
-            def _get_turn_sequence_number(self):
-                """Get the sequence number of the current turn"""
-                if hasattr(self.whispey, '_current_turn_context'):
-                    return self.whispey._current_turn_context.get('turn_sequence', 0)
-                return 0
-
-            
             def on_end(self, span):
                 # Enhanced request_id extraction
                 request_id = self._extract_request_id_comprehensive(span)
                 
-                if span.attributes:
-                    for key, value in span.attributes.items():
-                        value_str = str(value)
-                        if len(value_str) > 200:
-                            value_str = value_str[:200] + "... [truncated]"
-                        
-                    
-                
-                if span.events:
-                    for event in span.events:
-                        if event.attributes:
-                            for key, value in event.attributes.items():
-                                value_str = str(value)
-                                if len(value_str) > 200:
-                                    value_str = value_str[:200] + "... [truncated]"
-                                print(f"    {key}: {value_str}")
-                        else:
-                            print("    No event attributes")
-                
-                if hasattr(span, 'resource') and span.resource and span.resource.attributes:
-                    for key, value in span.resource.attributes.items():
-                        value_str = str(value)
-                        if len(value_str) > 200:
-                            value_str = value_str[:200] + "... [truncated]"
-                        
-                
-                
                 duration_ns = (span.end_time - span.start_time) if span.start_time and span.end_time else 0
                 duration_ms = duration_ns / 1_000_000
-                
                 
                 comprehensive_span_data = {
                     'name': span.name,
@@ -210,20 +167,33 @@ class LivekitObserve:
                         if event.name == 'exception' and event.attributes
                     ],
                     
-                    # Enhanced request_id handling
                     'request_id': request_id,
                     'request_id_source': self._get_request_id_source(span, request_id),
                     'captured_at': time.time(),
                     'sdk_version': '2.1.1',
-                    'conversation_turn_id': self._get_current_turn_id(),  # Add this
+                    'conversation_turn_id': self._get_current_turn_id(),
                     'turn_sequence': self._get_turn_sequence_number(),
                 }
                 
                 self.whispey.spans_data.append(comprehensive_span_data)
-                super().on_end(span)
-            
+
+            def shutdown(self):
+                pass
+
+            def force_flush(self, timeout_millis=30000):
+                return True
+
+            def _get_current_turn_id(self):
+                if hasattr(self.whispey, '_current_turn_context'):
+                    return self.whispey._current_turn_context.get('turn_id')
+                return 'unknown_turn'
+
+            def _get_turn_sequence_number(self):
+                if hasattr(self.whispey, '_current_turn_context'):
+                    return self.whispey._current_turn_context.get('turn_sequence', 0)
+                return 0
+
             def _extract_request_id_comprehensive(self, span):
-                """Enhanced request_id extraction with multiple fallback methods"""
                 span_attrs = span.attributes or {}
                 
                 # Method 1: Direct request_id attributes
@@ -265,9 +235,8 @@ class LivekitObserve:
                     return synthetic_id
                 
                 return None
-            
+
             def _get_request_id_source(self, span, request_id):
-                """Determine how the request_id was obtained"""
                 if not request_id:
                     return 'none'
                 
@@ -296,11 +265,10 @@ class LivekitObserve:
                 
                 return 'synthetic'
         
-        tracer_provider.add_span_processor(WhispeySpanProcessor(self))
+        tracer_provider.add_span_processor(WhispeySpanCollector(self))
 
         from livekit.agents.telemetry import set_tracer_provider
         set_tracer_provider(tracer_provider, metadata={'session_id': session_id})
-
 
 
     
