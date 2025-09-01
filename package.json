@@ -49,6 +49,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "eslint": "^9.34.0",
     "fumadocs-core": "^15.7.5",
     "fumadocs-mdx": "^11.8.1",
     "fumadocs-ui": "^15.7.5",
@@ -78,7 +79,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.16",
-    "eslint": "^9",
     "eslint-config-next": "15.4.1",
     "tailwindcss": "^4.1.12"
   }
