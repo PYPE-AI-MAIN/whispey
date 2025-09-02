@@ -69,11 +69,11 @@ async def entrypoint(ctx: agents.JobContext):
     )
     
     # Export data on shutdown
-    async def shutdown():
+    async def whispey_shutdown():
         await whispey.export(session_id)
-    
-    ctx.add_shutdown_callback(shutdown)
-    
+
+    ctx.add_shutdown_callback(whispey_shutdown)
+
     # Start your session
     await session.start(room=ctx.room, agent=YourAgent())
 ```

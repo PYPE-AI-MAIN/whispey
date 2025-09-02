@@ -371,16 +371,20 @@ GET /v1/exports/{export_id}
 ### Python SDK
 
 ```python
-from obsera import LivekitObserve
+from whispey import LivekitObserve
 
 # Initialize
-obsera = LivekitObserve(agent_id="your-agent-id")
+whispey = LivekitObserve(agent_id="your-agent-id")
 
 # Start session
-session_id = obsera.start_session(session, **metadata)
+session_id = whispey.start_session(session, **metadata)
 
-# Export data
-result = await obsera.export(session_id)
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+await session.start(...)
 ```
 
 ### REST API Integration
@@ -389,7 +393,7 @@ result = await obsera.export(session_id)
 import requests
 
 # API configuration
-API_BASE = "https://api.obsera.ai/v1"
+API_BASE = "https://api.whispey.ai/v1"
 API_KEY = "your_api_key"
 
 headers = {

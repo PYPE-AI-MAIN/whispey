@@ -25,13 +25,14 @@ session_id = whispey.start_session(
     }
 )
 
-# Track support-specific events
-whispey.track_event(session_id, "issue_identified", {"category": "login_problem"})
-whispey.track_event(session_id, "solution_provided", {"method": "password_reset"})
-whispey.track_event(session_id, "issue_resolved", {"resolution_time": 180})
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
 
-# Export with resolution data
-await whispey.export(session_id, metadata={"resolution": "successful"})
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
 ```
 
 ## Sales Assistant
@@ -53,13 +54,14 @@ session_id = whispey.start_session(
     }
 )
 
-# Track sales funnel events
-whispey.track_event(session_id, "lead_qualified", {"score": 85})
-whispey.track_event(session_id, "demo_scheduled", {"date": "2024-02-15"})
-whispey.track_event(session_id, "proposal_sent", {"value": 7500})
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
 
-# Export sales data
-await whispey.export(session_id, metadata={"sales_stage": "proposal"})
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
 ```
 
 ## Appointment Scheduler
@@ -79,13 +81,14 @@ session_id = whispey.start_session(
     }
 )
 
-# Track booking flow
-whispey.track_event(session_id, "service_selected", {"service": "consultation"})
-whispey.track_event(session_id, "date_selected", {"date": "2024-02-20"})
-whispey.track_event(session_id, "appointment_confirmed", {"confirmation_id": "APT-12345"})
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
 
-# Export booking data
-await whispey.export(session_id, metadata={"booking_status": "confirmed"})
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
 ```
 
 ## Multi-Agent Analytics
@@ -110,9 +113,10 @@ for name, agent in agents.items():
 
 # Track consistent metrics across agents
 for name, session_id in sessions.items():
-    whispey.track_event(session_id, "conversation_started")
-    whispey.track_event(session_id, "response_generated")
-    whispey.track_event(session_id, "conversation_ended")
+    async def whispey_shutdown():
+        await agents[name].export(session_id)
+    ctx.add_shutdown_callback(whispey_shutdown)
+    await your_livekit_session.start(...)
 
 # Export all sessions for comparison
 for name, session_id in sessions.items():
@@ -136,16 +140,10 @@ session_id = whispey.start_session(
     }
 )
 
-# Track cost-related events
-whispey.track_metric(session_id, "tokens_used", 1500, "counter")
-whispey.track_metric(session_id, "api_calls", 1, "counter")
-whispey.track_metric(session_id, "response_time", 2.5, "gauge")
-
-# Export with cost analysis
-await whispey.export(session_id, metadata={
-    "estimated_cost": 0.045,
-    "cost_per_conversation": 0.015
-})
+async def whispey_shutdown():
+    await whispey.export(session_id)
+ctx.add_shutdown_callback(whispey_shutdown)
+await session.start(...)
 ```
 
 ## Dashboard Integration
@@ -164,16 +162,10 @@ session_id = whispey.start_session(
     }
 )
 
-# Track dashboard-specific metrics
-whispey.track_metric(session_id, "conversation_quality_score", 8.5, "gauge")
-whispey.track_metric(session_id, "customer_satisfaction", 4.2, "gauge")
-whispey.track_metric(session_id, "resolution_time", 180, "histogram")
-
-# Export for dashboard consumption
-result = await whispey.export(session_id, metadata={
-    "dashboard_update": True,
-    "alert_threshold": 7.0
-})
+async def whispey_shutdown():
+    await whispey.export(session_id)
+ctx.add_shutdown_callback(whispey_shutdown)
+result = await session.start(...)
 
 # Send to dashboard API
 if result.get("success"):
