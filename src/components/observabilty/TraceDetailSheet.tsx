@@ -139,8 +139,8 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
   }
 
   const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms.toFixed(3)}ms`
-    return `${(ms / 1000).toFixed(3)}s`
+    if (ms < 1000) return `${ms.toFixed(1)}ms`
+    return `${(ms / 1000).toFixed(2)}s`
   }
 
   const formatCost = (cost: number) => {

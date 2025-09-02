@@ -51,13 +51,15 @@ const CallDetailsDrawer: React.FC<CallDetailsDrawerProps> = ({ isOpen, callData,
   const [bugReportDialogOpen, setBugReportDialogOpen] = useState(false)
   const [selectedBugReport, setSelectedBugReport] = useState(0)
 
+  const shouldFetch = sessionId && sessionId !== 'undefined'
+
   const {
     data: transcriptLogs,
     loading,
     error,
   } = useSupabaseQuery("pype_voice_metrics_logs", {
     select: "*",
-    filters: [{ column: "session_id", operator: "eq", value: sessionId }],
+    filters: shouldFetch ? [{ column: "session_id", operator: "eq", value: sessionId }] : [],
     orderBy: { column: "unix_timestamp", ascending: true },
   })
 

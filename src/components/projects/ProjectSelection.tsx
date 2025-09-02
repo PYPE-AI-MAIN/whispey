@@ -24,9 +24,11 @@ interface Project {
   agent_count?: number // Adding agent count for workspace context
 }
 
-interface ProjectSelectionProps {}
+interface ProjectSelectionProps {
+  isAuthLoaded: boolean
+}
 
-const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
+const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = false}) => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -63,7 +65,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
 
   useEffect(() => {
     fetchProjects()
-  }, [])
+  }, [isAuthLoaded])
 
 
   const refetch = fetchProjects;
@@ -193,21 +195,88 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
     (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
   ) || []
 
-  if (loading) {
+  if (loading || !isAuthLoaded) {
     return (
       <div className="min-h-screen bg-project-gradient">
         <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
         <div className="relative z-10">
-          <Header />
-          <div className="flex items-center justify-center py-32">
-            <div className="text-center space-y-4">
-              <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-900">Loading workspaces</h3>
-                <p className="text-xs text-gray-500">This should only take a moment</p>
+          
+          <main className="max-w-[1400px] mx-auto px-6 py-8">
+            {/* Header Skeleton */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-8 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
+                  </div>
+                  <div className="h-4 w-96 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+                <div className="h-10 w-36 bg-gray-200 rounded-lg animate-pulse"></div>
+              </div>
+
+              {/* Controls Skeleton */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-80 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="h-8 w-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="h-8 w-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+                <div className="h-8 w-20 bg-gray-200 rounded-lg animate-pulse"></div>
               </div>
             </div>
-          </div>
+
+            {/* Workspace Grid Skeleton */}
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Card key={index} className="bg-white/80 backdrop-blur-sm border border-gray-200/60">
+                  <CardContent className="p-6">
+                    {/* Header Skeleton */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Avatar Skeleton */}
+                        <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse flex-shrink-0 relative">
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gray-300 rounded-full animate-pulse"></div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          {/* Title and Status */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse"></div>
+                          </div>
+                          {/* Badges */}
+                          <div className="flex items-center gap-2">
+                            <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+                            <div className="h-5 w-12 bg-gray-200 rounded-full animate-pulse"></div>
+                            <div className="h-5 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Menu Button Skeleton */}
+                      <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+
+                    {/* Description Skeleton */}
+                    <div className="space-y-2 mb-6">
+                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+
+                    {/* Footer Skeleton */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-3 h-3 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </main>
         </div>
       </div>
     )
@@ -218,7 +287,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
       <div className="min-h-screen bg-project-gradient">
         <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
         <div className="relative z-10">
-          <Header />
           <div className="flex items-center justify-center py-32">
             <div className="text-center space-y-6 max-w-sm">
               <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto">
@@ -246,8 +314,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = () => {
     <div className="min-h-screen bg-project-gradient">
       <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
       <div className="relative z-10">
-        <Header />
-        
         <main className="max-w-[1400px] mx-auto px-6 py-8">
           {/* Updated Header */}
           <div className="mb-8">
