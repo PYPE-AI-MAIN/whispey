@@ -279,7 +279,7 @@ result = await whispey.export(
 **"Session not found" Error**
 ```python
 # Ensure session_id is stored correctly
-session_id = obsera.start_session(session)
+session_id = whispey.start_session(session)
 print(f"Session ID: {session_id}")  # Save this
 ```
 
@@ -287,7 +287,7 @@ print(f"Session ID: {session_id}")  # Save this
 ```python
 # Allow time for metrics collection
 await asyncio.sleep(1)
-result = await obsera.export(session_id)
+result = await whispey.export(session_id)
 ```
 
 **API Authentication Error**
