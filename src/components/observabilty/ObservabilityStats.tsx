@@ -49,7 +49,6 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       const metadata = typeof call.metadata === "string" ? JSON.parse(call?.metadata?.toString() || "") : call?.metadata
 
       const bugData = metadata?.bug_flagged_turns || null
-      console.log({bugData})
       return metadata?.bug_flagged_turns || null
     } catch (e) {
       return null

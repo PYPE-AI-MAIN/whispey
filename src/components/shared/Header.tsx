@@ -25,6 +25,7 @@ function Header({ breadcrumb }: HeaderProps) {
     project?: string;
     item?: string;
   } | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -36,6 +37,10 @@ function Header({ breadcrumb }: HeaderProps) {
       setBreadcrumbState(breadcrumb)
     }
   }, [breadcrumb])
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Get user's display name
   const getUserDisplayName = () => {
@@ -179,10 +184,10 @@ function Header({ breadcrumb }: HeaderProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* User Profile Section with Loading State */}
+            {/* User Profile Section with Loading State - FIXED */}
             <div className="flex items-center gap-3 pl-4 ml-2 border-l border-gray-200">
-              {!isLoaded ? (
-                // Loading skeleton
+              {!isHydrated || !isLoaded ? (
+                // Always show skeleton during SSR and initial load
                 <>
                   <div className="hidden sm:flex flex-col items-end">
                     <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
@@ -193,7 +198,7 @@ function Header({ breadcrumb }: HeaderProps) {
                   </div>
                 </>
               ) : (
-                // Actual user content
+                // Only show actual content after hydration AND Clerk is loaded
                 <SignedIn>
                   <div className="hidden sm:flex flex-col items-end">
                     <p className="text-sm font-semibold text-gray-900 leading-none">{getUserDisplayName()}</p>
@@ -235,7 +240,7 @@ function Header({ breadcrumb }: HeaderProps) {
         {/* Subtle bottom gradient */}
         <div className="h-px bg-gradient-to-r from-transparent via-gray-200/50 to-transparent"></div>
       </div>
-      </header>
+    </header>
   );
 }
 
