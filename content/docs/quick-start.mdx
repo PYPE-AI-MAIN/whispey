@@ -58,8 +58,14 @@ session_id = whispey.start_session(
     customer_name="John Doe"     # Optional
 )
 
-# Export data when done
-await whispey.export(session_id)
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
 ```
 
 ## Next Steps

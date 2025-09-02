@@ -106,30 +106,7 @@ result = await whispey.export(
 )
 ```
 
-### track_event
-
-Track custom events:
-
-```python
-whispey.track_event(
-    session_id,                 # Required: Session ID
-    event_name,                 # Required: Event name
-    event_data: dict = None     # Optional: Event data
-)
-```
-
-### track_metric
-
-Track custom metrics:
-
-```python
-whispey.track_metric(
-    session_id,                 # Required: Session ID
-    metric_name,                # Required: Metric name
-    metric_value,               # Required: Metric value
-    metric_type: str = "counter"  # Optional: Metric type
-)
-```
+<!-- Removed track_event/track_metric from API surface in docs -->
 
 ## Error Codes
 
@@ -164,9 +141,7 @@ whispey = LivekitObserve(
 # Start session
 session_id = whispey.start_session(your_session)
 
-# Track custom events
-whispey.track_event(session_id, "user_completed_task", {"task": "booking"})
-
+# Basic flow only
 # Export data
 result = await whispey.export(session_id)
 ```
@@ -186,10 +161,7 @@ session_id = whispey.start_session(
     }
 )
 
-# Track multiple events
-whispey.track_event(session_id, "call_started")
-whispey.track_event(session_id, "user_identified", {"user_type": "premium"})
-whispey.track_event(session_id, "call_ended", {"duration": 300})
+result = await whispey.export(session_id)
 
 # Export with recording
 result = await whispey.export(

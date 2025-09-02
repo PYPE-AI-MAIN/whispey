@@ -54,8 +54,14 @@ session_id = whispey.start_session(
     customer_name="John Doe"     # Optional
 )
 
-# Export data when done
-await whispey.export(session_id)
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
 ```
 
 ## Advanced Configuration
@@ -106,7 +112,7 @@ LivekitObserve(
 
 ### start_session
 
-Start tracking a new session:
+Start a new session:
 
 ```python
 session_id = whispey.start_session(
@@ -130,30 +136,7 @@ result = await whispey.export(
 )
 ```
 
-### track_event
-
-Track custom events:
-
-```python
-whispey.track_event(
-    session_id,                 # Required: Session ID
-    event_name,                 # Required: Event name
-    event_data: dict = None     # Optional: Event data
-)
-```
-
-### track_metric
-
-Track custom metrics:
-
-```python
-whispey.track_metric(
-    session_id,                 # Required: Session ID
-    metric_name,                # Required: Metric name
-    metric_value,               # Required: Metric value
-    metric_type: str = "counter"  # Optional: Metric type
-)
-```
+<!-- Removed custom event/metric tracking to keep setup simple -->
 
 ## Next Steps
 
