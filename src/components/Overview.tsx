@@ -45,8 +45,6 @@ import {
 import { Loader2, MoreHorizontal, Trash2, Download } from 'lucide-react'
 import { EnhancedChartBuilder, ChartProvider } from './EnhancedChartBuilder'
 import { FloatingActionMenu } from './FloatingActionMenu'
-
-
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { useUser } from "@clerk/nextjs"
 import CustomTotalsBuilder from './CustomTotalBuilds'
@@ -57,8 +55,6 @@ import { Button } from './ui/button'
 import { supabase } from '@/lib/supabase'
 import Papa from 'papaparse'
 
-
-
 interface OverviewProps {
   project: any
   agent: any
@@ -68,6 +64,7 @@ interface OverviewProps {
   }
   quickFilter?: string
   isCustomRange?: boolean
+  isLoading?: boolean // New prop from parent
 }
 
 const ICON_COMPONENTS = {
@@ -88,24 +85,6 @@ const COLOR_CLASSES = {
   emerald: 'bg-emerald-100 text-emerald-600'
 }
 
-const subDays = (date: Date, days: number) => {
-  const result = new Date(date)
-  result.setDate(result.getDate() - days)
-  return result
-}
-
-const formatDateISO = (date: Date) => {
-  return date.toISOString().split('T')[0]
-}
-
-const formatDateDisplay = (date: Date) => {
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
-
 const AVAILABLE_COLUMNS = [
   { key: 'customer_number', label: 'Customer Number', type: 'text' as const },
   { key: 'duration_seconds', label: 'Duration (seconds)', type: 'number' as const },
@@ -119,28 +98,88 @@ const AVAILABLE_COLUMNS = [
   { key: 'transcription_metrics', label: 'Transcription Metrics', type: 'jsonb' as const }
 ]
 
+// Skeleton components for different sections
+function MetricsGridSkeleton({ role }: { role: string | null }) {
+  const getVisibleCardCount = () => {
+    if (role === 'user') return 4 // Hide cost cards for users
+    return 6 // Show all cards for other roles
+  }
+
+  return (
+    <div className="grid grid-cols-6 gap-4">
+      {Array.from({ length: getVisibleCardCount() }).map((_, index) => (
+        <div key={index} className="group">
+          <div className="bg-white border border-gray-300 rounded-xl shadow-sm">
+            <div className="p-5">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-9 h-9 bg-gray-100 rounded-lg animate-pulse"></div>
+                <div className="w-12 h-5 bg-gray-100 rounded animate-pulse"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-20 bg-gray-200 animate-pulse rounded"></div>
+                <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+                <div className="h-3 w-16 bg-gray-100 animate-pulse rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ChartGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-6">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="bg-white border border-gray-300 rounded-xl shadow-sm">
+          <div className="border-b border-gray-200 px-7 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-9 h-9 bg-gray-100 rounded-lg animate-pulse"></div>
+                <div>
+                  <div className="h-5 w-32 bg-gray-200 animate-pulse rounded mb-2"></div>
+                  <div className="h-4 w-48 bg-gray-100 animate-pulse rounded"></div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="h-4 w-12 bg-gray-100 animate-pulse rounded mb-1"></div>
+                <div className="h-5 w-8 bg-gray-200 animate-pulse rounded"></div>
+              </div>
+            </div>
+          </div>
+          <div className="p-7">
+            <div className="h-80 bg-gray-50 rounded-lg animate-pulse flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const Overview: React.FC<OverviewProps> = ({ 
   project, 
   agent,
-  dateRange
+  dateRange,
+  isLoading: parentLoading
 }) => {
 
   const [role, setRole] = useState<string | null>(null)
   const [customTotals, setCustomTotals] = useState<CustomTotalConfig[]>([])
   const [customTotalResults, setCustomTotalResults] = useState<CustomTotalResult[]>([])
   const [loadingCustomTotals, setLoadingCustomTotals] = useState(false)
-  const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
+  const [roleLoading, setRoleLoading] = useState(true)
 
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
-
-
-
-  const { data: analytics, loading, error } = useOverviewQuery({
-    agentId: agent.id,
+  // Data fetching - only run when we have agent data
+  const { data: analytics, loading: analyticsLoading, error } = useOverviewQuery({
+    agentId: agent?.id,
     dateFrom: dateRange.from,
-    dateTo: dateRange.to
+    dateTo: dateRange.to,
   })
 
   const { 
@@ -148,11 +187,11 @@ const Overview: React.FC<OverviewProps> = ({
     transcriptionFields, 
     loading: fieldsLoading,
     error: fieldsError 
-  } = useDynamicFields(agent.id)
+  } = useDynamicFields(agent?.id)
 
-
+  // Load user role
   useEffect(() => {
-    if (userEmail) {
+    if (userEmail && project?.id && !parentLoading) {
       const getUserRole = async () => {
         setRoleLoading(true)
         try {
@@ -160,21 +199,22 @@ const Overview: React.FC<OverviewProps> = ({
           setRole(userRole)
         } catch (error) {
           console.error('Failed to load user role:', error)
-          setRole('user') // Default to most restrictive role on error
+          setRole('user')
         } finally {
           setRoleLoading(false)
         }
       }
       getUserRole()
+    } else if (parentLoading) {
+      setRoleLoading(true) // Keep role loading while parent loads
     } else {
       setRoleLoading(false)
-      setRole('user') // Default when no user email
+      setRole('user')
     }
-  }, [userEmail, project.id])
-
-
+  }, [userEmail, project?.id, parentLoading])
 
   const loadCustomTotals = async () => {
+    if (!project?.id || !agent?.id) return
     try {
       const configs = await CustomTotalsService.getCustomTotals(project.id, agent.id)
       setCustomTotals(configs)
@@ -184,14 +224,14 @@ const Overview: React.FC<OverviewProps> = ({
   }
 
   useEffect(() => {
-    if (role !== null && !roleLoading) {
+    if (role !== null && !roleLoading && !parentLoading) {
       loadCustomTotals()
     }
-  }, [role, roleLoading])
+  }, [role, roleLoading, parentLoading, project?.id, agent?.id])
 
   useEffect(() => {
     const run = async () => {
-      if (customTotals.length === 0 || roleLoading) return
+      if (customTotals.length === 0 || roleLoading || parentLoading || !agent?.id) return
       setLoadingCustomTotals(true)
       try {
         const results = await CustomTotalsService.batchCalculateCustomTotals(
@@ -208,33 +248,9 @@ const Overview: React.FC<OverviewProps> = ({
       }
     }
     run()
-  }, [customTotals, dateRange.from, dateRange.to, roleLoading, agent.id])
+  }, [customTotals, dateRange.from, dateRange.to, roleLoading, parentLoading, agent?.id])
 
-  const calculateCustomTotals = async () => {
-    if (customTotals.length === 0) return
-    
-    setLoadingCustomTotals(true)
-    try {
-      const results = await Promise.all(
-        customTotals.map(config =>
-          CustomTotalsService.calculateCustomTotal(
-            config, 
-            agent.id, 
-            dateRange.from, 
-            dateRange.to
-          )
-        )
-      )
-
-      setCustomTotalResults(results)
-    } catch (error) {
-      console.error('Failed to calculate custom totals:', error)
-    } finally {
-      setLoadingCustomTotals(false)
-    }
-  }
-
-  // Build PostgREST-friendly filters and OR string to mirror SQL logic (AND vs OR)
+  // Build PostgREST-friendly filters and OR string to mirror SQL logic
   const buildFiltersForDownload = (
     config: CustomTotalConfig,
     agentId: string,
@@ -281,7 +297,6 @@ const Overview: React.FC<OverviewProps> = ({
         case 'json_less_than':
           return { column: col.includes('->') ? `${col}::numeric` : col, operator: 'lt', value: f.value }
         case 'json_exists': {
-          // Represent as a nested and() for OR usage; for AND we add two filters
           return { column: col, operator: 'json_exists', value: null }
         }
         default:
@@ -295,7 +310,6 @@ const Overview: React.FC<OverviewProps> = ({
     if (config.filterLogic === 'OR' && filters.length > 0) {
       const parts = filters.map(f => {
         if (f.operator === 'json_exists') {
-          // and(col.not.is.null,col.neq.)
           return `and(${f.column}.not.is.null,${f.column}.neq.)`
         }
         if (f.operator === 'eq') return `${f.column}.eq.${encodeURIComponent(String(f.value))}`
@@ -322,14 +336,12 @@ const Overview: React.FC<OverviewProps> = ({
 
   const handleDownloadCustomTotal = async (config: CustomTotalConfig) => {
     try {
-      // Base select: include common columns + metadata/transcription as needed
       let query = supabase
         .from('pype_voice_call_logs')
         .select('id,agent_id,customer_number,call_id,call_ended_reason,call_started_at,call_ended_at,duration_seconds,metadata,transcription_metrics,avg_latency,created_at')
         .order('created_at', { ascending: false })
         .limit(2000)
 
-      // Build filters mirroring SQL
       const { andFilters, orString } = buildFiltersForDownload(config, agent.id, dateRange?.from, dateRange?.to)
       for (const f of andFilters) {
         switch (f.operator) {
@@ -419,7 +431,6 @@ const Overview: React.FC<OverviewProps> = ({
         }
       })
 
-
       if (!rows.length) {
         alert('No logs found for this custom total and date range.')
         return
@@ -441,13 +452,12 @@ const Overview: React.FC<OverviewProps> = ({
     }
   }
 
-
   const handleSaveCustomTotal = async (config: CustomTotalConfig) => {
-
+    if (!project?.id || !agent?.id) return
     try {
       const result = await CustomTotalsService.saveCustomTotal(config, project.id, agent.id)
       if (result.success) {
-        await loadCustomTotals() // Reload the list
+        await loadCustomTotals()
       } else {
         alert(`Failed to save: ${result.error}`)
       }
@@ -457,14 +467,13 @@ const Overview: React.FC<OverviewProps> = ({
     }
   }
 
-  // Handle deleting custom total
   const handleDeleteCustomTotal = async (configId: string) => {
     if (!confirm('Are you sure you want to delete this custom total?')) return
 
     try {
       const result = await CustomTotalsService.deleteCustomTotal(configId)
       if (result.success) {
-        await loadCustomTotals() // Reload the list
+        await loadCustomTotals()
       } else {
         alert(`Failed to delete: ${result.error}`)
       }
@@ -479,7 +488,6 @@ const Overview: React.FC<OverviewProps> = ({
     
     const value = typeof result.value === 'number' ? result.value : parseFloat(result.value as string) || 0
     
-    // Format based on aggregation type
     switch (config.aggregation) {
       case 'AVG':
         return value.toFixed(2)
@@ -506,20 +514,13 @@ const Overview: React.FC<OverviewProps> = ({
     ? (analytics.successfulCalls / analytics.totalCalls) * 100 
     : 0
 
-
-  if (loading || roleLoading || role === null) {
+  // Show skeleton while parent is loading, role is loading, or analytics is loading
+  if (parentLoading || roleLoading || analyticsLoading) {
     return (
-      <div className="h-full bg-gray-25 flex items-center justify-center" style={{ backgroundColor: '#fafafa' }}>
-        <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="w-16 h-16 bg-white rounded-2xl border border-gray-200 flex items-center justify-center mx-auto shadow-sm">
-              <CircleNotch weight="light" className="w-7 h-7 animate-spin text-gray-400" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-medium text-gray-900">Loading Analytics</h3>
-            <p className="text-sm text-gray-500">Fetching your dashboard data</p>
-          </div>
+      <div className="h-full" style={{ backgroundColor: '#fafafa' }}>
+        <div className="p-8 space-y-8">
+          <MetricsGridSkeleton role={role} />
+          <ChartGridSkeleton />
         </div>
       </div>
     )
@@ -527,635 +528,29 @@ const Overview: React.FC<OverviewProps> = ({
 
   if (error) {
     return (
-      <div className="h-full bg-gray-25 flex items-center justify-center p-6" style={{ backgroundColor: '#fafafa' }}>
-        <div className="text-center space-y-6 max-w-sm">
-          <div className="w-16 h-16 bg-white rounded-2xl border border-red-200 flex items-center justify-center mx-auto shadow-sm">
-            <Warning weight="light" className="w-7 h-7 text-red-400" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-medium text-gray-900">Unable to Load Analytics</h3>
-            <p className="text-sm text-gray-500 leading-relaxed">{error}</p>
+      <div className="h-full" style={{ backgroundColor: '#fafafa' }}>
+        <div className="p-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center space-y-6 max-w-sm">
+              <div className="w-16 h-16 bg-white rounded-2xl border border-red-200 flex items-center justify-center mx-auto shadow-sm">
+                <Warning weight="light" className="w-7 h-7 text-red-400" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium text-gray-900">Unable to Load Analytics</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{error}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="h-full" style={{ backgroundColor: '#fafafa' }}>
-      <div className="p-8 space-y-8">
-        {analytics ? (
-          <>
-            {/* Smaller Metrics Grid */}
-            <div className="grid grid-cols-6 gap-4">
-              {/* Total Calls */}
-              <div className="group">
-                <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                        <Phone weight="regular" className="w-5 h-5 text-blue-600" />
-                      </div>
-                      
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Calls</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalCalls?.toLocaleString() || '0'}</p>
-                      <p className="text-xs text-gray-400 font-medium">All time</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Total Minutes */}
-              <div className="group">
-                <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-100">
-                        <Clock weight="regular" className="w-5 h-5 text-emerald-600" />
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
-                          {analytics?.totalCalls && analytics?.totalMinutes ? Math.round(analytics.totalMinutes / analytics.totalCalls) : 0}m avg
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Minutes</h3>
-                      <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalMinutes?.toLocaleString() || '0'}</p>
-                      <p className="text-xs text-gray-400 font-medium">Duration</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Total Cost */}
-              {role !== 'user' && (
-                <div className="group">
-                  <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                    <div className="p-5">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="p-2 bg-amber-50 rounded-lg border border-amber-100">
-                          <CurrencyDollar weight="regular" className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs font-medium text-gray-500">INR</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Cost</h3>
-                        <p className="text-2xl font-light text-gray-900 tracking-tight">₹{analytics?.totalCost?.toFixed(2) || '0.00'}</p>
-                        <p className="text-xs text-gray-400 font-medium">Cumulative</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Average Latency */}
-              {role !== 'user' && (
-                <div className="group">
-                  <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                    <div className="p-5">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="p-2 bg-purple-50 rounded-lg border border-purple-100">
-                          <Lightning weight="regular" className="w-5 h-5 text-purple-600" />
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">avg</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Response Time</h3>
-                        <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.averageLatency?.toFixed(2) || '0.00'}<span className="text-lg text-gray-400 ml-1">s</span></p>
-                        <p className="text-xs text-gray-400 font-medium">Performance</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Successful Calls */}
-              <div className="group">
-                <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-2 bg-green-50 rounded-lg border border-green-100">
-                        <CheckCircle weight="regular" className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md border border-green-100">
-                          <ArrowUp weight="bold" className="w-3 h-3 text-green-600" />
-                          <span className="text-xs font-bold text-green-600">
-                            {analytics ? successRate.toFixed(1) : '0.0'}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Successful</h3>
-                      <p className="text-2xl font-light text-green-600 tracking-tight">{analytics?.successfulCalls?.toLocaleString() || '0'}</p>
-                      <p className="text-xs text-gray-400 font-medium">Completed calls</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Failed Calls */}
-              <div className="group">
-                <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-2 bg-red-50 rounded-lg border border-red-100">
-                        <XCircle weight="regular" className="w-5 h-5 text-red-600" />
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md border border-red-100">
-                          <ArrowDown weight="bold" className="w-3 h-3 text-red-600" />
-                          <span className="text-xs font-bold text-red-600">
-                            {analytics ? (100 - successRate).toFixed(1) : '0.0'}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Failed</h3>
-                      <p className="text-2xl font-light text-red-600 tracking-tight">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls).toLocaleString() : '0'}</p>
-                      <p className="text-xs text-gray-400 font-medium">Incomplete calls</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-            {customTotals.map((config) => {
-              const result = customTotalResults.find(r => r.configId === config.id)
-
-              const IconComponent = ICON_COMPONENTS[config.icon as keyof typeof ICON_COMPONENTS] || Users
-              const colorClass = COLOR_CLASSES[config.color as keyof typeof COLOR_CLASSES] || COLOR_CLASSES.blue
-
-              return (
-                <div key={config.id} className="group">
-                  <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
-                    <div className="p-5">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={`p-2 ${colorClass.replace('bg-', 'bg-').replace('text-', 'border-')} rounded-lg border`}>
-                          <IconComponent weight="regular" className={`w-5 h-5 ${colorClass.split(' ')[1]}`} />
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 hover:bg-gray-100"
-                            onClick={() => handleDownloadCustomTotal(config)}
-                            title="Download matching logs"
-                          >
-                            <Download className="h-3 w-3 text-gray-400" />
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 w-6 p-0 hover:bg-gray-100"
-                              >
-                                <MoreHorizontal className="h-3 w-3 text-gray-400" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleDeleteCustomTotal(config.id)}>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider truncate" title={config.name}>
-                          {config.name}
-                        </h3>
-                        <p className="text-2xl font-light text-gray-900 tracking-tight">
-                          {loadingCustomTotals || !result ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            formatCustomTotalValue(result, config)
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-400 font-medium">
-                          {config.filters.length > 0 
-                            ? `${config.filters.length} filter${config.filters.length > 1 ? 's' : ''} (${config.filterLogic})`
-                            : 'No filters'
-                          }
-                        </p>
-                        {result?.error && (
-                          <p className="text-xs text-red-500 mt-1">
-                            {result.error}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-
-
-
-            </div>
-
-            {process.env.NODE_ENV === 'development' && (
-              <Card className="border-yellow-200 bg-yellow-50">
-                <CardContent className="p-4">
-                  <div className="text-sm">
-                    <strong>Debug - Dynamic Fields:</strong>
-                    <div>Metadata: {metadataFields.join(', ') || 'None'}</div>
-                    <div>Transcription: {transcriptionFields.join(', ') || 'None'}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {/* 2x2 Chart Grid */}
-            <div className="grid grid-cols-2 gap-6">
-              {/* Daily Calls Chart */}
-              <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="border-b border-gray-200 px-7 py-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                        <TrendUp weight="regular" className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Daily Call Volume</h3>
-                        <p className="text-sm text-gray-500 mt-0.5">Trend analysis over selected period</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <div className="text-xs font-medium text-gray-500">Peak</div>
-                        <div className="text-sm font-semibold text-gray-900">
-                        {analytics?.dailyData && analytics.dailyData.length > 0 
-                        ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
-                        : 0
-                      }
-                        </div>
-                      </div>
-                      <div className="w-px h-8 bg-gray-200"></div>
-                      <div className="text-right">
-                        <div className="text-xs font-medium text-gray-500">Avg</div>
-                        <div className="text-sm font-semibold text-gray-900">
-                        {analytics?.dailyData && analytics.dailyData.length > 0 
-                            ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
-                            : 0
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-7">
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                        <defs>
-                          <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#007aff" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#007aff" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="1 1" stroke="#f3f4f6" />
-                        <XAxis 
-                          dataKey="date" 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
-                          height={40}
-                          tickFormatter={(value) => {
-                            const date = new Date(value)
-                            return `${date.getMonth() + 1}/${date.getDate()}`
-                          }}
-                        />
-                        <YAxis 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
-                          width={45}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                            backdropFilter: 'blur(20px)'
-                          }}
-                          labelStyle={{ color: '#374151', fontWeight: '600' }}
-                          labelFormatter={(value) => {
-                            const date = new Date(value)
-                            return date.toLocaleDateString('en-US', { 
-                              weekday: 'short',
-                              month: 'short', 
-                              day: 'numeric' 
-                            })
-                          }}
-                          formatter={(value) => [`${value}`, 'Calls']}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="calls" 
-                          stroke="#007aff" 
-                          strokeWidth={3}
-                          fill="url(#callsGradient)"
-                          dot={false}
-                          activeDot={{ 
-                            r: 6, 
-                            fill: '#007aff', 
-                            strokeWidth: 3, 
-                            stroke: '#ffffff',
-                            filter: 'drop-shadow(0 2px 4px rgba(0, 122, 255, 0.3))'
-                          }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              {/* Professional Success Chart */}
-              <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="border-b border-gray-200 px-7 py-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-green-50 rounded-lg border border-green-100">
-                        <Target weight="regular" className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Success Analysis</h3>
-                        <p className="text-sm text-gray-500 mt-0.5">Call completion metrics</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-medium text-gray-500">Success Rate</div>
-                      <div className="text-2xl font-light text-green-600">{analytics ? successRate.toFixed(1) : '0.0'}%</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-7">
-                  <div className="h-80 flex items-center justify-center">
-                    <div className="relative">
-                      {/* Modern Ring Chart */}
-                      <div className="w-48 h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={successFailureData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={55}
-                              outerRadius={85}
-                              paddingAngle={2}
-                              dataKey="value"
-                              strokeWidth={0}
-                              startAngle={90}
-                              endAngle={450}
-                            >
-                              {successFailureData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              contentStyle={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '12px',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                                backdropFilter: 'blur(20px)'
-                              }}
-                              formatter={(value, name) => [`${value} calls`, name]}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      {/* Center Statistics */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <div className="text-3xl font-light text-gray-900 mb-1">{analytics?.totalCalls || 0}</div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total</div>
-                      </div>
-                    </div>
-                    {/* Legend */}
-                    <div className="ml-8 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#007AFF' }}></div>
-                        <div className="text-sm font-medium text-gray-700">Successful</div>
-                        <div className="text-sm font-light text-gray-500">{analytics?.successfulCalls || 0}</div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF3B30' }}></div>
-                        <div className="text-sm font-medium text-gray-700">Failed</div>
-                        <div className="text-sm font-light text-gray-500">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Daily Minutes Chart */}
-              <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="border-b border-gray-200 px-7 py-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                        <ChartBar weight="regular" className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Usage Minutes</h3>
-                        <p className="text-sm text-gray-500 mt-0.5">Daily conversation duration</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-7">
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
-                        <defs>
-                          <linearGradient id="minutesGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#007aff" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#007aff" stopOpacity={0.4}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="1 1" stroke="#f3f4f6" />
-                        <XAxis 
-                          dataKey="date" 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
-                          height={40}
-                          tickFormatter={(value) => {
-                            const date = new Date(value)
-                            return `${date.getMonth() + 1}/${date.getDate()}`
-                          }}
-                        />
-                        <YAxis 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
-                          width={40}
-                          tickFormatter={(value) => `${value}m`}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                            backdropFilter: 'blur(20px)'
-                          }}
-                          formatter={(value) => [`${value} min`, 'Duration']}
-                          labelFormatter={(value) => {
-                            const date = new Date(value)
-                            return date.toLocaleDateString('en-US', { 
-                              weekday: 'short',
-                              month: 'short', 
-                              day: 'numeric' 
-                            })
-                          }}
-                        />
-                        <Bar 
-                          dataKey="minutes" 
-                          fill="url(#minutesGradient)"
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              {/* Average Latency Chart */}
-              <div className="bg-white rounded-xl border border-gray-300 shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="border-b border-gray-200 px-7 py-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-orange-50 rounded-lg border border-orange-100">
-                        <Activity weight="regular" className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Response Performance</h3>
-                        <p className="text-sm text-gray-500 mt-0.5">Average latency metrics</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-7">
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
-                        <defs>
-                          <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ff9500" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#ff9500" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="1 1" stroke="#f3f4f6" />
-                        <XAxis 
-                          dataKey="date" 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
-                          height={40}
-                          tickFormatter={(value) => {
-                            const date = new Date(value)
-                            return `${date.getMonth() + 1}/${date.getDate()}`
-                          }}
-                        />
-                        <YAxis 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
-                          width={40}
-                          tickFormatter={(value) => `${value}s`}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                            backdropFilter: 'blur(20px)'
-                          }}
-                          formatter={(value) => [`${value}s`, 'Latency']}
-                          labelFormatter={(value) => {
-                            const date = new Date(value)
-                            return date.toLocaleDateString('en-US', { 
-                              weekday: 'short',
-                              month: 'short', 
-                              day: 'numeric' 
-                            })
-                          }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="avg_latency" 
-                          stroke="#ff9500" 
-                          strokeWidth={3}
-                          fill="url(#latencyGradient)"
-                          dot={false}
-                          activeDot={{ 
-                            r: 6, 
-                            fill: '#ff9500', 
-                            strokeWidth: 3, 
-                            stroke: '#ffffff',
-                            filter: 'drop-shadow(0 2px 4px rgba(255, 149, 0, 0.3))'
-                          }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Chart Analytics Section */}
-            <ChartProvider>
-              <div className="space-y-6">
-                <EnhancedChartBuilder 
-                  agentId={agent.id}
-                  dateFrom={dateRange.from}
-                  dateTo={dateRange.to}
-                  metadataFields={metadataFields}
-                  transcriptionFields={transcriptionFields}
-                  fieldsLoading={fieldsLoading}
-                />
-
-                {/* Floating Action Menu */}
-                {userEmail && !fieldsLoading && (
-                  <FloatingActionMenu
-                    metadataFields={metadataFields}
-                    transcriptionFields={transcriptionFields}
-                    agentId={agent.id}
-                    projectId={project.id}
-                    userEmail={userEmail}
-                    availableColumns={AVAILABLE_COLUMNS}
-                    onSaveCustomTotal={handleSaveCustomTotal}
-                  />
-                )}
-              </div>
-            </ChartProvider>
-          </>
-        ) : (
+  // No analytics data available
+  if (!analytics) {
+    return (
+      <div className="h-full" style={{ backgroundColor: '#fafafa' }}>
+        <div className="p-8">
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-8">
               <div className="w-20 h-20 bg-white rounded-2xl border border-gray-200 flex items-center justify-center mx-auto shadow-sm">
@@ -1169,7 +564,614 @@ const Overview: React.FC<OverviewProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-full" style={{ backgroundColor: '#fafafa' }}>
+      <div className="p-8 space-y-8">
+        {/* Metrics Grid - Now shows real data */}
+        <div className="grid grid-cols-6 gap-4">
+          {/* Total Calls */}
+          <div className="group">
+            <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
+                    <Phone weight="regular" className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Calls</h3>
+                  <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalCalls?.toLocaleString() || '0'}</p>
+                  <p className="text-xs text-gray-400 font-medium">All time</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Minutes */}
+          <div className="group">
+            <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <Clock weight="regular" className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
+                      {analytics?.totalCalls && analytics?.totalMinutes ? Math.round(analytics.totalMinutes / analytics.totalCalls) : 0}m avg
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Minutes</h3>
+                  <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.totalMinutes?.toLocaleString() || '0'}</p>
+                  <p className="text-xs text-gray-400 font-medium">Duration</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Cost - Only show if user has permission */}
+          {role !== 'user' && (
+            <div className="group">
+              <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-2 bg-amber-50 rounded-lg border border-amber-100">
+                      <CurrencyDollar weight="regular" className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-medium text-gray-500">INR</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Cost</h3>
+                    <p className="text-2xl font-light text-gray-900 tracking-tight">₹{analytics?.totalCost?.toFixed(2) || '0.00'}</p>
+                    <p className="text-xs text-gray-400 font-medium">Cumulative</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Average Latency - Only show if user has permission */}
+          {role !== 'user' && (
+            <div className="group">
+              <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-2 bg-purple-50 rounded-lg border border-purple-100">
+                      <Lightning weight="regular" className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">avg</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Response Time</h3>
+                    <p className="text-2xl font-light text-gray-900 tracking-tight">{analytics?.averageLatency?.toFixed(2) || '0.00'}<span className="text-lg text-gray-400 ml-1">s</span></p>
+                    <p className="text-xs text-gray-400 font-medium">Performance</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Successful Calls */}
+          <div className="group">
+            <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-green-50 rounded-lg border border-green-100">
+                    <CheckCircle weight="regular" className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md border border-green-100">
+                      <ArrowUp weight="bold" className="w-3 h-3 text-green-600" />
+                      <span className="text-xs font-bold text-green-600">
+                        {analytics ? successRate.toFixed(1) : '0.0'}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Successful</h3>
+                  <p className="text-2xl font-light text-green-600 tracking-tight">{analytics?.successfulCalls?.toLocaleString() || '0'}</p>
+                  <p className="text-xs text-gray-400 font-medium">Completed calls</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Failed Calls */}
+          <div className="group">
+            <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-2 bg-red-50 rounded-lg border border-red-100">
+                    <XCircle weight="regular" className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md border border-red-100">
+                      <ArrowDown weight="bold" className="w-3 h-3 text-red-600" />
+                      <span className="text-xs font-bold text-red-600">
+                        {analytics ? (100 - successRate).toFixed(1) : '0.0'}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Failed</h3>
+                  <p className="text-2xl font-light text-red-600 tracking-tight">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls).toLocaleString() : '0'}</p>
+                  <p className="text-xs text-gray-400 font-medium">Incomplete calls</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Totals - show loading state per card */}
+          {customTotals.map((config) => {
+            const result = customTotalResults.find(r => r.configId === config.id)
+            const IconComponent = ICON_COMPONENTS[config.icon as keyof typeof ICON_COMPONENTS] || Users
+            const colorClass = COLOR_CLASSES[config.color as keyof typeof COLOR_CLASSES] || COLOR_CLASSES.blue
+
+            return (
+              <div key={config.id} className="group">
+                <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-300">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`p-2 ${colorClass.replace('bg-', 'bg-').replace('text-', 'border-')} rounded-lg border`}>
+                        <IconComponent weight="regular" className={`w-5 h-5 ${colorClass.split(' ')[1]}`} />
+                      </div>
+
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-gray-100"
+                          onClick={() => handleDownloadCustomTotal(config)}
+                          title="Download matching logs"
+                        >
+                          <Download className="h-3 w-3 text-gray-400" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 w-6 p-0 hover:bg-gray-100"
+                            >
+                              <MoreHorizontal className="h-3 w-3 text-gray-400" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleDeleteCustomTotal(config.id)}>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider truncate" title={config.name}>
+                        {config.name}
+                      </h3>
+                      <p className="text-2xl font-light text-gray-900 tracking-tight">
+                        {loadingCustomTotals || !result ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          formatCustomTotalValue(result, config)
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-400 font-medium">
+                        {config.filters.length > 0 
+                          ? `${config.filters.length} filter${config.filters.length > 1 ? 's' : ''} (${config.filterLogic})`
+                          : 'No filters'
+                        }
+                      </p>
+                      {result?.error && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {result.error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {process.env.NODE_ENV === 'development' && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardContent className="p-4">
+              <div className="text-sm">
+                <strong>Debug - Dynamic Fields:</strong>
+                <div>Metadata: {metadataFields.join(', ') || 'None'}</div>
+                <div>Transcription: {transcriptionFields.join(', ') || 'None'}</div>
+              </div>
+            </CardContent>
+          </Card>
         )}
+
+        {/* 2x2 Chart Grid */}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Daily Calls Chart */}
+          <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="border-b border-gray-200 px-7 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
+                    <TrendUp weight="regular" className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Daily Call Volume</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Trend analysis over selected period</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-xs font-medium text-gray-500">Peak</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {analytics?.dailyData && analytics.dailyData.length > 0 
+                        ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
+                        : 0
+                      }
+                    </div>
+                  </div>
+                  <div className="w-px h-8 bg-gray-200"></div>
+                  <div className="text-right">
+                    <div className="text-xs font-medium text-gray-500">Avg</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {analytics?.dailyData && analytics.dailyData.length > 0 
+                        ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
+                        : 0
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-7">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+                    <defs>
+                      <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#007aff" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#007aff" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="1 1" stroke="#f3f4f6" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
+                      height={40}
+                      tickFormatter={(value) => {
+                        const date = new Date(value)
+                        return `${date.getMonth() + 1}/${date.getDate()}`
+                      }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
+                      width={45}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        backdropFilter: 'blur(20px)'
+                      }}
+                      labelStyle={{ color: '#374151', fontWeight: '600' }}
+                      labelFormatter={(value) => {
+                        const date = new Date(value)
+                        return date.toLocaleDateString('en-US', { 
+                          weekday: 'short',
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      }}
+                      formatter={(value) => [`${value}`, 'Calls']}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="calls" 
+                      stroke="#007aff" 
+                      strokeWidth={3}
+                      fill="url(#callsGradient)"
+                      dot={false}
+                      activeDot={{ 
+                        r: 6, 
+                        fill: '#007aff', 
+                        strokeWidth: 3, 
+                        stroke: '#ffffff',
+                        filter: 'drop-shadow(0 2px 4px rgba(0, 122, 255, 0.3))'
+                      }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Success Analysis Chart */}
+          <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="border-b border-gray-200 px-7 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-green-50 rounded-lg border border-green-100">
+                    <Target weight="regular" className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Success Analysis</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Call completion metrics</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-medium text-gray-500">Success Rate</div>
+                  <div className="text-2xl font-light text-green-600">{analytics ? successRate.toFixed(1) : '0.0'}%</div>
+                </div>
+              </div>
+            </div>
+            <div className="p-7">
+              <div className="h-80 flex items-center justify-center">
+                <div className="relative">
+                  <div className="w-48 h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={successFailureData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={85}
+                          paddingAngle={2}
+                          dataKey="value"
+                          strokeWidth={0}
+                          startAngle={90}
+                          endAngle={450}
+                        >
+                          {successFailureData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                            backdropFilter: 'blur(20px)'
+                          }}
+                          formatter={(value, name) => [`${value} calls`, name]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className="text-3xl font-light text-gray-900 mb-1">{analytics?.totalCalls || 0}</div>
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total</div>
+                  </div>
+                </div>
+                <div className="ml-8 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#007AFF' }}></div>
+                    <div className="text-sm font-medium text-gray-700">Successful</div>
+                    <div className="text-sm font-light text-gray-500">{analytics?.successfulCalls || 0}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF3B30' }}></div>
+                    <div className="text-sm font-medium text-gray-700">Failed</div>
+                    <div className="text-sm font-light text-gray-500">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Daily Minutes Chart */}
+          <div className="bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="border-b border-gray-200 px-7 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
+                    <ChartBar weight="regular" className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Usage Minutes</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Daily conversation duration</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-7">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
+                    <defs>
+                      <linearGradient id="minutesGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#007aff" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#007aff" stopOpacity={0.4}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="1 1" stroke="#f3f4f6" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
+                      height={40}
+                      tickFormatter={(value) => {
+                        const date = new Date(value)
+                        return `${date.getMonth() + 1}/${date.getDate()}`
+                      }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
+                      width={40}
+                      tickFormatter={(value) => `${value}m`}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                        backdropFilter: 'blur(20px)'
+                      }}
+                      formatter={(value) => [`${value} min`, 'Duration']}
+                      labelFormatter={(value) => {
+                        const date = new Date(value)
+                        return date.toLocaleDateString('en-US', { 
+                          weekday: 'short',
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      }}
+                    />
+                    <Bar 
+                      dataKey="minutes" 
+                      fill="url(#minutesGradient)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Average Latency Chart */}
+          <div className="bg-white rounded-xl border border-gray-300 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="border-b border-gray-200 px-7 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-orange-50 rounded-lg border border-orange-100">
+                    <Activity weight="regular" className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Response Performance</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">Average latency metrics</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-7">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
+                    <defs>
+                      <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ff9500" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#ff9500" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="1 1" stroke="#f3f4f6" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
+                      height={40}
+                      tickFormatter={(value) => {
+                        const date = new Date(value)
+                        return `${date.getMonth() + 1}/${date.getDate()}`
+                      }}
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
+                      width={40}
+                      tickFormatter={(value) => `${value}s`}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                        backdropFilter: 'blur(20px)'
+                      }}
+                      formatter={(value) => [`${value}s`, 'Latency']}
+                      labelFormatter={(value) => {
+                        const date = new Date(value)
+                        return date.toLocaleDateString('en-US', { 
+                          weekday: 'short',
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="avg_latency" 
+                      stroke="#ff9500" 
+                      strokeWidth={3}
+                      fill="url(#latencyGradient)"
+                      dot={false}
+                      activeDot={{ 
+                        r: 6, 
+                        fill: '#ff9500', 
+                        strokeWidth: 3, 
+                        stroke: '#ffffff',
+                        filter: 'drop-shadow(0 2px 4px rgba(255, 149, 0, 0.3))'
+                      }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart Analytics Section */}
+        <ChartProvider>
+          <div className="space-y-6">
+            <EnhancedChartBuilder 
+              agentId={agent?.id}
+              dateFrom={dateRange.from}
+              dateTo={dateRange.to}
+              metadataFields={metadataFields}
+              transcriptionFields={transcriptionFields}
+              fieldsLoading={fieldsLoading}
+            />
+
+            {/* Floating Action Menu - only show when we have required data */}
+            {userEmail && !fieldsLoading && agent?.id && project?.id && (
+              <FloatingActionMenu
+                metadataFields={metadataFields}
+                transcriptionFields={transcriptionFields}
+                agentId={agent.id}
+                projectId={project.id}
+                userEmail={userEmail}
+                availableColumns={AVAILABLE_COLUMNS}
+                onSaveCustomTotal={handleSaveCustomTotal}
+              />
+            )}
+          </div>
+        </ChartProvider>
       </div>
     </div>
   )

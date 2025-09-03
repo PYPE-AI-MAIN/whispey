@@ -9,7 +9,7 @@ const supabase = createClient(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params:any }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth()
@@ -21,7 +21,7 @@ export async function POST(
 
     const { id: projectId } = await params // UUID, no parseInt()
 
-    console.log("projectId",projectId)
+    console.log("projectId", projectId)
 
     const body = await request.json()
     const { email, role = 'member' } = body
@@ -37,20 +37,24 @@ export async function POST(
 
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
-
     console.log("userEmail", userEmail)
-    // Check current user access to project
-    const { data: userProject } = await supabase
+    
+    // Check current user access to project - handle case where no rows exist
+    const { data: userProject, error: userProjectError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role')
       .eq('email', userEmail)
       .eq('project_id', projectId)
-      .single()
-      
+      .maybeSingle() // Use maybeSingle() instead of single() to handle 0 rows
+
+    if (userProjectError) {
+      console.error('Error checking user project access:', userProjectError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
     let hasAdminAccess = false
 
-    console.log("userProjects", userProject)
+    console.log("userProject", userProject)
 
     if (userProject && ['admin', 'owner'].includes(userProject.role)) {
       hasAdminAccess = true
@@ -64,34 +68,49 @@ export async function POST(
     }
 
     // Check if already added by email
-    const { data: existingMapping } = await supabase
+    const { data: existingMapping, error: existingMappingError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('id')
       .eq('email', email.trim())
       .eq('project_id', projectId)
-      .single()
+      .maybeSingle()
+
+    if (existingMappingError) {
+      console.error('Error checking existing mapping:', existingMappingError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
     if (existingMapping) {
       return NextResponse.json({ error: 'Email already added to project' }, { status: 400 })
     }
 
     // Check if user already exists in users table
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: existingUserError } = await supabase
       .from('pype_voice_users')
       .select('clerk_id')
       .eq('email', email.trim())
-      .single()
+      .maybeSingle()
+
+    if (existingUserError) {
+      console.error('Error checking existing user:', existingUserError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
     const permissions = getPermissionsByRole(role)
 
     if (existingUser?.clerk_id) {
-      // If the user exists, check if they’re already mapped
-      const { data: existingUserProject } = await supabase
+      // If the user exists, check if they're already mapped
+      const { data: existingUserProject, error: existingUserProjectError } = await supabase
         .from('pype_voice_email_project_mapping')
         .select('id')
         .eq('clerk_id', existingUser.clerk_id)
         .eq('project_id', projectId)
-        .single()
+        .maybeSingle()
+
+      if (existingUserProjectError) {
+        console.error('Error checking existing user project:', existingUserProjectError)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+      }
 
       if (existingUserProject) {
         return NextResponse.json(
@@ -116,7 +135,7 @@ export async function POST(
         .single()
 
       if (error) {
-        console.error(error)
+        console.error('Error inserting new mapping:', error)
         return NextResponse.json({ error: 'Failed to add member' }, { status: 500 })
       }
 
@@ -158,7 +177,7 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth()
@@ -166,21 +185,18 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { params } = await context;
+    const { id: projectId } = await params // Properly await params
 
-    const projectId = params.id
-
-    const { data: accessCheck,error:accessError } = await supabase
+    // Use maybeSingle() instead of single() to handle case where user has no access
+    const { data: accessCheck, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('id')
       .eq('clerk_id', userId)
       .eq('project_id', projectId)
       .eq('is_active', true)
-      .single()
-    
+      .maybeSingle()
 
-    if(accessError)
-    {
+    if (accessError) {
       console.error("Access error:", accessError)
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
@@ -189,23 +205,25 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-
     const { data: members, error } = await supabase
-    .from('pype_voice_email_project_mapping')
-    .select(`
-      id,
-      clerk_id,
-      email,
-      role,
-      permissions,
-      is_active,
-      added_by_clerk_id,
-      user:pype_voice_users!fk_mail_id(*)
-    `)
-    .eq('project_id', projectId)
-    .eq('is_active', true)
-  
-    console.log("error",error)
+      .from('pype_voice_email_project_mapping')
+      .select(`
+        id,
+        clerk_id,
+        email,
+        role,
+        permissions,
+        is_active,
+        added_by_clerk_id,
+        user:pype_voice_users!fk_mail_id(*)
+      `)
+      .eq('project_id', projectId)
+      .eq('is_active', true)
+
+    if (error) {
+      console.error("Error fetching members:", error)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
     console.log("members", members)
 

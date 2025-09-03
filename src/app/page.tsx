@@ -5,6 +5,8 @@ import ProjectSelection from '../components/projects/ProjectSelection'
 import LoadingSpinner from '../components/shared/LoadingSpinner'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import Header from '../components/shared/Header'
+
 
 export default function Home() {
   const { isSignedIn, isLoaded } = useUser()
@@ -12,12 +14,15 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
-      router.push('/sign') // This ensures your custom page is used
+      router.push('/sign')
     }
   }, [isLoaded, isSignedIn, router])
 
-  if (!isLoaded) return <LoadingSpinner />
-  if (!isSignedIn) return <LoadingSpinner />
 
-  return <ProjectSelection />
+  return (
+    <>
+    <Header />
+    <ProjectSelection isAuthLoaded={isLoaded} />
+    </>
+  )
 }
