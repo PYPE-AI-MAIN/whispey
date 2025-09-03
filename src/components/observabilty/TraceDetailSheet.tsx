@@ -188,18 +188,6 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       status: trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0 ? "success" : "inactive",
     },
     {
-      id: "eou",
-      name: "EOU",
-      icon: <Activity className="w-3 h-3" />,
-      color: "orange",
-      active: !!trace.eou_metrics,
-      config: eouConfig,
-      metrics: trace.eou_metrics,
-      inputType: "Audio Stream",
-      outputType: "Speech Events",
-      status: trace.eou_metrics ? "success" : "inactive",
-    },
-    {
       id: "stt",
       name: "STT",
       icon: <Mic className="w-3 h-3" />,
@@ -248,8 +236,6 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
     }
   ].filter(stage => stage.active) 
 
-  // log for eou config and all
-  console.log({eouConfig, trace})
 
 
   const renderNodeSelector = () => (
