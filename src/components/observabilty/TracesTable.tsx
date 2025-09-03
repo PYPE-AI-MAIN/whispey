@@ -68,7 +68,6 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
     orderBy: { column: "created_at", ascending: false }
   })
 
-  console.log({callData})
 
   // trace data
   const {

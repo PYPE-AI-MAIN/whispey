@@ -14,57 +14,52 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser()
 
   useEffect(() => {
-    // Initialize PostHog
-    posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-      person_profiles: 'identified_only',
-      before_send: (event: any) => {
-        // Check multiple possible email properties
-        const userEmail = event.properties?.$user_email || 
-                         event.properties?.email || 
-                         event.properties?.$email ||
-                         posthog.get_property('email'); // Get from identified user properties
-        
-        if (userEmail && blacklistedEmails.includes(userEmail.toLowerCase())) {
-          console.log('🚫 Blocking event for blacklisted email:', userEmail);
-          return null; // Don't send this event
-        }
-        return event;
-      },
-      // Disable automatic pageview tracking until user is identified
-      capture_pageview: false,
-    })
-    
-    console.log('🚀 PostHog initialized')
+    try {
+      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+        person_profiles: 'identified_only',
+        capture_pageview: false,
+        persistence: 'localStorage',
+        cross_subdomain_cookie: false,
+        secure_cookie: true,
+        autocapture: false,
+        capture_heatmaps: false,
+        disable_session_recording: false,
+        before_send: (event: any) => {
+          const userEmail = event.properties?.$user_email || 
+                           event.properties?.email || 
+                           event.properties?.$email ||
+                           posthog.get_property('email');
+          
+          if (userEmail && blacklistedEmails.includes(userEmail.toLowerCase())) {
+            return null;
+          }
+          return event;
+        },
+      })
+    } catch (error) {
+      console.error('PostHog init error:', error)
+    }
   }, [])
 
   // Handle user identification after PostHog is initialized
   useEffect(() => {
-    console.log('🔍 PostHogUserIdentifier effect triggered:', { isLoaded, hasUser: !!user })
     
     if (isLoaded && user) {
       // Get user email from Clerk
       const userEmail = user.emailAddresses?.[0]?.emailAddress
-      console.log('👤 User data:', { 
-        id: user.id, 
-        email: userEmail, 
-        firstName: user.firstName,
-      })
       
       if (userEmail) {
         // Check if user is blacklisted before identifying
         if (blacklistedEmails.includes(userEmail.toLowerCase())) {
-          console.log('🚫 User email is blacklisted, skipping PostHog identification:', userEmail);
           // Optionally disable session recording for blacklisted users
           posthog.stopSessionRecording();
           return;
         }
 
-        console.log('🔄 Resetting PostHog identity before identification...')
         posthog.reset()
         
         setTimeout(() => {
-          console.log('🎯 Identifying user in PostHog with email:', userEmail)
           
           // Identify user in PostHog
           posthog.identify(userEmail, {
@@ -79,13 +74,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           // Enable pageview tracking after identification
           posthog.capture('$pageview')
           
-          console.log('✅ PostHog user identified with email:', userEmail)
         }, 100)
       } else {
-        console.warn('⚠️ No email found for user, cannot identify in PostHog')
       }
     } else if (isLoaded && !user) {
-      console.log('🔄 User signed out, resetting PostHog identity')
       posthog.reset()
     }
   }, [user, isLoaded])
