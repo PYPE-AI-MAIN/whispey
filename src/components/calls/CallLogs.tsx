@@ -19,12 +19,75 @@ import { useUser } from "@clerk/nextjs"
 import { getUserProjectRole } from "@/services/getUserRole"
 import { useRouter } from "next/navigation"
 
-
-
 interface CallLogsProps {
   project: any
   agent: any
   onBack: () => void
+  isLoading?: boolean // New prop from parent
+}
+
+// Skeleton for the filter header
+function FilterHeaderSkeleton() {
+  return (
+    <div className="flex-none p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex items-center justify-between">
+        <div className="h-8 bg-muted animate-pulse rounded w-48"></div>
+        <div className="flex items-center gap-2">
+          <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
+          <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
+          <div className="h-8 bg-muted animate-pulse rounded w-8"></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Skeleton for table structure
+function TableSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="h-full overflow-x-auto overflow-y-hidden">
+        <div className="h-full overflow-y-auto" style={{ minWidth: "1020px" }}>
+          <Table className="w-full">
+            <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
+              <TableRow className="bg-muted/80 hover:bg-muted/80">
+                <TableHead className="font-semibold text-foreground min-w-[120px]">Customer Number</TableHead>
+                <TableHead className="font-semibold text-foreground min-w-[120px]">Call ID</TableHead>
+                <TableHead className="font-semibold text-foreground min-w-[120px]">Call Status</TableHead>
+                <TableHead className="font-semibold text-foreground min-w-[120px]">Duration</TableHead>
+                <TableHead className="font-semibold text-foreground min-w-[120px]">Start Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* Table row skeletons */}
+              {Array.from({ length: 8 }).map((_, index) => (
+                <TableRow key={index} className="border-b border-border/50">
+                  <TableCell className="py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-muted animate-pulse rounded-full"></div>
+                      <div className="h-5 w-24 bg-muted animate-pulse rounded"></div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                    <div className="h-6 w-16 bg-muted animate-pulse rounded-md"></div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                    <div className="h-6 w-20 bg-muted animate-pulse rounded-full"></div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                    <div className="h-5 w-12 bg-muted animate-pulse rounded"></div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                    <div className="h-5 w-32 bg-muted animate-pulse rounded"></div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function flattenAndPickColumns(
@@ -55,8 +118,6 @@ function flattenAndPickColumns(
   return flat;
 }
 
-
-
 const TruncatedText: React.FC<{ 
   text: string; 
   maxLength?: number;
@@ -74,7 +135,7 @@ const TruncatedText: React.FC<{
   )
 }
 
-// Dynamic JSON Cell Component - Fixed version with better text handling
+// Dynamic JSON Cell Component
 const DynamicJsonCell: React.FC<{ 
   data: any; 
   fieldKey: string;
@@ -143,13 +204,9 @@ const DynamicJsonCell: React.FC<{
   )
 }
 
-
-
-
-
-const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
-
+const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: parentLoading }) => {
   const router = useRouter()
+
   // Convert string to camelCase
   function toCamelCase(str: string) {
     return str
@@ -169,7 +226,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
         label: "Total Cost (₹)",
       },
       { key: "call_started_at", label: "Start Time" },
-      { key: "avg_latency", label: "Avg Latency (ms)",hidden: true },
+      { key: "avg_latency", label: "Avg Latency (ms)", hidden: true },
       { key: "total_llm_cost", label: "LLM Cost (₹)", hidden: true },
       { key: "total_tts_cost", label: "TTS Cost (₹)", hidden: true },
       { key: "total_stt_cost", label: "STT Cost (₹)", hidden: true }
@@ -185,38 +242,35 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
       'total_stt_cost',
       'avg_latency'
     ],
-    // Add other role restrictions as needed
-    // viewer: ['total_cost'],
-    // editor: [], // No restrictions
-    // admin: []  // No restrictions
   }
 
   const isColumnVisibleForRole = (columnKey: string, role: string | null): boolean => {
     if (!role) return false
     
     const restrictedColumns = ROLE_RESTRICTIONS[role as keyof typeof ROLE_RESTRICTIONS]
-    if (!restrictedColumns) return true // If role not in restrictions, show all
+    if (!restrictedColumns) return true
     
     return !restrictedColumns.includes(columnKey)
   }
 
-
-    const dynamicColumnsKey = (() => {
-      try {
-        const prompt = agent?.field_extractor_prompt;
-        if (typeof prompt === 'string') {
-          const parsed = JSON.parse(prompt);
-          return Array.isArray(parsed) ? parsed.map((item: any) => toCamelCase(item.key)) : [];
-        } else if (Array.isArray(prompt)) {
-          return prompt.map((item: any) => toCamelCase(item.key));
-        }
-        return [];
-      } catch (error) {
-        console.error('Error parsing field_extractor_prompt:', error);
-        return [];
+  const dynamicColumnsKey = (() => {
+    if (!agent?.field_extractor_prompt) return []
+    try {
+      const prompt = agent.field_extractor_prompt;
+      if (typeof prompt === 'string') {
+        const parsed = JSON.parse(prompt);
+        return Array.isArray(parsed) ? parsed.map((item: any) => toCamelCase(item.key)) : [];
+      } else if (Array.isArray(prompt)) {
+        return prompt.map((item: any) => toCamelCase(item.key));
       }
-    })();
-    const [roleLoading, setRoleLoading] = useState(true) // Add loading state for role
+      return [];
+    } catch (error) {
+      console.error('Error parsing field_extractor_prompt:', error);
+      return [];
+    }
+  })();
+
+  const [roleLoading, setRoleLoading] = useState(true)
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null)
   const [activeFilters, setActiveFilters] = useState<FilterRule[]>([])
   const [role, setRole] = useState<string | null>(null)
@@ -225,7 +279,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     metadata: string[]
     transcription_metrics: string[]
   }>({
-    basic: basicColumns.filter(col => !col.hidden).map(col => col.key), // initially show all
+    basic: basicColumns.filter(col => !col.hidden).map(col => col.key),
     metadata: [],
     transcription_metrics: []
   })
@@ -236,25 +290,60 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     )
   }, [role])
 
+  const { user } = useUser()
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress
+
+  // Load user role first
+  useEffect(() => {
+    if (userEmail && project?.id) {
+      const getUserRole = async () => {
+        setRoleLoading(true)
+        try {
+          const userRole = await getUserProjectRole(userEmail, project.id)
+          setRole(userRole)
+        } catch (error) {
+          console.error('Failed to load user role:', error)
+          setRole('user')
+        } finally {
+          setRoleLoading(false)
+        }
+      }
+      getUserRole()
+    } else {
+      setRoleLoading(false)
+      setRole('user')
+    }
+  }, [userEmail, project?.id])
+
+  // Update visible columns when role changes
+  useEffect(() => {
+    if (role !== null) {
+      const allowedBasicColumns = getFilteredBasicColumns.map(col => col.key)
+      setVisibleColumns(prev => ({
+        ...prev,
+        basic: allowedBasicColumns
+      }))
+    }
+  }, [role, getFilteredBasicColumns])
+
   // Convert FilterRule[] to Supabase filter format
   const convertToSupabaseFilters = (filters: FilterRule[]) => {
+    if (!agent?.id) return []
+    
     const supabaseFilters = [{ column: "agent_id", operator: "eq", value: agent.id }]
     
     filters.forEach(filter => {
-      // Determine the column name (with JSONB path if applicable)
-      // Use ->> for text operations, -> for existence checks and numeric comparisons
       const getColumnName = (forTextOperation = false) => {
         if (!filter.jsonField) return filter.column
         
         if (forTextOperation) {
-          return `${filter.column}->>${filter.jsonField}` // Double arrow for text extraction
+          return `${filter.column}->>${filter.jsonField}`
         } else {
-          return `${filter.column}->${filter.jsonField}` // Single arrow for JSONB data
+          return `${filter.column}->${filter.jsonField}`
         }
       }
       
       switch (filter.operation) {
-        // Regular operations
         case 'equals':
           if (filter.column === 'call_started_at') {
             const startOfDay = `${filter.value} 00:00:00`
@@ -280,7 +369,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           
         case 'contains':
           supabaseFilters.push({ 
-            column: getColumnName(true), // Use ->> for text operations
+            column: getColumnName(true),
             operator: 'ilike', 
             value: `%${filter.value}%` 
           })
@@ -288,7 +377,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           
         case 'starts_with':
           supabaseFilters.push({ 
-            column: getColumnName(true), // Use ->> for text operations
+            column: getColumnName(true),
             operator: 'ilike', 
             value: `${filter.value}%` 
           })
@@ -328,11 +417,10 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
             })
           }
           break
-  
-        // JSONB-specific operations
+
         case 'json_equals':
           supabaseFilters.push({ 
-            column: getColumnName(true), // Use ->> for text comparison
+            column: getColumnName(true),
             operator: 'eq', 
             value: filter.value 
           })
@@ -340,14 +428,13 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           
         case 'json_contains':
           supabaseFilters.push({ 
-            column: getColumnName(true), // Use ->> for text operations
+            column: getColumnName(true),
             operator: 'ilike', 
             value: `%${filter.value}%` 
           })
           break
           
         case 'json_greater_than':
-          // For numeric JSONB fields, use -> and cast to numeric
           supabaseFilters.push({ 
             column: `${getColumnName(false)}::numeric`, 
             operator: 'gt', 
@@ -356,7 +443,6 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           break
           
         case 'json_less_than':
-          // For numeric JSONB fields, use -> and cast to numeric
           supabaseFilters.push({ 
             column: `${getColumnName(false)}::numeric`, 
             operator: 'lt', 
@@ -365,9 +451,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
           break
           
         case 'json_exists':
-          // Check if the JSONB field exists (is not null)
           supabaseFilters.push({ 
-            column: getColumnName(false), // Use -> for existence check
+            column: getColumnName(false),
             operator: 'not.is', 
             value: null 
           })
@@ -382,66 +467,9 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack }) => {
     return supabaseFilters
   }
 
-  const handleColumnChange = (type: 'basic' | 'metadata' | 'transcription_metrics', column: string, visible: boolean) => {
-    setVisibleColumns(prev => ({
-      ...prev,
-      [type]: visible 
-        ? [...prev[type], column]
-        : prev[type].filter(col => col !== column)
-    }))
-    }
-    
-    const handleSelectAll = (type: 'basic' | 'metadata' | 'transcription_metrics', visible: boolean) => {
-      setVisibleColumns(prev => ({
-        ...prev,
-        [type]: visible
-          ? (type === "basic" ? basicColumns.map(col => col.key) : dynamicColumns[type])
-          : []
-      }))
-    }
-
-
-
-const { user } = useUser()
-  const userEmail = user?.emailAddresses?.[0]?.emailAddress
-
-  // Load user role first
-  useEffect(() => {
-    if (userEmail) {
-      const getUserRole = async () => {
-        setRoleLoading(true)
-        try {
-          const userRole = await getUserProjectRole(userEmail, project.id)
-          setRole(userRole)
-        } catch (error) {
-          console.error('Failed to load user role:', error)
-          setRole('user') // Default to most restrictive role on error
-        } finally {
-          setRoleLoading(false)
-        }
-      }
-      getUserRole()
-    } else {
-      setRoleLoading(false)
-      setRole('user') // Default when no user email
-    }
-  }, [userEmail, project.id])
-
-  // Update visible columns when role changes
-  useEffect(() => {
-    if (role !== null) {
-      const allowedBasicColumns = getFilteredBasicColumns.map(col => col.key)
-      setVisibleColumns(prev => ({
-        ...prev,
-        basic: allowedBasicColumns
-
-      }))
-    }
-  }, [role, getFilteredBasicColumns])
-
-
-
   const queryOptions = useMemo(() => {
+    if (!agent?.id || !role) return null
+
     // Build select clause based on role permissions
     let selectColumns = [
       'id',
@@ -457,11 +485,7 @@ const { user } = useUser()
       'transcript_type',
       'transcript_json',
       'created_at',
-      'transcription_metrics',
-      'total_llm_cost',
-      'total_tts_cost',
-      'total_stt_cost',
-      'avg_latency'
+      'transcription_metrics'
     ]
 
     // Add role-restricted columns only if user has permission
@@ -479,25 +503,23 @@ const { user } = useUser()
       orderBy: { column: "created_at", ascending: false },
       limit: 50,
     }
-  }, [agent.id, activeFilters, role])
+  }, [agent?.id, activeFilters, role])
 
-  
+  const { data: calls, loading, hasMore, error, loadMore, refresh } = useInfiniteScroll(
+    "pype_voice_call_logs", 
+    queryOptions,
+  )
 
-  const { data: calls, loading, hasMore, error, loadMore, refresh } = useInfiniteScroll("pype_voice_call_logs", queryOptions)
-
-  // console.log(calls)
   // Extract all unique keys from metadata and transcription_metrics across all calls
   const dynamicColumns = useMemo(() => {
     const metadataKeys = new Set<string>()
     const transcriptionKeys = new Set<string>()
 
     calls.forEach((call: CallLog) => {
-      // Extract metadata keys
       if (call.metadata && typeof call.metadata === 'object') {
         Object.keys(call.metadata).forEach(key => metadataKeys.add(key))
       }
 
-      // Extract transcription_metrics keys
       if (call.transcription_metrics && typeof call.transcription_metrics === 'object') {
         Object.keys(call.transcription_metrics).forEach(key => transcriptionKeys.add(key))
       }
@@ -508,8 +530,6 @@ const { user } = useUser()
       transcription_metrics: Array.from(transcriptionKeys).sort()
     }
   }, [calls])
-
-  console.log(dynamicColumns)
 
   // Initialize visible columns when dynamic columns change
   useEffect(() => {
@@ -523,35 +543,45 @@ const { user } = useUser()
       transcription_metrics: dynamicColumnsKey
     }))
   }, [dynamicColumns, basicColumns, JSON.stringify(dynamicColumnsKey)])
-  
 
-  // Fixed handleDownloadCSV function
+  const handleColumnChange = (type: 'basic' | 'metadata' | 'transcription_metrics', column: string, visible: boolean) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [type]: visible 
+        ? [...prev[type], column]
+        : prev[type].filter(col => col !== column)
+    }))
+  }
+    
+  const handleSelectAll = (type: 'basic' | 'metadata' | 'transcription_metrics', visible: boolean) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [type]: visible
+        ? (type === "basic" ? basicColumns.map(col => col.key) : dynamicColumns[type])
+        : []
+    }))
+  }
+
   const handleDownloadCSV = async () => {
+    if (!agent?.id) return
+    
     const { basic, metadata, transcription_metrics } = visibleColumns;
 
-    console.log('Download initiated with visible columns:', { basic, metadata, transcription_metrics });
-
-    // Always include id and agent_id for filtering, plus metadata and transcription_metrics if needed
     const selectColumns = [
       'id',
       'agent_id',
-      ...basic.filter(col => col !== "total_cost"), // Exclude calculated field
+      ...basic.filter(col => col !== "total_cost"),
       ...(metadata.length > 0 ? ['metadata'] : []),
       ...(transcription_metrics.length > 0 ? ['transcription_metrics'] : []),
     ];
 
-    console.log('Select columns:', selectColumns);
-
     try {
-      // Build base query with proper select
       let query = supabase
         .from("pype_voice_call_logs")
         .select(selectColumns.join(','));
 
-      // Apply filters properly - FIXED VERSION
       const filters = convertToSupabaseFilters(activeFilters);
-      console.log('Applying filters:', filters);
-
+      
       for (const filter of filters) {
         switch (filter.operator) {
           case 'eq':
@@ -580,31 +610,24 @@ const { user } = useUser()
         }
       }
 
-      // Order by created_at for consistency
       query = query.order('created_at', { ascending: false });
 
-      // Fetch all data in chunks
       let allData: CallLog[] = [];
       let page = 0;
       const pageSize = 1000;
       let hasMoreData = true;
 
-      console.log('Starting data fetch...');
-
       while (hasMoreData) {
         const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
         
         if (error) {
-          console.error('Query error:', error);
           alert("Failed to fetch data for export: " + error.message);
           return;
         }
 
         if (data && data.length > 0) {
           allData = allData.concat(data as unknown as CallLog[]);
-          console.log(`Fetched page ${page + 1}, total records: ${allData.length}`);
           
-          // If we got less than pageSize, we're done
           if (data.length < pageSize) {
             hasMoreData = false;
           } else {
@@ -615,33 +638,16 @@ const { user } = useUser()
         }
       }
 
-      console.log('Total records fetched:', allData.length);
-
       if (allData.length === 0) {
         alert("No data found to export");
         return;
       }
 
-      // Debug: Check first record
-      console.log('Sample record:', allData[0]);
-      console.log('Sample metadata:', allData[0]?.metadata);
-      console.log('Sample transcription_metrics:', allData[0]?.transcription_metrics);
-
-      // Flatten data for CSV - FIXED VERSION
-      const csvData = allData.map((row, index) => {
+      const csvData = allData.map((row) => {
         const flattened = flattenAndPickColumnsFixed(row, basic, metadata, transcription_metrics);
-        
-        // Debug first few records
-        if (index < 3) {
-          console.log(`Flattened record ${index}:`, flattened);
-        }
-        
         return flattened;
       });
 
-      console.log('CSV headers would be:', Object.keys(csvData[0] || {}));
-
-      // Generate and download CSV
       const csv = Papa.unparse(csvData);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -653,15 +659,12 @@ const { user } = useUser()
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      console.log('CSV download completed');
-
     } catch (error) {
       console.error('Download error:', error);
       alert("Failed to download CSV: " + (error as Error).message);
     }
   };
 
-  // Fixed flatten function with better debugging
   function flattenAndPickColumnsFixed(
     row: CallLog,
     basic: string[],
@@ -670,80 +673,58 @@ const { user } = useUser()
   ): Record<string, any> {
     const flat: Record<string, any> = {};
 
-    console.log('Flattening row:', {
-      id: row.id,
-      hasMetadata: !!row.metadata,
-      hasTranscription: !!row.transcription_metrics,
-      metadataType: typeof row.metadata,
-      transcriptionType: typeof row.transcription_metrics
-    });
-
-    // Basic columns (exclude "total_cost" as it's calculated)
     for (const key of basic) {
       if (key in row && key !== 'total_cost') {
         flat[key] = row[key as keyof CallLog];
       }
     }
 
-    // Add calculated total_cost if requested
     if (basic.includes('total_cost')) {
       const totalCost = (row.total_llm_cost || 0) + (row.total_tts_cost || 0) + (row.total_stt_cost || 0);
       flat['total_cost'] = totalCost;
     }
 
-    // Metadata columns - FIXED
     if (row.metadata && typeof row.metadata === "object" && metadata.length > 0) {
-      console.log('Processing metadata fields:', metadata);
-      console.log('Available metadata keys:', Object.keys(row.metadata));
-      
       for (const key of metadata) {
         const value = row.metadata[key];
-        // Prefix with 'metadata_' to avoid column name conflicts
         flat[`metadata_${key}`] = value !== undefined && value !== null 
           ? (typeof value === 'object' ? JSON.stringify(value) : String(value))
           : '';
       }
     } else if (metadata.length > 0) {
-      // Add empty values for missing metadata
       for (const key of metadata) {
         flat[`metadata_${key}`] = '';
       }
     }
 
-    // Transcription metrics columns - FIXED
     if (row.transcription_metrics && typeof row.transcription_metrics === "object" && transcription.length > 0) {
-      console.log('Processing transcription fields:', transcription);
-      console.log('Available transcription keys:', Object.keys(row.transcription_metrics));
-      
       for (const key of transcription) {
         const value = row.transcription_metrics[key];
-        // Prefix with 'transcription_' to avoid column name conflicts
         flat[`transcription_${key}`] = value !== undefined && value !== null 
           ? (typeof value === 'object' ? JSON.stringify(value) : String(value))
           : '';
       }
     } else if (transcription.length > 0) {
-      // Add empty values for missing transcription_metrics
       for (const key of transcription) {
         flat[`transcription_${key}`] = '';
       }
     }
 
-    console.log('Final flattened keys:', Object.keys(flat));
     return flat;
   }
 
-  // Calculate total dynamic columns for table width
   const totalVisibleColumns = visibleColumns.metadata.length + visibleColumns.transcription_metrics.length
-  const baseWidth = 1020 // Fixed columns width
-  const dynamicWidth = totalVisibleColumns * 200 // 200px per dynamic column
+  const baseWidth = 1020
+  const dynamicWidth = totalVisibleColumns * 200
   const minTableWidth = baseWidth + dynamicWidth
 
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    refresh()
-  }, [activeFilters])
+    if (queryOptions) {
+      refresh()
+    }
+  }, [activeFilters, queryOptions])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -764,18 +745,17 @@ const { user } = useUser()
 
   const handleFiltersChange = (filters: FilterRule[]) => {
     setActiveFilters(filters)
-    setTimeout(() => refresh(), 100)
   }
 
   const handleClearFilters = () => {
     setActiveFilters([])
-    setTimeout(() => refresh(), 100)
   }
 
   const handleRefresh = () => {
-    refresh()
+    if (queryOptions) {
+      refresh()
+    }
   }
-
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -797,10 +777,28 @@ const { user } = useUser()
     })
   }
 
+  // Show skeleton while parent is loading OR role is loading
+  if (parentLoading || roleLoading || !agent || !project || loading) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <FilterHeaderSkeleton />
+        <TableSkeleton />
+      </div>
+    )
+  }
+
   if (error) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center py-12">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex-none p-4 border-b bg-background/95">
+          <div className="flex items-center justify-between">
+            <div className="h-8 bg-red-100 text-red-700 px-4 rounded-lg flex items-center">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              Unable to load calls
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
             <h3 className="text-lg font-semibold text-gray-900">Unable to load calls</h3>
@@ -811,33 +809,9 @@ const { user } = useUser()
     )
   }
 
-  // Show loading state until role is determined
-  if (roleLoading || role === null) {
-    return (
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-none p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center justify-between">
-            <div className="h-8 bg-muted animate-pulse rounded w-48"></div>
-            <div className="flex items-center gap-2">
-              <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
-              <div className="h-8 bg-muted animate-pulse rounded w-24"></div>
-              <div className="h-8 bg-muted animate-pulse rounded w-8"></div>
-            </div>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-4 mt-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-            <p className="text-muted-foreground">Loading permissions...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* Header with Filters and Column Selector */}
+      {/* Header with Filters and Column Selector - Now shows immediately */}
       <div className="flex-none p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-between">
           <CallFilter 
@@ -848,11 +822,11 @@ const { user } = useUser()
           />
           
           <div className="flex items-center gap-2">
-          <Button
+            <Button
               variant="outline"
               size="sm"
               onClick={handleDownloadCSV}
-              disabled={loading}
+              disabled={loading || !agent?.id}
             >
               Download CSV
             </Button>
@@ -874,36 +848,15 @@ const { user } = useUser()
             >
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            
           </div>
         </div>
       </div>
 
-      {/* Horizontally Scrollable Table Container */}
+      {/* Table Container */}
       <div className="flex-1 overflow-y-auto min-h-0">
-      {loading && calls.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center space-y-4">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Loading calls...</p>
-            </div>
-          </div>
-        ) : calls.length === 0 && !loading ? (
-          <div className="text-center py-12">
-            <Phone className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
-              {activeFilters.length > 0 ? "No calls match your filters" : "No calls found"}
-            </h3>
-            <p className="text-muted-foreground">
-              {activeFilters.length > 0
-                ? "Try adjusting your filters to find what you're looking for."
-                : "Calls will appear here once your agent starts handling conversations."}
-            </p>
-          </div>
-          ) : (
-      <div className="h-full overflow-x-auto overflow-y-hidden"> {/* Horizontal scroll container */}
-        <div className="h-full overflow-y-auto" style={{ minWidth: `${minTableWidth}px` }}> {/* Vertical scroll with min-width */}
-          <Table className="w-full ">
+          <div className="h-full overflow-x-auto overflow-y-hidden">
+            <div className="h-full overflow-y-auto" style={{ minWidth: `${minTableWidth}px` }}>
+              <Table className="w-full">
                 <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
                   <TableRow className="bg-muted/80 hover:bg-muted/80">
                     {/* Fixed Columns */}
@@ -954,128 +907,122 @@ const { user } = useUser()
                         selectedCall?.id === call.id && "bg-muted/50",
                       )}
                       onClick={() => {
-                        console.log({call})
                         router.push(`/agents/${call?.id}/observability?session_id=${call?.id}`)
                       }}
                     >
-              {visibleColumns.basic.map((key) => {
-                let value: React.ReactNode = "-"
+                      {visibleColumns.basic.map((key) => {
+                        let value: React.ReactNode = "-"
 
-                switch (key) {
-                  case "customer_number":
-                    value = (
-                      <div className="flex w-full items-center gap-3">
-                        <div className="w-10 h-8 rounded-full  flex items-center justify-center">
-                          <Phone className="w-4 h-4 text-primary" />
-                        </div>
-                        <span className="font-medium">{call.customer_number}</span>
-                      </div>
-                    )
-                    break
-                  case "call_id":
-                    value = (
-                      <code className="text-xs bg-muted/60 px-3 py-1.5 rounded-md font-mono">
-                        {call.call_id.slice(-8)}
-                      </code>
-                    )
-                    break
-                  case "call_ended_reason":
-                    value = (
-                      <Badge
-                        variant={call.call_ended_reason === "completed" ? "default" : "destructive"}
-                        className="text-xs font-medium px-2.5 py-1"
-                      >
-                        {call.call_ended_reason === "completed" ? (
-                          <CheckCircle className="w-3 h-3 mr-1.5" />
-                        ) : (
-                          <XCircle className="w-3 h-3 mr-1.5" />
-                        )}
-                        {call.call_ended_reason}
-                      </Badge>
-                    )
-                    break
-                  case "duration_seconds":
-                    value = (
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <Clock className="w-3 h-3 text-muted-foreground" />
-                        {formatDuration(call.duration_seconds)}
-                      </div>
-                    )
-                    break
-                  case "call_started_at":
-                    value = formatToIndianDateTime(call.call_started_at)
-                    break
-                  case "total_cost":
-                    value = call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
-                      <CostTooltip call={call}/>
-                    ) : "-"
-                    break
-                }
+                        switch (key) {
+                          case "customer_number":
+                            value = (
+                              <div className="flex w-full items-center gap-3">
+                                <div className="w-10 h-8 rounded-full flex items-center justify-center">
+                                  <Phone className="w-4 h-4 text-primary" />
+                                </div>
+                                <span className="font-medium">{call.customer_number}</span>
+                              </div>
+                            )
+                            break
+                          case "call_id":
+                            value = (
+                              <code className="text-xs bg-muted/60 px-3 py-1.5 rounded-md font-mono">
+                                {call.call_id.slice(-8)}
+                              </code>
+                            )
+                            break
+                          case "call_ended_reason":
+                            value = (
+                              <Badge
+                                variant={call.call_ended_reason === "completed" ? "default" : "destructive"}
+                                className="text-xs font-medium px-2.5 py-1"
+                              >
+                                {call.call_ended_reason === "completed" ? (
+                                  <CheckCircle className="w-3 h-3 mr-1.5" />
+                                ) : (
+                                  <XCircle className="w-3 h-3 mr-1.5" />
+                                )}
+                                {call.call_ended_reason}
+                              </Badge>
+                            )
+                            break
+                          case "duration_seconds":
+                            value = (
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <Clock className="w-3 h-3 text-muted-foreground" />
+                                {formatDuration(call.duration_seconds)}
+                              </div>
+                            )
+                            break
+                          case "call_started_at":
+                            value = formatToIndianDateTime(call.call_started_at)
+                            break
+                          case "total_cost":
+                            value = call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
+                              <CostTooltip call={call}/>
+                            ) : "-"
+                            break
+                        }
 
-                return (
-                  <TableCell key={`basic-${call.id}-${key}`} className="py-4">
-                    {value}
-                  </TableCell>
-                )
-              })}
-              {/* Dynamic Metadata Columns */}
-              {visibleColumns.metadata.map((key) => (
-                <TableCell 
-                  key={`metadata-${call.id}-${key}`} 
-                  className="py-4 bg-blue-50/30 dark:bg-blue-950/10 border-r border-blue-200/50"
-                >
-                  <DynamicJsonCell 
-                    data={call.metadata} 
-                    fieldKey={key}
-                    maxWidth="180px"
-                  />
-                </TableCell>
-              ))}
+                        return (
+                          <TableCell key={`basic-${call.id}-${key}`} className="py-4">
+                            {value}
+                          </TableCell>
+                        )
+                      })}
+                      
+                      {/* Dynamic Metadata Columns */}
+                      {visibleColumns.metadata.map((key) => (
+                        <TableCell 
+                          key={`metadata-${call.id}-${key}`} 
+                          className="py-4 bg-blue-50/30 dark:bg-blue-950/10 border-r border-blue-200/50"
+                        >
+                          <DynamicJsonCell 
+                            data={call.metadata} 
+                            fieldKey={key}
+                            maxWidth="180px"
+                          />
+                        </TableCell>
+                      ))}
 
-              {/* Dynamic Transcription Metrics Columns */}
-              {visibleColumns.transcription_metrics.map((key, index) => (
-                <TableCell 
-                  key={`transcription-${call.id}-${key}`} 
-                  className={cn(
-                    "py-4 bg-blue-50/30 dark:bg-blue-950/10",
-                    index === 0 && visibleColumns.metadata.length === 0 && "border-l-2 border-primary/30",
-                    index < visibleColumns.transcription_metrics.length - 1 && "border-r border-blue-200/50"
-                  )}
-                >
-                  <DynamicJsonCell 
-                    data={call.transcription_metrics} 
-                    fieldKey={key}
-                    maxWidth="180px"
-                  />
-                </TableCell>
+                      {/* Dynamic Transcription Metrics Columns */}
+                      {visibleColumns.transcription_metrics.map((key, index) => (
+                        <TableCell 
+                          key={`transcription-${call.id}-${key}`} 
+                          className={cn(
+                            "py-4 bg-blue-50/30 dark:bg-blue-950/10",
+                            index === 0 && visibleColumns.metadata.length === 0 && "border-l-2 border-primary/30",
+                            index < visibleColumns.transcription_metrics.length - 1 && "border-r border-blue-200/50"
+                          )}
+                        >
+                          <DynamicJsonCell 
+                            data={call.transcription_metrics} 
+                            fieldKey={key}
+                            maxWidth="180px"
+                          />
+                        </TableCell>
                       ))}
                     </TableRow>
                   ))}
                 </TableBody>
-
               </Table>
-                {/* Load More Trigger */}
-                {hasMore && (
-                  <div ref={loadMoreRef} className="py-6 border-t">
-                    {loading && <Loader2 className="w-6 h-6 animate-spin text-primary" />}
-                  </div>
-                )}
+              
+              {/* Load More Trigger */}
+              {hasMore && (
+                <div ref={loadMoreRef} className="py-6 border-t">
+                  {loading && <Loader2 className="w-6 h-6 animate-spin text-primary" />}
+                </div>
+              )}
 
-                {/* End of List */}
-                {!hasMore && calls.length > 0 && (
-                  <div className="py-4 text-muted-foreground text-sm border-t">
-                    All calls loaded ({calls.length} total)
-                  </div>
-                )}
+              {/* End of List */}
+              {!hasMore && calls.length > 0 && (
+                <div className="py-4 text-muted-foreground text-sm border-t">
+                  All calls loaded ({calls.length} total)
+                </div>
+              )}
             </div>
           </div>
-        )}
       </div>
-      <CallDetailsDrawer 
-        isOpen={!!selectedCall} 
-        callData={selectedCall} 
-        onClose={() => setSelectedCall(null)} 
-      />
     </div>
   )
 }

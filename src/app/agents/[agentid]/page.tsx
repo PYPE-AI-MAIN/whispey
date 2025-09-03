@@ -1,133 +1,105 @@
-// src/app/agents/[agentid]/page.tsx
 'use client'
 import { useParams } from 'next/navigation'
-import { useEffect, useState, Suspense } from 'react'
+import { Suspense } from 'react'
 import Dashboard from '@/components/Dashboard'
-import VapiDashboard from '@/components/agents/VapiDashboard'
-import { Loader2, AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useRouter } from 'next/navigation'
+import { AlertCircle, Loader2 } from 'lucide-react'
 
-interface AgentData {
-  id: string
-  name: string
-  agent_type: string
-  project_id: string
-  vapi_api_key_encrypted?: string
-  vapi_project_key_encrypted?: string
-  configuration: any
+// Simple skeleton for the dashboard shell
+function DashboardSkeleton() {
+  return (
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header skeleton - matches your existing header structure */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-8 py-3">
+          <div className="flex items-center justify-between">
+            {/* Left: Navigation & Identity skeleton */}
+            <div className="flex items-center gap-6">
+              <div className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl">
+                <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                {/* Agent name skeleton */}
+                <div className="h-8 w-32 bg-gray-200 rounded animate-pulse"></div>
+                {/* Badge skeleton */}
+                <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+              </div>
+
+              {/* Tab navigation skeleton */}
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 ml-8">
+                <div className="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+                <div className="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+                <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
+              </div>
+            </div>
+
+            {/* Right: Controls skeleton */}
+            <div className="flex items-center gap-6">
+              {/* Period filters skeleton */}
+              <div className="flex items-center gap-4">
+                <div className="h-4 w-12 bg-gray-200 rounded animate-pulse"></div>
+                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                  <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse"></div>
+                  <div className="h-8 w-10 bg-gray-200 rounded-md animate-pulse"></div>
+                  <div className="h-8 w-12 bg-gray-200 rounded-md animate-pulse"></div>
+                </div>
+                <div className="h-8 w-20 bg-gray-200 rounded-lg animate-pulse"></div>
+              </div>
+              <div className="h-8 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content area skeleton */}
+      <div className="flex-1 p-6">
+        <div className="space-y-4">
+          {/* Content skeleton */}
+          <div className="h-48 w-full bg-gray-200 rounded-lg animate-pulse"></div>
+          <div className="h-64 w-full bg-gray-200 rounded-lg animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function AgentDashboardContent() {
   const params = useParams()
-  const router = useRouter()
-  const [agentId, setAgentId] = useState<string | null>(null)
-  const [agentData, setAgentData] = useState<AgentData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isVapiAgent, setIsVapiAgent] = useState(false)
+  const agentId = Array.isArray(params?.agentid) ? params.agentid[0] : params.agentid
 
-  useEffect(() => {
-    const fetchAgentData = async () => {
-      if (!params?.agentid) return
-
-      const id = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid
-      setAgentId(id)
-      setIsLoading(true)
-      setError(null)
-
-      try {
-
-        // Fetch agent data from your database
-        const response = await fetch(`/api/agents/${id}`)
-        
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to fetch agent')
-        }
-
-        const data = await response.json()
-
-        setAgentData(data)
-
-        const hasVapiKeys = Boolean(data.vapi_api_key_encrypted && data.vapi_project_key_encrypted)
-        const hasVapiConfig = Boolean(data.configuration?.vapi?.assistantId)
-        const isVapi = hasVapiKeys || hasVapiConfig || data.agent_type === 'vapi'
-
-        setIsVapiAgent(isVapi)
-
-      } catch (err) {
-        console.error('❌ Error fetching agent:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load agent')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchAgentData()
-  }, [params])
-
-  if (isLoading) {
+  // Validate agentId immediately - no loading needed
+  if (!agentId || agentId === 'undefined' || agentId.trim() === '') {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
-          <p className="text-gray-600">Loading agent data...</p>
+      <div className="h-screen flex flex-col bg-gray-50">
+        <div className="bg-white border-b border-gray-200 shadow-sm">
+          <div className="px-8 py-3">
+            <div className="flex items-center">
+              <div className="h-8 w-32 bg-red-100 rounded flex items-center justify-center">
+                <span className="text-red-600 text-sm font-medium">Invalid Agent</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-          <h2 className="text-xl font-semibold text-gray-900">Error Loading Agent</h2>
-          <p className="text-gray-600">{error}</p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/')}>
-              Go Home
-            </Button>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 max-w-md text-center">
+            <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-6 h-6 text-red-500" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Invalid Agent ID</h2>
+            <p className="text-sm text-gray-500 mb-4">Agent ID missing or invalid</p>
           </div>
         </div>
       </div>
     )
   }
 
-  if (!agentId || !agentData) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-          <h2 className="text-xl font-semibold text-gray-900">Agent Not Found</h2>
-          <p className="text-gray-600 max-w-md">
-            The requested agent could not be found or you don't have access to it.
-          </p>
-          <Button variant="outline" onClick={() => router.push('/')}>
-            Go Home
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-    return <Dashboard agentId={agentId} />
+  // Pass agentId to Dashboard - let Dashboard handle the data fetching
+  return <Dashboard agentId={agentId} />
 }
 
 export default function AgentDashboardPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<DashboardSkeleton />}>
       <AgentDashboardContent />
     </Suspense>
   )

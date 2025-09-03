@@ -42,12 +42,11 @@ interface CampaignLog {
   fpoName: string
   fpoLoginId: string
   call_status: string
-  masterMobileNo
- :string
+  masterMobileNo: string
   attempt_count: number
   sourceFile: string
   createdAt: string
-  alternateMobile:string
+  alternateMobile: string
   uploadedAt: string
   real_attempt_count: number
   system_error_count: number
@@ -75,6 +74,7 @@ interface CampaignLogsProps {
   project: any
   agent: any
   onBack: () => void
+  isLoading?: boolean // New prop from parent
 }
 
 const CALL_STATUS_OPTIONS = [
@@ -110,11 +110,102 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue
 }
 
-const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) => {
+// Skeleton for header section
+function CampaignHeaderSkeleton() {
+  return (
+    <header className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div className="h-7 w-40 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="flex items-center gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+        </div>
+
+        {/* Filters skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-9 bg-gray-200 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+// Skeleton for table
+function CampaignTableSkeleton() {
+  return (
+    <main className="flex-1 overflow-hidden">
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-auto">
+          <div className="min-w-full" style={{ minWidth: "1500px" }}>
+            <Table className="w-full">
+              <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
+                <TableRow className="bg-muted/80 hover:bg-muted/80">
+                  <TableHead className="w-[140px] font-semibold text-foreground pl-6">Phone Number</TableHead>
+                  <TableHead className="w-[140px] font-semibold text-foreground">Alternative</TableHead>
+                  <TableHead className="w-[160px] font-semibold text-foreground">FPO Name</TableHead>
+                  <TableHead className="w-[120px] font-semibold text-foreground">FPO Login ID</TableHead>
+                  <TableHead className="w-[100px] font-semibold text-foreground">Status</TableHead>
+                  <TableHead className="w-[90px] font-semibold text-foreground">Retry Attempts</TableHead>
+                  <TableHead className="w-[200px] font-semibold text-foreground">System Error</TableHead>
+                  <TableHead className="w-[140px] font-semibold text-foreground pr-6">Created At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <TableRow key={index} className="border-b border-border/50">
+                    <TableCell className="pl-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-muted animate-pulse rounded-full"></div>
+                        <div className="h-5 w-24 bg-muted animate-pulse rounded"></div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-4 w-16 bg-muted animate-pulse rounded"></div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-muted animate-pulse rounded"></div>
+                        <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-5 w-16 bg-muted animate-pulse rounded"></div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-6 w-20 bg-muted animate-pulse rounded-full"></div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-4 w-8 bg-muted animate-pulse rounded"></div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="h-4 w-8 bg-muted animate-pulse rounded"></div>
+                    </TableCell>
+                    <TableCell className="py-4 pr-6">
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isLoading: parentLoading }) => {
   // Data state
   const [logs, setLogs] = useState<CampaignLog[]>([])
   const [pagination, setPagination] = useState<PaginationMeta | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   // Filter and search state
@@ -166,10 +257,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
   // Memoized project ID
   const projectId = agent?.project_id || project?.id
 
-  // Fetch logs function with improved error handling and caching
+  // Fetch logs function
   const fetchLogs = useCallback(async (resetPage = false) => {
-    if (!projectId) {
-      setError('Project ID not available')
+    if (!projectId || parentLoading) {
+      if (!projectId && !parentLoading) {
+        setError('Project ID not available')
+      }
       setLoading(false)
       return
     }
@@ -206,7 +299,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       }
 
       const url = `/api/campaign-logs?${params.toString()}`
-
       const response = await fetch(url)
       
       if (!response.ok) {
@@ -215,7 +307,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
           const errorData = await response.json()
           errorMessage = errorData.error || errorMessage
         } catch (e) {
-          // If we can't parse the error response, use the default message
+          // Use default message if can't parse error
         }
         
         if (response.status === 403) {
@@ -228,10 +320,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       }
 
       const data: CampaignLogsResponse = await response.json()
-      
       setLogs(data.items)
       setPagination(data.pagination)
-
 
     } catch (err: any) {
       console.error('Error fetching campaign logs:', err)
@@ -240,26 +330,28 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       setLoading(false)
       setRefreshing(false)
     }
-  }, [projectId, currentPage, itemsPerPage, statusFilter, sourceFileFilter, debouncedSearchQuery, sortBy, sortOrder])
+  }, [projectId, currentPage, itemsPerPage, statusFilter, sourceFileFilter, debouncedSearchQuery, sortBy, sortOrder, parentLoading])
 
   // Refresh function
   const refresh = useCallback(() => {
-    setRefreshing(true)
-    fetchLogs(true)
-  }, [fetchLogs])
-
-  // Effects
-  useEffect(() => {
-    if (projectId) {
+    if (!parentLoading) {
+      setRefreshing(true)
       fetchLogs(true)
     }
-  }, [projectId, itemsPerPage, statusFilter, sourceFileFilter, debouncedSearchQuery, sortBy, sortOrder])
+  }, [fetchLogs, parentLoading])
+
+  // Effects - only run when parent is not loading
+  useEffect(() => {
+    if (projectId && !parentLoading) {
+      fetchLogs(true)
+    }
+  }, [projectId, itemsPerPage, statusFilter, sourceFileFilter, debouncedSearchQuery, sortBy, sortOrder, parentLoading])
 
   useEffect(() => {
-    if (projectId && !refreshing) {
+    if (projectId && !refreshing && !parentLoading) {
       fetchLogs(false)
     }
-  }, [currentPage, fetchLogs])
+  }, [currentPage, fetchLogs, parentLoading])
 
   // Set default dates when schedule dialog opens
   useEffect(() => {
@@ -306,9 +398,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
 
   const exportLogs = () => {
     const csvContent = [
-      // Header
       'Phone Number,Alternative Number,FPO Name,FPO Login ID,Status,Real Attempts,Source File,Created At,Uploaded At',
-      // Data rows
       ...logs.map(log => 
         `"${log.phoneNumber}","${log.alternative_number || ''}","${log.fpoName}","${log.fpoLoginId}","${log.call_status}",${log.real_attempt_count},"${log.sourceFile}","${log.createdAt}","${log.uploadedAt}"`
       )
@@ -358,7 +448,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     setCurrentPage(1)
   }
 
-  // Upload CSV handler (same as before)
+  // Handlers for dialogs (keeping same logic as original)
   const handleUpload = async () => {
     if (!csvFile) return
     
@@ -390,11 +480,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
       ].filter(Boolean).join('\n')
       
       alert(alertMessage)
-      
       setShowUploadDialog(false)
       setCsvFile(null)
       
-      // Refresh logs after upload
       setTimeout(() => {
         refresh()
       }, 2000)
@@ -407,7 +495,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     }
   }
 
-  // Schedule Campaign handler (same as before)
   const handleSchedule = async () => {
     if (!scheduleData.start_date || !scheduleData.end_date) {
       alert('Please select start date and end date')
@@ -461,7 +548,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     }
   }
 
-  // Delete All handler (similar to before but with improved UI feedback)
   const handleDeleteAll = async () => {
     if (deleteConfirmText !== 'DELETE ALL LOGS') return
     
@@ -484,15 +570,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
         batchCount: result.batchCount
       })
 
-      // Reset data
       setLogs([])
       setPagination(null)
       setCurrentPage(1)
-      
       setShowDeleteDialog(false)
       setDeleteConfirmText('')
       
-      // Refresh after delay
       setTimeout(() => {
         fetchLogs(true)
       }, 1000)
@@ -514,10 +597,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
 
     const { currentPage: page, totalPages, hasNextPage, hasPreviousPage } = pagination
 
-    // Calculate page numbers to show
     const getPageNumbers = () => {
       const pages = []
-      const showPages = 5 // Number of page buttons to show
+      const showPages = 5
       
       let startPage = Math.max(1, page - Math.floor(showPages / 2))
       let endPage = Math.min(totalPages, startPage + showPages - 1)
@@ -633,22 +715,43 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
     )
   }
 
+  // Show skeleton while parent is loading
+  if (parentLoading) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <CampaignHeaderSkeleton />
+        <CampaignTableSkeleton />
+      </div>
+    )
+  }
+
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-          <h2 className="text-xl font-semibold text-gray-900">Unable to Load Campaign Logs</h2>
-          <p className="text-gray-600">{error}</p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={onBack}>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Go Back
-            </Button>
-            <Button onClick={() => fetchLogs(true)}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <header className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="h-8 bg-red-100 text-red-700 px-4 rounded-lg flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Unable to Load Campaign Logs
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={onBack}>
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Go Back
+                </Button>
+                <Button onClick={() => fetchLogs(true)}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-md">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-semibold text-gray-900">{error}</h2>
           </div>
         </div>
       </div>
@@ -657,7 +760,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* Header */}
+      {/* Header - shows immediately with working controls */}
       <header className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
@@ -699,7 +802,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                 variant="outline" 
                 size="sm" 
                 onClick={refresh}
-                disabled={refreshing}
+                disabled={refreshing || parentLoading}
               >
                 {refreshing ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -720,9 +823,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
             </div>
           </div>
 
-          {/* Filters */}
+          {/* Filters - show immediately and work client-side */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -733,7 +835,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
               />
             </div>
 
-            {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -746,7 +847,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
               ))}
             </select>
 
-            {/* Source File Filter */}
             <Input
               placeholder="Filter by source file..."
               value={sourceFileFilter}
@@ -754,7 +854,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
               className="bg-white/80 backdrop-blur-sm"
             />
 
-            {/* Sort Options */}
             <select
               value={`${sortBy}-${sortOrder}`}
               onChange={(e) => {
@@ -776,7 +875,6 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
               ))}
             </select>
 
-            {/* Clear Filters */}
             <Button 
               variant="outline" 
               onClick={clearFilters}
@@ -789,7 +887,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
         </div>
       </header>
 
-      {/* Table */}
+      {/* Table - show loading state only for data */}
       <main className="flex-1 overflow-hidden">
         {loading && logs.length === 0 ? (
           <div className="text-center py-12">
@@ -864,8 +962,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                               <Phone className="w-4 h-4 text-primary" />
                             </div>
-                            <span className="font-medium">{log.masterMobileNo
-}</span>
+                            <span className="font-medium">{log.masterMobileNo}</span>
                           </div>
                         </TableCell>
 
@@ -925,14 +1022,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
               </div>
             </div>
 
-            {/* Pagination */}
             {renderPagination()}
           </div>
         )}
       </main>
 
-      {/* All the existing dialogs remain the same */}
-      {/* Upload CSV Dialog */}
+      {/* All dialog components remain the same as original */}
       {showUploadDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
@@ -998,248 +1093,247 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack }) =
         </div>
       )}
 
-      {/* Delete All Confirmation Dialog */}
       {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            {!deleteResult ? (
-              <>
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                    <Trash2 className="w-6 h-6 text-red-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-red-900 mb-2">Delete All Campaign Logs</h3>
-                  <p className="text-sm text-red-700">This will permanently delete all campaign logs from DynamoDB</p>
-                </div>
-                
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm text-red-800 mb-2">
-                    <strong>⚠️ Warning:</strong> This action cannot be undone!
-                  </p>
-                </div>
-                
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE ALL LOGS</span> to confirm:
-                    </label>
-                    <input
-                      type="text"
-                      value={deleteConfirmText}
-                      onChange={(e) => setDeleteConfirmText(e.target.value)}
-                      placeholder="DELETE ALL LOGS"
-                      disabled={deleting}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                    />
-                  </div>
-                  
-                  {pagination && (
-                    <div className="text-sm text-gray-600 bg-gray-50 rounded p-3">
-                      <strong>Records to be deleted:</strong> {pagination.totalItems} campaign log entries
-                    </div>
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+                  {!deleteResult ? (
+                    <>
+                      <div className="text-center">
+                        <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                          <Trash2 className="w-6 h-6 text-red-600" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-red-900 mb-2">Delete All Campaign Logs</h3>
+                        <p className="text-sm text-red-700">This will permanently delete all campaign logs from DynamoDB</p>
+                      </div>
+                      
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="text-sm text-red-800 mb-2">
+                          <strong>⚠️ Warning:</strong> This action cannot be undone!
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE ALL LOGS</span> to confirm:
+                          </label>
+                          <input
+                            type="text"
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder="DELETE ALL LOGS"
+                            disabled={deleting}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          />
+                        </div>
+                        
+                        {pagination && (
+                          <div className="text-sm text-gray-600 bg-gray-50 rounded p-3">
+                            <strong>Records to be deleted:</strong> {pagination.totalItems} campaign log entries
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-3 pt-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowDeleteDialog(false)
+                            setDeleteConfirmText('')
+                            setDeleteResult(null)
+                          }}
+                          disabled={deleting}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          variant="destructive"
+                          onClick={handleDeleteAll}
+                          disabled={deleteConfirmText !== 'DELETE ALL LOGS' || deleting}
+                          className="flex-1"
+                        >
+                          {deleting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete All Logs
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center">
+                        <div className={`w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center ${
+                          deleteResult.success ? 'bg-green-100' : 'bg-red-100'
+                        }`}>
+                          {deleteResult.success ? (
+                            <CheckCircle className="w-6 h-6 text-green-600" />
+                          ) : (
+                            <AlertCircle className="w-6 h-6 text-red-600" />
+                          )}
+                        </div>
+                        <h3 className={`text-xl font-semibold mb-2 ${
+                          deleteResult.success ? 'text-green-900' : 'text-red-900'
+                        }`}>
+                          {deleteResult.success ? 'Deletion Successful!' : 'Deletion Failed'}
+                        </h3>
+                        <p className={`text-sm ${
+                          deleteResult.success ? 'text-green-700' : 'text-red-700'
+                        }`}>
+                          {deleteResult.message}
+                        </p>
+                        
+                        {deleteResult.success && (
+                          <div className="mt-3 text-sm text-gray-600 bg-gray-50 rounded p-3">
+                            <strong>Deleted:</strong> {deleteResult.count} records in {deleteResult.batchCount} batches
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="pt-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowDeleteDialog(false)
+                            setDeleteConfirmText('')
+                            setDeleteResult(null)
+                          }}
+                          className="w-full"
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </>
                   )}
                 </div>
-                
-                <div className="flex gap-3 pt-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowDeleteDialog(false)
-                      setDeleteConfirmText('')
-                      setDeleteResult(null)
-                    }}
-                    disabled={deleting}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="destructive"
-                    onClick={handleDeleteAll}
-                    disabled={deleteConfirmText !== 'DELETE ALL LOGS' || deleting}
-                    className="flex-1"
-                  >
-                    {deleting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete All Logs
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-center">
-                  <div className={`w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center ${
-                    deleteResult.success ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    {deleteResult.success ? (
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <AlertCircle className="w-6 h-6 text-red-600" />
-                    )}
-                  </div>
-                  <h3 className={`text-xl font-semibold mb-2 ${
-                    deleteResult.success ? 'text-green-900' : 'text-red-900'
-                  }`}>
-                    {deleteResult.success ? 'Deletion Successful!' : 'Deletion Failed'}
-                  </h3>
-                  <p className={`text-sm ${
-                    deleteResult.success ? 'text-green-700' : 'text-red-700'
-                  }`}>
-                    {deleteResult.message}
-                  </p>
-                  
-                  {deleteResult.success && (
-                    <div className="mt-3 text-sm text-gray-600 bg-gray-50 rounded p-3">
-                      <strong>Deleted:</strong> {deleteResult.count} records in {deleteResult.batchCount} batches
-                    </div>
-                  )}
-                </div>
-                
-                <div className="pt-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowDeleteDialog(false)
-                      setDeleteConfirmText('')
-                      setDeleteResult(null)
-                    }}
-                    className="w-full"
-                  >
-                    Close
-                  </Button>
-                </div>
-              </>
+              </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* Schedule Dialog - keeping the same structure as original */}
-      {showScheduleDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Schedule Campaign</h3>
-              <p className="text-sm text-gray-600">Configure your campaign schedule settings</p>
-            </div>
-            
-            {/* Schedule form content - same as original */}
-            <div className="space-y-4">
-              {/* Date Range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={scheduleData.start_date}
-                    onChange={(e) => setScheduleData({ ...scheduleData, start_date: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={scheduleData.end_date}
-                    onChange={(e) => setScheduleData({ ...scheduleData, end_date: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  />
-                </div>
-              </div>
+            {/* Schedule Dialog - keeping the same structure as original */}
+            {showScheduleDialog && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Schedule Campaign</h3>
+                    <p className="text-sm text-gray-600">Configure your campaign schedule settings</p>
+                  </div>
+                  
+                  {/* Schedule form content - same as original */}
+                  <div className="space-y-4">
+                    {/* Date Range */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={scheduleData.start_date}
+                          onChange={(e) => setScheduleData({ ...scheduleData, start_date: e.target.value })}
+                          disabled={scheduling}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          End Date
+                        </label>
+                        <input
+                          type="date"
+                          value={scheduleData.end_date}
+                          onChange={(e) => setScheduleData({ ...scheduleData, end_date: e.target.value })}
+                          disabled={scheduling}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                        />
+                      </div>
+                    </div>
 
-              {/* Time Range and other fields - same structure */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1" />
-                    Start Time
-                  </label>
-                  <input
-                    type="time"
-                    value={scheduleData.start_time}
-                    onChange={(e) => setScheduleData({ ...scheduleData, start_time: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Clock className="w-4 h-4 inline mr-1" />
-                    End Time
-                  </label>
-                  <input
-                    type="time"
-                    value={scheduleData.end_time}
-                    onChange={(e) => setScheduleData({ ...scheduleData, end_time: e.target.value })}
-                    disabled={scheduling}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                  />
+                    {/* Time Range and other fields - same structure */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Clock className="w-4 h-4 inline mr-1" />
+                          Start Time
+                        </label>
+                        <input
+                          type="time"
+                          value={scheduleData.start_time}
+                          onChange={(e) => setScheduleData({ ...scheduleData, start_time: e.target.value })}
+                          disabled={scheduling}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Clock className="w-4 h-4 inline mr-1" />
+                          End Time
+                        </label>
+                        <input
+                          type="time"
+                          value={scheduleData.end_time}
+                          onChange={(e) => setScheduleData({ ...scheduleData, end_time: e.target.value })}
+                          disabled={scheduling}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Concurrency
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        value={scheduleData.concurrency}
+                        onChange={(e) => setScheduleData({ ...scheduleData, concurrency: parseInt(e.target.value) || 1 })}
+                        disabled={scheduling}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowScheduleDialog(false)}
+                      disabled={scheduling}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleSchedule}
+                      disabled={scheduling}
+                      className="flex-1"
+                    >
+                      {scheduling ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Scheduling...
+                        </>
+                      ) : (
+                        <>
+                          <Calendar className="w-4 w-4 mr-2" />
+                          Create Schedule
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Concurrency
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={scheduleData.concurrency}
-                  onChange={(e) => setScheduleData({ ...scheduleData, concurrency: parseInt(e.target.value) || 1 })}
-                  disabled={scheduling}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowScheduleDialog(false)}
-                disabled={scheduling}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSchedule}
-                disabled={scheduling}
-                className="flex-1"
-              >
-                {scheduling ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Scheduling...
-                  </>
-                ) : (
-                  <>
-                    <Calendar className="w-4 w-4 mr-2" />
-                    Create Schedule
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
     </div>
   )
 }
