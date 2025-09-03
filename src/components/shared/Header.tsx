@@ -148,16 +148,7 @@ function Header({ breadcrumb }: HeaderProps) {
                   </div>
                   <div className="py-1">
                     <DropdownMenuItem asChild>
-                      <Link href="/api-reference" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
-                        <Zap className="w-4 h-4 mr-3 text-yellow-600" />
-                        <div>
-                          <p className="font-medium text-gray-900">API Reference</p>
-                          <p className="text-xs text-gray-500">Complete API documentation</p>
-                        </div>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/community" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
+                      <Link href="https://discord.gg/r2eMeAp6" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
                         <Users className="w-4 h-4 mr-3 text-green-600" />
                         <div>
                           <p className="font-medium text-gray-900">Community</p>
@@ -169,7 +160,7 @@ function Header({ breadcrumb }: HeaderProps) {
                   <DropdownMenuSeparator className="bg-gray-100" />
                   <div className="py-1">
                     <DropdownMenuItem asChild>
-                      <Link href="/support" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
+                      <Link href="mailto:deepesh@pypeai.com" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
                         <HelpCircle className="w-4 h-4 mr-3 text-purple-600" />
                         <div>
                           <p className="font-medium text-gray-900">Contact Support</p>
