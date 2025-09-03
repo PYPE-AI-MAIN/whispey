@@ -19,7 +19,7 @@ pip install Whispey
 
 ## Get Your Credentials
 
-1. Sign up at [Whispey Dashboard](https://www.whispey.xyz/)
+1. Sign up at [Whispey Dashboard](https://whispey.xyz/)
 2. Get your Agent ID from the dashboard
 3. Generate your API Key from your workspace
 
@@ -48,7 +48,7 @@ load_dotenv()
 # Initialize Whispey
 whispey = LivekitObserve(
     agent_id="your-agent-id-from-dashboard",  # Get this from dashboard
-    api_key=os.getenv("WHISPEY_API_KEY")
+    apikey=os.getenv("WHISPEY_API_KEY")
 )
 
 # Start tracking a session
@@ -73,3 +73,4 @@ await session.start(...)
 - Read the [Complete Implementation](/docs/complete-implementation) guide
 - Explore [Configuration](/docs/configuration) options
 - Check out [Examples](/docs/examples) for use cases
+- Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)

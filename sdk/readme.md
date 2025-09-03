@@ -113,7 +113,7 @@ async def entrypoint(ctx: agents.JobContext):
     # 📤 Export analytics data when session ends
     async def whispey_shutdown():
         try:
-            result = await pype.export(
+            result = await whispey.export(
                 session_id,
                 recording_url=""  # Optional: Add recording URL if available
             )
@@ -216,7 +216,7 @@ logging.basicConfig(level=logging.INFO)
 
 - **Dashboard**: [https://whispey.xyz/](https://whispey.xyz/)
 - **Email**: deepesh@pypeai.com
-- **Issues**: [GitHub Issues](https://github.com/whispey-ai/whispey/issues)
+- **Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 
 ## 📄 License
 

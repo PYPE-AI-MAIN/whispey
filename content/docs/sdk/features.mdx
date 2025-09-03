@@ -13,8 +13,11 @@ session_id = whispey.start_session(session)
 
 # ... run your LiveKit agent ...
 
-# 2) Export data when done
-result = await whispey.export(session_id)
+# 2) Export data on shutdown only
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 {/* Removed custom metrics to simplify SDK surface area in docs */}
@@ -38,6 +41,12 @@ session_id = whispey.start_session(
         "tags": ["escalation", "urgent"]
     }
 )
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ### Advanced Metadata
@@ -73,6 +82,12 @@ session_id = whispey.start_session(
     session=your_livekit_session,
     metadata=metadata
 )
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 {/* Removed real-time metric/event examples to avoid complexity */}
@@ -86,145 +101,196 @@ Track and compare performance across multiple agents.
 ```python
 # Initialize multiple agents and compare basic outcomes
 agents = {
-    "support_agent": LivekitObserve(agent_id="support-001"),
-    "sales_agent": LivekitObserve(agent_id="sales-001"),
-    "billing_agent": LivekitObserve(agent_id="billing-001")
+    "support_agent": LivekitObserve(agent_id="support-001", apikey="your-api-key"),
+    "sales_agent": LivekitObserve(agent_id="sales-001", apikey="your-api-key"),
+    "billing_agent": LivekitObserve(agent_id="billing-001", apikey="your-api-key")
 }
 
-for agent_name, agent in agents.items():
-    session_id = agent.start_session(session=your_livekit_session)
-    # ... run conversation ...
-    await agent.export(session_id)
-```
-
-{/* Removed event-based performance analysis */}
-
-## Integration Hooks
-
-Connect Whispey with your existing systems and workflows.
-
-### Custom Analytics Integration
-
-```python
-# Hook into custom analytics systems
-def custom_analytics_handler(event_data):
-    # Send to your analytics platform
-    analytics_api.send_event(event_data)
-
-# Register custom handlers
-whispey.register_event_handler("session_started", custom_analytics_handler)
-whispey.register_event_handler("session_ended", custom_analytics_handler)
-```
-
-### Webhook Integration
-
-```python
-# Configure webhooks for real-time notifications
-whispey.configure_webhooks({
-    "session_started": "https://your-api.com/webhooks/session-start",
-    "session_ended": "https://your-api.com/webhooks/session-end",
-    "bug_reported": "https://your-api.com/webhooks/bug-report",
-    "cost_threshold": "https://your-api.com/webhooks/cost-alert"
-})
-```
-
-### Database Integration
-
-```python
-# Store analytics data in your database
-def database_handler(session_data):
-    db.analytics.insert_one({
-        "session_id": session_data["session_id"],
-        "metrics": session_data["metrics"],
-        "events": session_data["events"],
-        "timestamp": datetime.now()
-    })
-
-whispey.register_data_handler(database_handler)
-```
-
-## Error Handling and Recovery
-
-Robust error handling for production environments.
-
-### Graceful Degradation
-
-```python
-# Configure error handling
-whispey = LivekitObserve(
-    agent_id="your-agent-id",
-    api_key="your-api-key",
-    error_handling={
-        "retry_attempts": 3,
-        "retry_delay": 1.0,
-        "graceful_degradation": True,
-        "fallback_mode": "local_logging"
-    }
-)
-```
-
-### Custom Error Handlers
-
-```python
-def custom_error_handler(error):
-    # Log error to your system
-    logger.error(f"Whispey error: {error}")
+# Start sessions for comparison
+sessions = {}
+for name, agent in agents.items():
+    sessions[name] = agent.start_session(session=your_livekit_session)
     
-    # Send alert to your team
-    alert_system.send_alert(f"Analytics error: {error}")
+    # Set up shutdown callback for each agent
+    async def create_shutdown_callback(agent_name, session_id):
+        async def shutdown():
+            await agents[agent_name].export(session_id)
+        return shutdown
     
-    # Continue with fallback
-    return {"status": "fallback", "message": "Using local logging"}
+    ctx.add_shutdown_callback(create_shutdown_callback(name, sessions[name]))
 
-whispey.register_error_handler(custom_error_handler)
+# ... run conversations ...
 ```
 
-## Performance Optimization
+## Bug Reporting System
 
-Optimize your analytics for high-performance applications.
+Enable automatic bug detection and reporting in your conversations.
 
-### Batch Processing
+### Basic Bug Reporting
 
 ```python
-# Enable batch processing for high-volume scenarios
 whispey = LivekitObserve(
     agent_id="your-agent-id",
-    api_key="your-api-key",
-    batch_processing={
-        "enabled": True,
-        "batch_size": 100,
-        "flush_interval": 30,  # seconds
-        "max_queue_size": 1000
+    apikey="your-api-key",
+    bug_reports=True  # Uses default trigger phrases
+)
+
+session_id = whispey.start_session(session=your_livekit_session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+### Custom Bug Reporting
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports={
+        "bug_start_command": ["report issue", "there's a problem"],
+        "bug_end_command": ["issue resolved", "problem fixed"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?",
+        "continuation_prefix": "So, as I was saying, ",
+        "fallback_message": "Let me continue our conversation."
     }
+)
+
+session_id = whispey.start_session(session=your_livekit_session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+## OpenTelemetry Integration
+
+Enable detailed telemetry collection for advanced monitoring.
+
+### Basic OpenTelemetry
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    enable_otel=True  # Enable telemetry capture
+)
+
+session_id = whispey.start_session(session=your_livekit_session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+### Telemetry Data
+
+When enabled, OpenTelemetry captures:
+- **STT Spans**: Audio processing with duration and model info
+- **LLM Spans**: Token usage, latency, and request details  
+- **TTS Spans**: Character counts, synthesis timing
+- **Tool Spans**: Function executions with performance metrics
+
+## Export Options
+
+**Important**: Export should only happen on shutdown, not during the session.
+
+### Basic Export on Shutdown
+
+```python
+# Set up shutdown callback
+async def whispey_shutdown():
+    result = await whispey.export(session_id)
+    
+    if result.get("success"):
+        print("✅ Successfully exported to Whispey Voice Analytics!")
+    else:
+        print(f"❌ Export failed: {result.get('error')}")
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+### Export with Recording URL on Shutdown
+
+```python
+async def whispey_shutdown():
+    result = await whispey.export(
+        session_id,
+        recording_url="https://example.com/recording.mp3"  # Optional: Add recording URL
+    )
+    
+    if result.get("success"):
+        print("✅ Successfully exported to Whispey Voice Analytics!")
+    else:
+        print(f"❌ Export failed: {result.get('error')}")
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+### Export with Telemetry JSON on Shutdown
+
+```python
+async def whispey_shutdown():
+    result = await whispey.export(
+        session_id,
+        recording_url="https://example.com/recording.mp3",
+        save_telemetry_json=True  # Save telemetry data as JSON
+    )
+    
+    if result.get("success"):
+        print("✅ Successfully exported to Whispey Voice Analytics!")
+    else:
+        print(f"❌ Export failed: {result.get('error')}")
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+## Available Configuration Options
+
+### LivekitObserve Constructor
+
+```python
+LivekitObserve(
+    agent_id: str,                    # Required: Your agent ID from dashboard
+    apikey: str = None,              # Optional: API key (can use env var)
+    host_url: str = None,            # Optional: Custom API endpoint
+    bug_reports: bool|dict = False,  # Optional: Bug reporting configuration
+    enable_otel: bool = False        # Optional: Enable OpenTelemetry
 )
 ```
 
-### Caching
+### start_session Method
 
 ```python
-# Enable caching for frequently accessed data
-whispey = LivekitObserve(
-    agent_id="your-agent-id",
-    api_key="your-api-key",
-    caching={
-        "enabled": True,
-        "cache_ttl": 3600,  # 1 hour
-        "cache_size": 1000
-    }
+session_id = whispey.start_session(
+    session,                    # Required: LiveKit session object
+    phone_number: str = None,   # Optional: Customer phone number
+    customer_name: str = None,  # Optional: Customer name
+    conversation_type: str = None,  # Optional: Type of conversation
+    metadata: dict = None       # Optional: Additional metadata
 )
 ```
 
-### Compression
+### export Method
 
 ```python
-# Enable data compression for network efficiency
-whispey = LivekitObserve(
-    agent_id="your-agent-id",
-    api_key="your-api-key",
-    compression={
-        "enabled": True,
-        "algorithm": "gzip",
-        "min_size": 1024  # bytes
-    }
+result = await whispey.export(
+    session_id,                 # Required: Session ID from start_session
+    recording_url: str = None,  # Optional: Recording URL
+    save_telemetry_json: bool = False  # Optional: Save telemetry as JSON
 )
 ```
+
+## Next Steps
+
+- Learn about [Bug Reporting](/docs/sdk/bug-reporting) feature
+- Check out [Examples](/docs/examples) for real-world usage
+- Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)
