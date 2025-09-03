@@ -8,7 +8,7 @@ Common questions and answers about Whispey voice analytics platform.
 
 **A:** Getting started is easy! Follow these steps:
 
-1. **Sign up** at [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)
+1. **Sign up** at [https://whispey.xyz](https://whispey.xyz)
 2. **Create a project** and add an agent
 3. **Get your Agent ID** from the dashboard
 4. **Generate an API key** from your account settings
@@ -201,7 +201,7 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
 - **📖 Documentation**: Comprehensive guides and examples
 - **💬 Discord**: Active community for quick help
-- **📧 Email**: support@whispey.ai for detailed support
+- **📧 Email**: deepesh@pypeai.com for detailed support
 - **🐛 GitHub**: Open issues for bugs and feature requests
 
 ### Q: Can I customize the analytics?
@@ -342,4 +342,4 @@ See our [Self-hosting Guide](self-hosting.md) for detailed instructions.
 
 ---
 
-**Still have questions?** Join our [Discord community](https://discord.gg/pypeai) or email support@whispey.ai for personalized help! 
+**Still have questions?** Email deepesh@pypeai.com for personalized help! 

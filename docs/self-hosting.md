@@ -368,8 +368,8 @@ node --version  # Should be 18+
 
 ## 💬 Support
 
-- **💬 Discord**: [Join our community](https://discord.gg/pypeai)
-- **📧 Email**: support@whispey.ai
+- **💬 Discord**: [Join our community](https://discord.gg/r2eMeAp6)
+- **📧 Email**: deepesh@pypeai.com
 - **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 
 ---
