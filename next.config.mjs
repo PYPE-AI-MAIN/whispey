@@ -13,6 +13,9 @@ const config = {
     };
     return config;
   },
+  compiler:{
+    removeConsole:process.env.NODE_ENV === 'production'
+  },
   async rewrites() {
     return [
       {
