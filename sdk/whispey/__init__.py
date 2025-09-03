@@ -274,7 +274,6 @@ class LivekitObserve:
             # Fallback for older versions that don't support metadata
             set_tracer_provider(tracer_provider)
 
-
     
     def start_session(self, session, **kwargs):
         """Start session with earlier telemetry setup"""

@@ -348,14 +348,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                     className="w-80 pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
                   />
                 </div>
-                <Button variant="outline" size="sm" className="text-gray-600 border-gray-200 hover:bg-gray-50">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filter
-                </Button>
-                <Button variant="outline" size="sm" className="text-gray-600 border-gray-200 hover:bg-gray-50">
-                  <SortDesc className="w-4 h-4 mr-2" />
-                  Sort
-                </Button>
               </div>
               
               <div className="flex items-center gap-3">
@@ -364,7 +356,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                     variant={viewMode === 'grid' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('grid')}
-                    className={`w-8 h-8 p-0 ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
+                    className={`w-8 h-8 p-0 ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900 hover:bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
                   >
                     <Grid3X3 className="w-4 h-4" />
                   </Button>
@@ -372,7 +364,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                     variant={viewMode === 'list' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setViewMode('list')}
-                    className={`w-8 h-8 p-0 ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
+                    className={`w-8 h-8 p-0 ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900 hover:bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
                   >
                     <List className="w-4 h-4" />
                   </Button>

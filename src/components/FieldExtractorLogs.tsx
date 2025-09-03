@@ -23,7 +23,9 @@ interface FieldExtractorDialogProps {
 }
 
 const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ initialData = [], onSave, isEnabled = false }) => {
-  const [fields, setFields] = useState<FieldExtractorItem[]>(initialData)
+  const [fields, setFields] = useState<FieldExtractorItem[]>(
+    initialData.length > 0 ? initialData : [{ key: "", description: "" }]
+  )
   const [enabled, setEnabled] = useState(isEnabled)
   const [isOpen, setIsOpen] = useState(false) // State to control dialog open/close
 

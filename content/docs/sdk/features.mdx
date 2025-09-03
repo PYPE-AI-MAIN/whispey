@@ -3,83 +3,21 @@ title: Advanced Features
 description: Advanced SDK features and capabilities
 ---
 
-## Event Tracking
+## Core Usage
 
-Track custom events throughout your conversation to gain deeper insights into user behavior and agent performance.
-
-### Basic Event Tracking
+Keep your integration simple and reliable. The primary flow is:
 
 ```python
-# Track user actions
-whispey.track_event(session_id, "user_completed_task", {
-    "task": "booking_appointment",
-    "duration": 45,
-    "success": True
-})
+# 1) Start a session
+session_id = whispey.start_session(session)
 
-# Track system events
-whispey.track_event(session_id, "agent_response_generated", {
-    "response_type": "information",
-    "confidence": 0.85,
-    "model_used": "gpt-4o-mini"
-})
+# ... run your LiveKit agent ...
+
+# 2) Export data when done
+result = await whispey.export(session_id)
 ```
 
-### Custom Event Types
-
-```python
-# User interaction events
-whispey.track_event(session_id, "user_interaction", {
-    "type": "button_click",
-    "button": "schedule_demo",
-    "timestamp": datetime.now().isoformat()
-})
-
-# Business logic events
-whispey.track_event(session_id, "business_action", {
-    "action": "lead_qualified",
-    "lead_score": 85,
-    "source": "website_form"
-})
-
-# Error events
-whispey.track_event(session_id, "error_occurred", {
-    "error_type": "api_timeout",
-    "service": "payment_processor",
-    "retry_count": 2
-})
-```
-
-## Custom Metrics
-
-Track quantitative data points to monitor performance and costs.
-
-### Counter Metrics
-
-```python
-# Track usage counters
-whispey.track_metric(session_id, "api_calls", 1, "counter")
-whispey.track_metric(session_id, "tokens_used", 1500, "counter")
-whispey.track_metric(session_id, "user_questions", 1, "counter")
-```
-
-### Gauge Metrics
-
-```python
-# Track current values
-whispey.track_metric(session_id, "response_time", 2.5, "gauge")
-whispey.track_metric(session_id, "user_satisfaction", 4.2, "gauge")
-whispey.track_metric(session_id, "conversation_quality", 8.5, "gauge")
-```
-
-### Histogram Metrics
-
-```python
-# Track distribution of values
-whispey.track_metric(session_id, "processing_time", 180, "histogram")
-whispey.track_metric(session_id, "error_rate", 0.02, "histogram")
-whispey.track_metric(session_id, "cost_per_conversation", 0.15, "histogram")
-```
+{/* Removed custom metrics to simplify SDK surface area in docs */}
 
 ## Session Metadata
 
@@ -137,42 +75,7 @@ session_id = whispey.start_session(
 )
 ```
 
-## Real-time Analytics
-
-Monitor your conversations in real-time with live metrics and alerts.
-
-### Performance Monitoring
-
-```python
-# Track real-time performance metrics
-whispey.track_metric(session_id, "current_response_time", response_time, "gauge")
-whispey.track_metric(session_id, "active_conversations", 1, "counter")
-whispey.track_metric(session_id, "error_rate", error_percentage, "gauge")
-
-# Set up performance alerts
-if response_time > 5.0:
-    whispey.track_event(session_id, "performance_alert", {
-        "metric": "response_time",
-        "threshold": 5.0,
-        "current_value": response_time
-    })
-```
-
-### Cost Tracking
-
-```python
-# Monitor costs in real-time
-whispey.track_metric(session_id, "current_cost", 0.045, "gauge")
-whispey.track_metric(session_id, "cost_per_minute", 0.015, "gauge")
-
-# Alert on cost thresholds
-if current_cost > 1.0:
-    whispey.track_event(session_id, "cost_alert", {
-        "threshold": 1.0,
-        "current_cost": current_cost,
-        "action": "consider_escalation"
-    })
-```
+{/* Removed real-time metric/event examples to avoid complexity */}
 
 ## Multi-Agent Support
 
@@ -181,45 +84,20 @@ Track and compare performance across multiple agents.
 ### Agent Comparison
 
 ```python
-# Initialize multiple agents
+# Initialize multiple agents and compare basic outcomes
 agents = {
     "support_agent": LivekitObserve(agent_id="support-001"),
     "sales_agent": LivekitObserve(agent_id="sales-001"),
     "billing_agent": LivekitObserve(agent_id="billing-001")
 }
 
-# Track consistent metrics across agents
 for agent_name, agent in agents.items():
-    session_id = agent.start_session(
-        session=your_livekit_session,
-        metadata={"agent_name": agent_name, "test_scenario": "customer_inquiry"}
-    )
-    
-    # Track standardized metrics
-    agent.track_metric(session_id, "response_time", response_time, "gauge")
-    agent.track_metric(session_id, "user_satisfaction", satisfaction_score, "gauge")
-    agent.track_metric(session_id, "resolution_rate", resolution_rate, "gauge")
+    session_id = agent.start_session(session=your_livekit_session)
+    # ... run conversation ...
+    await agent.export(session_id)
 ```
 
-### Agent Performance Analysis
-
-```python
-# Track agent-specific events
-whispey.track_event(session_id, "agent_performance", {
-    "agent_id": "support-001",
-    "metric": "first_call_resolution",
-    "value": True,
-    "duration": 180
-})
-
-# Compare agent performance
-whispey.track_event(session_id, "agent_comparison", {
-    "agents": ["support-001", "sales-001"],
-    "metric": "response_time",
-    "values": [2.1, 3.5],
-    "winner": "support-001"
-})
-```
+{/* Removed event-based performance analysis */}
 
 ## Integration Hooks
 
