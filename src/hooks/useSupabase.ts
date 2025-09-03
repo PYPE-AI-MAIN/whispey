@@ -1,4 +1,4 @@
-// hooks/useSupabase.ts - FIXED VERSION
+// hooks/useSupabase.ts - COMPLETE FIXED VERSION
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
@@ -11,13 +11,23 @@ export const useInfiniteScroll = (table: string, options: any = {}) => {
   const [initialLoad, setInitialLoad] = useState(true)
   const offsetRef = useRef(0)
   const loadingRef = useRef(false) // Prevent concurrent requests
-  const limit = options.limit || 50
-
+  
+  // FIXED: Handle null options properly
+  const safeOptions = options || {}
+  const limit = safeOptions.limit || 50
+  const shouldFetch = options !== null && options !== undefined
 
   // Memoize options to prevent unnecessary re-renders
-  const optionsHash = JSON.stringify(options)
+  const optionsHash = JSON.stringify(safeOptions)
 
   const fetchData = useCallback(async (reset = false) => {
+    // FIXED: Don't fetch if options is null (not ready)
+    if (!shouldFetch) {
+      setLoading(false)
+      setInitialLoad(false)
+      return
+    }
+
     // Prevent concurrent requests
     if (loadingRef.current) return
     
@@ -30,19 +40,19 @@ export const useInfiniteScroll = (table: string, options: any = {}) => {
       
       let query = supabase
         .from(table)
-        .select(options.select || '*')
+        .select(safeOptions.select || '*') // FIXED: Use safeOptions
         .range(offset, offset + limit - 1)
       
       // Apply filters if provided
-      if (options.filters) {
-        options.filters.forEach((filter: any) => {
+      if (safeOptions.filters) { // FIXED: Use safeOptions
+        safeOptions.filters.forEach((filter: any) => {
           query = query.filter(filter.column, filter.operator, filter.value)
         })
       }
       
       // Apply ordering
-      if (options.orderBy) {
-        query = query.order(options.orderBy.column, { ascending: options.orderBy.ascending })
+      if (safeOptions.orderBy) { // FIXED: Use safeOptions
+        query = query.order(safeOptions.orderBy.column, { ascending: safeOptions.orderBy.ascending })
       }
       
       const { data: newData, error } = await query
@@ -73,31 +83,41 @@ export const useInfiniteScroll = (table: string, options: any = {}) => {
       setLoading(false)
       loadingRef.current = false
     }
-  }, [table, optionsHash, limit])
+  }, [table, optionsHash, limit, shouldFetch]) // FIXED: Add shouldFetch to deps
 
   const loadMore = useCallback(() => {
-    if (!loadingRef.current && hasMore && !initialLoad) {
+    if (!loadingRef.current && hasMore && !initialLoad && shouldFetch) { // FIXED: Add shouldFetch check
       fetchData(false)
     }
-  }, [fetchData, hasMore, initialLoad])
+  }, [fetchData, hasMore, initialLoad, shouldFetch]) // FIXED: Add shouldFetch to deps
 
   const refresh = useCallback(() => {
+    if (!shouldFetch) return // FIXED: Don't refresh if not ready
+    
     offsetRef.current = 0
     setInitialLoad(true)
     fetchData(true).then(() => setInitialLoad(false))
-  }, [fetchData])
+  }, [fetchData, shouldFetch]) // FIXED: Add shouldFetch to deps
 
-  // Initial load
+  // FIXED: Initial load only when ready
   useEffect(() => {
-    if (initialLoad) {
+    if (initialLoad && shouldFetch) {
       fetchData(true).then(() => setInitialLoad(false))
+    } else if (!shouldFetch) {
+      // Reset state when not ready to fetch
+      setData([])
+      setLoading(false)
+      setError(null)
+      setHasMore(true)
+      setInitialLoad(true)
+      offsetRef.current = 0
     }
-  }, [fetchData, initialLoad])
+  }, [fetchData, initialLoad, shouldFetch])
 
   return { data, loading, hasMore, error, loadMore, refresh }
 }
 
-// Alternative: Simple query hook without infinite scroll
+// Keep the existing useSupabaseQuery unchanged
 export const useSupabaseQuery = (table: string, options: any = {}) => {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
