@@ -17,7 +17,10 @@ The main class for integrating Whispey with your LiveKit agents.
 ```python
 from whispey import LivekitObserve
 
-whispey = LivekitObserve(agent_id="your-agent-id")
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key"
+)
 ```
 
 #### Constructor Parameters
@@ -25,6 +28,10 @@ whispey = LivekitObserve(agent_id="your-agent-id")
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `agent_id` | `str` | Yes | Your agent ID from the dashboard |
+| `apikey` | `str` | No | Your API key (can use env var) |
+| `host_url` | `str` | No | Custom API endpoint |
+| `bug_reports` | `bool\|dict` | No | Bug reporting configuration |
+| `enable_otel` | `bool` | No | Enable OpenTelemetry |
 
 #### Methods
 
@@ -38,9 +45,11 @@ session_id = whispey.start_session(
     phone_number="+1234567890",
     customer_name="John Doe",
     conversation_type="voice_call",
-    fpo_name="Agent Name",
-    lesson_day=3,
-    custom_field="any_value"
+    metadata={
+        "department": "support",
+        "priority": "high",
+        "language": "en"
+    }
 )
 ```
 
@@ -56,51 +65,34 @@ session_id = whispey.start_session(
 | `phone_number` | `str` | Customer phone number |
 | `customer_name` | `str` | Customer name |
 | `conversation_type` | `str` | Type of conversation |
-| `fpo_name` | `str` | Agent name/identifier |
-| `lesson_day` | `int` | Custom numeric field |
-| `custom_field` | `str` | Any custom string data |
+| `metadata` | `dict` | Custom metadata object |
 
-##### `export(session_id, recording_url="")`
+##### `export(session_id, recording_url="", save_telemetry_json=False)`
 
-Exports session data to Whispey platform.
+Exports session data to Whispey platform. **Important**: This should only be called on shutdown.
 
 ```python
-result = await whispey.export(
-    session_id,
-    recording_url="https://example.com/recording.mp3"
-)
+# Set up shutdown callback
+async def whispey_shutdown():
+    result = await whispey.export(
+        session_id,
+        recording_url="https://example.com/recording.mp3"  # Optional
+    )
+    
+    if result.get("success"):
+        print("✅ Successfully exported to Whispey Voice Analytics!")
+    else:
+        print(f"❌ Export failed: {result.get('error')}")
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 **Parameters:**
 - `session_id`: Session ID from `start_session()`
 - `recording_url`: Optional recording URL
+- `save_telemetry_json`: Optional flag to save telemetry as JSON
 
 **Returns:** `dict` - Export result with success status
-
-##### `get_data(session_id)`
-
-Gets current session data without exporting.
-
-```python
-data = whispey.get_data(session_id)
-print(f"Current metrics: {data}")
-```
-
-**Parameters:**
-- `session_id`: Session ID from `start_session()`
-
-**Returns:** `dict` - Current session metrics
-
-##### `end(session_id)`
-
-Manually ends a session.
-
-```python
-whispey.end(session_id)
-```
-
-**Parameters:**
-- `session_id`: Session ID from `start_session()`
 
 ## 📊 Metrics Collected
 
@@ -111,7 +103,6 @@ whispey.end(session_id)
     "stt": {
         "audio_duration": 2.5,        # seconds
         "processing_time": 0.8,       # seconds
-        "accuracy_score": 0.95,       # 0-1 scale
         "provider": "deepgram",       # provider name
         "model": "nova-3"             # model used
     }
@@ -125,9 +116,7 @@ whispey.end(session_id)
     "llm": {
         "input_tokens": 150,          # tokens consumed
         "output_tokens": 75,          # tokens generated
-        "total_cost": 0.0023,         # USD
         "response_time": 1.2,         # seconds
-        "ttft": 0.8,                 # time to first token
         "provider": "openai",         # provider name
         "model": "gpt-4o-mini"       # model used
     }
@@ -141,8 +130,6 @@ whispey.end(session_id)
     "tts": {
         "character_count": 45,        # characters processed
         "audio_duration": 3.2,        # seconds
-        "ttfb": 0.5,                 # time to first byte
-        "total_cost": 0.0015,         # USD
         "provider": "elevenlabs",     # provider name
         "voice_id": "voice-id"        # voice used
     }
@@ -156,7 +143,6 @@ whispey.end(session_id)
     "vad": {
         "voice_detected": true,       # boolean
         "confidence": 0.92,           # 0-1 scale
-        "silence_duration": 1.5,      # seconds
         "provider": "silero"          # provider name
     }
 }
@@ -164,20 +150,47 @@ whispey.end(session_id)
 
 ## 🔧 Advanced Usage
 
-### Manual Session Control
+### Bug Reporting Configuration
 
 ```python
-# Start session
-session_id = whispey.start_session(session, **metadata)
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports={
+        "bug_start_command": ["report issue", "there's a problem"],
+        "bug_end_command": ["issue resolved", "problem fixed"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?",
+        "continuation_prefix": "So, as I was saying, ",
+        "fallback_message": "Let me continue our conversation."
+    }
+)
 
-# Get current data
-current_data = whispey.get_data(session_id)
+session_id = whispey.start_session(session)
 
-# Manually end session
-whispey.end(session_id)
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
 
-# Export to platform
-result = await whispey.export(session_id, recording_url="https://...")
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+### OpenTelemetry Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    enable_otel=True  # Enable detailed telemetry collection
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ### Error Handling
@@ -186,13 +199,20 @@ result = await whispey.export(session_id, recording_url="https://...")
 try:
     session_id = whispey.start_session(session)
     # ... your session code ...
-    result = await whispey.export(session_id)
     
-    if result.get("success"):
-        print("✅ Data exported successfully!")
-    else:
-        print(f"❌ Export failed: {result.get('error')}")
-        
+    # Set up shutdown callback
+    async def whispey_shutdown():
+        try:
+            result = await whispey.export(session_id)
+            if result.get("success"):
+                print("✅ Data exported successfully!")
+            else:
+                print(f"❌ Export failed: {result.get('error')}")
+        except Exception as e:
+            print(f"Export error: {e}")
+    
+    ctx.add_shutdown_callback(whispey_shutdown)
+    
 except Exception as e:
     print(f"💥 Whispey error: {e}")
 ```
@@ -218,12 +238,6 @@ whispey = LivekitObserve(agent_id="your-agent-id")
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `WHISPEY_API_KEY` | Your API key | Required |
-| `WHISPEY_API_URL` | API endpoint | Auto-detected |
-
-### API Endpoints
-
-- **Production**: `https://api.whispey.ai`
-- **Development**: `https://dev-api.whispey.ai`
 
 ## 📝 Examples
 
@@ -232,7 +246,10 @@ whispey = LivekitObserve(agent_id="your-agent-id")
 ```python
 from whispey import LivekitObserve
 
-whispey = LivekitObserve(agent_id="your-agent-id")
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key"
+)
 
 # Start tracking
 session_id = whispey.start_session(session)
@@ -252,24 +269,29 @@ session_id = whispey.start_session(
     phone_number="+1234567890",
     customer_name="Jane Smith",
     conversation_type="support_call",
-    fpo_name="Support Agent",
-    lesson_day=1,
-    custom_field="high_priority"
+    metadata={
+        "department": "support",
+        "priority": "high",
+        "agent_name": "Support Agent"
+    }
 )
 ```
 
-### Manual Export
+### Export with Recording URL
 
 ```python
-# Get current data
-data = whispey.get_data(session_id)
-print(f"Current metrics: {data}")
+async def whispey_shutdown():
+    result = await whispey.export(
+        session_id,
+        recording_url="https://storage.example.com/recording.mp3"
+    )
+    
+    if result.get("success"):
+        print("✅ Successfully exported with recording!")
+    else:
+        print(f"❌ Export failed: {result.get('error')}")
 
-# Export with recording
-result = await whispey.export(
-    session_id,
-    recording_url="https://storage.example.com/recording.mp3"
-)
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ## 🆘 Troubleshooting
@@ -283,13 +305,6 @@ session_id = whispey.start_session(session)
 print(f"Session ID: {session_id}")  # Save this
 ```
 
-**"No data available" Error**
-```python
-# Allow time for metrics collection
-await asyncio.sleep(1)
-result = await whispey.export(session_id)
-```
-
 **API Authentication Error**
 ```bash
 # Check environment variable
@@ -299,12 +314,29 @@ echo $WHISPEY_API_KEY
 export WHISPEY_API_KEY="your_api_key_here"
 ```
 
+**Export Failures**
+```python
+# Always handle export errors gracefully
+async def whispey_shutdown():
+    try:
+        result = await whispey.export(session_id)
+        if result.get("success"):
+            print("✅ Successfully exported to Whispey Voice Analytics!")
+        else:
+            print(f"❌ Export failed: {result.get('error')}")
+    except Exception as e:
+        print(f"Export error: {e}")
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
 ## 📚 Related Documentation
 
 - [🚀 Getting Started Guide](getting-started.md)
 - [📊 Dashboard Tutorial](dashboard-guide.md)
 - [🔌 API Documentation](api-reference.md)
+- [📚 GitHub Examples](https://github.com/PYPE-AI-MAIN/whispey-examples)
 
 ---
 
-**Need help?** Join our [Discord community](https://discord.gg/pypeai) or email support@whispey.ai 
+**Need help?** Email deepesh@pypeai.com or check out our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples) 

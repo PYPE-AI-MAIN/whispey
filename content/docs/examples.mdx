@@ -11,7 +11,10 @@ Track and analyze customer support conversations to improve response quality and
 from whispey import LivekitObserve
 
 # Initialize Whispey
-whispey = LivekitObserve(agent_id="support-agent-001")
+whispey = LivekitObserve(
+    agent_id="support-agent-001",
+    apikey="your-api-key"
+)
 
 # Start session with customer info
 session_id = whispey.start_session(
@@ -41,7 +44,10 @@ Monitor sales conversations to track conversion rates and optimize sales strateg
 
 ```python
 # Initialize for sales tracking
-whispey = LivekitObserve(agent_id="sales-agent-002")
+whispey = LivekitObserve(
+    agent_id="sales-agent-002",
+    apikey="your-api-key"
+)
 
 session_id = whispey.start_session(
     session=your_livekit_session,
@@ -70,7 +76,10 @@ Optimize appointment booking conversations for better user experience.
 
 ```python
 # Initialize for appointment tracking
-whispey = LivekitObserve(agent_id="scheduler-003")
+whispey = LivekitObserve(
+    agent_id="scheduler-003",
+    apikey="your-api-key"
+)
 
 session_id = whispey.start_session(
     session=your_livekit_session,
@@ -98,9 +107,9 @@ Compare performance across multiple agents and identify best practices.
 ```python
 # Track multiple agents
 agents = {
-    "agent_1": LivekitObserve(agent_id="agent-001"),
-    "agent_2": LivekitObserve(agent_id="agent-002"),
-    "agent_3": LivekitObserve(agent_id="agent-003")
+    "agent_1": LivekitObserve(agent_id="agent-001", apikey="your-api-key"),
+    "agent_2": LivekitObserve(agent_id="agent-002", apikey="your-api-key"),
+    "agent_3": LivekitObserve(agent_id="agent-003", apikey="your-api-key")
 }
 
 # Start sessions for comparison
@@ -123,22 +132,44 @@ for name, session_id in sessions.items():
     await agents[name].export(session_id)
 ```
 
-## Cost Optimization
+## Bug Reporting Integration
 
-Monitor and optimize costs across different AI providers and models.
+Enable automatic bug detection and reporting in your conversations.
 
 ```python
-# Initialize with cost tracking
-whispey = LivekitObserve(agent_id="cost-optimized-004")
-
-session_id = whispey.start_session(
-    session=your_livekit_session,
-    metadata={
-        "model_config": "gpt-4o-mini",
-        "provider": "openai",
-        "cost_tracking": True
+# Initialize with bug reporting
+whispey = LivekitObserve(
+    agent_id="bug-reporting-004",
+    apikey="your-api-key",
+    bug_reports={
+        "bug_start_command": ["report issue", "there's a problem", "bug report"],
+        "bug_end_command": ["issue resolved", "problem fixed", "bug resolved"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?"
     }
 )
+
+session_id = whispey.start_session(session=your_livekit_session)
+
+async def whispey_shutdown():
+    await whispey.export(session_id)
+ctx.add_shutdown_callback(whispey_shutdown)
+await session.start(...)
+```
+
+## OpenTelemetry Integration
+
+Enable detailed telemetry collection for advanced monitoring.
+
+```python
+# Initialize with OpenTelemetry
+whispey = LivekitObserve(
+    agent_id="otel-enabled-005",
+    apikey="your-api-key",
+    enable_otel=True
+)
+
+session_id = whispey.start_session(session=your_livekit_session)
 
 async def whispey_shutdown():
     await whispey.export(session_id)
@@ -152,7 +183,10 @@ Integrate Whispey analytics with your existing dashboard and reporting systems.
 
 ```python
 # Initialize for dashboard integration
-whispey = LivekitObserve(agent_id="dashboard-integration-005")
+whispey = LivekitObserve(
+    agent_id="dashboard-integration-006",
+    apikey="your-api-key"
+)
 
 session_id = whispey.start_session(
     session=your_livekit_session,
@@ -203,3 +237,7 @@ if result.get("success"):
 - Track token usage to manage costs effectively
 - Analyze conversation patterns to improve agent responses
 - Regular review of analytics to identify improvement opportunities
+
+## More Examples
+
+For additional examples and advanced use cases, visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples).

@@ -17,19 +17,25 @@ from whispey import LivekitObserve
 # Enable bug reporting with minimal configuration
 whispey = LivekitObserve(
     agent_id="your-agent-id",
-    api_key="your-api-key",
+    apikey="your-api-key",
     bug_reports=True  # Uses default trigger phrases
 )
 
 session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ### Default Behavior
 
 With `bug_reports=True`, users can say:
 
-- **"bug start"** to start feedback collection
-- **"bug over"** to end feedback and resume conversation
+- **"feedback start"** to start feedback collection
+- **"feedback over"** to end feedback and resume conversation
 
 The system automatically uses default messages:
 
@@ -44,11 +50,11 @@ The system automatically uses default messages:
 ```
 User: "What's the weather today?"
 Agent: "I can help you cook pasta recipes" [PROBLEMATIC RESPONSE]
-User: "report issue"
-Agent: "Please describe the issue you encountered."
+User: "feedback start"
+Agent: "Thanks for reporting that. Please tell me the issue?"
 User: "You talked about cooking when I asked about weather"
-Agent: "Got it, anything else?"
-User: "issue resolved"
+Agent: "Anything else?"
+User: "feedback over"
 Agent: "So, as I was saying, the weather today is sunny and 75°F"
 ```
 
@@ -67,12 +73,20 @@ Agent: "So, as I was saying, the weather today is sunny and 75°F"
 ```python
 whispey = LivekitObserve(
     agent_id="your-agent-id",
-    api_key="your-api-key",
+    apikey="your-api-key",
     bug_reports={
         "bug_start_command": ["report issue", "there's a problem"],
         "bug_end_command": ["issue resolved", "problem fixed"]
     }
 )
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ### Complete Configuration
@@ -86,6 +100,20 @@ bug_reports={
     "continuation_prefix": "So, as I was saying, ",
     "fallback_message": "Let me continue our conversation."
 }
+
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports=bug_reports
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ## Advanced Configurations
@@ -114,6 +142,20 @@ bug_reports={
     "collection_prompt": "और कुछ? Anything else?",
     "continuation_prefix": "आपके सुझाव के लिए धन्यवाद। अब वापस आपके सवाल पर - Thank you for the feedback. Back to your question - "
 }
+
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports=bug_reports
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ### Professional Support Configuration
@@ -126,6 +168,20 @@ bug_reports={
     "collection_prompt": "Is there any other detail you'd like to share about this issue?",
     "continuation_prefix": "Thank you for that feedback. Now, returning to your question - "
 }
+
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports=bug_reports
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ### Regex Pattern Support
@@ -143,6 +199,20 @@ bug_reports={
         r"\b(done|finished|complete)\b"
     ]
 }
+
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports=bug_reports
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ## Data Structure
@@ -157,7 +227,7 @@ bug_reports={
             "details": [
                 {
                     "type": "initial_report",
-                    "text": "report issue",
+                    "text": "feedback start",
                     "timestamp": 1703123456.789
                 },
                 {
@@ -167,7 +237,7 @@ bug_reports={
                 },
                 {
                     "type": "bug_end",
-                    "text": "issue resolved",
+                    "text": "feedback over",
                     "timestamp": 1703123460.456
                 }
             ],
@@ -198,29 +268,6 @@ Turns with reported issues are marked with:
     "stt_metrics": {...},
     "llm_metrics": {...},
     "tts_metrics": {...}
-}
-```
-
-## Error Handling
-
-### Fallback Strategies
-
-```python
-bug_reports={
-    "bug_start_command": ["report issue"],
-    "bug_end_command": ["issue resolved"],
-
-    # Fallback strategies
-    "fallback_message": "I apologize for any confusion. Let me try to help you differently.",
-    "max_feedback_turns": 5,                   # Limit feedback collection length
-    "timeout_seconds": 120,                    # Auto-end if feedback takes too long
-    "enable_context_recovery": True,           # Try multiple recovery methods
-    "graceful_degradation": True,              # Continue even if context capture fails
-
-    # Error responses
-    "context_loss_message": "I want to help, but I may have lost track of our conversation. Can you repeat your question?",
-    "system_error_message": "I'm experiencing a technical issue. Let me try to continue helping you.",
-    "recovery_attempts": 3                     # Number of recovery attempts
 }
 ```
 
@@ -261,3 +308,16 @@ The dashboard provides a dedicated bug report analysis interface showing:
 - **Bug badges** on problematic responses
 - **Timeline view** of feedback collection process
 - **Context preservation** showing original conversation flow
+
+## Important Notes
+
+- **Export on Shutdown**: Bug report data is only exported when the session ends via the shutdown callback
+- **Real-time Detection**: Bug detection happens in real-time during the conversation
+- **Context Preservation**: The system automatically captures and stores the problematic response
+- **Seamless Continuation**: After feedback collection, the conversation continues naturally
+
+## Next Steps
+
+- Learn about [Advanced Features](/docs/sdk/features)
+- Check out [Examples](/docs/examples) for real-world usage
+- Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)

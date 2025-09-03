@@ -16,7 +16,7 @@ The Whispey dashboard provides comprehensive analytics for your voice AI applica
 
 ### Accessing Your Dashboard
 
-1. **Visit**: [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)
+1. **Visit**: [https://whispey.xyz](https://whispey.xyz)
 2. **Sign in** with your account
 3. **Select your project** from the dropdown
 4. **Navigate** to different sections using the sidebar
@@ -339,8 +339,8 @@ Secret: your_webhook_secret
 
 ## 💬 Support
 
-- **💬 Discord**: [Join our community](https://discord.gg/pypeai)
-- **📧 Email**: support@whispey.ai
+- **💬 Discord**: [Join our community](https://discord.gg/r2eMeAp6)
+- **📧 Email**: deepesh@pypeai.com
 - **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 
 ---

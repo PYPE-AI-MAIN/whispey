@@ -8,12 +8,12 @@ All API requests require authentication using your API key:
 
 ```bash
 curl -H "Authorization: Bearer YOUR_API_KEY" \
-  https://api.whispey.ai/v1/agents
+  https://api.whispey.xyz/v1/agents
 ```
 
 ### API Key Management
 
-Get your API key from the [Whispey Dashboard](https://pype-voice-analytics-dashboard.vercel.app/):
+Get your API key from the [Whispey Dashboard](https://whispey.xyz/):
 
 1. **Sign in** to your account
 2. **Navigate** to Settings → API Keys
@@ -22,8 +22,8 @@ Get your API key from the [Whispey Dashboard](https://pype-voice-analytics-dashb
 
 ## 📊 Base URL
 
-- **Production**: `https://api.whispey.ai`
-- **Development**: `https://dev-api.whispey.ai`
+- **Production**: `https://api.whispey.xyz`
+- **Development**: `https://dev-api.whispey.xyz`
 
 ## 🏗️ Core Endpoints
 
@@ -340,7 +340,7 @@ POST /v1/export/calls
   "data": {
     "export_id": "export-456",
     "status": "processing",
-    "download_url": "https://api.obsera.ai/v1/exports/export-456/download",
+    "download_url": "https://api.whispey.xyz/v1/exports/export-456/download",
     "estimated_completion": "2024-01-15T15:00:00Z"
   }
 }
@@ -359,7 +359,7 @@ GET /v1/exports/{export_id}
   "data": {
     "id": "export-456",
     "status": "completed",
-    "download_url": "https://api.obsera.ai/v1/exports/export-456/download",
+    "download_url": "https://api.whispey.xyz/v1/exports/export-456/download",
     "file_size": "2.5MB",
     "record_count": 1250
   }
@@ -393,7 +393,7 @@ await session.start(...)
 import requests
 
 # API configuration
-API_BASE = "https://api.whispey.ai/v1"
+API_BASE = "https://api.whispey.xyz/v1"
 API_KEY = "your_api_key"
 
 headers = {
@@ -467,34 +467,20 @@ Exports session data to Obsera platform.
 result = await obsera.export(session_id, recording_url="https://...")
 ```
 
-#### `get_data(session_id)`
-
-Gets current session data without exporting.
-
-```python
-data = obsera.get_data(session_id)
-```
-
-#### `end(session_id)`
-
-Manually ends a session.
-
-```python
-obsera.end(session_id)
-```
+**Note**: The `get_data()` and `end()` methods are not available in the current SDK version. All data is automatically collected and exported on shutdown.
 
 ## 🆘 Support
 
 ### Getting Help
 
-- **📖 Documentation**: [https://pype-voice-analytics-dashboard.vercel.app/docs](https://pype-voice-analytics-dashboard.vercel.app/docs)
-- **💬 Discord**: [Join our community](https://discord.gg/pypeai)
-- **📧 Email**: api-support@obsera.ai
+- **📖 Documentation**: [https://whispey.xyz/docs](https://whispey.xyz/docs)
+
+- **📧 Email**: deepesh@pypeai.com
 - **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/obsera/issues)
 
 ### API Status
 
-Check API status at: [https://status.obsera.ai](https://status.obsera.ai)
+Check API status at: [https://whispey.xyz](https://whispey.xyz)
 
 ---
 

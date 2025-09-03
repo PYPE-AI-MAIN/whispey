@@ -331,7 +331,7 @@ We recognize contributors in several ways:
 - **GitHub Contributors** - Listed on the main repository
 - **Release Notes** - Credit in release announcements
 - **Documentation** - Credit in relevant docs
-- **Community Shoutouts** - Recognition in Discord
+- **Community Shoutouts** - Recognition in [Discord](https://discord.gg/r2eMeAp6)
 
 ### Contribution Levels
 
@@ -344,15 +344,15 @@ We recognize contributors in several ways:
 
 ### Development Questions
 
-- **💬 Discord**: [Join our community](https://discord.gg/pypeai)
+
 - **🐛 GitHub Issues**: Open an issue for technical questions
-- **📧 Email**: dev-support@whispey.ai for private discussions
+- **📧 Email**: deepesh@pypeai.com for private discussions
 
 ### Mentorship
 
 New contributors can:
 
-- **Ask for help** in Discord or GitHub
+- **Ask for help** in [Discord](https://discord.gg/r2eMeAp6) or GitHub
 - **Request pairing** with experienced contributors
 - **Get code reviews** from maintainers
 - **Join office hours** for live help
@@ -376,8 +376,8 @@ New contributors can:
 ### Reporting
 
 Report violations to:
-- **📧 Email**: conduct@whispey.ai
-- **💬 Discord**: Message moderators
+- **📧 Email**: deepesh@pypeai.com
+- **💬 Discord**: [Join our community](https://discord.gg/r2eMeAp6)
 - **🐛 GitHub**: Open private issue
 
 ## 📄 License
@@ -390,4 +390,4 @@ Thank you for contributing to Whispey! Your contributions help make voice AI ana
 
 ---
 
-**Ready to contribute?** Start with a [good first issue](https://github.com/PYPE-AI-MAIN/whispey/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or join our [Discord community](https://discord.gg/pypeai)! 
+**Ready to contribute?** Start with a [good first issue](https://github.com/PYPE-AI-MAIN/whispey/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or email us directly! 

@@ -15,7 +15,8 @@ Replace `"your-agent-id-from-dashboard"` with your actual Agent ID from the Whis
 
 ```python
 whispey = LivekitObserve(
-    agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22"  # Your actual Agent ID
+    agent_id="2a72948a-094d-4a13-baf7-e033a5cdeb22",  # Your actual Agent ID
+    apikey=os.getenv("WHISPEY_API_KEY")
 )
 ```
 
@@ -37,9 +38,82 @@ session_id = whispey.start_session(
         "language": "en"
     }
 )
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
-### Environment Setup
+### Bug Reporting Configuration
+
+Enable automatic bug detection and reporting:
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports={
+        "bug_start_command": ["report issue", "there's a problem"],
+        "bug_end_command": ["issue resolved", "problem fixed"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?",
+        "continuation_prefix": "So, as I was saying, ",
+        "fallback_message": "Let me continue our conversation."
+    }
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+### OpenTelemetry Configuration
+
+Enable detailed telemetry collection:
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    enable_otel=True  # Enable OpenTelemetry
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+### Custom API Endpoint
+
+Use a custom API endpoint if needed:
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    host_url="https://api.whispey.xyz"  # Custom API endpoint
+)
+
+session_id = whispey.start_session(session)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+## Environment Setup
 
 For production environments, ensure proper environment variable management:
 
@@ -51,7 +125,7 @@ export WHISPEY_API_KEY="your_api_key_here"
 # Heroku, Vercel, AWS, etc.
 ```
 
-### Logging Configuration
+## Logging Configuration
 
 Enable detailed logging for debugging:
 
@@ -95,10 +169,21 @@ logging.basicConfig(level=logging.INFO)
 3. **Export Failures**
    ```python
    # Always handle export errors gracefully
-   try:
-       result = await whispey.export(session_id)
-       if not result.get("success"):
-           print(f"Export failed: {result.get('error')}")
-   except Exception as e:
-       print(f"Export error: {e}")
+   async def whispey_shutdown():
+       try:
+           result = await whispey.export(session_id)
+           if result.get("success"):
+               print("✅ Successfully exported to Whispey Voice Analytics!")
+           else:
+               print(f"❌ Export failed: {result.get('error')}")
+       except Exception as e:
+           print(f"Export error: {e}")
+   
+   ctx.add_shutdown_callback(whispey_shutdown)
    ```
+
+## Next Steps
+
+- Learn about [Advanced Features](/docs/sdk/features)
+- Check out [Examples](/docs/examples) for real-world usage
+- Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)

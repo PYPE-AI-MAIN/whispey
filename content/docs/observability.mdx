@@ -15,7 +15,6 @@ Every user-agent interaction is captured as a structured turn containing:
 
 - **User transcript** with STT processing metrics
 - **Agent response** with LLM and TTS metrics
-- **Tool executions** with arguments and results
 - **Performance data** including latency and costs
 - **Configuration details** for all pipeline components
 
@@ -45,17 +44,18 @@ from whispey import LivekitObserve
 # Initialize with observability
 whispey = LivekitObserve(
     agent_id="your-agent-id",
-    api_key="your-api-key",
+    apikey="your-api-key",
     enable_otel=True  # Enable telemetry capture
 )
 
 # Start monitoring session
-session_id = whispey.start_session(
-    session
-)
+session_id = whispey.start_session(session)
 
-# Export data after session
-await whispey.export(session_id)
+# Export data on shutdown
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ## Dashboard Features
@@ -143,27 +143,17 @@ The exported data integrates with the Whispey dashboard for visualization, analy
 ```python
 whispey = LivekitObserve(
     agent_id="your-agent-id",
-    api_key="your-api-key",
+    apikey="your-api-key",
     enable_otel=True  # Enable OpenTelemetry
 )
-```
 
-### Advanced Configuration
+session_id = whispey.start_session(session)
 
-```python
-whispey = LivekitObserve(
-    agent_id="your-agent-id",
-    api_key="your-api-key",
-    enable_otel=True,
-    observability_config={
-        "capture_prompts": True,        # Store full conversation context
-        "capture_configs": True,        # Store pipeline configuration
-        "capture_tools": True,          # Track function executions
-        "capture_costs": True,          # Calculate and track costs
-        "capture_errors": True,         # Detailed error tracking
-        "span_sampling": 1.0            # Sample rate for telemetry spans
-    }
-)
+# Export on shutdown
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
 ## Data Structure
@@ -266,3 +256,16 @@ When OpenTelemetry is enabled, spans are created for each operation:
 - **Debug tool execution** issues
 - **Analyze error patterns** and root causes
 - **Reproduce issues** with complete context
+
+## Important Notes
+
+- **Export on Shutdown**: All observability data is only exported when the session ends via the shutdown callback
+- **Real-time Collection**: Metrics and telemetry are collected in real-time during the conversation
+- **OpenTelemetry Optional**: OpenTelemetry integration is optional and must be explicitly enabled
+- **Dashboard Integration**: Exported data automatically appears in the Whispey dashboard for analysis
+
+## Next Steps
+
+- Learn about [Advanced Features](/docs/sdk/features)
+- Check out [Examples](/docs/examples) for real-world usage
+- Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)
