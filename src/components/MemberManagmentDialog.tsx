@@ -126,7 +126,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
       console.log("user_data",data)
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to add member')
+        throw new Error(data.error || 'Member must be logged in.')
       }
 
       setMessage({ 
@@ -143,7 +143,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
       fetchMembers()
       
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add member'
+      const errorMessage = error instanceof Error ? error.message : 'Member must be logged in.'
       setMessage({ type: 'error', text: errorMessage })
     } finally {
       setLoading(false)

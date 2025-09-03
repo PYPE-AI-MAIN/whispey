@@ -117,7 +117,7 @@ export async function POST(
 
       if (error) {
         console.error(error)
-        return NextResponse.json({ error: 'Failed to add member' }, { status: 500 })
+        return NextResponse.json({ error: 'Member must be logged in.' }, { status: 500 })
       }
 
       return NextResponse.json({ message: 'User added to project', member: newMapping }, { status: 201 })
@@ -138,7 +138,7 @@ export async function POST(
 
       if (error) {
         console.error('Insert error:', error)
-        return NextResponse.json({ error: 'Failed to add member' }, { status: 500 })
+        return NextResponse.json({ error: 'Member must be logged in.' }, { status: 500 })
       }
 
       return NextResponse.json(
