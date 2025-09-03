@@ -18,7 +18,6 @@ from livekit.plugins import (
     silero,
     elevenlabs,
 )
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from whispey import LivekitObserve
 import os
 
@@ -27,7 +26,8 @@ load_dotenv()
 
 # Initialize Whispey with your Agent ID from the dashboard
 whispey = LivekitObserve(
-    agent_id="your-agent-id-from-dashboard"  # Get this from dashboard
+    agent_id="your-agent-id-from-dashboard",  # Get this from dashboard
+    apikey=os.getenv("WHISPEY_API_KEY")
 )
 
 class Assistant(Agent):
@@ -44,7 +44,7 @@ async def entrypoint(ctx: agents.JobContext):
         tts=elevenlabs.TTS(
             voice_id="H8bdWZHK2OgZwTN7ponr",
             model="eleven_flash_v2_5",
-            language="hi",  # Adjust language as needed
+            language="en",
             voice_settings=elevenlabs.VoiceSettings(
                 similarity_boost=1,
                 stability=0.7,
@@ -54,7 +54,6 @@ async def entrypoint(ctx: agents.JobContext):
             )
         ),
         vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
     )
     
     # Start Whispey Voice Analytics
@@ -70,10 +69,7 @@ async def entrypoint(ctx: agents.JobContext):
     # Export analytics data when session ends
     async def whispey_shutdown():
         try:
-            result = await whispey.export(
-                session_id,
-                recording_url=""  # Optional: Add recording URL if available
-            )
+            result = await whispey.export(session_id)
             
             if result.get("success"):
                 print("Successfully exported to Whispey Voice Analytics!")
@@ -112,7 +108,6 @@ if __name__ == "__main__":
 - **LLM**: OpenAI GPT-4 for language processing
 - **TTS**: ElevenLabs for text-to-speech
 - **VAD**: Silero for voice activity detection
-- **Turn Detection**: Multilingual model for conversation flow
 
 ### Whispey Integration
 - **Session Tracking**: Automatic metrics collection
@@ -126,3 +121,7 @@ if __name__ == "__main__":
 - Performance insights
 - Cost tracking
 - Quality metrics
+
+## Additional Examples
+
+For more examples and use cases, check out our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples).

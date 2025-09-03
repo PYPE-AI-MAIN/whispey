@@ -27,7 +27,7 @@ WHISPEY_API_KEY=your_whispey_api_key_here
 WHISPEY_AGENT_ID=your_agent_id_from_dashboard
 ```
 
-Get your credentials from the [Whispey Dashboard](https://www.whispey.xyz/).
+Get your credentials from the [Whispey Dashboard](https://whispey.xyz/).
 
 ## Basic Setup
 
@@ -44,7 +44,7 @@ load_dotenv()
 # Initialize Whispey
 whispey = LivekitObserve(
     agent_id=os.getenv("WHISPEY_AGENT_ID"),
-    api_key=os.getenv("WHISPEY_API_KEY")
+    apikey=os.getenv("WHISPEY_API_KEY")
 )
 
 # Start tracking a session
@@ -71,10 +71,10 @@ await session.start(...)
 ```python
 whispey = LivekitObserve(
     agent_id="your-agent-id",
-    api_key="your-api-key",
-    base_url="https://api.whispey.xyz",  # Custom API endpoint
-    timeout=30,                          # Request timeout in seconds
-    retry_attempts=3                     # Number of retry attempts
+    apikey="your-api-key",
+    host_url="https://api.whispey.xyz",  # Custom API endpoint
+    bug_reports=False,                    # Disable bug reporting
+    enable_otel=False                     # Disable OpenTelemetry
 )
 ```
 
@@ -95,18 +95,42 @@ session_id = whispey.start_session(
 )
 ```
 
+### Bug Reporting Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports={
+        "bug_start_command": ["report issue", "there's a problem"],
+        "bug_end_command": ["issue resolved", "problem fixed"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?"
+    }
+)
+```
+
+### OpenTelemetry Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    enable_otel=True  # Enable detailed telemetry collection
+)
+```
+
 ## SDK Methods Reference
 
 ### LivekitObserve Constructor
 
 ```python
 LivekitObserve(
-    agent_id: str,           # Required: Your agent ID from dashboard
-    api_key: str = None,     # Optional: API key (can use env var)
-    base_url: str = None,    # Optional: Custom API endpoint
-    timeout: int = 30,       # Optional: Request timeout in seconds
-    retry_attempts: int = 3, # Optional: Number of retry attempts
-    bug_reports: bool|dict = False  # Optional: Bug reporting configuration
+    agent_id: str,                    # Required: Your agent ID from dashboard
+    apikey: str = None,              # Optional: API key (can use env var)
+    host_url: str = None,            # Optional: Custom API endpoint
+    bug_reports: bool|dict = False,  # Optional: Bug reporting configuration
+    enable_otel: bool = False        # Optional: Enable OpenTelemetry
 )
 ```
 
@@ -132,20 +156,19 @@ Export session data:
 result = await whispey.export(
     session_id,                 # Required: Session ID from start_session
     recording_url: str = None,  # Optional: Recording URL
-    metadata: dict = None       # Optional: Additional metadata
+    save_telemetry_json: bool = False  # Optional: Save telemetry as JSON
 )
 ```
-
-{/* Removed custom event/metric tracking to keep setup simple */}
 
 ## Next Steps
 
 - Learn about [Bug Reporting](/docs/sdk/bug-reporting) feature
 - Explore [Advanced Features](/docs/sdk/features)
 - Check out [Examples](/docs/examples) for real-world usage
+- Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)
 
 ## Resources
 
-- **Website**: [https://www.whispey.xyz/](https://www.whispey.xyz/)
+- **Website**: [https://whispey.xyz/](https://whispey.xyz/)
 - **PyPI**: [https://pypi.org/project/Whispey/](https://pypi.org/project/Whispey/)
-- **GitHub**: [https://github.com/whispey/whispey](https://github.com/whispey/whispey)
+- **Examples**: [https://github.com/PYPE-AI-MAIN/whispey-examples](https://github.com/PYPE-AI-MAIN/whispey-examples)

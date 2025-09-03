@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/whispey.svg)](https://badge.fury.io/py/whispey)
-[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://pype-voice-analytics-dashboard.vercel.app/docs)
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://whispey.xyz/docs)
 [![Contributors](https://img.shields.io/github/contributors/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/stargazers)
 
@@ -25,7 +25,7 @@
 
 
 
-[🚀 Get Started](#quick-start) • [📊 Live Demo](https://www.whispey.xyz/) • [📖 Documentation](https://www.whispey.xyz/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/whispey)
+[🚀 Get Started](#quick-start) • [📊 Live Demo](https://whispey.xyz/) • [📖 Documentation](https://whispey.xyz/docs) • [⭐ Star on GitHub](https://github.com/PYPE-AI-MAIN/whispey)
 
 </div>
 
@@ -53,7 +53,7 @@ Get started in under 2 minutes with our hosted platform:
 
 #### 1. Get Your Credentials
 
-1. **Sign up** at [Whispey Voice Analytics Dashboard](https://www.whispey.xyz/)
+1. **Sign up** at [Whispey Voice Analytics Dashboard](https://whispey.xyz/)
 2. **Get your Agent ID** from the dashboard
 3. **Generate your API Key** from your account settings
 
@@ -81,7 +81,10 @@ from whispey import LivekitObserve
 load_dotenv()
 
 # Initialize observability with your Agent ID
-whispey = LivekitObserve(agent_id="your-agent-id-from-dashboard")
+whispey = LivekitObserve(
+    agent_id="your-agent-id-from-dashboard",
+    apikey=os.getenv("WHISPEY_API_KEY")
+)
 
 # Wrap your LiveKit session
 session = AgentSession(...)
@@ -95,7 +98,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 await session.start(...)
 ```
 
-**📊 View your analytics:** [https://www.whispey.xyz/](https://www.whispey.xyz/)
+**📊 View your analytics:** [https://whispey.xyz/](https://whispey.xyz/)
 
 ### Self-Hosted Installation
 
@@ -159,6 +162,11 @@ Whispey consists of three main components:
 - [📊 Dashboard Tutorial](docs/dashboard-guide.md)
 - [🔌 API Documentation](docs/api-reference.md)
 - [❓ FAQ](docs/faq.md)
+
+## 🚀 Examples and Resources
+
+- **GitHub Examples Repository**: [https://github.com/PYPE-AI-MAIN/whispey-examples](https://github.com/PYPE-AI-MAIN/whispey-examples)
+- **Live Examples**: Check out real-world implementations and use cases
 
 ## 🤝 Contributing
 
@@ -224,13 +232,12 @@ Found a security issue? Please email security@whispey.ai instead of opening a pu
 - [ ] Mobile app for monitoring on-the-go
 - [ ] Custom webhook integrations
 
-<!-- See our [public roadmap](https://github.com/whispey-ai/whispey/projects/1) for more details. -->
-
 ## 💬 Community & Support
 
 - **🐛 Bug Reports:** [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
-- **💡 Feature Requests:** [GitHub Discussions](https://github.com/whispey-ai/whispey/discussions)
+- **💡 Feature Requests:** [GitHub Discussions](https://github.com/PYPE-AI-MAIN/whispey/discussions)
 - **📧 Email:** deepesh@pypeai.com
+- **📚 Examples:** [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)
 
 ## 🏢 Enterprise
 
@@ -243,7 +250,6 @@ Need enterprise features like SSO, custom deployments, or dedicated support?
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
-
 
 - Built with ❤️ by the [PYPE](https://pypeai.com/home) team
 - Inspired by the observability tools from Datadog, New Relic, and Honeycomb

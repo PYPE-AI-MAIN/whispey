@@ -14,7 +14,7 @@ Before you begin, make sure you have:
 
 ### Step 1: Sign Up & Get Credentials
 
-1. **Visit the dashboard**: [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app)
+1. **Visit the dashboard**: [https://whispey.xyz/](https://whispey.xyz/)
 2. **Create an account** or sign in
 3. **Create a new project** (if you don't have one)
 4. **Add an agent** to your project
@@ -48,7 +48,10 @@ from whispey import LivekitObserve
 load_dotenv()
 
 # Initialize Whispey
-whispey = LivekitObserve(agent_id="your-agent-id")
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey=os.getenv("WHISPEY_API_KEY")
+)
 
 async def entrypoint(ctx: agents.JobContext):
     await ctx.connect()
@@ -80,7 +83,7 @@ async def entrypoint(ctx: agents.JobContext):
 
 ### Step 5: View Your Analytics
 
-Visit your dashboard at [https://pype-voice-analytics-dashboard.vercel.app](https://pype-voice-analytics-dashboard.vercel.app) to see your analytics in real-time!
+Visit your dashboard at [https://whispey.xyz/](https://whispey.xyz/) to see your analytics in real-time!
 
 ## 🔧 Basic Configuration
 
@@ -100,9 +103,11 @@ session_id = whispey.start_session(
     phone_number="+1234567890",        # Customer phone
     customer_name="Jane Smith",        # Customer name
     conversation_type="voice_call",    # Call type
-    fpo_name="Agent Name",            # Agent identifier
-    lesson_day=3,                     # Custom metadata
-    custom_field="any_value"          # Additional data
+    metadata={
+        "department": "support",
+        "priority": "high",
+        "language": "en"
+    }
 )
 ```
 
@@ -125,9 +130,9 @@ Whispey automatically collects:
 
 ## 🆘 Need Help?
 
-- **💬 Discord**: [Join our community](https://discord.gg/pypeai)
-- **📧 Email**: support@whispey.ai
+- **📧 Email**: deepesh@pypeai.com
 - **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
+- **📚 Examples**: [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)
 
 ---
 
