@@ -17,7 +17,6 @@ export async function getUserProjectRole(email: string, projectId: string) {
 
     // If no data found, return default role
     if (!data) {
-      console.log(`No role mapping found for email: ${email}, project: ${projectId}`)
       return 'user'
     }
 

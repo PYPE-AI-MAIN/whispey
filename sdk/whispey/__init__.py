@@ -268,7 +268,11 @@ class LivekitObserve:
         tracer_provider.add_span_processor(WhispeySpanCollector(self))
 
         from livekit.agents.telemetry import set_tracer_provider
-        set_tracer_provider(tracer_provider, metadata={'session_id': session_id})
+        try:
+            set_tracer_provider(tracer_provider, metadata={'session_id': session_id})
+        except TypeError:
+            # Fallback for older versions that don't support metadata
+            set_tracer_provider(tracer_provider)
 
 
     
@@ -510,7 +514,11 @@ class LivekitObserve:
                             stt_result = agent._whispey_original_stt_node(audio_stream, model_settings)
                         else:
                             from livekit.agents import Agent
-                            stt_result = Agent.default_stt_node(agent, audio_stream, model_settings)
+                            if hasattr(Agent, 'default_stt_node'):
+                                stt_result = Agent.default_stt_node(agent, audio_stream, model_settings)
+                            else:
+                                # Fallback for older versions
+                                stt_result = agent.stt_node(audio_stream, model_settings)
                         
                         # STRATEGY: Always try await first
                         try:
@@ -528,7 +536,11 @@ class LivekitObserve:
                             # Your existing bug detection logic here...
                             transcript = None
                             if hasattr(event, 'alternatives') and event.alternatives:
-                                transcript = event.alternatives[0].text
+                                transcript = None
+                                if hasattr(event, 'alternatives') and event.alternatives:
+                                    transcript = event.alternatives[0].text
+                                elif hasattr(event, 'text'):
+                                    transcript = event.text
                             elif hasattr(event, 'text'):
                                 transcript = event.text
                             elif isinstance(event, str):

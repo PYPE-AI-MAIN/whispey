@@ -16,9 +16,10 @@ interface HeaderProps {
     project?: string;
     item?: string;
   };
+  isLoading?: boolean; // Add this prop for loading state
 }
 
-function Header({ breadcrumb }: HeaderProps) {
+function Header({ breadcrumb, isLoading }: HeaderProps) {
   const pathname = usePathname();
   const { user, isLoaded } = useUser()
   const [breadcrumbState, setBreadcrumbState] = useState<{
@@ -32,17 +33,24 @@ function Header({ breadcrumb }: HeaderProps) {
     return pathname.startsWith(path);
   };
 
+  // console.log('Header received:', breadcrumb)
+  // console.log('Header internal state:', breadcrumbState)
+
   useEffect(() => {
-    if (breadcrumb) {
+    if (isLoading) {
+      setBreadcrumbState({
+        project: 'Loading...',
+        item: 'Loading...'
+      })
+    } else if (breadcrumb) {
       setBreadcrumbState(breadcrumb)
     }
-  }, [breadcrumb])
+  }, [breadcrumb, isLoading])
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
-  // Get user's display name
   const getUserDisplayName = () => {
     if (user?.fullName) return user.fullName;
     if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`;
@@ -69,10 +77,9 @@ function Header({ breadcrumb }: HeaderProps) {
               </div>
             </Link>
 
-            {/* Apple-Style Clean Breadcrumb */}
+            {/* Apple-Style Clean Breadcrumb with Loading States */}
             {breadcrumbState && (
               <div className="flex items-center">
-                <div className="w-px h-6 bg-gray-200 mx-6"></div>
                 <nav className="flex items-center gap-2 text-sm">
                   <Link 
                     href="/" 
@@ -84,18 +91,26 @@ function Header({ breadcrumb }: HeaderProps) {
                   {breadcrumbState.project && (
                     <>
                       <ChevronRight className="w-4 h-4 text-gray-300" />
-                      <span className="text-gray-900">
-                        {breadcrumbState.project}
-                      </span>
+                      {isLoading ? (
+                        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (
+                        <span className="text-gray-900">
+                          {breadcrumbState.project}
+                        </span>
+                      )}
                     </>
                   )}
                   
                   {breadcrumbState.item && (
                     <>
                       <ChevronRight className="w-4 h-4 text-gray-300" />
-                      <span className="text-gray-900">
-                        {breadcrumbState.item}
-                      </span>
+                      {isLoading ? (
+                        <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (
+                        <span className="text-gray-900">
+                          {breadcrumbState.item}
+                        </span>
+                      )}
                     </>
                   )}
                 </nav>
@@ -184,7 +199,7 @@ function Header({ breadcrumb }: HeaderProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* User Profile Section with Loading State - FIXED */}
+            {/* User Profile Section with Loading State */}
             <div className="flex items-center gap-3 pl-4 ml-2 border-l border-gray-200">
               {!isHydrated || !isLoaded ? (
                 // Always show skeleton during SSR and initial load

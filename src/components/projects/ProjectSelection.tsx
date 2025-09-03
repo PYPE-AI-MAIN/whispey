@@ -25,7 +25,7 @@ interface Project {
 }
 
 interface ProjectSelectionProps {
-  isAuthLoaded: boolean
+  isAuthLoaded?: boolean
 }
 
 const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = false}) => {

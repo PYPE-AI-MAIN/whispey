@@ -85,13 +85,7 @@ function BreadcrumbSkeleton() {
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [breadcrumb, setBreadcrumb] = useState<{
-    project?: string;
-    item?: string;
-  }>({
-    project: 'Project',
-    item: 'Agent'
-  })
+
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
   const [vapiStatusLoading, setVapiStatusLoading] = useState(false)
   const [connectingWebhook, setConnectingWebhook] = useState(false)
@@ -138,22 +132,50 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   const agent = agents?.[0]
 
-  const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
-    select: 'id, name, description, environment, created_at, is_active',
-    filters: agent?.project_id ? [{ column: 'id', operator: 'eq', value: agent.project_id }] : []
-  })
+  const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', 
+    agent?.project_id ? {
+      select: 'id, name, description, environment, created_at, is_active',
+      filters: [{ column: 'id', operator: 'eq', value: agent.project_id }]
+    } : null
+  )
 
   const project = agent?.project_id ? projects?.[0] : null
 
-  // Update breadcrumb when data loads
-  useEffect(() => {
-    if (project && agent) {
-      setBreadcrumb({
+  const breadcrumb = React.useMemo(() => {
+    if (agentLoading || projectLoading) {
+      return {
+        project: 'Loading...',
+        item: 'Loading...'
+      }
+    }
+    
+    if (agent && project) {
+      return {
         project: project.name,
         item: agent.name
-      })
+      }
     }
-  }, [agent, project])
+    
+    if (agent && !agent.project_id) {
+      return {
+        project: 'No Project',
+        item: agent.name
+      }
+    }
+    
+    if (agent && !project) {
+      return {
+        project: 'Unknown Project',
+        item: agent.name
+      }
+    }
+    
+    return {
+      project: 'Loading...',
+      item: 'Loading...'
+    }
+  }, [agentLoading, projectLoading, agent, project])
+
 
   // Date filter handlers - work immediately
   const handleQuickFilter = (filterId: string) => {
@@ -324,7 +346,10 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <Header breadcrumb={breadcrumb} />
+      <Header 
+        breadcrumb={breadcrumb} 
+        isLoading={agentLoading || projectLoading} 
+      />
 
       {/* Header - show structure immediately, skeleton data parts */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
