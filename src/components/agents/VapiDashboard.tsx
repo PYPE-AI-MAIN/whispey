@@ -5,19 +5,12 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { 
   ArrowLeft, 
   ExternalLink, 
   AlertCircle,
-  Settings,
   Bot,
-  Globe,
-  Link,
   Copy,
   CheckCircle,
   Calendar,

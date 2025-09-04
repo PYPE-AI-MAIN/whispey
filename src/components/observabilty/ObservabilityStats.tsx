@@ -11,6 +11,7 @@ interface ObservabilityStatsProps {
   sessionId?: string
   agentId: string
   callData?: any[]
+  agent?: any
 }
 
 interface TranscriptLog {
@@ -28,7 +29,7 @@ interface TranscriptLog {
   bug_report?: boolean
 }
 
-const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agentId, callData }) => {
+const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agentId, callData, agent }) => {
   const {
     data: transcriptLogs,
     loading: transcriptLoading,
@@ -55,9 +56,19 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
     }
   }, [callData])
 
+  const isVapiAgent = useMemo(() => {
+    if (!agent) return false
+    
+    const hasVapiKeys = Boolean(agent.vapi_api_key_encrypted && agent.vapi_project_key_encrypted)
+    const hasVapiConfig = Boolean(agent?.configuration?.vapi?.assistantId)
+    const isVapiType = agent.agent_type === 'vapi'
+    
+    return hasVapiKeys || hasVapiConfig || isVapiType
+  }, [agent])
+
   const conversationMetrics: any = useMemo(() => {
     if (!transcriptLogs?.length) return null
-
+   
     const metrics = {
       stt: [] as number[],
       llm: [] as number[],
@@ -68,47 +79,45 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       endToEndLatencies: [] as number[],
       totalTurns: transcriptLogs.length,
     }
-
-
-
+   
     transcriptLogs.forEach((log: TranscriptLog) => {
       if (log.stt_metrics?.duration) metrics.stt.push(log.stt_metrics.duration)
       if (log.llm_metrics?.ttft) metrics.llm.push(log.llm_metrics.ttft)
       if (log.tts_metrics?.ttfb) metrics.tts.push(log.tts_metrics.ttfb)
       if (log.eou_metrics?.end_of_utterance_delay) metrics.eou.push(log.eou_metrics.end_of_utterance_delay)
-
+   
       if (log.user_transcript && log.agent_response && log.llm_metrics?.ttft && log.tts_metrics) {
         const llmTime = log.llm_metrics.ttft || 0
         const ttsTime = (log.tts_metrics.ttfb || 0) + (log.tts_metrics.duration || 0)
         const agentResponseTime = llmTime + ttsTime
         metrics.agentResponseLatencies.push(agentResponseTime)
       }
-
+   
       if (log.tts_metrics) {
-        const sttTime = log.stt_metrics?.duration || 0
+        const sttTime = isVapiAgent ? (log.stt_metrics?.duration || 0) : 0
         const llmTime = log.llm_metrics?.ttft || 0
         const ttsTime = (log.tts_metrics?.ttfb || 0) + (log.tts_metrics?.duration || 0)
         const totalTurnTime = llmTime + ttsTime + sttTime
-
+   
         if (totalTurnTime > 0) {
           metrics.totalTurnLatencies.push(totalTurnTime)
         }
       }
-
+   
       if (
         log.eou_metrics?.end_of_utterance_delay &&
         log.llm_metrics?.ttft &&
         log.tts_metrics
       ) {
         const eouTime = log.eou_metrics.end_of_utterance_delay || 0
-        const sttTime = log.stt_metrics.duration || 0
+        const sttTime = isVapiAgent ? (log.stt_metrics?.duration || 0) : 0
         const llmTime = log.llm_metrics.ttft || 0
         const ttsTime = (log.tts_metrics?.ttfb || 0) + (log.tts_metrics?.duration || 0)
         const endToEndTime = eouTime + sttTime + llmTime + ttsTime
         metrics.endToEndLatencies.push(endToEndTime)
       }
     })
-
+   
     const calculateStats = (values: number[]) => {
       if (values.length === 0) return { avg: 0, min: 0, max: 0, count: 0, p50: 0, p75: 0 }
       
@@ -127,7 +136,16 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       
       return { avg, min, max, count: values.length, p50, p75 }
     }
-
+   
+    console.log({
+      isVapiAgent,
+      agentExists: !!agent,
+      agentType: agent?.agent_type,
+      totalTurnLatencies: metrics.totalTurnLatencies.slice(0, 5),
+      endToEndLatencies: metrics.endToEndLatencies.slice(0, 5),
+      p75EndToEnd: calculateStats(metrics.endToEndLatencies).p75
+    })
+   
     return {
       ...metrics,
       sttStats: calculateStats(metrics.stt),
@@ -141,7 +159,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       p50AgentResponseTime: calculateStats(metrics.agentResponseLatencies).p50,
       p50EndToEndLatency: calculateStats(metrics.endToEndLatencies).p50,
     }
-  }, [transcriptLogs])
+   }, [transcriptLogs, agent, isVapiAgent])
 
   const getLatencyColor = (value: number, type: "stt" | "llm" | "tts" | "eou" | "total" | "e2e") => {
     const thresholds = {
@@ -211,9 +229,23 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
           {/* Header */}
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-slate-700">Session Overview</h3>
-            <div className="text-xs text-slate-500">
-              {sessionId ? `Session ${sessionId.slice(0, 8)}...` : `Agent ${agentId.slice(0, 8)}...`}
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-slate-500">
+                {sessionId ? `Session ${sessionId.slice(0, 8)}...` : `Agent ${agentId.slice(0, 8)}...`}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  isVapiAgent ? "bg-blue-500" : "bg-orange-500"
+                )}></div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs text-slate-500 font-medium">
+                    {isVapiAgent ? "Vapi" : "LiveKit"}
+                  </span>
+                </div>
+              </div>
             </div>
+            
           </div>
           
           {/* Stats Grid */}
@@ -293,29 +325,36 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
 
             {/* Performance Breakdown */}
             {conversationMetrics && (
-              <div className="flex items-center gap-6 text-xs">
-                {/* STT */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2 cursor-help">
-                      <Mic className="w-3 h-3 text-slate-400" />
-                      <div className="text-right">
-                        <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
-                          {formatDuration(conversationMetrics.sttStats.p75)}
+            <div className="flex items-center gap-8 text-xs">
+              {/* Pipeline Metrics Group */}
+              <div className="flex items-center gap-6">
+                {/* Conditionally include STT in pipeline group for Vapi */}
+                {isVapiAgent && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <Mic className="w-3 h-3 text-blue-500" />
+                        <div className="text-right">
+                          <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
+                            {formatDuration(conversationMetrics.sttStats.p75)}
+                          </div>
+                          <div className="text-blue-600 text-xs">STT P75</div>
                         </div>
-                        <div className="text-slate-400 text-xs">STT P75</div>
                       </div>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="text-xs">
-                      <div className="font-medium">Speech-to-Text Performance</div>
-                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
-                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
-                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs">
+                        <div className="font-medium">Speech-to-Text Performance</div>
+                        <div className="text-slate-400">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
+                        <div className="text-slate-400">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
+                        <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
+                        <div className="text-blue-600 text-xs font-medium mt-1 pt-1 border-t border-slate-200">
+                          Included in total latency
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
                 {/* LLM */}
                 <Tooltip>
@@ -386,7 +425,42 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                   </TooltipContent>
                 </Tooltip>
               </div>
-            )}
+
+              {/* Reference Metrics Group - Only for non-Vapi */}
+              {!isVapiAgent && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50/50 border border-dashed border-gray-300/50">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Reference</span>
+                    <span className="text-[6px] text-gray-500 font-medium uppercase tracking-wide">(not included in total)</span>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <Mic className="w-3 h-3 text-gray-400" />
+                        <div className="text-right">
+                          <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
+                            {formatDuration(conversationMetrics.sttStats.p75)}
+                          </div>
+                          <div className="text-gray-400 text-xs">STT P75</div>
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs">
+                        <div className="font-medium">Speech-to-Text Performance</div>
+                        <div className="text-slate-400">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
+                        <div className="text-slate-400">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
+                        <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
+                        <div className="text-orange-600 text-xs font-medium mt-1 pt-1 border-t border-slate-200">
+                          Not included in total latency
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+            </div>
+          )}
           </div>
         </div>
       </div>
