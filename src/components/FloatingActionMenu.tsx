@@ -35,6 +35,29 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
 
   return (
     <>
+      {/* Quick access button: open Custom Summary directly */}
+      <Dialog open={showCustomTotals} onOpenChange={setShowCustomTotals}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Custom Summary</DialogTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Aggregate your calls using filters and an aggregation (Count, Sum, Avg, etc.). Saved summaries appear as cards on the dashboard.
+            </p>
+          </DialogHeader>
+          <div className="overflow-y-auto max-h-[calc(80vh-100px)]">
+            <CustomTotalsBuilder
+              agentId={agentId}
+              projectId={projectId}
+              userEmail={userEmail}
+              availableColumns={availableColumns}
+              dynamicMetadataFields={metadataFields}
+              dynamicTranscriptionFields={transcriptionFields}
+              onSave={onSaveCustomTotal}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <div className="relative">
@@ -58,32 +81,13 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
                 <span className="bg-gray-900 text-white text-sm px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
                   Custom Summary
                 </span>
-                <Dialog open={showCustomTotals} onOpenChange={setShowCustomTotals}>
-                  <DialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      className="h-12 w-12 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 border-0"
-                    >
-                      <Calculator className="w-5 h-5" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Create Custom Total</DialogTitle>
-                    </DialogHeader>
-                    <div className="overflow-y-auto max-h-[calc(80vh-100px)]">
-                      <CustomTotalsBuilder
-                        agentId={agentId}
-                        projectId={projectId}
-                        userEmail={userEmail}
-                        availableColumns={availableColumns}
-                        dynamicMetadataFields={metadataFields}
-                        dynamicTranscriptionFields={transcriptionFields}
-                        onSave={onSaveCustomTotal}
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button
+                  size="sm"
+                  className="h-12 w-12 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 border-0"
+                  onClick={() => setShowCustomTotals(true)}
+                >
+                  <Calculator className="w-5 h-5" />
+                </Button>
               </div>
             </div>
           )}
