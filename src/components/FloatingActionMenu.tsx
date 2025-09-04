@@ -35,6 +35,29 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
 
   return (
     <>
+      {/* Quick access button: open Custom Summary directly */}
+      <Dialog open={showCustomTotals} onOpenChange={setShowCustomTotals}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Custom Summary</DialogTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Aggregate your calls using filters and an aggregation (Count, Sum, Avg, etc.). Saved summaries appear as cards on the dashboard.
+            </p>
+          </DialogHeader>
+          <div className="overflow-y-auto max-h-[calc(80vh-100px)]">
+            <CustomTotalsBuilder
+              agentId={agentId}
+              projectId={projectId}
+              userEmail={userEmail}
+              availableColumns={availableColumns}
+              dynamicMetadataFields={metadataFields}
+              dynamicTranscriptionFields={transcriptionFields}
+              onSave={onSaveCustomTotal}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Floating Action Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <div className="relative">
@@ -58,32 +81,13 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
                 <span className="bg-gray-900 text-white text-sm px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
                   Custom Summary
                 </span>
-                <Dialog open={showCustomTotals} onOpenChange={setShowCustomTotals}>
-                  <DialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      className="h-12 w-12 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 border-0"
-                    >
-                      <Calculator className="w-5 h-5" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Create Custom Total</DialogTitle>
-                    </DialogHeader>
-                    <div className="overflow-y-auto max-h-[calc(80vh-100px)]">
-                      <CustomTotalsBuilder
-                        agentId={agentId}
-                        projectId={projectId}
-                        userEmail={userEmail}
-                        availableColumns={availableColumns}
-                        dynamicMetadataFields={metadataFields}
-                        dynamicTranscriptionFields={transcriptionFields}
-                        onSave={onSaveCustomTotal}
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button
+                  size="sm"
+                  className="h-12 w-12 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 border-0"
+                  onClick={() => setShowCustomTotals(true)}
+                >
+                  <Calculator className="w-5 h-5" />
+                </Button>
               </div>
             </div>
           )}
@@ -161,6 +165,9 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
       <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Count Chart</DialogTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            Build a chart that counts calls grouped by a field and time. Use a filter value to focus on a specific value, or leave it empty to compare the most frequent values.
+          </p>
         </DialogHeader>
         <div className="space-y-4 max-h-[calc(90vh-100px)] overflow-y-auto">
           {/* Source Selection */}
@@ -183,6 +190,9 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
                 <SelectItem value="transcription_metrics">Transcription ({fields.transcription_metrics.length} fields)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Choose where the field lives: core table columns, metadata, or transcription metrics.
+            </p>
           </div>
 
           {/* Field Selection */}
@@ -204,6 +214,9 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Pick the field whose values you want to count over time.
+              </p>
             </div>
           )}
 
@@ -238,6 +251,9 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
                 <SelectItem value="bar">Bar Chart (Stacked)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Line is ideal for trends; stacked bars compare value distributions per date.
+            </p>
           </div>
 
           {/* Actions */}
