@@ -150,9 +150,11 @@ export const useCountChartData = (
           if (config.source === 'table') {
             query = query.eq(config.field, config.filterValue)
           } else if (config.source === 'metadata') {
-            query = query.eq(`metadata->${config.field}`, config.filterValue)
+            // Use text extraction for safe comparisons (avoids invalid JSON token errors)
+            query = query.eq(`metadata->>${config.field}`, config.filterValue)
           } else if (config.source === 'transcription_metrics') {
-            query = query.eq(`transcription_metrics->${config.field}`, config.filterValue)
+            // Use text extraction for safe comparisons
+            query = query.eq(`transcription_metrics->>${config.field}`, config.filterValue)
           }
         } else {
           // MULTI-LINE: Need the actual field data to group by values
@@ -420,7 +422,24 @@ const EnhancedChartBuilderContent: React.FC<EnhancedChartBuilderProps> = ({
   transcriptionFields, 
   fieldsLoading 
 }) => {
-  const { charts, removeChart, updateChartGroupBy } = useChartContext()
+  const { charts, removeChart, updateChartGroupBy, newChart, setNewChart, addChart } = useChartContext()
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+
+  const fields = {
+    metadata: metadataFields,
+    transcription_metrics: transcriptionFields
+  }
+
+  const tableFields = [
+    'call_ended_reason',
+    'transcript_type',
+    'environment'
+  ]
+
+  const handleAddChart = () => {
+    addChart()
+    setCreateDialogOpen(false)
+  }
 
   if (fieldsLoading) {
     return (
@@ -670,6 +689,114 @@ const EnhancedChartBuilderContent: React.FC<EnhancedChartBuilderProps> = ({
               </CardContent>
             </Card>
           ))}
+          <Card className="border border-dashed border-gray-300 bg-white hover:shadow-md transition-shadow flex items-center justify-center p-8">
+            <div className="text-center space-y-3">
+              <div className="mx-auto w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
+                <Plus className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="text-sm text-gray-600">Create your custom chart</div>
+              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" /> Create
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add Count Chart</DialogTitle>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Build a chart that counts calls grouped by a field and time. Use a filter value to focus on a specific value, or leave it empty to compare the most frequent values.
+                    </p>
+                  </DialogHeader>
+                  <div className="space-y-4 max-h-[calc(90vh-100px)] overflow-y-auto">
+                    <div>
+                      <Label>Data Source</Label>
+                      <Select
+                        value={newChart.source as any}
+                        onValueChange={(value) => setNewChart(prev => ({ 
+                          ...prev, 
+                          source: value as 'table' | 'metadata' | 'transcription_metrics', 
+                          field: undefined 
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select data source" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="table">Table Fields ({tableFields.length})</SelectItem>
+                          <SelectItem value="metadata">Metadata ({fields.metadata.length} fields)</SelectItem>
+                          <SelectItem value="transcription_metrics">Transcription ({fields.transcription_metrics.length} fields)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Choose where the field lives: core table columns, metadata, or transcription metrics.
+                      </p>
+                    </div>
+                    {newChart.source && (
+                      <div>
+                        <Label>Field</Label>
+                        <Select
+                          value={newChart.field as any}
+                          onValueChange={(value) => setNewChart(prev => ({ ...prev, field: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select field" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(newChart.source === 'table' ? tableFields : fields[newChart.source as keyof typeof fields]).map((field: any) => (
+                              <SelectItem key={field} value={field}>
+                                {field}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Pick the field whose values you want to count over time.
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <Label>Filter Value (Optional)</Label>
+                      <Input
+                        placeholder="e.g., 'Yes', 'completed', 'Successful'"
+                        value={newChart.filterValue || ''}
+                        onChange={(e) => setNewChart(prev => ({ ...prev, filterValue: e.target.value }))}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Leave empty to show multiple lines for all values
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Chart Type</Label>
+                      <Select
+                        value={newChart.chartType as any}
+                        onValueChange={(value) => setNewChart(prev => ({ 
+                          ...prev, 
+                          chartType: value as 'line' | 'bar' 
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="line">Line Chart</SelectItem>
+                          <SelectItem value="bar">Bar Chart (Stacked)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Line is ideal for trends; stacked bars compare value distributions per date.
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button onClick={handleAddChart} disabled={!newChart.field || !newChart.source}>
+                        Add Chart
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </Card>
         </div>
       ) : (
         <div className="text-center py-12">
@@ -677,9 +804,109 @@ const EnhancedChartBuilderContent: React.FC<EnhancedChartBuilderProps> = ({
             <TrendingUp className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Charts Yet</h3>
-          <p className="text-sm text-gray-500">
-            Click "+" right to create your first custom analytics chart
+          <p className="text-sm text-gray-500 mb-4">
+            Create your custom chart
           </p>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" /> Create
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Count Chart</DialogTitle>
+                <p className="text-sm text-gray-500 mt-1">
+                  Build a chart that counts calls grouped by a field and time. Use a filter value to focus on a specific value, or leave it empty to compare the most frequent values.
+                </p>
+              </DialogHeader>
+              <div className="space-y-4 max-h-[calc(90vh-100px)] overflow-y-auto">
+                <div>
+                  <Label>Data Source</Label>
+                  <Select
+                    value={newChart.source as any}
+                    onValueChange={(value) => setNewChart(prev => ({ 
+                      ...prev, 
+                      source: value as 'table' | 'metadata' | 'transcription_metrics', 
+                      field: undefined 
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select data source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="table">Table Fields ({tableFields.length})</SelectItem>
+                      <SelectItem value="metadata">Metadata ({fields.metadata.length} fields)</SelectItem>
+                      <SelectItem value="transcription_metrics">Transcription ({fields.transcription_metrics.length} fields)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Choose where the field lives: core table columns, metadata, or transcription metrics.
+                  </p>
+                </div>
+                {newChart.source && (
+                  <div>
+                    <Label>Field</Label>
+                    <Select
+                      value={newChart.field as any}
+                      onValueChange={(value) => setNewChart(prev => ({ ...prev, field: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select field" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(newChart.source === 'table' ? tableFields : fields[newChart.source as keyof typeof fields]).map((field: any) => (
+                          <SelectItem key={field} value={field}>
+                            {field}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Pick the field whose values you want to count over time.
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <Label>Filter Value (Optional)</Label>
+                  <Input
+                    placeholder="e.g., 'Yes', 'completed', 'Successful'"
+                    value={newChart.filterValue || ''}
+                    onChange={(e) => setNewChart(prev => ({ ...prev, filterValue: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave empty to show multiple lines for all values
+                  </p>
+                </div>
+                <div>
+                  <Label>Chart Type</Label>
+                  <Select
+                    value={newChart.chartType as any}
+                    onValueChange={(value) => setNewChart(prev => ({ 
+                      ...prev, 
+                      chartType: value as 'line' | 'bar' 
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="line">Line Chart</SelectItem>
+                      <SelectItem value="bar">Bar Chart (Stacked)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Line is ideal for trends; stacked bars compare value distributions per date.
+                  </p>
+                </div>
+                <div className="flex justify-center gap-2 pt-2">
+                  <Button onClick={handleAddChart} disabled={!newChart.field || !newChart.source}>
+                    Add Chart
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
