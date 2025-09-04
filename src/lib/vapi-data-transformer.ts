@@ -400,11 +400,14 @@ class VapiDataTransformer {
     };
   }> {
     console.log(`🔍 Mapping ${conversationTurns.length} turns with ${turnLatencies.length} metric entries`);
+
+    
     
     return conversationTurns.map((turn, index) => {
       const userTranscript = turn.userMessage?.message || '';
       const agentResponse = turn.botMessage?.message || '';
       const estimatedTokens = Math.ceil(agentResponse.length / 4);
+      
 
       let metrics = {
         modelLatency: 0,
@@ -426,7 +429,7 @@ class VapiDataTransformer {
         }
       }
 
-      // FIXED: Convert all metrics from milliseconds to seconds
+      // Convert all metrics from milliseconds to seconds
       return {
         turn_id: turn.turnId,
         user_transcript: userTranscript,

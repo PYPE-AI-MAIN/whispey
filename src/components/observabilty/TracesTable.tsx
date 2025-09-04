@@ -1,7 +1,7 @@
 // src/components/observability/TracesTable.tsx
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity } from "lucide-react"
 import { OTelSpan } from "@/types/openTelemetry";
@@ -11,10 +11,12 @@ import { cn } from "@/lib/utils"
 import { useSessionSpans, useSessionTrace } from "@/hooks/useSessionTrace"
 import SessionTraceView from "./SessionTraceView"
 import WaterfallView from "./WaterFallView";
+import { getAgentPlatform } from "@/utils/agentDetection";
 
 interface TracesTableProps {
   agentId: string
   sessionId?: string
+  agent?: any
   filters: {
     search: string
     status: string
@@ -48,7 +50,7 @@ interface TraceLog {
   metadata?: any
 }
 
-const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }) => {
+const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, filters }) => {
 
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false)
@@ -68,6 +70,16 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
     orderBy: { column: "created_at", ascending: false }
   })
 
+  const isVapiAgent = useMemo(() => {
+    if (!agent) return false
+    
+    const hasVapiKeys = Boolean(agent.vapi_api_key_encrypted && agent.vapi_project_key_encrypted)
+    const hasVapiConfig = Boolean(agent?.configuration?.vapi?.assistantId)
+    const isVapiType = agent.agent_type === 'vapi'
+    
+    return hasVapiKeys || hasVapiConfig || isVapiType
+  }, [agent])
+
 
   // trace data
   const {
@@ -86,7 +98,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
   const bugReportData = useMemo(() => {
     if (!callData?.length) return null
     
-    const call = callData[0] // Get the first call (should be the one we're viewing)
+    const call = callData[0]
     if (!call?.metadata) return null
 
     try {
@@ -241,21 +253,27 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, sessionId, filters }
   }
 
   const getTotalDuration = (trace: TraceLog) => {
-    // Try to get duration from trace_duration_ms first
-    if (trace.trace_duration_ms) return trace.trace_duration_ms
-  
-    // Calculate from spans
-    if (trace.otel_spans?.length) {
-      return trace.otel_spans.reduce((total, span) => total + ((span.duration_ns || 0) / 1_000_000), 0)
-    }
-    
-    // Calculate from individual metrics (including EOU)
     let total = 0
-    if (trace.stt_metrics?.duration) total += trace.stt_metrics.duration * 1000 // Convert to ms
-    if (trace.llm_metrics?.ttft) total += trace.llm_metrics.ttft * 1000
-    if (trace.tts_metrics?.ttfb) total += trace.tts_metrics.ttfb * 1000
-    if (trace.eou_metrics?.end_of_utterance_delay) total += trace.eou_metrics.end_of_utterance_delay * 1000 // Add EOU delay
     
+    if (isVapiAgent && trace.stt_metrics?.duration) {
+      total += trace.stt_metrics.duration * 1000 // Convert seconds to ms
+    }
+  
+    // LLM TTFT (always include for all platforms)
+    if (trace.llm_metrics?.ttft) {
+      total += trace.llm_metrics.ttft * 1000 // Convert seconds to ms
+    }
+  
+    // TTS TTFB (always include for all platforms)  
+    if (trace.tts_metrics?.ttfb) {
+      total += trace.tts_metrics.ttfb * 1000 // Convert seconds to ms
+    }
+  
+    // EOU metrics (always include for all platforms)
+    if (trace.eou_metrics?.end_of_utterance_delay) {
+      total += trace.eou_metrics.end_of_utterance_delay * 1000
+    }
+  
     return total
   }
 
@@ -552,6 +570,7 @@ const handleRowClick = (trace: TraceLog) => {
       <TraceDetailSheet
         isOpen={isDetailSheetOpen}
         trace={selectedTrace}
+        agent={agent}
         onClose={() => {
           setIsDetailSheetOpen(false)
           setSelectedTrace(null)

@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { useInfiniteScroll } from "../../hooks/useSupabase"
-import CallDetailsDrawer from "./CallDetailsDrawer"
 import CallFilter, { FilterRule } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
@@ -23,7 +22,7 @@ interface CallLogsProps {
   project: any
   agent: any
   onBack: () => void
-  isLoading?: boolean // New prop from parent
+  isLoading?: boolean
 }
 
 // Skeleton for the filter header
@@ -473,6 +472,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
     // Build select clause based on role permissions
     let selectColumns = [
       'id',
+      'agent_id',
       'call_id',
       'customer_number',
       'call_ended_reason',
@@ -907,7 +907,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                         selectedCall?.id === call.id && "bg-muted/50",
                       )}
                       onClick={() => {
-                        router.push(`/agents/${call?.id}/observability?session_id=${call?.id}`)
+                        router.push(`/agents/${call.agent_id}/observability?session_id=${call?.id}`)
                       }}
                     >
                       {visibleColumns.basic.map((key) => {
