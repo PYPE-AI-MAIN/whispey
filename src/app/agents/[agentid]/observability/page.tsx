@@ -12,7 +12,7 @@ import { useSupabaseQuery } from "@/hooks/useSupabase"
 import ObservabilityStats from "@/components/observabilty/ObservabilityStats"
 
 interface ObservabilityPageProps {
-  params: Promise<{ agentId: string }>
+  params: Promise<{ agentid: string }>
   searchParams?: Promise<{ session_id?: string }>
 }
 
@@ -31,7 +31,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   // Build query filters based on whether we have sessionId or agentId
   const queryFilters = sessionId 
     ? [{ column: "id", operator: "eq", value: sessionId }]
-    : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentId }]
+    : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentid }]
 
 
   const { data: callData, loading: callLoading, error: callError } = useSupabaseQuery("pype_voice_call_logs", {
@@ -40,6 +40,23 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     orderBy: { column: "created_at", ascending: false },
     limit: 1
   })
+
+  const { data: agentData, loading: agentLoading, error: agentError } = useSupabaseQuery("pype_voice_agents", {
+    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
+    filters: [{ column: "id", operator: "eq", value: resolvedParams.agentid }],
+    limit: 1
+  })
+  
+  // Add this debug logging
+  console.log({
+    agentId: resolvedParams.agentid,
+    agentData,
+    agentLoading,
+    agentError,
+    agentDataLength: agentData?.length
+  })
+  
+  const agent = agentData && agentData.length > 0 ? agentData[0] : null
 
   // Get the recording URL from the first call
   const recordingUrl = callData && callData.length > 0 ? callData[0].recording_url : null
@@ -95,21 +112,29 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       {/* <ObservabilityFilters
         filters={filters}
         onFiltersChange={setFilters}
-        agentId={resolvedParams.agentId}
+        agentId={resolvedParams.agentid}
         sessionId={sessionId}
       /> */}
 
-      <ObservabilityStats
-        sessionId={sessionId}
-        agentId={resolvedParams.agentId}
-        callData={callData}
-      />
+      {agentLoading ? (
+        <div className="px-6 py-3 border-b bg-slate-50/30">
+          <div className="animate-pulse">Loading agent data...</div>
+        </div>
+      ) : (
+        <ObservabilityStats
+          sessionId={sessionId}
+          agentId={resolvedParams.agentid}
+          callData={callData}
+          agent={agent}
+        />
+      )}
 
       {/* Main Content */}
       <div className="flex-1 min-h-0">
         <TracesTable
-          agentId={resolvedParams.agentId}
+          agentId={resolvedParams.agentid}
           sessionId={sessionId}
+          agent={agent}
           filters={filters}
         />
       </div>
