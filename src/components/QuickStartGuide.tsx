@@ -79,13 +79,13 @@ if __name__ == "__main__":
       },
       {
         id: 'credentials',
-        title: 'Get Your Credentials',
-        subtitle: 'Your unique agent configuration',
+        title: 'Your Agent Credentials',
+        subtitle: 'Everything you need to get started',
         icon: '🔐',
         items: [
-          { text: 'Sign up at Whispey Dashboard', status: 'done' },
+          { text: 'Workspace created with API key', status: 'done' },
           { text: `Your Agent ID: ${agentId}`, status: 'ready', copyable: agentId },
-          { text: 'Generate your API Key from workspace', status: 'action' }
+          { text: 'Use your Pype Project API key which you saved earlier', status: 'ready' }
         ]
       },
       {
