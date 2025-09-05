@@ -19,7 +19,7 @@ class LivekitObserve:
         agent_id="whispey-agent",
         apikey=None, 
         host_url=None, 
-        bug_reports: Union[bool, Dict[str, Any]] = False,
+        bug_reports: Dict[str, Any] = {},
         enable_otel: bool = False,
     ):
         self.agent_id = agent_id
@@ -32,12 +32,21 @@ class LivekitObserve:
             'turn_sequence': 0
         }
         
-        if bug_reports is not False:
+        if bug_reports.get('enable', False):
             self.enable_bug_reports = True
-            if isinstance(bug_reports, dict):
-                config = bug_reports
-            else:
-                config = {}
+            
+            # Default configuration
+            default_config = {
+                'bug_start_command': ['feedback start'],
+                'bug_end_command': ['feedback over'],
+                'response': 'Thanks for reporting that. Please tell me the issue?',
+                'continuation_prefix': 'So, as I was saying, ',
+                'fallback_message': 'So, as I was saying,',
+                'collection_prompt': ''
+            }
+            
+            # Merge user config with defaults
+            config = {**default_config, **{k: v for k, v in bug_reports.items() if k != 'enable'}}
         else:
             self.enable_bug_reports = False
             config = {}
@@ -62,7 +71,7 @@ class LivekitObserve:
         )
         self.collection_prompt = config.get(
             'collection_prompt',
-            "Anything else?"
+            ""
         )
 
     def _update_turn_context(self, turn_id, sequence=None):
