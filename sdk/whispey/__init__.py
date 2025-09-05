@@ -370,10 +370,6 @@ class LivekitObserve:
                         'id': getattr(item, 'id', None)
                     })
             
-            # Debug: Log what we found in chat_ctx
-            chat_ctx_attrs = [attr for attr in dir(chat_ctx) if not attr.startswith('_')]
-            logger.debug(f"Chat context attributes: {chat_ctx_attrs}")
-            
             # Get system instructions from agent
             system_instructions = getattr(agent, 'instructions', None) or getattr(agent, '_instructions', None)
             
