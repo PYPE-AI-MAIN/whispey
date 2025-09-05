@@ -18,7 +18,9 @@ from whispey import LivekitObserve
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports=True  # Uses default trigger phrases
+    bug_reports={
+        "enable": True  # Uses default trigger phrases
+    }
 )
 
 session_id = whispey.start_session(session)
@@ -32,7 +34,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ### Default Behavior
 
-With `bug_reports=True`, users can say:
+With `bug_reports={"enable": True}`, users can say:
 
 - **"feedback start"** to start feedback collection
 - **"feedback over"** to end feedback and resume conversation
@@ -75,6 +77,7 @@ whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
     bug_reports={
+        "enable": True,
         "bug_start_command": ["report issue", "there's a problem"],
         "bug_end_command": ["issue resolved", "problem fixed"]
     }
@@ -93,6 +96,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports={
+    "enable": True,
     "bug_start_command": ["report issue", "there's a problem", "feedback start"],
     "bug_end_command": ["issue resolved", "problem fixed", "feedback over"],
     "response": "Please describe the issue.",
@@ -122,6 +126,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports={
+    "enable": True,
     "bug_start_command": [
         # English
         "report issue", "there's a problem", "this is wrong",
@@ -162,6 +167,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports={
+    "enable": True,
     "bug_start_command": ["escalate", "I need help", "this isn't working"],
     "bug_end_command": ["thank you", "that's all", "resolved"],
     "response": "I understand you're experiencing an issue. Please tell me what's not working correctly so I can improve.",
@@ -188,6 +194,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports={
+    "enable": True,
     "bug_start_command": [
         "report issue",
         r"\bthat's wrong\b",           # Word boundary matching
