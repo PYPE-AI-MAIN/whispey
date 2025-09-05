@@ -294,7 +294,6 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       }
 
       const data = await response.json()
-      console.log('✅ Agent created successfully:', data)
       
       setCreatedAgentData(data)
 

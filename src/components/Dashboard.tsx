@@ -18,7 +18,11 @@ import {
   Home,
   Circle,
   CalendarDays,
-  Check
+  Check,
+  Play,
+  Terminal,
+  Key,
+  Download
 } from 'lucide-react'
 import Overview from './Overview'
 import CallLogs from './calls/CallLogs'
@@ -34,6 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import QuickStartGuide from './QuickStartGuide'
 
 interface DashboardProps {
   agentId: string
@@ -74,12 +79,21 @@ function AgentHeaderSkeleton() {
   )
 }
 
-// Component for skeleton when project/breadcrumb data is loading  
-function BreadcrumbSkeleton() {
-  return {
-    project: 'Loading...',
-    item: 'Loading...'
-  }
+// Simple No Calls component for VAPI agents
+function NoCallsMessage() {
+  return (
+    <div className="flex-1 flex items-center justify-center h-full">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Bot className="w-8 h-8 text-gray-400" />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No calls yet</h3>
+        <p className="text-sm text-gray-500">
+          Your VAPI agent is ready. Calls will appear here once you start receiving them.
+        </p>
+      </div>
+    </div>
+  )
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
@@ -139,6 +153,32 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     } : null
   )
 
+  // Check if agent has any calls
+  const { data: callsCheck, loading: callsCheckLoading } = useSupabaseQuery('pype_voice_call_logs',
+    agent?.id ? {
+      select: 'id',
+      filters: [{ column: 'agent_id', operator: 'eq', value: agent.id }],
+      limit: 1
+    } : null
+  )
+
+  const hasCalls = callsCheck && callsCheck.length > 0
+
+  // MODIFIED: Show QuickStart only for non-VAPI agents without calls
+  // For VAPI agents without calls, show simple "No calls yet" message
+  const isVapiAgent = React.useMemo(() => {
+    if (!agent) return false
+    
+    const hasVapiKeys = Boolean(agent.vapi_api_key_encrypted && agent.vapi_project_key_encrypted)
+    const hasVapiConfig = Boolean(agent?.configuration?.vapi?.assistantId)
+    const isVapiType = agent.agent_type === 'vapi'
+    
+    return hasVapiKeys || hasVapiConfig || isVapiType
+  }, [agent])
+
+  const showQuickStart = !callsCheckLoading && !hasCalls && !agentLoading && agent && !isVapiAgent
+  const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
+
   const project = agent?.project_id ? projects?.[0] : null
 
   const breadcrumb = React.useMemo(() => {
@@ -176,7 +216,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     }
   }, [agentLoading, projectLoading, agent, project])
 
-
   // Date filter handlers - work immediately
   const handleQuickFilter = (filterId: string) => {
     setQuickFilter(filterId)
@@ -197,7 +236,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   }
 
   const handleBack = () => {
-    // Can work immediately - don't need to wait for agent data
     if (agent?.project_id) {
       router.push(`/${agent.project_id}/agents`)
     } else {
@@ -237,15 +275,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   }, [searchParams])
 
   const isEnhancedProject = agent?.project_id === ENHANCED_PROJECT_ID
-  const isVapiAgent = React.useMemo(() => {
-    if (!agent) return false
-    
-    const hasVapiKeys = Boolean(agent.vapi_api_key_encrypted && agent.vapi_project_key_encrypted)
-    const hasVapiConfig = Boolean(agent?.configuration?.vapi?.assistantId)
-    const isVapiType = agent.agent_type === 'vapi'
-    
-    return hasVapiKeys || hasVapiConfig || isVapiType
-  }, [agent])
 
   // Vapi status checking
   const checkVapiStatus = useCallback(async () => {
@@ -396,27 +425,29 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                 )}
               </div>
 
-              {/* Tab Navigation - show immediately, works without agent data */}
-              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 ml-8">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon
-                  const isActive = activeTab === tab.id
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabChange(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                        isActive
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  )
-                })}
-              </div>
+              {/* Tab Navigation - HIDE when showing Quick Start OR No Calls Message */}
+              {!showQuickStart && !showNoCallsMessage && (
+                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 ml-8">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon
+                    const isActive = activeTab === tab.id
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                          isActive
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {tab.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
               {/* VAPI button - show skeleton or button based on agent data */}
               {agentLoading ? (
@@ -465,109 +496,119 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
               ) : null}
             </div>
 
-            {/* Right: Controls - show immediately, these work without agent data */}
-            <div className="flex items-center gap-6">
-              {/* Period Filters - work immediately */}
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-gray-600">Period</span>
-                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                  {quickFilters.map((filter) => (
-                    <button
-                      key={filter.id}
-                      onClick={() => handleQuickFilter(filter.id)}
-                      className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                        quickFilter === filter.id && !isCustomRange
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                      }`}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
+            {/* Right: Controls - hide when showing Quick Start guide OR No Calls Message */}
+            {!showQuickStart && !showNoCallsMessage && (
+              <div className="flex items-center gap-6">
+                {/* Period Filters */}
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium text-gray-600">Period</span>
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                    {quickFilters.map((filter) => (
+                      <button
+                        key={filter.id}
+                        onClick={() => handleQuickFilter(filter.id)}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                          quickFilter === filter.id && !isCustomRange
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 transition-all duration-200 ${
+                          isCustomRange 
+                            ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        Custom
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 border-gray-200 shadow-xl rounded-xl" align="end">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={handleDateRangeSelect}
+                        numberOfMonths={2}
+                        className="rounded-xl"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 transition-all duration-200 ${
-                        isCustomRange 
-                          ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                      }`}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      Custom
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 border-gray-200 shadow-xl rounded-xl" align="end">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={handleDateRangeSelect}
-                      numberOfMonths={2}
-                      className="rounded-xl"
-                    />
-                  </PopoverContent>
-                </Popover>
+                {/* Field Extractor - skeleton while agent loading */}
+                {agentLoading ? (
+                  <div className="h-9 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+                ) : agent ? (
+                  <FieldExtractorDialog
+                    initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
+                    isEnabled={!!agent?.field_extractor}
+                    onSave={async (data, enabled) => {
+                      const { error } = await supabase
+                        .from('pype_voice_agents')
+                        .update({ field_extractor_prompt: JSON.stringify(data), field_extractor: enabled })
+                        .eq('id', agent.id)
+                      if (!error) {
+                        alert('Saved field extractor config.')
+                        refetchAgent()
+                      } else {
+                        alert('Error saving config: ' + error.message)
+                      }
+                    }}
+                  />
+                ) : null}
               </div>
-              
-              {/* Field Extractor - skeleton while agent loading */}
-              {agentLoading ? (
-                <div className="h-9 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
-              ) : agent ? (
-                <FieldExtractorDialog
-                  initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
-                  isEnabled={!!agent?.field_extractor}
-                  onSave={async (data, enabled) => {
-                    const { error } = await supabase
-                      .from('pype_voice_agents')
-                      .update({ field_extractor_prompt: JSON.stringify(data), field_extractor: enabled })
-                      .eq('id', agent.id)
-                    if (!error) {
-                      alert('Saved field extractor config.')
-                      refetchAgent()
-                    } else {
-                      alert('Error saving config: ' + error.message)
-                    }
-                  }}
-                />
-              ) : null}
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Content - Pass loading states to child components */}
+      {/* Content - Show Quick Start for non-VAPI agents, simple message for VAPI agents */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === 'overview' && (
-          <Overview 
-            project={project} 
-            agent={agent}
-            dateRange={apiDateRange}
-            quickFilter={quickFilter}
-            isCustomRange={isCustomRange}
-            isLoading={agentLoading || projectLoading}
-          />
-        )}
-        {activeTab === 'logs' && (
-          <CallLogs 
-            project={project} 
-            agent={agent} 
-            onBack={handleBack}
-            isLoading={agentLoading || projectLoading}
-          />
-        )}
-        {activeTab === 'campaign-logs' && isEnhancedProject && (
-          <CampaignLogs 
-            project={project} 
-            agent={agent} 
-            onBack={handleBack}
-            isLoading={agentLoading || projectLoading}
-          />
+        {showQuickStart ? (
+          <QuickStartGuide agentId={agentId} />
+        ) : showNoCallsMessage ? (
+          <NoCallsMessage />
+        ) : (
+          <>
+            {activeTab === 'overview' && (
+              <Overview 
+                project={project} 
+                agent={agent}
+                dateRange={apiDateRange}
+                quickFilter={quickFilter}
+                isCustomRange={isCustomRange}
+                isLoading={agentLoading || projectLoading}
+              />
+            )}
+            {activeTab === 'logs' && (
+              <CallLogs 
+                project={project} 
+                agent={agent} 
+                onBack={handleBack}
+                isLoading={agentLoading || projectLoading || callsCheckLoading}
+              />
+            )}
+            {activeTab === 'campaign-logs' && isEnhancedProject && (
+              <CampaignLogs 
+                project={project} 
+                agent={agent} 
+                onBack={handleBack}
+                isLoading={agentLoading || projectLoading}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

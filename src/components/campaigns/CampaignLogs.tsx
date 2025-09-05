@@ -1325,7 +1325,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                         </>
                       ) : (
                         <>
-                          <Calendar className="w-4 w-4 mr-2" />
+                          <Calendar className="w-4 mr-2" />
                           Create Schedule
                         </>
                       )}
