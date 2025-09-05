@@ -257,7 +257,6 @@ class CorrectedTranscriptCollector:
                 
                 # Send the bug response without adding to chat context
                 self._session.say(response, add_to_chat_ctx=False)
-                logger.info(f"🐛 Sent bug response: {response}")
             except Exception as e:
                 logger.error(f"❌ Failed to send bug response: {e}")
         else:
@@ -271,7 +270,6 @@ class CorrectedTranscriptCollector:
             response = self.bug_detector.collection_prompt
             try:
                 self._session.say(response, add_to_chat_ctx=False)
-                logger.info(f"📝 Sent collection prompt: {response}")
             except Exception as e:
                 logger.error(f"❌ Failed to send collection response: {e}")
         else:
@@ -285,13 +283,11 @@ class CorrectedTranscriptCollector:
             full_message = f"{self.bug_detector.continuation_prefix}{self._stored_message}"
             try:
                 self._session.say(full_message, add_to_chat_ctx=False)
-                logger.info(f"🔄 Repeated stored message: {full_message[:50]}...")
             except Exception as e:
                 logger.error(f"❌ Failed to repeat stored message: {e}")
                 # Fallback
                 try:
                     self._session.say(self.bug_detector.fallback_message, add_to_chat_ctx=False)
-                    logger.info(f"🔄 Sent fallback: {self.bug_detector.fallback_message}")
                 except:
                     logger.error("❌ Complete failure to send any response")
         else:
@@ -302,7 +298,6 @@ class CorrectedTranscriptCollector:
  
     def on_conversation_item_added(self, event):
         """Called when conversation item is added - enhanced data extraction from conversation"""
-        logger.info(f"CONVERSATION: {event.item.role} - {event.item.text_content[:50]}...")
 
         # Initialize bug tracking state if not exists
         if not hasattr(self, '_bug_collection_mode'):
@@ -325,7 +320,6 @@ class CorrectedTranscriptCollector:
                 config = self._session_data.get('complete_configuration')
                 if config:
                     self.current_turn.turn_configuration = config
-                    logger.info(f"SUCCESS: Injected configuration into turn {self.current_turn.turn_id}")
 
         if event.item.role == "user":
             original_text = event.item.text_content
@@ -335,7 +329,6 @@ class CorrectedTranscriptCollector:
             
             # CHECK 1: Initial bug report detection
             if self._is_bug_report(original_text) and not self._bug_collection_mode:
-                logger.info(f"🐛 INITIAL BUG REPORT: {original_text}")
                 
                 # Store the last agent message for later repetition
                 if self.turns and len(self.turns) > 0:
@@ -343,7 +336,6 @@ class CorrectedTranscriptCollector:
                     if last_turn.agent_response:
                         self._stored_message = last_turn.agent_response
                         last_turn.bug_report = True
-                        logger.info(f"📝 Stored problematic message: {self._stored_message[:50]}...")
                 
                 # Enter bug collection mode
                 self._bug_collection_mode = True
@@ -359,11 +351,9 @@ class CorrectedTranscriptCollector:
                 
                 # Send immediate bug response
                 self._send_bug_response_immediately()
-                logger.info("🐛 Entered bug collection mode")
                 
             # CHECK 2: Bug end detection
             elif self._bug_collection_mode and self._is_done_reporting(original_text):
-                logger.info(f"🏁 BUG REPORT ENDED: {original_text}")
                 
                 # Store final bug details
                 self._bug_details.append({
@@ -382,11 +372,9 @@ class CorrectedTranscriptCollector:
                 
                 # Repeat the stored message
                 self._repeat_stored_message_immediately()
-                logger.info("🏁 Exited bug collection mode")
                 
             # CHECK 3: Continue collecting bug details
             elif self._bug_collection_mode:
-                logger.info(f"📝 COLLECTING BUG DETAILS: {original_text}")
                 
                 # Store additional bug details
                 self._bug_details.append({
@@ -417,14 +405,12 @@ class CorrectedTranscriptCollector:
                     self.pending_metrics['eou'] = None
                 
                 self._extract_enhanced_stt_from_conversation(event)
-                logger.info(f"👤 Normal user input: {original_text[:50]}...")
             else:
                 logger.info(f"🚫 Message intercepted for bug handling: {original_text[:50]}...")
                 
         elif event.item.role == "assistant":
             # Skip assistant processing during bug collection
             if self._bug_collection_mode:
-                logger.info("🤖 Skipping assistant response - in bug collection mode")
                 return
             
             # Normal assistant processing
@@ -468,7 +454,6 @@ class CorrectedTranscriptCollector:
             
             # Complete the turn
             self.turns.append(self.current_turn)
-            logger.info(f"✅ Completed turn {self.current_turn.turn_id}")
             self.current_turn = None
 
 
@@ -530,7 +515,6 @@ class CorrectedTranscriptCollector:
                 metrics_obj.prompt_tokens, 
                 metrics_obj.completion_tokens
             )
-            logger.info(f"LLM Cost calculated immediately: ${cost:.6f} ({explanation})")
             return cost
         except Exception as e:
             logger.error(f"Error calculating LLM cost: {e}")
@@ -541,11 +525,10 @@ class CorrectedTranscriptCollector:
         try:
             from whispey.pricing_calculator import get_pricing_calculator
             calculator = get_pricing_calculator()
-            cost, explanation = calculator.calculate_tts_cost(
+            cost = calculator.calculate_tts_cost(
                 model_name, 
                 metrics_obj.characters_count
             )
-            logger.info(f"TTS Cost calculated immediately: ${cost:.6f} ({explanation})")
             return cost
         except Exception as e:
             logger.error(f"Error calculating TTS cost: {e}")
@@ -556,11 +539,10 @@ class CorrectedTranscriptCollector:
         try:
             from whispey.pricing_calculator import get_pricing_calculator
             calculator = get_pricing_calculator()
-            cost, explanation = calculator.calculate_stt_cost(
+            cost = calculator.calculate_stt_cost(
                 model_name, 
                 metrics_obj.audio_duration
             )
-            logger.info(f"STT Cost calculated immediately: ${cost:.6f} ({explanation})")
             return cost
         except Exception as e:
             logger.error(f"Error calculating STT cost: {e}")
@@ -787,15 +769,12 @@ class CorrectedTranscriptCollector:
 
     def finalize_session(self):
         """Enhanced finalization with comprehensive span assignment"""
-        logger.info(f"FINALIZING SESSION: {len(self.turns)} turns completed")
         
         if self.current_turn:
             self.turns.append(self.current_turn)
             self.current_turn = None
-            logger.info("Added current turn to completed turns")
         
         if self._stored_telemetry_instance and hasattr(self._stored_telemetry_instance, 'spans_data'):
-            logger.info(f"Using stored telemetry instance with {len(self._stored_telemetry_instance.spans_data)} spans")
             self._assign_session_spans_to_turns_direct(self._stored_telemetry_instance)
         else:
             logger.error("No stored telemetry instance available for span assignment")
@@ -805,14 +784,12 @@ class CorrectedTranscriptCollector:
             for turn in reversed(self.turns):
                 if turn.agent_response and not turn.tts_metrics:
                     turn.tts_metrics = self.pending_metrics['tts']
-                    logger.info(f"Applied final TTS metrics to turn {turn.turn_id}")
                     break
                     
         if self.pending_metrics['stt'] and self.turns:
             for turn in reversed(self.turns):
                 if turn.user_transcript and not turn.stt_metrics:
                     turn.stt_metrics = self.pending_metrics['stt']
-                    logger.info(f"Applied final STT metrics to turn {turn.turn_id}")
                     break
         
         if self.pending_metrics['llm'] and self.turns:
@@ -825,19 +802,16 @@ class CorrectedTranscriptCollector:
             for turn in reversed(self.turns):
                 if turn.user_transcript and not turn.eou_metrics:
                     turn.eou_metrics = self.pending_metrics['eou']
-                    logger.info(f"Applied final EOU metrics to turn {turn.turn_id}")
                     break
         
         # Finalize trace data for each turn
         for turn in self.turns:
             self._finalize_trace_data(turn)
         
-        logger.info(f"SESSION FINALIZATION COMPLETE: {len(self.turns)} turns processed")
 
 
     def _assign_session_spans_to_turns(self):
         """Debug version - Fixed span assignment focusing on real request_ids"""
-        logger.info("\n=== PYTHON SPAN ASSIGNMENT DEBUG ===")
         
         if not (hasattr(self, '_session_data') and self._session_data):
             logger.error("No session data for span assignment")
@@ -849,27 +823,15 @@ class CorrectedTranscriptCollector:
             return
         
         all_spans = telemetry_instance.spans_data
-        logger.info(f"Processing {len(all_spans)} total spans for {len(self.turns)} turns")
-        
-        # Debug: Print all span request_ids
-        logger.info("All spans with request_ids:")
-        for i, span in enumerate(all_spans):
-            req_id = span.get('request_id')
-            name = span.get('name', 'unknown')
-            source = span.get('request_id_source', 'unknown')
-            logger.info(f"  {i+1}. {name}: {req_id} (source: {source})")
         
         # Filter spans to only those with real request_ids
         real_spans = [span for span in all_spans if span.get('request_id_source') in ['nested_json', 'direct_attribute']]
-        logger.info(f"Found {len(real_spans)} spans with real request_ids")
         
         assigned_count = 0
         
         for turn in self.turns:
-            logger.info(f"\nProcessing {turn.turn_id}:")
             
             if turn.otel_spans and len(turn.otel_spans) > 0:
-                logger.info(f"  Already has {len(turn.otel_spans)} spans, skipping")
                 continue
                 
             # Get turn's request_ids
@@ -881,7 +843,6 @@ class CorrectedTranscriptCollector:
             if turn.tts_metrics and turn.tts_metrics.get('request_id'):
                 turn_request_ids['tts'] = turn.tts_metrics['request_id']
             
-            logger.info(f"  Turn request_ids: {turn_request_ids}")
             
             # Find exact matches in real spans
             matched_spans = []
@@ -889,14 +850,11 @@ class CorrectedTranscriptCollector:
                 span_request_id = span.get('request_id')
                 span_name = span.get('name', '')
                 
-                logger.info(f"    Checking span {span_name} with request_id: {span_request_id}")
                 
                 # Check if this span's request_id matches any turn request_id
                 for turn_type, turn_request_id in turn_request_ids.items():
-                    logger.info(f"      Comparing {span_request_id} == {turn_request_id}? {span_request_id == turn_request_id}")
                     
                     if span_request_id == turn_request_id:
-                        logger.info(f"      MATCH! Checking span type...")
                         
                         # Check span type matches turn type
                         type_match = False
@@ -907,16 +865,14 @@ class CorrectedTranscriptCollector:
                         elif turn_type == 'stt' and 'stt_request' in span_name:
                             type_match = True
                         
-                        logger.info(f"      Type match ({turn_type} -> {span_name}): {type_match}")
                         
                         if type_match:
                             clean_span = self._create_clean_span_data(span, span_request_id)
                             matched_spans.append(clean_span)
-                            logger.info(f"      ADDED: {span_name} ({span_request_id})")
                             assigned_count += 1
                             break
                         else:
-                            logger.info(f"      Type mismatch, skipped")
+                            logger.info(f"Type mismatch, skipped")
             
             if matched_spans:
                 turn.otel_spans.extend(matched_spans)
@@ -950,7 +906,6 @@ class CorrectedTranscriptCollector:
             if request_id and span_request_id == request_id and span_op_type == operation_type:
                 clean_span = self._create_clean_span_data(span, request_id)
                 matching_spans.append(clean_span)
-                logger.info(f"Exact match found: {span_name} (source: {span_request_id_source})")
                 continue
             
             # Strategy 2: Partial request_id match (for synthetic IDs)
@@ -960,7 +915,6 @@ class CorrectedTranscriptCollector:
                 span_op_type == operation_type):
                 clean_span = self._create_clean_span_data(span, request_id)
                 matching_spans.append(clean_span)
-                logger.info(f"Partial match found: {span_name} (source: {span_request_id_source})")
                 continue
             
             # Strategy 3: Recent spans of same operation type (fallback)
@@ -970,9 +924,7 @@ class CorrectedTranscriptCollector:
                 span_captured_time > recent_threshold):
                 clean_span = self._create_clean_span_data(span, request_id)
                 matching_spans.append(clean_span)
-                logger.info(f"Recent fallback match: {span_name} (captured {current_time - span_captured_time:.1f}s ago)")
         
-        logger.info(f"Found {len(matching_spans)} OTEL spans for {operation_type}")
         return matching_spans
 
     def _is_span_already_assigned(self, span_id):
@@ -1098,7 +1050,6 @@ class CorrectedTranscriptCollector:
             }
             
             self.current_turn.enhanced_stt_data = enhanced_data
-            logger.info(f"📊 Extracted STT data from conversation: {enhanced_data['word_count']} words")
             
         except Exception as e:
             logger.error(f"❌ Error extracting enhanced STT data: {e}")
@@ -1142,7 +1093,6 @@ class CorrectedTranscriptCollector:
                 if not self.current_turn.enhanced_stt_data:
                     self.current_turn.enhanced_stt_data = {}
                 self.current_turn.enhanced_stt_data.update(enhanced_data)
-                logger.info(f"Enhanced STT metrics: {model_name} (provider: {provider})")
                 
         except Exception as e:
             logger.error(f"Error extracting enhanced STT metrics: {e}")
@@ -1183,7 +1133,6 @@ class CorrectedTranscriptCollector:
             # Try direct extraction from metrics object
             if hasattr(metrics_obj, 'model') and metrics_obj.model:
                 model_name = str(metrics_obj.model)
-                logger.info(f"Found model in metrics_obj.model: {model_name}")
             
             # Try other possible attribute names on metrics_obj
             elif hasattr(metrics_obj, '__dict__'):
@@ -1192,7 +1141,6 @@ class CorrectedTranscriptCollector:
                         attr_value = getattr(metrics_obj, attr_name)
                         if attr_value and str(attr_value) != 'unknown':
                             model_name = str(attr_value)
-                            logger.info(f"Found model in metrics_obj.{attr_name}: {model_name}")
                             break
             
             # STEP 2: Fallback to session configuration only if still unknown
@@ -1321,7 +1269,6 @@ class CorrectedTranscriptCollector:
                 if not self.current_turn.enhanced_tts_data:
                     self.current_turn.enhanced_tts_data = {}
                 self.current_turn.enhanced_tts_data.update(enhanced_data)
-                logger.info(f"Enhanced TTS metrics: {voice_id} (provider: {provider}, model: {model_name})")
                 
         except Exception as e:
             logger.error(f"Error extracting enhanced TTS metrics: {e}")
@@ -1342,7 +1289,6 @@ class CorrectedTranscriptCollector:
             self.current_turn.state_events.append(state_change)
         
         self.current_user_state = new_state
-        logger.info(f"👤 User state: {old_state} → {new_state}")
 
     def capture_agent_state_change(self, old_state: str, new_state: str):
         """Capture agent state changes (thinking, speaking, listening)"""
@@ -1357,17 +1303,13 @@ class CorrectedTranscriptCollector:
             self.current_turn.state_events.append(state_change)
         
         self.current_agent_state = new_state
-        logger.info(f"🤖 Agent state: {old_state} → {new_state}")
 
     def enable_enhanced_instrumentation(self, session, agent):
         """Enable state change tracking only"""
         try:
-            logger.info("🔧 Enabling state tracking...")
             
             # state change handlers
             self._setup_state_change_handlers(session)
-            
-            logger.info("✅ state tracking enabled")
             
         except Exception as e:
             logger.error(f"⚠️ Could not enable state tracking: {e}")
@@ -1387,7 +1329,6 @@ class CorrectedTranscriptCollector:
                 new_state = getattr(event, 'new_state', 'unknown')
                 self.capture_agent_state_change(old_state, new_state)
                 
-            logger.info("🔧 State change handlers set up")
             
         except Exception as e:
             logger.error(f"⚠️ Could not set up state handlers: {e}")
@@ -1405,7 +1346,6 @@ class CorrectedTranscriptCollector:
             return
         
         all_spans = telemetry_instance.spans_data
-        logger.info(f"FINALIZATION: Assigning {len(all_spans)} session spans to {len(self.turns)} turns")
         
         # Track assigned spans to avoid duplicates
         assigned_span_ids = set()
@@ -1428,7 +1368,6 @@ class CorrectedTranscriptCollector:
             if turn.tts_metrics and turn.tts_metrics.get('request_id'):
                 turn_request_ids['tts'] = turn.tts_metrics['request_id']
             
-            logger.info(f"Turn {turn.turn_id} request_ids: {turn_request_ids}")
             
             # Strategy 1: Match by exact request_id
             for span in all_spans:
@@ -1446,7 +1385,6 @@ class CorrectedTranscriptCollector:
                         clean_span = self._create_clean_span_data(span, turn_request_id)
                         turn_spans.append(clean_span)
                         assigned_span_ids.add(span_id)
-                        logger.info(f"EXACT MATCH: {span_name} -> turn {turn.turn_id}")
                         break
             
             # Strategy 2: If no exact matches, try partial matching
@@ -1467,7 +1405,6 @@ class CorrectedTranscriptCollector:
                             clean_span = self._create_clean_span_data(span, turn_request_id)
                             turn_spans.append(clean_span)
                             assigned_span_ids.add(span_id)
-                            logger.info(f"PARTIAL MATCH: {span.get('name')} -> turn {turn.turn_id}")
                             break
             
             # Strategy 3: Time-based fallback
@@ -1492,41 +1429,26 @@ class CorrectedTranscriptCollector:
                     clean_span = self._create_clean_span_data(span, None)
                     turn_spans.append(clean_span)
                     assigned_span_ids.add(span_id)
-                    logger.info(f"TIME MATCH: {span.get('name')} -> turn {turn.turn_id}")
             
             # Assign spans to turn
             if turn_spans:
                 turn.otel_spans.extend(turn_spans)
-                logger.info(f"ASSIGNED {len(turn_spans)} spans to turn {turn.turn_id}")
             else:
                 logger.warning(f"NO SPANS assigned to turn {turn.turn_id}")
-        
-        # Log final assignment summary
-        total_assigned = sum(len(turn.otel_spans) for turn in self.turns)
-        logger.info(f"FINALIZATION COMPLETE: {total_assigned} spans assigned across {len(self.turns)} turns")
-
 
 
 
     def finalize_session(self):
         """Enhanced finalization with comprehensive span assignment"""
-        logger.info(f"FINALIZING SESSION: {len(self.turns)} turns completed")
         
         if self.current_turn:
             self.turns.append(self.current_turn)
             self.current_turn = None
-            logger.info("Added current turn to completed turns")
         
         # CRITICAL: Get telemetry instance BEFORE session cleanup
         telemetry_instance = None
         if hasattr(self, '_session_data') and self._session_data:
             telemetry_instance = self._session_data.get('telemetry_instance')
-            if telemetry_instance:
-                logger.info(f"Found telemetry instance with {len(getattr(telemetry_instance, 'spans_data', []))} spans")
-            else:
-                logger.warning("Telemetry instance is None in session data")
-        else:
-            logger.warning("No session data available during finalization")
         
         # Assign spans if we have telemetry data
         if telemetry_instance and hasattr(telemetry_instance, 'spans_data'):
@@ -1539,14 +1461,12 @@ class CorrectedTranscriptCollector:
             for turn in reversed(self.turns):
                 if turn.agent_response and not turn.tts_metrics:
                     turn.tts_metrics = self.pending_metrics['tts']
-                    logger.info(f"Applied final TTS metrics to turn {turn.turn_id}")
                     break
                     
         if self.pending_metrics['stt'] and self.turns:
             for turn in reversed(self.turns):
                 if turn.user_transcript and not turn.stt_metrics:
                     turn.stt_metrics = self.pending_metrics['stt']
-                    logger.info(f"Applied final STT metrics to turn {turn.turn_id}")
                     break
         
         if self.pending_metrics['llm'] and self.turns:
@@ -1559,41 +1479,23 @@ class CorrectedTranscriptCollector:
             for turn in reversed(self.turns):
                 if turn.user_transcript and not turn.eou_metrics:
                     turn.eou_metrics = self.pending_metrics['eou']
-                    logger.info(f"Applied final EOU metrics to turn {turn.turn_id}")
                     break
         
         # Finalize trace data for each turn
         for turn in self.turns:
             self._finalize_trace_data(turn)
         
-        logger.info(f"SESSION FINALIZATION COMPLETE: {len(self.turns)} turns processed")
 
     def _assign_session_spans_to_turns_direct(self, telemetry_instance):
         """Direct span assignment with telemetry instance passed in"""
         all_spans = telemetry_instance.spans_data
-        logger.info(f"SPAN ASSIGNMENT: Processing {len(all_spans)} spans for {len(self.turns)} turns")
-        
-        # Debug: Print all span request_ids
-        logger.info("All spans with request_ids:")
-        for i, span in enumerate(all_spans):
-            req_id = span.get('request_id')
-            name = span.get('name', 'unknown')
-            source = span.get('request_id_source', 'unknown')
-            logger.info(f"  {i+1}. {name}: {req_id} (source: {source})")
         
         # Filter spans to only those with real request_ids
         real_spans = [span for span in all_spans if span.get('request_id_source') in ['nested_json', 'direct_attribute']]
-        logger.info(f"Found {len(real_spans)} spans with real request_ids")
         
         assigned_count = 0
         
         for turn in self.turns:
-            logger.info(f"Processing {turn.turn_id}:")
-            
-            if turn.otel_spans and len(turn.otel_spans) > 0:
-                logger.info(f"  Already has {len(turn.otel_spans)} spans, skipping")
-                continue
-                
             # Get turn's request_ids
             turn_request_ids = {}
             if turn.stt_metrics and turn.stt_metrics.get('request_id'):
@@ -1603,7 +1505,6 @@ class CorrectedTranscriptCollector:
             if turn.tts_metrics and turn.tts_metrics.get('request_id'):
                 turn_request_ids['tts'] = turn.tts_metrics['request_id']
             
-            logger.info(f"  Turn request_ids: {turn_request_ids}")
             
             # Find exact matches in real spans
             matched_spans = []
@@ -1611,14 +1512,11 @@ class CorrectedTranscriptCollector:
                 span_request_id = span.get('request_id')
                 span_name = span.get('name', '')
                 
-                logger.info(f"    Checking span {span_name} with request_id: {span_request_id}")
                 
                 # Check if this span's request_id matches any turn request_id
                 for turn_type, turn_request_id in turn_request_ids.items():
-                    logger.info(f"      Comparing {span_request_id} == {turn_request_id}? {span_request_id == turn_request_id}")
                     
                     if span_request_id == turn_request_id:
-                        logger.info(f"      MATCH! Checking span type...")
                         
                         # Check span type matches turn type
                         type_match = False
@@ -1629,20 +1527,17 @@ class CorrectedTranscriptCollector:
                         elif turn_type == 'stt' and 'stt_request' in span_name:
                             type_match = True
                         
-                        logger.info(f"      Type match ({turn_type} -> {span_name}): {type_match}")
                         
                         if type_match:
                             clean_span = self._create_clean_span_data(span, span_request_id)
                             matched_spans.append(clean_span)
-                            logger.info(f"      ADDED: {span_name} ({span_request_id})")
                             assigned_count += 1
                             break
                         else:
-                            logger.info(f"      Type mismatch, skipped")
+                            logger.info(f"Type mismatch, skipped")
             
             if matched_spans:
                 turn.otel_spans.extend(matched_spans)
-                logger.info(f"  Assigned {len(matched_spans)} spans to {turn.turn_id}")
             else:
                 logger.info(f"  NO SPANS matched for {turn.turn_id}")
         
@@ -1742,18 +1637,14 @@ class CorrectedTranscriptCollector:
         
         if turn.llm_metrics and 'calculated_cost' in turn.llm_metrics:
             total_cost += turn.llm_metrics['calculated_cost']
-            logger.info(f"LLM cost from metrics: ${turn.llm_metrics['calculated_cost']:.6f}")
         
         if turn.tts_metrics and 'calculated_cost' in turn.tts_metrics:
             total_cost += turn.tts_metrics['calculated_cost']
-            logger.info(f"TTS cost from metrics: ${turn.tts_metrics['calculated_cost']:.6f}")
         
         if turn.stt_metrics and 'calculated_cost' in turn.stt_metrics:
             total_cost += turn.stt_metrics['calculated_cost']
-            logger.info(f"STT cost from metrics: ${turn.stt_metrics['calculated_cost']:.6f}")
         
         turn.trace_cost_usd = round(total_cost, 6)
-        logger.info(f"Total trace cost: ${turn.trace_cost_usd} for turn {turn.turn_id}")
 
 
     def get_turns_array(self) -> List[Dict[str, Any]]:
@@ -1895,7 +1786,6 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
 
     @session.on("function_calls_collected")
     def on_function_calls_collected(event):
-        logger.info(f"🔧 Function calls collected: {event}")
         if transcript_collector.current_turn:
             for func_call in event.function_calls:
                 tool_call_data = {
@@ -1909,12 +1799,10 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
                 if not transcript_collector.current_turn.tool_calls:
                     transcript_collector.current_turn.tool_calls = []
                 transcript_collector.current_turn.tool_calls.append(tool_call_data)
-                logger.info(f"🔧 Captured tool call via event: {func_call.name}")
 
     @session.on("function_tools_executed")
     def on_function_tools_executed(event):
         """LiveKit's official event for when function tools are executed"""
-        logger.info(f"🔧 Function tools executed: {len(event.function_calls)} tools")
         
         if transcript_collector.current_turn:
             for func_call, func_output in event.zipped():

@@ -46,7 +46,6 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
         
         # Setup telemetry if enabled
         if enable_otel and telemetry_instance:
-            logger.info(f"🔧 Setting up OpenTelemetry for session {session_id}")
             telemetry_instance._setup_telemetry(session_id)
         
         # Setup event handlers with session
@@ -138,11 +137,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     if session_data:
         transcript_data = session_data.get("transcript_with_metrics", [])
         
-        # VERIFICATION: Check if turns have configuration
-        config_count = sum(1 for turn in transcript_data if turn.get('turn_configuration'))
-        logger.info(f"Configuration verification: {config_count}/{len(transcript_data)} turns have configuration")
-        
-        # NEW: Ensure trace fields are included in each turn
+        # Ensure trace fields are included in each turn
         enhanced_transcript = []
         for turn in transcript_data:
             # Verify configuration exists
@@ -398,16 +393,12 @@ def structure_telemetry_data(session_id: str) -> Dict[str, Any]:
         telemetry_instance = session_info.get('telemetry_instance')
         
         if not telemetry_instance or not hasattr(telemetry_instance, 'spans_data'):
-            logger.info(f"No telemetry instance or spans data for session {session_id}")
             return telemetry_data
             
         spans = telemetry_instance.spans_data
         if not spans:
-            logger.info(f"No spans available for session {session_id}")
             return telemetry_data
-            
-        logger.info(f"Processing {len(spans)} telemetry spans for session {session_id}")
-        
+                    
         operation_counts = {}
         latency_sums = {"llm": [], "tts": [], "stt": [], "tool": []}
         
@@ -491,11 +482,9 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found in data store")
-        logger.info(f"Available sessions: {list(_session_data_store.keys())}")
         return {"success": False, "error": "Session not found"}
     
     session_info = _session_data_store[session_id]
-    logger.info(f"📊 Session {session_id} found - active: {session_info['call_active']}")
     
     # Force end session if requested and still active
     if force_end and session_info['call_active']:
@@ -510,7 +499,6 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     whispey_data["telemetry_data"] = structured_telemetry
 
     
-    logger.info(f"📊 Generated whispey data with keys: {list(whispey_data.keys()) if whispey_data else 'Empty'}")
     
     if not whispey_data:
         logger.error(f"No whispey data generated for session {session_id}")
@@ -519,11 +507,9 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     # Update with additional data
     if recording_url:
         whispey_data["recording_url"] = recording_url
-        logger.info(f"📎 Added recording URL: {recording_url}")
     
     if additional_transcript:
         whispey_data["transcript_json"] = additional_transcript
-        logger.info(f"📄 Added additional transcript with {len(additional_transcript)} items")
     
     
     try:

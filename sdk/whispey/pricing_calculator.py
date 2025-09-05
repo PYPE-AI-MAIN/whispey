@@ -145,7 +145,6 @@ class ModelPricingCalculator:
         # Try partial matches
         for db_model, info in self.pricing_database.items():
             if db_model.lower() in model_lower or model_lower in db_model.lower():
-                logger.info(f"💰 Fuzzy matched '{model_name}' to '{db_model}' for pricing")
                 return info
         
         # Try provider-based matching
@@ -172,7 +171,6 @@ class ModelPricingCalculator:
             output_cost = (completion_tokens * model_info['output_cost_per_1m']) / 1_000_000
             total_cost = input_cost + output_cost
             
-            logger.info(f"💰 LLM Cost ({model_name}): {prompt_tokens} input + {completion_tokens} output = ${total_cost:.6f}")
             return total_cost, f"Calculated using {model_name} pricing"
         
         else:
@@ -193,7 +191,6 @@ class ModelPricingCalculator:
         if model_info and model_info['type'] == 'tts':
             cost = (character_count * model_info['cost_per_1m_chars']) / 1_000_000
             
-            logger.info(f"💰 TTS Cost ({model_name}): {character_count} chars = ${cost:.6f}")
             return cost, f"Calculated using {model_name} pricing"
         
         else:
@@ -213,7 +210,6 @@ class ModelPricingCalculator:
         if model_info and model_info['type'] == 'stt':
             cost = duration_hours * model_info['cost_per_hour']
             
-            logger.info(f"💰 STT Cost ({model_name}): {duration_seconds:.2f}s = ${cost:.6f}")
             return cost, f"Calculated using {model_name} pricing"
         
         else:
@@ -227,13 +223,11 @@ class ModelPricingCalculator:
     def add_custom_model(self, model_name: str, model_config: Dict):
         """Add custom model pricing"""
         self.pricing_database[model_name] = model_config
-        logger.info(f"💰 Added custom model pricing: {model_name}")
 
     def update_model_pricing(self, model_name: str, new_pricing: Dict):
         """Update existing model pricing"""
         if model_name in self.pricing_database:
             self.pricing_database[model_name].update(new_pricing)
-            logger.info(f"💰 Updated pricing for {model_name}")
         else:
             logger.warning(f"💰 Model {model_name} not found for pricing update")
 
