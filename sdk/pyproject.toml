@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Whispey"
+version = "3.1.2"
+description = "Voice Analytics SDK for AI Agents"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Pype AI Voice Analytics", email = "support@pype.ai"}
+]
+keywords = ["voice analytics", "AI agents", "conversation intelligence", "pype"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "livekit-agents>=1.2.2",
+    "aiohttp>=3.8.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://pype.ai"
+Repository = "https://github.com/PYPE-AI-MAIN/whispey"
+Documentation = "https://docs.pype.ai"
