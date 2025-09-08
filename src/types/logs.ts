@@ -59,6 +59,58 @@ export interface TranscriptWithMetrics {
   timestamp?: number;
 }
 
+export interface TelemetryPerformanceMetrics {
+  total_spans?: number;
+  [key: string]: any;
+}
+
+export interface TelemetrySpanSummary {
+  by_operation?: Record<string, number>;
+  critical_path?: Array<{ duration_ms?: number; name?: string; operation_type?: string }>;
+  [key: string]: any;
+}
+
+export interface TelemetrySpan {
+  span_id?: string;
+  trace_id?: string;
+  name?: string;
+  operation_type?: string;
+  start_time_ns?: number;
+  end_time_ns?: number;
+  duration_ms?: number;
+  duration_ns?: number;
+  status?: Record<string, any>;
+  attributes?: Record<string, any>;
+  events?: any;
+  metadata?: any;
+  request_id?: string;
+  parent_span_id?: string;
+  captured_at?: number; // epoch seconds
+  context?: Record<string, any>;
+  request_id_source?: string;
+}
+
+export interface TelemetryData {
+  performance_metrics?: TelemetryPerformanceMetrics;
+  span_summary?: TelemetrySpanSummary;
+  session_traces?: TelemetrySpan[];
+  [key: string]: any;
+}
+
+export interface TelemetryAnalyticsSummary {
+  total_duration_ms: number;
+  bottlenecks: Array<{ operation?: string; type?: string; duration_ms?: number }>;
+  avg_step_duration: number;
+}
+
+export interface TelemetryAnalytics {
+  session_performance: TelemetryPerformanceMetrics;
+  operation_breakdown: Record<string, number>;
+  critical_path_latency: TelemetryAnalyticsSummary;
+  anomaly_detection: any[];
+  turn_level_metrics: Record<string, any>;
+}
+
 export interface CallLogRequest {
   call_id: string;
   customer_number?: string;
@@ -79,6 +131,7 @@ export interface CallLogRequest {
   transcript_with_metrics?: TranscriptWithMetrics[];
   recording_url?: string;
   voice_recording_url?: string;
+  telemetry_data?: TelemetryData;
   environment?: string;
 }
 
