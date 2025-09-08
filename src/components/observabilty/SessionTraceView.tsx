@@ -395,16 +395,15 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
                             <span className="text-gray-900 truncate">
                               {span.name || 'unknown'}
                             </span>
+
                             {span.operation_type && (
                               <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${getOperationColor(span.operation_type)}`}>
                                 {span.operation_type}
                               </span>
                             )}
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-xs text-gray-500 flex-shrink-0">
-                            {span.duration_ms && (
-                              <span className="font-mono">
+
+                            {span.duration_ms !== undefined && span.duration_ms !== null && (
+                              <span className="text-xs text-gray-500 font-mono flex-shrink-0">
                                 {formatDuration(span.duration_ms)}
                               </span>
                             )}
