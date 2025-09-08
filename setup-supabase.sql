@@ -410,3 +410,257 @@ BEGIN
   RETURN condition;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- RPC: get_distinct_values
+CREATE OR REPLACE FUNCTION get_distinct_values(
+  p_agent_id uuid,
+  p_column_name text,
+  p_json_field text DEFAULT NULL::text,
+  p_limit integer DEFAULT 100
+)
+RETURNS TABLE(distinct_value text, count_occurrences bigint)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  query_text TEXT;
+BEGIN
+  IF p_json_field IS NOT NULL THEN
+    query_text := format('
+      SELECT DISTINCT %I->>%L as distinct_value, 
+             COUNT(*) as count_occurrences
+      FROM pype_voice_call_logs 
+      WHERE agent_id = $1 
+        AND %I->>%L IS NOT NULL
+      GROUP BY %I->>%L
+      ORDER BY count_occurrences DESC, distinct_value
+      LIMIT $2',
+      p_column_name, p_json_field,
+      p_column_name, p_json_field,
+      p_column_name, p_json_field);
+  ELSE
+    query_text := format('
+      SELECT DISTINCT %I::TEXT as distinct_value,
+             COUNT(*) as count_occurrences
+      FROM pype_voice_call_logs 
+      WHERE agent_id = $1 
+        AND %I IS NOT NULL
+      GROUP BY %I
+      ORDER BY count_occurrences DESC, distinct_value
+      LIMIT $2',
+      p_column_name,
+      p_column_name,
+      p_column_name);
+  END IF;
+
+  RETURN QUERY EXECUTE query_text USING p_agent_id, p_limit;
+END;
+$$;
+
+
+-- ===== Added missing tables =====
+
+-- pype_voice_custom_totals_configs
+create table public.pype_voice_custom_totals_configs (
+    id uuid primary key default gen_random_uuid(),
+    project_id uuid,
+    agent_id uuid,
+    name varchar,
+    description text,
+    aggregation varchar,
+    column_name varchar,
+    json_field varchar,
+    filters jsonb default '[]'::jsonb,
+    filter_logic varchar default 'AND',
+    icon varchar,
+    color varchar,
+    created_by varchar,
+    created_at timestamp with time zone default now(),
+    updated_at timestamp with time zone default now()
+);
+alter table public.pype_voice_custom_totals_configs enable row level security;
+
+-- pype_voice_session_traces
+create table public.pype_voice_session_traces (
+    id uuid primary key default gen_random_uuid(),
+    session_id uuid,
+    total_spans int4 default 0,
+    performance_summary jsonb default '{}'::jsonb,
+    span_summary jsonb default '{}'::jsonb,
+    session_start_time timestamp,
+    session_end_time timestamp,
+    total_duration_ms int4,
+    created_at timestamp default now(),
+    trace_key varchar(255)
+);
+alter table public.pype_voice_session_traces enable row level security;
+
+-- pype_voice_spans
+create table public.pype_voice_spans (
+    id uuid primary key default gen_random_uuid(),
+    span_id text,
+    trace_id text,
+    name text,
+    operation_type text,
+    start_time_ns bigint,
+    end_time_ns bigint,
+    duration_ms int4,
+    status jsonb,
+    attributes jsonb,
+    events jsonb,
+    metadata jsonb,
+    request_id text,
+    parent_span_id text,
+    created_at timestamp default now(),
+    duration_ns bigint,
+    captured_at timestamp,
+    context jsonb,
+    request_id_source text,
+    trace_key varchar(255) not null
+);
+alter table public.pype_voice_spans enable row level security;
+
+-- pype_voice_call_logs_backup
+create table public.pype_voice_call_logs_backup (
+    id uuid,
+    call_id varchar,
+    agent_id uuid,
+    customer_number varchar,
+    call_ended_reason varchar,
+    transcript_type varchar,
+    transcript_json jsonb,
+    metadata jsonb,
+    dynamic_variables jsonb,
+    environment varchar,
+    created_at timestamp,
+    call_started_at timestamp,
+    call_ended_at timestamp,
+    duration_seconds int4,
+    recording_url text,
+    avg_latency float8,
+    transcription_metrics jsonb,
+    total_stt_cost float8,
+    total_tts_cost float8,
+    total_llm_cost float8
+);
+alter table public.pype_voice_call_logs_backup enable row level security;
+
+-- pype_voice_call_logs_with_context
+create table public.pype_voice_call_logs_with_context (
+    id uuid,
+    call_id varchar,
+    agent_id uuid,
+    customer_number varchar,
+    call_ended_reason varchar,
+    transcript_type varchar,
+    transcript_json jsonb,
+    metadata jsonb,
+    dynamic_variables jsonb,
+    environment varchar,
+    created_at timestamp,
+    call_started_at timestamp,
+    call_ended_at timestamp,
+    duration_seconds int4,
+    agent_name varchar,
+    agent_type varchar,
+    project_name varchar,
+    project_id uuid
+);
+alter table public.pype_voice_call_logs_with_context enable row level security;
+
+
+-- RPC: get_available_json_fields
+CREATE OR REPLACE FUNCTION get_available_json_fields(
+  p_agent_id uuid,
+  p_column_name text,
+  p_limit integer DEFAULT 50
+)
+RETURNS TABLE(field_name text, sample_value text, occurrences bigint)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  query_text TEXT;
+BEGIN
+  query_text := format('
+    WITH json_keys AS (
+      SELECT jsonb_object_keys(%I) as key_name, %I->>jsonb_object_keys(%I) as sample_val
+      FROM pype_voice_call_logs 
+      WHERE agent_id = $1 AND %I IS NOT NULL
+      LIMIT 1000
+    )
+    SELECT 
+      key_name as field_name,
+      sample_val as sample_value,
+      COUNT(*) as occurrences
+    FROM json_keys
+    GROUP BY key_name, sample_val
+    ORDER BY occurrences DESC, key_name
+    LIMIT $2',
+    p_column_name, p_column_name, p_column_name, p_column_name);
+
+  RETURN QUERY EXECUTE query_text USING p_agent_id, p_limit;
+END;
+$$;
+
+
+-- RPC: batch_calculate_custom_totals
+CREATE OR REPLACE FUNCTION batch_calculate_custom_totals(
+  p_agent_id uuid,
+  p_configs jsonb,
+  p_date_from date DEFAULT NULL::date,
+  p_date_to date DEFAULT NULL::date
+)
+RETURNS TABLE(config_id text, result numeric, error_message text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  config_item JSONB;
+  aggregation TEXT;
+  column_name TEXT;
+  json_field TEXT;
+  filters JSONB;
+  filter_logic TEXT;
+  calc_result RECORD;
+BEGIN
+  FOR config_item IN SELECT * FROM jsonb_array_elements(p_configs)
+  LOOP
+    aggregation := config_item->>'aggregation';
+    column_name := config_item->>'column';
+    json_field := config_item->>'jsonField';
+    filters := COALESCE(config_item->'filters', '[]'::jsonb);
+    filter_logic := COALESCE(config_item->>'filterLogic', 'AND');
+
+    SELECT * INTO calc_result
+    FROM calculate_custom_total(
+      p_agent_id,
+      aggregation,
+      column_name,
+      json_field,
+      filters,
+      filter_logic,
+      p_date_from,
+      p_date_to
+    );
+
+    RETURN QUERY SELECT 
+      config_item->>'id',
+      calc_result.result,
+      calc_result.error_message;
+  END LOOP;
+END;
+$$;
+
+
+-- RPC: refresh_call_summary
+CREATE OR REPLACE FUNCTION refresh_call_summary()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY call_summary_materialized;
+END;
+$$;
