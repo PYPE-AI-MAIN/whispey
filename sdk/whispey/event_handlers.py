@@ -295,7 +295,7 @@ class CorrectedTranscriptCollector:
 
 
 
- 
+
     def on_conversation_item_added(self, event):
         """Called when conversation item is added - enhanced data extraction from conversation"""
 
@@ -329,7 +329,6 @@ class CorrectedTranscriptCollector:
             
             # CHECK 1: Initial bug report detection
             if self._is_bug_report(original_text) and not self._bug_collection_mode:
-                
                 # Store the last agent message for later repetition
                 if self.turns and len(self.turns) > 0:
                     last_turn = self.turns[-1]
@@ -354,6 +353,9 @@ class CorrectedTranscriptCollector:
                 
             # CHECK 2: Bug end detection
             elif self._bug_collection_mode and self._is_done_reporting(original_text):
+                if self.bug_detector:
+                    self.bug_detector._debug_log("✅ Bug reporting ENDED!")
+                    self.bug_detector._debug_log(f"Collected {len(self._bug_details)} bug messages")
                 
                 # Store final bug details
                 self._bug_details.append({
@@ -370,11 +372,18 @@ class CorrectedTranscriptCollector:
                 should_intercept = True
                 self._bug_report_ended[event.item.id] = original_text
                 
+                if self.bug_detector:
+                    continuation_prefix = self.bug_detector.continuation_prefix
+                    continuation_msg = f"{continuation_prefix}{self._stored_message if self._stored_message else 'N/A'}"
+                    self.bug_detector._debug_log(f"Repeating stored message: '{continuation_msg[:100]}...'")
+                
                 # Repeat the stored message
                 self._repeat_stored_message_immediately()
                 
             # CHECK 3: Continue collecting bug details
             elif self._bug_collection_mode:
+                if self.bug_detector:
+                    self.bug_detector._debug_log(f"Collecting bug details: '{original_text}'")
                 
                 # Store additional bug details
                 self._bug_details.append({
@@ -386,6 +395,10 @@ class CorrectedTranscriptCollector:
                 # Mark for interception
                 should_intercept = True
                 self._intercepted_messages[event.item.id] = original_text
+                
+                if self.bug_detector:
+                    collection_prompt = self.bug_detector.collection_prompt
+                    self.bug_detector._debug_log(f"Sending collection prompt: '{collection_prompt}'")
                 
                 # Send collection prompt
                 self._send_collection_response_immediately()
@@ -406,11 +419,14 @@ class CorrectedTranscriptCollector:
                 
                 self._extract_enhanced_stt_from_conversation(event)
             else:
-                logger.info(f"🚫 Message intercepted for bug handling: {original_text[:50]}...")
-                
+                if self.bug_detector:
+                    self.bug_detector._debug_log("❌ Message INTERCEPTED - not processing normally")
+                    
         elif event.item.role == "assistant":
             # Skip assistant processing during bug collection
             if self._bug_collection_mode:
+                if self.bug_detector:
+                    self.bug_detector._debug_log("Skipping assistant processing (bug collection mode)")
                 return
             
             # Normal assistant processing
