@@ -50,25 +50,48 @@ cp .env.example .env.local
 Edit `.env.local` with your configuration:
 
 ```env
-# Database (Supabase)
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# App URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Supabase (Client)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+# Supabase (Server - optional if needed)
+SUPABASE_SERVICE_ROLE_KEY=
 
 # Authentication (Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+CLERK_WEBHOOK_SIGNING_SECRET=
 
-# API Configuration
+# OpenAI (for transcript field extraction)
+OPENAI_API_KEY=
+# Optionally override model used by transcript processor
+# OPENAI_MODEL=gpt-4o
+
+# VAPI encryption (used for securing Vapi credentials)
+VAPI_MASTER_KEY=
+
+# Optional: Public API base URL
 NEXT_PUBLIC_API_URL=http://localhost:3000/api
-WHISPEY_API_KEY=your_api_key_for_sdk
 
-# Optional: Analytics
-NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=your_ga_id
+# Optional: Analytics / Telemetry
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+
+# Optional: JWT for SSO validation endpoints
+JWT_SECRET=
+
+# Optional: AWS (used by audio routes if you enable S3 storage)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=ap-south-1
+AWS_S3_BUCKET=
 ```
 
 ## 🗄️ Database Setup
@@ -205,10 +228,24 @@ npm i -g vercel
 # Deploy
 vercel --prod
 
-# Set environment variables
+# Set environment variables (repeat for each)
+vercel env add NEXT_PUBLIC_APP_URL
 vercel env add NEXT_PUBLIC_SUPABASE_URL
+vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
+vercel env add SUPABASE_SERVICE_ROLE_KEY
 vercel env add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-# ... add all required env vars
+vercel env add CLERK_SECRET_KEY
+vercel env add CLERK_WEBHOOK_SIGNING_SECRET
+vercel env add OPENAI_API_KEY
+vercel env add VAPI_MASTER_KEY
+vercel env add NEXT_PUBLIC_POSTHOG_KEY
+vercel env add NEXT_PUBLIC_POSTHOG_HOST
+vercel env add NEXT_PUBLIC_API_URL
+vercel env add JWT_SECRET
+vercel env add AWS_ACCESS_KEY_ID
+vercel env add AWS_SECRET_ACCESS_KEY
+vercel env add AWS_REGION
+vercel env add AWS_S3_BUCKET
 ```
 
 ### Manual Server Deployment
