@@ -1,4 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server'
+import AWS from 'aws-sdk'
+
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION
+})
+
+function parseS3Url(inputUrl: string): { bucket?: string; key?: string; host?: string } {
+  try {
+    const url = new URL(inputUrl)
+    const hostParts = url.hostname.split('.')
+    let bucket: string | undefined
+    if (hostParts.length >= 4 && hostParts[1] === 's3') {
+      bucket = hostParts[0]
+    }
+    if (!bucket && hostParts[0] === 's3') {
+      const path = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+      const firstSlash = path.indexOf('/')
+      if (firstSlash > 0) {
+        bucket = path.substring(0, firstSlash)
+        const key = path.substring(firstSlash + 1)
+        return { bucket, key, host: url.hostname }
+      }
+    }
+    const key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+    return { bucket, key, host: url.hostname }
+  } catch {
+    return {}
+  }
+}
+
+function resolveBucketName(
+  bucketFromUrl: string | undefined,
+  key: string | undefined,
+  host: string | undefined
+): string | undefined {
+  if (bucketFromUrl) return bucketFromUrl
+  const haystack = `${host || ''}/${key || ''}`.toLowerCase()
+  const firstSeg = (key || '').split('/')[0].toLowerCase()
+
+  // Prefer explicit env mapping if we detect known identifiers
+  if (haystack.includes('samunati') || firstSeg.includes('samunati')) {
+    return process.env.AWS_S3_BUCKET_SAMUNATI || process.env.AWS_S3_BUCKET
+  }
+  if (haystack.includes('kannada') || firstSeg.includes('kannada')) {
+    return process.env.AWS_S3_BUCKET_KANNADA || process.env.AWS_S3_BUCKET
+  }
+  // Fallback to default bucket
+  return process.env.AWS_S3_BUCKET
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,20 +85,62 @@ export async function POST(request: NextRequest) {
         const hasSignature = urlObj.searchParams.has('X-Amz-Signature')
         const hasCredential = urlObj.searchParams.has('X-Amz-Credential')
         const hasDate = urlObj.searchParams.has('X-Amz-Date')
-        
-        const isValidS3PresignedUrl = hasSignature && hasCredential && hasDate
-        
-        if (isValidS3PresignedUrl) {
+        const hasExpires = urlObj.searchParams.has('X-Amz-Expires')
+
+        const isPresignedShape = hasSignature && hasCredential && hasDate
+
+        // If looks presigned, also verify not expired using X-Amz-Date + X-Amz-Expires
+        let isExpired = false
+        if (isPresignedShape && hasExpires) {
+          const dateStr = urlObj.searchParams.get('X-Amz-Date') || '' // e.g., 20250830T072725Z
+          const expiresStr = urlObj.searchParams.get('X-Amz-Expires') || '0'
+          const y = Number(dateStr.substring(0, 4))
+          const m = Number(dateStr.substring(4, 6)) - 1
+          const d = Number(dateStr.substring(6, 8))
+          const hh = Number(dateStr.substring(9, 11))
+          const mm = Number(dateStr.substring(11, 13))
+          const ss = Number(dateStr.substring(13, 15))
+          const baseMs = Date.UTC(y, m, d, hh, mm, ss)
+          const ttlSec = Number(expiresStr)
+          const expiresAt = baseMs + ttlSec * 1000
+          isExpired = Number.isFinite(expiresAt) && Date.now() > expiresAt
+        }
+
+        if (isPresignedShape && !isExpired) {
           console.log('Valid S3 presigned URL detected, allowing client-side access')
           return NextResponse.json({
             accessible: true,
             status: 200,
             statusText: 'OK',
-            contentType: 'audio/ogg', // Assume audio content
+            contentType: 'audio/ogg',
             contentLength: null,
             url: url,
-            isS3PresignedUrl: true // Flag for client to use direct access
+            isS3PresignedUrl: true
           })
+        }
+        // Not a valid presigned URL or expired; try re-signing using our AWS creds
+        const { bucket, key, host } = parseS3Url(url)
+        const effectiveBucket = resolveBucketName(bucket, key, host)
+        if (effectiveBucket && key) {
+          try {
+            const resigned = await s3.getSignedUrlPromise('getObject', {
+              Bucket: effectiveBucket,
+              Key: key,
+              Expires: 3600
+            })
+            return NextResponse.json({
+              accessible: true,
+              status: 200,
+              statusText: 'OK',
+              url: resigned,
+              isS3PresignedUrl: true,
+              resigned: true,
+              bucket: effectiveBucket,
+              key
+            })
+          } catch (signErr) {
+            console.log('Failed to re-sign S3 URL:', signErr)
+          }
         }
       } catch (err) {
         console.log('Failed to validate S3 URL structure:', err)
