@@ -8,6 +8,8 @@
 [![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](https://whispey.xyz/docs)
 [![Contributors](https://img.shields.io/github/contributors/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/graphs/contributors)
 [![Stars](https://img.shields.io/github/stars/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/stargazers)
+[![Closed PRs](https://img.shields.io/github/issues-pr-closed/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/pulls?q=is%3Apr+is%3Aclosed)
+[![Closed Issues](https://img.shields.io/github/issues-closed/PYPE-AI-MAIN/whispey)](https://github.com/PYPE-AI-MAIN/whispey/issues?q=is%3Aissue+is%3Aclosed)
 
 **Professional voice analytics and observability for AI agents. Monitor, analyze, and improve your voice AI applications with beautiful dashboards and actionable insights.**
 
