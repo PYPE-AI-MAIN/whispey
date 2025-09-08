@@ -18,9 +18,7 @@ from whispey import LivekitObserve
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports={
-        "enable": True  # Uses default trigger phrases
-    }
+    bug_reports_enable=True
 )
 
 session_id = whispey.start_session(session)
@@ -34,7 +32,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ### Default Behavior
 
-With `bug_reports={"enable": True}`, users can say:
+With `bug_reports_enable=True`, users can say:
 
 - **"feedback start"** to start feedback collection
 - **"feedback over"** to end feedback and resume conversation
@@ -76,10 +74,14 @@ Agent: "So, as I was saying, the weather today is sunny and 75°F"
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports={
-        "enable": True,
-        "bug_start_command": ["report issue", "there's a problem"],
-        "bug_end_command": ["issue resolved", "problem fixed"]
+    bug_reports_enable=True,
+    bug_reports_config={
+        "bug_start_command": ["report issue", "there's a problem", "feedback start"],
+        "bug_end_command": ["issue resolved", "problem fixed", "feedback over"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?",
+        "continuation_prefix": "So, as I was saying, ",
+        "fallback_message": "Let me continue our conversation."
     }
 )
 
@@ -95,7 +97,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 ### Complete Configuration
 
 ```python
-bug_reports={
+bug_reports_config={
     "enable": True,
     "bug_start_command": ["report issue", "there's a problem", "feedback start"],
     "bug_end_command": ["issue resolved", "problem fixed", "feedback over"],
@@ -108,7 +110,8 @@ bug_reports={
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports=bug_reports
+    bug_reports_enable=True,
+    bug_reports_config=bug_reports_config
 )
 
 session_id = whispey.start_session(session)
@@ -125,7 +128,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 ### Multi-language Support
 
 ```python
-bug_reports={
+bug_reports_config={
     "enable": True,
     "bug_start_command": [
         # English
@@ -151,7 +154,8 @@ bug_reports={
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports=bug_reports
+    bug_reports_enable=True,
+    bug_reports_config=bug_reports_config
 )
 
 session_id = whispey.start_session(session)
@@ -166,7 +170,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 ### Professional Support Configuration
 
 ```python
-bug_reports={
+bug_reports_config={
     "enable": True,
     "bug_start_command": ["escalate", "I need help", "this isn't working"],
     "bug_end_command": ["thank you", "that's all", "resolved"],
@@ -178,7 +182,8 @@ bug_reports={
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports=bug_reports
+    bug_reports_enable=True,
+    bug_reports_config=bug_reports_config
 )
 
 session_id = whispey.start_session(session)
@@ -193,7 +198,7 @@ ctx.add_shutdown_callback(whispey_shutdown)
 ### Regex Pattern Support
 
 ```python
-bug_reports={
+bug_reports_config={
     "enable": True,
     "bug_start_command": [
         "report issue",
@@ -210,7 +215,8 @@ bug_reports={
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports=bug_reports
+    bug_reports_enable=True,
+    bug_reports_config=bug_reports_config
 )
 
 session_id = whispey.start_session(session)

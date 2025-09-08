@@ -19,7 +19,8 @@ class LivekitObserve:
         agent_id="whispey-agent",
         apikey=None, 
         host_url=None, 
-        bug_reports: Dict[str, Any] = {},
+        bug_reports_enable=False,
+        bug_reports_config: Dict[str, Any] = {},
         enable_otel: bool = False,
     ):
         self.agent_id = agent_id
@@ -32,21 +33,22 @@ class LivekitObserve:
             'turn_sequence': 0
         }
         
-        if bug_reports.get('enable', False):
+        if bug_reports_enable:
             self.enable_bug_reports = True
             
             # Default configuration
             default_config = {
                 'bug_start_command': ['feedback start'],
                 'bug_end_command': ['feedback over'],
-                'response': 'Thanks for reporting that. Please tell me the issue?',
+                'response': 'Please tell me the issue?',
                 'continuation_prefix': 'So, as I was saying, ',
                 'fallback_message': 'So, as I was saying,',
-                'collection_prompt': ''
+                'collection_prompt': '',
+                'debug': False
             }
             
             # Merge user config with defaults
-            config = {**default_config, **{k: v for k, v in bug_reports.items() if k != 'enable'}}
+            config = {**default_config, **bug_reports_config}
         else:
             self.enable_bug_reports = False
             config = {}
@@ -56,10 +58,15 @@ class LivekitObserve:
         
         self.bug_start_patterns = self._convert_to_regex(start_patterns)
         self.bug_end_patterns = self._convert_to_regex(end_patterns)
+
+        if not start_patterns:
+            start_patterns = ['feedback start']
+        if not end_patterns:
+            end_patterns = ['feedback over']
         
         self.bug_report_response = config.get(
             'response', 
-            "Thanks for reporting that. Please tell me the issue?"
+            "Please tell me the issue?"
         )
         self.continuation_prefix = config.get(
             'continuation_prefix',
@@ -67,12 +74,14 @@ class LivekitObserve:
         )
         self.fallback_message = config.get(
             'fallback_message',
-            "So, as I was saying,"
+            "So, as I was saying, "
         )
         self.collection_prompt = config.get(
             'collection_prompt',
             ""
         )
+
+        self.bug_report_debug = config.get('debug', False)
 
     def _update_turn_context(self, turn_id, sequence=None):
         """Update the current turn context"""
@@ -80,8 +89,12 @@ class LivekitObserve:
             'turn_id': turn_id,
             'turn_sequence': sequence or (self._current_turn_context.get('turn_sequence', 0) + 1)
         }
-    
 
+    def _debug_log(self, message: str):
+        """Debug logging for bug reports when enabled"""
+        if self.bug_report_debug:
+            print(f"🐛 BUG DEBUG: {message}")
+            logger.debug(f"BUG DEBUG: {message}")
 
     def _setup_telemetry(self, session_id):
         if not self.enable_otel:
@@ -510,7 +523,7 @@ class LivekitObserve:
                 
                 # Simple STT node with bug report detection
                 async def bug_aware_stt_node(audio_stream, model_settings):
-                    """STT node with bug report detection - Universal await approach"""
+                    """STT node with bug report detection - with proper debug logging"""
                     
                     try:
                         # Get original STT result
@@ -537,37 +550,56 @@ class LivekitObserve:
                         
                         # Now we should have an async generator in both cases
                         async for event in stt_events:
-                            # Your existing bug detection logic here...
+                            # Extract transcript from event
                             transcript = None
                             if hasattr(event, 'alternatives') and event.alternatives:
-                                transcript = None
-                                if hasattr(event, 'alternatives') and event.alternatives:
-                                    transcript = event.alternatives[0].text
-                                elif hasattr(event, 'text'):
-                                    transcript = event.text
+                                transcript = event.alternatives[0].text
                             elif hasattr(event, 'text'):
                                 transcript = event.text
                             elif isinstance(event, str):
                                 transcript = event
                             
+                            # Skip empty transcripts but still yield the event
                             if not transcript or not transcript.strip():
                                 yield event
                                 continue
                             
                             transcript = transcript.strip()
                             
+                            # Debug logging for STT level processing
+                            if self.bug_report_debug:
+                                print(f"🐛 STT DEBUG: Received transcript: '{transcript}'")
+                                print(f"🐛 STT DEBUG: Current bug mode: {agent._whispey_bug_report_mode}")
+                            
                             # Handle bug reporting cases
                             if agent._whispey_bug_report_mode and self._is_done_reporting(transcript):
+                                if self.bug_report_debug:
+                                    print(f"🐛 STT DEBUG: ✅ Bug end detected: '{transcript}'")
+                                    print(f"🐛 STT DEBUG: Collected {len(agent._whispey_bug_details)} bug messages")
+                                
                                 agent._whispey_bug_report_mode = False
                                 await self._store_bug_report_details(session_id, agent._whispey_bug_details)
                                 agent._whispey_bug_details = []
+                                
+                                if self.bug_report_debug:
+                                    print(f"🐛 STT DEBUG: Sending continuation message")
+                                
                                 await self._repeat_stored_message(session_id, session)
+                                
+                                # Don't yield this event - it's intercepted
                                 continue
-                            
+                                
                             elif not agent._whispey_bug_report_mode and self._is_bug_report(transcript):
+                                if self.bug_report_debug:
+                                    print(f"🐛 STT DEBUG: ✅ Bug start detected: '{transcript}'")
+                                
                                 captured_message = await self._capture_and_store_last_message(session_id)
                                 if not captured_message:
-                                    logger.warning("No message to capture")
+                                    if self.bug_report_debug:
+                                        print(f"🐛 STT DEBUG: ⚠️ No message to capture")
+                                else:
+                                    if self.bug_report_debug:
+                                        print(f"🐛 STT DEBUG: 📝 Captured message: '{captured_message[:50]}...'")
                                 
                                 agent._whispey_bug_report_mode = True
                                 agent._whispey_bug_details = [{
@@ -576,24 +608,44 @@ class LivekitObserve:
                                     'timestamp': __import__('time').time()
                                 }]
                                 
+                                if self.bug_report_debug:
+                                    print(f"🐛 STT DEBUG: Sending bug response: '{self.bug_report_response}'")
+                                
                                 await session.say(self.bug_report_response, add_to_chat_ctx=False)
+                                
+                                # Don't yield this event - it's intercepted
                                 continue
-                            
+                                
                             elif agent._whispey_bug_report_mode:
+                                if self.bug_report_debug:
+                                    print(f"🐛 STT DEBUG: 📥 Collecting bug details: '{transcript}'")
+                                    print(f"🐛 STT DEBUG: Total bug messages so far: {len(agent._whispey_bug_details)}")
+                                
                                 agent._whispey_bug_details.append({
                                     'type': 'bug_details',
                                     'text': transcript,
                                     'timestamp': __import__('time').time()
                                 })
                                 
+                                if self.bug_report_debug:
+                                    print(f"🐛 STT DEBUG: Sending collection prompt: '{self.collection_prompt}'")
+                                
                                 await session.say(self.collection_prompt, add_to_chat_ctx=False)
+                                
+                                # Don't yield this event - it's intercepted
                                 continue
-                            
+                                
                             else:
+                                # Normal processing - yield the event
+                                if self.bug_report_debug:
+                                    print(f"🐛 STT DEBUG: Normal processing: '{transcript}'")
+                                
                                 yield event
                                 
                     except Exception as e:
-                        logger.error(f"STT node wrapper failed: {e}")
+                        if self.bug_report_debug:
+                            print(f"🐛 STT DEBUG: ❌ STT wrapper error: {e}")
+                        
                         # Ultimate fallback: try to use original STT without modification
                         try:
                             if agent._whispey_original_stt_node:
@@ -612,7 +664,8 @@ class LivekitObserve:
                                 yield event
                                 
                         except Exception as fallback_error:
-                            logger.error(f"Fallback STT also failed: {fallback_error}")
+                            if self.bug_report_debug:
+                                print(f"🐛 STT DEBUG: ❌ Fallback STT also failed: {fallback_error}")
                             raise fallback_error
                 
                 # Replace agent's STT node
