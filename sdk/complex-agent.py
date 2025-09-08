@@ -27,11 +27,16 @@ load_dotenv()
 pype = LivekitObserve(
     agent_id="062a517c-f14a-4d97-b95b-081083a62376", 
     apikey="pype_f8c1672185f9fc16b0e77c0c425858b2858fd75ecd5b0684b7c9c5229fbc7a42",
-    bug_reports={
-        "bug_start_command": ["report issue", "there's a problem", "bug report","harry potter", "feedback start"],
-        "bug_end_command": ["issue resolved", "problem fixed", "bug resolved", "feedback over", "no"],
-        "response": "Please describe the issue.",
-        "collection_prompt": "Got it, anything else?",
+    bug_reports_enable=True, 
+    bug_reports_config={
+        "enable": True,
+        "bug_start_command": ["feedback start"],
+        "bug_end_command": ["feedback over"],
+        "response": "Thanks for reporting that. Please tell me the issue?",
+        "continuation_prefix": "So, as I was saying, ",
+        "fallback_message": "So, as I was saying,",
+        "collection_prompt": "",
+        "debug":True,
     },
     enable_otel=True
 )

@@ -132,7 +132,9 @@ Enable automatic bug detection and reporting in your conversations.
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports=True  # Uses default trigger phrases
+    bug_reports={
+        "enable": True  # Uses default trigger phrases
+    }
 )
 
 session_id = whispey.start_session(session=your_livekit_session)
