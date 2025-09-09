@@ -132,9 +132,7 @@ Enable automatic bug detection and reporting in your conversations.
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports={
-        "enable": True  # Uses default trigger phrases
-    }
+    bug_reports_enable=True
 )
 
 session_id = whispey.start_session(session=your_livekit_session)
@@ -152,7 +150,8 @@ ctx.add_shutdown_callback(whispey_shutdown)
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports={
+    bug_reports_enable=True,
+    bug_reports_config={
         "bug_start_command": ["report issue", "there's a problem"],
         "bug_end_command": ["issue resolved", "problem fixed"],
         "response": "Please describe the issue.",
@@ -237,24 +236,6 @@ async def whispey_shutdown():
 ctx.add_shutdown_callback(whispey_shutdown)
 ```
 
-### Export with Telemetry JSON on Shutdown
-
-```python
-async def whispey_shutdown():
-    result = await whispey.export(
-        session_id,
-        recording_url="https://example.com/recording.mp3",
-        save_telemetry_json=True  # Save telemetry data as JSON
-    )
-    
-    if result.get("success"):
-        print("✅ Successfully exported to Whispey Voice Analytics!")
-    else:
-        print(f"❌ Export failed: {result.get('error')}")
-
-ctx.add_shutdown_callback(whispey_shutdown)
-```
-
 ## Available Configuration Options
 
 ### LivekitObserve Constructor
@@ -264,7 +245,8 @@ LivekitObserve(
     agent_id: str,                    # Required: Your agent ID from dashboard
     apikey: str = None,              # Optional: API key (can use env var)
     host_url: str = None,            # Optional: Custom API endpoint
-    bug_reports: bool|dict = False,  # Optional: Bug reporting configuration
+    bug_reports_enable: bool = False,  # Optional: Bug reporting configuration
+    bug_reports_config: dict = None,  # Optional: Bug reporting configuration
     enable_otel: bool = False        # Optional: Enable OpenTelemetry
 )
 ```
@@ -287,7 +269,6 @@ session_id = whispey.start_session(
 result = await whispey.export(
     session_id,                 # Required: Session ID from start_session
     recording_url: str = None,  # Optional: Recording URL
-    save_telemetry_json: bool = False  # Optional: Save telemetry as JSON
 )
 ```
 

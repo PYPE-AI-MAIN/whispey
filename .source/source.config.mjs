@@ -1,9 +1,17 @@
 // source.config.ts
-import { defineDocs } from "fumadocs-mdx/config";
+import { defineConfig, defineDocs } from "fumadocs-mdx/config";
+var source_config_default = defineConfig({
+  mdxOptions: {
+    // Enable proper code block processing
+    remarkCodeTabOptions: {
+      parseMdx: true
+    }
+  }
+});
 var docs = defineDocs({
   dir: "content/docs"
-  // or wherever your docs are located
 });
 export {
+  source_config_default as default,
   docs
 };
