@@ -9,7 +9,6 @@ import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
 const components = {
   ...defaultComponents,
   pre: ({ ref: _ref, ...props }: any) => {
-    console.log('Pre component called with:', props); // Debug log
     return (
       <CodeBlock keepBackground {...props}>
         <Pre>{props.children}</Pre>
