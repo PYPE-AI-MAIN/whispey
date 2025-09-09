@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { useInfiniteScroll } from "../../hooks/useSupabase"
 import CallFilter, { FilterRule } from "../CallFilter"
@@ -125,12 +126,21 @@ const TruncatedText: React.FC<{
   const truncated = text.length > maxLength ? `${text.substring(0, maxLength)}...` : text
   
   return (
-    <span 
-      className={cn("break-words", className)}
-      title={text.length > maxLength ? text : undefined}
-    >
-      {truncated}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={cn("break-words", className)}>
+          {truncated}
+        </span>
+      </TooltipTrigger>
+      {text.length > maxLength && (
+        <TooltipContent
+          sideOffset={6}
+          className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words"
+        >
+          {text}
+        </TooltipContent>
+      )}
+    </Tooltip>
   )
 }
 
@@ -161,17 +171,26 @@ const DynamicJsonCell: React.FC<{
         style={{ maxWidth }}
       >
         <div className="p-1.5 w-full overflow-hidden">
-          <pre 
-            className="text-xs font-mono text-foreground whitespace-pre-wrap break-all overflow-hidden w-full"
-            style={{ 
-              wordBreak: 'break-all',
-              overflowWrap: 'break-word',
-              maxWidth: '100%'
-            }}
-            title={jsonString}
-          >
-            {truncatedJson}
-          </pre>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <pre 
+                className="text-xs font-mono text-foreground whitespace-pre-wrap break-all overflow-hidden w-full"
+                style={{ 
+                  wordBreak: 'break-all',
+                  overflowWrap: 'break-word',
+                  maxWidth: '100%'
+                }}
+              >
+                {truncatedJson}
+              </pre>
+            </TooltipTrigger>
+            <TooltipContent
+              sideOffset={6}
+              className="pointer-events-auto max-w-[520px] max-h-64 overflow-auto whitespace-pre-wrap break-words"
+            >
+              {jsonString}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
     )
@@ -187,18 +206,29 @@ const DynamicJsonCell: React.FC<{
       className="text-xs w-full overflow-hidden" 
       style={{ maxWidth }}
     >
-      <span 
-        className="text-foreground font-medium block w-full overflow-hidden"
-        style={{ 
-          wordBreak: 'break-all',
-          overflowWrap: 'break-word',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
-        }}
-        title={shouldTruncate ? stringValue : undefined}
-      >
-        {displayValue}
-      </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span 
+            className="text-foreground font-medium block w-full overflow-hidden"
+            style={{ 
+              wordBreak: 'break-all',
+              overflowWrap: 'break-word',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {displayValue}
+          </span>
+        </TooltipTrigger>
+        {shouldTruncate && (
+          <TooltipContent
+            sideOffset={6}
+            className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words"
+          >
+            {stringValue}
+          </TooltipContent>
+        )}
+      </Tooltip>
     </div>
   )
 }
