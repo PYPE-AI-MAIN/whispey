@@ -54,7 +54,8 @@ Enable automatic bug detection and reporting:
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports={
+    bug_reports_enable=True,
+    bug_reports_config={
         "bug_start_command": ["report issue", "there's a problem"],
         "bug_end_command": ["issue resolved", "problem fixed"],
         "response": "Please describe the issue.",

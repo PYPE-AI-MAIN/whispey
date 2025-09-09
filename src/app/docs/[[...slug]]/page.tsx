@@ -2,6 +2,21 @@ import { source } from '@/lib/source';
 import type { Metadata } from 'next';
 import { DocsPage, DocsBody } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
+import defaultComponents from 'fumadocs-ui/mdx';
+import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
+
+// Force the components
+const components = {
+  ...defaultComponents,
+  pre: ({ ref: _ref, ...props }: any) => {
+    console.log('Pre component called with:', props); // Debug log
+    return (
+      <CodeBlock keepBackground {...props}>
+        <Pre>{props.children}</Pre>
+      </CodeBlock>
+    );
+  },
+};
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -17,7 +32,7 @@ export default async function Page(props: {
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsBody>
         <h1>{page.data.title}</h1>
-        <MDX />
+        <MDX components={components} />
       </DocsBody>
     </DocsPage>
   );
