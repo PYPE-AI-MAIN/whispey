@@ -30,7 +30,8 @@ whispey = LivekitObserve(
 | `agent_id` | `str` | Yes | Your agent ID from the dashboard |
 | `apikey` | `str` | No | Your API key (can use env var) |
 | `host_url` | `str` | No | Custom API endpoint |
-| `bug_reports` | `bool\|dict` | No | Bug reporting configuration |
+| `bug_reports_enable` | `bool` | No | Enable bug reporting |
+| `bug_reports_config` | `dict` | No | Bug reporting configuration |
 | `enable_otel` | `bool` | No | Enable OpenTelemetry |
 
 #### Methods
@@ -67,7 +68,7 @@ session_id = whispey.start_session(
 | `conversation_type` | `str` | Type of conversation |
 | `metadata` | `dict` | Custom metadata object |
 
-##### `export(session_id, recording_url="", save_telemetry_json=False)`
+##### `export(session_id, recording_url="")`
 
 Exports session data to Whispey platform. **Important**: This should only be called on shutdown.
 
@@ -90,7 +91,6 @@ ctx.add_shutdown_callback(whispey_shutdown)
 **Parameters:**
 - `session_id`: Session ID from `start_session()`
 - `recording_url`: Optional recording URL
-- `save_telemetry_json`: Optional flag to save telemetry as JSON
 
 **Returns:** `dict` - Export result with success status
 
@@ -156,7 +156,8 @@ ctx.add_shutdown_callback(whispey_shutdown)
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports={
+    bug_reports_enable=True,
+    bug_reports_config={
         "bug_start_command": ["report issue", "there's a problem"],
         "bug_end_command": ["issue resolved", "problem fixed"],
         "response": "Please describe the issue.",

@@ -73,7 +73,7 @@ whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
     host_url="https://api.whispey.xyz",  # Custom API endpoint
-    bug_reports=False,                    # Disable bug reporting
+    bug_reports_enable=False,              # Disable bug reporting
     enable_otel=False                     # Disable OpenTelemetry
 )
 ```
@@ -101,7 +101,8 @@ session_id = whispey.start_session(
 whispey = LivekitObserve(
     agent_id="your-agent-id",
     apikey="your-api-key",
-    bug_reports={
+    bug_reports_enable=True,
+    bug_reports_config={
         "bug_start_command": ["report issue", "there's a problem"],
         "bug_end_command": ["issue resolved", "problem fixed"],
         "response": "Please describe the issue.",
@@ -129,7 +130,8 @@ LivekitObserve(
     agent_id: str,                    # Required: Your agent ID from dashboard
     apikey: str = None,              # Optional: API key (can use env var)
     host_url: str = None,            # Optional: Custom API endpoint
-    bug_reports: bool|dict = False,  # Optional: Bug reporting configuration
+    bug_reports_enable: bool = False,  # Optional: Bug reporting configuration
+    bug_reports_config: dict = None,  # Optional: Bug reporting configuration
     enable_otel: bool = False        # Optional: Enable OpenTelemetry
 )
 ```
@@ -156,7 +158,6 @@ Export session data:
 result = await whispey.export(
     session_id,                 # Required: Session ID from start_session
     recording_url: str = None,  # Optional: Recording URL
-    save_telemetry_json: bool = False  # Optional: Save telemetry as JSON
 )
 ```
 

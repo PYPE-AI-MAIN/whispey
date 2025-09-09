@@ -98,7 +98,6 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports_config={
-    "enable": True,
     "bug_start_command": ["report issue", "there's a problem", "feedback start"],
     "bug_end_command": ["issue resolved", "problem fixed", "feedback over"],
     "response": "Please describe the issue.",
@@ -129,7 +128,6 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports_config={
-    "enable": True,
     "bug_start_command": [
         # English
         "report issue", "there's a problem", "this is wrong",
@@ -171,7 +169,6 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports_config={
-    "enable": True,
     "bug_start_command": ["escalate", "I need help", "this isn't working"],
     "bug_end_command": ["thank you", "that's all", "resolved"],
     "response": "I understand you're experiencing an issue. Please tell me what's not working correctly so I can improve.",
@@ -199,16 +196,17 @@ ctx.add_shutdown_callback(whispey_shutdown)
 
 ```python
 bug_reports_config={
-    "enable": True,
     "bug_start_command": [
         "report issue",
-        r"\bthat's wrong\b",           # Word boundary matching
-        r"this (is|seems) incorrect",   # Multiple word options
-        "समस्या रिपोर्ट करें"            # Unicode support
+        "that's wrong",
+        "this (is|seems) incorrect",
+        "समस्या रिपोर्ट करें"
     ],
     "bug_end_command": [
         "issue resolved",
-        r"\b(done|finished|complete)\b"
+        "done",
+        "finished",
+        "complete"
     ]
 }
 
