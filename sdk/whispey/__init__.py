@@ -792,7 +792,7 @@ class LivekitObserve:
 
 
     
-    async def export(self, session_id, recording_url="", save_telemetry_json=False):
+    async def export(self, session_id, recording_url=""):
         """Export session data to Whispey"""
         
         # Add telemetry spans to the export if available
