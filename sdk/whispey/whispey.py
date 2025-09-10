@@ -3,10 +3,11 @@ import time
 import uuid
 import logging
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 from whispey.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
 from whispey.metrics_service import setup_usage_collector, create_session_data
 from whispey.send_log import send_to_whispey
+from whispey.evaluation_integration import evaluation_runner
 
 logger = logging.getLogger("observe_session")
 
@@ -14,7 +15,7 @@ logger = logging.getLogger("observe_session")
 _session_data_store = {}
 
 
-def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=False, otel_endpoint=None, telemetry_instance=None, **kwargs):
+def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=False, otel_endpoint=None, telemetry_instance=None, eval=None, **kwargs):
     session_id = str(uuid.uuid4())
     
     try:        
@@ -31,6 +32,9 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
         # Update session data with all dynamic parameters
         session_data.update(kwargs)
         
+        # Setup evaluation if specified
+        evaluation_type = eval
+        
         # Store session info in global storage (data only, not class instances)
         _session_data_store[session_id] = {
             'start_time': time.time(),
@@ -41,7 +45,8 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
             'call_active': True,
             'whispey_data': None,
             'bug_detector': bug_detector,
-            'telemetry_instance': telemetry_instance  # Store telemetry instance
+            'telemetry_instance': telemetry_instance,  # Store telemetry instance
+            'evaluation_type': evaluation_type
         }
         
         # Setup telemetry if enabled
@@ -186,6 +191,37 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
             whispey_data["metadata"]["bug_reports"] = session_data['bug_reports']
         if 'bug_flagged_turns' in session_data:
             whispey_data["metadata"]["bug_flagged_turns"] = session_data['bug_flagged_turns']
+        
+        # Add evaluation if specified
+        evaluation_type = session_info.get('evaluation_type')
+        if evaluation_type:
+            try:
+                # Prepare conversation data for evaluation
+                conversation_data = {
+                    'transcript': whispey_data.get("transcript_with_metrics", []),
+                    'response_text': '',  # Will be filled from transcript
+                    'context': {
+                        'agent_id': session_info['agent_id'],
+                        'session_id': session_id,
+                        'duration': duration
+                    }
+                }
+                
+                # Extract the last assistant response for evaluation
+                if conversation_data['transcript']:
+                    for turn in reversed(conversation_data['transcript']):
+                        if turn.get('role') == 'assistant' and turn.get('content'):
+                            conversation_data['response_text'] = turn['content']
+                            break
+                
+                # Run evaluation using the original evaluation framework
+                evaluation_result = evaluation_runner.run_evaluation(evaluation_type, conversation_data)
+                if evaluation_result:
+                    whispey_data["metadata"]["evaluation"] = evaluation_result
+                    
+            except Exception as e:
+                logger.error(f"Error running {evaluation_type} evaluation: {e}")
+                # Don't fail the entire process if evaluation fails
     
     return whispey_data
 
@@ -555,6 +591,34 @@ def cleanup_all_sessions():
         cleanup_session(session_id)
     logger.info(f"🗑️ Cleaned up {len(session_ids)} sessions")
 
+def set_evaluation_type(eval_type: str):
+    """
+    Set the evaluation type for sessions
+    
+    Args:
+        eval_type: Type of evaluation to run. Supported types:
+            - "healthbench" - Standard HealthBench evaluation
+            - "healthbench_hard" - HealthBench hard subset
+            - "healthbench_consensus" - HealthBench consensus subset
+    
+    Example:
+        set_evaluation_type("healthbench")
+    """
+    global _current_evaluation_type
+    _current_evaluation_type = eval_type
+    logger.info(f"Evaluation type set to: {eval_type}")
+
+def get_available_evaluations():
+    """Get list of available evaluation types"""
+    return [
+        "healthbench",
+        "healthbench_hard", 
+        "healthbench_consensus"
+    ]
+
+# Global variable to store current evaluation type
+_current_evaluation_type = None
+
 def debug_session_state(session_id: str = None):
     """Debug helper to check session state"""
     if session_id:
@@ -567,9 +631,10 @@ def debug_session_state(session_id: str = None):
             print(f"  - Has usage_collector: {data['usage_collector'] is not None}")
             print(f"  - Dynamic params: {data['dynamic_params']}")
             print(f"  - Has cached whispey_data: {data['whispey_data'] is not None}")
+            print(f"  - Evaluation type: {data.get('evaluation_type', 'None')}")
         else:
             print(f"Session {session_id} not found")
     else:
         print(f"Total sessions: {len(_session_data_store)}")
         for sid, data in _session_data_store.items():
-            print(f"  {sid}: active={data['call_active']}, agent={data['agent_id']}")
+            print(f"  {sid}: active={data['call_active']}, agent={data['agent_id']}, eval={data.get('evaluation_type', 'None')}")

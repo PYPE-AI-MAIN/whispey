@@ -12,3 +12,10 @@ python-dotenv
 livekit-plugins-sarvam
 livekit-plugins-noise-cancellation
 twine
+rich
+# HealthBench evaluation dependencies
+blobfile
+numpy
+pandas
+openai
+requests

@@ -2160,7 +2160,10 @@ def extract_complete_session_configuration(session, session_data):
     
     # Store in session data
     session_data['complete_configuration'] = complete_config
-    session_data['telemetry_instance'] = telemetry_instance
+    # Get telemetry_instance from session_data if it exists
+    telemetry_instance = session_data.get('telemetry_instance')
+    if telemetry_instance:
+        session_data['telemetry_instance'] = telemetry_instance
     
     return complete_config
 

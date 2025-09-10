@@ -22,11 +22,13 @@ class LivekitObserve:
         bug_reports_enable=False,
         bug_reports_config: Dict[str, Any] = {},
         enable_otel: bool = False,
+        eval: Optional[str] = None,
     ):
         self.agent_id = agent_id
         self.apikey = apikey
         self.host_url = host_url
         self.enable_otel = enable_otel
+        self.eval = eval  # Store evaluation type
         self.spans_data = []  
         self._current_turn_context = {
             'turn_id': None,
@@ -312,6 +314,7 @@ class LivekitObserve:
             bug_detector=bug_detector,
             enable_otel=self.enable_otel,
             telemetry_instance=self,
+            eval=self.eval,  # Pass evaluation type
             **kwargs
         )
         
