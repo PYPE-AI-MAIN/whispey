@@ -65,9 +65,9 @@ class WhispeyEvaluationRunner:
         try:
             # Show evaluation progress
             console.print(Panel(
-                "[purple]Running HealthBench evaluation...[/purple]",
-                title="[purple]Whispey Evaluation[/purple]",
-                border_style="purple"
+                "[#1e40af]Running HealthBench evaluation...[/#1e40af]",
+                title="[#1e40af]Whispey Evaluation[/#1e40af]",
+                border_style="#1e40af"
             ))
             
             # Create sampler
@@ -85,8 +85,8 @@ class WhispeyEvaluationRunner:
             transcript = conversation_data.get('transcript', [])
             message_list = self._convert_to_message_list(transcript)
             
-            # Run evaluation using grade_sample method
-            result = eval_instance.grade_sample(message_list, sampler)
+            # Run evaluation using the __call__ method
+            result = eval_instance(sampler)
             
             # Convert result to metadata format
             metadata = self._convert_result_to_metadata(result)
@@ -95,8 +95,8 @@ class WhispeyEvaluationRunner:
             console.print(Panel(
                 f"[green]HealthBench evaluation completed![/green]\n"
                 f"Overall Score: {metadata.get('overall_score', 'N/A')}",
-                title="[purple]Evaluation Results[/purple]",
-                border_style="purple"
+                title="[#1e40af]Evaluation Results[/#1e40af]",
+                border_style="#1e40af"
             ))
             
             return metadata
@@ -121,19 +121,25 @@ class WhispeyEvaluationRunner:
     
     def _convert_result_to_metadata(self, result) -> Dict[str, Any]:
         """Convert evaluation result to metadata format"""
-        if not EVAL_AVAILABLE or not hasattr(result, 'metrics'):
-            return {"overall_score": 0, "criteria_scores": {}}
+        if not EVAL_AVAILABLE:
+            return {"overall_score": 0, "criteria_scores": {}, "evaluation_type": "healthbench"}
         
-        metadata = {
-            "overall_score": result.metrics.get("overall_score", 0),
-            "criteria_scores": {},
-            "evaluation_type": "healthbench"
-        }
-        
-        # Add individual criteria scores
-        for key, value in result.metrics.items():
-            if key != "overall_score":
-                metadata["criteria_scores"][key] = value
+        # Handle EvalResult object
+        if hasattr(result, 'score') and hasattr(result, 'metrics'):
+            metadata = {
+                "overall_score": result.score if result.score is not None else 0,
+                "criteria_scores": result.metrics if result.metrics else {},
+                "evaluation_type": "healthbench",
+                "htmls_count": len(result.htmls) if hasattr(result, 'htmls') else 0,
+                "conversations_count": len(result.convos) if hasattr(result, 'convos') else 0
+            }
+        else:
+            # Fallback for other result types
+            metadata = {
+                "overall_score": 0,
+                "criteria_scores": {},
+                "evaluation_type": "healthbench"
+            }
         
         return metadata
 
