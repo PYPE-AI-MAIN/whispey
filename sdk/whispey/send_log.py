@@ -97,8 +97,9 @@ async def send_to_whispey(data, apikey=None, api_url=None):
         json_str = json.dumps(data)
         print(f"✅ JSON serialization OK ({len(json_str)} chars)")
         
-        # Send the request
-        async with aiohttp.ClientSession() as session:
+        # Send the request with timeout
+        timeout = aiohttp.ClientTimeout(total=25)  # 25 second timeout
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(url_to_use, json=data, headers=headers) as response:
                 print(f"📡 Response status: {response.status}")
                 

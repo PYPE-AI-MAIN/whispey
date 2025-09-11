@@ -192,36 +192,8 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         if 'bug_flagged_turns' in session_data:
             whispey_data["metadata"]["bug_flagged_turns"] = session_data['bug_flagged_turns']
         
-        # Add evaluation if specified
-        evaluation_type = session_info.get('evaluation_type')
-        if evaluation_type:
-            try:
-                # Prepare conversation data for evaluation
-                conversation_data = {
-                    'transcript': whispey_data.get("transcript_with_metrics", []),
-                    'response_text': '',  # Will be filled from transcript
-                    'context': {
-                        'agent_id': session_info['agent_id'],
-                        'session_id': session_id,
-                        'duration': duration
-                    }
-                }
-                
-                # Extract the last assistant response for evaluation
-                if conversation_data['transcript']:
-                    for turn in reversed(conversation_data['transcript']):
-                        if turn.get('role') == 'assistant' and turn.get('content'):
-                            conversation_data['response_text'] = turn['content']
-                            break
-                
-                # Run evaluation using the original evaluation framework
-                evaluation_result = evaluation_runner.run_evaluation(evaluation_type, conversation_data)
-                if evaluation_result:
-                    whispey_data["metadata"]["evaluation"] = evaluation_result
-                    
-            except Exception as e:
-                logger.error(f"Error running {evaluation_type} evaluation: {e}")
-                # Don't fail the entire process if evaluation fails
+        # Note: Evaluation is now handled asynchronously in the background
+        # to prevent blocking the main session shutdown process
     
     return whispey_data
 
@@ -548,23 +520,109 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         whispey_data["transcript_json"] = additional_transcript
     
     
-    try:
-        logger.info(f"📤 Sending to Whispey API...")
-        result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
+    # Check if evaluation is needed
+    evaluation_type = session_info.get('evaluation_type')
+    
+    if evaluation_type:
+        # If evaluation is enabled, send everything asynchronously with evaluation
+        logger.info(f"🔄 Starting background {evaluation_type} evaluation for session {session_id}")
         
-        if result.get("success"):
-            logger.info(f"✅ Successfully sent session {session_id} to Whispey")
-            cleanup_session(session_id)
-        else:
-            logger.error(f"❌ Whispey API returned failure: {result}")
+        # Create background task for complete data sending with evaluation
+        import asyncio
+        async def background_complete_send():
+            try:
+                # Run evaluation
+                evaluation_result = await run_evaluation_async(session_id, evaluation_type, whispey_data)
+                
+                # Add evaluation results to the data
+                if not evaluation_result.get("error"):
+                    if 'metadata' not in whispey_data:
+                        whispey_data['metadata'] = {}
+                    whispey_data['metadata']['evaluation'] = evaluation_result
+                    logger.info(f"✅ Added evaluation results to session data")
+                else:
+                    logger.error(f"❌ Evaluation failed for session {session_id}: {evaluation_result.get('error')}")
+                
+                # Send complete data with evaluation
+                logger.info(f"📤 Sending complete session data with evaluation to Whispey API...")
+                logger.info(f"📊 Data keys: {list(whispey_data.keys())}")
+                logger.info(f"📊 Data size: {len(str(whispey_data))} characters")
+                
+                try:
+                    # Add timeout to prevent hanging and use shield to protect from cancellation
+                    result = await asyncio.wait_for(
+                        asyncio.shield(send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)),
+                        timeout=30.0  # 30 second timeout
+                    )
+                    
+                    if result.get("success"):
+                        logger.info(f"✅ Successfully sent complete session {session_id} with evaluation to Whispey")
+                    else:
+                        logger.error(f"❌ Whispey API returned failure: {result}")
+                        
+                except asyncio.TimeoutError:
+                    logger.error(f"❌ Timeout sending session {session_id} to Whispey API (30s)")
+                    result = {"success": False, "error": "Timeout"}
+                except asyncio.CancelledError:
+                    logger.warning(f"⚠️ Background task cancelled for session {session_id}, but evaluation completed")
+                    # Don't re-raise, let cleanup happen
+                    result = {"success": False, "error": "Task cancelled but evaluation completed"}
+                except (BrokenPipeError, ConnectionError, OSError) as pipe_error:
+                    logger.warning(f"⚠️ Process communication error for session {session_id}: {pipe_error}")
+                    # This is expected during process shutdown, don't treat as critical error
+                    result = {"success": False, "error": "Process communication closed"}
+                except Exception as send_error:
+                    logger.error(f"❌ Error sending session {session_id} to Whispey API: {send_error}")
+                    result = {"success": False, "error": str(send_error)}
+                
+                # Cleanup session after complete send
+                cleanup_session(session_id)
+                logger.info(f"🗑️ Cleaned up session {session_id} after complete send")
+                    
+            except Exception as e:
+                logger.error(f"❌ Background complete send failed for session {session_id}: {e}")
+                # Still cleanup on error
+                cleanup_session(session_id)
         
-        return result
+        # Start background task with proper task management
+        task = asyncio.create_task(background_complete_send())
         
-    except Exception as e:
-        logger.error(f"❌ Exception sending to Whispey: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"success": False, "error": str(e)}
+        # Store the task so it can be awaited if needed
+        if session_id in _session_data_store:
+            _session_data_store[session_id]['background_task'] = task
+            
+        # Add task cleanup callback to handle process shutdown gracefully
+        def cleanup_task_on_shutdown():
+            if not task.done():
+                logger.info(f"🔄 Cancelling background task for session {session_id} due to process shutdown")
+                task.cancel()
+        
+        # Store cleanup callback
+        if session_id in _session_data_store:
+            _session_data_store[session_id]['cleanup_callback'] = cleanup_task_on_shutdown
+        
+        # Return immediately without waiting
+        return {"success": True, "message": "Session data will be sent asynchronously with evaluation"}
+        
+    else:
+        # No evaluation needed, send data immediately
+        try:
+            logger.info(f"📤 Sending to Whispey API...")
+            result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
+            
+            if result.get("success"):
+                logger.info(f"✅ Successfully sent session {session_id} to Whispey")
+                cleanup_session(session_id)
+            else:
+                logger.error(f"❌ Whispey API returned failure: {result}")
+            
+            return result
+        
+        except Exception as e:
+            logger.error(f"❌ Exception sending to Whispey: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "error": str(e)}
 
 
 
@@ -587,9 +645,127 @@ def cleanup_all_sessions():
     """Clean up all sessions"""
     session_ids = list(_session_data_store.keys())
     for session_id in session_ids:
+        # Call cleanup callback if it exists
+        if session_id in _session_data_store:
+            session_info = _session_data_store[session_id]
+            if 'cleanup_callback' in session_info:
+                try:
+                    session_info['cleanup_callback']()
+                except Exception as e:
+                    logger.warning(f"⚠️ Error calling cleanup callback for session {session_id}: {e}")
+        
         end_session_manually(session_id, "cleanup")
         cleanup_session(session_id)
     logger.info(f"🗑️ Cleaned up {len(session_ids)} sessions")
+
+async def wait_for_all_background_tasks():
+    """Wait for all background tasks to complete before shutdown"""
+    import asyncio
+    
+    tasks = []
+    for session_id, session_info in _session_data_store.items():
+        if 'background_task' in session_info:
+            task = session_info['background_task']
+            if not task.done():
+                tasks.append(task)
+                logger.info(f"⏳ Waiting for background task for session {session_id}")
+    
+    if tasks:
+        logger.info(f"⏳ Waiting for {len(tasks)} background tasks to complete...")
+        try:
+            await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=60.0)
+            logger.info(f"✅ All background tasks completed")
+        except asyncio.TimeoutError:
+            logger.warning(f"⚠️ Timeout waiting for background tasks, cancelling remaining tasks")
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+        except Exception as e:
+            logger.error(f"❌ Error waiting for background tasks: {e}")
+    else:
+        logger.info(f"✅ No background tasks to wait for")
+
+async def run_evaluation_async(session_id: str, evaluation_type: str, whispey_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Run evaluation asynchronously in the background"""
+    try:
+        logger.info(f"🔄 Starting async {evaluation_type} evaluation for session {session_id}")
+        
+        # Prepare conversation data for evaluation
+        call_started = whispey_data.get('call_started_at', 0)
+        call_ended = whispey_data.get('call_ended_at', 0)
+        
+        # Ensure we have numeric values for duration calculation
+        try:
+            if isinstance(call_started, str):
+                call_started = float(call_started)
+            if isinstance(call_ended, str):
+                call_ended = float(call_ended)
+            duration = call_ended - call_started
+        except (ValueError, TypeError):
+            duration = 0
+        
+        conversation_data = {
+            'transcript': whispey_data.get("transcript_with_metrics", []),
+            'response_text': '',  # Will be filled from transcript
+            'context': {
+                'agent_id': whispey_data.get('agent_id'),
+                'session_id': session_id,
+                'duration': duration
+            }
+        }
+        
+        # Extract the last assistant response for evaluation
+        if conversation_data['transcript']:
+            for turn in reversed(conversation_data['transcript']):
+                if turn.get('role') == 'assistant' and turn.get('content'):
+                    conversation_data['response_text'] = turn['content']
+                    break
+        
+        # Run evaluation using the original evaluation framework
+        evaluation_result = evaluation_runner.run_evaluation(evaluation_type, conversation_data)
+        
+        if evaluation_result:
+            logger.info(f"✅ {evaluation_type} evaluation completed for session {session_id}")
+            return evaluation_result
+        else:
+            logger.warning(f"⚠️ {evaluation_type} evaluation returned no results for session {session_id}")
+            return {"error": "No evaluation results"}
+            
+    except Exception as e:
+        logger.error(f"❌ Error running async {evaluation_type} evaluation for session {session_id}: {e}")
+        return {"error": str(e)}
+
+async def send_evaluation_results(session_id: str, evaluation_result: Dict[str, Any], apikey: str = None, api_url: str = None) -> dict:
+    """Send evaluation results as an update to the main session data"""
+    try:
+        logger.info(f"📤 Sending evaluation results for session {session_id}")
+        
+        # Get the original session data and add evaluation results
+        if session_id in _session_data_store:
+            session_info = _session_data_store[session_id]
+            original_whispey_data = session_info.get('whispey_data', {})
+            
+            # Add evaluation results to the original data
+            if 'metadata' not in original_whispey_data:
+                original_whispey_data['metadata'] = {}
+            original_whispey_data['metadata']['evaluation'] = evaluation_result
+            
+            # Send the complete updated session data
+            result = await send_to_whispey(original_whispey_data, apikey=apikey, api_url=api_url)
+            
+            if result.get("success"):
+                logger.info(f"✅ Successfully sent evaluation results for session {session_id}")
+            else:
+                logger.error(f"❌ Failed to send evaluation results for session {session_id}: {result}")
+            
+            return result
+        else:
+            logger.error(f"❌ Session {session_id} not found for evaluation update")
+            return {"success": False, "error": "Session not found"}
+        
+    except Exception as e:
+        logger.error(f"❌ Exception sending evaluation results for session {session_id}: {e}")
+        return {"success": False, "error": str(e)}
 
 def set_evaluation_type(eval_type: str):
     """

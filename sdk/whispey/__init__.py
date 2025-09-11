@@ -6,9 +6,20 @@ __author__ = "Whispey AI Voice Analytics"
 
 import re
 import logging
+import signal
+import atexit
+import os
 from typing import List, Optional, AsyncIterable, Any, Union, Dict
-from .whispey import observe_session, send_session_to_whispey
+from .whispey import observe_session, send_session_to_whispey, cleanup_all_sessions
 import time
+
+# Try to load dotenv if available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not available, skip loading
+    pass
 
 logger = logging.getLogger("whispey-sdk")
 
@@ -35,6 +46,9 @@ class LivekitObserve:
             'turn_sequence': 0
         }
         
+        # Check for required environment variables
+        self._validate_environment()
+        
         if bug_reports_enable:
             self.enable_bug_reports = True
             
@@ -60,6 +74,9 @@ class LivekitObserve:
         
         self.bug_start_patterns = self._convert_to_regex(start_patterns)
         self.bug_end_patterns = self._convert_to_regex(end_patterns)
+        
+        # Set up signal handlers for graceful shutdown
+        self._setup_signal_handlers()
 
         if not start_patterns:
             start_patterns = ['feedback start']
@@ -503,6 +520,69 @@ class LivekitObserve:
         if not text:
             return False
         return any(re.search(pattern, text.lower()) for pattern in self.bug_end_patterns)
+    
+    def _setup_signal_handlers(self):
+        """Set up signal handlers for graceful shutdown"""
+        def signal_handler(signum, frame):
+            logger.info(f"🔄 Received signal {signum}, cleaning up sessions...")
+            try:
+                cleanup_all_sessions()
+            except Exception as e:
+                logger.error(f"❌ Error during cleanup: {e}")
+        
+        # Register signal handlers for common termination signals
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+        
+        # Register atexit handler as backup
+        atexit.register(lambda: cleanup_all_sessions())
+
+    def _validate_environment(self):
+        """Validate required environment variables"""
+        red_color = '\033[91m'
+        reset_color = '\033[0m'
+        green_color = '\033[92m'
+        
+        # Check for OpenAI API key
+        openai_key = os.getenv('OPENAI_API_KEY')
+        if not openai_key:
+            error_message = f"{red_color}❌ WARNING: OPENAI_API_KEY environment variable is not set!{reset_color}\n"
+            error_message += f"{red_color}Please specify OPENAI_API_KEY in your .env file or environment variables.{reset_color}\n"
+            error_message += f"{red_color}Example: OPENAI_API_KEY=your_openai_api_key_here{reset_color}\n"
+            error_message += f"{red_color}Without this key, OpenAI LLM features will not work.{reset_color}"
+            
+            print(error_message)
+            logger.warning("OPENAI_API_KEY environment variable is not set - OpenAI features may not work")
+        else:
+            logger.info(f"{green_color}✅ Environment validation passed - OPENAI_API_KEY found{reset_color}")
+            
+        # Optional: Check for other common API keys and provide helpful messages
+        self._check_optional_api_keys()
+
+    def _check_optional_api_keys(self):
+        """Check for optional API keys and provide helpful information"""
+        yellow_color = '\033[93m'
+        reset_color = '\033[0m'
+        
+        # Check for common API keys that might be useful
+        optional_keys = {
+            'ELEVENLABS_API_KEY': 'ElevenLabs TTS',
+            'DEEPGRAM_API_KEY': 'Deepgram STT',
+            'LIVEKIT_API_KEY': 'LiveKit services',
+            'LIVEKIT_API_SECRET': 'LiveKit services'
+        }
+        
+        missing_keys = []
+        for key, service in optional_keys.items():
+            if not os.getenv(key):
+                missing_keys.append(f"{key} ({service})")
+        
+        if missing_keys:
+            info_message = f"{yellow_color}💡 INFO: Optional API keys not found:{reset_color}\n"
+            for key in missing_keys:
+                info_message += f"{yellow_color}   - {key}{reset_color}\n"
+            info_message += f"{yellow_color}These are optional but may be needed for specific features.{reset_color}"
+            print(info_message)
 
     
     def _setup_bug_report_handling(self, session, session_id):
@@ -803,11 +883,36 @@ class LivekitObserve:
         if hasattr(self, 'spans_data') and self.spans_data:
             extra_data['telemetry_spans'] = self.spans_data
         
-        return await send_session_to_whispey(
+        # Send session data and wait for completion if evaluation is enabled
+        result = await send_session_to_whispey(
             session_id, 
             recording_url, 
             apikey=self.apikey, 
             api_url=self.host_url,
         )
+        
+        # If there's a background task, wait for it to complete
+        import asyncio
+        from .whispey import _session_data_store
+        if session_id in _session_data_store:
+            session_info = _session_data_store[session_id]
+            if 'background_task' in session_info:
+                background_task = session_info['background_task']
+                if not background_task.done():
+                    try:
+                        # Wait for background task with timeout
+                        await asyncio.wait_for(background_task, timeout=35.0)
+                    except asyncio.TimeoutError:
+                        logger.warning(f"⚠️ Background task timeout for session {session_id}")
+                        # Cancel the task if it's still running
+                        if not background_task.done():
+                            background_task.cancel()
+                    except (BrokenPipeError, ConnectionError, OSError) as pipe_error:
+                        logger.warning(f"⚠️ Process communication error during background task wait for session {session_id}: {pipe_error}")
+                        # This is expected during process shutdown
+                    except Exception as e:
+                        logger.error(f"❌ Error waiting for background task: {e}")
+        
+        return result
 
 __all__ = ['LivekitObserve', 'observe_session', 'send_session_to_whispey']
