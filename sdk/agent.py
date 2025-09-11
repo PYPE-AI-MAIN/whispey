@@ -15,14 +15,8 @@ load_dotenv()
 
 # Initialize Whispey with optimized bug reporting
 pype = LivekitObserve(
-    agent_id="062a517c-f14a-4d97-b95b-081083a62376", 
-    apikey="pype_f8c1672185f9fc16b0e77c0c425858b2858fd75ecd5b0684b7c9c5229fbc7a42",
-    bug_reports={
-        "bug_start_command": ["fault report", "report issue"],
-        "bug_end_command": ["fault report over", "report over"],
-        "response": "Okay, please tell me the issue?",
-        "collection_prompt": "Okay",
-    }
+    agent_id="959649dc-b7b0-4c36-b18b-df1e7f90bca4", 
+    apikey="pype_f8c1672185f9fc16b0e77c0c425858b2858fd75ecd5b0684b7c9c5229fbc7a42"
 )
 
 
@@ -88,8 +82,14 @@ async def entrypoint(ctx: agents.JobContext):
         vad=silero.VAD.load(),
     )
     
-    # Set up observability after session creation
-    session_id = pype.start_session(session, phone_number="+1234567890")
+    # Set up observability after session creation with HealthBench evaluation
+    session_id = pype.start_session(
+        session, 
+        phone_number="+1234567890",
+        eval="healthbench",  # Enable HealthBench evaluation
+        eval_grader_model="gpt-4o-mini",  # Use cost-effective grader model
+        eval_num_examples=1,  # Use just 1 example for fastest evaluation
+    )
 
     # send session data to Whispey
     async def whispey_observe_shutdown():
