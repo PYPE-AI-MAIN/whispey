@@ -12,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, CheckCircle, Bot, Phone, PhoneCall, Settings, ArrowRight, Copy, AlertCircle, Zap, Cpu, Link as LinkIcon } from 'lucide-react'
+import { Loader2, CheckCircle, Bot, ArrowRight, Copy, AlertCircle, Zap, Link as LinkIcon, Eye, Activity, Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
 interface AgentCreationDialogProps {
   isOpen: boolean
@@ -40,38 +41,17 @@ interface VapiAssistant {
 const PLATFORM_OPTIONS = [
   { 
     value: 'livekit', 
-    label: 'Livekit',
-    description: 'Build with our native platform',
-    icon: Cpu,
+    label: 'LiveKit Agent',
+    description: 'Monitor your LiveKit voice agent',
+    icon: Activity,
     color: 'blue'
   },
   { 
     value: 'vapi', 
-    label: 'Vapi',
-    description: 'Connect existing Vapi assistants',
+    label: 'Vapi Assistant',
+    description: 'Monitor your Vapi assistant calls',
     icon: Zap,
     color: 'green'
-  }
-]
-
-const AGENT_TYPES = [
-  { 
-    value: 'inbound', 
-    label: 'Inbound',
-    description: 'Handle incoming calls',
-    icon: Phone,
-  },
-  { 
-    value: 'outbound', 
-    label: 'Outbound',
-    description: 'Make automated calls',
-    icon: PhoneCall,
-  },
-  { 
-    value: 'custom', 
-    label: 'Custom',
-    description: 'Specialized agent',
-    icon: Settings,
   }
 ]
 
@@ -85,14 +65,13 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   const [selectedPlatform, setSelectedPlatform] = useState('livekit')
   const assistantSectionRef = useRef<HTMLDivElement>(null)
   
-  // Livekit (regular) agent fields
+  // LiveKit monitoring fields
   const [formData, setFormData] = useState({
     name: '',
-    agent_type: 'inbound',
     description: ''
   })
 
-  // Vapi agent fields
+  // Vapi monitoring fields
   const [vapiData, setVapiData] = useState<{
     apiKey: string;
     projectApiKey: string;
@@ -116,8 +95,6 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
     message: string;
   } | null>(null)
 
-  const selectedAgentType = AGENT_TYPES.find(type => type.value === formData.agent_type)
-
   // Scroll to assistant section after successful connection
   useEffect(() => {
     if (vapiData.availableAssistants.length > 0 && assistantSectionRef.current) {
@@ -140,9 +117,8 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
     setError(null)
 
     try {
-      console.log('🔑 Connecting directly to Vapi API with key:', vapiData.apiKey.slice(0, 10) + '...')
+      console.log('🔑 Connecting to Vapi to fetch assistants:', vapiData.apiKey.slice(0, 10) + '...')
       
-      // Call Vapi API directly - keeping original functionality
       const response = await fetch('https://api.vapi.ai/assistant', {
         method: 'GET',
         headers: {
@@ -155,7 +131,6 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
         const errorText = await response.text()
         console.error('❌ Vapi API error:', errorText)
         
-        // Parse error message if possible
         let errorMessage = `Failed to connect to Vapi: ${response.status}`
         try {
           const errorData = JSON.parse(errorText)
@@ -168,7 +143,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       }
 
       const assistants = await response.json()
-      console.log('✅ Vapi assistants fetched directly:', assistants)
+      console.log('✅ Vapi assistants fetched:', assistants)
       
       setVapiData(prev => ({
         ...prev,
@@ -183,11 +158,8 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
     }
   }
 
-  // New function to setup webhook after agent creation
   const setupVapiWebhook = async (agentId: string) => {
-    try {
-      console.log('🔗 Setting up Vapi webhook for agent:', agentId)
-      
+    try {      
       const response = await fetch(`/api/agents/${agentId}/vapi/setup-webhook`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
@@ -196,22 +168,20 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       const data = await response.json()
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to setup webhook')
+        throw new Error(data.error || 'Failed to setup monitoring webhook')
       }
       
-      console.log('✅ Webhook setup successful:', data)
       setWebhookSetupStatus({
         success: true,
-        message: 'Webhook configured successfully! Agent is ready to use.'
+        message: 'Monitoring configured successfully! Your assistant is now being observed.'
       })
       
       return data
       
     } catch (error) {
-      console.error('❌ Failed to setup webhook:', error)
       setWebhookSetupStatus({
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to setup webhook'
+        message: error instanceof Error ? error.message : 'Failed to setup monitoring webhook'
       })
       throw error
     }
@@ -223,16 +193,16 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
     if (selectedPlatform === 'livekit') {
       if (!formData.name.trim()) {
-        setError('Agent name is required')
+        setError('Monitoring label is required')
         return
       }
     } else if (selectedPlatform === 'vapi') {
       if (!formData.name.trim()) {
-        setError('Agent name is required')
+        setError('Monitoring label is required')
         return
       }
       if (!vapiData.selectedAssistantId) {
-        setError('Please select an assistant')
+        setError('Please select an assistant to monitor')
         return
       }
       if (!vapiData.projectApiKey.trim()) {
@@ -250,7 +220,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       if (selectedPlatform === 'livekit') {
         payload = {
           name: formData.name.trim(),
-          agent_type: formData.agent_type,
+          agent_type: 'livekit',
           configuration: {
             description: formData.description.trim() || null,
           },
@@ -279,7 +249,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
         }
       }
 
-      // Step 1: Create the agent
+      // Step 1: Start monitoring setup
       const response = await fetch('/api/agents', {
         method: 'POST',
         headers: {
@@ -290,34 +260,30 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create agent')
+        throw new Error(errorData.error || 'Failed to setup monitoring')
       }
 
       const data = await response.json()
       
       setCreatedAgentData(data)
 
-      // Step 2: If it's a Vapi agent, automatically setup webhook
+      // Step 2: If it's a Vapi assistant, setup monitoring webhook
       if (selectedPlatform === 'vapi') {
         setCurrentStep('connecting')
         setWebhookSetupStatus(null)
         
         try {
           await setupVapiWebhook(data.id)
-          // Small delay to show the connecting state
           await new Promise(resolve => setTimeout(resolve, 1000))
         } catch (webhookError) {
-          // Don't fail the entire process if webhook setup fails
-          // The agent is still created, user can setup webhook later
-          console.warn('⚠️ Webhook setup failed, but agent was created successfully')
+          console.warn('⚠️ Monitoring webhook setup failed, but connection was created')
         }
       }
       
       setCurrentStep('success')
       
     } catch (err: unknown) {
-      console.error('💥 Error creating agent:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create agent'
+      const errorMessage = err instanceof Error ? err.message : 'Failed to setup monitoring'
       setError(errorMessage)
       setCurrentStep('form')
     } finally {
@@ -329,7 +295,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
     if (!loading && !vapiData.connectLoading) {
       setCurrentStep('form')
       setSelectedPlatform('livekit')
-      setFormData({ name: '', agent_type: 'inbound', description: '' })
+      setFormData({ name: '', description: '' })
       setVapiData({ apiKey: '', projectApiKey: '', availableAssistants: [], selectedAssistantId: '', connectLoading: false })
       setError(null)
       setCreatedAgentData(null)
@@ -351,12 +317,11 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
         setCopiedId(true)
         setTimeout(() => setCopiedId(false), 2000)
       } catch (err) {
-        console.error('Failed to copy agent ID:', err)
+        console.error('Failed to copy monitoring ID:', err)
       }
     }
   }
 
-  // Render creating/connecting states
   if (currentStep === 'creating' || currentStep === 'connecting') {
     return (
       <Dialog open={isOpen} onOpenChange={() => {}}>
@@ -367,13 +332,13 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
             </div>
             
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {currentStep === 'creating' ? 'Creating Agent' : 'Connecting with Vapi'}
+              {currentStep === 'creating' ? 'Setting Up Monitoring' : 'Connecting Monitoring'}
             </h3>
             
             <p className="text-sm text-gray-600 mb-6">
               {currentStep === 'creating' 
-                ? 'Setting up your new agent...' 
-                : 'Configuring webhook integration...'}
+                ? 'Configuring observability for your agent...' 
+                : 'Establishing monitoring connection...'}
             </p>
 
             {selectedPlatform === 'vapi' && (
@@ -389,7 +354,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                     {currentStep === 'creating' ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'}
                   </div>
                   <span className={currentStep === 'creating' ? 'font-medium' : ''}>
-                    Creating Agent
+                    Setting Up Monitoring
                   </span>
                 </div>
                 
@@ -404,7 +369,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                     {currentStep === 'connecting' ? <Loader2 className="w-3 h-3 animate-spin" /> : '2'}
                   </div>
                   <span className={currentStep === 'connecting' ? 'font-medium' : ''}>
-                    Setting up Webhook
+                    Connecting Webhook
                   </span>
                 </div>
               </div>
@@ -424,13 +389,13 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
             <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl flex items-center justify-center border border-gray-100">
-                  <Bot className="w-6 h-6 text-gray-700" />
+                  <Eye className="w-6 h-6 text-gray-700" />
                 </div>
                 <DialogTitle className="text-lg font-semibold text-gray-900 mb-1">
-                  Create New Agent
+                  Start Observing Agent
                 </DialogTitle>
                 <p className="text-sm text-gray-600">
-                  Choose your platform and configure your AI agent
+                  Add intelligent monitoring to your existing voice agent
                 </p>
               </div>
             </DialogHeader>
@@ -438,10 +403,10 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
             {/* Scrollable Form Content */}
             <div className="flex-1 overflow-y-auto px-6">
               <div className="space-y-5 pb-6">
-                {/* Platform Selection - Compact Style */}
+                {/* Platform Selection */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-900">
-                    Select Platform
+                    Agent Platform
                   </label>
                   <div className="flex gap-2">
                     {PLATFORM_OPTIONS.map((platform) => {
@@ -493,87 +458,51 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                   selectedPlatform === 'vapi' ? 'bg-teal-50/50 px-4 py-4 rounded-lg border border-teal-100' : ''
                 }`}>
                   
-                  {/* Agent Name - Always shown */}
+                  {/* Monitoring Label - Always shown */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-900">
-                      Agent Name
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="block text-sm font-medium text-gray-900">
+                        Agent Name (Monitoring Label)
+                      </label>
+                      
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type="button" className="text-gray-400 hover:text-gray-600">
+                              <Info size={16} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>This is how you'll identify this monitoring setup in your dashboard</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    
                     <Input
-                      placeholder={selectedPlatform === 'vapi' ? "My Vapi Agent" : "Customer Support Bot"}
+                      placeholder={selectedPlatform === 'vapi' ? "Support Assistant Monitor" : "Customer Agent Monitor"}
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       disabled={loading}
                       className="h-10 px-3 text-sm border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
                     />
-                    {selectedPlatform === 'vapi' && (
-                      <p className="text-xs text-[#328c81]">
-                        This name is for your dashboard (independent of Vapi assistant name)
-                      </p>
-                    )}
                   </div>
 
-                  {/* Livekit Fields */}
+                  {/* LiveKit Fields */}
                   {selectedPlatform === 'livekit' && (
-                    <>
-                      {/* Agent Type Selection */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-900">
-                          Agent Type
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {AGENT_TYPES.map((type) => {
-                            const Icon = type.icon
-                            const isSelected = formData.agent_type === type.value
-                            
-                            return (
-                              <div
-                                key={type.value}
-                                className={`relative p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
-                                  isSelected 
-                                    ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                }`}
-                                onClick={() => setFormData({ ...formData, agent_type: type.value })}
-                              >
-                                <div className="text-center">
-                                  <div className={`w-8 h-8 mx-auto mb-2 rounded-lg flex items-center justify-center ${
-                                    isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
-                                  }`}>
-                                    <Icon className="w-4 h-4" />
-                                  </div>
-                                  <div className="text-xs font-medium text-gray-900 mb-0.5">{type.label}</div>
-                                  <div className="text-xs text-gray-500 leading-tight">{type.description}</div>
-                                </div>
-                                <input
-                                  type="radio"
-                                  name="agent_type"
-                                  value={type.value}
-                                  checked={isSelected}
-                                  onChange={() => setFormData({ ...formData, agent_type: type.value })}
-                                  className="absolute inset-0 opacity-0 cursor-pointer"
-                                  disabled={loading}
-                                />
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-900">
-                          Description <span className="text-gray-500 font-normal">(optional)</span>
-                        </label>
-                        <textarea
-                          placeholder="Brief description of your agent..."
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                          disabled={loading}
-                          rows={2}
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-none transition-all placeholder:text-gray-500"
-                        />
-                      </div>
-                    </>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-900">
+                        Notes <span className="text-gray-500 font-normal">(optional)</span>
+                      </label>
+                      <textarea
+                        placeholder="Brief description of what this agent does..."
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        disabled={loading}
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-none transition-all placeholder:text-gray-500"
+                      />
+                    </div>
                   )}
 
                   {/* Vapi Fields */}
@@ -641,11 +570,11 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                         </p>
                       </div>
 
-                      {/* Assistant Selection - Full Width */}
+                      {/* Assistant Selection */}
                       {vapiData.availableAssistants.length > 0 && (
                         <div ref={assistantSectionRef} className="space-y-2 bg-white/60 rounded-lg p-4 border border-teal-200 -mx-2">
                           <label className="block text-sm font-medium text-gray-900">
-                            Select Assistant
+                            Select Assistant to Monitor
                             <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
                               {vapiData.availableAssistants.length} found
                             </Badge>
@@ -655,10 +584,10 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                             onValueChange={(value) => setVapiData({ ...vapiData, selectedAssistantId: value })}
                           >
                             <SelectTrigger className="h-10 bg-white border-teal-200 focus:border-[#328c81] w-full">
-                              <SelectValue placeholder="Choose an assistant">
+                              <SelectValue placeholder="Choose an assistant to monitor">
                                 {vapiData.selectedAssistantId && (
                                   <div className="flex items-center gap-2">
-                                    <Bot className="w-4 h-4 text-[#328c81]" />
+                                    <Eye className="w-4 h-4 text-[#328c81]" />
                                     <span>{vapiData.availableAssistants.find((a: VapiAssistant) => a.id === vapiData.selectedAssistantId)?.name}</span>
                                   </div>
                                 )}
@@ -704,7 +633,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                             className="h-10 font-mono bg-white border-teal-200 focus:border-[#328c81] focus:ring-[#328c81]/20"
                           />
                           <p className="text-xs text-gray-600">
-                            Your internal project API key for this integration
+                            Your internal project API key for this monitoring setup
                           </p>
                         </div>
                       )}
@@ -751,11 +680,11 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Creating...
+                      Setting up...
                     </>
                   ) : (
                     <>
-                      Create Agent
+                      Start Monitoring
                     </>
                   )}
                 </Button>
@@ -770,10 +699,10 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <DialogTitle className="text-lg font-semibold text-gray-900 mb-1">
-                Agent Created Successfully!
+                Monitoring Setup Complete!
               </DialogTitle>
               <p className="text-sm text-gray-600">
-                "{createdAgentData?.name}" is ready to use
+                "{createdAgentData?.name}" is now being observed
               </p>
             </DialogHeader>
 
@@ -782,9 +711,9 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
                     {selectedPlatform === 'vapi' ? (
-                      <Bot className="w-5 h-5 text-[#328c81]" />
+                      <Eye className="w-5 h-5 text-[#328c81]" />
                     ) : (
-                      selectedAgentType && <selectedAgentType.icon className="w-5 h-5 text-blue-600" />
+                      <Activity className="w-5 h-5 text-blue-600" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -797,7 +726,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                           ? 'bg-teal-50 text-[#328c81] border-teal-200' 
                           : 'bg-blue-50 text-blue-700 border-blue-200'
                       }`}>
-                        {selectedPlatform === 'vapi' ? 'Vapi Connected' : selectedAgentType?.label}
+                        {selectedPlatform === 'vapi' ? 'Vapi Monitoring' : 'LiveKit Monitoring'}
                       </Badge>
                       <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
                         Development
@@ -806,7 +735,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                   </div>
                 </div>
 
-                {/* Webhook Status for Vapi Agents */}
+                {/* Webhook Status for Vapi */}
                 {selectedPlatform === 'vapi' && webhookSetupStatus && (
                   <div className={`p-3 rounded-lg border mb-3 ${
                     webhookSetupStatus.success 
@@ -822,7 +751,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                       <span className={`text-sm font-medium ${
                         webhookSetupStatus.success ? 'text-green-800' : 'text-orange-800'
                       }`}>
-                        {webhookSetupStatus.success ? 'Webhook Connected' : 'Webhook Setup Needed'}
+                        {webhookSetupStatus.success ? 'Monitoring Active' : 'Manual Setup Required'}
                       </span>
                     </div>
                     <p className={`text-xs mt-1 ${
@@ -834,7 +763,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                 )}
 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                  <span className="text-sm text-gray-600">Agent ID</span>
+                  <span className="text-sm text-gray-600">Monitoring ID</span>
                   <div className="flex items-center gap-2">
                     <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-800">
                       {createdAgentData?.id?.slice(0, 8)}...
@@ -862,13 +791,13 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
                   onClick={handleClose}
                   className="flex-1 h-10 text-gray-700 border-gray-300 hover:bg-gray-50"
                 >
-                  Create Another
+                  Monitor Another
                 </Button>
                 <Button 
                   onClick={handleFinish}
                   className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 >
-                  Configure
+                  View Integration
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>

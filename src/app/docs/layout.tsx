@@ -1,3 +1,4 @@
+// src/app/docs/layout.tsx
 import { source } from '@/lib/source';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { RootProvider } from 'fumadocs-ui/provider';

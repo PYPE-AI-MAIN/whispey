@@ -176,7 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     return hasVapiKeys || hasVapiConfig || isVapiType
   }, [agent])
 
-  const showQuickStart = !callsCheckLoading && !hasCalls && !agentLoading && agent && !isVapiAgent
+  const showQuickStart = false
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
