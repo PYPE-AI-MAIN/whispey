@@ -7,6 +7,7 @@ interface AdaptiveTutorialEmptyStateProps {
   totalAgents: number
   onClearSearch: () => void
   onCreateAgent: () => void
+  helpMode?: boolean
 }
 
 // Complete agent code example - update this constant to change the code throughout the component
@@ -86,7 +87,8 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
   searchQuery,
   totalAgents,
   onClearSearch,
-  onCreateAgent
+  onCreateAgent,
+  helpMode
 }) => {
   const [experienceLevel, setExperienceLevel] = useState<'unknown' | 'beginner' | 'experienced'>('unknown')
   const [copiedCode, setCopiedCode] = useState<string | null>(null)

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Search, Eye, Grid3X3, List } from 'lucide-react'
+import { Search, Eye, Grid3X3, List, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface AgentToolbarProps {
@@ -10,6 +10,7 @@ interface AgentToolbarProps {
   viewMode: 'grid' | 'list'
   onViewModeChange: (mode: 'grid' | 'list') => void
   onCreateAgent: () => void
+  onShowHelp?: () => void // New optional prop
 }
 
 const AgentToolbar: React.FC<AgentToolbarProps> = ({
@@ -19,20 +20,34 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
   onStatusFilterChange,
   viewMode,
   onViewModeChange,
-  onCreateAgent
+  onCreateAgent,
+  onShowHelp
 }) => {
   return (
     <div className="flex items-center justify-between mb-8">
-      {/* Left: Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          type="search"
-          placeholder="Search monitoring setups"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg bg-white placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all"
-        />
+      {/* Left: Search + Help */}
+      <div className="flex items-center gap-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            placeholder="Search monitoring setups"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg bg-white placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all"
+          />
+        </div>
+
+        {/* Need Help Link - Only show if onShowHelp is provided */}
+        {onShowHelp && (
+          <button
+            onClick={onShowHelp}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors px-2 py-1.5 rounded-lg hover:bg-blue-50"
+          >
+            <HelpCircle className="w-4 h-4" />
+            Need help?
+          </button>
+        )}
       </div>
 
       {/* Right: Controls */}
