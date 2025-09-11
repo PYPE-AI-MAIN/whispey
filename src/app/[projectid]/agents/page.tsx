@@ -5,6 +5,7 @@ import AgentSelection from '@/components/agents/AgentSelection'
 export default function ProjectAgentsPage() {
   const params = useParams()
   const projectId = params.projectid as string
+  const assistantId = params.assistantid as string
 
   return (
     <>

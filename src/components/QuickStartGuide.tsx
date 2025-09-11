@@ -85,7 +85,7 @@ if __name__ == "__main__":
         items: [
           { text: 'Workspace created with API key', status: 'done' },
           { text: `Your Agent ID: ${agentId}`, status: 'ready', copyable: agentId },
-          { text: 'Use your Pype Project API key which you saved earlier', status: 'ready' }
+          { text: 'Use your Whispey Project API key which you saved earlier', status: 'ready' }
         ]
       },
       {

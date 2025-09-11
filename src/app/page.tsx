@@ -20,9 +20,9 @@ export default function Home() {
 
 
   return (
-    <>
+    <div>
     <Header />
     <ProjectSelection isAuthLoaded={isLoaded} />
-    </>
+    </div>
   )
 }
