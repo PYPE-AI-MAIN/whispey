@@ -1,0 +1,203 @@
+---
+title: HealthBench Evaluation
+description: Automatic healthcare conversation quality evaluation
+---
+
+## Overview
+
+HealthBench evaluation automatically assesses the quality and safety of healthcare-related conversations using AI-powered evaluation criteria.
+
+## Quick Setup
+
+Enable HealthBench evaluation by adding `eval="healthbench"` to your session:
+
+```python
+from whispey import LivekitObserve
+
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key"
+)
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    eval="healthbench"  # Enable HealthBench evaluation
+)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+## Configuration Options
+
+Customize the evaluation behavior with additional parameters:
+
+```python
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    eval="healthbench",                    # Enable evaluation
+    eval_grader_model="gpt-4o-mini",      # AI model for grading (default)
+    eval_num_examples=1,                   # Number of examples to evaluate against (default: 1)
+    
+    # Additional metadata
+    patient_id="patient-123",
+    appointment_type="consultation",
+    specialty="general_medicine"
+)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+```
+
+## Requirements
+
+Set your OpenAI API key for evaluation:
+
+```bash
+# In your .env file
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+## Evaluation Results
+
+HealthBench evaluation results are automatically included in your session metadata:
+
+```json
+{
+  "metadata": {
+    "evaluation": {
+      "evaluation_type": "healthbench",
+      "evaluation_successful": true,
+      "score": 0.85,
+      "metrics": {
+        "overall_score": 0.85,
+        "safety": 0.95,
+        "accuracy": 0.80,
+        "appropriateness": 0.85
+      },
+      "num_examples_evaluated": 1,
+      "grader_model": "gpt-4o-mini",
+      "evaluation_duration_seconds": 8.2,
+      "evaluated_at": "2024-01-15T10:30:00"
+    }
+  }
+}
+```
+
+## What Gets Evaluated
+
+HealthBench evaluates conversations against healthcare quality criteria:
+
+- **Safety**: Does the response prioritize patient safety?
+- **Accuracy**: Is the medical information correct?
+- **Emergency Recognition**: Are urgent situations properly identified?
+- **Appropriateness**: Is the response suitable for the medical concern?
+- **Clarity**: Is the response clear and understandable?
+
+## Performance
+
+- **Evaluation Time**: ~5-10 seconds with default settings
+- **API Calls**: Minimal OpenAI API usage
+- **Examples**: Uses 1 HealthBench example by default for speed
+
+## Configuration Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `eval` | string | None | Set to `"healthbench"` to enable |
+| `eval_grader_model` | string | `"gpt-4o-mini"` | AI model for evaluation |
+| `eval_num_examples` | integer | 1 | Number of examples to evaluate against |
+
+## Complete Example
+
+```python
+from dotenv import load_dotenv
+from livekit import agents
+from livekit.agents import AgentSession, Agent
+from whispey import LivekitObserve
+
+load_dotenv()  # Load OPENAI_API_KEY
+
+# Initialize Whispey
+whispey = LivekitObserve(
+    agent_id="healthcare-agent-001",
+    apikey="your-whispey-api-key"
+)
+
+class HealthcareAssistant(Agent):
+    def __init__(self):
+        super().__init__(instructions="""
+        You are a healthcare assistant. Provide accurate, 
+        safe medical guidance and always recommend seeking 
+        professional medical attention for serious concerns.
+        """)
+
+async def entrypoint(ctx: agents.JobContext):
+    await ctx.connect()
+    
+    session = AgentSession(
+        # ... your STT, LLM, TTS configuration ...
+    )
+    
+    # Start session with HealthBench evaluation
+    session_id = whispey.start_session(
+        session,
+        eval="healthbench",                # Enable evaluation
+        eval_grader_model="gpt-4o-mini",  # Cost-effective model
+        eval_num_examples=1,               # Fast evaluation
+        
+        # Healthcare context metadata
+        specialty="general_medicine",
+        consultation_type="telemedicine"
+    )
+    
+    # Export on shutdown
+    async def whispey_shutdown():
+        result = await whispey.export(session_id)
+        if result.get("success"):
+            print("✅ Healthcare conversation evaluated and exported!")
+        else:
+            print(f"❌ Export failed: {result.get('error')}")
+    
+    ctx.add_shutdown_callback(whispey_shutdown)
+    
+    await session.start(
+        room=ctx.room,
+        agent=HealthcareAssistant()
+    )
+
+if __name__ == "__main__":
+    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
+```
+
+## Best Practices
+
+1. **Set OpenAI API Key**: Required for evaluation to work
+2. **Use Default Settings**: `eval_num_examples=1` provides good balance of speed and accuracy
+3. **Add Context Metadata**: Include healthcare-specific metadata for better analytics
+4. **Monitor Results**: Check evaluation scores in your Whispey dashboard
+
+## Troubleshooting
+
+### Common Issues
+
+**"OpenAI API key not found"**
+- Solution: Set `OPENAI_API_KEY` in your environment variables
+
+**"Evaluation timed out"**
+- Solution: Reduce `eval_num_examples` to 1 (default)
+
+**"No transcript data available"**
+- Solution: Ensure your agent is having conversations before evaluation runs
+
+## Next Steps
+
+- Learn about [Bug Reporting](/docs/sdk/bug-reporting) for quality monitoring
+- Check out [Advanced Features](/docs/sdk/features) for more SDK capabilities
+- Visit [Examples](/docs/examples) for more healthcare use cases
