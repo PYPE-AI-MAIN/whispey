@@ -698,70 +698,10 @@ ctx.add_shutdown_callback(shutdown)`, 'quick-session')}
                   <span className="text-xs text-gray-400 ml-2">your_agent.py</span>
                 </div>
                 <pre className="text-gray-100 text-xs font-mono overflow-x-auto max-h-80 overflow-y-auto">
-{`# Add these imports to your existing agent
-from whispey import LivekitObserve
-import os
-
-# Initialize Whispey (add this after your other initializations)
-whispey = LivekitObserve(
-    agent_id="YOUR_AGENT_ID_HERE",  # You'll get this after dashboard setup
-    apikey=os.getenv("WHISPEY_API_KEY")  # Your saved Pype key
-)
-
-async def entrypoint(ctx: JobContext):
-    await ctx.connect()
-    
-    # Your existing session creation
-    session = AgentSession(
-        llm=openai.LLM(model="gpt-4o-mini"),
-        tts=elevenlabs.TTS(),
-        stt=openai.STT(),
-        vad=silero.VAD.load()
-    )
-    
-    # Add these lines for monitoring
-    session_id = whispey.start_session(session=session)
-    
-    async def whispey_shutdown():
-        await whispey.export(session_id)
-    
-    ctx.add_shutdown_callback(whispey_shutdown)
-    
-    # Your existing session start
-    await session.start(room=ctx.room, agent=YourAgent())`}
+                    {COMPLETE_AGENT_CODE}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(`# Add these imports to your existing agent
-from whispey import LivekitObserve
-import os
-
-# Initialize Whispey (add this after your other initializations)
-whispey = LivekitObserve(
-    agent_id="YOUR_AGENT_ID_HERE",  # You'll get this after dashboard setup
-    apikey=os.getenv("WHISPEY_API_KEY")  # Your saved Pype key
-)
-
-async def entrypoint(ctx: JobContext):
-    await ctx.connect()
-    
-    # Your existing session creation
-    session = AgentSession(
-        llm=openai.LLM(model="gpt-4o-mini"),
-        tts=elevenlabs.TTS(),
-        stt=openai.STT(),
-        vad=silero.VAD.load()
-    )
-    
-    # Add these lines for monitoring
-    session_id = whispey.start_session(session=session)
-    
-    async def whispey_shutdown():
-        await whispey.export(session_id)
-    
-    ctx.add_shutdown_callback(whispey_shutdown)
-    
-    # Your existing session start
-    await session.start(room=ctx.room, agent=YourAgent())`, 'full-integration')}
+                  onClick={() => copyToClipboard(`${COMPLETE_AGENT_CODE}`, 'full-integration')}
                   className="absolute top-2 right-2 p-1.5 bg-gray-800 hover:bg-gray-700 rounded"
                 >
                   {copiedCode === 'full-integration' ? (
