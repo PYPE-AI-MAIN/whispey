@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSupabaseQuery } from '../../hooks/useSupabase'
 import AgentCreationDialog from './AgentCreationDialog'
@@ -10,6 +10,7 @@ import AgentToolbar from './AgentToolbar'
 import AgentList from './AgentList'
 import AgentEmptyStates from './AgentEmptyStates'
 import AgentDeleteDialog from './AgentDeleteDialog'
+import AdaptiveTutorialEmptyState from './AdaptiveTutorialEmptyState'
 import Header from '../shared/Header'
 
 interface Agent {
@@ -31,6 +32,7 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showHelpDialog, setShowHelpDialog] = useState(false)
   const [deletingAgent, setDeletingAgent] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Agent | null>(null)
   const [copiedAgentId, setCopiedAgentId] = useState<string | null>(null)
@@ -80,6 +82,11 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
 
   const handleCreateAgent = () => {
     setShowCreateDialog(true)
+    setShowHelpDialog(false)
+  }
+
+  const handleShowHelp = () => {
+    setShowHelpDialog(true)
   }
 
   const handleAgentCreated = (agentData: any) => {
@@ -191,6 +198,7 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           onCreateAgent={handleCreateAgent}
+          onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
         />
 
         {filteredAgents.length > 0 ? (
@@ -227,6 +235,48 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
         onClose={() => setShowDeleteConfirm(null)}
         onConfirm={handleDeleteAgent}
       />
+
+      {/* Help Sheet - Slide-out from right */}
+      {showHelpDialog && (
+        <>
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setShowHelpDialog(false)}
+          />
+          
+          {/* Slide-out Sheet */}
+          <div className="fixed right-0 top-0 h-full w-4/5 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-l border-gray-300 flex-shrink-0 bg-gray-100">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Integration Guide</h2>
+                <p className="text-sm text-gray-600 mt-1">Add monitoring to your voice agents</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHelpDialog(false)}
+                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              <AdaptiveTutorialEmptyState
+                searchQuery=""
+                totalAgents={agents?.length || 0}
+                onClearSearch={() => {}}
+                onCreateAgent={() => {
+                  setShowHelpDialog(false)
+                  handleCreateAgent()
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
