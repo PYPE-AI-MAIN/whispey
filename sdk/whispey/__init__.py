@@ -217,6 +217,7 @@ class LivekitObserve:
                 }
                 
                 self.whispey.spans_data.append(comprehensive_span_data)
+                logger.debug(f"📊 Collected span: {span.name} (total spans: {len(self.whispey.spans_data)})")
 
             def shutdown(self):
                 pass
@@ -321,7 +322,9 @@ class LivekitObserve:
         # Setup telemetry BEFORE observe_session if enabled
         temp_session_id = f"temp_{int(time.time())}"
         if self.enable_otel:
+            logger.info(f"🔍 Setting up telemetry for session {temp_session_id}")
             self._setup_telemetry(temp_session_id)
+            logger.info(f"🔍 Telemetry setup complete, spans_data length: {len(self.spans_data)}")
         
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(
@@ -529,10 +532,10 @@ class LivekitObserve:
                 cleanup_all_sessions()
             except Exception as e:
                 logger.error(f"❌ Error during cleanup: {e}")
+            # Don't force exit - let the main process handle termination
         
-        # Register signal handlers for common termination signals
+        # Only register SIGTERM handler, let SIGINT be handled by the main process
         signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
         
         # Register atexit handler as backup
         atexit.register(lambda: cleanup_all_sessions())
@@ -901,7 +904,7 @@ class LivekitObserve:
                 if not background_task.done():
                     try:
                         # Wait for background task with timeout
-                        await asyncio.wait_for(background_task, timeout=35.0)
+                        await asyncio.wait_for(background_task, timeout=25.0)
                     except asyncio.TimeoutError:
                         logger.warning(f"⚠️ Background task timeout for session {session_id}")
                         # Cancel the task if it's still running

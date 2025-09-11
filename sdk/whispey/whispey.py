@@ -1,4 +1,5 @@
 # sdk/whispey/whispey.py
+import asyncio
 import time
 import uuid
 import logging
@@ -59,11 +60,13 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
         # Add custom handlers for Whispey integration
         @session.on("disconnected")
         def on_disconnected(event):
-            end_session_manually(session_id, "disconnected")
+            logger.info(f"🔌 Session {session_id} disconnected")
+            # Don't end session here - let it be handled by close event
         
         @session.on("close")
         def on_session_close(event):
             error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
+            logger.info(f"🔚 Session {session_id} closing with reason: {event.reason if hasattr(event, 'reason') else 'unknown'}")
             end_session_manually(session_id, "completed", error_msg)
         
         return session_id
@@ -142,6 +145,49 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     if session_data:
         transcript_data = session_data.get("transcript_with_metrics", [])
         
+        # Process transcript_with_metrics to extract user_transcript and agent_response
+        if transcript_data:
+            logger.info(f"🔍 Found transcript_with_metrics with {len(transcript_data)} items")
+            processed_transcript = []
+            
+            for i, turn in enumerate(transcript_data):
+                logger.info(f"🔍 Processing turn {i}: {list(turn.keys()) if isinstance(turn, dict) else type(turn)}")
+                
+                # Check if this turn has user_transcript or agent_response
+                if isinstance(turn, dict):
+                    if 'user_transcript' in turn and turn['user_transcript']:
+                        processed_transcript.append({
+                            'turn_id': f"user_turn_{i}",
+                            'role': 'user',
+                            'content': turn['user_transcript'],
+                            'timestamp': turn.get('timestamp', time.time()),
+                            'turn_configuration': turn.get('turn_configuration', {})
+                        })
+                        logger.info(f"📝 Added user transcript: {turn['user_transcript'][:100]}...")
+                    
+                    if 'agent_response' in turn and turn['agent_response']:
+                        processed_transcript.append({
+                            'turn_id': f"agent_turn_{i}",
+                            'role': 'assistant',
+                            'content': turn['agent_response'],
+                            'timestamp': turn.get('timestamp', time.time()),
+                            'turn_configuration': turn.get('turn_configuration', {})
+                        })
+                        logger.info(f"📝 Added agent response: {turn['agent_response'][:100]}...")
+            
+            if processed_transcript:
+                transcript_data = processed_transcript
+                logger.info(f"✅ Processed transcript_with_metrics into {len(transcript_data)} turns")
+            else:
+                logger.warning("⚠️ No user_transcript or agent_response found in transcript_with_metrics")
+        
+        # If no transcript data captured, try to extract from session history
+        if not transcript_data:
+            logger.info("No transcript data found, attempting to extract from session history")
+            transcript_data = _extract_transcript_from_session_history(session_data)
+            if transcript_data:
+                logger.info(f"Extracted {len(transcript_data)} turns from session history")
+        
         # Ensure trace fields are included in each turn
         enhanced_transcript = []
         for turn in transcript_data:
@@ -212,10 +258,111 @@ def get_session_whispey_data(session_id: str) -> Dict[str, Any]:
     # Generate fresh data
     return generate_whispey_data(session_id)
 
+def _extract_transcript_from_session_history(session_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract transcript data from session history as fallback"""
+    try:
+        logger.info(f"🔍 Debugging session data structure: {list(session_data.keys())}")
+        
+        # Try to get conversation history from various possible locations
+        history_data = None
+        
+        # Method 1: Check if there's a session object with history
+        if hasattr(session_data, 'session') and hasattr(session_data['session'], 'history'):
+            history_data = session_data['session'].history
+            logger.info("📝 Found session.history")
+        
+        # Method 2: Check for stored conversation data
+        elif 'conversation_history' in session_data:
+            history_data = session_data['conversation_history']
+            logger.info("📝 Found conversation_history")
+        
+        # Method 3: Check for any stored messages
+        elif 'messages' in session_data:
+            history_data = session_data['messages']
+            logger.info("📝 Found messages")
+        
+        # Method 4: Check for user_transcript and agent_response fields
+        elif 'user_transcript' in session_data or 'agent_response' in session_data:
+            logger.info("📝 Found user_transcript/agent_response fields")
+            transcript_turns = []
+            turn_counter = 0
+            
+            # Add user transcript if available
+            if 'user_transcript' in session_data and session_data['user_transcript']:
+                turn_counter += 1
+                transcript_turns.append({
+                    'turn_id': f"turn_{turn_counter}",
+                    'role': 'user',
+                    'content': session_data['user_transcript'],
+                    'timestamp': time.time(),
+                    'turn_configuration': session_data.get('complete_configuration', {})
+                })
+                logger.info(f"📝 Added user transcript: {session_data['user_transcript'][:100]}...")
+            
+            # Add agent response if available
+            if 'agent_response' in session_data and session_data['agent_response']:
+                turn_counter += 1
+                transcript_turns.append({
+                    'turn_id': f"turn_{turn_counter}",
+                    'role': 'assistant',
+                    'content': session_data['agent_response'],
+                    'timestamp': time.time(),
+                    'turn_configuration': session_data.get('complete_configuration', {})
+                })
+                logger.info(f"📝 Added agent response: {session_data['agent_response'][:100]}...")
+            
+            logger.info(f"Extracted {len(transcript_turns)} turns from user_transcript/agent_response")
+            return transcript_turns
+        
+        if not history_data:
+            logger.debug("No session history found for transcript extraction")
+            return []
+        
+        # Convert history to transcript format
+        transcript_turns = []
+        turn_counter = 0
+        
+        # Handle different history formats
+        if hasattr(history_data, 'items'):
+            # LiveKit history format
+            for item in history_data.items:
+                turn_counter += 1
+                transcript_turns.append({
+                    'turn_id': f"turn_{turn_counter}",
+                    'role': str(item.role) if hasattr(item, 'role') else 'unknown',
+                    'content': str(item.text_content) if hasattr(item, 'text_content') else str(item.content) if hasattr(item, 'content') else '',
+                    'timestamp': getattr(item, 'timestamp', time.time()),
+                    'turn_configuration': session_data.get('complete_configuration', {})
+                })
+        elif isinstance(history_data, list):
+            # List format
+            for item in history_data:
+                turn_counter += 1
+                transcript_turns.append({
+                    'turn_id': f"turn_{turn_counter}",
+                    'role': item.get('role', 'unknown'),
+                    'content': item.get('content', '') or item.get('text_content', ''),
+                    'timestamp': item.get('timestamp', time.time()),
+                    'turn_configuration': session_data.get('complete_configuration', {})
+                })
+        
+        logger.info(f"Extracted {len(transcript_turns)} turns from session history")
+        return transcript_turns
+        
+    except Exception as e:
+        logger.error(f"Error extracting transcript from session history: {e}")
+        return []
+
 def end_session_manually(session_id: str, status: str = "completed", error: str = None):
     """Manually end a session"""
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found for manual end")
+        return
+    
+    # Check if session is already ended
+    session_info = _session_data_store[session_id]
+    if not session_info.get('call_active', False):
+        logger.info(f"Session {session_id} already ended, skipping duplicate end")
         return
     
     logger.info(f"🔚 Manually ending session {session_id} with status: {status}")
@@ -497,7 +644,9 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     # Force end session if requested and still active
     if force_end and session_info['call_active']:
         logger.info(f"🔚 Force ending session {session_id}")
-        end_session_manually(session_id, "completed")
+        # Only end if not already ended
+        if session_info.get('call_active', False):
+            end_session_manually(session_id, "completed")
     
     # Get whispey data
     whispey_data = get_session_whispey_data(session_id)
@@ -505,6 +654,23 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     # REPLACE the simple telemetry_spans assignment with structured data
     structured_telemetry = structure_telemetry_data(session_id)
     whispey_data["telemetry_data"] = structured_telemetry
+    
+    # Debug telemetry data
+    logger.info(f"🔍 Telemetry data structure: {list(structured_telemetry.keys())}")
+    logger.info(f"🔍 Session traces count: {len(structured_telemetry.get('session_traces', []))}")
+    logger.info(f"🔍 Performance metrics: {structured_telemetry.get('performance_metrics', {})}")
+    
+    # Check if we have telemetry instance
+    session_info = _session_data_store.get(session_id, {})
+    telemetry_instance = session_info.get('telemetry_instance')
+    if telemetry_instance:
+        logger.info(f"🔍 Telemetry instance found: {type(telemetry_instance)}")
+        if hasattr(telemetry_instance, 'spans_data'):
+            logger.info(f"🔍 Spans data count: {len(telemetry_instance.spans_data) if telemetry_instance.spans_data else 0}")
+        else:
+            logger.warning("⚠️ Telemetry instance has no spans_data attribute")
+    else:
+        logger.warning("⚠️ No telemetry instance found in session data")
 
     
     
@@ -531,20 +697,27 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         import asyncio
         async def background_complete_send():
             try:
-                # Run evaluation
-                evaluation_result = await run_evaluation_async(session_id, evaluation_type, whispey_data)
+                # Run evaluation (this is optional and shouldn't break data sending)
+                evaluation_result = None
+                try:
+                    evaluation_result = await run_evaluation_async(session_id, evaluation_type, whispey_data)
+                    
+                    # Add evaluation results to the data if successful
+                    if evaluation_result and not evaluation_result.get("error"):
+                        if 'metadata' not in whispey_data:
+                            whispey_data['metadata'] = {}
+                        whispey_data['metadata']['evaluation'] = evaluation_result
+                        logger.info(f"✅ Added evaluation results to session data")
+                    else:
+                        logger.warning(f"⚠️ Evaluation failed for session {session_id}: {evaluation_result.get('error') if evaluation_result else 'No result'}")
+                        # Continue with data sending even if evaluation fails
+                        
+                except Exception as eval_error:
+                    logger.error(f"❌ Evaluation error for session {session_id}: {eval_error}")
+                    # Continue with data sending even if evaluation fails
                 
-                # Add evaluation results to the data
-                if not evaluation_result.get("error"):
-                    if 'metadata' not in whispey_data:
-                        whispey_data['metadata'] = {}
-                    whispey_data['metadata']['evaluation'] = evaluation_result
-                    logger.info(f"✅ Added evaluation results to session data")
-                else:
-                    logger.error(f"❌ Evaluation failed for session {session_id}: {evaluation_result.get('error')}")
-                
-                # Send complete data with evaluation
-                logger.info(f"📤 Sending complete session data with evaluation to Whispey API...")
+                # Send complete data (with or without evaluation)
+                logger.info(f"📤 Sending complete session data to Whispey API...")
                 logger.info(f"📊 Data keys: {list(whispey_data.keys())}")
                 logger.info(f"📊 Data size: {len(str(whispey_data))} characters")
                 
@@ -552,7 +725,7 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
                     # Add timeout to prevent hanging and use shield to protect from cancellation
                     result = await asyncio.wait_for(
                         asyncio.shield(send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)),
-                        timeout=30.0  # 30 second timeout
+                        timeout=20.0  # Reduced to 20 second timeout
                     )
                     
                     if result.get("success"):
@@ -561,7 +734,7 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
                         logger.error(f"❌ Whispey API returned failure: {result}")
                         
                 except asyncio.TimeoutError:
-                    logger.error(f"❌ Timeout sending session {session_id} to Whispey API (30s)")
+                    logger.error(f"❌ Timeout sending session {session_id} to Whispey API (20s)")
                     result = {"success": False, "error": "Timeout"}
                 except asyncio.CancelledError:
                     logger.warning(f"⚠️ Background task cancelled for session {session_id}, but evaluation completed")
@@ -686,7 +859,7 @@ async def wait_for_all_background_tasks():
         logger.info(f"✅ No background tasks to wait for")
 
 async def run_evaluation_async(session_id: str, evaluation_type: str, whispey_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Run evaluation asynchronously in the background"""
+    """Run evaluation asynchronously in the background with timeout protection"""
     try:
         logger.info(f"🔄 Starting async {evaluation_type} evaluation for session {session_id}")
         
@@ -704,8 +877,10 @@ async def run_evaluation_async(session_id: str, evaluation_type: str, whispey_da
         except (ValueError, TypeError):
             duration = 0
         
+        transcript_data = whispey_data.get("transcript_with_metrics", [])
+        
         conversation_data = {
-            'transcript': whispey_data.get("transcript_with_metrics", []),
+            'transcript': transcript_data,
             'response_text': '',  # Will be filled from transcript
             'context': {
                 'agent_id': whispey_data.get('agent_id'),
@@ -715,25 +890,62 @@ async def run_evaluation_async(session_id: str, evaluation_type: str, whispey_da
         }
         
         # Extract the last assistant response for evaluation
-        if conversation_data['transcript']:
-            for turn in reversed(conversation_data['transcript']):
-                if turn.get('role') == 'assistant' and turn.get('content'):
-                    conversation_data['response_text'] = turn['content']
+        if transcript_data:
+            logger.info(f"📝 Found {len(transcript_data)} transcript turns for evaluation")
+            logger.info(f"📝 First turn structure: {list(transcript_data[0].keys()) if transcript_data else 'No turns'}")
+            
+            for i, turn in enumerate(reversed(transcript_data)):
+                logger.info(f"📝 Turn {i}: role={turn.get('role')}, content_keys={[k for k in turn.keys() if 'content' in k.lower()]}")
+                
+                # Try different content field names
+                content = turn.get('content') or turn.get('text_content') or turn.get('text') or turn.get('message')
+                
+                if turn.get('role') == 'assistant' and content:
+                    conversation_data['response_text'] = content
+                    logger.info(f"📝 Extracted assistant response: {content[:100]}...")
                     break
-        
-        # Run evaluation using the original evaluation framework
-        evaluation_result = evaluation_runner.run_evaluation(evaluation_type, conversation_data)
-        
-        if evaluation_result:
-            logger.info(f"✅ {evaluation_type} evaluation completed for session {session_id}")
-            return evaluation_result
+                elif turn.get('role') == 'assistant':
+                    logger.warning(f"📝 Found assistant turn but no content: {turn}")
+            
+            if not conversation_data['response_text']:
+                logger.warning("📝 No assistant response found in transcript")
         else:
-            logger.warning(f"⚠️ {evaluation_type} evaluation returned no results for session {session_id}")
-            return {"error": "No evaluation results"}
+            logger.warning("📝 No transcript data found for evaluation")
+        
+        # Run evaluation with timeout protection using asyncio
+        try:
+            logger.info(f"⏱️ Starting {evaluation_type} evaluation with 45s timeout for session {session_id}")
+            
+            # Use asyncio.wait_for to add timeout protection
+            evaluation_result = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(
+                    None, 
+                    evaluation_runner.run_evaluation, 
+                    evaluation_type, 
+                    conversation_data
+                ),
+                timeout=45.0  # 45 second timeout for evaluation
+            )
+            
+            logger.info(f"⏱️ {evaluation_type} evaluation completed within timeout for session {session_id}")
+            
+            if evaluation_result and not evaluation_result.get("error"):
+                logger.info(f"✅ {evaluation_type} evaluation completed for session {session_id}")
+                return evaluation_result
+            else:
+                logger.warning(f"⚠️ {evaluation_type} evaluation failed for session {session_id}")
+                return evaluation_result if evaluation_result else {"error": "No evaluation results", "overall_score": 0.0, "evaluation_type": evaluation_type}
+                
+        except asyncio.TimeoutError:
+            logger.warning(f"⚠️ {evaluation_type} evaluation timed out for session {session_id} after 45 seconds")
+            return {"error": "Evaluation timeout", "overall_score": 0.0, "evaluation_type": evaluation_type}
+        except Exception as eval_error:
+            logger.error(f"❌ Evaluation execution error for session {session_id}: {eval_error}")
+            return {"error": str(eval_error), "overall_score": 0.0, "evaluation_type": evaluation_type}
             
     except Exception as e:
         logger.error(f"❌ Error running async {evaluation_type} evaluation for session {session_id}: {e}")
-        return {"error": str(e)}
+        return {"error": str(e), "overall_score": 0.0, "evaluation_type": evaluation_type}
 
 async def send_evaluation_results(session_id: str, evaluation_result: Dict[str, Any], apikey: str = None, api_url: str = None) -> dict:
     """Send evaluation results as an update to the main session data"""

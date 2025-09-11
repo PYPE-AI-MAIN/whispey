@@ -52,7 +52,7 @@ class WhispeyEvaluationRunner:
     """Simple HealthBench evaluation runner"""
     
     def run_evaluation(self, evaluation_type: str, conversation_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Run HealthBench evaluation"""
+        """Run HealthBench evaluation with timeout protection"""
         
         if not EVAL_AVAILABLE:
             console.print("[red]HealthBench evaluation not available. Install required dependencies.[/red]")
@@ -73,20 +73,86 @@ class WhispeyEvaluationRunner:
             # Create sampler
             sampler = ConversationSampler(conversation_data)
             
-            # Create HealthBench evaluator
+            # Create HealthBench evaluator with minimal configuration for faster execution
             grader = ChatCompletionSampler(
                 model="gpt-4o-mini",
                 system_message=OPENAI_SYSTEM_MESSAGE_API
             )
             
-            eval_instance = HealthBenchEval(grader_model=grader, num_examples=1)
+            # Use minimal configuration to prevent hanging
+            eval_instance = HealthBenchEval(
+                grader_model=grader, 
+                num_examples=1,  # Only evaluate 1 example
+                n_threads=1,     # Single thread to prevent resource issues
+                n_repeats=1      # Single repeat
+            )
+            
+            # Check if we have valid conversation data
+            transcript = conversation_data.get('transcript', [])
+            response_text = conversation_data.get('response_text', '')
+            
+            logger.info(f"📊 Evaluation data check - Transcript turns: {len(transcript)}, Response text length: {len(response_text)}")
+            
+            if not transcript:
+                logger.warning("No transcript data for evaluation")
+                return {"overall_score": 0.0, "error": "No transcript data", "evaluation_type": "healthbench"}
+            
+            # If no response text, try to extract from transcript
+            if not response_text and transcript:
+                logger.info("No response text provided, extracting from transcript")
+                for turn in reversed(transcript):
+                    logger.info(f"🔍 Checking turn: role={turn.get('role')}, content_keys={[k for k in turn.keys() if 'content' in k.lower()]}")
+                    if turn.get('role') == 'assistant':
+                        response_text = turn.get('content') or turn.get('text_content') or turn.get('text') or turn.get('message')
+                        if response_text:
+                            logger.info(f"Extracted response text from transcript: {response_text[:100]}...")
+                            break
+                        else:
+                            logger.warning(f"Found assistant turn but no content: {turn}")
+            
+            if not response_text:
+                logger.warning("No response text found for evaluation")
+                return {"overall_score": 0.0, "error": "No response text found", "evaluation_type": "healthbench"}
             
             # Convert conversation to MessageList format
             transcript = conversation_data.get('transcript', [])
             message_list = self._convert_to_message_list(transcript)
             
-            # Run evaluation using the __call__ method
-            result = eval_instance(sampler)
+            # Run evaluation with timeout protection using threading
+            import threading
+            import time
+            
+            result = None
+            exception = None
+            
+            def run_evaluation():
+                nonlocal result, exception
+                try:
+                    # Run evaluation using the __call__ method
+                    result = eval_instance(sampler)
+                except Exception as e:
+                    exception = e
+            
+            # Start evaluation in a separate thread
+            eval_thread = threading.Thread(target=run_evaluation)
+            eval_thread.daemon = True
+            eval_thread.start()
+            
+            # Wait for completion with timeout (30 seconds)
+            eval_thread.join(timeout=30)
+            
+            if eval_thread.is_alive():
+                logger.warning("HealthBench evaluation timed out after 30 seconds")
+                console.print("[yellow]HealthBench evaluation timed out[/yellow]")
+                return {"overall_score": 0.0, "error": "Evaluation timeout", "evaluation_type": "healthbench"}
+            
+            if exception:
+                logger.error(f"HealthBench evaluation failed: {exception}")
+                return {"overall_score": 0.0, "error": str(exception), "evaluation_type": "healthbench"}
+            
+            if result is None:
+                logger.error("HealthBench evaluation returned no result")
+                return {"overall_score": 0.0, "error": "No evaluation result", "evaluation_type": "healthbench"}
             
             # Convert result to metadata format
             metadata = self._convert_result_to_metadata(result)
@@ -104,7 +170,7 @@ class WhispeyEvaluationRunner:
         except Exception as e:
             logger.error(f"HealthBench evaluation failed: {e}")
             console.print(f"[red]HealthBench evaluation failed: {e}[/red]")
-            return {"error": str(e)}
+            return {"error": str(e), "overall_score": 0.0, "evaluation_type": "healthbench"}
     
     def _convert_to_message_list(self, transcript: list) -> MessageList:
         """Convert transcript to MessageList format"""
