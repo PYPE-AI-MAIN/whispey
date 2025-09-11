@@ -39,10 +39,30 @@ from eval_types import Eval, EvalResult, MessageList, SamplerBase, SingleEvalRes
 
 
 
-# Use local files for faster evaluation
-INPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "healthbench", "healthbench_oss_eval.jsonl")
-INPUT_PATH_HARD = os.path.join(os.path.dirname(__file__), "..", "data", "healthbench", "healthbench_hard.jsonl")
-INPUT_PATH_CONSENSUS = os.path.join(os.path.dirname(__file__), "..", "data", "healthbench", "healthbench_consensus.jsonl")
+# Use local files for faster evaluation if available, otherwise fall back to remote URLs
+def get_healthbench_path(filename):
+    """Get HealthBench data path, preferring local files over remote URLs"""
+    import logging
+    logger = logging.getLogger("whispey.evaluation")
+    
+    local_path = os.path.join(os.path.dirname(__file__), "..", "data", "healthbench", filename)
+    if os.path.exists(local_path):
+        logger.info(f"Using local HealthBench data: {local_path}")
+        return local_path
+    
+    # Fall back to remote URLs
+    remote_urls = {
+        "healthbench_oss_eval.jsonl": "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl",
+        "healthbench_hard.jsonl": "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/hard_2025-05-08-21-00-10.jsonl",
+        "healthbench_consensus.jsonl": "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/consensus_2025-05-09-20-00-46.jsonl"
+    }
+    remote_url = remote_urls.get(filename, remote_urls["healthbench_oss_eval.jsonl"])
+    logger.info(f"Using remote HealthBench data: {remote_url}")
+    return remote_url
+
+INPUT_PATH = get_healthbench_path("healthbench_oss_eval.jsonl")
+INPUT_PATH_HARD = get_healthbench_path("healthbench_hard.jsonl")
+INPUT_PATH_CONSENSUS = get_healthbench_path("healthbench_consensus.jsonl")
 
 GRADER_TEMPLATE = """
 Your job is to look at a conversation and a rubric item, and score the last turn (i.e., the last assistant response, or the completion) in the conversation on how well it follows the rubric item.
