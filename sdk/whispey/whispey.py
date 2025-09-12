@@ -10,8 +10,159 @@ from whispey.send_log import send_to_whispey
 
 logger = logging.getLogger("observe_session")
 
+# Import HealthBench evaluation functionality
+def _import_healthbench_eval():
+    """Lazy import of HealthBench evaluation to avoid dependency issues"""
+    try:
+        import sys
+        import os
+        eval_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'eval')
+        if eval_path not in sys.path:
+            sys.path.append(eval_path)
+        
+        # Use fast evaluation with fewer examples for best performance
+        from fast_healthbench_eval import fast_healthbench_evaluation
+        from simple_healthbench_eval import check_openai_api_key
+        return fast_healthbench_evaluation, check_openai_api_key
+    except ImportError as e:
+        logger.warning(f"HealthBench evaluation not available: {e}")
+        return None, None
+
 # Global session storage - store data, not class instances
 _session_data_store = {}
+
+
+def _run_healthbench_evaluation(transcript_data: list, eval_config: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Run HealthBench evaluation on transcript data
+    
+    Args:
+        transcript_data: List of transcript turns with user/assistant messages
+        eval_config: Configuration for evaluation (grader_model, num_examples, etc.)
+    
+    Returns:
+        Dict containing evaluation results or error information
+    """
+    try:
+        # Import HealthBench evaluation functions
+        evaluate_transcription_healthbench, check_openai_api_key = _import_healthbench_eval()
+        
+        if not evaluate_transcription_healthbench:
+            return {
+                "evaluation_type": "healthbench",
+                "success": False,
+                "error": "HealthBench evaluation not available - missing dependencies"
+            }
+        
+        # Check if OpenAI API key is available
+        if not check_openai_api_key():
+            return {
+                "evaluation_type": "healthbench",
+                "success": False,
+                "error": "OpenAI API key not found - required for HealthBench evaluation"
+            }
+        
+        # Quick API connectivity test
+        try:
+            import openai
+            client = openai.OpenAI()
+            # Test with a minimal request
+            test_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "Test"}],
+                max_tokens=1,
+                timeout=10
+            )
+            logger.info("✅ OpenAI API connectivity confirmed")
+        except Exception as api_error:
+            logger.error(f"❌ OpenAI API connectivity test failed: {api_error}")
+            return {
+                "evaluation_type": "healthbench",
+                "success": False,
+                "error": f"OpenAI API connectivity issue: {str(api_error)}",
+                "evaluated_at": datetime.now().isoformat()
+            }
+        
+        # Convert transcript data to the expected format
+        messages = []
+        for turn in transcript_data:
+            # Handle different transcript formats
+            if isinstance(turn, dict):
+                # Try to extract role and content from different possible formats
+                role = turn.get('role') or turn.get('speaker') or 'unknown'
+                content = turn.get('content') or turn.get('text') or turn.get('message', '')
+                
+                if role and content:
+                    # Normalize role names
+                    if role.lower() in ['user', 'human', 'customer']:
+                        role = 'user'
+                    elif role.lower() in ['assistant', 'agent', 'ai']:
+                        role = 'assistant'
+                    
+                    messages.append({
+                        "role": role,
+                        "content": str(content)
+                    })
+        
+        if len(messages) < 2:
+            return {
+                "evaluation_type": "healthbench",
+                "success": False,
+                "error": "Insufficient transcript data - need at least user and assistant messages"
+            }
+        
+        # Prepare transcription format for evaluation
+        transcription = {"messages": messages}
+        
+        # Get evaluation configuration
+        eval_config = eval_config or {}
+        grader_model = eval_config.get('grader_model', 'gpt-4o-mini')
+        num_examples = eval_config.get('num_examples', None)
+        subset_name = eval_config.get('subset_name', None)
+        
+        logger.info(f"🧪 Running HealthBench evaluation with {len(messages)} messages using {grader_model}")
+        
+        # Run the evaluation (now using fast evaluation with built-in timeout)
+        try:
+            # Use the fast evaluation function with fewer examples
+            result = evaluate_transcription_healthbench(
+                transcription=transcription,
+                grader_model=grader_model,
+                num_examples=num_examples,  # Use the configured number of examples
+                subset_name=subset_name,
+                timeout_seconds=15  # 15 second timeout should be enough for 1 example
+            )
+            
+        except Exception as eval_error:
+            logger.error(f"💥 HealthBench evaluation failed: {eval_error}")
+            return {
+                "evaluation_type": "healthbench",
+                "success": False,
+                "error": f"Evaluation failed: {str(eval_error)}",
+                "evaluated_at": datetime.now().isoformat()
+            }
+        
+        # Add metadata about the evaluation
+        result["evaluation_type"] = "healthbench"
+        result["transcript_turns"] = len(messages)
+        result["grader_model"] = grader_model
+        result["evaluated_at"] = datetime.now().isoformat()
+        
+        if result.get("evaluation_successful"):
+            logger.info(f"✅ HealthBench evaluation completed - Score: {result.get('score')}")
+        else:
+            logger.warning(f"⚠️ HealthBench evaluation failed: {result.get('error')}")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Error running HealthBench evaluation: {e}")
+        return {
+            "evaluation_type": "healthbench",
+            "success": False,
+            "error": str(e),
+            "evaluated_at": datetime.now().isoformat()
+        }
 
 
 def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=False, otel_endpoint=None, telemetry_instance=None, **kwargs):
@@ -186,6 +337,106 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
             whispey_data["metadata"]["bug_reports"] = session_data['bug_reports']
         if 'bug_flagged_turns' in session_data:
             whispey_data["metadata"]["bug_flagged_turns"] = session_data['bug_flagged_turns']
+
+    # Check if evaluation is requested via dynamic parameters
+    dynamic_params = session_info.get('dynamic_params', {})
+    eval_type = dynamic_params.get('eval')
+    
+    if eval_type == 'healthbench':
+        logger.info(f"🧪 HealthBench evaluation requested for session {session_id}")
+        
+        # Get transcript data for evaluation
+        transcript_for_eval = []
+        
+        # First try transcript_json (standard format)
+        if whispey_data.get("transcript_json") and len(whispey_data["transcript_json"]) > 0:
+            transcript_for_eval = whispey_data["transcript_json"]
+            logger.info(f"🔍 Using transcript_json with {len(transcript_for_eval)} messages")
+        
+        # Then try transcript_with_metrics (turn-based format)
+        elif whispey_data.get("transcript_with_metrics") and len(whispey_data["transcript_with_metrics"]) > 0:
+            logger.info(f"🔍 Processing {len(whispey_data['transcript_with_metrics'])} turns from transcript_with_metrics")
+            
+            for i, turn in enumerate(whispey_data["transcript_with_metrics"]):
+                # Check for both possible field names (agent_response is the actual field name)
+                user_content = turn.get('user_transcript', '').strip()
+                agent_content = (turn.get('agent_response', '') or turn.get('assistant_response', '')).strip()
+                
+                logger.debug(f"Turn {i}: user='{user_content[:50]}...', agent='{agent_content[:50]}...'")
+                
+                if user_content and agent_content:
+                    transcript_for_eval.extend([
+                        {"role": "user", "content": user_content},
+                        {"role": "assistant", "content": agent_content}
+                    ])
+                elif user_content or agent_content:
+                    logger.warning(f"Turn {i} incomplete: user={bool(user_content)}, agent={bool(agent_content)}")
+        
+        # Log what we found
+        if transcript_for_eval:
+            logger.info(f"🔍 Prepared {len(transcript_for_eval)} messages for HealthBench evaluation")
+        else:
+            logger.warning("🔍 No transcript data found for evaluation")
+            logger.debug(f"Available keys in whispey_data: {list(whispey_data.keys())}")
+            if whispey_data.get("transcript_with_metrics"):
+                sample_turn = whispey_data["transcript_with_metrics"][0] if whispey_data["transcript_with_metrics"] else {}
+                logger.debug(f"Sample turn keys: {list(sample_turn.keys())}")
+                logger.debug(f"Sample turn content: {sample_turn}")
+        
+        if transcript_for_eval:
+            # Get evaluation configuration from dynamic parameters
+            eval_config = {
+                'grader_model': dynamic_params.get('eval_grader_model', 'gpt-4o-mini'),
+                'num_examples': dynamic_params.get('eval_num_examples', None),
+                'subset_name': dynamic_params.get('eval_subset_name', None)
+            }
+            
+            # Run HealthBench evaluation in a separate thread to prevent blocking
+            import threading
+            import queue
+            
+            result_queue = queue.Queue()
+            
+            def run_eval_thread():
+                try:
+                    result = _run_healthbench_evaluation(transcript_for_eval, eval_config)
+                    result_queue.put(("success", result))
+                except Exception as e:
+                    result_queue.put(("error", str(e)))
+            
+            # Start evaluation in background thread
+            eval_thread = threading.Thread(target=run_eval_thread, daemon=True)
+            eval_thread.start()
+            
+            # Wait for result with timeout
+            try:
+                status, eval_result = result_queue.get(timeout=30)  # 30 second timeout
+                if status == "error":
+                    logger.error(f"💥 HealthBench evaluation thread failed: {eval_result}")
+                    eval_result = {
+                        "evaluation_type": "healthbench",
+                        "success": False,
+                        "error": f"Evaluation thread failed: {eval_result}",
+                        "evaluated_at": datetime.now().isoformat()
+                    }
+            except queue.Empty:
+                logger.error("⏰ HealthBench evaluation timed out after 30 seconds")
+                eval_result = {
+                    "evaluation_type": "healthbench",
+                    "success": False,
+                    "error": "Evaluation timed out after 30 seconds",
+                    "evaluated_at": datetime.now().isoformat()
+                }
+            
+            # Add evaluation results to metadata
+            whispey_data["metadata"]["evaluation"] = eval_result
+        else:
+            logger.warning(f"⚠️ No transcript data available for HealthBench evaluation in session {session_id}")
+            whispey_data["metadata"]["evaluation"] = {
+                "evaluation_type": "healthbench",
+                "success": False,
+                "error": "No transcript data available for evaluation"
+            }
     
     return whispey_data
 
