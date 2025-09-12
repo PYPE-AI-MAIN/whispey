@@ -226,11 +226,6 @@ class CorrectedTranscriptCollector:
 
 
 
-
-
-
-
-
     def _ensure_trace_id(self, turn: ConversationTurn):
         """Ensure the turn has a trace ID - UNCHANGED"""
         if not turn.trace_id:

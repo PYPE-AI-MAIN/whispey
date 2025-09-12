@@ -71,7 +71,7 @@ def _run_healthbench_evaluation(transcript_data: list, eval_config: Dict[str, An
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": "Test"}],
                 max_tokens=1,
-                timeout=10
+                timeout=30
             )
             logger.info("✅ OpenAI API connectivity confirmed")
         except Exception as api_error:
@@ -130,7 +130,7 @@ def _run_healthbench_evaluation(transcript_data: list, eval_config: Dict[str, An
                 grader_model=grader_model,
                 num_examples=num_examples,  # Use the configured number of examples
                 subset_name=subset_name,
-                timeout_seconds=15  # 15 second timeout should be enough for 1 example
+                timeout_seconds=30  # 30 second timeout should be enough for 1 example
             )
             
         except Exception as eval_error:
@@ -410,7 +410,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
             
             # Wait for result with timeout
             try:
-                status, eval_result = result_queue.get(timeout=30)  # 30 second timeout
+                status, eval_result = result_queue.get(timeout=60)  # 60 second timeout
                 if status == "error":
                     logger.error(f"💥 HealthBench evaluation thread failed: {eval_result}")
                     eval_result = {
