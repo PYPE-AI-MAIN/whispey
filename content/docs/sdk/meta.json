@@ -3,6 +3,7 @@
   "pages": [
     "setup",
     "bug-reporting",
+    "healthbench-evaluation",
     "features"
   ]
 }

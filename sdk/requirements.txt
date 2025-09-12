@@ -12,3 +12,11 @@ python-dotenv
 livekit-plugins-sarvam
 livekit-plugins-noise-cancellation
 twine
+# Dependencies for health_bench evaluation
+openai>=1.0.0
+numpy
+pandas
+blobfile
+requests
+tqdm
+jinja2
