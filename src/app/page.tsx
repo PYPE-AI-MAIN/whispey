@@ -1,12 +1,10 @@
+// src/app/page.tsx
 'use client'
 
 import { useUser } from '@clerk/nextjs'
 import ProjectSelection from '../components/projects/ProjectSelection'
-import LoadingSpinner from '../components/shared/LoadingSpinner'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import Header from '../components/shared/Header'
-
 
 export default function Home() {
   const { isSignedIn, isLoaded } = useUser()
@@ -18,11 +16,5 @@ export default function Home() {
     }
   }, [isLoaded, isSignedIn, router])
 
-
-  return (
-    <div>
-    <Header />
-    <ProjectSelection isAuthLoaded={isLoaded} />
-    </div>
-  )
+  return <ProjectSelection isAuthLoaded={isLoaded} />
 }

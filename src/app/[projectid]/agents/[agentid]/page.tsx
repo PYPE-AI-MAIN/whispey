@@ -1,6 +1,7 @@
+// src/app/[projectid]/agents/[agentid]/page.tsx
 'use client'
 import { useParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import Dashboard from '@/components/Dashboard'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
@@ -64,8 +65,9 @@ function DashboardSkeleton() {
 }
 
 function AgentDashboardContent() {
-  const params = useParams()
+  const params = useParams()  
   const agentId = Array.isArray(params?.agentid) ? params.agentid[0] : params.agentid
+  
 
   // Validate agentId immediately - no loading needed
   if (!agentId || agentId === 'undefined' || agentId.trim() === '') {

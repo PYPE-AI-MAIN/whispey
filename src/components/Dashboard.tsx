@@ -248,7 +248,11 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     current.set('tab', tab)
     const search = current.toString()
     const query = search ? `?${search}` : ""
-    router.push(`/agents/${agentId}${query}`)
+    
+    // Use the full path with projectId
+    if (agent?.project_id) {
+      router.push(`/${agent.project_id}/agents/${agentId}${query}`)
+    }
   }
 
   const getEnvironmentColor = (environment: string) => {
@@ -426,7 +430,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
               </div>
 
               {/* Tab Navigation - HIDE when showing Quick Start OR No Calls Message */}
-              {!showQuickStart && !showNoCallsMessage && (
+              {/* {!showQuickStart && !showNoCallsMessage && (
                 <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 ml-8">
                   {tabs.map((tab) => {
                     const Icon = tab.icon
@@ -447,7 +451,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                     )
                   })}
                 </div>
-              )}
+              )} */}
 
               {/* VAPI button - show skeleton or button based on agent data */}
               {agentLoading ? (

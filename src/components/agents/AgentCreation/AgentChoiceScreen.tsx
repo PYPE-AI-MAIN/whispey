@@ -1,0 +1,97 @@
+"use client"
+
+import React from 'react'
+import { Button } from '@/components/ui/button'
+import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Plus, Sparkles, Eye } from 'lucide-react'
+
+interface AgentChoiceScreenProps {
+  onCreateAgent: () => void
+  onConnectAgent: () => void
+  onClose: () => void
+}
+
+const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
+  onCreateAgent,
+  onConnectAgent,
+  onClose
+}) => {
+  return (
+    <>
+      {/* Header */}
+      <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
+            <Sparkles className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          </div>
+          <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            Setup Voice Agent
+          </DialogTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Choose how you'd like to get started
+          </p>
+        </div>
+      </DialogHeader>
+
+      {/* Content */}
+      <div className="flex-1 px-6 py-4">
+        <div className="space-y-3">
+          {/* Create Agent Option */}
+          <div
+            className="group relative p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all duration-200 cursor-pointer"
+            onClick={onCreateAgent}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors">
+                <Plus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Create New Agent with Pype
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Build a new voice agent from scratch. We'll create the assistant and set up monitoring automatically.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Connect Agent Option */}
+          <div
+            className="group relative p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-teal-300 dark:hover:border-teal-600 hover:bg-teal-50/50 dark:hover:bg-teal-900/20 transition-all duration-200 cursor-pointer"
+            onClick={onConnectAgent}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 group-hover:bg-teal-200 dark:group-hover:bg-teal-900/50 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors">
+                <Eye className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Connect Existing Agent
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  Add monitoring to your existing LiveKit or Vapi voice agent. Connect and start observing immediately.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
+        <div className="flex gap-3">
+          <Button 
+            variant="outline"
+            onClick={onClose}
+            className="flex-1 h-10 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export default AgentChoiceScreen
