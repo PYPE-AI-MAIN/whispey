@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import { type Metadata } from 'next'
 import {
   ClerkProvider,
@@ -5,8 +6,10 @@ import {
   SignedOut,
 } from '@clerk/nextjs'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { ThemeProvider } from 'next-themes'
 import { PostHogProvider } from './providers'
 import './globals.css'
+import SidebarWrapper from '@/components/shared/SidebarWrapper'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -26,9 +29,6 @@ export const metadata: Metadata = {
   },
 }
 
-
-//
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -43,20 +43,29 @@ export default function RootLayout({
     >
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-      <PostHogProvider>
-          <main>
-            <SignedOut>
-              <div className="min-h-screen">
-                {children}
-              </div>
-            </SignedOut>
-            <SignedIn>
-              {children}
-            </SignedIn>
-          </main>
-          </PostHogProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <PostHogProvider>
+              <main>
+                <SignedOut>
+                  <div className="min-h-screen">
+                    {children}
+                  </div>
+                </SignedOut>
+                <SignedIn>
+                  <SidebarWrapper>
+                    {children}
+                  </SidebarWrapper>
+                </SignedIn>
+              </main>
+            </PostHogProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

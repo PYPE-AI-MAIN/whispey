@@ -124,7 +124,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
   }
 
   const handleBack = () => {
-    router.push(`/agents/${agentId}?tab=overview`)
+    router.push(`agents/${agentId}?tab=overview`)
   }
 
   const copyToClipboard = (text: string, label: string) => {

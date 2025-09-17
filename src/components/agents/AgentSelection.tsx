@@ -2,16 +2,16 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, AlertCircle, X } from 'lucide-react'
+import { AlertCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSupabaseQuery } from '../../hooks/useSupabase'
-import AgentCreationDialog from './AgentCreationDialog'
 import AgentToolbar from './AgentToolbar'
 import AgentList from './AgentList'
 import AgentEmptyStates from './AgentEmptyStates'
 import AgentDeleteDialog from './AgentDeleteDialog'
 import AdaptiveTutorialEmptyState from './AdaptiveTutorialEmptyState'
 import Header from '../shared/Header'
+import AgentCreationDialog from './AgentCreation/AgentCreationDialog'
 
 interface Agent {
   id: string
@@ -72,13 +72,6 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
     ],
     orderBy: { column: 'created_at', ascending: false }
   })
-
-  const handleAgentClick = (agent: Agent) => {
-    setSelectedAgent(agent.id)
-    setTimeout(() => {
-      router.push(`/agents/${agent.id}`)
-    }, 150)
-  }
 
   const handleCreateAgent = () => {
     setShowCreateDialog(true)
@@ -148,34 +141,29 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#fafafa' }}>
-        <Header breadcrumb={breadcrumb} />
-        <div className="flex items-center justify-center py-32">
-          <div className="text-center space-y-4">
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
-            <p className="text-sm font-medium text-gray-600">Loading monitoring setup</p>
-          </div>
-        </div>
-      </div>
+      <p>Loading...</p> // TODO: fix
+
+
+      
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#fafafa' }}>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header breadcrumb={breadcrumb} />
         <div className="flex items-center justify-center py-32">
-          <div className="text-center space-y-6 max-w-sm">
-            <div className="w-16 h-16 bg-white rounded-2xl border border-gray-200 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-8 h-8 text-red-400" />
+          <div className="text-center space-y-5 max-w-sm">
+            <div className="w-14 h-14 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-7 h-7 text-red-400 dark:text-red-500" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Unable to Load Monitoring</h3>
-              <p className="text-sm text-gray-500 mt-2">{error}</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Unable to Load Monitoring</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{error}</p>
             </div>
             <Button 
               onClick={() => window.location.reload()} 
-              className="bg-blue-500 hover:bg-blue-600 text-white"
+              className="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white"
             >
               Try Again
             </Button>
@@ -186,9 +174,7 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#fafafa' }}>
-      <Header breadcrumb={breadcrumb} />
-      
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <main className="max-w-6xl mx-auto px-8 py-8">
         <AgentToolbar
           searchQuery={searchQuery}
@@ -207,7 +193,7 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
             viewMode={viewMode}
             selectedAgent={selectedAgent}
             copiedAgentId={copiedAgentId}
-            onAgentClick={handleAgentClick}
+            projectId={projectId}
             onCopyAgentId={handleCopyAgentId}
             onDeleteAgent={setShowDeleteConfirm}
           />
@@ -246,20 +232,20 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
           />
           
           {/* Slide-out Sheet */}
-          <div className="fixed right-0 top-0 h-full w-4/5 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col">
+          <div className="fixed right-0 top-0 h-full w-4/5 bg-white dark:bg-gray-900 z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-l border-gray-300 flex-shrink-0 bg-gray-100">
+            <div className="flex items-center justify-between p-6 border-l border-gray-300 dark:border-gray-700 flex-shrink-0 bg-gray-100 dark:bg-gray-800">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Integration Guide</h2>
-                <p className="text-sm text-gray-600 mt-1">Add monitoring to your voice agents</p>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Integration Guide</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Add monitoring to your voice agents</p>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowHelpDialog(false)}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </Button>
             </div>
             

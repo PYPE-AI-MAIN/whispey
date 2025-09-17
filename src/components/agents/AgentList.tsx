@@ -17,7 +17,7 @@ interface AgentListProps {
   viewMode: 'grid' | 'list'
   selectedAgent: string | null
   copiedAgentId: string | null
-  onAgentClick: (agent: Agent) => void
+  projectId: string
   onCopyAgentId: (agentId: string, e: React.MouseEvent) => void
   onDeleteAgent: (agent: Agent) => void
 }
@@ -27,13 +27,13 @@ const AgentList: React.FC<AgentListProps> = ({
   viewMode,
   selectedAgent,
   copiedAgentId,
-  onAgentClick,
+  projectId,
   onCopyAgentId,
   onDeleteAgent
 }) => {
   if (viewMode === 'list') {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
         {agents.map((agent, index) => (
           <AgentListItem
             key={agent.id}
@@ -42,7 +42,7 @@ const AgentList: React.FC<AgentListProps> = ({
             isSelected={selectedAgent === agent.id}
             isCopied={copiedAgentId === agent.id}
             isLastItem={index === agents.length - 1}
-            onClick={() => onAgentClick(agent)}
+            projectId={projectId}
             onCopyId={(e) => onCopyAgentId(agent.id, e)}
             onDelete={() => onDeleteAgent(agent)}
           />
@@ -61,7 +61,7 @@ const AgentList: React.FC<AgentListProps> = ({
           isSelected={selectedAgent === agent.id}
           isCopied={copiedAgentId === agent.id}
           isLastItem={false}
-          onClick={() => onAgentClick(agent)}
+          projectId={projectId}
           onCopyId={(e) => onCopyAgentId(agent.id, e)}
           onDelete={() => onDeleteAgent(agent)}
         />

@@ -1,3 +1,4 @@
+// src/lib/auth.ts
 import crypto from 'crypto';
 import { supabase } from './supabase';
 import { TokenVerificationResult } from '../types/logs';
