@@ -1,5 +1,6 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,46 +35,133 @@ import {
   Activity
 } from 'lucide-react'
 
-// Mock data structure
-const mockApiKey = {
-  id: 'ak_1234567890abcdef',
-  name: 'Production Key',
-  masked_key: 'pype_1234...cdef',
-  created_at: '2024-01-15T10:30:00Z',
-  last_used_at: '2024-01-20T14:22:00Z',
-  usage_count: 1247,
-  is_active: true
-}
-
 interface APIKey {
   id: string
   name: string
   masked_key: string
   created_at: string
-  last_used_at: string | null
-  usage_count: number
+  last_used: string | null
   is_active: boolean
   full_key?: string
+  user_clerk_id?: string
+  legacy?: boolean
 }
 
 const ApiKeys = () => {
-  const [apiKeys, setApiKeys] = useState<APIKey[]>([mockApiKey])
-  const [loading, setLoading] = useState<boolean>(false)
-  const [showCreateDialog, setShowCreateDialog] = useState<boolean>(false)
+  const params = useParams()
+  const projectId = params?.projectid as string
+  
+  const [apiKeys, setApiKeys] = useState<APIKey[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [showViewKeyDialog, setShowViewKeyDialog] = useState<APIKey | null>(null)
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState<APIKey | null>(null)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<APIKey | null>(null)
   const [showNewKeyDialog, setShowNewKeyDialog] = useState<boolean>(false)
   const [newKeyData, setNewKeyData] = useState<APIKey | null>(null)
   const [regeneratingKey, setRegeneratingKey] = useState<string | null>(null)
-  const [deletingKey, setDeletingKey] = useState<string | null>(null)
-  const [newKeyName, setNewKeyName] = useState<string>('')
+  const [viewingKey, setViewingKey] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<boolean>(false)
-  const [showNewKey, setShowNewKey] = useState<boolean>(false)
+  const [showFullKey, setShowFullKey] = useState<boolean>(false)
+
+  // Fetch API keys on component mount
+  useEffect(() => {
+    if (projectId) {
+      fetchApiKeys()
+    }
+  }, [projectId])
+
+
+  const fetchApiKeys = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/projects/${projectId}/api-keys`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch API keys')
+      }
+      
+      const data = await response.json()
+      
+      if (data.success === false) {
+        throw new Error(data.error || 'API returned error')
+      }
+      
+      setApiKeys(data.keys || [])
+      
+    } catch (error) {
+      setApiKeys([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
+  const handleViewFullKey = async (apiKey: APIKey) => {
+    try {
+      setViewingKey(apiKey.id)
+      const response = await fetch(`/api/projects/${projectId}/api-keys/${apiKey.id}/decrypt`, {
+        method: 'POST'
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to decrypt key')
+      }
+      
+      const data = await response.json()
+      
+      // Update the specific key in the array with the full key
+      setApiKeys(prev => prev.map(key => 
+        key.id === apiKey.id 
+          ? { ...key, full_key: data.full_key }
+          : key
+      ))
+    } catch (error) {
+      console.error('Error decrypting key:', error)
+      alert('Failed to decrypt API key')
+    } finally {
+      setViewingKey(null)
+    }
+  }
+
+  const handleRegenerateKey = async () => {
+    if (!showRegenerateConfirm) return
+    
+    try {
+      setRegeneratingKey(showRegenerateConfirm.id)
+      // Add leading slash here as well
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'regenerate_token' })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to regenerate token')
+      }
+      
+      const data = await response.json()
+      
+      await fetchApiKeys()
+      
+      setNewKeyData({ 
+        ...showRegenerateConfirm, 
+        full_key: data.api_token,
+        created_at: new Date().toISOString()
+      })
+      setShowRegenerateConfirm(null)
+      setShowNewKeyDialog(true)
+    } catch (error) {
+      console.error('Error regenerating key:', error)
+      alert('Failed to regenerate API key')
+    } finally {
+      setRegeneratingKey(null)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', { 
       month: 'short', 
-      day: 'numeric'
+      day: 'numeric',
+      year: 'numeric'
     })
   }
 
@@ -98,67 +186,14 @@ const ApiKeys = () => {
     }
   }
 
-  const handleCreateKey = () => {
-    if (!newKeyName.trim()) return
-    
-    setLoading(true)
-    
-    setTimeout(() => {
-      const newKey: APIKey = {
-        id: 'ak_' + Math.random().toString(36).substr(2, 16),
-        name: newKeyName,
-        full_key: 'pype_' + Math.random().toString(36).substr(2, 40),
-        masked_key: 'pype_' + Math.random().toString(36).substr(2, 4) + '...' + Math.random().toString(36).substr(2, 4),
-        created_at: new Date().toISOString(),
-        last_used_at: null,
-        usage_count: 0,
-        is_active: true
-      }
-      
-      setApiKeys([...apiKeys, newKey])
-      setNewKeyData(newKey)
-      setShowCreateDialog(false)
-      setShowNewKeyDialog(true)
-      setNewKeyName('')
-      setLoading(false)
-    }, 1000)
-  }
-
-  const handleRegenerateKey = (keyId: string) => {
-    setRegeneratingKey(keyId)
-    
-    setTimeout(() => {
-      const updatedKeys = apiKeys.map(key => {
-        if (key.id === keyId) {
-          return {
-            ...key,
-            full_key: 'pype_' + Math.random().toString(36).substr(2, 40),
-            masked_key: 'pype_' + Math.random().toString(36).substr(2, 4) + '...' + Math.random().toString(36).substr(2, 4),
-            created_at: new Date().toISOString()
-          }
-        }
-        return key
-      })
-      
-      setApiKeys(updatedKeys)
-      const updatedKey = updatedKeys.find(k => k.id === keyId)
-      if (updatedKey) {
-        setNewKeyData(updatedKey)
-      }
-      setShowRegenerateConfirm(null)
-      setShowNewKeyDialog(true)
-      setRegeneratingKey(null)
-    }, 1000)
-  }
-
-  const handleDeleteKey = (keyId: string) => {
-    setDeletingKey(keyId)
-    
-    setTimeout(() => {
-      setApiKeys(apiKeys.filter(key => key.id !== keyId))
-      setShowDeleteConfirm(null)
-      setDeletingKey(null)
-    }, 1000)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -169,17 +204,9 @@ const ApiKeys = () => {
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
             API Keys
           </h1>
-          {/* <Button 
-            onClick={() => setShowCreateDialog(true)}
-            size="sm"
-            className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
-          >
-            <Plus className="w-3 h-3 mr-1.5" />
-            New key
-          </Button> */}
         </div>
         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-          Manage API keys for secure programmatic access to this agent. Keys are hashed and cannot be retrieved after creation.
+          Manage API keys for secure programmatic access to this project. Keys are encrypted and can be viewed when needed.
         </p>
       </div>
 
@@ -192,7 +219,7 @@ const ApiKeys = () => {
               Security Notice
             </p>
             <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-              Keys are displayed only once after creation. Store them securely and regenerate if compromised.
+              Keys are securely encrypted. Use "View" to decrypt and copy when needed.
             </p>
           </div>
         </div>
@@ -209,16 +236,8 @@ const ApiKeys = () => {
               No API keys yet
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto leading-relaxed">
-              Create your first API key to start integrating with this agent programmatically.
+              Create your first project to generate an API key automatically.
             </p>
-            <Button 
-              onClick={() => setShowCreateDialog(true)}
-              size="sm"
-              className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
-            >
-              <Plus className="w-3 h-3 mr-1.5" />
-              Create key
-            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -232,10 +251,18 @@ const ApiKeys = () => {
                       <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {apiKey.name}
                         </h3>
+                        {apiKey.legacy && (
+                          <Badge 
+                            variant="outline"
+                            className="text-xs px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800"
+                          >
+                            Legacy
+                          </Badge>
+                        )}
                         <Badge 
                           variant="outline"
                           className={apiKey.is_active ? 
@@ -249,10 +276,103 @@ const ApiKeys = () => {
                       <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mb-2">
                         <span className="font-mono tracking-wider">{apiKey.masked_key}</span>
                       </div>
+
+                      {apiKey.full_key && (
+                        <div className="flex items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded border">
+                          <Input
+                            type={showFullKey ? 'text' : 'password'}
+                            value={apiKey.full_key}
+                            readOnly
+                            className="font-mono min-w-[700px] w-full text-xs h-7 pr-10 bg-transparent border-none p-0 text-gray-900 dark:text-gray-100 focus-visible:ring-0"
+                          />
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowFullKey(!showFullKey)}
+                              className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                            >
+                              {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopyKey(apiKey.full_key || '')}
+                              className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {copiedKey && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mb-2">
+                          Copied to clipboard
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          <span>Created {formatDate(apiKey.created_at)}</span>
+                        </div>
+                        {apiKey.last_used && (
+                          <div className="flex items-center gap-1">
+                            <Activity className="w-3 h-3" />
+                            <span>Last used {formatRelativeTime(apiKey.last_used)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-1">
+                    {!apiKey.legacy ? (
+                      // New system key - can be viewed
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewFullKey(apiKey)}
+                              disabled={viewingKey === apiKey.id}
+                              className="h-7 px-2 text-gray-500 dark:text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 dark:hover:text-green-400"
+                            >
+                              {viewingKey === apiKey.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Eye className="w-3 h-3" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">View full key</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      // Legacy key - cannot be viewed
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled
+                              className="h-7 px-2 text-gray-400 dark:text-gray-500"
+                            >
+                              <Shield className="w-3 h-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Legacy key - cannot be viewed</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -271,92 +391,89 @@ const ApiKeys = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="text-xs">Regenerate key</p>
+                          <p className="text-xs">
+                            {apiKey.legacy ? 'Regenerate and migrate to new system' : 'Regenerate key'}
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    {/* <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowDeleteConfirm(apiKey)}
-                      disabled={deletingKey === apiKey.id}
-                      className="h-7 px-2 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                    >
-                      {deletingKey === apiKey.id ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3 h-3" />
-                      )}
-                    </Button> */}
                   </div>
                 </div>
-
-                {/* Metadata */}
-                {/* <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>Created {formatDate(apiKey.created_at)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Activity className="w-3 h-3" />
-                    <span>Last used {formatRelativeTime(apiKey.last_used_at)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span>{apiKey.usage_count.toLocaleString()} requests</span>
-                  </div>
-                </div> */}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+      {/* View Key Dialog */}
+      <Dialog open={showViewKeyDialog !== null} onOpenChange={() => setShowViewKeyDialog(null)}>
+        <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Create API key</DialogTitle>
-            <DialogDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              Choose a descriptive name to help identify this key later.
-            </DialogDescription>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                <Eye className="w-4 h-4 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">API Key</DialogTitle>
+                <DialogDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Copy this key for your applications.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder="e.g., Production key, Development access"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              className="h-9 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-              autoFocus
-            />
-          </div>
+          
+          {showViewKeyDialog && (
+            <div className="py-4">
+              <div className="relative">
+                <Input
+                  type={showFullKey ? 'text' : 'password'}
+                  value={showViewKeyDialog.full_key || ''}
+                  readOnly
+                  className="font-mono text-xs h-9 pr-16 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFullKey(!showFullKey)}
+                    className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  >
+                    {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopyKey(showViewKeyDialog.full_key || '')}
+                    className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+              {copiedKey && (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                  Copied to clipboard
+                </p>
+              )}
+            </div>
+          )}
+          
           <DialogFooter>
-            <Button
-              variant="outline"
+            <Button 
               onClick={() => {
-                setShowCreateDialog(false)
-                setNewKeyName('')
+                setShowViewKeyDialog(null)
+                setShowFullKey(false)
+                setCopiedKey(false)
               }}
-              className="h-8 px-3 text-xs border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateKey}
-              disabled={!newKeyName.trim() || loading}
               className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {loading ? (
-                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-              ) : (
-                <Plus className="w-3 h-3 mr-1.5" />
-              )}
-              Create key
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Success Dialog */}
+      {/* Regenerate Success Dialog */}
       <Dialog open={showNewKeyDialog} onOpenChange={setShowNewKeyDialog}>
         <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
@@ -365,9 +482,9 @@ const ApiKeys = () => {
                 <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Your API key is ready</DialogTitle>
+                <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Key regenerated successfully</DialogTitle>
                 <DialogDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Copy this key now — you won't be able to see it again.
+                  Your new API key is ready. The old key has been invalidated.
                 </DialogDescription>
               </div>
             </div>
@@ -377,7 +494,7 @@ const ApiKeys = () => {
             <div className="py-4">
               <div className="relative">
                 <Input
-                  type={showNewKey ? 'text' : 'password'}
+                  type={showFullKey ? 'text' : 'password'}
                   value={newKeyData.full_key || ''}
                   readOnly
                   className="font-mono text-xs h-9 pr-16 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
@@ -386,10 +503,10 @@ const ApiKeys = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowNewKey(!showNewKey)}
+                    onClick={() => setShowFullKey(!showFullKey)}
                     className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
-                    {showNewKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </Button>
                   <Button
                     variant="ghost"
@@ -414,12 +531,12 @@ const ApiKeys = () => {
               onClick={() => {
                 setShowNewKeyDialog(false)
                 setNewKeyData(null)
-                setShowNewKey(false)
+                setShowFullKey(false)
                 setCopiedKey(false)
               }}
               className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white"
             >
-              I've saved it
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -443,7 +560,7 @@ const ApiKeys = () => {
           </DialogHeader>
           <div className="py-2">
             <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-              Applications using <span className="font-medium text-gray-900 dark:text-gray-100">"{showRegenerateConfirm?.name}"</span> will lose access until updated with the new key.
+              Applications using this API key will lose access until updated with the new key.
             </p>
           </div>
           <DialogFooter>
@@ -455,62 +572,16 @@ const ApiKeys = () => {
               Cancel
             </Button>
             <Button
-              onClick={() => showRegenerateConfirm && handleRegenerateKey(showRegenerateConfirm.id)}
-              disabled={regeneratingKey === showRegenerateConfirm?.id}
+              onClick={handleRegenerateKey}
+              disabled={regeneratingKey !== null}
               className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700 text-white"
             >
-              {regeneratingKey === showRegenerateConfirm?.id ? (
+              {regeneratingKey ? (
                 <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
               ) : (
                 <RotateCcw className="w-3 h-3 mr-1.5" />
               )}
               Regenerate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
-      <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
-                <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Delete key</DialogTitle>
-                <DialogDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  This action cannot be undone.
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="py-2">
-            <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-              <span className="font-medium text-gray-900 dark:text-gray-100">"{showDeleteConfirm?.name}"</span> will be permanently deleted and any applications using it will lose access immediately.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowDeleteConfirm(null)}
-              className="h-8 px-3 text-xs border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => showDeleteConfirm && handleDeleteKey(showDeleteConfirm.id)}
-              disabled={deletingKey === showDeleteConfirm?.id}
-              className="h-8 px-3 text-xs bg-red-600 hover:bg-red-700 text-white"
-            >
-              {deletingKey === showDeleteConfirm?.id ? (
-                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-              ) : (
-                <Trash2 className="w-3 h-3 mr-1.5" />
-              )}
-              Delete key
             </Button>
           </DialogFooter>
         </DialogContent>
