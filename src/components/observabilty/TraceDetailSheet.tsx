@@ -25,15 +25,18 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useEffect, useMemo, useState } from "react"
 import { getAgentPlatform } from "@/utils/agentDetection"
+import AudioPlayer from "@/components/AudioPlayer"
 
 interface TraceDetailSheetProps {
   isOpen: boolean
   trace: any
   agent?: any
+  recordingUrl?: string
+  callStartTime?: string
   onClose: () => void
 }
 
-const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, trace, agent, onClose }) => {
+const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, trace, agent, recordingUrl, callStartTime, onClose }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [selectedView, setSelectedView] = useState<string>("pipeline")
   const [selectedNode, setSelectedNode] = useState<string>("stt")
@@ -94,6 +97,50 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       }
     }
   }, [trace, isOpen])
+
+  // Calculate audio segment info for both STT and TTS
+  const audioSegmentInfo = useMemo(() => {
+    if (!recordingUrl || !trace) {
+      return null
+    }
+
+    // Simple approach: start from 0 and let user manually seek if needed
+    // This ensures the audio always works without complex timing calculations
+    const segmentStartTime = 0
+
+    return {
+      startTime: segmentStartTime,
+      sttDuration: trace.stt_metrics?.audio_duration || 0,
+      ttsDuration: trace.tts_metrics?.audio_duration || 0
+    }
+  }, [trace?.stt_metrics?.audio_duration, trace?.tts_metrics?.audio_duration, trace?.turn_id, recordingUrl])
+
+  // Simple Audio Component
+  const SimpleAudioPlayer = ({ type, duration }: { type: 'stt' | 'tts', duration: number }) => {
+    if (!recordingUrl || !audioSegmentInfo || duration === 0) {
+      return (
+        <div className="text-sm text-gray-500 italic">
+          Audio not available
+        </div>
+      )
+    }
+
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <AudioPlayer
+          url={recordingUrl}
+          s3Key=""
+          callId={trace.turn_id}
+          className="border-0 bg-transparent p-0"
+          segmentStartTime={audioSegmentInfo.startTime}
+          segmentDuration={duration}
+        />
+        <div className="text-xs text-gray-600 mt-2 italic">
+          💡 Tip: Use the seek bar to find the exact {type.toUpperCase()} segment
+        </div>
+      </div>
+    )
+  }
 
   if (!isOpen || !trace) return null
 
@@ -366,8 +413,15 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                   )}
                 </h4>
                 {selectedStage.id === "stt" && (
-                  <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
-                    Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  <div className="space-y-3">
+                    <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
+                      Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                    </div>
+                    
+                    {/* Audio Player for STT Input */}
+                    {trace.stt_metrics?.audio_duration && (
+                      <SimpleAudioPlayer type="stt" duration={trace.stt_metrics.audio_duration} />
+                    )}
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
@@ -403,8 +457,15 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
-                  <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
-                    Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  <div className="space-y-3">
+                    <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
+                      Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                    </div>
+                    
+                    {/* Audio Player for TTS Output */}
+                    {trace.tts_metrics?.audio_duration && (
+                      <SimpleAudioPlayer type="tts" duration={trace.tts_metrics.audio_duration} />
+                    )}
                   </div>
                 )}
               </div>

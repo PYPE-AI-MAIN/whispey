@@ -2,6 +2,7 @@
   "title": "SDK",
   "pages": [
     "setup",
+    "recording-urls",
     "bug-reporting",
     "healthbench-evaluation",
     "features"

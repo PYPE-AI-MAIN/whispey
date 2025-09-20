@@ -1,0 +1,223 @@
+---
+title: Recording URLs
+description: Associate audio recordings with conversation sessions for enhanced analytics
+---
+
+
+Recording URLs allow you to associate audio recordings with your conversation sessions for enhanced analytics and debugging capabilities.
+
+## Overview
+
+When you export session data using the `whispey.export()` method, you can optionally provide a recording URL that will be associated with the session. This enables:
+
+- **Audio Segmentation**: Play specific segments of conversations in the dashboard
+- **Enhanced Debugging**: Listen to actual audio while reviewing metrics
+- **Quality Analysis**: Correlate audio quality with performance metrics
+
+## Basic Usage
+
+```python
+import whispey
+
+# Start a session
+session_id = await whispey.start_session(
+    agent_id="your-agent-id",
+    # ... other parameters
+)
+
+# Export session data with recording URL
+result = await whispey.export(
+    session_id,                    # Required: Session ID from start_session
+    recording_url="https://your-storage.com/recording.mp3"  # Optional: Recording URL
+)
+```
+
+## Recording URL Formats
+
+The recording URL can be in any of these formats:
+
+### Direct URLs
+```python
+# Public HTTP/HTTPS URL
+recording_url = "https://example.com/recordings/call-123.mp3"
+
+# S3 Public URL
+recording_url = "https://my-bucket.s3.amazonaws.com/recordings/call-123.mp3"
+```
+
+### Presigned URLs
+```python
+# S3 Presigned URL (recommended for private recordings)
+recording_url = "https://my-bucket.s3.amazonaws.com/recordings/call-123.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=..."
+```
+
+### Local File URLs
+```python
+# Local file (for development/testing)
+recording_url = "file:///path/to/recording.mp3"
+```
+
+## Best Practices
+
+### 1. Use Presigned URLs for Private Recordings
+```python
+import boto3
+from botocore.exceptions import ClientError
+
+def create_presigned_url(bucket_name, object_name, expiration=3600):
+    """Generate a presigned URL to share an S3 object"""
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.generate_presigned_url('get_object',
+                                                    Params={'Bucket': bucket_name,
+                                                            'Key': object_name},
+                                                    ExpiresIn=expiration)
+    except ClientError as e:
+        logging.error(e)
+        return None
+    return response
+
+# Generate presigned URL
+recording_url = create_presigned_url('my-recordings-bucket', 'call-123.mp3')
+```
+
+### 2. Ensure URL Accessibility
+```python
+# Test URL accessibility before exporting
+import requests
+
+def validate_recording_url(url):
+    """Validate that the recording URL is accessible"""
+    try:
+        response = requests.head(url, timeout=10)
+        return response.status_code == 200
+    except:
+        return False
+
+# Validate before export
+if validate_recording_url(recording_url):
+    result = await whispey.export(session_id, recording_url=recording_url)
+else:
+    print("Warning: Recording URL is not accessible")
+```
+
+### 3. Handle URL Expiration
+```python
+# For presigned URLs, ensure they don't expire too quickly
+# S3 presigned URLs typically expire in 1 hour by default
+# Consider using longer expiration times for analytics
+
+recording_url = create_presigned_url(
+    'my-bucket', 
+    'call-123.mp3', 
+    expiration=86400  # 24 hours
+)
+```
+
+## Integration Examples
+
+### With Vapi
+```python
+import whispey
+
+# Vapi provides recording URLs in webhook data
+async def handle_vapi_webhook(webhook_data):
+    session_id = webhook_data.get('sessionId')
+    recording_url = webhook_data.get('recordingUrl')
+    
+    # Export with recording URL
+    result = await whispey.export(
+        session_id,
+        recording_url=recording_url
+    )
+```
+
+### With Custom Recording System
+```python
+import whispey
+import asyncio
+
+async def process_call_with_recording(call_id):
+    # Start session
+    session_id = await whispey.start_session(
+        agent_id="your-agent-id",
+        # ... other parameters
+    )
+    
+    # Your custom recording logic here
+    recording_url = await record_call(call_id)
+    
+    # Export with recording
+    result = await whispey.export(
+        session_id,
+        recording_url=recording_url
+    )
+    
+    return result
+
+async def record_call(call_id):
+    # Your recording implementation
+    # Return the URL where the recording is stored
+    return f"https://your-storage.com/recordings/{call_id}.mp3"
+```
+
+## Dashboard Integration
+
+Once you've exported session data with recording URLs, you can:
+
+1. **View Recordings**: Access full call recordings in the dashboard
+2. **Audio Segmentation**: Play specific STT/TTS segments for each turn
+3. **Debug Issues**: Listen to actual audio while reviewing metrics
+4. **Quality Analysis**: Correlate audio quality with performance data
+
+## Troubleshooting
+
+### Common Issues
+
+**Recording URL Not Accessible**
+```python
+# Check URL format and accessibility
+print(f"Testing URL: {recording_url}")
+response = requests.head(recording_url)
+print(f"Status: {response.status_code}")
+```
+
+**Presigned URL Expired**
+```python
+# Regenerate presigned URL with longer expiration
+recording_url = create_presigned_url(
+    bucket_name, 
+    object_name, 
+    expiration=86400  # 24 hours
+)
+```
+
+**CORS Issues**
+```python
+# Ensure your storage bucket allows CORS for web playback
+# Example S3 CORS configuration:
+cors_configuration = {
+    'CORSRules': [
+        {
+            'AllowedHeaders': ['*'],
+            'AllowedMethods': ['GET'],
+            'AllowedOrigins': ['*'],
+            'ExposeHeaders': ['ETag'],
+            'MaxAgeSeconds': 3000
+        }
+    ]
+}
+```
+
+## Security Considerations
+
+- **Private Recordings**: Use presigned URLs instead of making recordings public
+- **URL Expiration**: Set appropriate expiration times for presigned URLs
+- **Access Control**: Ensure only authorized users can access recording URLs
+- **HTTPS Only**: Always use HTTPS URLs in production environments
+
+## Next Steps
+
+- Learn about [Bug Reporting](/docs/sdk/bug-reporting) for enhanced debugging
+- Explore [HealthBench Evaluation](/docs/sdk/healthbench-evaluation) for performance testing
+- Check out [SDK Features](/docs/sdk/features) for advanced capabilities
