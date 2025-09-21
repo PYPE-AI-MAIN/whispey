@@ -4,14 +4,16 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useSupabaseQuery } from '../../hooks/useSupabase'
+import { useSupabaseQuery } from '../../../hooks/useSupabase'
 import AgentToolbar from './AgentToolbar'
-import AgentList from './AgentList'
-import AgentEmptyStates from './AgentEmptyStates'
-import AgentDeleteDialog from './AgentDeleteDialog'
-import AdaptiveTutorialEmptyState from './AdaptiveTutorialEmptyState'
-import Header from '../shared/Header'
-import AgentCreationDialog from './AgentCreation/AgentCreationDialog'
+import AgentList from '../AgentList'
+import AgentDeleteDialog from '../AgentDeleteDialog'
+import AdaptiveTutorialEmptyState from './EmptyStates/AdaptiveTutorialEmptyState'
+import Header from '../../shared/Header'
+import AgentCreationDialog from '../AgentCreation/AgentCreationDialog'
+import AgentSelectionSkeleton from './AgentSelectionSkeleton'
+import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 interface Agent {
   id: string
@@ -140,12 +142,7 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
   const error = projectError || agentsError
 
   if (loading) {
-    return (
-      <p>Loading...</p> // TODO: fix
-
-
-      
-    )
+    return <AgentSelectionSkeleton />
   }
 
   if (error) {
@@ -226,41 +223,33 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
       {showHelpDialog && (
         <>
           {/* Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setShowHelpDialog(false)}
-          />
-          
-          {/* Slide-out Sheet */}
-          <div className="fixed right-0 top-0 h-full w-4/5 bg-white dark:bg-gray-900 z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-l border-gray-300 dark:border-gray-700 flex-shrink-0 bg-gray-100 dark:bg-gray-800">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Integration Guide</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Add monitoring to your voice agents</p>
+          <Sheet open={showHelpDialog} onOpenChange={setShowHelpDialog}>
+            <SheetContent 
+              side="right" 
+              className="min-w-3/4 p-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800"
+            >
+              <SheetHeader className="p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+                <SheetTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  Integration Guide
+                </SheetTitle>
+                <SheetDescription className="text-sm text-gray-600 dark:text-gray-400">
+                  Add monitoring to your voice agents
+                </SheetDescription>
+              </SheetHeader>
+              
+              <div className="flex-1 overflow-y-auto">
+                <AdaptiveTutorialEmptyState
+                  searchQuery=""
+                  totalAgents={agents?.length || 0}
+                  onClearSearch={() => {}}
+                  onCreateAgent={() => {
+                    setShowHelpDialog(false)
+                    handleCreateAgent()
+                  }}
+                />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowHelpDialog(false)}
-                className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto">
-              <AdaptiveTutorialEmptyState
-                searchQuery=""
-                totalAgents={agents?.length || 0}
-                onClearSearch={() => {}}
-                onCreateAgent={() => {
-                  setShowHelpDialog(false)
-                  handleCreateAgent()
-                }}
-              />
-            </div>
-          </div>
+            </SheetContent>
+          </Sheet>
         </>
       )}
     </div>

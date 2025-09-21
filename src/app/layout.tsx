@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import { type Metadata } from 'next'
 import {
   ClerkProvider,
@@ -10,6 +9,7 @@ import { ThemeProvider } from 'next-themes'
 import { PostHogProvider } from './providers'
 import './globals.css'
 import SidebarWrapper from '@/components/shared/SidebarWrapper'
+import FeedbackWidget from '@/components/feedback/FeedbackWidget'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -62,6 +62,7 @@ export default function RootLayout({
                   <SidebarWrapper>
                     {children}
                   </SidebarWrapper>
+                  <FeedbackWidget />
                 </SignedIn>
               </main>
             </PostHogProvider>

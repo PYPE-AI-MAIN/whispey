@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🚀 Calling PypeAI create-agent API...')
 
-    const response = await fetch('https://api.pypeai.com/create-agent', {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/create-agent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

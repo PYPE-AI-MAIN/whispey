@@ -5,14 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Loader2, CheckCircle, ArrowLeft, AlertCircle, Zap, Activity, Info, Copy, ArrowRight } from 'lucide-react'
+import { Loader2, CheckCircle, AlertCircle, Zap, Activity, Info, Copy, ArrowRight } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -22,6 +15,7 @@ interface CreateAgentFlowProps {
   onClose: () => void
   onAgentCreated: (agentData: any) => void
   onLoadingChange: (loading: boolean) => void
+  isPypeAgent?: boolean
 }
 
 const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
@@ -29,7 +23,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   onBack,
   onClose,
   onAgentCreated,
-  onLoadingChange
+  onLoadingChange,
+  isPypeAgent
 }) => {
   const [currentStep, setCurrentStep] = useState<'form' | 'creating' | 'success'>('form')
   const [selectedPlatform, setSelectedPlatform] = useState('livekit')
@@ -40,30 +35,67 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [createdAgentData, setCreatedAgentData] = useState<any>(null)
   const [copiedId, setCopiedId] = useState(false)
-  const [apiKey, setApiKey] = useState('')
+
+  const fetchProjectApiKey = async (): Promise<string> => {
+    try {
+      // Get the project's API keys
+      const response = await fetch(`/api/projects/${projectId}/api-keys`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch API keys')
+      }
+      
+      const data = await response.json()
+      const keys = data.keys || []
+      
+      if (keys.length === 0) {
+        throw new Error('No API key found for this project')
+      }
+      
+      // Get the first (most recent) key
+      const keyToUse = keys[0]
+      
+      if (keyToUse.legacy) {
+        throw new Error('Cannot use legacy API key. Please regenerate your API key first.')
+      }
+      
+      // Decrypt the key
+      const decryptResponse = await fetch(`/api/projects/${projectId}/api-keys/${keyToUse.id}/decrypt`, {
+        method: 'POST'
+      })
+      
+      if (!decryptResponse.ok) {
+        throw new Error('Failed to decrypt API key')
+      }
+      
+      const decryptData = await decryptResponse.json()
+      return decryptData.full_key
+      
+    } catch (error) {
+      console.error('Error fetching project API key:', error)
+      throw error
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
+  
     if (!formData.name.trim()) {
       setError('Agent name is required')
       return
     }
-
-    if (!apiKey.trim()) {
-      setError('PypeAI API key is required')
-      return
-    }
-
+  
     onLoadingChange(true)
     setCurrentStep('creating')
-
+  
     try {
+      // Use the fetchProjectApiKey function you already created
+      const projectApiKey = await fetchProjectApiKey()
+  
       // Step 1: Create monitoring record in your backend (Whispey)
       const agentPayload = {
         name: formData.name.trim(),
-        agent_type: selectedPlatform,
+        agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform, // Set based on flow type
         configuration: {
           description: formData.description.trim() || null,
         },
@@ -71,84 +103,84 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         environment: 'dev',
         platform: selectedPlatform
       }
-
-      const response = await fetch('/api/agents', {
+  
+      const agentResponse = await fetch('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(agentPayload),
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
+  
+      if (!agentResponse.ok) {
+        const errorData = await agentResponse.json()
         throw new Error(errorData.error || 'Failed to create monitoring record')
       }
-
-      const localAgent = await response.json()
-
-      // Step 2: Create actual voice agent infrastructure via external PypeAI API
-      const agent = {
-        name: formData.name.trim(),
-        type: 'OUTBOUND',
-        assistant: [{
+  
+      const localAgent = await agentResponse.json()
+  
+      // Step 2: Only create external agent infrastructure if it's a Pype agent
+      if (isPypeAgent) {
+        const agent = {
           name: formData.name.trim(),
-          prompt: `You are a helpful ${selectedPlatform} assistant. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
-          stt: { 
-            name: selectedPlatform === 'vapi' ? 'deepgram' : 'sarvam', 
-            language: selectedPlatform === 'vapi' ? 'en' : 'en-IN', 
-            model: selectedPlatform === 'vapi' ? 'nova-2' : 'saarika:v2.5' 
+          type: 'OUTBOUND',
+          assistant: [{
+            name: formData.name.trim(),
+            prompt: `You are a helpful ${selectedPlatform} assistant. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
+            stt: { 
+              name: selectedPlatform === 'vapi' ? 'deepgram' : 'sarvam', 
+              language: selectedPlatform === 'vapi' ? 'en' : 'en-IN', 
+              model: selectedPlatform === 'vapi' ? 'nova-2' : 'saarika:v2.5' 
+            },
+            llm: { 
+              name: 'openai', 
+              provider: 'openai', 
+              model: 'gpt-4o-mini', 
+              temperature: 0.3, 
+              api_key_env: 'OPENAI_API_KEY' 
+            },
+            tts: selectedPlatform === 'vapi' ? {
+              name: 'elevenlabs',
+              voice_id: 'H8bdWZHK2OgZwTN7ponr',
+              model: 'eleven_flash_v2_5',
+              language: 'en',
+              voice_settings: {
+                similarity_boost: 1,
+                stability: 0.7,
+                style: 0.7,
+                use_speaker_boost: false,
+                speed: 1.1
+              }
+            } : {
+              name: 'sarvam_tts',
+              target_language_code: 'en-IN',
+              model: 'bulbul:v2',
+              speaker: 'anushka',
+              loudness: 1.1,
+              speed: 0.8,
+              enable_preprocessing: true
+            },
+            vad: { name: 'silero', min_silence_duration: 0.2 },
+            first_message_mode: 'assistant_waits_for_user',
+            first_message: 'Hello! How can I help you today?'
+          }]
+        }
+  
+        const createResponse = await fetch('/api/agents/create-agent', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-api-key': projectApiKey
           },
-          llm: { 
-            name: 'openai', 
-            provider: 'openai', 
-            model: 'gpt-4o-mini', 
-            temperature: 0.3, 
-            api_key_env: 'OPENAI_API_KEY' 
-          },
-          tts: selectedPlatform === 'vapi' ? {
-            name: 'elevenlabs',
-            voice_id: 'H8bdWZHK2OgZwTN7ponr',
-            model: 'eleven_flash_v2_5',
-            language: 'en',
-            voice_settings: {
-              similarity_boost: 1,
-              stability: 0.7,
-              style: 0.7,
-              use_speaker_boost: false,
-              speed: 1.1
-            }
-          } : {
-            name: 'sarvam_tts',
-            target_language_code: 'en-IN',
-            model: 'bulbul:v2',
-            speaker: 'anushka',
-            loudness: 1.1,
-            speed: 0.8,
-            enable_preprocessing: true
-          },
-          vad: { name: 'silero', min_silence_duration: 0.2 },
-          first_message_mode: 'assistant_waits_for_user',
-          first_message: 'Hello! How can I help you today?'
-        }]
-      }
-
-      const createResponse = await fetch('/api/agents/create-agent', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey.trim()
-        },
-        body: JSON.stringify({ 
-          agent,
-          assistantId: localAgent.id  // Pass monitoring ID for linking
+          body: JSON.stringify({ 
+            agent,
+            assistantId: localAgent.id
+          })
         })
-      })
-
-      if (!createResponse.ok) {
-        const createErrorData = await createResponse.json()
-        throw new Error(createErrorData.error || createErrorData.detail || 'Failed to create agent infrastructure')
+  
+        if (!createResponse.ok) {
+          const createErrorData = await createResponse.json()
+          throw new Error(createErrorData.error || createErrorData.detail || 'Failed to create agent infrastructure')
+        }
       }
-
-      const createResult = await createResponse.json()
       
       setCreatedAgentData(localAgent)
       setCurrentStep('success')
@@ -161,6 +193,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       onLoadingChange(false)
     }
   }
+  
 
   const handleCopyId = async () => {
     if (createdAgentData?.id) {
@@ -353,39 +386,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             />
           </div>
 
-          {/* PypeAI API Key */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                PypeAI API Key
-              </label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400">
-                      <Info size={16} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Your PypeAI API key for creating agents</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            
-            <Input
-              type="password"
-              placeholder="Enter your PypeAI API key"
-              value={apiKey}
-              autoComplete="off"
-              onChange={(e) => setApiKey(e.target.value)}
-              className="h-10 px-3 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all font-mono"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              You can find your API key in your PypeAI dashboard settings
-            </p>
-          </div>
-
           {/* Description */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -423,7 +423,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={!formData.name.trim() || !apiKey.trim()}
+            disabled={!formData.name.trim()}
             className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Create Agent

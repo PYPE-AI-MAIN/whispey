@@ -23,13 +23,25 @@ import {
   List,
   FileText,
   Home,
-  Webhook
+  Webhook,
+  Phone,
+  Download,
+  Zap,
+  Link as LinkIcon,
+  User,
+  Shield,
+  UserPlus,
+  TrendingUp,
+  BarChart,
+  CreditCard,
+  History
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { GitHubStarsButton } from '../GithubLink'
 import SupportSheet from './SupportPanel'
+import { SidebarConfig } from './SidebarWrapper'
 
-// Icon mapping
+// Extended icon mapping to support new page types
 const ICONS = {
   Activity, 
   BarChart3, 
@@ -39,7 +51,18 @@ const ICONS = {
   List, 
   FileText, 
   Home, 
-  Webhook
+  Webhook,
+  Phone,
+  Download,
+  Zap,
+  Link: LinkIcon,
+  User,
+  Shield,
+  UserPlus,
+  TrendingUp,
+  BarChart,
+  CreditCard,
+  History
 } as const
 
 interface NavigationItem {
@@ -57,14 +80,6 @@ interface NavigationGroup {
   items: NavigationItem[]
 }
 
-interface SidebarConfig {
-  type: 'workspaces' | 'project-agents' | 'agent-detail'
-  context: Record<string, any>
-  navigation: NavigationItem[]
-  showBackButton: boolean
-  backPath?: string
-  backLabel?: string
-}
 
 interface SidebarProps {
   config: SidebarConfig
@@ -73,8 +88,8 @@ interface SidebarProps {
   onToggleCollapse?: () => void
 }
 
-// Pricing configurations per context - properly typed
-const PRICING_CONFIGS: Record<SidebarConfig['type'], { showPricingBox: boolean; plan: string; features: string[]; upgradeText: string; upgradeLink: string }> = {
+// Extended pricing configurations - now supports any sidebar type
+const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; features: string[]; upgradeText: string; upgradeLink: string }> = {
   workspaces: {
     showPricingBox: false,
     plan: 'Free Plan',
@@ -95,6 +110,21 @@ const PRICING_CONFIGS: Record<SidebarConfig['type'], { showPricingBox: boolean; 
     features: [],
     upgradeText: '',
     upgradeLink: ''
+  },
+  // New configurations for new page types
+  'project-reports': {
+    showPricingBox: true,
+    plan: 'Pro Plan',
+    features: ['Advanced Reports', 'Data Export', 'Custom Dashboards'],
+    upgradeText: 'Upgrade to Pro',
+    upgradeLink: '/pricing'
+  },
+  'project-integrations': {
+    showPricingBox: false,
+    plan: 'Enterprise',
+    features: ['Unlimited Integrations', 'Custom Webhooks', 'Priority Support'],
+    upgradeText: 'Contact Sales',
+    upgradeLink: '/contact'
   }
 } as const
 
@@ -109,27 +139,88 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
     setMounted(true)
   }, [])
 
-  const isActiveLink = (path: string) => {
-    // Handle tab-based navigation
-    if (path.includes('?tab=')) {
-      const [basePath, tabParam] = path.split('?tab=')
-      const currentTab = searchParams.get('tab') || 'overview'
-      return currentPath.startsWith(basePath) && tabParam === currentTab
-    }
+  // Improved active link detection
+  // const isActiveLink = (path: string) => {
+  //   // Exact match first (highest priority)
+  //   if (currentPath === path) {
+  //     return true
+  //   }
+
+  //   // Handle base agent path - if we're on /projectId/agents/agentId and link is /projectId/agents/agentId, it's active
+  //   if (path.match(/\/agents\/[^/]+$/) && !path.includes('/config') && !path.includes('/logs')) {
+  //     // This is the overview/base agent path
+  //     return currentPath === path
+  //   }
+
+  //   // Handle specific sub-paths exactly
+  //   if (path.includes('/config') || 
+  //       path.includes('/logs') || 
+  //       path.includes('/campaigns') ||
+  //       path.includes('/permissions') || 
+  //       path.includes('/activity') ||
+  //       path.includes('/webhooks') ||
+  //       path.includes('/api') ||
+  //       path.includes('/export') ||
+  //       path.includes('/calls') ||
+  //       path.includes('/performance') ||
+  //       path.includes('/usage') ||
+  //       path.includes('/edit')) {
+  //     return currentPath === path
+  //   }
+
+  //   // For list pages (ending with main section path like /agents)
+  //   if (path.endsWith('/agents') && !path.includes('/agents/')) {
+  //     return currentPath === path
+  //   }
     
-    // Exact match first
-    if (currentPath === path) {
-      return true
-    }
+  //   if (path.endsWith('/team') && !path.includes('/team/')) {
+  //     return currentPath === path
+  //   }
     
-    // For paths ending with just the project agents list (no sub-routes)
-    // Only match if current path is exactly that path
-    if (path.endsWith('/agents') && !path.includes('/agents/')) {
-      return currentPath === path
-    }
+  //   if (path.endsWith('/reports') && !path.includes('/reports/')) {
+  //     return currentPath === path
+  //   }
     
-    // For sub-routes, check if current path matches exactly
-    return currentPath === path
+  //   if (path.endsWith('/integrations') && !path.includes('/integrations/')) {
+  //     return currentPath === path
+  //   }
+    
+  //   if (path.endsWith('/settings') && !path.includes('/settings/')) {
+  //     return currentPath === path
+  //   }
+
+  //   if (path.endsWith('/analytics') && !path.includes('/analytics/')) {
+  //     return currentPath === path
+  //   }
+    
+  //   return false
+  // }
+
+  const isActiveLinkWithSearchParams = (path: string) => {
+    // Split path and query string
+    const [navPath, navQuery] = path.split('?')
+    
+    // Check if base path matches
+    if (currentPath.split('?')[0] !== navPath) {
+      return false
+    }
+  
+    // If no query params in nav item, just check path
+    if (!navQuery) {
+      return currentPath.split('?')[0] === navPath
+    }
+  
+    // Parse nav query params
+    const navParams = new URLSearchParams(navQuery)
+    
+    // Check if all nav params match current params
+    for (const [key, value] of navParams.entries()) {
+      if (searchParams.get(key) !== value) {
+        return false
+      }
+    }
+  
+    return true
   }
 
   const getUserDisplayName = () => {
@@ -146,17 +237,19 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
     window.location.href = '/api/auth/logout'
   }
 
-  // Group navigation items
+  // Group navigation items with better organization
   const groupedNavigation = (): NavigationGroup[] => {
     const groups: Record<string, NavigationItem[]> = {}
     const ungrouped: NavigationItem[] = []
 
-    config.navigation.forEach(item => {
+    config.navigation.forEach((item: any) => { // TODO: fix type here
       if (item.group) {
-        if (!groups[item.group]) {
-          groups[item.group] = []
+        // Normalize group names for consistency
+        const normalizedGroup = item.group.toLowerCase()
+        if (!groups[normalizedGroup]) {
+          groups[normalizedGroup] = []
         }
-        groups[item.group].push(item)
+        groups[normalizedGroup].push(item)
       } else {
         ungrouped.push(item)
       }
@@ -173,11 +266,31 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
       })
     }
 
-    // Add grouped items
+    // Define group order for consistency
+    const groupOrder = [
+      'logs', 'agents', 'reports', 'analytics', 'integrations', 
+      'team', 'settings', 'configuration', 'batch calls', 'resources'
+    ]
+
+    // Add groups in preferred order
+    groupOrder.forEach(groupId => {
+      if (groups[groupId]) {
+        result.push({
+          id: groupId,
+          name: groupId === 'logs' ? 'LOGS' : 
+                groupId === 'batch calls' ? 'Batch Calls' :
+                groupId.charAt(0).toUpperCase() + groupId.slice(1),
+          items: groups[groupId]
+        })
+        delete groups[groupId]
+      }
+    })
+
+    // Add any remaining groups
     Object.entries(groups).forEach(([groupId, items]) => {
       result.push({
         id: groupId,
-        name: groupId,
+        name: groupId.charAt(0).toUpperCase() + groupId.slice(1),
         items
       })
     })
@@ -187,7 +300,12 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
 
   const renderNavigationItem = (item: NavigationItem) => {
     const Icon = ICONS[item.icon]
-    const isActive = isActiveLink(item.path)
+    const isActive = isActiveLinkWithSearchParams(item.path)
+    
+    if (!Icon) {
+      console.warn(`Icon "${item.icon}" not found in ICONS mapping`)
+      return null
+    }
     
     const content = (
       <div className={`
@@ -232,7 +350,14 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
     return null
   }
 
-  const pricingConfig = PRICING_CONFIGS[config.type]
+  // Get pricing config with fallback for new types
+  const pricingConfig = PRICING_CONFIGS[config.type] || {
+    showPricingBox: false,
+    plan: '',
+    features: [],
+    upgradeText: '',
+    upgradeLink: ''
+  }
 
   return (
     <>
@@ -265,7 +390,7 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
         </div>
 
         {/* Navigation with Groups */}
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {groupedNavigation().map((group, groupIndex) => (
             <div key={group.id}>
               {/* Group Header - only show if group has a name and we're not collapsed */}
@@ -304,7 +429,7 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
               <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">{pricingConfig.plan}</span>
             </div>
-            {pricingConfig.features && (
+            {pricingConfig.features && pricingConfig.features.length > 0 && (
               <ul className="space-y-1 mb-3">
                 {pricingConfig.features.map((feature: string, index: number) => (
                   <li key={index} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
