@@ -13,14 +13,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, agent_type, configuration, project_id, environment, platform } = body
 
-    console.log('📥 Received agent creation request:', {
-      name,
-      agent_type, 
-      platform,
-      project_id,
-      environment
-    })
-
     // Validation
     if (!name || !name.trim()) {
       return NextResponse.json(

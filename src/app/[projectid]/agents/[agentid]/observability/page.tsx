@@ -46,16 +46,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     filters: [{ column: "id", operator: "eq", value: resolvedParams.agentid }],
     limit: 1
   })
-  
-  // Add this debug logging
-  console.log({
-    agentId: resolvedParams.agentid,
-    agentData,
-    agentLoading,
-    agentError,
-    agentDataLength: agentData?.length
-  })
-  
+
   const agent = agentData && agentData.length > 0 ? agentData[0] : null
 
   // Get the recording URL from the first call

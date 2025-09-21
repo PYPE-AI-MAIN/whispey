@@ -58,6 +58,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
             onClose={handleClose}
             onAgentCreated={handleAgentCreated}
             onLoadingChange={setLoading}
+            isPypeAgent={true}
           />
         )
       case 'connect':

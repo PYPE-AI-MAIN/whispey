@@ -73,8 +73,8 @@ const formatDateISO = (date: Date) => {
 function AgentHeaderSkeleton() {
   return (
     <div className="flex items-center gap-4">
-      <div className="h-8 w-40 bg-gray-200 rounded animate-pulse"></div>
-      <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+      <div className="h-8 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+      <div className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
     </div>
   )
 }
@@ -84,11 +84,11 @@ function NoCallsMessage() {
   return (
     <div className="flex-1 flex items-center justify-center h-full">
       <div className="text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Bot className="w-8 h-8 text-gray-400" />
+        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Bot className="w-8 h-8 text-gray-400 dark:text-gray-500" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No calls yet</h3>
-        <p className="text-sm text-gray-500">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No calls yet</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Your VAPI agent is ready. Calls will appear here once you start receiving them.
         </p>
       </div>
@@ -259,15 +259,15 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     switch (environment.toLowerCase()) {
       case 'production':
       case 'prod':
-        return 'bg-red-50 text-red-700 border border-red-100'
+        return 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-100 dark:border-red-800'
       case 'staging':
       case 'stage':
-        return 'bg-orange-50 text-orange-700 border border-orange-100'
+        return 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-800'
       case 'development':
       case 'dev':
-        return 'bg-blue-50 text-blue-700 border border-blue-100'
+        return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800'
       default:
-        return 'bg-gray-50 text-gray-700 border border-gray-100'
+        return 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'
     }
   }
 
@@ -345,15 +345,14 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // Handle errors without blocking entire dashboard
   if (agentError) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50">
-        <Header breadcrumb={{ project: 'Error', item: 'Agent' }} />
-        <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="px-8 py-3">
             <div className="flex items-center gap-6">
-              <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all duration-200">
+              <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200">
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <div className="h-8 bg-red-100 text-red-700 px-4 rounded-lg flex items-center">
+              <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Agent not found
               </div>
@@ -361,13 +360,13 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 max-w-md text-center">
-            <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-6 h-6 text-red-500" />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 max-w-md text-center">
+            <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Agent not found</h2>
-            <p className="text-sm text-gray-500 mb-4">{agentError}</p>
-            <Button onClick={handleBack} variant="outline" className="w-full border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Agent not found</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{agentError}</p>
+            <Button onClick={handleBack} variant="outline" className="w-full border-gray-200 dark:border-gray-700">
               <ChevronLeft className="h-4 w-4 mr-2" />
               Go Back
             </Button>
@@ -378,21 +377,16 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <Header 
-        breadcrumb={breadcrumb} 
-        isLoading={agentLoading || projectLoading} 
-      />
-
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header - show structure immediately, skeleton data parts */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="px-8 py-3">
           <div className="flex items-center justify-between">
             {/* Left: Navigation & Identity */}
             <div className="flex items-center gap-6">
               <button 
                 onClick={handleBack}
-                className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all duration-200"
+                className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -406,7 +400,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight truncate max-w-[250px] cursor-default">
+                          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight truncate max-w-[250px] cursor-default">
                             {agent.name}
                           </h1>
                         </TooltipTrigger>
@@ -422,40 +416,16 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                     </div>
                   </>
                 ) : (
-                  <div className="h-8 bg-red-100 text-red-700 px-4 rounded-lg flex items-center">
+                  <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
                     <AlertCircle className="w-4 h-4 mr-2" />
                     Agent not found
                   </div>
                 )}
               </div>
 
-              {/* Tab Navigation - HIDE when showing Quick Start OR No Calls Message */}
-              {/* {!showQuickStart && !showNoCallsMessage && (
-                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 ml-8">
-                  {tabs.map((tab) => {
-                    const Icon = tab.icon
-                    const isActive = activeTab === tab.id
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => handleTabChange(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                          isActive
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                        {tab.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              )} */}
-
               {/* VAPI button - show skeleton or button based on agent data */}
               {agentLoading ? (
-                <div className="h-9 w-32 bg-gray-200 rounded-lg animate-pulse ml-4"></div>
+                <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse ml-4"></div>
               ) : isVapiAgent ? (
                 <div className="relative">
                   <Button
@@ -488,10 +458,10 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                   {!vapiStatusLoading && vapiStatus && (
                     <div className="absolute -top-1 -right-1">
                       {vapiStatus.connected ? (
-                        <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white" 
+                        <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800" 
                             title="Webhook connected" />
                       ) : (
-                        <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white" 
+                        <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-gray-800" 
                             title="Setup required" />
                       )}
                     </div>
@@ -505,16 +475,16 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
               <div className="flex items-center gap-6">
                 {/* Period Filters */}
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-gray-600">Period</span>
-                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Period</span>
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                     {quickFilters.map((filter) => (
                       <button
                         key={filter.id}
                         onClick={() => handleQuickFilter(filter.id)}
                         className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                           quickFilter === filter.id && !isCustomRange
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
                         }`}
                       >
                         {filter.label}
@@ -527,17 +497,17 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 transition-all duration-200 ${
+                        className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 ${
                           isCustomRange 
-                            ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30' 
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
                         }`}
                       >
                         <CalendarDays className="mr-2 h-4 w-4" />
                         Custom
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-gray-200 shadow-xl rounded-xl" align="end">
+                    <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
                       <Calendar
                         initialFocus
                         mode="range"
@@ -553,7 +523,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                 
                 {/* Field Extractor - skeleton while agent loading */}
                 {agentLoading ? (
-                  <div className="h-9 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
                 ) : agent ? (
                   <FieldExtractorDialog
                     initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
