@@ -21,7 +21,7 @@ class LivekitObserve:
         host_url=None, 
         bug_reports_enable=False,
         bug_reports_config: Dict[str, Any] = {},
-        enable_otel: bool = False,
+        enable_otel: bool = True,
     ):
         self.agent_id = agent_id
         self.apikey = apikey

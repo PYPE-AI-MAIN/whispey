@@ -152,13 +152,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
           // Wait for metadata to load, then seek to segment start
           const handleLoadedMetadata = () => {
             if (audioRef.current && segmentStartTime !== undefined) {
-              audioRef.current.currentTime = segmentStartTime
+              // Ensure we don't seek beyond the audio duration
+              const seekTime = Math.min(segmentStartTime, audioRef.current.duration || 0)
+              audioRef.current.currentTime = seekTime
               setSegmentStarted(true)
               audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata)
             }
           }
           
-          audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata)
+          // If metadata is already loaded, seek immediately
+          if (audioRef.current.readyState >= 1) {
+            handleLoadedMetadata()
+          } else {
+            audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata)
+          }
         }
         
         try {
@@ -387,7 +394,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
       // Check if we've reached the end of the segment
       if (segmentStartTime !== undefined && segmentDuration !== undefined) {
         const segmentEndTime = segmentStartTime + segmentDuration
-        if (audio.currentTime >= segmentEndTime) {
+        // Add a small buffer (0.1s) to ensure we don't miss the end
+        if (audio.currentTime >= segmentEndTime - 0.1) {
           audio.pause()
           setIsPlaying(false)
           setCurrentTime(segmentEndTime)
@@ -429,6 +437,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
     setSegmentStarted(false)
     setCurrentTime(0)
     setIsPlaying(false)
+    setError(null) // Clear any previous errors
   }, [segmentStartTime, segmentDuration])
 
   // Draw waveform effect
