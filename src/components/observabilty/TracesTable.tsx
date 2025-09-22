@@ -571,6 +571,8 @@ const handleRowClick = (trace: TraceLog) => {
         isOpen={isDetailSheetOpen}
         trace={selectedTrace}
         agent={agent}
+        recordingUrl={callData?.[0]?.recording_url || callData?.[0]?.voice_recording_url}
+        callStartTime={callData?.[0]?.call_started_at}
         onClose={() => {
           setIsDetailSheetOpen(false)
           setSelectedTrace(null)

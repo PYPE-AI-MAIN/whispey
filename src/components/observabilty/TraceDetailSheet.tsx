@@ -25,15 +25,18 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useEffect, useMemo, useState } from "react"
 import { getAgentPlatform } from "@/utils/agentDetection"
+import AudioPlayer from "@/components/AudioPlayer"
 
 interface TraceDetailSheetProps {
   isOpen: boolean
   trace: any
   agent?: any
+  recordingUrl?: string
+  callStartTime?: string
   onClose: () => void
 }
 
-const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, trace, agent, onClose }) => {
+const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, trace, agent, recordingUrl, callStartTime, onClose }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [selectedView, setSelectedView] = useState<string>("pipeline")
   const [selectedNode, setSelectedNode] = useState<string>("stt")
@@ -94,6 +97,125 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
       }
     }
   }, [trace, isOpen])
+
+  // Calculate audio segment info for both STT and TTS
+  const audioSegmentInfo = useMemo(() => {
+    if (!recordingUrl || !trace) {
+      return null
+    }
+
+    // Calculate proper segment timing - relative to first start time
+    let segmentStartTime = 0
+    
+    // Calculate timing as: anytime - firststarttime
+    // This means we need to find the first start time and calculate relative to it
+    const turnId = parseInt(trace.turn_id) || 0
+    
+    if (callStartTime && trace.unix_timestamp) {
+      try {
+        // Calculate the actual time difference from call start
+        const callStartMs = new Date(callStartTime).getTime()
+        const turnMs = trace.unix_timestamp * 1000
+        
+        // Handle both seconds and milliseconds timestamps
+        const actualTurnMs = turnMs > 1e12 ? turnMs : turnMs * 1000
+        const offsetSeconds = (actualTurnMs - callStartMs) / 1000
+        
+        // This gives us the actual time from call start
+        segmentStartTime = Math.max(0, offsetSeconds)
+        
+        const firstStartTime = 19820 // This should be the first turn's start time
+        segmentStartTime = Math.max(0, segmentStartTime - firstStartTime)
+        
+        // Debug logging for timing calculations
+        console.log('Audio segment timing calculation (anytime - firststarttime):', {
+          callStartTime,
+          turnTimestamp: trace.unix_timestamp,
+          callStartMs,
+          turnMs: actualTurnMs,
+          offsetSeconds,
+          firstStartTime,
+          finalSegmentStartTime: segmentStartTime,
+          turnId: trace.turn_id,
+          calculation: `Turn ${turnId}: ${offsetSeconds}s - ${firstStartTime}s = ${segmentStartTime}s`
+        })
+      } catch (error) {
+        console.warn('Failed to calculate segment timing:', error)
+        // Fallback to turn-based offset
+        segmentStartTime = (turnId - 1) * 2
+      }
+    } else {
+      // Fallback to turn-based offset if no timing data available
+      segmentStartTime = (turnId - 1) * 2
+    }
+
+    return {
+      startTime: segmentStartTime,
+      sttDuration: trace.stt_metrics?.audio_duration || 0,
+      ttsDuration: trace.tts_metrics?.audio_duration || 0
+    }
+  }, [trace?.stt_metrics?.audio_duration, trace?.tts_metrics?.audio_duration, trace?.turn_id, recordingUrl, callStartTime, trace?.unix_timestamp])
+
+  // Simple Audio Component
+  const SimpleAudioPlayer = ({ type, duration }: { type: 'stt' | 'tts', duration: number }) => {
+    if (!recordingUrl || !audioSegmentInfo || duration === 0) {
+      return (
+        <div className="text-sm text-gray-500 italic">
+          Audio not available
+        </div>
+      )
+    }
+
+    // Ensure duration is in seconds (convert from milliseconds if needed)
+    // Also validate duration is reasonable (not too long or negative)
+    let durationInSeconds = duration > 100 ? duration / 1000 : duration
+    if (durationInSeconds <= 0 || durationInSeconds > 300) { // Max 5 minutes
+      durationInSeconds = 0
+    }
+
+    // If duration becomes 0 after validation, show error
+    if (durationInSeconds === 0) {
+      return (
+        <div className="text-sm text-red-500 italic">
+          Invalid audio duration: {duration}s
+        </div>
+      )
+    }
+
+    // Calculate the actual start time for this specific segment type
+    let segmentStartTime = audioSegmentInfo.startTime
+    
+    // For TTS segments, start after the STT duration of the same turn
+    if (type === 'tts' && trace.stt_metrics?.audio_duration) {
+      const sttDuration = trace.stt_metrics.audio_duration > 100 ? 
+        trace.stt_metrics.audio_duration / 1000 : 
+        trace.stt_metrics.audio_duration
+      segmentStartTime = audioSegmentInfo.startTime + sttDuration
+    }
+    
+    // Debug logging for segment timing
+    console.log(`Segment timing for ${type.toUpperCase()}:`, {
+      turnId: trace.turn_id,
+      type,
+      baseStartTime: audioSegmentInfo.startTime,
+      segmentStartTime,
+      duration: durationInSeconds,
+      endTime: segmentStartTime + durationInSeconds
+    })
+
+    return (
+      <div className="rounded-lg p-4">
+        <AudioPlayer
+          url={recordingUrl}
+          s3Key=""
+          callId={`${trace.turn_id}-${type}`}
+          className="border-0 bg-transparent p-2"
+          segmentStartTime={segmentStartTime}
+          segmentDuration={durationInSeconds}
+        />
+      </div>
+    )
+  }
 
   if (!isOpen || !trace) return null
 
@@ -366,8 +488,15 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                   )}
                 </h4>
                 {selectedStage.id === "stt" && (
-                  <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
-                    Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  <div className="space-y-3">
+                    <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
+                      Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                    </div>
+                    
+                    {/* Audio Player for STT Input */}
+                    {trace.stt_metrics?.audio_duration && (
+                      <SimpleAudioPlayer type="stt" duration={trace.stt_metrics.audio_duration} />
+                    )}
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
@@ -403,8 +532,15 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
-                  <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
-                    Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  <div className="space-y-3">
+                    <div className="bg-gray-100 border rounded-lg p-3 text-sm text-gray-600 italic">
+                      Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                    </div>
+                    
+                    {/* Audio Player for TTS Output */}
+                    {trace.tts_metrics?.audio_duration && (
+                      <SimpleAudioPlayer type="tts" duration={trace.tts_metrics.audio_duration} />
+                    )}
                   </div>
                 )}
               </div>
