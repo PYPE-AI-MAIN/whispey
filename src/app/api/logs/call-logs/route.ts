@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { sendResponse } from '../../../../lib/response';
 import { verifyToken } from '../../../../lib/auth';
 import { totalCostsINR } from '../../../../lib/calculateCost';
 import { processFPOTranscript } from '../../../../lib/transcriptProcessor';
 import { CallLogRequest, TranscriptWithMetrics, UsageData, TelemetryAnalytics, TelemetryData } from '../../../../types/logs';
+
+// Create server-side Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
@@ -21,7 +26,42 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('x-pype-token');
-    const body: CallLogRequest = await request.json();
+    
+    // Check if request has a body
+    const contentLength = request.headers.get('content-length');
+    if (!contentLength || contentLength === '0') {
+      return NextResponse.json(
+        { success: false, error: 'Request body is required' },
+        { status: 400 }
+      );
+    }
+
+    // Safely parse JSON with error handling
+    let body: CallLogRequest;
+    try {
+      const text = await request.text();
+      if (!text || text.trim() === '') {
+        return NextResponse.json(
+          { success: false, error: 'Request body is empty' },
+          { status: 400 }
+        );
+      }
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return NextResponse.json(
+        { success: false, error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    // Validate that body is an object
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        { success: false, error: 'Request body must be a valid JSON object' },
+        { status: 400 }
+      );
+    }
 
     const {
       call_id,
@@ -42,10 +82,19 @@ export async function POST(request: NextRequest) {
       environment = 'dev'
     } = body;
 
-    console.log("Received call log:", { call_id, agent_id });
+    console.log("📡 Received call log:", { 
+      call_id, 
+      agent_id,
+      token: token ? `${token.substring(0, 10)}...` : 'null',
+      tokenLength: token?.length || 0,
+      duration_seconds,
+      call_started_at,
+      call_ended_at
+    });
 
     // Validate required fields
     if (!token) {
+      console.error('❌ No token provided in request');
       return NextResponse.json(
         { success: false, error: 'Token is required' },
         { status: 400 }
@@ -70,6 +119,19 @@ export async function POST(request: NextRequest) {
 
     const { project_id } = tokenVerification;
 
+    // Calculate duration if not provided
+    let calculatedDuration = duration_seconds;
+    if (!calculatedDuration && call_started_at && call_ended_at) {
+      const startTime = new Date(call_started_at).getTime();
+      const endTime = new Date(call_ended_at).getTime();
+      calculatedDuration = Math.round((endTime - startTime) / 1000);
+      console.log("🕐 Calculated duration from timestamps:", {
+        startTime: new Date(call_started_at).toISOString(),
+        endTime: new Date(call_ended_at).toISOString(),
+        calculatedDuration
+      });
+    }
+
     // Calculate average latency
     let avgLatency: number | null = null;
     if (transcript_with_metrics && Array.isArray(transcript_with_metrics)) {
@@ -77,14 +139,22 @@ export async function POST(request: NextRequest) {
       let latencyCount = 0;
 
       transcript_with_metrics.forEach((turn: TranscriptWithMetrics) => {
-        const stt = turn?.stt_metrics?.duration || 0;
+        // Match Lambda logic for STT duration with fallback
+        let sttDuration = 0;
+        if (turn?.user_transcript && turn?.stt_metrics) {
+          sttDuration = turn.stt_metrics.duration || 0;
+          if (!sttDuration) {
+            sttDuration = 0.2; // Fallback value like Lambda
+          }
+        }
+        
         const llm = turn?.llm_metrics?.ttft || 0;
         const ttsFirstByte = turn?.tts_metrics?.ttfb || 0;
         const ttsDuration = turn?.tts_metrics?.duration || 0;
         const eouDuration = turn?.eou_metrics?.end_of_utterance_delay || 0;
         const ttsTotal = ttsFirstByte + ttsDuration;
 
-        const totalLatency = stt + llm + ttsTotal + eouDuration;
+        const totalLatency = sttDuration + llm + ttsTotal + eouDuration;
 
         if (totalLatency > 0) {
           latencySum += totalLatency;
@@ -122,7 +192,7 @@ export async function POST(request: NextRequest) {
       call_started_at,
       call_ended_at,
       recording_url,
-      duration_seconds,
+      duration_seconds: calculatedDuration, // Use calculated duration
       voice_recording_url,
       complete_configuration: (metadata as any)?.complete_configuration || null,
       telemetry_data: telemetry_data as TelemetryData | undefined,
@@ -131,6 +201,12 @@ export async function POST(request: NextRequest) {
     };
 
     // Insert log into database
+    console.log("💾 Inserting log data:", {
+      duration_seconds: logData.duration_seconds,
+      call_started_at: logData.call_started_at,
+      call_ended_at: logData.call_ended_at
+    });
+    
     const { data: insertedLog, error: insertError } = await supabase
       .from('pype_voice_call_logs')
       .insert(logData)
@@ -144,6 +220,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.log("✅ Successfully inserted log:", {
+      id: insertedLog.id,
+      duration_seconds: insertedLog.duration_seconds,
+      call_started_at: insertedLog.call_started_at,
+      call_ended_at: insertedLog.call_ended_at
+    });
 
     // Insert session trace and spans if telemetry present
     if (telemetry_data && (telemetry_data as any).session_traces && (telemetry_data as any).session_traces.length > 0) {

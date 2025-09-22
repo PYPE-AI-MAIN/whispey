@@ -112,6 +112,13 @@ git clone https://github.com/PYPE-AI-MAIN/whispey
 cd whispey
 npm install
 
+# Setup database (choose one method)
+# Option 1: Direct connection (recommended)
+psql -h db.YOUR_PROJECT_REF.supabase.co -p 5432 -U postgres -d postgres -f setup-supabase.sql
+
+# Option 2: Copy SQL to Supabase dashboard
+# Copy setup-supabase.sql content to Supabase SQL Editor
+
 # Configure environment
 cp .env.example .env.local
 # Edit .env.local with your Supabase and Clerk credentials
