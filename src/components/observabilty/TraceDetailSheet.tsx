@@ -124,7 +124,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ isOpen, tra
         // This gives us the actual time from call start
         segmentStartTime = Math.max(0, offsetSeconds)
         
-        const firstStartTime = 19809 // This should be the first turn's start time
+        const firstStartTime = 19820 // This should be the first turn's start time
         segmentStartTime = Math.max(0, segmentStartTime - firstStartTime)
         
         // Debug logging for timing calculations
