@@ -1,226 +1,167 @@
 # 🏠 Self-hosting Guide
 
-Deploy Whispey on your own infrastructure for complete data control and privacy.
+Deploy Whispey on your own infrastructure in 3 simple steps!
 
-## 📋 Prerequisites
+## 🚀 Quick Setup (5 minutes)
 
-Before self-hosting, ensure you have:
-
-- **Node.js 18+** and **npm** installed
-- **PostgreSQL 14+** database (or Supabase account)
-- **Clerk.dev** account for authentication
-- **Domain name** (optional but recommended)
-- **SSL certificate** for production
-
-## 🚀 Quick Deployment
-
-### Option 1: Docker (Recommended)
-
+### Step 1: Clone & Install
 ```bash
-# Clone the repository
 git clone https://github.com/PYPE-AI-MAIN/whispey
 cd whispey
+npm install
+```
 
+### Step 2: Setup Database
+**Option A: One-Click Setup (Easiest)**
+1. **Create Supabase project** at [supabase.com](https://supabase.com)
+2. **Click this link**: [Run SQL Setup](https://supabase.com/dashboard/project/utphhbqhjuarjojyncdw/sql/61decaa9-bf86-4b5e-b470-f2cceeb8a98c)
+3. **Copy the SQL** and run it in your project ✅
+
+**Option B: Direct Database Connection (Recommended)**
+1. **Go to your Supabase project** → **Settings** → **Database**
+2. **Find your project reference ID** in the "Connection string" section (it looks like: `db.xxxxxxxxxxxxx.supabase.co`)
+3. **Copy your project reference ID** (the part between `db.` and `.supabase.co`)
+4. **Install psql** (PostgreSQL client):
+   ```bash
+   # macOS
+   brew install postgresql
+   
+   # Ubuntu/Debian
+   sudo apt-get install postgresql-client
+   
+   # Windows
+   # Download from https://www.postgresql.org/download/windows/
+   ```
+5. **Run the setup script** (replace `YOUR_PROJECT_REF` with your actual project reference ID):
+   ```bash
+   psql -h db.YOUR_PROJECT_REF.supabase.co -p 5432 -U postgres -d postgres -f setup-supabase.sql
+   ```
+   **Example**: If your project ref is `abc123def456`, use:
+   ```bash
+   psql -h db.abc123def456.supabase.co -p 5432 -U postgres -d postgres -f setup-supabase.sql
+   ```
+6. **Enter your database password** when prompted ✅
+
+**Option C: Manual (if you prefer)**
+1. **Go to SQL Editor** in your Supabase dashboard
+2. **Copy & paste** the entire `setup-supabase.sql` file
+3. **Click Run** ✅
+
+### Step 3: Configure & Run
+```bash
 # Copy environment template
 cp .env.example .env.local
 
-# Edit environment variables
+# Edit with your Supabase details
 nano .env.local
 
-# Start with Docker Compose
-docker-compose up -d
+# Start the app
+npm run dev
 ```
 
-### Option 2: Manual Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/PYPE-AI-MAIN/whispey
-cd whispey
-
-# Install dependencies
-npm install
-
-# Set up environment
-cp .env.example .env.local
-```
+🎉 **Done!** Your Whispey is running at `http://localhost:3000`
 
 ## 🔧 Environment Configuration
 
-Edit `.env.local` with your configuration:
+Edit `.env.local` with your Supabase details:
 
 ```env
 # App URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# Supabase (Client)
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# Supabase (Required - get from your Supabase project settings)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Supabase (Server - optional if needed)
-SUPABASE_SERVICE_ROLE_KEY=
-
-# Authentication (Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-CLERK_SECRET_KEY=
+# Authentication (Required - get from clerk.dev)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
-CLERK_WEBHOOK_SIGNING_SECRET=
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 
-# OpenAI (for transcript field extraction)
-OPENAI_API_KEY=
-# Optionally override model used by transcript processor
-# OPENAI_MODEL=gpt-4o
+# OpenAI (Required for field extraction)
+OPENAI_API_KEY=sk-...
 
-# VAPI encryption (used for securing Vapi credentials)
-VAPI_MASTER_KEY=
+# VAPI encryption (Required)
+VAPI_MASTER_KEY=your-secret-key
 
-# Optional: Public API base URL
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
-
-# Optional: Analytics / Telemetry
+# Optional: Analytics
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
-
-# Optional: JWT for SSO validation endpoints
-JWT_SECRET=
-
-# Optional: AWS (used by audio routes if you enable S3 storage)
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=ap-south-1
-AWS_S3_BUCKET=
 ```
 
-## 🗄️ Database Setup
+## 📊 Using Whispey SDK
 
-### Option 1: Supabase (Recommended)
+Once your Whispey is running, use it in your Python code:
 
-1. **Create Supabase project** at [supabase.com](https://supabase.com)
-2. **Run the setup script**:
+```python
+import os
+from whispey import LivekitObserve
+
+# Initialize Whispey
+whispey = LivekitObserve(
+    host_url="http://localhost:3000/api/logs/call-logs",
+    agent_id="your-agent-id",  # Get this from your Whispey dashboard
+    apikey=os.getenv("WHISPEY_API_KEY")  # Your project API key
+)
+
+# Start observing your LiveKit session
+whispey.observe_session(session)
+```
+
+### Getting Your API Key:
+1. **Go to your Whispey dashboard** at `http://localhost:3000`
+2. **Create a project** and copy the API key
+3. **Create an agent** and copy the agent ID
+4. **Use them in your code** ✅
+
+### Upgrading Your Agent Code:
+If you're updating an existing agent, make sure to upgrade the Whispey SDK:
 
 ```bash
-# Copy the SQL setup script
-cp setup-supabase.sql your-project.sql
+# Upgrade to the latest version
+pip install --upgrade whispey
 
-# Execute in Supabase SQL editor
-# Or use the Supabase CLI:
-supabase db push
+# Or install the latest development version
+pip install --upgrade git+https://github.com/PYPE-AI-MAIN/whispey.git
 ```
 
-### Option 2: PostgreSQL
-
-```bash
-# Install PostgreSQL
-sudo apt-get install postgresql postgresql-contrib
-
-# Create database
-sudo -u postgres createdb whispey
-
-# Run setup script
-psql -d whispey -f setup-supabase.sql
+Then update your agent code to use the new endpoint:
+```python
+# Update your host_url to point to your self-hosted instance
+whispey = LivekitObserve(
+    host_url="http://localhost:3000/api/logs/call-logs",  # Your self-hosted URL
+    agent_id="your-agent-id",
+    apikey=os.getenv("WHISPEY_API_KEY")
+)
 ```
 
-## 🔐 Authentication Setup
+## 🔐 Quick Setup Guide
 
-### Clerk.dev Configuration
+### 1. Supabase Setup
+1. **Create account** at [supabase.com](https://supabase.com)
+2. **Create new project**
+3. **Go to SQL Editor** in your dashboard
+4. **Copy & paste** the entire `setup-supabase.sql` file
+5. **Click Run** ✅
 
-1. **Create Clerk application** at [clerk.dev](https://clerk.dev)
-2. **Configure domains** in Clerk dashboard
-3. **Set up OAuth providers** (Google, GitHub, etc.)
-4. **Copy API keys** to your `.env.local`
+### 2. Clerk Setup (Authentication)
+1. **Create account** at [clerk.dev](https://clerk.dev)
+2. **Create new application**
+3. **Copy API keys** to your `.env.local`
+4. **Configure domains** (add `localhost:3000` for development)
 
-### Custom Authentication (Advanced)
-
-```typescript
-// lib/auth.ts
-import { createClerkClient } from '@clerk/nextjs/server'
-
-export const clerk = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY,
-  publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-})
-```
-
-## 🌐 Domain & SSL Setup
-
-### Production Domain
-
-```bash
-# Configure your domain
-# Add to your DNS:
-# A record: your-domain.com -> your-server-ip
-# CNAME: www.your-domain.com -> your-domain.com
-
-# Update environment
-NEXT_PUBLIC_APP_URL=https://your-domain.com
-```
-
-### SSL Certificate
-
-```bash
-# Install Certbot
-sudo apt-get install certbot
-
-# Get SSL certificate
-sudo certbot --nginx -d your-domain.com
-
-# Auto-renewal
-sudo crontab -e
-# Add: 0 12 * * * /usr/bin/certbot renew --quiet
-```
-
-## 🐳 Docker Deployment
-
-### Docker Compose
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-    env_file:
-      - .env.local
-    depends_on:
-      - db
-  
-  db:
-    image: postgres:14
-    environment:
-      POSTGRES_DB: whispey
-      POSTGRES_USER: whispey
-      POSTGRES_PASSWORD: your_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
-```
-
-### Build and Deploy
-
-```bash
-# Build the image
-docker build -t whispey .
-
-# Run with Docker Compose
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-```
+### 3. OpenAI Setup
+1. **Get API key** from [platform.openai.com](https://platform.openai.com)
+2. **Add to `.env.local`** as `OPENAI_API_KEY`
 
 ## 🚀 Production Deployment
 
-### Vercel Deployment
-
+### Deploy to Vercel (Recommended for Beginners)
 ```bash
 # Install Vercel CLI
 npm i -g vercel
@@ -228,187 +169,242 @@ npm i -g vercel
 # Deploy
 vercel --prod
 
-# Set environment variables (repeat for each)
-vercel env add NEXT_PUBLIC_APP_URL
-vercel env add NEXT_PUBLIC_SUPABASE_URL
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
-vercel env add SUPABASE_SERVICE_ROLE_KEY
-vercel env add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-vercel env add CLERK_SECRET_KEY
-vercel env add CLERK_WEBHOOK_SIGNING_SECRET
-vercel env add OPENAI_API_KEY
-vercel env add VAPI_MASTER_KEY
-vercel env add NEXT_PUBLIC_POSTHOG_KEY
-vercel env add NEXT_PUBLIC_POSTHOG_HOST
-vercel env add NEXT_PUBLIC_API_URL
-vercel env add JWT_SECRET
-vercel env add AWS_ACCESS_KEY_ID
-vercel env add AWS_SECRET_ACCESS_KEY
-vercel env add AWS_REGION
-vercel env add AWS_S3_BUCKET
+# Set environment variables in Vercel dashboard
 ```
 
-### Manual Server Deployment
+### Deploy to Your Own Server with Custom Domain
 
+#### 1. Server Setup
 ```bash
-# Install PM2
-npm install -g pm2
+# Update your server
+sudo apt update && sudo apt upgrade -y
 
-# Build the application
+# Install Node.js 18+
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install PM2 for process management
+sudo npm install -g pm2
+
+# Install Nginx for reverse proxy
+sudo apt install nginx -y
+```
+
+#### 2. Deploy Whispey
+```bash
+# Clone and setup
+git clone https://github.com/PYPE-AI-MAIN/whispey
+cd whispey
+npm install
+
+# Build for production
 npm run build
 
-# Start with PM2
-pm2 start npm --name "whispey" -- start
+# Create PM2 ecosystem file
+cat > ecosystem.config.js << EOF
+module.exports = {
+  apps: [{
+    name: 'whispey',
+    script: 'npm',
+    args: 'start',
+    cwd: '/path/to/whispey',
+    instances: 'max',
+    exec_mode: 'cluster',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true
+  }]
+}
+EOF
 
-# Save PM2 configuration
+# Create logs directory
+mkdir -p logs
+
+# Start with PM2
+pm2 start ecosystem.config.js
 pm2 save
 pm2 startup
 ```
 
-## 🔧 Customization
-
-### Branding
-
-```typescript
-// lib/config.ts
-export const config = {
-  appName: "Your Company Analytics",
-  logo: "/your-logo.png",
-  primaryColor: "#3B82F6",
-  // ... other branding options
-}
-```
-
-### Custom API Endpoints
-
-```typescript
-// pages/api/custom-endpoint.ts
-import { NextApiRequest, NextApiResponse } from 'next'
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  // Your custom API logic
-  res.status(200).json({ message: 'Custom endpoint' })
-}
-```
-
-## 📊 Monitoring & Maintenance
-
-### Health Checks
-
+#### 3. Configure Nginx Reverse Proxy
 ```bash
-# Check application health
-curl https://your-domain.com/api/health
-
-# Monitor logs
-docker-compose logs -f app
-pm2 logs whispey
+# Create Nginx configuration
+sudo nano /etc/nginx/sites-available/whispey
 ```
 
-### Database Maintenance
-
-```sql
--- Regular cleanup (run monthly)
-DELETE FROM logs WHERE created_at < NOW() - INTERVAL '90 days';
-VACUUM ANALYZE;
-```
-
-### Backup Strategy
-
-```bash
-# Database backup
-pg_dump whispey > backup_$(date +%Y%m%d).sql
-
-# File backup
-tar -czf backup_$(date +%Y%m%d).tar.gz /path/to/whispey
-```
-
-## 🔒 Security Considerations
-
-### Environment Security
-
-```bash
-# Secure environment file
-chmod 600 .env.local
-
-# Use secrets management
-# For Docker: docker secrets
-# For Kubernetes: Kubernetes secrets
-```
-
-### Network Security
-
-```bash
-# Configure firewall
-sudo ufw allow 22/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-```
-
-### SSL/TLS Configuration
-
+Add this configuration:
 ```nginx
-# nginx.conf
 server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-    
-    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-    
+    listen 80;
+    server_name your-domain.com www.your-domain.com;
+
     location / {
         proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
+```bash
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/whispey /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+#### 4. SSL Certificate with Let's Encrypt
+```bash
+# Install Certbot
+sudo apt install certbot python3-certbot-nginx -y
+
+# Get SSL certificate
+sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+
+# Test auto-renewal
+sudo certbot renew --dry-run
+```
+
+#### 5. Update Environment Variables
+```bash
+# Update .env.local for production
+nano .env.local
+```
+
+```env
+# Production App URL
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Supabase (your production project)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Authentication (update Clerk domains)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+CLERK_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+
+# VAPI encryption
+VAPI_MASTER_KEY=your-secret-key
+```
+
+#### 6. Configure Clerk for Production
+1. **Go to Clerk Dashboard** → **Domains**
+2. **Add your domain**: `your-domain.com`
+3. **Update redirect URLs** to use `https://your-domain.com`
+4. **Switch to production keys** in your environment
+
+#### 7. Firewall Configuration
+```bash
+# Configure UFW firewall
+sudo ufw allow ssh
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+```
+
+### Docker Deployment (Alternative)
+```bash
+# Create Dockerfile
+cat > Dockerfile << EOF
+FROM node:18-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]
+EOF
+
+# Create docker-compose.yml
+cat > docker-compose.yml << EOF
+version: '3.8'
+services:
+  whispey:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+EOF
+
+# Build and run
+docker-compose up -d
+```
+
+### Monitoring & Maintenance
+```bash
+# Check PM2 status
+pm2 status
+pm2 logs whispey
+
+# Restart application
+pm2 restart whispey
+
+# Monitor system resources
+pm2 monit
+
+# Update application
+git pull origin main
+npm install
+npm run build
+pm2 restart whispey
+```
+
 ## 🆘 Troubleshooting
 
-### Common Issues
+**App won't start?**
+- Check your `.env.local` file has all required variables
+- Make sure Supabase project is created and SQL is run
+- Check Node.js version: `node --version` (should be 18+)
 
-**Database Connection Error**
-```bash
-# Check database status
-sudo systemctl status postgresql
+**Database errors?**
+- Verify Supabase URL and keys in `.env.local`
+- Check if `setup-supabase.sql` was run successfully
+- Test connection in Supabase dashboard
 
-# Test connection
-psql -h localhost -U whispey -d whispey
-```
+**Authentication issues?**
+- Verify Clerk keys in `.env.local`
+- Check if domain is configured in Clerk dashboard
 
-**Authentication Issues**
-```bash
-# Check Clerk configuration
-curl -H "Authorization: Bearer $CLERK_SECRET_KEY" \
-  https://api.clerk.dev/v1/users
-```
+## 🎯 That's It!
 
-**Build Errors**
-```bash
-# Clear cache
-rm -rf .next
-npm run build
+Your Whispey is now running! 🎉
 
-# Check Node.js version
-node --version  # Should be 18+
-```
+- **Dashboard**: `http://localhost:3000`
+- **API Endpoint**: `http://localhost:3000/api/logs/call-logs`
+- **SDK Ready**: Use the Python code above to start collecting data
 
-## 📚 Related Documentation
+## 💬 Need Help?
 
-- [🚀 Getting Started Guide](getting-started.md)
-- [🔧 SDK Reference](sdk-reference.md)
-- [📊 Dashboard Tutorial](dashboard-guide.md)
-
-## 💬 Support
-
-- **💬 Discord**: [Join our community](https://discord.gg/r2eMeAp6)
 - **📧 Email**: deepesh@pypeai.com
 - **🐛 Issues**: [GitHub Issues](https://github.com/PYPE-AI-MAIN/whispey/issues)
 
 ---
 
-**🎉 Your self-hosted Whispey instance is ready!** Visit your domain to start using the analytics platform. 
+**Happy Observing!** 🚀 

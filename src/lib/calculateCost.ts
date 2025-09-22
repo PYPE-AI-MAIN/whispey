@@ -1,5 +1,10 @@
-import { supabase } from './supabase';
+import { createClient } from '@supabase/supabase-js';
 import { UsageData, CostResult } from '../types/logs';
+
+// Create server-side Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Default fallback if DB misses data
 const FALLBACK = {
