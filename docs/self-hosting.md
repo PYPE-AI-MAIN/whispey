@@ -12,12 +12,7 @@ npm install
 ```
 
 ### Step 2: Setup Database
-**Option A: One-Click Setup (Easiest)**
-1. **Create Supabase project** at [supabase.com](https://supabase.com)
-2. **Click this link**: [Run SQL Setup](https://supabase.com/dashboard/project/utphhbqhjuarjojyncdw/sql/61decaa9-bf86-4b5e-b470-f2cceeb8a98c)
-3. **Copy the SQL** and run it in your project ✅
 
-**Option B: Direct Database Connection (Recommended)**
 1. **Go to your Supabase project** → **Settings** → **Database**
 2. **Find your project reference ID** in the "Connection string" section (it looks like: `db.xxxxxxxxxxxxx.supabase.co`)
 3. **Copy your project reference ID** (the part between `db.` and `.supabase.co`)
@@ -140,26 +135,8 @@ whispey = LivekitObserve(
 )
 ```
 
-## 🔐 Quick Setup Guide
 
-### 1. Supabase Setup
-1. **Create account** at [supabase.com](https://supabase.com)
-2. **Create new project**
-3. **Go to SQL Editor** in your dashboard
-4. **Copy & paste** the entire `setup-supabase.sql` file
-5. **Click Run** ✅
-
-### 2. Clerk Setup (Authentication)
-1. **Create account** at [clerk.dev](https://clerk.dev)
-2. **Create new application**
-3. **Copy API keys** to your `.env.local`
-4. **Configure domains** (add `localhost:3000` for development)
-
-### 3. OpenAI Setup
-1. **Get API key** from [platform.openai.com](https://platform.openai.com)
-2. **Add to `.env.local`** as `OPENAI_API_KEY`
-
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Deploy to Vercel (Recommended for Beginners)
 ```bash
