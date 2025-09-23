@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
@@ -23,17 +23,21 @@ interface PromptSettingsSheetProps {
   onOpenChange: (open: boolean) => void
   prompt: string
   onPromptChange: (prompt: string) => void
+  variables?: Variable[]
+  onVariablesChange: (variables: Variable[]) => void
 }
 
 export default function PromptSettingsSheet({ 
   open, 
   onOpenChange, 
   prompt, 
-  onPromptChange
+  onPromptChange,
+  variables = [],
+  onVariablesChange
 }: PromptSettingsSheetProps) {
-  const [variables, setVariables] = useState<Variable[]>([])
   const [isVariablesOpen, setIsVariablesOpen] = useState(true)
   const [isDisplayOpen, setIsDisplayOpen] = useState(false)
+  const [lastPrompt, setLastPrompt] = useState(prompt)
   
   // Use the custom hook for settings
   const { settings, setFontSize, setFontFamily } = usePromptSettings()
@@ -42,43 +46,53 @@ export default function PromptSettingsSheet({
   const detectedVariables = useMemo(() => {
     const matches = prompt.match(/\{\{([^}]+)\}\}/g) || []
     const variableNames = matches.map(match => match.replace(/[{}]/g, ''))
-    return [...new Set(variableNames)] // Remove duplicates
+    return [...new Set(variableNames)]
   }, [prompt])
 
-  // Update variables when detected variables change
-  useEffect(() => {
-    const currentVariableNames = variables.map(v => v.name)
-    const newVariables = detectedVariables.filter(name => !currentVariableNames.includes(name))
-    
-    if (newVariables.length > 0) {
-      setVariables(prev => [
-        ...prev,
-        ...newVariables.map(name => ({ name, value: '', description: '' }))
-      ])
-    }
+  // Memoize the callback to prevent unnecessary re-renders
+  const handleVariablesChange = useCallback((newVariables: Variable[]) => {
+    onVariablesChange(newVariables)
+  }, [onVariablesChange])
 
-    // Remove variables that are no longer in the prompt
-    setVariables(prev => prev.filter(variable => detectedVariables.includes(variable.name)))
-  }, [detectedVariables])
+  useEffect(() => {
+    // Only run if prompt actually changed
+    if (prompt !== lastPrompt) {
+      setLastPrompt(prompt)
+      
+      const existingVariableNames = variables.map(v => v.name)
+      const newVariables = detectedVariables.filter(name => !existingVariableNames.includes(name))
+      
+      if (newVariables.length > 0) {
+        const updatedVariables = [
+          ...variables,
+          ...newVariables.map(name => ({ name, value: '', description: '' }))
+        ]
+        handleVariablesChange(updatedVariables)
+      }
+    }
+  }, [prompt, detectedVariables, variables, handleVariablesChange, lastPrompt])
 
   const addVariable = () => {
+    console.log('Adding new variable')
     const newVariable: Variable = {
       name: `variable_${variables.length + 1}`,
       value: '',
       description: ''
     }
-    setVariables(prev => [...prev, newVariable])
+    handleVariablesChange([...variables, newVariable])
   }
 
   const updateVariable = (index: number, field: keyof Variable, value: string) => {
-    setVariables(prev => prev.map((variable, i) => 
+    const updatedVariables = variables.map((variable, i) => 
       i === index ? { ...variable, [field]: value } : variable
-    ))
+    )
+    handleVariablesChange(updatedVariables)
   }
 
   const removeVariable = (index: number) => {
     const variableToRemove = variables[index]
-    setVariables(prev => prev.filter((_, i) => i !== index))
+    const updatedVariables = variables.filter((_, i) => i !== index)
+    handleVariablesChange(updatedVariables)
     
     // Remove variable references from prompt
     const updatedPrompt = prompt.replace(new RegExp(`\\{\\{${variableToRemove.name}\\}\\}`, 'g'), '')
@@ -103,14 +117,14 @@ export default function PromptSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[650px] p-6 sm:max-w-[500px] overflow-y-auto">
+      <SheetContent className="w-[650px] p-6 sm:max-w-[500px] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
             Prompt Settings
           </SheetTitle>
           <SheetDescription>
-            Configure variables and display settings for your system prompt.
+            Configure variables
           </SheetDescription>
         </SheetHeader>
 
@@ -130,7 +144,28 @@ export default function PromptSettingsSheet({
               <ChevronDownIcon className={`w-4 h-4 transition-transform ${isVariablesOpen ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             
+            
             <CollapsibleContent className="space-y-4 mt-4">
+              <div className="flex gap-2 mt-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={addVariable}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <PlusIcon className="w-3 h-3" />
+                    Add Variable
+                  </Button>
+                  
+                  {variables.length > 0 && variables.some(v => v.value) && (
+                    <Button 
+                      variant="secondary" 
+                      onClick={replaceVariablesInPrompt}
+                      className="text-xs"
+                    >
+                      Replace Variables in Prompt
+                    </Button>
+                  )}
+                </div>
               <div className="space-y-3">
                 {variables.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -162,7 +197,7 @@ export default function PromptSettingsSheet({
                           variant="ghost"
                           size="sm"
                           onClick={() => removeVariable(index)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 flex justify-center  items-center"
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 flex justify-center items-center"
                         >
                           <TrashIcon className="w-3 h-3" />
                         </Button>
@@ -170,77 +205,6 @@ export default function PromptSettingsSheet({
                     </div>
                   ))
                 )}
-              </div>
-              
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={addVariable}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  <PlusIcon className="w-3 h-3" />
-                  Add Variable
-                </Button>
-                
-                {variables.length > 0 && variables.some(v => v.value) && (
-                  <Button 
-                    variant="secondary" 
-                    onClick={replaceVariablesInPrompt}
-                    className="text-xs"
-                  >
-                    Replace Variables in Prompt
-                  </Button>
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          {/* Display Settings Section */}
-          <Collapsible open={isDisplayOpen} onOpenChange={setIsDisplayOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-              <div className="flex items-center gap-2">
-                <TypeIcon className="w-4 h-4" />
-                <span className="font-medium">Display Settings</span>
-              </div>
-              <ChevronDownIcon className={`w-4 h-4 transition-transform ${isDisplayOpen ? 'rotate-180' : ''}`} />
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent className="space-y-4 mt-4 px-4">
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-sm">Font Size</Label>
-                    <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                      {settings.fontSize}px
-                    </span>
-                  </div>
-                  <Slider
-                    value={[settings.fontSize]}
-                    onValueChange={(value) => setFontSize(value[0])}
-                    min={8}
-                    max={18}
-                    step={1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>8px</span>
-                    <span>18px</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label className="text-sm">Font Family</Label>
-                  <Select value={settings.fontFamily} onValueChange={setFontFamily}>
-                    <SelectTrigger className="h-8 text-xs mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mono">Monospace</SelectItem>
-                      <SelectItem value="sans">Sans Serif</SelectItem>
-                      <SelectItem value="serif">Serif</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>

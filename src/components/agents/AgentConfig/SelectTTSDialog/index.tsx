@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Volume2, Sparkles, Settings } from 'lucide-react'
+import { Volume2, Sparkles, Settings, RotateCcw } from 'lucide-react'
 
 import VoiceSelectionPanel from './VoiceSelectionPanel'
 import SettingsPanel from './SettingsPanel'
@@ -34,12 +34,12 @@ interface ElevenLabsVoice {
 }
 
 interface SarvamConfig {
-  targetLanguage: string;
+  target_language_code: string;  // was: targetLanguage
   model: string;
   speaker: string;
   loudness: number;
   speed: number;
-  enablePreprocessing: boolean;
+  enable_preprocessing: boolean;  // was: enablePreprocessing
 }
 
 interface ElevenLabsConfig {
@@ -99,21 +99,21 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>(() => {
     if ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
       return {
-        targetLanguage: initialConfig.targetLanguage || 'hi',
+        target_language_code: initialConfig.target_language_code || 'en-IN',
         model: initialModel || 'bulbul:v2',
         speaker: selectedVoice || '',
         loudness: initialConfig.loudness || 1.0,
         speed: initialConfig.speed || 1.0,
-        enablePreprocessing: initialConfig.enablePreprocessing !== undefined ? initialConfig.enablePreprocessing : true
+        enable_preprocessing: initialConfig.enable_preprocessing !== undefined ? initialConfig.enable_preprocessing : true
       }
     }
     return {
-      targetLanguage: 'hi',
+      target_language_code: 'en-IN',
       model: 'bulbul:v2',
       speaker: selectedVoice || '',
       loudness: 1.0,
       speed: 1.0,
-      enablePreprocessing: true
+      enable_preprocessing: true
     }
   })
 
@@ -143,6 +143,62 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     }
   })
 
+  const [showSettings, setShowSettings] = useState(true)
+
+  const originalValues = {
+    voiceId: selectedVoice || '',
+    provider: initialProvider === 'sarvam_tts' ? 'sarvam' : (initialProvider || ''),
+    sarvamConfig: (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig ? {
+      target_language_code: initialConfig.target_language_code || 'en-IN',
+      model: initialModel || 'bulbul:v2',
+      speaker: selectedVoice || '',
+      loudness: initialConfig.loudness || 1.0,
+      speed: initialConfig.speed || 1.0,
+      enable_preprocessing: initialConfig.enable_preprocessing !== undefined ? initialConfig.enable_preprocessing : true
+    } : {
+      target_language_code: 'en-IN',
+      model: 'bulbul:v2',
+      speaker: selectedVoice || '',
+      loudness: 1.0,
+      speed: 1.0,
+      enable_preprocessing: true
+    },
+    elevenLabsConfig: (initialProvider === 'elevenlabs' && initialConfig) ? {
+      voiceId: selectedVoice || '',
+      language: initialConfig.language || 'en',
+      model: initialModel || 'eleven_multilingual_v2',
+      similarityBoost: initialConfig.similarityBoost || 0.75,
+      stability: initialConfig.stability || 0.5,
+      style: initialConfig.style || 0,
+      useSpeakerBoost: initialConfig.useSpeakerBoost !== undefined ? initialConfig.useSpeakerBoost : true,
+      speed: initialConfig.speed || 1.0
+    } : {
+      voiceId: selectedVoice || '',
+      language: 'en',
+      model: 'eleven_multilingual_v2',
+      similarityBoost: 0.75,
+      stability: 0.5,
+      style: 0,
+      useSpeakerBoost: true,
+      speed: 1.0
+    }
+  }
+
+
+  const handleReset = () => {
+    setCurrentVoiceId(originalValues.voiceId)
+    setCurrentProvider(originalValues.provider)
+    setSarvamConfig(originalValues.sarvamConfig)
+    setElevenLabsConfig(originalValues.elevenLabsConfig)
+    
+    // Set correct tab based on original provider
+    if (originalValues.provider === 'sarvam') {
+      setActiveTab('sarvam')
+    } else if (originalValues.provider === 'elevenlabs') {
+      setActiveTab('elevenlabs')
+    }
+  }
+
   // Pre-load ElevenLabs voices on component mount
   useEffect(() => {
     fetchElevenLabsVoices()
@@ -151,14 +207,25 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
 
   // Sync configs when provider gets normalized
   useEffect(() => {
-    if (currentProvider === 'sarvam' && initialProvider === 'sarvam_tts' && initialConfig) {
+    if ((currentProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
       setSarvamConfig({
-        targetLanguage: initialConfig.targetLanguage || 'hi',
-        model: initialModel || 'bulbul:v2',
-        speaker: selectedVoice || '',
-        loudness: initialConfig.loudness || 1.0,
-        speed: initialConfig.speed || 1.0,
-        enablePreprocessing: initialConfig.enablePreprocessing !== undefined ? initialConfig.enablePreprocessing : true
+        target_language_code: initialConfig.target_language_code ?? 'en-IN',
+        model: initialModel ?? 'bulbul:v2',
+        speaker: selectedVoice ?? '',
+        loudness: initialConfig.loudness ?? 1.0,
+        speed: initialConfig.speed ?? 1.0,
+        enable_preprocessing: initialConfig.enable_preprocessing ?? true
+      })
+    } else if (initialProvider === 'elevenlabs' && initialConfig) {
+      setElevenLabsConfig({
+        voiceId: selectedVoice || initialConfig.voiceId || '',
+        language: initialConfig.language ?? 'en',
+        model: initialModel ?? 'eleven_multilingual_v2',
+        similarityBoost: initialConfig.similarityBoost ?? 0.75,
+        stability: initialConfig.stability ?? 0.5,
+        style: initialConfig.style ?? 0,
+        useSpeakerBoost: initialConfig.useSpeakerBoost ?? true,
+        speed: initialConfig.speed ?? 1.0
       })
     }
   }, [currentProvider, initialProvider, initialConfig, initialModel, selectedVoice])
@@ -202,9 +269,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
 
   // MAIN VOICE SELECT HANDLER - this updates internal state immediately
   const handleVoiceSelect = (voiceId: string, provider: string) => {
-    console.log('Voice selected:', { voiceId, provider })
     
-    // Normalize provider name for consistent comparison
     const normalizedProvider = provider === 'sarvam_tts' ? 'sarvam' : provider
     
     // Update internal state immediately
@@ -223,10 +288,18 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         (normalizedProvider === 'elevenlabs' && activeTab !== 'elevenlabs')) {
       setActiveTab(normalizedProvider === 'sarvam' ? 'sarvam' : 'elevenlabs')
     }
+    
+    // Show settings panel when a voice is selected
+    setShowSettings(true)
   }
 
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab)
+    setShowSettings(false)
+  }
+
+  const handleToggleSettings = () => {
+    setShowSettings(!showSettings)
   }
 
   const handleConfirm = () => {
@@ -258,18 +331,6 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   }
 
 
-
-
-  console.log('🔧 SelectTTS Config Debug:', {
-    initialProvider,
-    initialConfig,
-    initialModel,
-    selectedVoice,
-    sarvamConfig,
-    elevenLabsConfig
-  })
-
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -291,14 +352,28 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
             </div>
             
             {/* Header Voice Display - uses internal state */}
-            <HeaderVoiceDisplay 
-              selectedVoiceId={currentVoiceId}
-              selectedProvider={currentProvider}
-              allSarvamVoices={allSarvamVoices}
-              elevenLabsVoices={elevenLabsVoices}
-              showSettings={true}
-              onToggleSettings={() => {}}
-            />
+            <div className="flex items-center gap-3">
+              {/* NEW: Reset Button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleReset}
+                className="h-8 px-3 text-xs flex items-center gap-1.5"
+                disabled={!originalValues.voiceId && !originalValues.provider}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </Button>
+              
+              <HeaderVoiceDisplay 
+                selectedVoiceId={currentVoiceId}
+                selectedProvider={currentProvider}
+                allSarvamVoices={allSarvamVoices}
+                elevenLabsVoices={elevenLabsVoices}
+                showSettings={true}
+                onToggleSettings={() => {}}
+              />
+            </div>
           </div>
         </DialogHeader>
         
@@ -307,7 +382,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
           <VoiceSelectionPanel
             activeTab={activeTab}
             onTabChange={handleTabChange}
-            showSettings={true}
+            showSettings={showSettings}
             selectedVoiceId={currentVoiceId}
             selectedProvider={currentProvider}
             onVoiceSelect={handleVoiceSelect}
@@ -319,13 +394,15 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
           />
           
           {/* Settings Panel - uses internal state */}
-          <SettingsPanel
-            selectedProvider={currentProvider}
-            sarvamConfig={sarvamConfig}
-            setSarvamConfig={setSarvamConfig}
-            elevenLabsConfig={elevenLabsConfig}
-            setElevenLabsConfig={setElevenLabsConfig}
-          />
+          {showSettings && (
+            <SettingsPanel
+              selectedProvider={currentProvider}
+              sarvamConfig={sarvamConfig}
+              setSarvamConfig={setSarvamConfig}
+              elevenLabsConfig={elevenLabsConfig}
+              setElevenLabsConfig={setElevenLabsConfig}
+            />
+          )}
         </div>
         
         {/* Footer */}

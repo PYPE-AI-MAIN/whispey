@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useUser, SignedIn } from '@clerk/nextjs'
+import { useUser, SignedIn, useClerk } from '@clerk/nextjs'
 import { useTheme } from 'next-themes'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -80,7 +80,6 @@ interface NavigationGroup {
   items: NavigationItem[]
 }
 
-
 interface SidebarProps {
   config: SidebarConfig
   currentPath: string
@@ -130,88 +129,52 @@ const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; f
 
 export default function Sidebar({ config, currentPath, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const { user, isLoaded } = useUser()
+  const { signOut } = useClerk()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Improved active link detection
-  // const isActiveLink = (path: string) => {
-  //   // Exact match first (highest priority)
-  //   if (currentPath === path) {
-  //     return true
-  //   }
-
-  //   // Handle base agent path - if we're on /projectId/agents/agentId and link is /projectId/agents/agentId, it's active
-  //   if (path.match(/\/agents\/[^/]+$/) && !path.includes('/config') && !path.includes('/logs')) {
-  //     // This is the overview/base agent path
-  //     return currentPath === path
-  //   }
-
-  //   // Handle specific sub-paths exactly
-  //   if (path.includes('/config') || 
-  //       path.includes('/logs') || 
-  //       path.includes('/campaigns') ||
-  //       path.includes('/permissions') || 
-  //       path.includes('/activity') ||
-  //       path.includes('/webhooks') ||
-  //       path.includes('/api') ||
-  //       path.includes('/export') ||
-  //       path.includes('/calls') ||
-  //       path.includes('/performance') ||
-  //       path.includes('/usage') ||
-  //       path.includes('/edit')) {
-  //     return currentPath === path
-  //   }
-
-  //   // For list pages (ending with main section path like /agents)
-  //   if (path.endsWith('/agents') && !path.includes('/agents/')) {
-  //     return currentPath === path
-  //   }
-    
-  //   if (path.endsWith('/team') && !path.includes('/team/')) {
-  //     return currentPath === path
-  //   }
-    
-  //   if (path.endsWith('/reports') && !path.includes('/reports/')) {
-  //     return currentPath === path
-  //   }
-    
-  //   if (path.endsWith('/integrations') && !path.includes('/integrations/')) {
-  //     return currentPath === path
-  //   }
-    
-  //   if (path.endsWith('/settings') && !path.includes('/settings/')) {
-  //     return currentPath === path
-  //   }
-
-  //   if (path.endsWith('/analytics') && !path.includes('/analytics/')) {
-  //     return currentPath === path
-  //   }
-    
-  //   return false
-  // }
-
   const isActiveLinkWithSearchParams = (path: string) => {
     // Split path and query string
     const [navPath, navQuery] = path.split('?')
+    const [currentBasePath] = currentPath.split('?')
+    
+    // Special case: treat /observability route as part of Call Logs tab
+    if (navQuery && navQuery.includes('tab=logs')) {
+      // If nav item is for logs tab, also match /observability route
+      const baseNavPath = navPath // e.g., /projectId/agents/agentId
+      const observabilityPath = `${baseNavPath}/observability`
+      
+      if (currentBasePath === observabilityPath) {
+        return true
+      }
+    }
     
     // Check if base path matches
-    if (currentPath.split('?')[0] !== navPath) {
+    if (currentBasePath !== navPath) {
       return false
     }
   
     // If no query params in nav item, just check path
     if (!navQuery) {
-      return currentPath.split('?')[0] === navPath
+      return currentBasePath === navPath
     }
   
     // Parse nav query params
     const navParams = new URLSearchParams(navQuery)
+    
+    // Special case: If nav item is for "tab=overview" and current URL has no tab parameter,
+    // consider it active (since overview is the default tab)
+    if (navParams.get('tab') === 'overview' && !searchParams.get('tab')) {
+      return true
+    }
     
     // Check if all nav params match current params
     for (const [key, value] of navParams.entries()) {
@@ -233,8 +196,15 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
     return 'User'
   }
 
-  const handleSignOut = () => {
-    window.location.href = '/api/auth/logout'
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      // Use Clerk's signOut with afterSignOutUrl option - no redirect callback needed
+      await signOut({ redirectUrl: '/sign-in' })
+    } catch (error) {
+      console.error('Error signing out:', error)
+      setIsSigningOut(false)
+    }
   }
 
   // Group navigation items with better organization
@@ -514,9 +484,9 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
                   </div>
                   <DropdownMenuSeparator />
                   <div className="py-1">
-                    <DropdownMenuItem onClick={handleSignOut} className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Sign Out
+                    <DropdownMenuItem onClick={handleSignOut} className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400" disabled={isSigningOut}>
+                      <LogOut className={`w-4 h-4 mr-2 ${isSigningOut ? 'animate-spin' : ''}`} />
+                      {isSigningOut ? 'Signing out...' : 'Sign Out'}
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>

@@ -23,12 +23,12 @@ interface AgentAdvancedSettingsProps {
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
-        turnDetection: 'multilingual' | 'english' | 'disabled'
+        turn_detection: 'multilingual' | 'english' | 'disabled'
       }
       tools: {
         tools: Array<{
           id: string
-          type: 'endCall' | 'handoff' | 'custom'
+          type: 'end_call' | 'handoff' | 'custom_function'
           name: string
           config: any
         }>
@@ -127,7 +127,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvance
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <SessionBehaviourSettings
               preemptiveGeneration={advancedSettings.session.preemptiveGeneration}
-              turnDetection={advancedSettings.session.turnDetection}
+              turn_detection={advancedSettings.session.turn_detection}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

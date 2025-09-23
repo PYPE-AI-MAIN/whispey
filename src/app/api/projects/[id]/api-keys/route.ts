@@ -51,6 +51,7 @@ export async function GET(
       id: key.id,
       name: key.name || 'Project API Key',
       masked_key: key.masked_key,
+      token_hash_master: key.token_hash_master,
       created_at: key.created_at,
       last_used: key.last_used,
       is_active: key.is_active !== false,
@@ -79,6 +80,7 @@ export async function GET(
           id: 'legacy-key',
           name: 'Legacy Project Key',
           masked_key: '••••••••••••••••••••••••', // Always masked
+          token_hash_master: project.token_hash,
           created_at: project.created_at,
           last_used: null,
           is_active: true,

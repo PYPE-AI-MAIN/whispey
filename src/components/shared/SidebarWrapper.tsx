@@ -33,6 +33,7 @@ interface SidebarContext {
   isEnhancedProject: boolean
   userCanViewApiKeys: boolean
   projectId?: string
+  agentType?: string // Add agent type to context
 }
 
 interface NavigationItem {
@@ -52,7 +53,6 @@ export interface SidebarConfig {
   backPath?: string
   backLabel?: string
 }
-
 
 // Improved utility function to parse route patterns and extract parameters
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
@@ -165,13 +165,14 @@ const sidebarRoutes: SidebarRoute[] = [
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
       { pattern: '/:projectId/agents/:agentId/config' },
+      { pattern: '/:projectId/agents/:agentId/observability' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject } = context
+      const { isEnhancedProject, agentType } = context
 
       // Additional safety check to prevent reserved words from being treated as agent IDs
-      const reservedPaths = ['api-keys', 'settings', 'config'];
+      const reservedPaths = ['api-keys', 'settings', 'config', 'observability'];
       if (reservedPaths.includes(agentId)) {
         return null; // Let other routes handle this
       }
@@ -190,15 +191,19 @@ const sidebarRoutes: SidebarRoute[] = [
           icon: 'List', 
           path: `/${projectId}/agents/${agentId}?tab=logs`,
           group: 'LOGS' 
-        },
-        { 
+        }
+      ]
+
+      // Show Agent Config for pype_agent type agents (instead of checking project ID)
+      if (agentType === 'pype_agent') {
+        baseNavigation.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
           icon: 'Settings', 
           path: `/${projectId}/agents/${agentId}/config`, 
           group: 'configuration' 
-        }
-      ]
+        })
+      }
 
       const navigation = isEnhancedProject ? [
         ...baseNavigation,
@@ -302,14 +307,23 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
   
-  // Extract project ID from pathname
+  // Extract project ID and agent ID from pathname
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
+  const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
   
   // Fetch project data
   const { data: projects } = useSupabaseQuery('pype_voice_projects', 
     projectId && projectId !== 'sign' && projectId !== 'docs' ? {
       select: 'id, name',
       filters: [{ column: 'id', operator: 'eq', value: projectId }]
+    } : null
+  )
+
+  // Fetch agent data when we have an agent ID to get the agent_type
+  const { data: agents } = useSupabaseQuery('pype_voice_agents', 
+    agentId && projectId && projectId !== 'sign' && projectId !== 'docs' ? {
+      select: 'id, agent_type',
+      filters: [{ column: 'id', operator: 'eq', value: agentId }]
     } : null
   )
   
@@ -335,12 +349,14 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   }, [user, projectId])
   
   const project = projects?.[0]
+  const agent = agents?.[0] // Get the agent data
   const isEnhancedProject = project?.id === ENHANCED_PROJECT_ID
   
   const sidebarContext: SidebarContext = {
     isEnhancedProject,
     userCanViewApiKeys,
-    projectId
+    projectId,
+    agentType: agent?.agent_type // Pass the agent_type from the database query
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)
