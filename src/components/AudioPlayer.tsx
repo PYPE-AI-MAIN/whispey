@@ -15,9 +15,11 @@ interface AudioPlayerProps {
   callId: string
   className?: string
   url: string | null
+  segmentStartTime?: number
+  segmentDuration?: number
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration }) => {
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -31,6 +33,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [downloadFileName, setDownloadFileName] = useState("")
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+  const [segmentStarted, setSegmentStarted] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -143,6 +146,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
         if (audioRef.current.src !== url) {
           audioRef.current.src = url
         }
+        
+        // If we have segment parameters, seek to the start time
+        if (segmentStartTime !== undefined && !segmentStarted) {
+          // Wait for metadata to load, then seek to segment start
+          const handleLoadedMetadata = () => {
+            if (audioRef.current && segmentStartTime !== undefined) {
+              // Ensure we don't seek beyond the audio duration
+              const seekTime = Math.min(segmentStartTime, audioRef.current.duration || 0)
+              audioRef.current.currentTime = seekTime
+              setSegmentStarted(true)
+              audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata)
+            }
+          }
+          
+          // If metadata is already loaded, seek immediately
+          if (audioRef.current.readyState >= 1) {
+            handleLoadedMetadata()
+          } else {
+            audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata)
+          }
+        }
+        
         try {
           await audioRef.current.play()
           setIsPlaying(true)
@@ -152,7 +177,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
         }
       }
     }
-  }, [isPlaying, getAudioUrl])
+  }, [isPlaying, getAudioUrl, segmentStartTime, segmentStarted])
 
   // Generate default filename
   const getDefaultFileName = useCallback(() => {
@@ -365,16 +390,33 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
     const audio = audioRef.current
     if (!audio) return
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime)
+      
+      // Check if we've reached the end of the segment
+      if (segmentStartTime !== undefined && segmentDuration !== undefined) {
+        const segmentEndTime = segmentStartTime + segmentDuration
+        // Add a small buffer (0.1s) to ensure we don't miss the end
+        if (audio.currentTime >= segmentEndTime - 0.1) {
+          audio.pause()
+          setIsPlaying(false)
+          setCurrentTime(segmentEndTime)
+        }
+      }
+    }
+    
     const handleLoadedMetadata = () => {
       setDuration(audio.duration)
       setIsReady(true)
     }
+    
     const handleEnded = () => setIsPlaying(false)
+    
     const handleError = () => {
       setError("Playback failed")
       setIsPlaying(false)
     }
+    
     const handleCanPlay = () => setIsReady(true)
 
     audio.addEventListener("timeupdate", handleTimeUpdate)
@@ -390,7 +432,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url,callId, className 
       audio.removeEventListener("error", handleError)
       audio.removeEventListener("canplay", handleCanPlay)
     }
-  }, [])
+  }, [segmentStartTime, segmentDuration])
+
+  // Reset segment state when parameters change
+  useEffect(() => {
+    setSegmentStarted(false)
+    setCurrentTime(0)
+    setIsPlaying(false)
+    setError(null) // Clear any previous errors
+  }, [segmentStartTime, segmentDuration])
 
   // Draw waveform effect
   useEffect(() => {
