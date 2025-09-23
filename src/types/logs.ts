@@ -149,6 +149,7 @@ export interface TokenVerificationResult {
   error?: string;
   token?: any;
   project_id?: string;
+  source?: 'new_system' | 'old_system';
 }
 
 export interface ApiResponse<T = any> {

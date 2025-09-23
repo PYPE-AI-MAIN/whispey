@@ -1,9 +1,7 @@
 // app/providers.tsx
 'use client'
 
-import { usePathname, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
-import { usePostHog } from 'posthog-js/react'
 import { useUser } from '@clerk/nextjs'
 
 import posthog from 'posthog-js'

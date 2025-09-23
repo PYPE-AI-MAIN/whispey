@@ -23,6 +23,10 @@ from whispey import LivekitObserve
 
 load_dotenv()
 
+# Configuration
+GREETING_INTERRUPTION = True
+SESSION_INTERRUPTION = False
+
 # Initialize Whispey
 pype = LivekitObserve(
     agent_id="062a517c-f14a-4d97-b95b-081083a62376", 
@@ -43,14 +47,16 @@ pype = LivekitObserve(
 
 class SimpleToolAgent(Agent):
     def __init__(self) -> None:
-        super().__init__(instructions="""
-        You are a helpful assistant that can look up weather information and get current time.
-        
-        When users ask about weather, use the get_weather tool.
-        When users ask about time, use the get_current_time tool.
-        
-        Be friendly and conversational. If users ask for both weather and time, call both tools.
-        """)
+        super().__init__(
+            instructions="""
+            You are a helpful assistant that can look up weather information and get current time.
+            
+            When users ask about weather, use the get_weather tool.
+            When users ask about time, use the get_current_time tool.
+            
+            Be friendly and conversational. If users ask for both weather and time, call both tools.
+            """,
+        )
 
     @function_tool
     async def get_weather(
@@ -121,6 +127,8 @@ async def entrypoint(ctx: JobContext):
             )
         ),  
         vad=silero.VAD.load(),
+        allow_interruptions=SESSION_INTERRUPTION,
+        # min_interruption_duration=1,
         # preemptive_generation=True,
     )
     
@@ -140,8 +148,9 @@ async def entrypoint(ctx: JobContext):
     )
 
 
-    await session.generate_reply(
-        instructions="Greet the user and let them know you can help with weather information and current time."
+    await session.say(
+        "H this is a test of a very long text to see if I can interrupt you and also if I can continue the conversation after the interruption.",
+        allow_interruptions=GREETING_INTERRUPTION
     )
 
 if __name__ == "__main__":

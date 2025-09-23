@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import TokenRegenerationConfirmDialog from '../TokenRegenerationConfirmDialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { ChevronRight, Settings, Loader2, AlertCircle, Search, Plus, FolderOpen, MoreHorizontal, Trash2, Key, Copy, Eye, EyeOff, RefreshCw, Users, Clock, Filter, SortDesc, Grid3X3, List, ExternalLink, Building2, Folder } from 'lucide-react'
+import { ChevronRight, Settings, Loader2, AlertCircle, Search, Plus, MoreHorizontal, Trash2, Key, Copy, Eye, EyeOff, RefreshCw, Users, Clock, Grid3X3, List, Building2, ChevronsUpDown } from 'lucide-react'
 import ProjectCreationDialog from './ProjectCreationDialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import MemberManagementDialog from '../MemberManagmentDialog'
-import Header from '../shared/Header'
 
 interface Project {
   id: string
@@ -21,7 +20,7 @@ interface Project {
   created_at: string
   is_active: boolean
   token_hash?: string
-  agent_count?: number // Adding agent count for workspace context
+  agent_count?: number
 }
 
 interface ProjectSelectionProps {
@@ -45,8 +44,32 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  
+  // Initialize viewMode from localStorage
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('workspace-view-mode') as 'grid' | 'list') || 'grid'
+    }
+    return 'grid'
+  })
+  
+  // Initialize density from localStorage
+  const [density, setDensity] = useState<'comfortable' | 'compact'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('workspace-card-density') as 'comfortable' | 'compact') || 'comfortable'
+    }
+    return 'comfortable'
+  })
+  
   const router = useRouter()
+
+  // Save preferences to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('workspace-view-mode', viewMode)
+      localStorage.setItem('workspace-card-density', density)
+    }
+  }, [viewMode, density])
 
   const fetchProjects = async () => {
     setLoading(true)
@@ -66,7 +89,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   useEffect(() => {
     fetchProjects()
   }, [isAuthLoaded])
-
 
   const refetch = fetchProjects;
 
@@ -101,8 +123,6 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       }
 
       const result = await response.json()
-      
-      // Refresh the projects list
       refetch()
       setShowDeleteConfirm(null)
     } catch (error: unknown) {
@@ -129,9 +149,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       const result = await response.json()
       setRegeneratedToken(result.api_token)
       setShowTokenDialog(project)
-      setShowRegenerateConfirm(null) // Close confirmation dialog
-      
-      // Refresh the projects list to get updated token_hash
+      setShowRegenerateConfirm(null)
       refetch()
     } catch (error: unknown) {
       console.error('Error regenerating token:', error)
@@ -169,15 +187,12 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
     switch (environment.toLowerCase()) {
       case 'production':
       case 'prod':
-        return 'bg-red-50 text-red-700 border-red-200'
-      case 'staging':
-      case 'stage':
-        return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+        return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
       case 'development':
       case 'dev':
-        return 'bg-blue-50 text-blue-700 border-blue-200'
+        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
       default:
-        return 'bg-gray-50 text-gray-700 border-gray-200'
+        return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
     }
   }
 
@@ -195,88 +210,290 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
     (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
   ) || []
 
-  if (loading || !isAuthLoaded) {
-    return (
-      <div className="min-h-screen bg-project-gradient">
-        <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
-        <div className="relative z-10">
-          
-          <main className="max-w-[1400px] mx-auto px-6 py-8">
-            {/* Header Skeleton */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="h-8 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
-                  </div>
-                  <div className="h-4 w-96 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-                <div className="h-10 w-36 bg-gray-200 rounded-lg animate-pulse"></div>
+  // Comfortable Card Component (Original Style)
+  const ComfortableCard = ({ project }: { project: Project }) => (
+    <Card
+      className={`group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
+        selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
+      }`}
+      onClick={() => handleProjectClick(project)}
+    >
+      <CardContent className="p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+              {getWorkspaceInitials(project.name)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{project.name}</h3>
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
               </div>
-
-              {/* Controls Skeleton */}
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-80 bg-gray-200 rounded-lg animate-pulse"></div>
-                  <div className="h-8 w-16 bg-gray-200 rounded-lg animate-pulse"></div>
-                  <div className="h-8 w-16 bg-gray-200 rounded-lg animate-pulse"></div>
-                </div>
-                <div className="h-8 w-20 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div className="flex items-center gap-1">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-normal border ${getEnvironmentColor(project.environment)} px-1.5 py-0`}
+                >
+                  {project.environment}
+                </Badge>
+                {project.token_hash && (
+                  <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0">
+                    <Key className="h-2 w-2 mr-0.5" />
+                    API
+                  </Badge>
+                )}
+                {project.agent_count !== undefined && (
+                  <Badge variant="outline" className="text-xs font-normal bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 px-1.5 py-0">
+                    {project.agent_count}
+                  </Badge>
+                )}
               </div>
             </div>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                setSelectedProjectForDialog(project)
+                setShowAddMemberDialog(true)
+              }} className="text-xs">
+                <Users className="h-3 w-3 mr-2" />
+                Manage access
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                router.push(`${project.id}/agents/api-keys`)
+              }} className="text-xs">
+                <Settings className="h-3 w-3 mr-2" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                router.push(`/${project.id}/agents/api-keys`)
+              }} disabled={regeneratingToken === project.id} className="text-xs">
+                {regeneratingToken === project.id ? (
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3 mr-2" />
+                )}
+                Regenerate token
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                setShowDeleteConfirm(project)
+              }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                <Trash2 className="h-3 w-3 mr-2" />
+                Delete workspace
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
+        {/* Description */}
+        {project.description && (
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 leading-relaxed">
+            {project.description}
+          </p>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <Clock className="w-3 h-3" />
+            <span>{formatDate(project.created_at)}</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            <span>Open</span>
+            <ChevronRight className="w-3 h-3" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  // Compact Card Component (New Compact Style)
+  const CompactCard = ({ project }: { project: Project }) => (
+    <Card
+      className={`group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
+        selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
+      }`}
+      onClick={() => handleProjectClick(project)}
+    >
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+              {getWorkspaceInitials(project.name)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-1">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{project.name}</h3>
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline" className={`text-xs font-normal border ${getEnvironmentColor(project.environment)} px-1.5 py-0 h-4`}>
+                  {project.environment}
+                </Badge>
+                {project.token_hash && (
+                  <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0 h-4">
+                    <Key className="h-2 w-2 mr-0.5" />
+                    API
+                  </Badge>
+                )}
+                <span className="text-xs text-gray-500 dark:text-gray-400">{project.agent_count} agents</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(project.created_at)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedProjectForDialog(project)
+                  setShowAddMemberDialog(true)
+                }} className="text-xs">
+                  <Users className="h-3 w-3 mr-2" />
+                  Manage access
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation()
+                  router.push(`/${project.id}/agents/api-keys`)
+                }} className="text-xs">
+                  <Settings className="h-3 w-3 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation()
+                  router.push(`/${project.id}/agents/api-keys`)
+                }} disabled={regeneratingToken === project.id} className="text-xs">
+                  {regeneratingToken === project.id ? (
+                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 mr-2" />
+                  )}
+                  Regenerate token
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation()
+                  setShowDeleteConfirm(project)
+                }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  Delete workspace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  const CurrentCardComponent = density === 'compact' ? CompactCard : ComfortableCard
+
+  if (loading || !isAuthLoaded) {
+    return (
+      <div className="h-full bg-white dark:bg-gray-900 flex flex-col">
+        <div className="max-w-7xl mx-auto px-6 py-6 w-full flex-shrink-0">
+          {/* Header Skeleton */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                </div>
+                <div className="h-3 w-80 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+              <div className="h-8 w-28 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+
+            {/* Controls Skeleton */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+              <div className="h-7 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Skeleton Content */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-gray-100 dark:scrollbar-track-gray-800 scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500">
+          <div className="max-w-7xl mx-auto px-6 pb-6">
             {/* Workspace Grid Skeleton */}
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className="grid gap-3 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="bg-white/80 backdrop-blur-sm border border-gray-200/60">
-                  <CardContent className="p-6">
+                <Card key={index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-4">
                     {/* Header Skeleton */}
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {/* Avatar Skeleton */}
-                        <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse flex-shrink-0 relative">
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gray-300 rounded-full animate-pulse"></div>
-                        </div>
+                        <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse flex-shrink-0"></div>
                         <div className="min-w-0 flex-1">
-                          {/* Title and Status */}
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="h-5 w-32 bg-gray-200 rounded animate-pulse"></div>
-                            <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse"></div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                            <div className="w-1.5 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
                           </div>
-                          {/* Badges */}
-                          <div className="flex items-center gap-2">
-                            <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse"></div>
-                            <div className="h-5 w-12 bg-gray-200 rounded-full animate-pulse"></div>
-                            <div className="h-5 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                          <div className="flex items-center gap-1">
+                            <div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                            <div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
                           </div>
                         </div>
                       </div>
-                      {/* Menu Button Skeleton */}
-                      <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                     </div>
 
                     {/* Description Skeleton */}
-                    <div className="space-y-2 mb-6">
-                      <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
-                      <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="space-y-1 mb-4">
+                      <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      <div className="h-3 w-2/3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                     </div>
 
                     {/* Footer Skeleton */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 bg-gray-200 rounded animate-pulse"></div>
-                        <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
-                        <div className="w-3 h-3 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          </main>
+          </div>
         </div>
       </div>
     )
@@ -284,26 +501,23 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
 
   if (error) {
     return (
-      <div className="min-h-screen bg-project-gradient">
-        <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
-        <div className="relative z-10">
-          <div className="flex items-center justify-center py-32">
-            <div className="text-center space-y-6 max-w-sm">
-              <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto">
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-900">Failed to load workspaces</h3>
-                <p className="text-xs text-gray-500">{error}</p>
-              </div>
-              <Button 
-                onClick={() => window.location.reload()} 
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2"
-              >
-                Try again
-              </Button>
+      <div className="h-full bg-white dark:bg-gray-900 flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-sm">
+            <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
             </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Failed to load workspaces</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{error}</p>
+            </div>
+            <Button 
+              onClick={() => window.location.reload()} 
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 h-7"
+            >
+              Try again
+            </Button>
           </div>
         </div>
       </div>
@@ -311,339 +525,367 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   }
 
   return (
-    <div className="min-h-screen bg-project-gradient">
-      <div className="absolute inset-0 bg-subtle-pattern opacity-60"></div>
-      <div className="relative z-10">
-        <main className="max-w-[1400px] mx-auto px-6 py-8">
-          {/* Updated Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-semibold text-gray-900">Workspaces</h1>
-                </div>
-                <p className="text-sm text-gray-600">
-                  Organize your voice agents by department or team. Each workspace provides isolated access control and dedicated analytics.
-                </p>
+    <div className="h-full bg-white dark:bg-gray-900 flex flex-col">
+      <div className="max-w-7xl mx-auto px-6 py-6 w-full">
+        {/* Fixed Header */}
+        <div className="mb-6 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Workspaces</h1>
+                <Badge variant="outline" className="text-xs text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                  {projects.length}
+                </Badge>
               </div>
-              <Button 
-                onClick={handleCreateProject}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 text-sm"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Workspace
-              </Button>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Organize agents by team. Each workspace provides isolated access and analytics.
+              </p>
             </div>
+            <Button 
+              onClick={handleCreateProject}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 text-xs h-8"
+            >
+              <Plus className="w-3 h-3 mr-1.5" />
+              New Workspace
+            </Button>
+          </div>
 
-            {/* Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="search"
-                    placeholder="Search workspaces..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-80 pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
-                  />
+          {/* Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="search"
+                  placeholder="Search workspaces..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-64 pl-7 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all focus:bg-white dark:focus:bg-gray-700"
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              {/* Density Control - Single toggle */}
+              {viewMode === 'grid' && <button
+                onClick={() => setDensity(density === 'comfortable' ? 'compact' : 'comfortable')}
+                title={`Switch to ${density === 'comfortable' ? 'compact' : 'comfortable'} view`}
+                className="flex items-center justify-center w-7 h-7 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <ChevronsUpDown className="w-3 h-3" />
+              </button>}
+
+              {/* View Mode Control */}
+              <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded p-0.5 bg-gray-50 dark:bg-gray-800">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className={`w-6 h-6 p-0 text-xs ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
+                >
+                  <Grid3X3 className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={`w-6 h-6 p-0 text-xs ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
+                >
+                  <List className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-gray-100 dark:scrollbar-track-gray-800 scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500">
+        <div className="max-w-7xl mx-auto px-6 pb-6">
+          {/* Content Grid/Table */}
+          {viewMode === 'list' ? (
+            // Table View
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+              {/* Table Header */}
+              <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  <div className="col-span-6">Workspace Name</div>
+                  <div className="col-span-2">Environment</div>
+                  <div className="col-span-2">Created</div>
+                  <div className="col-span-2 text-right">Actions</div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
-                <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-gray-50">
-                  <Button
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('grid')}
-                    className={`w-8 h-8 p-0 ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900 hover:bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
+              {/* Table Body */}
+              <div>
+                {filteredProjects.map((project, index) => (
+                  <div
+                    key={project.id}
+                    className={`group px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
+                      index !== filteredProjects.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
+                    } ${selectedProject === project.id ? 'opacity-50' : ''}`}
+                    onClick={() => handleProjectClick(project)}
                   >
-                    <Grid3X3 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'list' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('list')}
-                    className={`w-8 h-8 p-0 ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900 hover:bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-transparent'}`}
-                  >
-                    <List className="w-4 h-4" />
-                  </Button>
-                </div>
+                    <div className="grid grid-cols-12 gap-4 items-center">
+                      {/* Workspace */}
+                      <div className="col-span-6 flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+                          {getWorkspaceInitials(project.name)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{project.name}</h3>
+                            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                            {project.token_hash && (
+                              <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0 h-4">
+                                <Key className="h-2 w-2 mr-0.5" />
+                                API
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Environment */}
+                      <div className="col-span-2">
+                        <Badge variant="outline" className={`text-xs font-normal border ${getEnvironmentColor(project.environment)} px-2 py-1`}>
+                          {project.environment}
+                        </Badge>
+                      </div>
+                      
+                      
+                      {/* Created */}
+                      <div className="col-span-2">
+                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                          <Clock className="w-3 h-3" />
+                          <span>{formatDate(project.created_at)}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Actions */}
+                      <div className="col-span-2 flex items-center justify-end gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedProjectForDialog(project)
+                              setShowAddMemberDialog(true)
+                            }} className="text-xs">
+                              <Users className="h-3 w-3 mr-2" />
+                              Manage access
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/${project.id}/agents/api-keys`)
+                            }} className="text-xs">
+                              <Settings className="h-3 w-3 mr-2" />
+                              Settings
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              router.push(`/${project.id}/agents/api-keys`)
+                            }} disabled={regeneratingToken === project.id} className="text-xs">
+                              {regeneratingToken === project.id ? (
+                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3 w-3 mr-2" />
+                              )}
+                              Regenerate token
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              setShowDeleteConfirm(project)
+                            }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                              <Trash2 className="h-3 w-3 mr-2" />
+                              Delete workspace
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          ) : (
+            // Grid View 
+            <div className={`grid gap-3 ${
+              density === 'compact' 
+                ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' 
+                : 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
+            }`}>
+              {filteredProjects.map((project) => (
+                <CurrentCardComponent key={project.id} project={project} />
+              ))}
+            </div>
+          )}
 
-          {/* Workspace Grid */}
-          <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
-            {filteredProjects.map((project) => (
-              <Card
-                key={project.id}
-                className={`group bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:border-gray-300 hover:shadow-lg hover:bg-white transition-all duration-200 cursor-pointer ${
-                  selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
-                }`}
-                onClick={() => handleProjectClick(project)}
-              >
-                <CardContent className="p-6">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 relative">
-                        {getWorkspaceInitials(project.name)}
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-sm">
-                          <FolderOpen className="w-2 h-2 text-indigo-600" />
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-gray-900 text-base truncate">{project.name}</h3>
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300'}`}></div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs font-medium border ${getEnvironmentColor(project.environment)}`}
-                          >
-                            {project.environment}
-                          </Badge>
-                          {project.token_hash && (
-                            <Badge variant="outline" className="text-xs font-medium bg-green-50 text-green-700 border-green-200">
-                              <Key className="h-3 w-3 mr-1" />
-                              API
-                            </Badge>
-                          )}
-                          {project.agent_count !== undefined && (
-                            <Badge variant="outline" className="text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                              {project.agent_count} {project.agent_count === 1 ? 'agent' : 'agents'}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedProjectForDialog(project)
-                          setShowAddMemberDialog(true)
-                        }}>
-                          <Users className="h-4 w-4 mr-2" />
-                          Manage access
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation()
-                        }}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Settings
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation()
-                          setShowRegenerateConfirm(project)
-                        }} disabled={regeneratingToken === project.id}>
-                          {regeneratingToken === project.id ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                          )}
-                          Regenerate token
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation()
-                          setShowDeleteConfirm(project)
-                        }} className="text-red-600 focus:text-red-600">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete workspace
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Description */}
-                  {project.description && (
-                    <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed">
-                      {project.description}
-                    </p>
-                  )}
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      <span>Created {formatDate(project.created_at)}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-400 group-hover:text-blue-600 transition-colors">
-                      <span>Open workspace</span>
-                      <ChevronRight className="w-3 h-3" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Empty State for Search */}
+          {/* Empty States */}
           {filteredProjects.length === 0 && searchQuery && (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Search className="h-8 w-8 text-gray-400" />
+            <div className="text-center py-16">
+              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Search className="h-6 w-6 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No workspaces found</h3>
-              <p className="text-sm text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
-                We couldn't find any workspaces matching "<span className="font-medium text-gray-900">{searchQuery}</span>". 
-                Try adjusting your search terms.
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No workspaces found</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                No workspaces match "<span className="font-medium text-gray-900 dark:text-gray-100">{searchQuery}</span>". 
+                Try different search terms.
               </p>
               <Button 
                 variant="outline" 
+                size="sm"
                 onClick={() => setSearchQuery('')}
-                className="text-gray-600 border-gray-300"
+                className="text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 text-xs h-7 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Clear search
               </Button>
             </div>
           )}
 
-          {/* Empty State for No Workspaces */}
           {projects.length === 0 && !loading && !error && (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Building2 className="h-8 w-8 text-blue-600" />
+            <div className="text-center py-16">
+              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Create your first workspace</h3>
-              <p className="text-sm text-gray-600 mb-8 max-w-lg mx-auto leading-relaxed">
-                Organize your voice agents by department or team. Each workspace provides isolated access control, 
-                dedicated analytics, and team-specific agent management.
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Create your first workspace</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-lg mx-auto">
+                Organize agents by team. Each workspace provides isolated access control and analytics.
               </p>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <Button 
                   onClick={handleCreateProject}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-3 w-3 mr-1.5" />
                   Create workspace
                 </Button>
-                <div className="text-xs text-gray-500 max-w-sm mx-auto">
-                  <p><strong>Example:</strong> Create "Sales Department" to organize all sales-related voice agents and provide access to your sales team.</p>
+                <div className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                  <p><strong>Example:</strong> "Sales Team" to organize sales voice agents with team access.</p>
                 </div>
               </div>
             </div>
           )}
-        </main>
-
-        {/* Dialogs - Updated terminology */}
-        <ProjectCreationDialog
-          isOpen={showCreateDialog}
-          onClose={() => setShowCreateDialog(false)}
-          onProjectCreated={handleProjectCreated}
-        />
-
-        <Dialog open={showTokenDialog !== null} onOpenChange={handleCloseTokenDialog}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">API token generated</DialogTitle>
-              <DialogDescription className="text-sm text-gray-600">
-                A new API token has been generated for the "{showTokenDialog?.name}" workspace. Save this token securely as it won't be shown again.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">API Token</label>
-                <div className="relative">
-                  <input
-                    type={showToken ? 'text' : 'password'}
-                    value={regeneratedToken || ''}
-                    readOnly
-                    className="w-full h-10 px-3 pr-20 text-sm border border-gray-200 rounded-lg bg-gray-50 font-mono focus:outline-none"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowToken(!showToken)}
-                      className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
-                    >
-                      {showToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleCopyToken}
-                      className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-                {tokenCopied && (
-                  <p className="text-xs text-emerald-600 mt-2">Token copied to clipboard</p>
-                )}
-              </div>
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-xs text-amber-800">
-                  <strong>Important:</strong> Store this token securely. The previous token has been invalidated and will no longer work.
-                </p>
-              </div>
-              <div className="flex justify-end pt-4">
-                <Button onClick={handleCloseTokenDialog} className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Done
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">Delete workspace</DialogTitle>
-              <DialogDescription className="text-sm text-gray-600">
-                Are you sure you want to delete the "{showDeleteConfirm?.name}" workspace? This action cannot be undone and will permanently delete all agents, call logs, and analytics data in this workspace.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex gap-3 pt-6">
-              <Button variant="outline" onClick={() => setShowDeleteConfirm(null)} className="flex-1">
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => showDeleteConfirm && handleDeleteProject(showDeleteConfirm)}
-                disabled={deletingProject !== null}
-                className="flex-1"
-              >
-                {deletingProject ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Delete workspace
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <TokenRegenerationConfirmDialog
-          isOpen={showRegenerateConfirm !== null}
-          project={showRegenerateConfirm}
-          isRegenerating={regeneratingToken === showRegenerateConfirm?.id}
-          onConfirm={() => showRegenerateConfirm && handleRegenerateToken(showRegenerateConfirm)}
-          onCancel={() => setShowRegenerateConfirm(null)}
-        />
-
-        <MemberManagementDialog
-          isOpen={membersDialog}
-          onClose={setShowAddMemberDialog}
-          project={projectSelected}
-        />
+        </div>
       </div>
+
+      {/* All Dialogs */}
+      <ProjectCreationDialog
+        isOpen={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onProjectCreated={handleProjectCreated}
+      />
+
+      <Dialog open={showTokenDialog !== null} onOpenChange={handleCloseTokenDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">API token generated</DialogTitle>
+            <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
+              A new API token has been generated for "{showTokenDialog?.name}". Save this securely.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-900 dark:text-gray-100 mb-1">API Token</label>
+              <div className="relative">
+                <input
+                  type={showToken ? 'text' : 'password'}
+                  value={regeneratedToken || ''}
+                  readOnly
+                  className="w-full h-8 px-2 pr-16 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono focus:outline-none"
+                />
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowToken(!showToken)}
+                    className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  >
+                    {showToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCopyToken}
+                    className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+              {tokenCopied && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Token copied to clipboard</p>
+              )}
+            </div>
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                <strong>Important:</strong> Store this token securely. The previous token has been invalidated.
+              </p>
+            </div>
+            <div className="flex justify-end pt-3">
+              <Button onClick={handleCloseTokenDialog} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
+                Done
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Delete workspace</DialogTitle>
+            <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
+              Delete "{showDeleteConfirm?.name}"? This permanently removes all agents, logs, and analytics.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-4">
+            <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(null)} className="flex-1 text-xs">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => showDeleteConfirm && handleDeleteProject(showDeleteConfirm)}
+              disabled={deletingProject !== null}
+              className="flex-1 text-xs"
+            >
+              {deletingProject ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <TokenRegenerationConfirmDialog
+        isOpen={showRegenerateConfirm !== null}
+        project={showRegenerateConfirm}
+        isRegenerating={regeneratingToken === showRegenerateConfirm?.id}
+        onConfirm={() => showRegenerateConfirm && handleRegenerateToken(showRegenerateConfirm)}
+        onCancel={() => setShowRegenerateConfirm(null)}
+      />
+
+      <MemberManagementDialog
+        isOpen={membersDialog}
+        onClose={setShowAddMemberDialog}
+        project={projectSelected}
+      />
     </div>
   )
 }

@@ -113,15 +113,15 @@ function useDebounce<T>(value: T, delay: number): T {
 // Skeleton for header section
 function CampaignHeaderSkeleton() {
   return (
-    <header className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+    <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <div className="h-7 w-40 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-7 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           </div>
           <div className="flex items-center gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+              <div key={i} className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
             ))}
           </div>
         </div>
@@ -129,7 +129,7 @@ function CampaignHeaderSkeleton() {
         {/* Filters skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-9 bg-gray-200 rounded-lg animate-pulse"></div>
+            <div key={i} className="h-9 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
           ))}
         </div>
       </div>
@@ -140,26 +140,26 @@ function CampaignHeaderSkeleton() {
 // Skeleton for table
 function CampaignTableSkeleton() {
   return (
-    <main className="flex-1 overflow-hidden">
+    <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-auto">
           <div className="min-w-full" style={{ minWidth: "1500px" }}>
             <Table className="w-full">
-              <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
-                <TableRow className="bg-muted/80 hover:bg-muted/80">
-                  <TableHead className="w-[140px] font-semibold text-foreground pl-6">Phone Number</TableHead>
-                  <TableHead className="w-[140px] font-semibold text-foreground">Alternative</TableHead>
-                  <TableHead className="w-[160px] font-semibold text-foreground">FPO Name</TableHead>
-                  <TableHead className="w-[120px] font-semibold text-foreground">FPO Login ID</TableHead>
-                  <TableHead className="w-[100px] font-semibold text-foreground">Status</TableHead>
-                  <TableHead className="w-[90px] font-semibold text-foreground">Retry Attempts</TableHead>
-                  <TableHead className="w-[200px] font-semibold text-foreground">System Error</TableHead>
-                  <TableHead className="w-[140px] font-semibold text-foreground pr-6">Created At</TableHead>
+              <TableHeader className="sticky top-0 z-10 bg-background/95 dark:bg-gray-900/95 backdrop-blur-sm border-b-2">
+                <TableRow className="bg-muted/80 dark:bg-gray-800/80 hover:bg-muted/80 dark:hover:bg-gray-800/80">
+                  <TableHead className="w-[140px] font-semibold text-foreground dark:text-gray-100 pl-6">Phone Number</TableHead>
+                  <TableHead className="w-[140px] font-semibold text-foreground dark:text-gray-100">Alternative</TableHead>
+                  <TableHead className="w-[160px] font-semibold text-foreground dark:text-gray-100">FPO Name</TableHead>
+                  <TableHead className="w-[120px] font-semibold text-foreground dark:text-gray-100">FPO Login ID</TableHead>
+                  <TableHead className="w-[100px] font-semibold text-foreground dark:text-gray-100">Status</TableHead>
+                  <TableHead className="w-[90px] font-semibold text-foreground dark:text-gray-100">Retry Attempts</TableHead>
+                  <TableHead className="w-[200px] font-semibold text-foreground dark:text-gray-100">System Error</TableHead>
+                  <TableHead className="w-[140px] font-semibold text-foreground dark:text-gray-100 pr-6">Created At</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 10 }).map((_, index) => (
-                  <TableRow key={index} className="border-b border-border/50">
+                  <TableRow key={index} className="border-b border-border/50 dark:border-gray-700/50">
                     <TableCell className="pl-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-muted animate-pulse rounded-full"></div>
@@ -384,15 +384,15 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
       case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200'
+        return 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
       case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
+        return 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        return 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700'
     }
   }
 
@@ -429,8 +429,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       return <ArrowUpDown className="h-4 w-4 text-gray-400" />
     }
     return sortOrder === 'asc' 
-      ? <ArrowUp className="h-4 w-4 text-blue-600" />
-      : <ArrowDown className="h-4 w-4 text-blue-600" />
+      ? <ArrowUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      : <ArrowDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
   }
 
   const goToPage = (page: number) => {
@@ -618,8 +618,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
     const pageNumbers = getPageNumbers()
 
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white">
-        <div className="flex items-center gap-4 text-sm text-gray-600">
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
           <div>
             Showing {((page - 1) * pagination.itemsPerPage) + 1} to{' '}
             {Math.min(page * pagination.itemsPerPage, pagination.totalItems)} of{' '}
@@ -634,7 +634,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 setItemsPerPage(Number(e.target.value))
                 setCurrentPage(1)
               }}
-              className="px-2 py-1 text-sm border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+              className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               {ITEMS_PER_PAGE_OPTIONS.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -649,6 +649,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             size="sm"
             onClick={() => goToPage(page - 1)}
             disabled={!hasPreviousPage || loading}
+            className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -662,11 +663,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                   size="sm"
                   onClick={() => goToPage(1)}
                   disabled={loading}
+                  className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   1
                 </Button>
                 {pageNumbers[0] > 2 && (
-                  <span className="px-2 text-gray-400">...</span>
+                  <span className="px-2 text-gray-400 dark:text-gray-500">...</span>
                 )}
               </>
             )}
@@ -678,7 +680,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 size="sm"
                 onClick={() => goToPage(pageNum)}
                 disabled={loading}
-                className={pageNum === page ? "bg-blue-600 text-white" : ""}
+                className={pageNum === page ? "bg-blue-600 text-white" : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"}
               >
                 {pageNum}
               </Button>
@@ -687,13 +689,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             {pageNumbers[pageNumbers.length - 1] < totalPages && (
               <>
                 {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-                  <span className="px-2 text-gray-400">...</span>
+                  <span className="px-2 text-gray-400 dark:text-gray-500">...</span>
                 )}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => goToPage(totalPages)}
                   disabled={loading}
+                  className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   {totalPages}
                 </Button>
@@ -706,6 +709,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             size="sm"
             onClick={() => goToPage(page + 1)}
             disabled={!hasNextPage || loading}
+            className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Next
             <ChevronRight className="h-4 w-4" />
@@ -728,19 +732,19 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   if (error) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <header className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+        <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
-              <div className="h-8 bg-red-100 text-red-700 px-4 rounded-lg flex items-center">
+              <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Unable to Load Campaign Logs
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" onClick={onBack}>
+                <Button variant="outline" onClick={onBack} className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Go Back
                 </Button>
-                <Button onClick={() => fetchLogs(true)}>
+                <Button onClick={() => fetchLogs(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Retry
                 </Button>
@@ -748,10 +752,10 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             </div>
           </div>
         </header>
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
           <div className="text-center space-y-4 max-w-md">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h2 className="text-xl font-semibold text-gray-900">{error}</h2>
+            <AlertCircle className="w-12 h-12 text-red-500 dark:text-red-400 mx-auto" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{error}</h2>
           </div>
         </div>
       </div>
@@ -759,14 +763,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Header - shows immediately with working controls */}
-      <header className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+      <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Campaign Logs</h1>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Campaign Logs</h1>
               </div>
             </div>
 
@@ -775,7 +779,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowUploadDialog(true)}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                className="bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload CSV
@@ -784,7 +788,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowScheduleDialog(true)}
-                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                className="bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
               >
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule
@@ -794,6 +798,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 size="sm" 
                 onClick={exportLogs}
                 disabled={logs.length === 0}
+                className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -803,6 +808,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 size="sm" 
                 onClick={refresh}
                 disabled={refreshing || parentLoading}
+                className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 {refreshing ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -826,19 +832,19 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
           {/* Filters - show immediately and work client-side */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder="Search contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white/80 backdrop-blur-sm"
+                className="pl-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200 dark:border-gray-700"
               />
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-white/80 backdrop-blur-sm"
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-gray-100"
             >
               {CALL_STATUS_OPTIONS.map(option => (
                 <option key={option.value} value={option.value}>
@@ -851,7 +857,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
               placeholder="Filter by source file..."
               value={sourceFileFilter}
               onChange={(e) => setSourceFileFilter(e.target.value)}
-              className="bg-white/80 backdrop-blur-sm"
+              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200 dark:border-gray-700"
             />
 
             <select
@@ -861,7 +867,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 setSortBy(field as 'createdAt' | 'phoneNumber' | 'call_status')
                 setSortOrder(order as 'asc' | 'desc')
               }}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-white/80 backdrop-blur-sm"
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-900 dark:text-gray-100"
             >
               {SORT_OPTIONS.map(option => (
                 <React.Fragment key={option.value}>
@@ -878,7 +884,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             <Button 
               variant="outline" 
               onClick={clearFilters}
-              className="bg-white/80 backdrop-blur-sm"
+              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Filter className="h-4 w-4 mr-2" />
               Clear Filters
@@ -888,172 +894,184 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       </header>
 
       {/* Table - show loading state only for data */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
         {loading && logs.length === 0 ? (
-          <div className="text-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
-            <p className="text-gray-600">Loading campaign logs...</p>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400">Loading campaign logs...</p>
+            </div>
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-12">
-            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No campaign logs found</h3>
-            <p className="text-gray-600 mb-6">
-              {searchQuery || statusFilter !== 'all' || sourceFileFilter 
-                ? 'Try adjusting your search criteria' 
-                : 'No contacts have been uploaded yet'
-              }
-            </p>
-            {(searchQuery || statusFilter !== 'all' || sourceFileFilter) && (
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            )}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <Building2 className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No campaign logs found</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                {searchQuery || statusFilter !== 'all' || sourceFileFilter 
+                  ? 'Try adjusting your search criteria' 
+                  : 'No contacts have been uploaded yet'
+                }
+              </p>
+              {(searchQuery || statusFilter !== 'all' || sourceFileFilter) && (
+                <Button variant="outline" onClick={clearFilters} className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  Clear Filters
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col">
-            <div className="flex-1 overflow-auto">
-              <div className="min-w-full" style={{ minWidth: "1500px" }}>
-                <Table className="w-full">
-                  <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
-                    <TableRow className="bg-muted/80 hover:bg-muted/80">
-                      <TableHead 
-                        className="w-[140px] font-semibold text-foreground pl-6 cursor-pointer hover:bg-muted/60"
-                        onClick={() => handleSort('phoneNumber')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Phone Number
-                          {getSortIcon('phoneNumber')}
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-[140px] font-semibold text-foreground">Alternative</TableHead>
-                      <TableHead className="w-[160px] font-semibold text-foreground">FPO Name</TableHead>
-                      <TableHead className="w-[120px] font-semibold text-foreground">FPO Login ID</TableHead>
-                      <TableHead 
-                        className="w-[100px] font-semibold text-foreground cursor-pointer hover:bg-muted/60"
-                        onClick={() => handleSort('call_status')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Status
-                          {getSortIcon('call_status')}
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-[90px] font-semibold text-foreground">Retry Attempts</TableHead>
-                      <TableHead className="w-[200px] font-semibold text-foreground">System Error</TableHead>
-                      <TableHead 
-                        className="w-[140px] font-semibold text-foreground pr-6 cursor-pointer hover:bg-muted/60"
-                        onClick={() => handleSort('createdAt')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Created At
-                          {getSortIcon('createdAt')}
-                        </div>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {logs.map((log) => (
-                      <TableRow
-                        key={log.id}
-                        className="cursor-default hover:bg-muted/30 transition-all duration-200 border-b border-border/50"
-                      >
-                        <TableCell className="font-medium pl-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                              <Phone className="w-4 h-4 text-primary" />
-                            </div>
-                            <span className="font-medium">{log.masterMobileNo}</span>
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="py-4">
-                          <span className="text-sm text-gray-600">{log.alternateMobile || '-'}</span>
-                        </TableCell>
-
-                        <TableCell className="py-4">
+          <>
+            {/* Scrollable Table Area */}
+            <div className="flex-1 overflow-hidden">
+              <div className="h-full overflow-auto">
+                <div className="min-w-full" style={{ minWidth: "1500px" }}>
+                  <Table className="w-full">
+                    <TableHeader className="sticky top-0 z-10 bg-background/95 dark:bg-gray-900/95 backdrop-blur-sm border-b-2">
+                      <TableRow className="bg-muted/80 dark:bg-gray-800/80 hover:bg-muted/80 dark:hover:bg-gray-800/80">
+                        <TableHead 
+                          className="w-[140px] font-semibold text-foreground dark:text-gray-100 pl-6 cursor-pointer hover:bg-muted/60 dark:hover:bg-gray-700/60"
+                          onClick={() => handleSort('phoneNumber')}
+                        >
                           <div className="flex items-center gap-2">
-                            <Building2 className="w-3 h-3 text-muted-foreground" />
-                            <span className="font-medium">{log.fpoName}</span>
+                            Phone Number
+                            {getSortIcon('phoneNumber')}
                           </div>
-                        </TableCell>
-
-                        <TableCell className="py-4">
-                          <code className="text-xs bg-muted/60 px-2 py-1 rounded font-mono">
-                            {log.fpoLoginId}
-                          </code>
-                        </TableCell>
-
-                        <TableCell className="py-4">
-                          <Badge
-                            className={cn("text-xs font-medium px-2.5 py-1", getStatusColor(log.call_status))}
-                          >
-                            {log.call_status}
-                          </Badge>
-                        </TableCell>
-
-                        <TableCell className="py-4">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <Clock className="w-3 h-3 text-muted-foreground" />
-                            {log.real_attempt_count}
+                        </TableHead>
+                        <TableHead className="w-[140px] font-semibold text-foreground dark:text-gray-100">Alternative</TableHead>
+                        <TableHead className="w-[160px] font-semibold text-foreground dark:text-gray-100">FPO Name</TableHead>
+                        <TableHead className="w-[120px] font-semibold text-foreground dark:text-gray-100">FPO Login ID</TableHead>
+                        <TableHead 
+                          className="w-[100px] font-semibold text-foreground dark:text-gray-100 cursor-pointer hover:bg-muted/60 dark:hover:bg-gray-700/60"
+                          onClick={() => handleSort('call_status')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Status
+                            {getSortIcon('call_status')}
                           </div>
-                        </TableCell>
-
-                        <TableCell className="py-4">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <Clock className="w-3 h-3 text-muted-foreground" />
-                            {log.system_error_count}
+                        </TableHead>
+                        <TableHead className="w-[90px] font-semibold text-foreground dark:text-gray-100">Retry Attempts</TableHead>
+                        <TableHead className="w-[200px] font-semibold text-foreground dark:text-gray-100">System Error</TableHead>
+                        <TableHead 
+                          className="w-[140px] font-semibold text-foreground dark:text-gray-100 pr-6 cursor-pointer hover:bg-muted/60 dark:hover:bg-gray-700/60"
+                          onClick={() => handleSort('createdAt')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Created At
+                            {getSortIcon('createdAt')}
                           </div>
-                        </TableCell>
-                        
-                        <TableCell className="text-sm text-muted-foreground py-4 pr-6">
-                          {formatDateTime(log.createdAt)}
-                        </TableCell>
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {logs.map((log) => (
+                        <TableRow
+                          key={log.id}
+                          className="cursor-default hover:bg-muted/30 dark:hover:bg-gray-800/30 transition-all duration-200 border-b border-border/50 dark:border-gray-700/50"
+                        >
+                          <TableCell className="font-medium pl-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                <Phone className="w-4 h-4 text-primary dark:text-primary" />
+                              </div>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{log.masterMobileNo}</span>
+                            </div>
+                          </TableCell>
 
-                {loading && logs.length > 0 && (
-                  <div className="text-center py-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
-                    <p className="text-sm text-gray-600 mt-2">Loading more data...</p>
-                  </div>
-                )}
+                          <TableCell className="py-4">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">{log.alternateMobile || '-'}</span>
+                          </TableCell>
+
+                          <TableCell className="py-4">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{log.fpoName}</span>
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="py-4">
+                            <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-1 rounded font-mono text-gray-900 dark:text-gray-100">
+                              {log.fpoLoginId}
+                            </code>
+                          </TableCell>
+
+                          <TableCell className="py-4">
+                            <Badge
+                              className={cn("text-xs font-medium px-2.5 py-1", getStatusColor(log.call_status))}
+                            >
+                              {log.call_status}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="py-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                              <Clock className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
+                              {log.real_attempt_count}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="py-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                              <Clock className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
+                              {log.system_error_count}
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell className="text-sm text-muted-foreground dark:text-gray-400 py-4 pr-6">
+                            {formatDateTime(log.createdAt)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {loading && logs.length > 0 && (
+                    <div className="text-center py-4 bg-white dark:bg-gray-800">
+                      <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading more data...</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {renderPagination()}
-          </div>
+            {/* Fixed Pagination Footer */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                {renderPagination()}
+              </div>
+            )}
+          </>
         )}
       </main>
 
-      {/* All dialog components remain the same as original */}
+      {/* All dialog components with dark mode support */}
       {showUploadDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                <Upload className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Upload CSV File</h3>
-              <p className="text-sm text-gray-600">Select a CSV file to upload to S3</p>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Upload CSV File</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Select a CSV file to upload to S3</p>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   CSV File
                 </label>
                 <input
                   type="file"
                   accept=".csv"
                   onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
                 />
               </div>
               
               {csvFile && (
-                <div className="text-sm text-gray-600 bg-gray-50 rounded p-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3">
                   <strong>Selected:</strong> {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
                 </div>
               )}
@@ -1067,14 +1085,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                   setCsvFile(null)
                 }} 
                 disabled={uploading}
-                className="flex-1"
+                className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleUpload}
                 disabled={!csvFile || uploading}
-                className="flex-1"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {uploading ? (
                   <>
@@ -1095,27 +1113,27 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
 
       {showDeleteDialog && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
                   {!deleteResult ? (
                     <>
                       <div className="text-center">
-                        <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                          <Trash2 className="w-6 h-6 text-red-600" />
+                        <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                          <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
                         </div>
-                        <h3 className="text-xl font-semibold text-red-900 mb-2">Delete All Campaign Logs</h3>
-                        <p className="text-sm text-red-700">This will permanently delete all campaign logs from DynamoDB</p>
+                        <h3 className="text-xl font-semibold text-red-900 dark:text-red-100 mb-2">Delete All Campaign Logs</h3>
+                        <p className="text-sm text-red-700 dark:text-red-300">This will permanently delete all campaign logs from DynamoDB</p>
                       </div>
                       
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-sm text-red-800 mb-2">
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                        <p className="text-sm text-red-800 dark:text-red-300 mb-2">
                           <strong>⚠️ Warning:</strong> This action cannot be undone!
                         </p>
                       </div>
                       
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE ALL LOGS</span> to confirm:
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Type <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">DELETE ALL LOGS</span> to confirm:
                           </label>
                           <input
                             type="text"
@@ -1123,12 +1141,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                             onChange={(e) => setDeleteConfirmText(e.target.value)}
                             placeholder="DELETE ALL LOGS"
                             disabled={deleting}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           />
                         </div>
                         
                         {pagination && (
-                          <div className="text-sm text-gray-600 bg-gray-50 rounded p-3">
+                          <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3">
                             <strong>Records to be deleted:</strong> {pagination.totalItems} campaign log entries
                           </div>
                         )}
@@ -1143,7 +1161,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                             setDeleteResult(null)
                           }}
                           disabled={deleting}
-                          className="flex-1"
+                          className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                         >
                           Cancel
                         </Button>
@@ -1171,27 +1189,27 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                     <>
                       <div className="text-center">
                         <div className={`w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center ${
-                          deleteResult.success ? 'bg-green-100' : 'bg-red-100'
+                          deleteResult.success ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
                         }`}>
                           {deleteResult.success ? (
-                            <CheckCircle className="w-6 h-6 text-green-600" />
+                            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
                           ) : (
-                            <AlertCircle className="w-6 h-6 text-red-600" />
+                            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                           )}
                         </div>
                         <h3 className={`text-xl font-semibold mb-2 ${
-                          deleteResult.success ? 'text-green-900' : 'text-red-900'
+                          deleteResult.success ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'
                         }`}>
                           {deleteResult.success ? 'Deletion Successful!' : 'Deletion Failed'}
                         </h3>
                         <p className={`text-sm ${
-                          deleteResult.success ? 'text-green-700' : 'text-red-700'
+                          deleteResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
                         }`}>
                           {deleteResult.message}
                         </p>
                         
                         {deleteResult.success && (
-                          <div className="mt-3 text-sm text-gray-600 bg-gray-50 rounded p-3">
+                          <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3">
                             <strong>Deleted:</strong> {deleteResult.count} records in {deleteResult.batchCount} batches
                           </div>
                         )}
@@ -1205,7 +1223,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                             setDeleteConfirmText('')
                             setDeleteResult(null)
                           }}
-                          className="w-full"
+                          className="w-full border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                         >
                           Close
                         </Button>
@@ -1216,24 +1234,24 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
               </div>
             )}
 
-            {/* Schedule Dialog - keeping the same structure as original */}
+            {/* Schedule Dialog - with dark mode support */}
             {showScheduleDialog && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-green-600" />
+                    <div className="w-12 h-12 mx-auto mb-4 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-green-600 dark:text-green-400" />
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Schedule Campaign</h3>
-                    <p className="text-sm text-gray-600">Configure your campaign schedule settings</p>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Schedule Campaign</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Configure your campaign schedule settings</p>
                   </div>
                   
-                  {/* Schedule form content - same as original */}
+                  {/* Schedule form content - with dark mode */}
                   <div className="space-y-4">
                     {/* Date Range */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           Start Date
                         </label>
                         <input
@@ -1241,11 +1259,11 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                           value={scheduleData.start_date}
                           onChange={(e) => setScheduleData({ ...scheduleData, start_date: e.target.value })}
                           disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           End Date
                         </label>
                         <input
@@ -1253,15 +1271,15 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                           value={scheduleData.end_date}
                           onChange={(e) => setScheduleData({ ...scheduleData, end_date: e.target.value })}
                           disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
 
-                    {/* Time Range and other fields - same structure */}
+                    {/* Time Range and other fields */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           <Clock className="w-4 h-4 inline mr-1" />
                           Start Time
                         </label>
@@ -1270,11 +1288,11 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                           value={scheduleData.start_time}
                           onChange={(e) => setScheduleData({ ...scheduleData, start_time: e.target.value })}
                           disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           <Clock className="w-4 h-4 inline mr-1" />
                           End Time
                         </label>
@@ -1283,13 +1301,13 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                           value={scheduleData.end_time}
                           onChange={(e) => setScheduleData({ ...scheduleData, end_time: e.target.value })}
                           disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Concurrency
                       </label>
                       <input
@@ -1299,7 +1317,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                         value={scheduleData.concurrency}
                         onChange={(e) => setScheduleData({ ...scheduleData, concurrency: parseInt(e.target.value) || 1 })}
                         disabled={scheduling}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       />
                     </div>
                   </div>
@@ -1309,14 +1327,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                       variant="outline" 
                       onClick={() => setShowScheduleDialog(false)}
                       disabled={scheduling}
-                      className="flex-1"
+                      className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Cancel
                     </Button>
                     <Button 
                       onClick={handleSchedule}
                       disabled={scheduling}
-                      className="flex-1"
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                     >
                       {scheduling ? (
                         <>

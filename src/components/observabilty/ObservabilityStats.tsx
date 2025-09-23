@@ -171,9 +171,9 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       e2e: { good: 4, fair: 8 },
     }
     const threshold = thresholds[type]
-    if (value <= threshold.good) return "text-emerald-600"
-    if (value <= threshold.fair) return "text-amber-600"
-    return "text-red-600"
+    if (value <= threshold.good) return "text-emerald-600 dark:text-emerald-400"
+    if (value <= threshold.fair) return "text-amber-600 dark:text-amber-400"
+    return "text-red-600 dark:text-red-400"
   }
 
   const formatDuration = (seconds: number) => {
@@ -189,26 +189,26 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
 
   if (transcriptLoading) {
     return (
-      <div className="px-6 py-3 border-b bg-slate-50/30">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
         <div className="animate-pulse">
           <div className="flex items-center justify-between mb-3">
-            <div className="h-4 bg-slate-200 rounded w-32"></div>
-            <div className="h-3 bg-slate-200 rounded w-20"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-32"></div>
+            <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-20"></div>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex gap-6">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-slate-200 rounded"></div>
-                  <div className="h-4 bg-slate-200 rounded w-12"></div>
+                  <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
                 </div>
               ))}
             </div>
             <div className="flex gap-4">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="text-center">
-                  <div className="h-3 bg-slate-200 rounded w-8 mb-1"></div>
-                  <div className="h-3 bg-slate-200 rounded w-6"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-8 mb-1"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-6"></div>
                 </div>
               ))}
             </div>
@@ -224,13 +224,13 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
 
   return (
     <TooltipProvider>
-      <div className="px-6 py-3 border-b bg-slate-50/30">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-slate-700">Session Overview</h3>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Overview</h3>
             <div className="flex items-center gap-2">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 {sessionId ? `Session ${sessionId.slice(0, 8)}...` : `Agent ${agentId.slice(0, 8)}...`}
               </div>
               <div className="flex items-center gap-2">
@@ -239,7 +239,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                   isVapiAgent ? "bg-blue-500" : "bg-orange-500"
                 )}></div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xs text-slate-500 font-medium">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                     {isVapiAgent ? "Vapi" : "LiveKit"}
                   </span>
                 </div>
@@ -254,19 +254,19 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
             <div className="flex items-center gap-8">
               {/* Turns */}
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-slate-500" />
+                <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold text-slate-900">{turnCount}</span>
-                  <span className="text-xs text-slate-500">turns</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{turnCount}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">turns</span>
                 </div>
               </div>
 
               {/* Duration */}
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-500" />
+                <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold text-slate-900">{formatCallDuration(callDuration)}</span>
-                  <span className="text-xs text-slate-500">duration</span>
+                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCallDuration(callDuration)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">duration</span>
                 </div>
               </div>
 
@@ -274,24 +274,24 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-2 cursor-help">
-                    <Activity className="w-4 h-4 text-slate-500" />
+                    <Activity className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     <div className="flex items-baseline gap-1">
                       <span className={cn(
                         "text-lg font-bold",
-                        conversationMetrics ? getLatencyColor(conversationMetrics.endToEndStats.p75, "e2e") : "text-slate-900"
+                        conversationMetrics ? getLatencyColor(conversationMetrics.endToEndStats.p75, "e2e") : "text-gray-900 dark:text-gray-100"
                       )}>
                         {conversationMetrics?.endToEndStats.p75 > 0 ? formatDuration(conversationMetrics.endToEndStats.p75) : "N/A"}
                       </span>
-                      <span className="text-xs text-slate-500">p75</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">p75</span>
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
+                <TooltipContent side="bottom" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                   <div className="text-xs">
                     <div className="font-medium">75th Percentile End-to-End Latency</div>
-                    <div className="text-slate-400">75% of responses were faster</div>
+                    <div className="text-gray-400 dark:text-gray-500">75% of responses were faster</div>
                     {conversationMetrics?.endToEndStats.p50 > 0 && (
-                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.endToEndStats.p50)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.endToEndStats.p50)}</div>
                     )}
                   </div>
                 </TooltipContent>
@@ -300,22 +300,22 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
               {/* Bug Reports */}
               <div className={cn(
                 "flex items-center gap-2",
-                bugCount > 0 && "px-2 py-1 bg-amber-100 rounded-md"
+                bugCount > 0 && "px-2 py-1 bg-amber-100 dark:bg-amber-900/20 rounded-md"
               )}>
                 <AlertTriangle className={cn(
                   "w-4 h-4",
-                  bugCount > 0 ? "text-amber-600" : "text-slate-500"
+                  bugCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
                 )} />
                 <div className="flex items-baseline gap-1">
                   <span className={cn(
                     "text-lg font-bold",
-                    bugCount > 0 ? "text-amber-700" : "text-slate-900"
+                    bugCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-gray-900 dark:text-gray-100"
                   )}>
                     {bugCount}
                   </span>
                   <span className={cn(
                     "text-xs",
-                    bugCount > 0 ? "text-amber-600" : "text-slate-500"
+                    bugCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
                   )}>
                     bugs
                   </span>
@@ -338,17 +338,17 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                           <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
                             {formatDuration(conversationMetrics.sttStats.p75)}
                           </div>
-                          <div className="text-blue-600 text-xs">STT P75</div>
+                          <div className="text-blue-600 dark:text-blue-400 text-xs">STT P75</div>
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                       <div className="text-xs">
                         <div className="font-medium">Speech-to-Text Performance</div>
-                        <div className="text-slate-400">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
-                        <div className="text-slate-400">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
-                        <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
-                        <div className="text-blue-600 text-xs font-medium mt-1 pt-1 border-t border-slate-200">
+                        <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
+                        <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
+                        <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
+                        <div className="text-blue-600 dark:text-blue-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
                           Included in total latency
                         </div>
                       </div>
@@ -360,21 +360,21 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-help">
-                      <Brain className="w-3 h-3 text-slate-400" />
+                      <Brain className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                       <div className="text-right">
                         <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.llmStats.p75, "llm"))}>
                           {formatDuration(conversationMetrics.llmStats.p75)}
                         </div>
-                        <div className="text-slate-400 text-xs">LLM P75</div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs">TTFT P75</div>
                       </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                     <div className="text-xs">
                       <div className="font-medium">Language Model Performance</div>
-                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.llmStats.p50)}</div>
-                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.llmStats.p75)}</div>
-                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.llmStats.avg)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.llmStats.p50)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.llmStats.p75)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.llmStats.avg)}</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -383,21 +383,21 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-help">
-                      <Volume2 className="w-3 h-3 text-slate-400" />
+                      <Volume2 className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                       <div className="text-right">
                         <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.ttsStats.p75, "tts"))}>
                           {formatDuration(conversationMetrics.ttsStats.p75)}
                         </div>
-                        <div className="text-slate-400 text-xs">TTS P75</div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs">TTFB P75</div>
                       </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                     <div className="text-xs">
                       <div className="font-medium">Text-to-Speech Performance</div>
-                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.ttsStats.p50)}</div>
-                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.ttsStats.p75)}</div>
-                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.ttsStats.avg)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.ttsStats.p50)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.ttsStats.p75)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.ttsStats.avg)}</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -406,21 +406,21 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-help">
-                      <Radio className="w-3 h-3 text-slate-400" />
+                      <Radio className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                       <div className="text-right">
                         <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.eouStats.p75, "eou"))}>
                           {formatDuration(conversationMetrics.eouStats.p75)}
                         </div>
-                        <div className="text-slate-400 text-xs">EOU P75</div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs">EOU P75</div>
                       </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                     <div className="text-xs">
                       <div className="font-medium">End of Utterance Performance</div>
-                      <div className="text-slate-400">P50: {formatDuration(conversationMetrics.eouStats.p50)}</div>
-                      <div className="text-slate-400">P75: {formatDuration(conversationMetrics.eouStats.p75)}</div>
-                      <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.eouStats.avg)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.eouStats.p50)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.eouStats.p75)}</div>
+                      <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.eouStats.avg)}</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -428,30 +428,30 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
 
               {/* Reference Metrics Group - Only for non-Vapi */}
               {!isVapiAgent && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50/50 border border-dashed border-gray-300/50">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50 dark:bg-gray-700 border border-dashed border-gray-300 dark:border-gray-600">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Reference</span>
-                    <span className="text-[6px] text-gray-500 font-medium uppercase tracking-wide">(not included in total)</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Reference</span>
+                    <span className="text-[6px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">(not included in total)</span>
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2 cursor-help">
-                        <Mic className="w-3 h-3 text-gray-400" />
+                        <Mic className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                         <div className="text-right">
                           <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
                             {formatDuration(conversationMetrics.sttStats.p75)}
                           </div>
-                          <div className="text-gray-400 text-xs">STT P75</div>
+                          <div className="text-gray-400 dark:text-gray-500 text-xs">STT P75</div>
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                       <div className="text-xs">
                         <div className="font-medium">Speech-to-Text Performance</div>
-                        <div className="text-slate-400">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
-                        <div className="text-slate-400">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
-                        <div className="text-slate-400">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
-                        <div className="text-orange-600 text-xs font-medium mt-1 pt-1 border-t border-slate-200">
+                        <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
+                        <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
+                        <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
+                        <div className="text-orange-600 dark:text-orange-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
                           Not included in total latency
                         </div>
                       </div>
