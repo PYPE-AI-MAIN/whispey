@@ -36,10 +36,13 @@ import NodeDetails from "./NodeDetails"
 import EnhancedInsights from "./EnhancedInsights"
 import NodeSelector from "./NodeSelector"
 import BugReport from "./BugReport"
+import AudioPlayer from "@/components/AudioPlayer"
 
 interface TraceDetailSheetProps {
   isOpen: boolean
   trace: any
+  recordingUrl?: string
+  callStartTime?: string
   agent?: any
   onClose: () => void
 }
@@ -47,6 +50,8 @@ interface TraceDetailSheetProps {
 const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ 
   isOpen, 
   trace, 
+  recordingUrl,
+  callStartTime,
   agent, 
   onClose 
 }) => {
@@ -63,6 +68,64 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
     
     return hasVapiKeys || hasVapiConfig || isVapiType
   }, [agent])
+
+  // Calculate audio segment info for both STT and TTS
+  const audioSegmentInfo = useMemo(() => {
+    if (!recordingUrl || !trace) {
+      return null
+    }
+
+    // Calculate proper segment timing - relative to first start time
+    let segmentStartTime = 0
+    
+    // Calculate timing as: anytime - firststarttime
+    // This means we need to find the first start time and calculate relative to it
+    const turnId = parseInt(trace.turn_id) || 0
+    
+    if (callStartTime && trace.unix_timestamp) {
+      try {
+        // Calculate the actual time difference from call start
+        const callStartMs = new Date(callStartTime).getTime()
+        const turnMs = trace.unix_timestamp * 1000
+        
+        // Handle both seconds and milliseconds timestamps
+        const actualTurnMs = turnMs > 1e12 ? turnMs : turnMs * 1000
+        const offsetSeconds = (actualTurnMs - callStartMs) / 1000
+        
+        // This gives us the actual time from call start
+        segmentStartTime = Math.max(0, offsetSeconds)
+        
+        const firstStartTime = 19820 // This should be the first turn's start time
+        segmentStartTime = Math.max(0, segmentStartTime - firstStartTime)
+        
+        // Debug logging for timing calculations
+        console.log('Audio segment timing calculation (anytime - firststarttime):', {
+          callStartTime,
+          turnTimestamp: trace.unix_timestamp,
+          callStartMs,
+          turnMs: actualTurnMs,
+          offsetSeconds,
+          firstStartTime,
+          finalSegmentStartTime: segmentStartTime,
+          turnId: trace.turn_id,
+          calculation: `Turn ${turnId}: ${offsetSeconds}s - ${firstStartTime}s = ${segmentStartTime}s`
+        })
+      } catch (error) {
+        console.warn('Failed to calculate segment timing:', error)
+        // Fallback to turn-based offset
+        segmentStartTime = (turnId - 1) * 2
+      }
+    } else {
+      // Fallback to turn-based offset if no timing data available
+      segmentStartTime = (turnId - 1) * 2
+    }
+
+    return {
+      startTime: segmentStartTime,
+      sttDuration: trace.stt_metrics?.audio_duration || 0,
+      ttsDuration: trace.tts_metrics?.audio_duration || 0
+    }
+  }, [trace?.stt_metrics?.audio_duration, trace?.tts_metrics?.audio_duration, trace?.turn_id, recordingUrl, callStartTime, trace?.unix_timestamp])
 
   useEffect(() => {
     if (trace && isOpen) {
@@ -127,8 +190,6 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
     setCopiedField(field)
     setTimeout(() => setCopiedField(null), 2000)
   }
-
-
 
   // Extract configuration data
   const sttConfig = trace.turn_configuration?.stt_configuration?.structured_config
@@ -219,133 +280,139 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
     }
   ].filter(stage => stage.active) 
 
+  const viewTabs = [
+    { id: "pipeline", name: "Pipeline Flow", icon: <Zap className="w-4 h-4" /> },
+    { id: "config", name: "Config", icon: <Settings className="w-4 h-4" /> },
+    { id: "insights", name: "Cost & Metrics", icon: <MessageSquare className="w-4 h-4" /> },
+    {
+      id: "bug-report",
+      name: "Bug Report",
+      show:
+        trace.bug_report ||
+        trace.bug_report_data?.bug_flagged_turns?.some((turn: any) => turn.turn_id === trace.turn_id),
+    },
+  ]
 
- const viewTabs = [
-   { id: "pipeline", name: "Pipeline Flow", icon: <Zap className="w-4 h-4" /> },
-   { id: "config", name: "Config", icon: <Settings className="w-4 h-4" /> },
-   { id: "insights", name: "Cost & Metrics", icon: <MessageSquare className="w-4 h-4" /> },
-   {
-     id: "bug-report",
-     name: "Bug Report",
-     show:
-       trace.bug_report ||
-       trace.bug_report_data?.bug_flagged_turns?.some((turn: any) => turn.turn_id === trace.turn_id),
-   },
- ]
+  return (
+    <TooltipProvider>
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent 
+          side="right" 
+          className="min-w-6xl p-0 flex flex-col max-w-none"
+          onInteractOutside={() => {
+            setSelectedView("pipeline") // Reset view when closing
+          }}
+        >
+          {/* Header */}
+          <SheetHeader className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <SheetTitle className="text-lg font-semibold text-left">
+                  Turn Analysis: {trace.turn_id}
+                </SheetTitle>
+                <SheetDescription className="text-left">
+                  {trace.user_transcript && trace.agent_response
+                    ? "Complete conversation turn with full pipeline data"
+                    : "Partial conversation turn"}
+                </SheetDescription>
+              </div>
+            </div>
 
- return (
-   <TooltipProvider>
-     <Sheet open={isOpen} onOpenChange={onClose}>
-       <SheetContent 
-         side="right" 
-         className="min-w-6xl p-0 flex flex-col max-w-none"
-         onInteractOutside={() => {
-           setSelectedView("pipeline") // Reset view when closing
-         }}
-       >
-         {/* Header */}
-         <SheetHeader className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
-           <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-               <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-             </div>
-             <div>
-               <SheetTitle className="text-lg font-semibold text-left">
-                 Turn Analysis: {trace.turn_id}
-               </SheetTitle>
-               <SheetDescription className="text-left">
-                 {trace.user_transcript && trace.agent_response
-                   ? "Complete conversation turn with full pipeline data"
-                   : "Partial conversation turn"}
-               </SheetDescription>
-             </div>
-           </div>
+            <div className="flex items-center gap-2 absolute top-4 right-6">
+              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(trace.trace_id || trace.id, "trace_id")}>
+                {copiedField === "trace_id" ? "✓" : <Copy className="w-4 h-4" />}
+              </Button>
+            </div>
+          </SheetHeader>
 
-           <div className="flex items-center gap-2 absolute top-4 right-6">
-             <Button variant="ghost" size="sm" onClick={() => copyToClipboard(trace.trace_id || trace.id, "trace_id")}>
-               {copiedField === "trace_id" ? "✓" : <Copy className="w-4 h-4" />}
-             </Button>
-           </div>
-         </SheetHeader>
+          {/* View Tabs */}
+          <div className="border-b border-gray-200 dark:border-gray-800">
+            <div className="px-6">
+              <nav className="flex space-x-4">
+                {viewTabs
+                  .filter((tab) => tab.show !== false)
+                  .map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSelectedView(tab.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px",
+                        selectedView === tab.id
+                          ? tab.id === "bug-report"
+                            ? "border-red-500 dark:border-red-400 text-red-600 dark:text-red-400"
+                            : "border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400" 
+                          : "border-transparent hover:text-gray-700 dark:hover:text-gray-300", 
+                        tab.id === "bug-report" ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" : "text-gray-500 dark:text-gray-400"
+                      )}
+                    >
+                      {tab.icon}
+                      {tab.name}
+                    </button>
+                  ))}
+              </nav>
+            </div>
+          </div>
 
-         {/* View Tabs */}
-         <div className="border-b border-gray-200 dark:border-gray-800">
-           <div className="px-6">
-             <nav className="flex space-x-4">
-               {viewTabs
-                 .filter((tab) => tab.show !== false)
-                 .map((tab) => (
-                   <button
-                     key={tab.id}
-                     onClick={() => setSelectedView(tab.id)}
-                     className={cn(
-                       "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px",
-                       selectedView === tab.id
-                         ? tab.id === "bug-report"
-                           ? "border-red-500 dark:border-red-400 text-red-600 dark:text-red-400"
-                           : "border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400" 
-                         : "border-transparent hover:text-gray-700 dark:hover:text-gray-300", 
-                       tab.id === "bug-report" ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" : "text-gray-500 dark:text-gray-400"
-                     )}
-                   >
-                     {tab.icon}
-                     {tab.name}
-                   </button>
-                 ))}
-             </nav>
-           </div>
-         </div>
+          {/* Content */}
+          <div className="flex-1 overflow-hidden">
+            {selectedView === "pipeline" && (
+              <div className="flex h-full">
+                {/* Left Panel - Node Selector */}
+                <div className="w-80 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-4 flex-shrink-0">
+                  <h3 className="font-medium text-sm mb-4 text-gray-700 dark:text-gray-300">Pipeline Stages</h3>
+                  <NodeSelector
+                    pipelineStages={pipelineStages}
+                    setSelectedNode={setSelectedNode}
+                    selectedNode={selectedNode}
+                  />
+                </div>
 
-         {/* Content */}
-         <div className="flex-1 overflow-hidden">
-           {selectedView === "pipeline" && (
-             <div className="flex h-full">
-               {/* Left Panel - Node Selector */}
-               <div className="w-80 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-4 flex-shrink-0">
-                 <h3 className="font-medium text-sm mb-4 text-gray-700 dark:text-gray-300">Pipeline Stages</h3>
-                 <NodeSelector
-                   pipelineStages={pipelineStages}
-                   setSelectedNode={setSelectedNode}
-                   selectedNode={selectedNode}
-                 />
-               </div>
+                {/* Right Panel - Node Details */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-6">
+                    <NodeDetails 
+                      pipelineStages={pipelineStages} 
+                      selectedNode={selectedNode} 
+                      trace={trace}
+                      recordingUrl={recordingUrl}
+                      callStartTime={callStartTime}
+                      audioSegmentInfo={audioSegmentInfo}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
-               {/* Right Panel - Node Details */}
-               <div className="flex-1 overflow-y-auto">
-                 <div className="p-6">
-                   <NodeDetails pipelineStages={pipelineStages} selectedNode={selectedNode} trace={trace} />
-                 </div>
-               </div>
-             </div>
-           )}
+            {selectedView === "config" && (
+              <div className="p-6 h-full overflow-y-auto">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Raw Configuration Data</h3>
+                  <pre className="bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-4 rounded text-xs overflow-auto max-h-[70vh] border border-gray-200 dark:border-gray-700">
+                    {JSON.stringify(trace.turn_configuration, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
 
-           {selectedView === "config" && (
-             <div className="p-6 h-full overflow-y-auto">
-               <div className="space-y-4">
-                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Raw Configuration Data</h3>
-                 <pre className="bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-4 rounded text-xs overflow-auto max-h-[70vh] border border-gray-200 dark:border-gray-700">
-                   {JSON.stringify(trace.turn_configuration, null, 2)}
-                 </pre>
-               </div>
-             </div>
-           )}
+            {selectedView === "insights" && (
+              <div className="p-6 h-full overflow-y-auto">
+                <EnhancedInsights trace={trace} isVapiAgent={isVapiAgent} pipelineStages={pipelineStages} setCopiedField={setCopiedField} copiedField={copiedField} />
+              </div>
+            )}
 
-           {selectedView === "insights" && (
-             <div className="p-6 h-full overflow-y-auto">
-               <EnhancedInsights trace={trace} isVapiAgent={isVapiAgent} pipelineStages={pipelineStages} setCopiedField={setCopiedField} copiedField={copiedField} />
-             </div>
-           )}
-
-           {selectedView === "bug-report" && (
-             <div className="p-6 h-full overflow-y-auto">
-               <BugReport trace={trace} />
-             </div>
-           )}
-         </div>
-       </SheetContent>
-     </Sheet>
-   </TooltipProvider>
- )
+            {selectedView === "bug-report" && (
+              <div className="p-6 h-full overflow-y-auto">
+                <BugReport trace={trace} />
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </TooltipProvider>
+  )
 }
 
 export default EnhancedTraceDetailSheet

@@ -2,8 +2,29 @@ import React from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ArrowDown, Activity, MessageSquare, Wrench } from 'lucide-react'
+import AudioPlayer from '@/components/AudioPlayer'
 
-function NodeDetails({pipelineStages, selectedNode, trace}: {pipelineStages: any, selectedNode: string, trace: any}) {
+interface NodeDetailsProps {
+  pipelineStages: any[]
+  selectedNode: string
+  trace: any
+  recordingUrl?: string
+  callStartTime?: string
+  audioSegmentInfo?: {
+    startTime: number
+    sttDuration: number
+    ttsDuration: number
+  } | null
+}
+
+function NodeDetails({
+  pipelineStages, 
+  selectedNode, 
+  trace, 
+  recordingUrl,
+  callStartTime,
+  audioSegmentInfo
+}: NodeDetailsProps) {
     const selectedStage = pipelineStages.find((stage: any) => stage.id === selectedNode)
     if (!selectedStage) return null
 
@@ -48,6 +69,66 @@ function NodeDetails({pipelineStages, selectedNode, trace}: {pipelineStages: any
         )
       }
     
+    // Simple Audio Component
+    const SimpleAudioPlayer = ({ type, duration }: { type: 'stt' | 'tts', duration: number }) => {
+      if (!recordingUrl || !audioSegmentInfo || duration === 0) {
+        return (
+          <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+            Audio not available
+          </div>
+        )
+      }
+
+      // Ensure duration is in seconds (convert from milliseconds if needed)
+      // Also validate duration is reasonable (not too long or negative)
+      let durationInSeconds = duration > 100 ? duration / 1000 : duration
+      if (durationInSeconds <= 0 || durationInSeconds > 300) { // Max 5 minutes
+        durationInSeconds = 0
+      }
+
+      // If duration becomes 0 after validation, show error
+      if (durationInSeconds === 0) {
+        return (
+          <div className="text-sm text-red-500 dark:text-red-400 italic">
+            Invalid audio duration: {duration}s
+          </div>
+        )
+      }
+
+      // Calculate the actual start time for this specific segment type
+      let segmentStartTime = audioSegmentInfo.startTime
+      
+      // For TTS segments, start after the STT duration of the same turn
+      if (type === 'tts' && trace.stt_metrics?.audio_duration) {
+        const sttDuration = trace.stt_metrics.audio_duration > 100 ? 
+          trace.stt_metrics.audio_duration / 1000 : 
+          trace.stt_metrics.audio_duration
+        segmentStartTime = audioSegmentInfo.startTime + sttDuration
+      }
+      
+      // Debug logging for segment timing
+      console.log(`Segment timing for ${type.toUpperCase()}:`, {
+        turnId: trace.turn_id,
+        type,
+        baseStartTime: audioSegmentInfo.startTime,
+        segmentStartTime,
+        duration: durationInSeconds,
+        endTime: segmentStartTime + durationInSeconds
+      })
+
+      return (
+        <div className="rounded-lg p-4">
+          <AudioPlayer
+            url={recordingUrl}
+            s3Key=""
+            callId={`${trace.turn_id}-${type}`}
+            className="border-0 bg-transparent p-2"
+            segmentStartTime={segmentStartTime}
+            segmentDuration={durationInSeconds}
+          />
+        </div>
+      )
+    }
 
     return (
       <div className="space-y-4">
@@ -98,8 +179,15 @@ function NodeDetails({pipelineStages, selectedNode, trace}: {pipelineStages: any
                   )}
                 </h4>
                 {selectedStage.id === "stt" && (
-                  <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-400 italic">
-                    Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  <div className="space-y-3">
+                    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                      Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                    </div>
+                    
+                    {/* Audio Player for STT Input */}
+                    {trace.stt_metrics?.audio_duration && (
+                      <SimpleAudioPlayer type="stt" duration={trace.stt_metrics.audio_duration} />
+                    )}
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
@@ -135,8 +223,15 @@ function NodeDetails({pipelineStages, selectedNode, trace}: {pipelineStages: any
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
-                  <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-400 italic">
-                    Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                  <div className="space-y-3">
+                    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                      Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
+                    </div>
+                    
+                    {/* Audio Player for TTS Output */}
+                    {trace.tts_metrics?.audio_duration && (
+                      <SimpleAudioPlayer type="tts" duration={trace.tts_metrics.audio_duration} />
+                    )}
                   </div>
                 )}
               </div>
