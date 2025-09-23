@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, TrendingUp, Calculator, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,12 +36,12 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
 
   return (
     <>
-      {/* Quick access button: open Custom Summary directly */}
+      {/* Custom Summary Dialog */}
       <Dialog open={showCustomTotals} onOpenChange={setShowCustomTotals}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Custom Summary</DialogTitle>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Aggregate your calls using filters and an aggregation (Count, Sum, Avg, etc.). Saved summaries appear as cards on the dashboard.
             </p>
           </DialogHeader>
@@ -58,17 +59,37 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Menu with Popover */}
       <div className="fixed bottom-6 right-6 z-50">
-        <div className="relative">
-          {/* Action Menu Items */}
-          {isOpen && (
-            <div className="absolute bottom-16 right-0 flex flex-col gap-3 animate-in slide-in-from-bottom-2 duration-200 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              className={`h-14 w-14 rounded-full shadow-lg transition-all duration-200 ${
+                isOpen 
+                  ? 'bg-red-600 hover:bg-red-700 rotate-45' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {isOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Plus className="w-6 h-6" />
+              )}
+            </Button>
+          </PopoverTrigger>
+          
+          <PopoverContent 
+            side="top" 
+            align="end" 
+            className="w-auto p-3 bg-card border shadow-xl"
+            sideOffset={12}
+          >
+            <div className="flex flex-col gap-3">
               {/* Chart Builder Option */}
               <div className="flex items-center gap-3">
-                <span className="bg-gray-900 text-white text-sm px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
-                  Chart Builder
-                </span>
+                <div className="bg-card text-card-foreground border rounded-lg px-3 py-1 shadow-sm">
+                  <span className="text-sm font-medium whitespace-nowrap">Chart Builder</span>
+                </div>
                 <ChartBuilderButton 
                   metadataFields={metadataFields}
                   transcriptionFields={transcriptionFields}
@@ -76,47 +97,26 @@ export const FloatingActionMenu: React.FC<FloatingActionMenuProps> = ({
                 />
               </div>
               
-              {/* Custom Totals Option */}
+              {/* Custom Summary Option */}
               <div className="flex items-center gap-3">
-                <span className="bg-gray-900 text-white text-sm px-3 py-1 rounded-lg shadow-lg whitespace-nowrap">
-                  Custom Summary
-                </span>
+                <div className="bg-card text-card-foreground border rounded-lg px-3 py-1 shadow-sm">
+                  <span className="text-sm font-medium whitespace-nowrap">Custom Summary</span>
+                </div>
                 <Button
                   size="sm"
                   className="h-12 w-12 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 border-0"
-                  onClick={() => setShowCustomTotals(true)}
+                  onClick={() => {
+                    setShowCustomTotals(true)
+                    setIsOpen(false)
+                  }}
                 >
                   <Calculator className="w-5 h-5" />
                 </Button>
               </div>
             </div>
-          )}
-          
-          {/* Main FAB */}
-          <Button
-            onClick={() => setIsOpen(!isOpen)}
-            className={`h-14 w-14 rounded-full shadow-lg transition-all duration-200 ${
-              isOpen 
-                ? 'bg-red-600 hover:bg-red-700 rotate-45' 
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {isOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Plus className="w-6 h-6" />
-            )}
-          </Button>
-        </div>
+          </PopoverContent>
+        </Popover>
       </div>
-
-      {/* Backdrop - invisible click area */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
     </>
   )
 }
@@ -165,7 +165,7 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
       <DialogContent className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Count Chart</DialogTitle>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Build a chart that counts calls grouped by a field and time. Use a filter value to focus on a specific value, or leave it empty to compare the most frequent values.
           </p>
         </DialogHeader>
@@ -190,7 +190,7 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
                 <SelectItem value="transcription_metrics">Transcription ({fields.transcription_metrics.length} fields)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Choose where the field lives: core table columns, metadata, or transcription metrics.
             </p>
           </div>
@@ -214,7 +214,7 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Pick the field whose values you want to count over time.
               </p>
             </div>
@@ -228,7 +228,7 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
               value={newChart.filterValue || ''}
               onChange={(e) => setNewChart(prev => ({ ...prev, filterValue: e.target.value }))}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Leave empty to show multiple lines for all values
             </p>
           </div>
@@ -251,7 +251,7 @@ const ChartBuilderButton: React.FC<ChartBuilderButtonProps> = ({
                 <SelectItem value="bar">Bar Chart (Stacked)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Line is ideal for trends; stacked bars compare value distributions per date.
             </p>
           </div>

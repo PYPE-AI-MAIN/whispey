@@ -1,28 +1,45 @@
+// src/services/getUserRole.ts
 import { supabase } from "@/lib/supabase"
 
 export async function getUserProjectRole(email: string, projectId: string) {
+  
   try {
     const { data, error } = await supabase
       .from('pype_voice_email_project_mapping')
-      .select('role')
+      .select('role, permissions, is_active')
       .eq('email', email)
       .eq('project_id', projectId)
-      .eq('is_active', true)
+      // .eq('is_active', true)
       .maybeSingle()
 
     if (error) {
-      console.error('Error fetching user role:', error)
-      return 'user'
+      return { role: 'user', permissions: null }
     }
 
-    // If no data found, return default role
     if (!data) {
-      return 'user'
+      return { role: 'user', permissions: null }
     }
 
-    return data.role || 'user'
+    const result = { 
+      role: data.role || 'user',
+      permissions: data.permissions
+    }
+    
+    return result
+    
   } catch (error) {
-    console.error('Unexpected error in getUserProjectRole:', error)
-    return 'user'
+    return { role: 'user', permissions: null }
   }
+}
+
+export function canViewApiKeys(role: string): boolean {
+  const allowedRoles = ['owner', 'admin']
+  const canView = allowedRoles.includes(role)
+  return canView
+}
+
+export function canManageApiKeys(role: string): boolean {
+  const allowedRoles = ['owner', 'admin']
+  const canManage = allowedRoles.includes(role)
+  return canManage
 }

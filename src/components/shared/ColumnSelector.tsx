@@ -21,7 +21,6 @@ interface ColumnSelectorProps {
   }
   onColumnChange: (type: "basic" | "metadata" | "transcription_metrics", column: string, visible: boolean) => void
   onSelectAll: (type: "basic" | "metadata" | "transcription_metrics", visible: boolean) => void
-  alignProp?: number // Optional prop to control alignment, default to "-60"
 }
 
 const ColumnSelector: React.FC<ColumnSelectorProps> = ({
@@ -32,9 +31,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
   visibleColumns,
   onColumnChange,
   onSelectAll,
-  alignProp = -60, // Default alignment prop
 }) => {
-  // FIXED: Add ref to preserve scroll position
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollPositionRef = useRef<number>(0)
 
@@ -42,17 +39,13 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
     visibleColumns.basic.length + visibleColumns.metadata.length + visibleColumns.transcription_metrics.length
   const totalColumns = basicColumns.length + metadataColumns.length + transcriptionColumns.length
 
-  // FIXED: Preserve scroll position when column changes
   const handleColumnChange = useCallback((type: "basic" | "metadata" | "transcription_metrics", column: string, visible: boolean) => {
-    // Save current scroll position
     if (scrollContainerRef.current) {
       scrollPositionRef.current = scrollContainerRef.current.scrollTop
     }
     
-    // Call the parent handler
     onColumnChange(type, column, visible)
     
-    // Restore scroll position after re-render
     setTimeout(() => {
       if (scrollContainerRef.current && scrollPositionRef.current > 0) {
         scrollContainerRef.current.scrollTop = scrollPositionRef.current
@@ -60,17 +53,13 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
     }, 0)
   }, [onColumnChange])
 
-  // FIXED: Preserve scroll position when select all changes
   const handleSelectAll = useCallback((type: "basic" | "metadata" | "transcription_metrics", visible: boolean) => {
-    // Save current scroll position
     if (scrollContainerRef.current) {
       scrollPositionRef.current = scrollContainerRef.current.scrollTop
     }
     
-    // Call the parent handler
     onSelectAll(type, visible)
     
-    // Restore scroll position after re-render
     setTimeout(() => {
       if (scrollContainerRef.current && scrollPositionRef.current > 0) {
         scrollContainerRef.current.scrollTop = scrollPositionRef.current
@@ -97,8 +86,8 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-900">{title}</span>
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+            <span className="text-sm font-medium text-foreground">{title}</span>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
               {visibleCount}/{columns.length}
             </span>
           </div>
@@ -106,7 +95,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={() => handleSelectAll(type, true)}
               disabled={visibleCount === columns.length}
             >
@@ -116,7 +105,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               onClick={() => handleSelectAll(type, false)}
               disabled={visibleCount === 0}
             >
@@ -131,10 +120,12 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
             const isVisible = visibleColumns[type].includes(column)
             return (
               <div
-                key={`${type}-${column}`} // FIXED: Add unique key with type prefix
+                key={`${type}-${column}`}
                 className={cn(
                   "flex items-center space-x-3 px-3 py-2 rounded-md transition-colors",
-                  isVisible ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-muted/50"
+                  isVisible 
+                    ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800" 
+                    : "hover:bg-muted/50"
                 )}
               >
                 <Checkbox
@@ -164,54 +155,46 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
         <Button
           variant="outline"
           size="sm"
-          className="gap-2 h-9 bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm"
+          className="gap-2 h-9 transition-all duration-200 shadow-sm"
         >
-          <Columns3 className="h-4 w-4 text-gray-600" />
+          <Columns3 className="h-4 w-4" />
           <span className="text-sm font-medium">Columns</span>
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full ml-1">
+          <span className="text-xs bg-muted px-2 py-0.5 rounded-full ml-1">
             {totalVisible}/{totalColumns}
           </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-96 max-h-[60vh] p-0 shadow-xl border border-gray-200 bg-white flex flex-col overflow-hidden"
-        side="left"
-        align="start"  // Changed from "start" to "end" to align with bottom of trigger
-        alignOffset={alignProp} // Reduced negative offset to move it higher
-        sideOffset={400}    // Increased side offset for more spacing
-        style={{ 
-          zIndex: 9999,
-          position: 'fixed',
-          transform: 'translateY(-50px)' // Additional CSS transform to move it up
-        }}
-        avoidCollisions={false} // Disable collision detection that might override positioning
+        className="w-96 max-h-[60vh] p-0 shadow-xl border bg-popover text-popover-foreground flex flex-col overflow-hidden"
+        side="bottom"
+        align="end"
+        sideOffset={12}
+        avoidCollisions={true}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
+        <div className="px-6 py-4 border-b bg-muted/30 shrink-0">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-base text-gray-900">Table Columns</h4>
-            <div className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200">
+            <h4 className="font-semibold text-base text-foreground">Table Columns</h4>
+            <div className="text-xs text-muted-foreground bg-background px-3 py-1 rounded-full border">
               {totalVisible} of {totalColumns} visible
             </div>
           </div>
-          <p className="text-sm text-gray-600 mt-1">Choose which columns to display in your table</p>
+          <p className="text-sm text-muted-foreground mt-1">Choose which columns to display in your table</p>
         </div>
 
-        {/* FIXED: Scrollable body with ref and scroll preservation */}
+        {/* Scrollable body */}
         <div 
           ref={scrollContainerRef}
           className="overflow-y-auto flex-1"
           style={{ 
-            scrollBehavior: 'auto',  // Prevent smooth scrolling interfering with position restoration
-            touchAction: 'pan-y',   // Enable touch scrolling on mobile
-            overscrollBehavior: 'contain'  // Prevent scroll chaining to parent
+            scrollBehavior: 'auto',
+            touchAction: 'pan-y',
+            overscrollBehavior: 'contain'
           }}
           onWheel={(e) => {
-            // Prevent wheel events from bubbling up to dialog
             e.stopPropagation()
           }}
           onTouchMove={(e) => {
-            // Prevent touch scroll from bubbling up to dialog
             e.stopPropagation()
           }}
         >
@@ -226,9 +209,9 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
 
             {basicColumns.length > 0 && (metadataColumns.length > 0 || transcriptionColumns.length > 0) && (
               <div className="relative">
-                <Separator className="bg-gray-200" />
+                <Separator />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-white px-3 text-xs text-gray-500 font-medium">DYNAMIC COLUMNS</div>
+                  <div className="bg-background px-3 text-xs text-muted-foreground font-medium">DYNAMIC COLUMNS</div>
                 </div>
               </div>
             )}
@@ -241,7 +224,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
             />
 
             {metadataColumns.length > 0 && transcriptionColumns.length > 0 && (
-              <Separator className="bg-gray-200" />
+              <Separator />
             )}
 
             <ColumnSection
@@ -254,13 +237,13 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/30 shrink-0">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="px-6 py-3 border-t bg-muted/20 shrink-0">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{totalColumns > 8 ? "Scroll to see more options" : `${totalColumns} columns available`}</span>
             <div className="flex items-center gap-1">
-              <div className="w-1 h-1 bg-gray-400 rounded-full" />
-              <div className="w-1 h-1 bg-gray-300 rounded-full" />
-              <div className="w-1 h-1 bg-gray-300 rounded-full" />
+              <div className="w-1 h-1 bg-muted-foreground/60 rounded-full" />
+              <div className="w-1 h-1 bg-muted-foreground/30 rounded-full" />
+              <div className="w-1 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
           </div>
         </div>

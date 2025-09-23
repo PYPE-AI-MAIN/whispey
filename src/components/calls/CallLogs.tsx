@@ -329,7 +329,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
         setRoleLoading(true)
         try {
           const userRole = await getUserProjectRole(userEmail, project.id)
-          setRole(userRole)
+          setRole(userRole.role)
         } catch (error) {
           console.error('Failed to load user role:', error)
           setRole('user')
@@ -820,19 +820,19 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
   if (error) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-none p-4 border-b bg-background/95">
+        <div className="flex-none p-4 border-b bg-background/95 dark:bg-gray-900/95">
           <div className="flex items-center justify-between">
-            <div className="h-8 bg-red-100 text-red-700 px-4 rounded-lg flex items-center">
+            <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
               <AlertCircle className="w-4 h-4 mr-2" />
               Unable to load calls
             </div>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
           <div className="text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h3 className="text-lg font-semibold text-gray-900">Unable to load calls</h3>
-            <p className="text-gray-600">{error}</p>
+            <AlertCircle className="w-12 h-12 text-red-500 dark:text-red-400 mx-auto" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Unable to load calls</h3>
+            <p className="text-gray-600 dark:text-gray-400">{error}</p>
           </div>
         </div>
       </div>
@@ -840,9 +840,9 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Header with Filters and Column Selector - Now shows immediately */}
-      <div className="flex-none p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-between">
           <CallFilter 
             onFiltersChange={handleFiltersChange}
@@ -857,6 +857,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
               size="sm"
               onClick={handleDownloadCSV}
               disabled={loading || !agent?.id}
+              className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Download CSV
             </Button>
@@ -874,7 +875,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
               size="sm"
               onClick={handleRefresh}
               disabled={loading}
-              className="gap-2 h-8 w-8 p-0"
+              className="gap-2 h-8 w-8 p-0 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
@@ -887,13 +888,13 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
           <div className="h-full overflow-x-auto overflow-y-hidden">
             <div className="h-full overflow-y-auto" style={{ minWidth: `${minTableWidth}px` }}>
               <Table className="w-full">
-                <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
-                  <TableRow className="bg-muted/80 hover:bg-muted/80">
+                <TableHeader className="sticky top-0 z-10 bg-background/95 dark:bg-gray-900/95 backdrop-blur-sm border-b-2">
+                  <TableRow className="bg-muted/80 dark:bg-gray-800/80 hover:bg-muted/80 dark:hover:bg-gray-800/80">
                     {/* Fixed Columns */}
                     {visibleColumns.basic.map((key) => {
                       const col = basicColumns.find((c) => c.key === key)
                       return (
-                        <TableHead key={`basic-${key}`} className="font-semibold text-foreground min-w-[120px]">
+                        <TableHead key={`basic-${key}`} className="font-semibold text-foreground dark:text-gray-100 min-w-[120px]">
                           {col?.label ?? key}
                         </TableHead>
                       )
@@ -903,7 +904,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                     {visibleColumns.metadata.map((key) => (
                       <TableHead 
                         key={`metadata-${key}`} 
-                        className="w-[200px] font-semibold text-foreground bg-blue-50/50 dark:bg-blue-950/20 border-r border-blue-200/50"
+                        className="w-[200px] font-semibold text-foreground dark:text-gray-100 bg-blue-50/50 dark:bg-blue-950/20 border-r border-blue-200/50 dark:border-blue-800/50"
                       >
                         <div className="flex flex-col">
                           <span className="text-sm">{key}</span>
@@ -916,9 +917,9 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                       <TableHead 
                         key={`transcription-${key}`} 
                         className={cn(
-                          "w-[200px] font-semibold text-foreground bg-blue-50/50 dark:bg-blue-950/20",
-                          index === 0 && visibleColumns.metadata.length === 0 && "border-l-2 border-primary/30",
-                          index < visibleColumns.transcription_metrics.length - 1 && "border-r border-blue-200/50"
+                          "w-[200px] font-semibold text-foreground dark:text-gray-100 bg-blue-50/50 dark:bg-blue-950/20",
+                          index === 0 && visibleColumns.metadata.length === 0 && "border-l-2 border-primary/30 dark:border-primary/40",
+                          index < visibleColumns.transcription_metrics.length - 1 && "border-r border-blue-200/50 dark:border-blue-800/50"
                         )}
                       >
                         <div className="flex flex-col">
@@ -933,11 +934,11 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                     <TableRow
                       key={call.id}
                       className={cn(
-                        "cursor-pointer hover:bg-muted/30 transition-all duration-200 border-b border-border/50",
-                        selectedCall?.id === call.id && "bg-muted/50",
+                        "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all duration-200 border-b border-border/50 dark:border-gray-700/50",
+                        selectedCall?.id === call.id && "bg-muted/50 dark:bg-gray-800/50",
                       )}
                       onClick={() => {
-                        router.push(`/agents/${call.agent_id}/observability?session_id=${call?.id}`)
+                        router.push(`/${project?.id}/agents/${call.agent_id}/observability?session_id=${call?.id}`)
                       }}
                     >
                       {visibleColumns.basic.map((key) => {
@@ -948,15 +949,15 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                             value = (
                               <div className="flex w-full items-center gap-3">
                                 <div className="w-10 h-8 rounded-full flex items-center justify-center">
-                                  <Phone className="w-4 h-4 text-primary" />
+                                  <Phone className="w-4 h-4 text-primary dark:text-primary" />
                                 </div>
-                                <span className="font-medium">{call.customer_number}</span>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">{call.customer_number}</span>
                               </div>
                             )
                             break
                           case "call_id":
                             value = (
-                              <code className="text-xs bg-muted/60 px-3 py-1.5 rounded-md font-mono">
+                              <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-3 py-1.5 rounded-md font-mono text-gray-900 dark:text-gray-100">
                                 {call.call_id.slice(-8)}
                               </code>
                             )
@@ -978,14 +979,14 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                             break
                           case "duration_seconds":
                             value = (
-                              <div className="flex items-center gap-2 text-sm font-medium">
-                                <Clock className="w-3 h-3 text-muted-foreground" />
+                              <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                <Clock className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
                                 {formatDuration(call.duration_seconds)}
                               </div>
                             )
                             break
                           case "call_started_at":
-                            value = formatToIndianDateTime(call.call_started_at)
+                            value = <span className="text-gray-900 dark:text-gray-100">{formatToIndianDateTime(call.call_started_at)}</span>
                             break
                           case "total_cost":
                             value = call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
@@ -1005,7 +1006,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                       {visibleColumns.metadata.map((key) => (
                         <TableCell 
                           key={`metadata-${call.id}-${key}`} 
-                          className="py-4 bg-blue-50/30 dark:bg-blue-950/10 border-r border-blue-200/50"
+                          className="py-4 bg-blue-50/30 dark:bg-blue-950/10 border-r border-blue-200/50 dark:border-blue-800/50"
                         >
                           <DynamicJsonCell 
                             data={call.metadata} 
@@ -1021,8 +1022,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                           key={`transcription-${call.id}-${key}`} 
                           className={cn(
                             "py-4 bg-blue-50/30 dark:bg-blue-950/10",
-                            index === 0 && visibleColumns.metadata.length === 0 && "border-l-2 border-primary/30",
-                            index < visibleColumns.transcription_metrics.length - 1 && "border-r border-blue-200/50"
+                            index === 0 && visibleColumns.metadata.length === 0 && "border-l-2 border-primary/30 dark:border-primary/40",
+                            index < visibleColumns.transcription_metrics.length - 1 && "border-r border-blue-200/50 dark:border-blue-800/50"
                           )}
                         >
                           <DynamicJsonCell 
@@ -1039,14 +1040,14 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
               
               {/* Load More Trigger */}
               {hasMore && (
-                <div ref={loadMoreRef} className="py-6 border-t">
-                  {loading && <Loader2 className="w-6 h-6 animate-spin text-primary" />}
+                <div ref={loadMoreRef} className="py-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  {loading && <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />}
                 </div>
               )}
 
               {/* End of List */}
               {!hasMore && calls.length > 0 && (
-                <div className="py-4 text-muted-foreground text-sm border-t">
+                <div className="py-4 text-muted-foreground dark:text-gray-400 text-sm border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-center">
                   All calls loaded ({calls.length} total)
                 </div>
               )}

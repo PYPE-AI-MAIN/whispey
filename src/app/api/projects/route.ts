@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import crypto from 'crypto'
+import { createProjectApiKey } from '@/lib/api-key-management'
 
 // Create Supabase client for server-side operations (use service role for admin operations)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -72,7 +73,6 @@ export async function POST(request: NextRequest) {
       .select('*')
       .single()
 
-
     if (projectError) {
       console.error('Error creating project:', projectError)
       return NextResponse.json(
@@ -82,6 +82,20 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Successfully created project "${project.name}" with ID ${project.id}`)
+
+    // Store in new table as well (dual storage)
+    try {
+      const result = await createProjectApiKey(project.id, userId, apiToken)
+      if (result.success) {
+        console.log(`✅ API key also stored in new table with ID: ${result.id}`)
+      } else {
+        console.error('⚠️ Failed to store in new table:', result.error)
+        // Don't fail the whole operation, just log the warning
+      }
+    } catch (error) {
+      console.error('⚠️ Error storing API key in new table:', error)
+      // Continue - the old system still works
+    }
 
     // Add creator to email_project_mapping as owner
     const userEmail = user.emailAddresses[0]?.emailAddress
@@ -109,8 +123,6 @@ export async function POST(request: NextRequest) {
         console.log(`Added creator ${userEmail} to email mapping for project ${project.id}`)
       }
     }
-
-
 
     // Return project data with the unhashed token
     const response = {
@@ -167,9 +179,6 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching projects:', error)
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 })
     }
-
-
-
 
     // Return only active projects with user role included
     const activeProjects = projectMappings

@@ -1,6 +1,9 @@
+// src/app/api/projects/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { auth } from '@clerk/nextjs/server'
 import crypto from 'crypto'
+import { createProjectApiKey } from '@/lib/api-key-management'
 
 // Create Supabase client for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -54,6 +57,26 @@ export async function PUT(
           { error: 'Failed to regenerate token' },
           { status: 500 }
         )
+      }
+
+      // Also store/update in new table (dual storage for regeneration)
+      try {
+        // Get the user who is regenerating
+        const { userId } = await auth()
+        
+        if (userId) {
+          const result = await createProjectApiKey(projectId, userId, newApiToken)
+          if (result.success) {
+            console.log(`✅ Regenerated key also stored in new table with ID: ${result.id}`)
+          } else {
+            console.error('⚠️ Failed to store regenerated key in new table:', result.error)
+          }
+        } else {
+          console.warn('⚠️ No user ID available for regenerated key storage in new table')
+        }
+      } catch (error) {
+        console.error('⚠️ Error storing regenerated key in new table:', error)
+        // Continue - the old system still works
       }
 
       // Return project data with the new unhashed token
@@ -224,7 +247,7 @@ export async function DELETE(
     }
     console.log('Successfully deleted agents')
 
-    // 6. Finally, delete the project itself
+    // 6. Finally, delete the project itself (CASCADE will handle pype_voice_api_keys)
     const { error: projectError } = await supabase
       .from('pype_voice_projects')
       .delete()
@@ -254,4 +277,4 @@ export async function DELETE(
       { status: 500 }
     )
   }
-} 
+}
