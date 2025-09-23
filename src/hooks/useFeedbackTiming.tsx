@@ -22,7 +22,7 @@ const FEEDBACK_INTERVALS_TEST = {
   default: 2 * 1000  // 20 seconds for normal feedback
 }
 
-const FEEDBACK_COOLDOWN_MS_PROD = 3 * 24 * 60 * 60 * 1000 // 3 days after submission
+const FEEDBACK_COOLDOWN_MS_PROD = 5 * 24 * 60 * 60 * 1000 // 3 days after submission
 const FEEDBACK_COOLDOWN_MS_TEST = 1 * 60 * 1000  // 1 minute after submission
 const SESSION_KEY = 'feedback_widget_session'
 const SUBMISSION_KEY = 'feedback_last_submission'

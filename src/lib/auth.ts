@@ -70,8 +70,8 @@ export const verifyToken = async (token: string, environment: string = 'dev'): P
     console.log('✅ Token verification successful for project:', project.name);
     return { 
       valid: true, 
-      token: authToken,
-      project_id: authToken.id,
+      token: project, 
+      project_id: project.id, 
       source: 'old_system'
     };
   } catch (error) {
