@@ -208,10 +208,17 @@ export default function ModelSelector({
   azureConfig = { endpoint: '', apiVersion: '' },
   onAzureConfigChange = () => {}
 }: ModelSelectorProps) {
+  // DISABLE CONTROLS
+  const DISABLE_SETTINGS = false
+
   const [isOpen, setIsOpen] = useState(false)
   const [isAzureDialogOpen, setIsAzureDialogOpen] = useState(false)
   const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>(azureConfig)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  useEffect(() => {
+    setTempAzureConfig(azureConfig)
+  }, [azureConfig])
 
   const currentProvider = modelProviders[selectedProvider]
   const currentModel = currentProvider?.type === 'grouped'
@@ -219,6 +226,8 @@ export default function ModelSelector({
     : currentProvider?.models?.find(m => m.value === selectedModel)
 
   const handleProviderSelect = (providerKey: string) => {
+    if (DISABLE_SETTINGS) return
+    
     const provider = modelProviders[providerKey]
 
     if (provider.type === 'config' && providerKey === 'azure_openai') {
@@ -233,12 +242,16 @@ export default function ModelSelector({
   }
 
   const handleModelSelect = (providerKey: string, modelValue: string) => {
+    if (DISABLE_SETTINGS) return
+    
     onProviderChange(providerKey)
     onModelChange(modelValue)
     setIsOpen(false)
   }
 
   const handleAzureConfigSave = () => {
+    if (DISABLE_SETTINGS) return
+    
     onAzureConfigChange(tempAzureConfig)
     setIsAzureDialogOpen(false)
   }
@@ -264,7 +277,7 @@ export default function ModelSelector({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className=" cursor-pointer flex-1 justify-between h-9 min-w-64 rounded-r-none border-r-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100"
+            className={`cursor-pointer flex-1 justify-between h-9 min-w-64 rounded-r-none border-r-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100`}
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {currentProvider && (
@@ -276,7 +289,9 @@ export default function ModelSelector({
                 {getDisplayText()}
               </span>
             </div>
-            <ChevronDown className={`ml-2 h-4 w-4 shrink-0 transition-transform text-gray-400 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`ml-2 h-4 w-4 shrink-0 transition-transform text-gray-400 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''} ${
+              DISABLE_SETTINGS ? 'opacity-50' : ''
+            }`} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-80 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" align="start">
@@ -285,7 +300,9 @@ export default function ModelSelector({
             if (provider.type === 'direct' || provider.type === 'grouped') {
               return (
                 <DropdownMenuSub key={providerKey}>
-                  <DropdownMenuSubTrigger className="flex items-center gap-3 p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-gray-800 focus:bg-gray-50 dark:focus:bg-gray-800">
+                  <DropdownMenuSubTrigger className={`flex items-center gap-3 p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-gray-800 focus:bg-gray-50 dark:focus:bg-gray-800 ${
+                    DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}>
                     <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white`}>
                       {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
                     </div>
@@ -310,7 +327,7 @@ export default function ModelSelector({
                             selectedProvider === providerKey && selectedModel === model.value 
                               ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
                               : ''
-                          }`}
+                          } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <span className="font-medium text-sm">{model.label}</span>
                           {selectedProvider === providerKey && selectedModel === model.value && (
@@ -338,7 +355,7 @@ export default function ModelSelector({
                                 selectedProvider === providerKey && selectedModel === model.value 
                                   ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
                                   : ''
-                              }`}
+                              } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                               <span className="text-sm">{model.label}</span>
                               {selectedProvider === providerKey && selectedModel === model.value && (
@@ -358,7 +375,9 @@ export default function ModelSelector({
                 <DropdownMenuItem
                   key={providerKey}
                   onClick={() => handleProviderSelect(providerKey)}
-                  className="flex items-center gap-3 p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800"
+                  className={`flex items-center gap-3 p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+                    DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white`}>
                     {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
@@ -386,7 +405,7 @@ export default function ModelSelector({
           <Button
             variant="outline"
             size="sm"
-            className="cursor-pointer h-9 w-9 rounded-l-none border-l-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700"
+            className={`cursor-pointer h-9 w-9 rounded-l-none border-l-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700`}
           >
             <Settings className="h-4 w-4 text-gray-500 dark:text-slate-400" />
           </Button>
@@ -410,11 +429,12 @@ export default function ModelSelector({
               </div>
               <Slider
                 value={[temperature]}
-                onValueChange={(value) => onTemperatureChange(value[0])}
+                onValueChange={DISABLE_SETTINGS ? () => {} : (value) => onTemperatureChange(value[0])}
                 max={1}
                 min={0}
                 step={0.01}
-                className="w-full"
+                className={`w-full ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={DISABLE_SETTINGS}
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
                 <span>Focused</span>
@@ -446,7 +466,7 @@ export default function ModelSelector({
       </Popover>
 
       {/* Azure Configuration Dialog */}
-      <Dialog open={isAzureDialogOpen} onOpenChange={setIsAzureDialogOpen}>
+      <Dialog open={isAzureDialogOpen && !DISABLE_SETTINGS} onOpenChange={DISABLE_SETTINGS ? () => {} : setIsAzureDialogOpen}>
         <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-slate-100">
@@ -463,8 +483,9 @@ export default function ModelSelector({
                 id="endpoint"
                 placeholder="https://your-resource.openai.azure.com/"
                 value={tempAzureConfig.endpoint}
-                onChange={(e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
+                onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100"
+                disabled={DISABLE_SETTINGS}
               />
             </div>
             <div className="space-y-2">
@@ -473,8 +494,9 @@ export default function ModelSelector({
                 id="apiVersion"
                 placeholder="2024-10-01-preview"
                 value={tempAzureConfig.apiVersion}
-                onChange={(e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
+                onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100"
+                disabled={DISABLE_SETTINGS}
               />
             </div>
           </div>
@@ -486,7 +508,11 @@ export default function ModelSelector({
             >
               Cancel
             </Button>
-            <Button onClick={handleAzureConfigSave} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button 
+              onClick={handleAzureConfigSave} 
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={DISABLE_SETTINGS}
+            >
               Save Configuration
             </Button>
           </DialogFooter>

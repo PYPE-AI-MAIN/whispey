@@ -210,7 +210,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
             {/* Success Content */}
             <div className="px-6 pb-6 space-y-4">
               {/* API Token */}
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   API Token
                 </label>
@@ -247,13 +247,12 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                 )}
               </div>
 
-              {/* Warning */}
               <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                 <p className="text-xs text-yellow-800 dark:text-yellow-200">
                   <strong>Important:</strong> This token will only be shown once. Please save it in a secure location.
                   You can regenerate it later if needed.
                 </p>
-              </div>
+              </div> */}
 
               {/* Project Details */}
               <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">

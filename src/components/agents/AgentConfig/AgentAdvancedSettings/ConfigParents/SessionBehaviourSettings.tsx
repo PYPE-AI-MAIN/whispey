@@ -6,13 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 interface SessionBehaviourSettingsProps {
   preemptiveGeneration: 'enabled' | 'disabled'
-  turnDetection: 'multilingual' | 'english' | 'disabled'
+  turn_detection: 'multilingual' | 'english' | 'disabled'
   onFieldChange: (field: string, value: any) => void
 }
 
 function SessionBehaviourSettings({
   preemptiveGeneration,
-  turnDetection,
+  turn_detection,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
   return (
@@ -52,15 +52,17 @@ function SessionBehaviourSettings({
           Language detection mode for turn-taking
         </div>
         <Select 
-          value={turnDetection} 
-          onValueChange={(value) => onFieldChange('advancedSettings.session.turnDetection', value)}
+          value={turn_detection} 
+          onValueChange={(value) => onFieldChange('advancedSettings.session.turn_detection', value)}
         >
           <SelectTrigger className="h-7 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="multilingual" className="text-xs">Multilingual</SelectItem>
             <SelectItem value="english" className="text-xs">English</SelectItem>
+            <SelectItem value="multilingual" className="text-xs">Multilingual</SelectItem>
+            <SelectItem value="SmolLM2TurnDetector" className="text-xs">SmolLM2TurnDetector</SelectItem>
+            <SelectItem value="llmturndetector" className="text-xs">LLMTurnDetector</SelectItem>
             <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
           </SelectContent>
         </Select>

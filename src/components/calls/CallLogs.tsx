@@ -938,7 +938,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                         selectedCall?.id === call.id && "bg-muted/50 dark:bg-gray-800/50",
                       )}
                       onClick={() => {
-                        router.push(`/agents/${call.agent_id}/observability?session_id=${call?.id}`)
+                        router.push(`/${project?.id}/agents/${call.agent_id}/observability?session_id=${call?.id}`)
                       }}
                     >
                       {visibleColumns.basic.map((key) => {

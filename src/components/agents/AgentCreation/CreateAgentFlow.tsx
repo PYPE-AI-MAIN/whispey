@@ -38,8 +38,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
   const fetchProjectApiKey = async (): Promise<string> => {
     try {
-      // Get the project's API keys
       const response = await fetch(`/api/projects/${projectId}/api-keys`)
+      
       if (!response.ok) {
         throw new Error('Failed to fetch API keys')
       }
@@ -51,30 +51,24 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         throw new Error('No API key found for this project')
       }
       
-      // Get the first (most recent) key
       const keyToUse = keys[0]
       
       if (keyToUse.legacy) {
         throw new Error('Cannot use legacy API key. Please regenerate your API key first.')
       }
       
-      // Decrypt the key
-      const decryptResponse = await fetch(`/api/projects/${projectId}/api-keys/${keyToUse.id}/decrypt`, {
-        method: 'POST'
-      })
-      
-      if (!decryptResponse.ok) {
-        throw new Error('Failed to decrypt API key')
+      if (!keyToUse.token_hash_master) {
+        throw new Error('No encrypted key found for this project')
       }
       
-      const decryptData = await decryptResponse.json()
-      return decryptData.full_key
+      return keyToUse.token_hash_master
       
     } catch (error) {
       console.error('Error fetching project API key:', error)
       throw error
     }
   }
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -119,12 +113,29 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   
       // Step 2: Only create external agent infrastructure if it's a Pype agent
       if (isPypeAgent) {
+        console.log('🔑 Debug - Project API Key:', projectApiKey) // Debug log
+      
+        // Encrypt the API version identifier via server
+        const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: 'pype-api-v1' })
+        })
+      
+        if (!encryptResponse.ok) {
+          throw new Error('Failed to encrypt API key')
+        }
+      
+        const { encrypted: encryptedApiKey } = await encryptResponse.json()
+        console.log('🔐 Debug - Encrypted API Key:', encryptedApiKey) // Debug log
+        
         const agent = {
           name: formData.name.trim(),
           type: 'OUTBOUND',
           assistant: [{
             name: formData.name.trim(),
             prompt: `You are a helpful ${selectedPlatform} assistant. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
+            variables: {},
             stt: { 
               name: selectedPlatform === 'vapi' ? 'deepgram' : 'sarvam', 
               language: selectedPlatform === 'vapi' ? 'en' : 'en-IN', 
@@ -137,7 +148,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               temperature: 0.3, 
               api_key_env: 'OPENAI_API_KEY' 
             },
-            tts: selectedPlatform === 'vapi' ? {
+            tts: {
               name: 'elevenlabs',
               voice_id: 'H8bdWZHK2OgZwTN7ponr',
               model: 'eleven_flash_v2_5',
@@ -149,33 +160,33 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 use_speaker_boost: false,
                 speed: 1.1
               }
-            } : {
-              name: 'sarvam_tts',
-              target_language_code: 'en-IN',
-              model: 'bulbul:v2',
-              speaker: 'anushka',
-              loudness: 1.1,
-              speed: 0.8,
-              enable_preprocessing: true
             },
             vad: { name: 'silero', min_silence_duration: 0.2 },
-            first_message_mode: 'assistant_waits_for_user',
-            first_message: 'Hello! How can I help you today?'
-          }]
+            tools: [],
+            interruptions: {
+              allow_interruptions: false,
+              min_interruption_duration: 1.3,
+              min_interruption_words: 2
+            },
+            first_message_mode: {
+              mode: 'assistant_waits_for_user',
+              first_message: 'Hello! How can I help you today?',
+              allow_interruptions: false
+            }
+          }],
+          agent_id: localAgent.id,
+          whispey_key_id: projectApiKey
         }
-  
+      
         const createResponse = await fetch('/api/agents/create-agent', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'x-api-key': projectApiKey
+            'x-api-key': encryptedApiKey
           },
-          body: JSON.stringify({ 
-            agent,
-            assistantId: localAgent.id
-          })
+          body: JSON.stringify({ agent })
         })
-  
+      
         if (!createResponse.ok) {
           const createErrorData = await createResponse.json()
           throw new Error(createErrorData.error || createErrorData.detail || 'Failed to create agent infrastructure')

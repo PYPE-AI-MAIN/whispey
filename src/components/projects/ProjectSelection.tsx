@@ -44,7 +44,14 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  
+  // Initialize viewMode from localStorage
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('workspace-view-mode') as 'grid' | 'list') || 'grid'
+    }
+    return 'grid'
+  })
   
   // Initialize density from localStorage
   const [density, setDensity] = useState<'comfortable' | 'compact'>(() => {
@@ -56,12 +63,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   
   const router = useRouter()
 
-  // Save density preference to localStorage
+  // Save preferences to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      localStorage.setItem('workspace-view-mode', viewMode)
       localStorage.setItem('workspace-card-density', density)
     }
-  }, [density])
+  }, [viewMode, density])
 
   const fetchProjects = async () => {
     setLoading(true)
@@ -266,6 +274,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation()
+                router.push(`${project.id}/agents/api-keys`)
               }} className="text-xs">
                 <Settings className="h-3 w-3 mr-2" />
                 Settings
@@ -273,7 +282,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation()
-                setShowRegenerateConfirm(project)
+                router.push(`/${project.id}/agents/api-keys`)
               }} disabled={regeneratingToken === project.id} className="text-xs">
                 {regeneratingToken === project.id ? (
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
@@ -375,6 +384,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation()
+                  router.push(`/${project.id}/agents/api-keys`)
                 }} className="text-xs">
                   <Settings className="h-3 w-3 mr-2" />
                   Settings
@@ -382,7 +392,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation()
-                  setShowRegenerateConfirm(project)
+                  router.push(`/${project.id}/agents/api-keys`)
                 }} disabled={regeneratingToken === project.id} className="text-xs">
                   {regeneratingToken === project.id ? (
                     <Loader2 className="h-3 w-3 mr-2 animate-spin" />
@@ -677,6 +687,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation()
+                              router.push(`/${project.id}/agents/api-keys`)
                             }} className="text-xs">
                               <Settings className="h-3 w-3 mr-2" />
                               Settings
@@ -684,7 +695,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation()
-                              setShowRegenerateConfirm(project)
+                              router.push(`/${project.id}/agents/api-keys`)
                             }} disabled={regeneratingToken === project.id} className="text-xs">
                               {regeneratingToken === project.id ? (
                                 <Loader2 className="h-3 w-3 mr-2 animate-spin" />

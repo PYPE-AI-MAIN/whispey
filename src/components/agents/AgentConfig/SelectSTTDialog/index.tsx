@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
@@ -43,6 +44,8 @@ interface SarvamConfig {
 interface SelectSTTProps {
   selectedProvider?: string;
   selectedModel?: string;
+  selectedLanguage?: string;
+  initialConfig?: any;
   onSTTSelect?: (provider: string, model: string, config: any) => void;
 }
 
@@ -97,7 +100,8 @@ const STT_PROVIDERS = {
     name: 'Sarvam AI',
     models: [
       { id: 'saaras:v1', name: 'Saaras v1', description: 'Multilingual speech recognition' },
-      { id: 'saaras:v2', name: 'Saaras v2', description: 'Enhanced multilingual model' }
+      { id: 'saaras:v2', name: 'Saaras v2', description: 'Enhanced multilingual model' },
+      { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Latest multilingual model' }
     ],
     languages: [
       { code: 'hi', name: 'Hindi' },
@@ -110,7 +114,8 @@ const STT_PROVIDERS = {
       { code: 'or', name: 'Odia' },
       { code: 'pa', name: 'Punjabi' },
       { code: 'ta', name: 'Tamil' },
-      { code: 'te', name: 'Telugu' }
+      { code: 'te', name: 'Telugu' },
+      { code: 'unknown', name: 'Unknown/Auto-detect' }
     ]
   }
 }
@@ -150,12 +155,14 @@ const ProviderCard = ({
   provider, 
   providerKey, 
   isSelected, 
-  onSelect 
+  onSelect,
+  disabled = false
 }: { 
   provider: any, 
   providerKey: string, 
   isSelected: boolean, 
-  onSelect: () => void 
+  onSelect: () => void,
+  disabled?: boolean
 }) => {
   const getProviderColor = () => {
     switch (providerKey) {
@@ -177,15 +184,15 @@ const ProviderCard = ({
 
   return (
     <div
-      onClick={onSelect}
-      className={`cursor-pointer p-4 rounded-lg border transition-all hover:shadow-sm ${
+      onClick={disabled ? undefined : onSelect}
+      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} p-4 rounded-lg border transition-all hover:shadow-sm ${
         isSelected 
           ? getBorderColor()
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getProviderColor()} flex items-center justify-center`}>
+        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getProviderColor()} flex items-center justify-center ${disabled ? 'opacity-50' : ''}`}>
           <Mic className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1">
@@ -208,42 +215,83 @@ const ProviderCard = ({
 const SelectSTT: React.FC<SelectSTTProps> = ({ 
   selectedProvider = '', 
   selectedModel = '',
+  selectedLanguage = 'en',
+  initialConfig = {},
   onSTTSelect 
 }) => {
+  // DISABLE CONTROLS - Set to true to disable all interactions
+  const DISABLE_SETTINGS = false
+
   const [isOpen, setIsOpen] = useState(false)
   const [activeProvider, setActiveProvider] = useState(selectedProvider || 'openai')
-  const [showSettings, setShowSettings] = useState(false)
+  const [showSettings, setShowSettings] = useState(!!selectedProvider)
+
+
+  useEffect(() => {
+    setShowSettings(!!selectedProvider)
+  }, [selectedProvider])
   
-  // Configuration states
+  // Configuration states - Initialize with received values
   const [openaiConfig, setOpenAIConfig] = useState<OpenAISTTConfig>({
-    model: 'whisper-1',
-    language: 'en',
-    temperature: 0,
-    response_format: 'json',
-    timestamp_granularities: ['segment']
+    model: selectedProvider === 'openai' ? selectedModel : 'whisper-1',
+    language: selectedProvider === 'openai' ? selectedLanguage : 'en',
+    temperature: initialConfig?.temperature || 0,
+    response_format: initialConfig?.response_format || 'json',
+    timestamp_granularities: initialConfig?.timestamp_granularities || ['segment']
   })
 
   const [deepgramConfig, setDeepgramConfig] = useState<DeepgramConfig>({
-    model: 'nova-2',
-    language: 'en',
-    tier: 'enhanced',
-    version: 'latest',
-    punctuate: true,
-    profanity_filter: false,
-    redact: [],
-    diarize: false,
-    smart_format: true,
-    utterances: false,
-    detect_language: false
+    model: selectedProvider === 'deepgram' ? selectedModel : 'nova-2',
+    language: selectedProvider === 'deepgram' ? selectedLanguage : 'en',
+    tier: initialConfig?.tier || 'enhanced',
+    version: initialConfig?.version || 'latest',
+    punctuate: initialConfig?.punctuate ?? true,
+    profanity_filter: initialConfig?.profanity_filter ?? false,
+    redact: initialConfig?.redact || [],
+    diarize: initialConfig?.diarize ?? false,
+    smart_format: initialConfig?.smart_format ?? true,
+    utterances: initialConfig?.utterances ?? false,
+    detect_language: initialConfig?.detect_language ?? false
   })
 
   const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>({
-    model: 'saaras:v2',
-    language: 'en',
-    domain: 'general',
-    with_timestamps: true,
-    enable_formatting: true
+    model: selectedProvider === 'sarvam' ? selectedModel : 'saaras:v2',
+    language: selectedProvider === 'sarvam' ? selectedLanguage : 'en',
+    domain: initialConfig?.domain || 'general',
+    with_timestamps: initialConfig?.with_timestamps ?? true,
+    enable_formatting: initialConfig?.enable_formatting ?? true
   })
+
+  // Update states when props change
+  useEffect(() => {
+    if (selectedProvider) {
+      setActiveProvider(selectedProvider)
+      
+      // Update the appropriate config based on provider
+      if (selectedProvider === 'openai') {
+        setOpenAIConfig(prev => ({
+          ...prev,
+          model: selectedModel || prev.model,
+          language: selectedLanguage || prev.language,
+          ...initialConfig
+        }))
+      } else if (selectedProvider === 'deepgram') {
+        setDeepgramConfig(prev => ({
+          ...prev,
+          model: selectedModel || prev.model,
+          language: selectedLanguage || prev.language,
+          ...initialConfig
+        }))
+      } else if (selectedProvider === 'sarvam') {
+        setSarvamConfig(prev => ({
+          ...prev,
+          model: selectedModel || prev.model,
+          language: selectedLanguage || prev.language,
+          ...initialConfig
+        }))
+      }
+    }
+  }, [selectedProvider, selectedModel, selectedLanguage, initialConfig])
 
   const getCurrentConfig = () => {
     switch (activeProvider) {
@@ -278,65 +326,128 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     
     if (!provider) return null
 
+    const currentModel = getCurrentModel()
+    const currentLanguage = (getCurrentConfig() as any).language
+
     return (
       <div className="space-y-6">
-        {/* Model Selection */}
+        {/* Model Selection - Flexible for custom models */}
         <div className="space-y-2">
           <Label>Model</Label>
-          <Select 
-            value={getCurrentModel()} 
-            onValueChange={(value) => {
-              if (activeProvider === 'openai') {
-                setOpenAIConfig(prev => ({ ...prev, model: value }))
-              } else if (activeProvider === 'deepgram') {
-                setDeepgramConfig(prev => ({ ...prev, model: value }))
-              } else if (activeProvider === 'sarvam') {
-                setSarvamConfig(prev => ({ ...prev, model: value }))
-              }
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {provider.models.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  <div>
-                    <div className="font-medium">{model.name}</div>
-                    <div className="text-xs text-gray-500">{model.description}</div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Select 
+              value={provider.models.some(m => m.id === currentModel) ? currentModel : 'custom'} 
+              onValueChange={(value) => {
+                if (DISABLE_SETTINGS) return
+                if (value !== 'custom') {
+                  if (activeProvider === 'openai') {
+                    setOpenAIConfig(prev => ({ ...prev, model: value }))
+                  } else if (activeProvider === 'deepgram') {
+                    setDeepgramConfig(prev => ({ ...prev, model: value }))
+                  } else if (activeProvider === 'sarvam') {
+                    setSarvamConfig(prev => ({ ...prev, model: value }))
+                  }
+                }
+              }}
+              disabled={DISABLE_SETTINGS}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {provider.models.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    <div>
+                      <div className="font-medium">{model.name}</div>
+                      <div className="text-xs text-gray-500">{model.description}</div>
+                    </div>
+                  </SelectItem>
+                ))}
+                <SelectItem value="custom">Custom Model</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Custom model input - Show if model not in predefined list */}
+            {!provider.models.some(m => m.id === currentModel) && (
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Custom Model Name</Label>
+                <Input
+                  placeholder="Enter custom model name (e.g., saarika:v2.5)"
+                  value={currentModel}
+                  onChange={(e) => {
+                    if (DISABLE_SETTINGS) return
+                    if (activeProvider === 'openai') {
+                      setOpenAIConfig(prev => ({ ...prev, model: e.target.value }))
+                    } else if (activeProvider === 'deepgram') {
+                      setDeepgramConfig(prev => ({ ...prev, model: e.target.value }))
+                    } else if (activeProvider === 'sarvam') {
+                      setSarvamConfig(prev => ({ ...prev, model: e.target.value }))
+                    }
+                  }}
+                  className="text-sm"
+                  disabled={DISABLE_SETTINGS}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Language Selection */}
+        {/* Language Selection - Handle custom languages */}
         <div className="space-y-2">
           <Label>Language</Label>
-          <Select 
-            value={(getCurrentConfig() as any).language} 
-            onValueChange={(value) => {
-              if (activeProvider === 'openai') {
-                setOpenAIConfig(prev => ({ ...prev, language: value }))
-              } else if (activeProvider === 'deepgram') {
-                setDeepgramConfig(prev => ({ ...prev, language: value }))
-              } else if (activeProvider === 'sarvam') {
-                setSarvamConfig(prev => ({ ...prev, language: value }))
-              }
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {provider.languages.map((lang) => (
-                <SelectItem key={lang.code} value={lang.code}>
-                  {lang.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Select 
+              value={provider.languages.some(l => l.code === currentLanguage) ? currentLanguage : 'custom'} 
+              onValueChange={(value) => {
+                if (DISABLE_SETTINGS) return
+                if (value !== 'custom') {
+                  if (activeProvider === 'openai') {
+                    setOpenAIConfig(prev => ({ ...prev, language: value }))
+                  } else if (activeProvider === 'deepgram') {
+                    setDeepgramConfig(prev => ({ ...prev, language: value }))
+                  } else if (activeProvider === 'sarvam') {
+                    setSarvamConfig(prev => ({ ...prev, language: value }))
+                  }
+                }
+              }}
+              disabled={DISABLE_SETTINGS}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {provider.languages.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </SelectItem>
+                ))}
+                <SelectItem value="custom">Custom Language</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Custom language input - Show if language not in predefined list */}
+            {!provider.languages.some(l => l.code === currentLanguage) && (
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Custom Language Code</Label>
+                <Input
+                  placeholder="Enter language code (e.g., unknown)"
+                  value={currentLanguage}
+                  onChange={(e) => {
+                    if (DISABLE_SETTINGS) return
+                    if (activeProvider === 'openai') {
+                      setOpenAIConfig(prev => ({ ...prev, language: e.target.value }))
+                    } else if (activeProvider === 'deepgram') {
+                      setDeepgramConfig(prev => ({ ...prev, language: e.target.value }))
+                    } else if (activeProvider === 'sarvam') {
+                      setSarvamConfig(prev => ({ ...prev, language: e.target.value }))
+                    }
+                  }}
+                  className="text-sm"
+                  disabled={DISABLE_SETTINGS}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Provider-specific settings */}
@@ -421,7 +532,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
         {activeProvider === 'sarvam' && (
           <div className="space-y-4">
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label>Domain</Label>
               <Select 
                 value={sarvamConfig.domain}
@@ -437,11 +548,12 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   <SelectItem value="education">Education</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
             
             <div className="flex items-center justify-between">
               <Label>Include Timestamps</Label>
               <Switch
+                disabled={DISABLE_SETTINGS}
                 checked={sarvamConfig.with_timestamps}
                 onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, with_timestamps: checked }))}
               />
@@ -450,6 +562,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             <div className="flex items-center justify-between">
               <Label>Enable Formatting</Label>
               <Switch
+                disabled={DISABLE_SETTINGS}
                 checked={sarvamConfig.enable_formatting}
                 onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, enable_formatting: checked }))}
               />
@@ -485,6 +598,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             {activeProvider && (
               <div className="flex items-center gap-3">
                 <Button
+                  disabled={DISABLE_SETTINGS}
                   variant="outline"
                   size="sm"
                   onClick={() => setShowSettings(!showSettings)}
@@ -513,6 +627,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   providerKey={key}
                   isSelected={activeProvider === key}
                   onSelect={() => setActiveProvider(key)}
+                  disabled={DISABLE_SETTINGS}
                 />
               ))}
             </div>
@@ -552,8 +667,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             </Button>
             <Button 
               onClick={handleApply} 
-              disabled={!activeProvider}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={!activeProvider || DISABLE_SETTINGS}
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Apply Settings
             </Button>

@@ -13,7 +13,7 @@ const EXCLUDED_PATHS = [
 
 export default function FeedbackWidget() {
   const pathname = usePathname()
-  const { shouldShowFeedback, dismissFeedback } = useFeedbackTiming()
+  const { shouldShowFeedback, dismissFeedback, submitFeedback, feedbackMessage } = useFeedbackTiming()
 
   // Don't show on excluded paths
   const shouldExclude = EXCLUDED_PATHS.some(path => pathname.startsWith(path))
@@ -22,5 +22,11 @@ export default function FeedbackWidget() {
     return null
   }
 
-  return <FeedbackPopup onDismiss={dismissFeedback} />
+  return (
+    <FeedbackPopup 
+      onDismiss={dismissFeedback} 
+      onSubmit={submitFeedback}
+      feedbackMessage={feedbackMessage}
+    />
+  )
 }

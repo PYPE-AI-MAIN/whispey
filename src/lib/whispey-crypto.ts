@@ -73,14 +73,3 @@ export function decryptWithWhispeyKey(encryptedText: string): string {
     throw new Error('Failed to decrypt data with Whispey master key - invalid key or corrupted data')
   }
 }
-
-/**
- * Utility function to check if a string appears to be encrypted with Whispey format
- * @param text - The text to check
- * @returns True if the text appears to be encrypted
- */
-export function isWhispeyEncrypted(text: string): boolean {
-  // Check if the text matches the format: hex:hex:hex
-  const parts = text.split(':')
-  return parts.length === 3 && parts.every(part => /^[a-f0-9]+$/i.test(part))
-}

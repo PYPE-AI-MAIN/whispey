@@ -16,7 +16,6 @@ import {
   Check
 } from 'lucide-react'
 
-
 interface SarvamVoice {
   id: string;
   name: string;
@@ -34,21 +33,22 @@ interface ElevenLabsVoice {
   description?: string;
 }
 
+// Updated to match API format
 interface SarvamConfig {
-  targetLanguage: string;
+  target_language_code: string;  // Changed from targetLanguage
   model: string;
   speaker: string;
   loudness: number;
   speed: number;
-  enablePreprocessing: boolean;
+  enable_preprocessing: boolean;  // Changed from enablePreprocessing
 }
 
 interface VoiceSelectionPanelProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   showSettings: boolean;
-  selectedVoiceId: string;  // Now uses internal state
-  selectedProvider: string; // Now uses internal state
+  selectedVoiceId: string;
+  selectedProvider: string;
   onVoiceSelect: (voiceId: string, provider: string) => void;
   sarvamConfig: SarvamConfig;
   setSarvamConfig: React.Dispatch<React.SetStateAction<SarvamConfig>>;
@@ -56,7 +56,6 @@ interface VoiceSelectionPanelProps {
   setElevenLabsVoices: React.Dispatch<React.SetStateAction<ElevenLabsVoice[]>>;
   allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[];
 }
-
 
 const CopyButton = ({ text, className = "" }: { text: string, className?: string }) => {
   const [copied, setCopied] = useState(false)
@@ -231,7 +230,6 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   useEffect(() => {
     if (selectedVoiceId && selectedProvider) {
       const scrollToSelected = () => {
-        // Only scroll if we're on the correct tab
         if ((selectedProvider === 'sarvam' && activeTab !== 'sarvam') || 
             (selectedProvider === 'elevenlabs' && activeTab !== 'elevenlabs')) {
           console.log('Wrong tab active, skipping scroll')
@@ -259,12 +257,10 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
           }
         } else {
           console.log('List ref not found, retrying...')
-          // Retry after a longer delay if ref not found
           setTimeout(scrollToSelected, 200)
         }
       }
       
-      // Longer initial delay to ensure DOM is ready
       setTimeout(scrollToSelected, 300)
     }
   }, [selectedVoiceId, selectedProvider, activeTab])
@@ -303,17 +299,15 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   const handleModelChange = (newModel: string) => {
     setSarvamConfig(prev => ({ ...prev, model: newModel }))
     
-    // If current voice is not compatible with new model, clear selection
     if (selectedProvider === 'sarvam' && selectedVoiceId) {
       const compatibleVoices = getCompatibleSarvamVoices(newModel)
       const isCurrentVoiceCompatible = compatibleVoices.some(v => v.id === selectedVoiceId)
       if (!isCurrentVoiceCompatible) {
-        onVoiceSelect('', '') // Clear selection
+        onVoiceSelect('', '')
       }
     }
   }
 
-  // Filter voices
   const sarvamVoices = getCompatibleSarvamVoices(sarvamConfig.model)
   const filteredSarvam = sarvamVoices.filter(v => 
     v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -322,11 +316,9 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   )
   const filteredElevenLabs = elevenLabsVoices.filter(v => 
     v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (v.description && v.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    (v.description && v.description.toLowerCase().includes(searchTerm.toLowerCase())) || 
+    v.voice_id.toLowerCase().includes(searchTerm.toLowerCase()) 
   )
-
-  // Helper function to sort voices (selected first) - REMOVED since we don't want this behavior
-  // const sortVoicesWithSelectedFirst = ...
 
   return (
     <div className={`${showSettings ? 'w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} flex flex-col`}>
@@ -362,15 +354,14 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
                   className="pl-10 h-10" 
                 />
               </div>
-              <Select value={sarvamConfig.model} onValueChange={handleModelChange}>
-                <SelectTrigger className="w-36 h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bulbul:v2">Bulbul v2</SelectItem>
-                  <SelectItem value="bulbul:v1">Bulbul v1</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col gap-1 w-36">
+                <Input
+                  value={sarvamConfig.model}
+                  onChange={(e) => handleModelChange(e.target.value)}
+                  placeholder="bulbul:v2"
+                  className="h-10 text-sm"
+                />
+              </div>
             </div>
 
             <div ref={sarvamListRef} className="flex-1 min-h-0 overflow-y-auto space-y-3">

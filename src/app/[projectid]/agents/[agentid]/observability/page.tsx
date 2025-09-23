@@ -58,38 +58,13 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   const isUrlExpired = isSignedUrl && recordingUrl.includes('X-Amz-Expires=604800') // 7 days
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b bg-white">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.back()}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Agent
-              </Button>
-              <div>
-                <h1 className="text-2xl font-semibold">Observability Dashboard</h1>
-                <p className="text-sm text-muted-foreground">
-                  {sessionId && `Session ${sessionId.slice(0, 8)}...`}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+      
 
       {/* Audio Player - show if we have a recording URL */}
       {recordingUrl && !callLoading && (
-        <div className="px-6 py-4 border-b bg-gray-50">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Call Recording</h3>
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Call Recording</h3>
           <AudioPlayer
             s3Key={extractS3Key(recordingUrl)}
             url={recordingUrl}
@@ -97,7 +72,6 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
           />
         </div>
       )}
-
 
       {/* Filters */}
       {/* <ObservabilityFilters
@@ -108,8 +82,8 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       /> */}
 
       {agentLoading ? (
-        <div className="px-6 py-3 border-b bg-slate-50/30">
-          <div className="animate-pulse">Loading agent data...</div>
+        <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+          <div className="animate-pulse text-gray-600 dark:text-gray-400">Loading agent data...</div>
         </div>
       ) : (
         <ObservabilityStats

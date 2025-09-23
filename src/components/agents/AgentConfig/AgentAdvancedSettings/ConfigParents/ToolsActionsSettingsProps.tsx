@@ -12,7 +12,7 @@ import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon }
 
 interface Tool {
   id: string
-  type: 'endCall' | 'handoff' | 'custom'
+  type: 'end_call' | 'handoff' | 'custom_function'
   name: string
   config: any
 }
@@ -24,7 +24,7 @@ interface ToolsActionsSettingsProps {
 
 function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedToolType, setSelectedToolType] = useState<'endCall' | 'handoff' | 'custom' | null>(null)
+  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'custom_function' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
 
   const [formData, setFormData] = useState({
@@ -40,12 +40,12 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
     asyncExecution: false
   })
 
-  const handleAddTool = (toolType: 'endCall' | 'handoff' | 'custom') => {
+  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'custom_function') => {
     setSelectedToolType(toolType)
     setEditingTool(null)
     
     // Set default form data based on tool type
-    if (toolType === 'endCall') {
+    if (toolType === 'end_call') {
       setFormData({ 
         name: 'End Call', 
         description: 'Allow assistant to end the conversation', 
@@ -139,9 +139,9 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
 
   const getToolIcon = (type: string) => {
     switch (type) {
-      case 'endCall': return <PhoneOffIcon className="w-3 h-3" />
+      case 'end_call': return <PhoneOffIcon className="w-3 h-3" />
       case 'handoff': return <ArrowRightIcon className="w-3 h-3" />
-      case 'custom': return <CodeIcon className="w-3 h-3" />
+      case 'custom_function': return <CodeIcon className="w-3 h-3" />
       default: return <CodeIcon className="w-3 h-3" />
     }
   }
@@ -161,7 +161,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-48">
-          <DropdownMenuItem onClick={() => handleAddTool('endCall')} className="text-xs">
+          <DropdownMenuItem onClick={() => handleAddTool('end_call')} className="text-xs">
             <PhoneOffIcon className="w-3 h-3 mr-2" />
             End Call
           </DropdownMenuItem>
@@ -169,7 +169,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
             <ArrowRightIcon className="w-3 h-3 mr-2" />
             Handoff Agent
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleAddTool('custom')} className="text-xs">
+          <DropdownMenuItem onClick={() => handleAddTool('custom_function')} className="text-xs">
             <CodeIcon className="w-3 h-3 mr-2" />
             Custom Tool
           </DropdownMenuItem>
@@ -219,7 +219,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-sm">
-              {editingTool ? 'Edit' : 'Add'} {selectedToolType === 'endCall' ? 'End Call' : selectedToolType === 'handoff' ? 'Handoff Agent' : 'Custom Tool'}
+              {editingTool ? 'Edit' : 'Add'} {selectedToolType === 'end_call' ? 'End Call' : selectedToolType === 'handoff' ? 'Handoff Agent' : 'Custom Tool'}
             </DialogTitle>
           </DialogHeader>
           
@@ -231,7 +231,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 className="h-7 text-xs mt-1"
-                placeholder={selectedToolType === 'custom' ? 'e.g., get_weather' : 'Enter tool name...'}
+                placeholder={selectedToolType === 'custom_function' ? 'e.g., get_weather' : 'Enter tool name...'}
               />
             </div>
 
@@ -242,7 +242,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 className="text-xs mt-1 min-h-[60px] resize-none"
-                placeholder={selectedToolType === 'custom' ? 'e.g., Get current weather information' : 'Describe what this tool does...'}
+                placeholder={selectedToolType === 'custom_function' ? 'e.g., Get current weather information' : 'Describe what this tool does...'}
               />
             </div>
 
@@ -272,10 +272,10 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
             )}
 
             {/* Custom Tool specific fields */}
-            {selectedToolType === 'custom' && (
+            {selectedToolType === 'custom_function' && (
               <>
                 <div>
-                  <Label className="text-xs">API URL</Label>
+                  <Label className="text-xs">Function Name</Label>
                   <Input
                     value={formData.endpoint}
                     onChange={(e) => setFormData(prev => ({ ...prev, endpoint: e.target.value }))}

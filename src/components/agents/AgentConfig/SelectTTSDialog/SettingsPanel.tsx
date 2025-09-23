@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Settings, ChevronDown, Copy, Check } from 'lucide-react'
 
+// Updated interfaces to match API format
 interface SarvamConfig {
-  targetLanguage: string;
+  target_language_code: string;  // Changed from targetLanguage
   model: string;
   speaker: string;
   loudness: number;
   speed: number;
-  enablePreprocessing: boolean;
+  enable_preprocessing: boolean;  // Changed from enablePreprocessing
 }
 
 interface ElevenLabsConfig {
@@ -74,6 +75,23 @@ const ConfigSection = ({ title, children }: { title: string, children: React.Rea
   </div>
 )
 
+// Language display mapping for user-friendly names
+const languageDisplayMap: Record<string, string> = {
+  'en-IN': 'Hindi (en-IN)',
+  'hi': 'Hindi (hi)', 
+  'en': 'English (en)',
+  'ta': 'Tamil (ta)',
+  'te': 'Telugu (te)',
+  'ml': 'Malayalam (ml)',
+  'kn': 'Kannada (kn)',
+  'gu': 'Gujarati (gu)',
+  'bn': 'Bengali (bn)',
+}
+
+const getLanguageDisplay = (code: string) => {
+  return languageDisplayMap[code] || code
+}
+
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
   selectedProvider,
   sarvamConfig,
@@ -88,13 +106,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   }
 
   const normalizedProvider = selectedProvider === 'sarvam_tts' ? 'sarvam' : selectedProvider
-  console.log('🔧 SettingsPanel Debug:', {
-    selectedProvider,
-    normalizedProvider,
-    sarvamConfig,
-    elevenLabsConfig
-  })
-
 
   return (
     <div className="w-1/2 flex flex-col">
@@ -117,13 +128,19 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="target-language">Target Language Code</Label>
-                  <Select value={sarvamConfig.targetLanguage} onValueChange={(value) => 
-                    setSarvamConfig(prev => ({ ...prev, targetLanguage: value }))
-                  }>
+                  <Select 
+                    value={sarvamConfig.target_language_code} 
+                    onValueChange={(value) => 
+                      setSarvamConfig(prev => ({ ...prev, target_language_code: value }))
+                    }
+                  >
                     <SelectTrigger id="target-language">
-                      <SelectValue />
+                      <SelectValue placeholder="Select language">
+                        {getLanguageDisplay(sarvamConfig.target_language_code)}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="en-IN">Hindi (en-IN)</SelectItem>
                       <SelectItem value="hi">Hindi (hi)</SelectItem>
                       <SelectItem value="en">English (en)</SelectItem>
                       <SelectItem value="ta">Tamil (ta)</SelectItem>
@@ -182,8 +199,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
                 <Switch
                   id="preprocessing"
-                  checked={sarvamConfig.enablePreprocessing}
-                  onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, enablePreprocessing: checked }))}
+                  checked={sarvamConfig.enable_preprocessing}
+                  onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, enable_preprocessing: checked }))}
                 />
               </div>
             </ConfigSection>
