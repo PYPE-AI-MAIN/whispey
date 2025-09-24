@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useUser, SignedIn, useClerk } from '@clerk/nextjs'
 import { useTheme } from 'next-themes'
+import { useHotkeys } from 'react-hotkeys-hook'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -34,9 +35,13 @@ import {
   TrendingUp,
   BarChart,
   CreditCard,
-  History
+  History,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { GitHubStarsButton } from '../GithubLink'
 import SupportSheet from './SupportPanel'
 import { SidebarConfig } from './SidebarWrapper'
@@ -85,9 +90,11 @@ interface SidebarProps {
   currentPath: string
   isCollapsed?: boolean
   onToggleCollapse?: () => void
+  isMobile?: boolean
+  onMobileClose?: () => void
 }
 
-// Extended pricing configurations - now supports any sidebar type
+// Extended pricing configurations
 const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; features: string[]; upgradeText: string; upgradeLink: string }> = {
   workspaces: {
     showPricingBox: false,
@@ -110,7 +117,6 @@ const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; f
     upgradeText: '',
     upgradeLink: ''
   },
-  // New configurations for new page types
   'project-reports': {
     showPricingBox: true,
     plan: 'Pro Plan',
@@ -127,7 +133,14 @@ const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; f
   }
 } as const
 
-export default function Sidebar({ config, currentPath, isCollapsed = false, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ 
+  config, 
+  currentPath, 
+  isCollapsed = false, 
+  onToggleCollapse,
+  isMobile = false,
+  onMobileClose 
+}: SidebarProps) {
   const { user, isLoaded } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
@@ -136,6 +149,30 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+
+  // Hotkey for toggling sidebar
+  useHotkeys('meta+B', (e) => {
+    e.preventDefault()
+    if (!isMobile && onToggleCollapse) {
+      onToggleCollapse()
+    }
+  }, {
+    enableOnFormTags: true,
+    enableOnContentEditable: true,
+    enabled: !isMobile && !!onToggleCollapse
+  })
+
+  // Also add Ctrl+B for Windows/Linux users
+  useHotkeys('ctrl+B', (e) => {
+    e.preventDefault()
+    if (!isMobile && onToggleCollapse) {
+      onToggleCollapse()
+    }
+  }, {
+    enableOnFormTags: true,
+    enableOnContentEditable: true,
+    enabled: !isMobile && !!onToggleCollapse
+  })
 
   useEffect(() => {
     setMounted(true)
@@ -199,7 +236,6 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
-      // Use Clerk's signOut with afterSignOutUrl option - no redirect callback needed
       await signOut({ redirectUrl: '/sign-in' })
     } catch (error) {
       console.error('Error signing out:', error)
@@ -277,6 +313,12 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
       return null
     }
     
+    const handleClick = () => {
+      if (isMobile && onMobileClose) {
+        onMobileClose()
+      }
+    }
+    
     const content = (
       <div className={`
         flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
@@ -284,32 +326,56 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
           ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
         }
+        ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
       `}>
         <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <span className="truncate">{item.name}</span>
         )}
       </div>
     )
 
-    return item.external ? (
-      <a key={item.id} href={item.path} target="_blank" rel="noopener noreferrer">
+    const navItem = item.external ? (
+      <a key={item.id} href={item.path} target="_blank" rel="noopener noreferrer" onClick={handleClick}>
         {content}
       </a>
     ) : (
-      <Link key={item.id} href={item.path}>
+      <Link key={item.id} href={item.path} onClick={handleClick}>
         {content}
       </Link>
     )
+
+    // Wrap with tooltip when collapsed on desktop
+    if (isCollapsed && !isMobile) {
+      return (
+        <TooltipProvider key={item.id}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {navItem}
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>{item.name}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    }
+
+    return navItem
   }
 
   const renderContextHeader = () => {
-    if (!isCollapsed && config.showBackButton) {
+    if ((!isCollapsed || isMobile) && config.showBackButton) {
       return (
         <div className="space-y-2">
           <Link 
             href={config.backPath || '/'} 
             className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            onClick={() => {
+              if (isMobile && onMobileClose) {
+                onMobileClose()
+              }
+            }}
           >
             <ArrowLeft className="w-3 h-3" />
             {config.backLabel || 'Back'}
@@ -331,12 +397,35 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
 
   return (
     <>
-      <aside className={`fixed left-0 top-0 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300 z-50 ${
-        isCollapsed ? 'w-16' : 'w-64'
-      }`}>
+      <aside className={`
+        ${isMobile ? 'fixed left-0 top-0 h-full w-64' : 'relative'}
+        ${!isMobile && isCollapsed ? 'w-16 h-full' : 'w-64 h-full'}
+        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 
+        flex flex-col transition-all duration-300 ease-in-out z-50
+        ${isMobile ? 'shadow-lg' : ''}
+      `}>
+        {/* Mobile Close Button */}
+        {isMobile && (
+          <div className="absolute top-4 right-4 z-10">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMobileClose}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Close sidebar"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
         {/* Logo & Context Header */}
-        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-          <Link href="/" className="flex items-center gap-3 group mb-3">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800 relative">
+          <Link href="/" className="flex items-center gap-3 group mb-3" onClick={() => {
+            if (isMobile && onMobileClose) {
+              onMobileClose()
+            }
+          }}>
             <Image 
               src="/logo.png" 
               alt="Whispey Logo" 
@@ -344,7 +433,7 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
               height={32} 
               className="flex-shrink-0 group-hover:scale-105 transition-transform duration-200" 
             />
-            {!isCollapsed && (
+            {(!isCollapsed || isMobile) && (
               <div className="min-w-0">
                 <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                   Whispey
@@ -356,6 +445,34 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
             )}
           </Link>
 
+          {/* Circular Collapse Button - positioned on the right edge */}
+          {!isMobile && onToggleCollapse && (
+            <div className="absolute -right-3 top-1/2 -translate-y-1/2 z-10">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onToggleCollapse}
+                      className="w-6 h-6 p-0 rounded-full border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
+                      aria-label={isCollapsed ? 'Expand sidebar (Cmd+B)' : 'Collapse sidebar (Cmd+B)'}
+                    >
+                      <ChevronLeft 
+                        className={`w-3 h-3 transition-transform duration-300 ease-in-out ${
+                          isCollapsed ? 'rotate-180' : ''
+                        }`} 
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-xs text-gray-500 mt-1">⌘ + B</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
+
           {renderContextHeader()}
         </div>
 
@@ -364,7 +481,7 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
           {groupedNavigation().map((group, groupIndex) => (
             <div key={group.id}>
               {/* Group Header - only show if group has a name and we're not collapsed */}
-              {group.name && !isCollapsed && (
+              {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
                   <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
                     {group.name}
@@ -373,12 +490,12 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
               )}
               
               {/* Group separator for collapsed mode */}
-              {group.name && isCollapsed && groupIndex > 0 && (
+              {group.name && isCollapsed && !isMobile && groupIndex > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
               )}
               
               {/* Group Items */}
-              <div className={`space-y-1 ${group.name && !isCollapsed ? 'ml-0' : ''}`}>
+              <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
                 {group.items.map(item => renderNavigationItem(item))}
               </div>
             </div>
@@ -386,14 +503,14 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
         </nav>
 
         {/* GitHub Stars */}
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <div className="px-3 mb-3">
             <GitHubStarsButton />
           </div>
         )}
 
         {/* Conditional Pricing Box */}
-        {pricingConfig?.showPricingBox && !isCollapsed && (
+        {pricingConfig?.showPricingBox && (!isCollapsed || isMobile) && (
           <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -410,7 +527,11 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
               </ul>
             )}
             {pricingConfig.upgradeLink && (
-              <Link href={pricingConfig.upgradeLink}>
+              <Link href={pricingConfig.upgradeLink} onClick={() => {
+                if (isMobile && onMobileClose) {
+                  onMobileClose()
+                }
+              }}>
                 <Button size="sm" className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white">
                   {pricingConfig.upgradeText}
                 </Button>
@@ -422,9 +543,9 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
         {/* User Section */}
         <div className="border-t border-gray-100 dark:border-gray-800 p-3">
           {!mounted || !isLoaded ? (
-            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
+            <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? 'justify-center' : ''}`}>
               <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse flex-shrink-0" />
-              {!isCollapsed && (
+              {(!isCollapsed || isMobile) && (
                 <div className="min-w-0 flex-1">
                   <div className="w-16 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-1" />
                   <div className="w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -436,12 +557,12 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                    isCollapsed ? 'justify-center' : ''
+                    isCollapsed && !isMobile ? 'justify-center' : ''
                   }`}>
                     <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                       {getUserDisplayName().charAt(0).toUpperCase()}
                     </div>
-                    {!isCollapsed && (
+                    {(!isCollapsed || isMobile) && (
                       <div className="min-w-0 flex-1 text-left">
                         <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName()}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
@@ -451,7 +572,11 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
                     )}
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800">
+                <DropdownMenuContent 
+                  align={isCollapsed && !isMobile ? "center" : "start"} 
+                  side={isCollapsed && !isMobile ? "right" : "top"}
+                  className="w-56 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
+                >
                   <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
                     <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName()}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
@@ -475,12 +600,12 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
                         </>
                       )}
                     </DropdownMenuItem>
-                    {/* <DropdownMenuItem asChild className="px-3 py-2 text-xs">
+                    <DropdownMenuItem asChild className="px-3 py-2 text-xs">
                       <Link href="/settings">
                         <Settings className="w-4 h-4 mr-2" />
                         Settings
                       </Link>
-                    </DropdownMenuItem> */}
+                    </DropdownMenuItem>
                   </div>
                   <DropdownMenuSeparator />
                   <div className="py-1">
@@ -497,15 +622,24 @@ export default function Sidebar({ config, currentPath, isCollapsed = false, onTo
 
         {/* Help Center */}
         <div className="border-t border-gray-100 dark:border-gray-800 p-3">
-          <button 
-            onClick={() => setIsSupportOpen(true)}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
-              isCollapsed ? 'justify-center' : ''
-            }`}
-          >
-            <HelpCircle className="w-4 h-4 flex-shrink-0" />
-            {!isCollapsed && <span>Help Center</span>}
-          </button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button 
+                  onClick={() => setIsSupportOpen(true)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
+                    isCollapsed && !isMobile ? 'justify-center' : ''
+                  }`}
+                >
+                  <HelpCircle className="w-4 h-4 flex-shrink-0" />
+                  {(!isCollapsed || isMobile) && <span>Help Center</span>}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Help Center</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </aside>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Copy, Terminal, ChevronDown, ChevronUp, Eye, AlertTriangle, Play, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useMobile } from '@/hooks/use-mobile'
 
 interface AdaptiveTutorialEmptyStateProps {
   searchQuery: string
@@ -92,6 +93,7 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [expandedExample, setExpandedExample] = useState(false)
   const [dismissedNotices, setDismissedNotices] = useState<Set<string>>(new Set())
+  const { isMobile } = useMobile(768)
 
   const copyToClipboard = (text: string, codeId: string) => {
     navigator.clipboard.writeText(text)
@@ -106,17 +108,18 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
   // No search results - same as before
   if (searchQuery && totalAgents > 0) {
     return (
-      <div className="text-center py-14 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-        <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-5">
-          <Eye className="h-7 w-7 text-gray-400 dark:text-gray-500" />
+      <div className={`text-center py-12 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 ${isMobile ? 'px-4' : ''}`}>
+        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-4">
+          <Eye className="h-6 w-6 text-gray-400 dark:text-gray-500" />
         </div>
-        <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1.5">No Results Found</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5 max-w-sm mx-auto">
-          No monitoring setups match your search criteria. Try adjusting your search terms.
+        <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">No Results Found</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-sm mx-auto">
+          No monitoring setups match your search criteria.
         </p>
         <Button 
           variant="outline" 
           onClick={onClearSearch}
+          size="sm"
           className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
         >
           Clear Search
@@ -128,49 +131,49 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
   if (experienceLevel === 'unknown') {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-        <div className="text-center py-7 px-7">
-          <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-5">
-            <Eye className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+        <div className={`text-center py-6 ${isMobile ? 'px-4' : 'px-6'}`}>
+          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Eye className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h2 className={`font-semibold text-gray-900 dark:text-gray-100 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
             Start Monitoring Your Voice Agents
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-7 max-w-lg mx-auto">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-lg mx-auto">
             Add intelligent observability to your voice AI agents
           </p>
           
-          <div className="grid md:grid-cols-2 gap-5 max-w-4xl mx-auto">
+          <div className={`${isMobile ? 'space-y-3' : 'grid md:grid-cols-2 gap-4'} max-w-4xl mx-auto`}>
             <div 
               onClick={() => setExperienceLevel('beginner')}
-              className="group p-6 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-all transform hover:scale-105"
+              className="group p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-all"
             >
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/50 transition-colors">
-                <Terminal className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Terminal className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">New to LiveKit?</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">New to LiveKit?</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-3 text-xs leading-relaxed">
                 Complete walkthrough from installation to your first monitored voice agent
               </p>
-              <div className="inline-flex items-center text-blue-600 dark:text-blue-400 font-medium text-sm group-hover:text-blue-700 dark:group-hover:text-blue-300">
+              <div className="inline-flex items-center text-blue-600 dark:text-blue-400 font-medium text-xs">
                 Complete Tutorial
-                <ChevronDown className="ml-1.5 h-3.5 w-3.5 rotate-[-90deg]" />
+                <ChevronDown className="ml-1 h-3 w-3 rotate-[-90deg]" />
               </div>
             </div>
             
             <div 
               onClick={() => setExperienceLevel('experienced')}
-              className="group p-6 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer transition-all transform hover:scale-105"
+              className="group p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer transition-all"
             >
-              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
-                <Play className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Play className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">Have Existing Agents?</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Have Existing Agents?</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-3 text-xs leading-relaxed">
                 Quick integration guide to add monitoring to your current setup
               </p>
-              <div className="inline-flex items-center text-green-600 dark:text-green-400 font-medium text-sm group-hover:text-green-700 dark:group-hover:text-green-300">
+              <div className="inline-flex items-center text-green-600 dark:text-green-400 font-medium text-xs">
                 Quick Integration
-                <ChevronDown className="ml-1.5 h-3.5 w-3.5 rotate-[-90deg]" />
+                <ChevronDown className="ml-1 h-3 w-3 rotate-[-90deg]" />
               </div>
             </div>
           </div>
@@ -179,22 +182,24 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
     )
   }
 
-  // Beginner tutorial
+  // Beginner tutorial - Mobile optimized
   if (experienceLevel === 'beginner') {
     return (
       <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-        <div className="p-7">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5">Complete LiveKit Agent Tutorial</h2>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Build your first voice AI agent with intelligent monitoring</p>
+        <div className={isMobile ? 'p-4' : 'p-6'}>
+          <div className={`flex items-center justify-between mb-4 ${isMobile ? 'flex-col gap-3' : ''}`}>
+            <div className={isMobile ? 'text-center' : ''}>
+              <h2 className={`font-semibold text-gray-900 dark:text-gray-100 mb-1 ${isMobile ? 'text-base' : 'text-lg'}`}>
+                Complete LiveKit Agent Tutorial
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Build your first voice AI agent with monitoring</p>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className={`flex items-center gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
               <a
                 href="https://youtu.be/1POj8h99xnE"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 px-2.5 py-1.5 rounded-lg transition-all"
+                className={`inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 px-2 py-1.5 rounded-lg transition-all ${isMobile ? 'w-full justify-center' : ''}`}
               >
                 <Play className="w-3 h-3" />
                 Video tutorial
@@ -202,43 +207,48 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
               <Button 
                 variant="outline" 
                 onClick={() => setExperienceLevel('unknown')}
-                className="text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 text-sm"
+                size="sm"
+                className={`text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 text-xs ${isMobile ? 'w-full' : ''}`}
               >
                 ← Back
               </Button>
             </div>
           </div>
 
-          {/* Important Notice about Agent ID - Dismissible */}
+          {/* Important Notice - More compact on mobile */}
           {!dismissedNotices.has('beginner-agent-id') && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3.5 mb-5 relative">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 relative">
               <button
                 onClick={() => dismissNotice('beginner-agent-id')}
-                className="absolute top-3 right-3 text-blue-400 dark:text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="absolute top-2 right-2 text-blue-400 dark:text-blue-500 hover:text-blue-600 dark:hover:text-blue-400"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
-              <div className="flex items-start gap-2.5 pr-7">
-                <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    The <strong>agent_id</strong> should be replaced with your actual agent ID after you create 
-                    a new agent. You'll get this ID when creating your monitoring configuration.
-                  </p>
-                </div>
+              <div className="flex items-start gap-2 pr-6">
+                <Eye className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  The <strong>agent_id</strong> will be provided after you create monitoring below.
+                </p>
               </div>
             </div>
           )}
 
-          <div className="space-y-6">
-            {/* Prerequisites */}
-            <div className="border-l-2 border-gray-100 dark:border-gray-800 pl-5 relative">
-              <div className="absolute -left-2 top-0 w-3.5 h-3.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <div className="mb-3">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1.5">1. Prerequisites</h3>
-                <div className="space-y-3">
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">Before we begin, make sure you have:</p>
-                  <ul className="space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
+          <div className="space-y-4">
+            {/* Condensed Steps for Mobile */}
+            <div className="space-y-3">
+              {/* Step 1 - Prerequisites */}
+              <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'}`}>
+                <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">1. Prerequisites</h3>
+                {isMobile ? (
+                  <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    <p>• Python 3.8+ installed</p>
+                    <p>• OpenAI/LLM API keys</p>
+                    <p>• TTS service credentials</p>
+                    <p className="text-red-600 dark:text-red-400 font-medium">• Your Whispey Project API key</p>
+                  </div>
+                ) : (
+                  <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                     <li className="flex items-start gap-1.5">
                       <div className="w-1 h-1 bg-blue-500 dark:bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
                       Python 3.8+ installed on your system
@@ -253,254 +263,114 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
                     </li>
                     <li className="flex items-start gap-1.5">
                       <div className="w-1 h-1 bg-red-500 dark:bg-red-400 rounded-full mt-2 flex-shrink-0"></div>
-                      <span className="text-red-700 dark:text-red-400 font-medium">Your Whispey Project API key (saved when creating workspace)</span>
+                      <span className="text-red-700 dark:text-red-400 font-medium">Your Whispey Project API key</span>
                     </li>
                   </ul>
-                </div>
+                )}
               </div>
-            </div>
 
-            {/* Install LiveKit */}
-            <div className="border-l-2 border-gray-100 dark:border-gray-800 pl-5 relative">
-              <div className="absolute -left-2 top-0 w-3.5 h-3.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <div className="mb-3">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1.5">2. Install LiveKit Agents Framework</h3>
-                <div className="space-y-3">
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">First, install the LiveKit Agents framework and required plugins:</p>
-                  <div className="relative">
-                    <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-3.5">
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                        </div>
-                        <Terminal className="w-3 h-3 text-gray-400 ml-1" />
-                      </div>
-                      <pre className="text-gray-100 text-sm font-mono">
-{`pip install livekit-agents
+              {/* Step 2 - Install LiveKit */}
+              <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
+                <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">2. Install LiveKit</h3>
+                <div className="relative">
+                  <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
+                    <pre className={`text-gray-100 font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>
+{isMobile ? 
+`pip install livekit-agents livekit-plugins-openai
+livekit-plugins-elevenlabs livekit-plugins-silero` :
+`pip install livekit-agents
 pip install livekit-plugins-openai
 pip install livekit-plugins-elevenlabs
 pip install livekit-plugins-silero`}
-                      </pre>
-                      <button
-                        onClick={() => copyToClipboard(`pip install livekit-agents
-pip install livekit-plugins-openai
-pip install livekit-plugins-elevenlabs
-pip install livekit-plugins-silero`, 'install-livekit')}
-                        className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
-                      >
-                        {copiedCode === 'install-livekit' ? (
-                          <div className="w-3 h-3 text-green-400">✓</div>
-                        ) : (
-                          <Copy className="w-3 h-3 text-gray-300" />
-                        )}
-                      </button>
-                    </div>
+                    </pre>
+                    <button
+                      onClick={() => copyToClipboard(`pip install livekit-agents livekit-plugins-openai livekit-plugins-elevenlabs livekit-plugins-silero`, 'install-livekit')}
+                      className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded"
+                    >
+                      {copiedCode === 'install-livekit' ? (
+                        <div className="w-3 h-3 text-green-400">✓</div>
+                      ) : (
+                        <Copy className="w-2.5 h-2.5 text-gray-300" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Install Whispey */}
-            <div className="border-l-2 border-gray-100 dark:border-gray-800 pl-5 relative">
-              <div className="absolute -left-2 top-0 w-3.5 h-3.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <div className="mb-3">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1.5">3. Install Whispey for Monitoring</h3>
-                <div className="space-y-3">
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">Install Whispey to add observability to your agents:</p>
+              {/* Step 3 - Install Whispey */}
+              <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
+                <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">3. Install Whispey</h3>
+                <div className="relative">
+                  <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
+                    <pre className={`text-gray-100 font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>pip install whispey</pre>
+                    <button
+                      onClick={() => copyToClipboard('pip install whispey', 'install-whispey')}
+                      className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded"
+                    >
+                      {copiedCode === 'install-whispey' ? (
+                        <div className="w-3 h-3 text-green-400">✓</div>
+                      ) : (
+                        <Copy className="w-2.5 h-2.5 text-gray-300" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4 - Code Example (Expandable on mobile) */}
+              <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
+                <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">4. Complete Example</h3>
+                  {isMobile && (
+                    <button
+                      onClick={() => setExpandedExample(!expandedExample)}
+                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400"
+                    >
+                      {expandedExample ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      {expandedExample ? 'Hide' : 'Show'} Code
+                    </button>
+                  )}
+                </div>
+                
+                {(!isMobile || expandedExample) && (
                   <div className="relative">
-                    <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-3.5">
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <div className="flex gap-1">
+                    <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <div className="flex gap-0.5">
                           <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
                           <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
                           <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
                         </div>
-                        <Terminal className="w-3 h-3 text-gray-400 ml-1" />
+                        <Terminal className="w-2.5 h-2.5 text-gray-400" />
+                        <span className="text-xs text-gray-400">agent.py</span>
                       </div>
-                      <pre className="text-gray-100 text-sm font-mono">pip install whispey</pre>
-                      <button
-                        onClick={() => copyToClipboard('pip install whispey', 'install-whispey')}
-                        className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
-                      >
-                        {copiedCode === 'install-whispey' ? (
-                          <div className="w-3 h-3 text-green-400">✓</div>
-                        ) : (
-                          <Copy className="w-3 h-3 text-gray-300" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Complete Example */}
-            <div className="border-l-2 border-gray-100 dark:border-gray-800 pl-5 relative">
-              <div className="absolute -left-2 top-0 w-3.5 h-3.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <div className="mb-3">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1.5">4. Complete Monitored Agent Example</h3>
-                <div className="space-y-3">
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">Here's a complete working example of a LiveKit agent with Whispey monitoring:</p>
-                  <div className="relative">
-                    <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-3.5">
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                        </div>
-                        <Terminal className="w-3 h-3 text-gray-400 ml-1" />
-                        <span className="text-xs text-gray-400 ml-2">agent.py</span>
-                      </div>
-                      <pre className="text-gray-100 text-xs font-mono overflow-x-auto max-h-80 overflow-y-auto">
+                      <pre className={`text-gray-100 font-mono overflow-x-auto ${isMobile ? 'text-xs max-h-48' : 'text-xs max-h-64'} overflow-y-auto`}>
                         {COMPLETE_AGENT_CODE}
                       </pre>
                       <button
                         onClick={() => copyToClipboard(COMPLETE_AGENT_CODE, 'complete-example')}
-                        className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
+                        className="absolute top-2 right-2 p-1 bg-gray-800 hover:bg-gray-700 rounded"
                       >
                         {copiedCode === 'complete-example' ? (
                           <div className="w-3 h-3 text-green-400">✓</div>
                         ) : (
-                          <Copy className="w-3 h-3 text-gray-300" />
+                          <Copy className="w-2.5 h-2.5 text-gray-300" />
                         )}
                       </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Environment Setup */}
-            <div className="border-l-2 border-gray-100 dark:border-gray-800 pl-5 relative">
-              <div className="absolute -left-2 top-0 w-3.5 h-3.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <div className="mb-3">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1.5">5. Environment Setup</h3>
-                <div className="space-y-3">
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">Create a .env file with your API keys:</p>
-                  
-                  {/* Important notice about API key - Dismissible */}
-                  {!dismissedNotices.has('beginner-api-key') && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3.5 mb-3 relative">
-                      <button
-                        onClick={() => dismissNotice('beginner-api-key')}
-                        className="absolute top-3 right-3 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="flex items-start gap-2.5 pr-7">
-                        <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
-                            Important: Use Your Saved API Key
-                          </h4>
-                          <p className="text-sm text-red-700 dark:text-red-400">
-                            For <strong>WHISPEY_API_KEY</strong>, use the Whispey Project API key you saved when creating your workspace. 
-                            You'll need this to connect your agent monitoring to this dashboard.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="relative">
-                    <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-3.5">
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                        </div>
-                        <Terminal className="w-3 h-3 text-gray-400 ml-1" />
-                        <span className="text-xs text-gray-400 ml-2">.env</span>
-                      </div>
-                      <pre className="text-gray-100 text-sm font-mono">
-{`# OpenAI API Key
-OPENAI_API_KEY=your_openai_api_key_here
-
-# ElevenLabs API Key
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-
-# Whispey Project API Key (use the one you saved when creating workspace)
-WHISPEY_API_KEY=your_whispey_project_api_key_here
-
-# LiveKit credentials (if using LiveKit Cloud)
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=your_livekit_api_key
-LIVEKIT_API_SECRET=your_livekit_api_secret`}
-                      </pre>
-                      <button
-                        onClick={() => copyToClipboard(`# OpenAI API Key
-OPENAI_API_KEY=your_openai_api_key_here
-
-# ElevenLabs API Key
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-
-# Whispey Project API Key (use the one you saved when creating workspace)
-WHISPEY_API_KEY=your_whispey_project_api_key_here
-
-# LiveKit credentials (if using LiveKit Cloud)
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=your_livekit_api_key
-LIVEKIT_API_SECRET=your_livekit_api_secret`, 'environment')}
-                        className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
-                      >
-                        {copiedCode === 'environment' ? (
-                          <div className="w-3 h-3 text-green-400">✓</div>
-                        ) : (
-                          <Copy className="w-3 h-3 text-gray-300" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Run Agent */}
-            <div className="border-l-2 border-gray-100 dark:border-gray-800 pl-5 relative">
-              <div className="absolute -left-2 top-0 w-3.5 h-3.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <div className="mb-3">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1.5">6. Run Your Monitored Agent</h3>
-                <div className="space-y-3">
-                  <p className="text-gray-600 dark:text-gray-400 text-sm">Start your agent with monitoring:</p>
-                  <div className="relative">
-                    <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-3.5">
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
-                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                        </div>
-                        <Terminal className="w-3 h-3 text-gray-400 ml-1" />
-                      </div>
-                      <pre className="text-gray-100 text-sm font-mono">python agent.py dev</pre>
-                      <button
-                        onClick={() => copyToClipboard('python agent.py dev', 'run-agent')}
-                        className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
-                      >
-                        {copiedCode === 'run-agent' ? (
-                          <div className="w-3 h-3 text-green-400">✓</div>
-                        ) : (
-                          <Copy className="w-3 h-3 text-gray-300" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Your agent will start and Whispey will automatically monitor all conversations and interactions.
-                  </p>
-                </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="mt-7 pt-5 border-t border-gray-200 dark:border-gray-800">
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
             <div className="text-center">
               <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm">
-                Once your agent is running, click below to set up monitoring in this dashboard:
+                Ready to set up monitoring for your agent?
               </p>
               <Button 
                 onClick={onCreateAgent}
@@ -516,21 +386,23 @@ LIVEKIT_API_SECRET=your_livekit_api_secret`, 'environment')}
     )
   }
 
-  // Experienced users - quick integration
+  // Experienced users - Mobile optimized
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-      <div className="p-7">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5">Quick Integration Guide</h2>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Add Whispey monitoring to your existing LiveKit agents</p>
+      <div className={isMobile ? 'p-4' : 'p-6'}>
+        <div className={`flex items-center justify-between mb-4 ${isMobile ? 'flex-col gap-3' : ''}`}>
+          <div className={isMobile ? 'text-center' : ''}>
+            <h2 className={`font-semibold text-gray-900 dark:text-gray-100 mb-1 ${isMobile ? 'text-base' : 'text-lg'}`}>
+              Quick Integration Guide
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Add Whispey monitoring to existing agents</p>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className={`flex items-center gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
             <a
               href="https://youtu.be/1POj8h99xnE"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 px-2.5 py-1.5 rounded-lg transition-all"
+              className={`inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 px-2 py-1.5 rounded-lg transition-all ${isMobile ? 'w-full justify-center' : ''}`}
             >
               <Play className="w-3 h-3" />
               Video tutorial
@@ -538,186 +410,90 @@ LIVEKIT_API_SECRET=your_livekit_api_secret`, 'environment')}
             <Button 
               variant="outline" 
               onClick={() => setExperienceLevel('unknown')}
-              className="text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 text-sm"
+              size="sm"
+              className={`text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 text-xs ${isMobile ? 'w-full' : ''}`}
             >
               ← Back
             </Button>
           </div>
         </div>
 
-        {/* Agent ID Notice - Dismissible */}
-        {!dismissedNotices.has('experienced-agent-id') && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3.5 mb-3 relative">
-            <button
-              onClick={() => dismissNotice('experienced-agent-id')}
-              className="absolute top-3 right-3 text-blue-400 dark:text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="flex items-start gap-2.5 pr-7">
-              <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  You'll get your unique agent ID after completing the "Configure Monitoring Dashboard" step below.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* API Key Notice - Dismissible */}
-        {!dismissedNotices.has('experienced-api-key') && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3.5 mb-5 relative">
-            <button
-              onClick={() => dismissNotice('experienced-api-key')}
-              className="absolute top-3 right-3 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="flex items-start gap-2.5 pr-7">
-              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
-                  Important: Use Your Saved API Key
-                </h4>
-                <p className="text-sm text-red-700 dark:text-red-400">
-                  Use the Whispey Project API key you saved when creating your workspace for the <strong>WHISPEY_API_KEY</strong> environment variable.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid md:grid-cols-3 gap-5 mb-6">
-          <div className="space-y-3">
+        {/* Quick steps - Stack vertically on mobile */}
+        <div className={`${isMobile ? 'space-y-4' : 'grid md:grid-cols-3 gap-4'} mb-4`}>
+          <div className="space-y-2">
             <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">1. Install Whispey</h3>
             <div className="relative">
-              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
-                <pre className="text-gray-100 text-sm font-mono">pip install whispey</pre>
+              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
+                <pre className="text-gray-100 text-xs font-mono">pip install whispey</pre>
                 <button
                   onClick={() => copyToClipboard('pip install whispey', 'quick-install')}
-                  className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
+                  className="absolute top-1.5 right-1.5 p-0.5 bg-gray-800 hover:bg-gray-700 rounded"
                 >
                   {copiedCode === 'quick-install' ? (
-                    <div className="w-3 h-3 text-green-400">✓</div>
+                    <div className="w-2.5 h-2.5 text-green-400">✓</div>
                   ) : (
-                    <Copy className="w-3 h-3 text-gray-300" />
+                    <Copy className="w-2.5 h-2.5 text-gray-300" />
                   )}
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">2. Import & Initialize</h3>
             <div className="relative">
-              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
+              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
                 <pre className="text-gray-100 text-xs font-mono">
 {`from whispey import LivekitObserve
 
 whispey = LivekitObserve(
-    agent_id="YOUR_AGENT_ID_HERE",
+    agent_id="YOUR_AGENT_ID",
     apikey=os.getenv("WHISPEY_API_KEY")
 )`}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(`from whispey import LivekitObserve
-
-whispey = LivekitObserve(
-    agent_id="YOUR_AGENT_ID_HERE",
-    apikey=os.getenv("WHISPEY_API_KEY")
-)`, 'quick-init')}
-                  className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
+                  onClick={() => copyToClipboard(`from whispey import LivekitObserve\n\nwhispey = LivekitObserve(\n    agent_id="YOUR_AGENT_ID",\n    apikey=os.getenv("WHISPEY_API_KEY")\n)`, 'quick-init')}
+                  className="absolute top-1.5 right-1.5 p-0.5 bg-gray-800 hover:bg-gray-700 rounded"
                 >
                   {copiedCode === 'quick-init' ? (
-                    <div className="w-3 h-3 text-green-400">✓</div>
+                    <div className="w-2.5 h-2.5 text-green-400">✓</div>
                   ) : (
-                    <Copy className="w-3 h-3 text-gray-300" />
+                    <Copy className="w-2.5 h-2.5 text-gray-300" />
                   )}
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">3. Add to Session</h3>
             <div className="relative">
-              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
+              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
                 <pre className="text-gray-100 text-xs font-mono">
-{`# After session creation
-session_id = whispey.start_session(session)
+{`session_id = whispey.start_session(session)
 
-# Add shutdown callback
 async def shutdown():
     await whispey.export(session_id)
 ctx.add_shutdown_callback(shutdown)`}
                 </pre>
                 <button
-                  onClick={() => copyToClipboard(`# After session creation
-session_id = whispey.start_session(session)
-
-# Add shutdown callback  
-async def shutdown():
-    await whispey.export(session_id)
-ctx.add_shutdown_callback(shutdown)`, 'quick-session')}
-                  className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
+                  onClick={() => copyToClipboard(`session_id = whispey.start_session(session)\n\nasync def shutdown():\n    await whispey.export(session_id)\nctx.add_shutdown_callback(shutdown)`, 'quick-session')}
+                  className="absolute top-1.5 right-1.5 p-0.5 bg-gray-800 hover:bg-gray-700 rounded"
                 >
                   {copiedCode === 'quick-session' ? (
-                    <div className="w-3 h-3 text-green-400">✓</div>
+                    <div className="w-2.5 h-2.5 text-green-400">✓</div>
                   ) : (
-                    <Copy className="w-3 h-3 text-gray-300" />
+                    <Copy className="w-2.5 h-2.5 text-gray-300" />
                   )}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-5 mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm">Complete Integration Example</h4>
-            <button
-              onClick={() => setExpandedExample(!expandedExample)}
-              className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
-            >
-              {expandedExample ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              {expandedExample ? 'Hide' : 'Show'} Full Code
-            </button>
-          </div>
-          
-          {expandedExample && (
-            <div className="relative">
-              <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-3.5">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                  </div>
-                  <Terminal className="w-3 h-3 text-gray-400 ml-1" />
-                  <span className="text-xs text-gray-400 ml-2">your_agent.py</span>
-                </div>
-                <pre className="text-gray-100 text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto">
-                    {COMPLETE_AGENT_CODE}
-                </pre>
-                <button
-                  onClick={() => copyToClipboard(`${COMPLETE_AGENT_CODE}`, 'full-integration')}
-                  className="absolute top-2 right-2 p-1 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 rounded"
-                >
-                  {copiedCode === 'full-integration' ? (
-                    <div className="w-3 h-3 text-green-400">✓</div>
-                  ) : (
-                    <Copy className="w-3 h-3 text-gray-300" />
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="text-center">
           <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm">
-            Once you've added monitoring to your agent, set up the dashboard:
+            Ready to configure your monitoring dashboard?
           </p>
           <Button 
             onClick={onCreateAgent}
