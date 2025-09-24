@@ -55,20 +55,20 @@ const CopyButton = ({ text, className = "" }: { text: string, className?: string
       variant="ghost"
       size="sm"
       onClick={handleCopy}
-      className={`w-7 h-7 p-0 ${className}`}
+      className={`w-6 h-6 sm:w-7 sm:h-7 p-0 ${className}`}
     >
       {copied ? (
-        <Check className="w-3.5 h-3.5 text-green-600" />
+        <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-600" />
       ) : (
-        <Copy className="w-3.5 h-3.5 text-gray-400" />
+        <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" />
       )}
     </Button>
   )
 }
 
 const ConfigSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
-  <div className="space-y-4">
-    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+  <div className="space-y-3 sm:space-y-4">
+    <h3 className="text-sm sm:text-sm font-medium text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
       {title}
     </h3>
     {children}
@@ -108,33 +108,33 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const normalizedProvider = selectedProvider === 'sarvam_tts' ? 'sarvam' : selectedProvider
 
   return (
-    <div className="w-1/2 flex flex-col">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+    <div className="w-full sm:w-1/2 flex flex-col">
+      <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 hidden sm:block">
         <div className="flex items-center gap-2">
-          <Settings className="w-5 h-5 text-gray-500" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
             {normalizedProvider === 'sarvam' ? 'Sarvam' : normalizedProvider === 'elevenlabs' ? 'ElevenLabs' : 'TTS'} Settings
           </h3>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
           Configure speech synthesis parameters
         </p>
       </div>
       
-      <div className="flex-1 p-6 overflow-y-auto space-y-6">
+      <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6">
         {normalizedProvider === 'sarvam' ? (
           <>
             <ConfigSection title="Basic Settings">
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="target-language">Target Language Code</Label>
+                  <Label htmlFor="target-language" className="text-sm">Target Language Code</Label>
                   <Select 
                     value={sarvamConfig.target_language_code} 
                     onValueChange={(value) => 
                       setSarvamConfig(prev => ({ ...prev, target_language_code: value }))
                     }
                   >
-                    <SelectTrigger id="target-language">
+                    <SelectTrigger id="target-language" className="h-10 sm:h-9">
                       <SelectValue placeholder="Select language">
                         {getLanguageDisplay(sarvamConfig.target_language_code)}
                       </SelectValue>
@@ -156,16 +156,16 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </ConfigSection>
             
             <ConfigSection title="Audio Settings">
-              <div className="space-y-4">
+              <div className="space-y-4 sm:space-y-4">
                 <div className="space-y-3">
-                  <Label>Loudness: {sarvamConfig.loudness}</Label>
+                  <Label className="text-sm">Loudness: {sarvamConfig.loudness}</Label>
                   <Slider
                     value={[sarvamConfig.loudness]}
                     onValueChange={([value]) => setSarvamConfig(prev => ({ ...prev, loudness: value }))}
                     min={0.1}
                     max={2.0}
                     step={0.1}
-                    className="w-full"
+                    className="w-full touch-pan-x"
                   />
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Quiet (0.1)</span>
@@ -174,14 +174,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
                 
                 <div className="space-y-3">
-                  <Label>Speed: {sarvamConfig.speed}</Label>
+                  <Label className="text-sm">Speed: {sarvamConfig.speed}</Label>
                   <Slider
                     value={[sarvamConfig.speed]}
                     onValueChange={([value]) => setSarvamConfig(prev => ({ ...prev, speed: value }))}
                     min={0.25}
                     max={2.0}
                     step={0.05}
-                    className="w-full"
+                    className="w-full touch-pan-x"
                   />
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Slow (0.25x)</span>
@@ -192,9 +192,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </ConfigSection>
             
             <ConfigSection title="Processing">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between py-1">
                 <div className="space-y-1">
-                  <Label htmlFor="preprocessing">Enable Preprocessing</Label>
+                  <Label htmlFor="preprocessing" className="text-sm">Enable Preprocessing</Label>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Improve speech quality with text preprocessing</p>
                 </div>
                 <Switch
@@ -208,26 +208,27 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         ) : normalizedProvider === 'elevenlabs' ? (
           <>
             <ConfigSection title="Basic Settings">
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="voice-id">Voice ID</Label>
+                  <Label htmlFor="voice-id" className="text-sm">Voice ID</Label>
                   <div className="flex gap-2">
                     <Input
                       id="voice-id"
                       value={elevenLabsConfig.voiceId}
                       onChange={(e) => setElevenLabsConfig(prev => ({ ...prev, voiceId: e.target.value }))}
                       placeholder="Enter voice ID or select from list"
+                      className="h-10 sm:h-9 text-sm"
                     />
                     <CopyButton text={elevenLabsConfig.voiceId} />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="language">Language</Label>
+                  <Label htmlFor="language" className="text-sm">Language</Label>
                   <Select value={elevenLabsConfig.language} onValueChange={(value) => 
                     setElevenLabsConfig(prev => ({ ...prev, language: value }))
                   }>
-                    <SelectTrigger id="language">
+                    <SelectTrigger id="language" className="h-10 sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -243,11 +244,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="eleven-model">Model</Label>
+                  <Label htmlFor="eleven-model" className="text-sm">Model</Label>
                   <Select value={elevenLabsConfig.model} onValueChange={(value) => 
                     setElevenLabsConfig(prev => ({ ...prev, model: value }))
                   }>
-                    <SelectTrigger id="eleven-model">
+                    <SelectTrigger id="eleven-model" className="h-10 sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -266,7 +267,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2 p-2"
+                className="flex items-center gap-2 p-2 h-auto"
               >
                 <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
                 <span className="text-sm font-medium">Advanced Configuration</span>
@@ -275,55 +276,55 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             
             {showAdvanced && (
               <ConfigSection title="Advanced Settings">
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   <div className="space-y-3">
-                    <Label>Similarity Boost: {elevenLabsConfig.similarityBoost}</Label>
+                    <Label className="text-sm">Similarity Boost: {elevenLabsConfig.similarityBoost}</Label>
                     <Slider
                       value={[elevenLabsConfig.similarityBoost]}
                       onValueChange={([value]) => setElevenLabsConfig(prev => ({ ...prev, similarityBoost: value }))}
                       min={0}
                       max={1}
                       step={0.01}
-                      className="w-full"
+                      className="w-full touch-pan-x"
                     />
                     <p className="text-xs text-gray-500">How similar to the original voice (0-1)</p>
                   </div>
                   
                   <div className="space-y-3">
-                    <Label>Stability: {elevenLabsConfig.stability}</Label>
+                    <Label className="text-sm">Stability: {elevenLabsConfig.stability}</Label>
                     <Slider
                       value={[elevenLabsConfig.stability]}
                       onValueChange={([value]) => setElevenLabsConfig(prev => ({ ...prev, stability: value }))}
                       min={0}
                       max={1}
                       step={0.01}
-                      className="w-full"
+                      className="w-full touch-pan-x"
                     />
                     <p className="text-xs text-gray-500">Voice stability (0-1, higher = more stable)</p>
                   </div>
                   
                   <div className="space-y-3">
-                    <Label>Style: {elevenLabsConfig.style}</Label>
+                    <Label className="text-sm">Style: {elevenLabsConfig.style}</Label>
                     <Slider
                       value={[elevenLabsConfig.style]}
                       onValueChange={([value]) => setElevenLabsConfig(prev => ({ ...prev, style: value }))}
                       min={0}
                       max={1}
                       step={0.01}
-                      className="w-full"
+                      className="w-full touch-pan-x"
                     />
                     <p className="text-xs text-gray-500">Voice style variation (0-1)</p>
                   </div>
                   
                   <div className="space-y-3">
-                    <Label>Speed: {elevenLabsConfig.speed}</Label>
+                    <Label className="text-sm">Speed: {elevenLabsConfig.speed}</Label>
                     <Slider
                       value={[elevenLabsConfig.speed]}
                       onValueChange={([value]) => setElevenLabsConfig(prev => ({ ...prev, speed: value }))}
                       min={0.25}
                       max={4.0}
                       step={0.05}
-                      className="w-full"
+                      className="w-full touch-pan-x"
                     />
                     <div className="flex justify-between text-xs text-gray-500">
                       <span>Slow (0.25x)</span>
@@ -331,9 +332,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between py-1">
                     <div className="space-y-1">
-                      <Label htmlFor="speaker-boost">Use Speaker Boost</Label>
+                      <Label htmlFor="speaker-boost" className="text-sm">Use Speaker Boost</Label>
                       <p className="text-xs text-gray-500 dark:text-gray-400">Enhance speaker clarity</p>
                     </div>
                     <Switch
@@ -347,7 +348,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             )}
           </>
         ) : (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full p-6">
             <div className="text-center space-y-3">
               <Settings className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
               <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Select a Voice</h3>

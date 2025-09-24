@@ -1,5 +1,6 @@
 import React from 'react'
 import AgentListItem from './AgentListItem'
+import { useMobile } from '@/hooks/use-mobile'
 
 interface Agent {
   id: string
@@ -31,7 +32,12 @@ const AgentList: React.FC<AgentListProps> = ({
   onCopyAgentId,
   onDeleteAgent
 }) => {
-  if (viewMode === 'list') {
+  const { isMobile } = useMobile(768)
+
+  // Force list view on mobile for better UX
+  const effectiveViewMode = isMobile ? 'list' : viewMode
+
+  if (effectiveViewMode === 'list') {
     return (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
         {agents.map((agent, index) => (
@@ -45,6 +51,7 @@ const AgentList: React.FC<AgentListProps> = ({
             projectId={projectId}
             onCopyId={(e) => onCopyAgentId(agent.id, e)}
             onDelete={() => onDeleteAgent(agent)}
+            isMobile={isMobile}
           />
         ))}
       </div>
@@ -52,7 +59,11 @@ const AgentList: React.FC<AgentListProps> = ({
   }
 
   return (
-    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+    <div className={`grid gap-4 ${
+      isMobile 
+        ? 'grid-cols-1' 
+        : 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
+    }`}>
       {agents.map((agent) => (
         <AgentListItem
           key={agent.id}
@@ -64,6 +75,7 @@ const AgentList: React.FC<AgentListProps> = ({
           projectId={projectId}
           onCopyId={(e) => onCopyAgentId(agent.id, e)}
           onDelete={() => onDeleteAgent(agent)}
+          isMobile={isMobile}
         />
       ))}
     </div>

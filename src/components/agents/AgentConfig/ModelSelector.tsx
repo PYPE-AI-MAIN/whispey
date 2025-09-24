@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -25,7 +26,8 @@ import {
   Cpu,
   Brain,
   Cloud,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react'
 
 interface Model {
@@ -182,7 +184,7 @@ const modelProviders: Record<string, Provider> = {
     type: 'direct',
     models: [
       { value: 'llama3.1-8b', label: 'Llama 3.1 8B' },
-      { value: 'llama3.1-70b', label: 'Llama 3.1 70B' },
+      { value: 'llama3.1-70b', label: 'Llama 3.1 70b' },
     ]
   }
 }
@@ -215,6 +217,52 @@ export default function ModelSelector({
   const [isAzureDialogOpen, setIsAzureDialogOpen] = useState(false)
   const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>(azureConfig)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [mobileSelectedProvider, setMobileSelectedProvider] = useState<string | null>(null)
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
+
+
+  // Add this function inside the ModelSelector component, after the mobile detection
+const getFlattenedMenuItems = () => {
+  const items: Array<{ 
+    type: 'provider' | 'model' | 'separator', 
+    providerKey?: string, 
+    provider?: Provider, 
+    model?: Model, 
+    groupName?: string 
+  }> = []
+
+  Object.entries(modelProviders).forEach(([providerKey, provider]) => {
+    if (provider.type === 'config') {
+      // Config providers go directly as providers
+      items.push({ type: 'provider', providerKey, provider })
+    } else {
+      // Add provider header
+      items.push({ type: 'provider', providerKey, provider })
+      
+      if (provider.type === 'direct' && provider.models) {
+        // Add direct models
+        provider.models.forEach(model => {
+          items.push({ type: 'model', providerKey, model })
+        })
+      } else if (provider.type === 'grouped' && provider.groups) {
+        // Add grouped models
+        provider.groups.forEach(group => {
+          group.models.forEach(model => {
+            items.push({ type: 'model', providerKey, model, groupName: group.name })
+          })
+        })
+      }
+      
+      // Add separator after each provider
+      items.push({ type: 'separator' })
+    }
+  })
+
+  return items
+}
+  
+  // Mobile detection
+  const { isMobile } = useMobile(768)
 
   useEffect(() => {
     setTempAzureConfig(azureConfig)
@@ -230,6 +278,12 @@ export default function ModelSelector({
     
     const provider = modelProviders[providerKey]
 
+    if (isMobile && (provider.type === 'direct' || provider.type === 'grouped')) {
+      // On mobile, navigate to provider's models instead of opening submenu
+      setMobileSelectedProvider(providerKey)
+      return
+    }
+
     if (provider.type === 'config' && providerKey === 'azure_openai') {
       onProviderChange(providerKey)
       setIsAzureDialogOpen(true)
@@ -239,6 +293,10 @@ export default function ModelSelector({
       onModelChange(firstModel)
     }
     setIsOpen(false)
+  }
+
+  const handleMobileBack = () => {
+    setMobileSelectedProvider(null)
   }
 
   const handleModelSelect = (providerKey: string, modelValue: string) => {
@@ -270,132 +328,246 @@ export default function ModelSelector({
     return 'Creative'
   }
 
+  // Reset mobile navigation when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setMobileSelectedProvider(null)
+    }
+  }, [isOpen])
+
   return (
-    <div className="flex">
+    <div className="w-full flex">
       {/* Main Selector */}
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className={`cursor-pointer flex-1 justify-between h-9 min-w-64 rounded-r-none border-r-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100`}
+            className={`cursor-pointer flex-1 justify-between h-9 min-w-0 rounded-r-none border-r-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100`}
           >
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               {currentProvider && (
-                <div className={`w-5 h-5 rounded-full ${currentProvider.color} flex items-center justify-center text-white flex-shrink-0`}>
+                <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${currentProvider.color} flex items-center justify-center text-white flex-shrink-0`}>
                   {getProviderIcon(selectedProvider) || <span className="text-xs font-bold">{currentProvider.icon}</span>}
                 </div>
               )}
-              <span className="text-sm font-medium truncate">
+              <span className="text-xs sm:text-sm font-medium truncate">
                 {getDisplayText()}
               </span>
             </div>
-            <ChevronDown className={`ml-2 h-4 w-4 shrink-0 transition-transform text-gray-400 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''} ${
+            <ChevronDown className={`ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 transition-transform text-gray-400 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''} ${
               DISABLE_SETTINGS ? 'opacity-50' : ''
             }`} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" align="start">
-          {Object.entries(modelProviders).map(([providerKey, provider]) => {
-            // Providers with submenus (direct models or grouped models)
-            if (provider.type === 'direct' || provider.type === 'grouped') {
-              return (
-                <DropdownMenuSub key={providerKey}>
-                  <DropdownMenuSubTrigger className={`flex items-center gap-3 p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-gray-800 focus:bg-gray-50 dark:focus:bg-gray-800 ${
-                    DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}>
-                    <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white`}>
+        <DropdownMenuContent 
+          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" 
+          align="start"
+          side="bottom"
+          sideOffset={4}
+          avoidCollisions={true}
+          collisionPadding={16}
+        >
+          {isMobile ? (
+            // Mobile: Flattened menu
+            Object.entries(modelProviders).map(([providerKey, provider]) => (
+              <div key={providerKey}>
+                {/* Provider Header */}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    if (provider.type === 'config') {
+                      handleProviderSelect(providerKey)
+                    } else {
+                      e.preventDefault() // Prevent dropdown from closing
+                      e.stopPropagation() // Stop event bubbling
+                      setExpandedProvider(expandedProvider === providerKey ? null : providerKey)
+                    }
+                  }}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
                       {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{provider.label}</span>
-                        {selectedProvider === providerKey && (
-                          <Check className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-sm">{provider.label}</span>
+                    {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-gray-400" />}
+                    {selectedProvider === providerKey && <Check className="h-3 w-3 text-blue-600" />}
+                  </div>
+                  {(provider.type === 'direct' || provider.type === 'grouped') && (
+                    <ChevronDown className={`h-4 w-4 transition-transform ${
+                      expandedProvider === providerKey ? 'rotate-180' : ''
+                    }`} />
+                  )}
+                </DropdownMenuItem>
+                
+                {/* Expanded Models */}
+                {expandedProvider === providerKey && provider.type === 'direct' && provider.models && (
+                  <div className="bg-white dark:bg-slate-900 border-l-2 border-gray-200 dark:border-slate-700 ml-4">
+                    {provider.models.map((model) => (
+                      <DropdownMenuItem
+                        key={model.value}
+                        onClick={() => handleModelSelect(providerKey, model.value)}
+                        className={`flex items-center justify-between px-4 py-3 ${
+                          selectedProvider === providerKey && selectedModel === model.value
+                            ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                            : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="text-sm">{model.label}</span>
+                        {selectedProvider === providerKey && selectedModel === model.value && (
+                          <Check className="h-3 w-3 text-blue-600" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Grouped Models */}
+                {expandedProvider === providerKey && provider.type === 'grouped' && provider.groups && (
+                  <div className="bg-white dark:bg-slate-900 border-l-2 border-gray-200 dark:border-slate-700 ml-4">
+                    {provider.groups.map((group, groupIndex) => (
+                      <div key={group.name}>
+                        {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-slate-700" />}
+                        <div className="px-4 py-2 bg-gray-100 dark:bg-slate-800">
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">
+                            {group.name}
+                          </h4>
+                        </div>
+                        {group.models.map((model) => (
+                          <DropdownMenuItem
+                            key={model.value}
+                            onClick={() => handleModelSelect(providerKey, model.value)}
+                            className={`flex items-center justify-between px-6 py-2 ${
+                              selectedProvider === providerKey && selectedModel === model.value
+                                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                                : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            <span className="text-sm">{model.label}</span>
+                            {selectedProvider === providerKey && selectedModel === model.value && (
+                              <Check className="h-3 w-3 text-blue-600" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            // Desktop: Original submenu structure
+            Object.entries(modelProviders).map(([providerKey, provider]) => {
+              // Providers with submenus (direct models or grouped models)
+              if (provider.type === 'direct' || provider.type === 'grouped') {
+                return (
+                  <DropdownMenuSub key={providerKey}>
+                    <DropdownMenuSubTrigger className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-gray-800 focus:bg-gray-50 dark:focus:bg-gray-800 ${
+                      DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}>
+                      <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
+                        {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{provider.label}</span>
+                          {selectedProvider === providerKey && (
+                            <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                          )}
+                        </div>
+                        {provider.description && (
+                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{provider.description}</p>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">{provider.description}</p>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent 
+                      className="w-64 max-h-96 overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700"
+                      sideOffset={8}
+                      alignOffset={-4}
+                      avoidCollisions={true}
+                      collisionPadding={16}
+                    >
+                      {/* Direct models */}
+                      {provider.type === 'direct' && provider.models && 
+                        provider.models.map((model) => (
+                          <DropdownMenuItem
+                            key={model.value}
+                            onClick={() => handleModelSelect(providerKey, model.value)}
+                            className={`flex items-center justify-between p-2 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+                              selectedProvider === providerKey && selectedModel === model.value 
+                                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
+                                : ''
+                            } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <span className="font-medium text-sm truncate pr-2">{model.label}</span>
+                            {selectedProvider === providerKey && selectedModel === model.value && (
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            )}
+                          </DropdownMenuItem>
+                        ))
+                      }
+                      
+                      {/* Grouped models */}
+                      {provider.type === 'grouped' && provider.groups && 
+                        provider.groups.map((group, groupIndex) => (
+                          <React.Fragment key={group.name}>
+                            {groupIndex > 0 && <DropdownMenuSeparator className="bg-gray-200 dark:bg-slate-700" />}
+                            <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 sticky top-0 z-10">
+                              <h4 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide truncate">
+                                {group.name}
+                              </h4>
+                            </div>
+                            {group.models.map((model) => (
+                              <DropdownMenuItem
+                                key={model.value}
+                                onClick={() => handleModelSelect(providerKey, model.value)}
+                                className={`flex items-center justify-between px-3 sm:px-4 py-2 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+                                  selectedProvider === providerKey && selectedModel === model.value 
+                                    ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
+                                    : ''
+                                } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                <span className="text-sm truncate pr-2">{model.label}</span>
+                                {selectedProvider === providerKey && selectedModel === model.value && (
+                                  <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                )}
+                              </DropdownMenuItem>
+                            ))}
+                          </React.Fragment>
+                        ))
+                      }
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )
+              } else {
+                // Config providers (no submenu)
+                return (
+                  <DropdownMenuItem
+                    key={providerKey}
+                    onClick={() => handleProviderSelect(providerKey)}
+                    className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+                      DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
+                      {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
                     </div>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-64 max-h-96 overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-                    {/* Direct models */}
-                    {provider.type === 'direct' && provider.models && 
-                      provider.models.map((model) => (
-                        <DropdownMenuItem
-                          key={model.value}
-                          onClick={() => handleModelSelect(providerKey, model.value)}
-                          className={`flex items-center justify-between p-2 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
-                            selectedProvider === providerKey && selectedModel === model.value 
-                              ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
-                              : ''
-                          } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <span className="font-medium text-sm">{model.label}</span>
-                          {selectedProvider === providerKey && selectedModel === model.value && (
-                            <Check className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          )}
-                        </DropdownMenuItem>
-                      ))
-                    }
-                    
-                    {/* Grouped models */}
-                    {provider.type === 'grouped' && provider.groups && 
-                      provider.groups.map((group, groupIndex) => (
-                        <React.Fragment key={group.name}>
-                          {groupIndex > 0 && <DropdownMenuSeparator className="bg-gray-200 dark:bg-slate-700" />}
-                          <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 z-10">
-                            <h4 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
-                              {group.name}
-                            </h4>
-                          </div>
-                          {group.models.map((model) => (
-                            <DropdownMenuItem
-                              key={model.value}
-                              onClick={() => handleModelSelect(providerKey, model.value)}
-                              className={`flex items-center justify-between px-4 py-2 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
-                                selectedProvider === providerKey && selectedModel === model.value 
-                                  ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
-                                  : ''
-                              } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              <span className="text-sm">{model.label}</span>
-                              {selectedProvider === providerKey && selectedModel === model.value && (
-                                <Check className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                              )}
-                            </DropdownMenuItem>
-                          ))}
-                        </React.Fragment>
-                      ))
-                    }
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              )
-            } else {
-              // Config providers (no submenu)
-              return (
-                <DropdownMenuItem
-                  key={providerKey}
-                  onClick={() => handleProviderSelect(providerKey)}
-                  className={`flex items-center gap-3 p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
-                    DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white`}>
-                    {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{provider.label}</span>
-                      <ExternalLink className="h-3 w-3 text-gray-400 dark:text-slate-500" />
-                      {selectedProvider === providerKey && (
-                        <Check className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">{provider.label}</span>
+                        <ExternalLink className="h-3 w-3 text-gray-400 dark:text-slate-500 flex-shrink-0" />
+                        {selectedProvider === providerKey && (
+                          <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        )}
+                      </div>
+                      {provider.description && (
+                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{provider.description}</p>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{provider.description}</p>
-                  </div>
-                </DropdownMenuItem>
-              )
-            }
-          })}
+                  </DropdownMenuItem>
+                )
+              }
+            })
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -405,12 +577,19 @@ export default function ModelSelector({
           <Button
             variant="outline"
             size="sm"
-            className={`cursor-pointer h-9 w-9 rounded-l-none border-l-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700`}
+            className={`cursor-pointer h-9 w-8 sm:w-9 rounded-l-none border-l-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 flex-shrink-0`}
           >
-            <Settings className="h-4 w-4 text-gray-500 dark:text-slate-400" />
+            <Settings className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 dark:text-slate-400" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-4 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" align="end">
+        <PopoverContent 
+          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] p-3 sm:p-4 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" 
+          align="end"
+          side="bottom"
+          sideOffset={4}
+          avoidCollisions={true}
+          collisionPadding={16}
+        >
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -418,11 +597,11 @@ export default function ModelSelector({
                   <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Temperature</h4>
                   <p className="text-xs text-gray-500 dark:text-slate-400">Controls response creativity</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   <Badge variant="outline" className="font-mono text-xs border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300">
                     {temperature.toFixed(2)}
                   </Badge>
-                  <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">
+                  <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hidden sm:inline-flex">
                     {getTemperatureLabel(temperature)}
                   </Badge>
                 </div>
@@ -438,7 +617,7 @@ export default function ModelSelector({
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
                 <span>Focused</span>
-                <span>Balanced</span>
+                <span className="hidden sm:inline">Balanced</span>
                 <span>Creative</span>
               </div>
             </div>
@@ -447,12 +626,12 @@ export default function ModelSelector({
               <div className="border-t pt-3 border-gray-200 dark:border-slate-700">
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Current Selection</h4>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
-                    <div className={`w-5 h-5 rounded-full ${currentProvider.color} flex items-center justify-center text-white`}>
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${currentProvider.color} flex items-center justify-center text-white flex-shrink-0`}>
                       {getProviderIcon(selectedProvider) || <span className="text-xs font-bold">{currentProvider.icon}</span>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{currentProvider.label}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{currentProvider.label}</p>
                       <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                         {currentModel?.label || 'No model selected'}
                       </p>
@@ -467,13 +646,13 @@ export default function ModelSelector({
 
       {/* Azure Configuration Dialog */}
       <Dialog open={isAzureDialogOpen && !DISABLE_SETTINGS} onOpenChange={DISABLE_SETTINGS ? () => {} : setIsAzureDialogOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 mx-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-slate-100">
-              <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
                 <Cloud className="h-3 w-3" />
               </div>
-              Configure Azure OpenAI
+              <span className="truncate">Configure Azure OpenAI</span>
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -484,7 +663,7 @@ export default function ModelSelector({
                 placeholder="https://your-resource.openai.azure.com/"
                 value={tempAzureConfig.endpoint}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
-                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100"
+                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}
               />
             </div>
@@ -495,22 +674,22 @@ export default function ModelSelector({
                 placeholder="2024-10-01-preview"
                 value={tempAzureConfig.apiVersion}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
-                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100"
+                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
             <Button 
               variant="outline" 
               onClick={() => setIsAzureDialogOpen(false)}
-              className="border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300"
+              className="border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleAzureConfigSave} 
-              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
               disabled={DISABLE_SETTINGS}
             >
               Save Configuration

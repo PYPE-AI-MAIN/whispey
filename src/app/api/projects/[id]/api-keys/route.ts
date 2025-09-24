@@ -79,13 +79,13 @@ export async function GET(
         formattedKeys.push({
           id: 'legacy-key',
           name: 'Legacy Project Key',
-          masked_key: '••••••••••••••••••••••••', // Always masked
+          masked_key: '••••••••••••••••••••••••',
           token_hash_master: project.token_hash,
           created_at: project.created_at,
           last_used: null,
           is_active: true,
           user_clerk_id: userId,
-          legacy: true // Mark as legacy - cannot be decrypted
+          legacy: true
         })
       } else {
         console.log('No legacy key found either')

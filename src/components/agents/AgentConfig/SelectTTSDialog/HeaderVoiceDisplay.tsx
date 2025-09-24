@@ -37,7 +37,7 @@ const VoiceAvatar = ({ name, variant = 'default' }: { name: string, variant?: 's
   }
 
   return (
-    <div className={`w-4 h-4 rounded-full flex items-center justify-center text-white font-semibold text-xs ${getGradient()}`}>
+    <div className={`w-6 h-6 sm:w-4 sm:h-4 rounded-full flex items-center justify-center text-white font-semibold text-xs ${getGradient()}`}>
       {name.charAt(0).toUpperCase()}
     </div>
   )
@@ -65,8 +65,8 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
   }
 
   return (
-    <div className="flex items-start gap-3">
-      <div className={`px-3 py-2 rounded-lg border ${
+    <div className="flex items-center gap-2 sm:gap-3">
+      <div className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg border ${
         normalizedProvider === 'sarvam' 
           ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800' 
           : 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800'
@@ -76,11 +76,16 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
             name={selectedVoiceName} 
             variant={normalizedProvider === 'sarvam' ? 'sarvam' : 'elevenlabs'} 
           />
-          <div className="text-xs">
+          <div className="text-xs hidden sm:block">
             <span className="font-medium text-gray-900 dark:text-gray-100">
               {selectedVoiceName}
             </span>
             <Badge variant="secondary" className="ml-2 text-xs">
+              {normalizedProvider === 'sarvam' ? 'Sarvam' : 'ElevenLabs'}
+            </Badge>
+          </div>
+          <div className="block sm:hidden">
+            <Badge variant="secondary" className="text-xs font-medium">
               {normalizedProvider === 'sarvam' ? 'Sarvam' : 'ElevenLabs'}
             </Badge>
           </div>
@@ -91,10 +96,10 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
         variant="outline"
         size="sm"
         onClick={onToggleSettings}
-        className={`${showSettings ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700' : ''}`}
+        className={`h-8 px-2 sm:h-auto sm:px-3 ${showSettings ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700' : ''}`}
       >
-        <Settings className="w-4 h-4" />
-        Settings
+        <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+        <span className="hidden sm:inline ml-2">Settings</span>
       </Button>
     </div>
   )

@@ -11,6 +11,7 @@ import { ChevronRight, Settings, Loader2, AlertCircle, Search, Plus, MoreHorizon
 import ProjectCreationDialog from './ProjectCreationDialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import MemberManagementDialog from '../MemberManagmentDialog'
+import { useMobile } from '@/hooks/use-mobile'
 
 interface Project {
   id: string
@@ -44,6 +45,8 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const { isMobile } = useMobile(768)
   
   // Initialize viewMode from localStorage
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
@@ -537,17 +540,17 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   {projects.length}
                 </Badge>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+             {!isMobile && <p className="text-xs text-gray-600 dark:text-gray-400">
                 Organize agents by team. Each workspace provides isolated access and analytics.
-              </p>
+              </p>}
             </div>
             <Button 
               onClick={handleCreateProject}
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 text-xs h-8"
+              className={`bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs h-8 ${isMobile ? 'px-3 py-0' : 'px-3 py-1.5'}`}
             >
-              <Plus className="w-3 h-3 mr-1.5" />
-              New Workspace
+              <Plus className={`w-3 h-3 ${isMobile ? '' : 'mr-1.5'}`} />
+              {isMobile ? '' : 'New Workspace'}
             </Button>
           </div>
 
@@ -561,7 +564,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   placeholder="Search workspaces..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 pl-7 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all focus:bg-white dark:focus:bg-gray-700"
+                  className={`${isMobile ? 'w-full' : 'w-64'} pl-7 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all focus:bg-white dark:focus:bg-gray-700`}
                 />
               </div>
             </div>

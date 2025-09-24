@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
-import { Mic, Settings, CheckCircle, Copy, Check } from 'lucide-react'
+import { Mic, Settings, CheckCircle, Copy, Check, ArrowLeft } from 'lucide-react'
 
 // Types
 interface OpenAISTTConfig {
@@ -185,7 +185,7 @@ const ProviderCard = ({
   return (
     <div
       onClick={disabled ? undefined : onSelect}
-      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} p-4 rounded-lg border transition-all hover:shadow-sm ${
+      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} p-3 sm:p-4 rounded-lg border transition-all hover:shadow-sm ${
         isSelected 
           ? getBorderColor()
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
@@ -197,12 +197,12 @@ const ProviderCard = ({
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+            <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
               {provider.name}
             </h3>
             {isSelected && <CheckCircle className="w-4 h-4 text-green-600" />}
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             {provider.models.length} models • {provider.languages.length} languages
           </p>
         </div>
@@ -225,7 +225,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   const [isOpen, setIsOpen] = useState(false)
   const [activeProvider, setActiveProvider] = useState(selectedProvider || 'openai')
   const [showSettings, setShowSettings] = useState(!!selectedProvider)
-
 
   useEffect(() => {
     setShowSettings(!!selectedProvider)
@@ -330,10 +329,10 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     const currentLanguage = (getCurrentConfig() as any).language
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Model Selection - Flexible for custom models */}
         <div className="space-y-2">
-          <Label>Model</Label>
+          <Label className="text-sm sm:text-base">Model</Label>
           <div className="space-y-2">
             <Select 
               value={provider.models.some(m => m.id === currentModel) ? currentModel : 'custom'} 
@@ -351,14 +350,14 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               }}
               disabled={DISABLE_SETTINGS}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-10 sm:h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {provider.models.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
                     <div>
-                      <div className="font-medium">{model.name}</div>
+                      <div className="font-medium text-sm">{model.name}</div>
                       <div className="text-xs text-gray-500">{model.description}</div>
                     </div>
                   </SelectItem>
@@ -384,7 +383,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                       setSarvamConfig(prev => ({ ...prev, model: e.target.value }))
                     }
                   }}
-                  className="text-sm"
+                  className="text-sm h-10 sm:h-9"
                   disabled={DISABLE_SETTINGS}
                 />
               </div>
@@ -394,7 +393,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
         {/* Language Selection - Handle custom languages */}
         <div className="space-y-2">
-          <Label>Language</Label>
+          <Label className="text-sm sm:text-base">Language</Label>
           <div className="space-y-2">
             <Select 
               value={provider.languages.some(l => l.code === currentLanguage) ? currentLanguage : 'custom'} 
@@ -412,7 +411,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               }}
               disabled={DISABLE_SETTINGS}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-10 sm:h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -442,7 +441,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                       setSarvamConfig(prev => ({ ...prev, language: e.target.value }))
                     }
                   }}
-                  className="text-sm"
+                  className="text-sm h-10 sm:h-9"
                   disabled={DISABLE_SETTINGS}
                 />
               </div>
@@ -454,23 +453,26 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         {activeProvider === 'openai' && (
           <div className="space-y-4">
             <div className="space-y-3">
-              <Label>Temperature: {openaiConfig.temperature}</Label>
+              <Label className="text-sm sm:text-base">Temperature: {openaiConfig.temperature}</Label>
               <Slider
                 value={[openaiConfig.temperature]}
                 onValueChange={([value]) => setOpenAIConfig(prev => ({ ...prev, temperature: value }))}
                 min={0}
                 max={1}
                 step={0.1}
+                disabled={DISABLE_SETTINGS}
+                className="touch-pan-x"
               />
             </div>
             
             <div className="space-y-2">
-              <Label>Response Format</Label>
+              <Label className="text-sm sm:text-base">Response Format</Label>
               <Select 
                 value={openaiConfig.response_format}
                 onValueChange={(value) => setOpenAIConfig(prev => ({ ...prev, response_format: value }))}
+                disabled={DISABLE_SETTINGS}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 sm:h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -487,37 +489,41 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
         {activeProvider === 'deepgram' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Smart Formatting</Label>
+            <div className="flex items-center justify-between py-1">
+              <Label className="text-sm sm:text-base">Smart Formatting</Label>
               <Switch
                 checked={deepgramConfig.smart_format}
                 onCheckedChange={(checked) => setDeepgramConfig(prev => ({ ...prev, smart_format: checked }))}
+                disabled={DISABLE_SETTINGS}
               />
             </div>
             
-            <div className="flex items-center justify-between">
-              <Label>Punctuation</Label>
+            <div className="flex items-center justify-between py-1">
+              <Label className="text-sm sm:text-base">Punctuation</Label>
               <Switch
                 checked={deepgramConfig.punctuate}
                 onCheckedChange={(checked) => setDeepgramConfig(prev => ({ ...prev, punctuate: checked }))}
+                disabled={DISABLE_SETTINGS}
               />
             </div>
             
-            <div className="flex items-center justify-between">
-              <Label>Speaker Diarization</Label>
+            <div className="flex items-center justify-between py-1">
+              <Label className="text-sm sm:text-base">Speaker Diarization</Label>
               <Switch
                 checked={deepgramConfig.diarize}
                 onCheckedChange={(checked) => setDeepgramConfig(prev => ({ ...prev, diarize: checked }))}
+                disabled={DISABLE_SETTINGS}
               />
             </div>
             
             <div className="space-y-2">
-              <Label>Tier</Label>
+              <Label className="text-sm sm:text-base">Tier</Label>
               <Select 
                 value={deepgramConfig.tier}
                 onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, tier: value }))}
+                disabled={DISABLE_SETTINGS}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 sm:h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -531,27 +537,9 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         )}
 
         {activeProvider === 'sarvam' && (
-          <div className="space-y-4">
-            {/* <div className="space-y-2">
-              <Label>Domain</Label>
-              <Select 
-                value={sarvamConfig.domain}
-                onValueChange={(value) => setSarvamConfig(prev => ({ ...prev, domain: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="general">General</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                  <SelectItem value="healthcare">Healthcare</SelectItem>
-                  <SelectItem value="education">Education</SelectItem>
-                </SelectContent>
-              </Select>
-            </div> */}
-            
-            <div className="flex items-center justify-between">
-              <Label>Include Timestamps</Label>
+          <div className="space-y-4">            
+            <div className="flex items-center justify-between py-1">
+              <Label className="text-sm sm:text-base">Include Timestamps</Label>
               <Switch
                 disabled={DISABLE_SETTINGS}
                 checked={sarvamConfig.with_timestamps}
@@ -559,8 +547,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               />
             </div>
             
-            <div className="flex items-center justify-between">
-              <Label>Enable Formatting</Label>
+            <div className="flex items-center justify-between py-1">
+              <Label className="text-sm sm:text-base">Enable Formatting</Label>
               <Switch
                 disabled={DISABLE_SETTINGS}
                 checked={sarvamConfig.enable_formatting}
@@ -576,35 +564,49 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full justify-start text-xs font-normal">
+        <Button variant="outline" size="sm" className="w-full justify-start text-xs font-normal h-8 sm:h-9">
           <Mic className="w-3.5 h-3.5 mr-2" />
-          {getDisplayName()}
+          <span className="truncate">{getDisplayName()}</span>
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="min-w-6xl h-5xl p-0 gap-0 bg-white dark:bg-gray-900">
-        <DialogHeader className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:min-w-6xl h-[92vh] sm:h-5xl p-0 gap-0 bg-white dark:bg-gray-900 mx-2 sm:mx-auto">
+        <DialogHeader className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle className="flex items-center gap-2">
-                <Mic className="w-5 h-5 text-blue-500" />
-                Configure STT Provider & Settings
+              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                {showSettings && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSettings(false)}
+                    className="p-1 h-6 w-6 sm:hidden"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                )}
+                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+                <span className="text-sm sm:text-base">
+                  {showSettings ? `${STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]?.name} Settings` : 'Configure STT Provider'}
+                </span>
               </DialogTitle>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Choose speech-to-text provider and configure recognition settings
-              </p>
+              {!showSettings && (
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Choose speech-to-text provider and configure recognition settings
+                </p>
+              )}
             </div>
             
-            {activeProvider && (
+            {activeProvider && !showSettings && (
               <div className="flex items-center gap-3">
                 <Button
                   disabled={DISABLE_SETTINGS}
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowSettings(!showSettings)}
-                  className={showSettings ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700' : ''}
+                  onClick={() => setShowSettings(true)}
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 >
-                  <Settings className="w-4 h-4 mr-2" />
+                  <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Settings
                 </Button>
               </div>
@@ -613,10 +615,10 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         </DialogHeader>
         
         <div className="flex-1 flex overflow-hidden">
-          {/* Provider Selection */}
-          <div className={`${showSettings ? 'w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} p-6 overflow-y-auto`}>
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {/* Provider Selection - Hidden on mobile when settings shown */}
+          <div className={`${showSettings ? 'hidden sm:block sm:w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} p-4 sm:p-6 overflow-y-auto`}>
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
                 Choose STT Provider
               </h3>
               
@@ -633,10 +635,10 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             </div>
           </div>
           
-          {/* Settings Panel */}
+          {/* Settings Panel - Full width on mobile */}
           {showSettings && activeProvider && (
-            <div className="w-1/2 flex flex-col">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+            <div className="w-full sm:w-1/2 flex flex-col">
+              <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 hidden sm:block">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]?.name} Settings
                 </h3>
@@ -645,30 +647,34 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 </p>
               </div>
               
-              <div className="flex-1 p-6 overflow-y-auto">
+              <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
                 {renderProviderSettings()}
               </div>
             </div>
           )}
         </div>
         
-        {/* Footer */}
-        <div className="p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center flex-shrink-0">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        {/* Footer - Responsive buttons */}
+        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0 flex-shrink-0">
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
             {activeProvider && (
               <span>
                 {STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]?.name} selected
               </span>
             )}
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsOpen(false)}
+              className="h-10 sm:h-9 text-sm"
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleApply} 
               disabled={!activeProvider || DISABLE_SETTINGS}
-              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed h-10 sm:h-9 text-sm"
             >
               Apply Settings
             </Button>

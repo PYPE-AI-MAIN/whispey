@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
-import { CopyIcon, CheckIcon, SettingsIcon, TypeIcon } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { CopyIcon, CheckIcon, SettingsIcon, TypeIcon, SlidersHorizontal } from 'lucide-react'
 import { languageOptions, firstMessageModes } from '@/utils/constants'
 import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -31,6 +32,7 @@ export default function AgentConfig() {
   const { agentid } = useParams()
   const [isCopied, setIsCopied] = useState(false)
   const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false)
+  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
 
   const { getTextareaStyles, settings, setFontSize } = usePromptSettings()
 
@@ -389,7 +391,7 @@ export default function AgentConfig() {
 
   
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header with Save Actions */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -400,23 +402,39 @@ export default function AgentConfig() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            {(formik.dirty || hasExternalChanges) && <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
-              Cancel
-            </Button>}
-            {/* <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 text-xs" 
-              onClick={handleSaveDraft}
-              disabled={saveDraft.isPending}
-            >
-              {saveDraft.isPending ? 'Saving...' : 'Save Draft'}
-            </Button> */}
+            {(formik.dirty || hasExternalChanges) && (
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
+                Cancel
+              </Button>
+            )}
+            
+            {/* Advanced Settings Button - Mobile Only */}
+            <div className="lg:hidden">
+              <Sheet open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                    <SlidersHorizontal className="w-3 h-3 mr-1" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:w-96 p-0">
+                  <SheetHeader className="px-4 py-3 border-b">
+                    <SheetTitle className="text-sm">Advanced Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto">
+                    <AgentAdvancedSettings 
+                      advancedSettings={formik.values.advancedSettings}
+                      onFieldChange={formik.setFieldValue}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+            
             <Button 
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={!formik.dirty || hasExternalChanges}
+              disabled={saveAndDeploy.isPending || (!formik.dirty && !hasExternalChanges)}
             >
               {saveAndDeploy.isPending ? 'Deploying...' : 'Save & Deploy'}
             </Button>
@@ -424,232 +442,205 @@ export default function AgentConfig() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 pb-6 pt-3 px-3 overflow-hidden">
-        <div className="w-full h-full flex flex-col max-w-7xl mx-auto">
-          <div className="flex gap-4 flex-1 overflow-hidden">
-            {/* Left Side - Configuration */}
-            <div className="flex-1 overflow-hidden flex flex-col space-y-2">
-              {/* Quick Setup Row */}
-              <div className="flex gap-3 flex-shrink-0">
-                {/* LLM Selection */}
-                <div className="flex-1">
-                  <ModelSelector
-                    selectedProvider={formik.values.selectedProvider}
-                    selectedModel={formik.values.selectedModel}
-                    temperature={formik.values.temperature}
-                    onProviderChange={handleProviderChange}
-                    onModelChange={handleModelChange}
-                    onTemperatureChange={handleTemperatureChange}
-                    azureConfig={azureConfig}
-                    onAzureConfigChange={handleAzureConfigChange}
-                  />
-                </div>
-
-                {/* STT Selection */}
-                <div className="flex-1">
-                  <SelectSTT 
-                    selectedProvider={formik.values.sttProvider}
-                    selectedModel={formik.values.sttModel}
-                    selectedLanguage={formik.values.sttConfig?.language}   
-                    initialConfig={formik.values.sttConfig}                
-                    onSTTSelect={handleSTTSelect}
-                  />
-                </div>
-
-                {/* TTS Selection */}
-                <div className="flex-1">
-                  <SelectTTS 
-                    selectedVoice={formik.values.selectedVoice}
-                    initialProvider={formik.values.ttsProvider}
-                    initialModel={formik.values.ttsModel}
-                    initialConfig={formik.values.ttsVoiceConfig}
-                    onVoiceSelect={handleVoiceSelect}
-                  />
-                </div>
-              </div>
-
-              {/* Conversation Flow */}
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3 flex-shrink-0">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    Conversation Start
-                  </label>
-                  <Select 
-                    value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
-                    onValueChange={(value) => {
-                      // Handle both old string format and new object format
-                      if (typeof formik.values.firstMessageMode === 'object') {
-                        formik.setFieldValue('firstMessageMode', {
-                          ...formik.values.firstMessageMode,
-                          mode: value
-                        })
-                      } else {
-                        // Convert to new object format
-                        formik.setFieldValue('firstMessageMode', {
-                          mode: value,
-                          allow_interruptions: true,
-                          first_message: formik.values.customFirstMessage || ''
-                        })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-8 text-sm w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {firstMessageModes.map((mode) => (
-                        <SelectItem key={mode.value} value={mode.value} className="text-sm">
-                          {mode.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Allow Interruptions Toggle */}
-                {/* <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">
-                    Allow interruptions during first message
-                  </span>
-                  <Switch
-                    checked={
-                      typeof formik.values.firstMessageMode === 'object' 
-                        ? formik.values.firstMessageMode.allow_interruptions 
-                        : true
-                    }
-                    onCheckedChange={(checked) => {
-                      if (typeof formik.values.firstMessageMode === 'object') {
-                        formik.setFieldValue('firstMessageMode', {
-                          ...formik.values.firstMessageMode,
-                          allow_interruptions: checked
-                        })
-                      } else {
-                        // Convert to new object format
-                        formik.setFieldValue('firstMessageMode', {
-                          mode: formik.values.firstMessageMode || 'assistant_speaks_first',
-                          allow_interruptions: checked,
-                          first_message: formik.values.customFirstMessage || ''
-                        })
-                      }
-                    }}
-                    className="scale-75"
-                  />
-                </div> */}
-
-                {/* First Message Textarea */}
-                {((typeof formik.values.firstMessageMode === 'object' && formik.values.firstMessageMode.mode === 'assistant_speaks_first') ||
-                  (typeof formik.values.firstMessageMode === 'string' && formik.values.firstMessageMode === 'assistant_speaks_first')) && (
-                  <Textarea
-                    placeholder="Enter the first message..."
-                    value={
-                      typeof formik.values.firstMessageMode === 'object' 
-                        ? formik.values.firstMessageMode.first_message 
-                        : formik.values.customFirstMessage
-                    }
-                    onChange={(e) => {
-                      if (typeof formik.values.firstMessageMode === 'object') {
-                        formik.setFieldValue('firstMessageMode', {
-                          ...formik.values.firstMessageMode,
-                          first_message: e.target.value
-                        })
-                      } else {
-                        // Also update the old customFirstMessage field for backward compatibility
-                        formik.setFieldValue('customFirstMessage', e.target.value)
-                        // Convert to new object format
-                        formik.setFieldValue('firstMessageMode', {
-                          mode: formik.values.firstMessageMode || 'assistant_speaks_first',
-                          allow_interruptions: true,
-                          first_message: e.target.value
-                        })
-                      }
-                    }}
-                    className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
-                  />
-                )}
-              </div>
-
-              {/* System Prompt */}
-              <div className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col overflow-hidden">
-                <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                          <TypeIcon className="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-48 p-3" align="start">
-                        <div className="space-y-2">
-                          <Label className="text-xs">Font Size</Label>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs">{settings.fontSize}px</span>
-                            <Slider
-                              value={[settings.fontSize]}
-                              onValueChange={(value) => setFontSize(value[0])} // This will auto-save to localStorage
-                              min={8}
-                              max={18}
-                              step={1}
-                              className="flex-1"
-                            />
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setIsPromptSettingsOpen(true)}
-                      className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
-                    >
-                      <SettingsIcon className="w-4 h-4" />
-                      <span>Settings</span>
-                    </button>
-
-                    <button
-                      onClick={copyToClipboard}
-                      className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
-                      disabled={!formik.values.prompt}
-                    >
-                      {isCopied ? (
-                        <>
-                          <CheckIcon className="w-4 h-4 text-green-500" />
-                          <span className="text-green-500">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <CopyIcon className="w-4 h-4" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <Textarea
-                  placeholder="Define your agent's behavior and personality..."
-                  value={formik.values.prompt}
-                  onChange={(e) => formik.setFieldValue('prompt', e.target.value)}
-                  className="flex-1 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 overflow-auto"
-                  style={getTextareaStyles()}
+      {/* Main Content - Responsive Layout */}
+      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full p-4">
+        <div className="h-full flex gap-4">
+          
+          {/* Left Side - Main Configuration */}
+          <div className="flex-1 min-w-0 flex flex-col space-y-3">
+            
+            {/* Quick Setup Row - Responsive Stack */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+              {/* LLM Selection */}
+              <div className="flex-1 min-w-0">
+                <ModelSelector
+                  selectedProvider={formik.values.selectedProvider}
+                  selectedModel={formik.values.selectedModel}
+                  temperature={formik.values.temperature}
+                  onProviderChange={handleProviderChange}
+                  onModelChange={handleModelChange}
+                  onTemperatureChange={handleTemperatureChange}
+                  azureConfig={azureConfig}
+                  onAzureConfigChange={handleAzureConfigChange}
                 />
-                <div className="flex justify-between items-center mt-2 flex-shrink-0">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {formik.values.prompt.length.toLocaleString()} chars
-                  </span>
-                </div>
+              </div>
+
+              {/* STT Selection */}
+              <div className="flex-1 min-w-0">
+                <SelectSTT 
+                  selectedProvider={formik.values.sttProvider}
+                  selectedModel={formik.values.sttModel}
+                  selectedLanguage={formik.values.sttConfig?.language}   
+                  initialConfig={formik.values.sttConfig}                
+                  onSTTSelect={handleSTTSelect}
+                />
+              </div>
+
+              {/* TTS Selection */}
+              <div className="flex-1 min-w-0">
+                <SelectTTS 
+                  selectedVoice={formik.values.selectedVoice}
+                  initialProvider={formik.values.ttsProvider}
+                  initialModel={formik.values.ttsModel}
+                  initialConfig={formik.values.ttsVoiceConfig}
+                  onVoiceSelect={handleVoiceSelect}
+                />
               </div>
             </div>
 
-            {/* Right Side - Advanced Settings */}
-            <div className="w-80 flex-shrink-0">
-              <AgentAdvancedSettings 
-                advancedSettings={formik.values.advancedSettings}
-                onFieldChange={formik.setFieldValue}
+            {/* Conversation Flow */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3 flex-shrink-0">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Conversation Start
+                </label>
+                <Select 
+                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
+                  onValueChange={(value) => {
+                    // Handle both old string format and new object format
+                    if (typeof formik.values.firstMessageMode === 'object') {
+                      formik.setFieldValue('firstMessageMode', {
+                        ...formik.values.firstMessageMode,
+                        mode: value
+                      })
+                    } else {
+                      // Convert to new object format
+                      formik.setFieldValue('firstMessageMode', {
+                        mode: value,
+                        allow_interruptions: true,
+                        first_message: formik.values.customFirstMessage || ''
+                      })
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-sm w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {firstMessageModes.map((mode) => (
+                      <SelectItem key={mode.value} value={mode.value} className="text-sm">
+                        {mode.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* First Message Textarea */}
+              {((typeof formik.values.firstMessageMode === 'object' && formik.values.firstMessageMode.mode === 'assistant_speaks_first') ||
+                (typeof formik.values.firstMessageMode === 'string' && formik.values.firstMessageMode === 'assistant_speaks_first')) && (
+                <Textarea
+                  placeholder="Enter the first message..."
+                  value={
+                    typeof formik.values.firstMessageMode === 'object' 
+                      ? formik.values.firstMessageMode.first_message 
+                      : formik.values.customFirstMessage
+                  }
+                  onChange={(e) => {
+                    if (typeof formik.values.firstMessageMode === 'object') {
+                      formik.setFieldValue('firstMessageMode', {
+                        ...formik.values.firstMessageMode,
+                        first_message: e.target.value
+                      })
+                    } else {
+                      // Also update the old customFirstMessage field for backward compatibility
+                      formik.setFieldValue('customFirstMessage', e.target.value)
+                      // Convert to new object format
+                      formik.setFieldValue('firstMessageMode', {
+                        mode: formik.values.firstMessageMode || 'assistant_speaks_first',
+                        allow_interruptions: true,
+                        first_message: e.target.value
+                      })
+                    }
+                  }}
+                  className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
+                />
+              )}
+            </div>
+
+            {/* System Prompt */}
+            <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                        <TypeIcon className="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-3" align="start">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Font Size</Label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">{settings.fontSize}px</span>
+                          <Slider
+                            value={[settings.fontSize]}
+                            onValueChange={(value) => setFontSize(value[0])} // This will auto-save to localStorage
+                            min={8}
+                            max={18}
+                            step={1}
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsPromptSettingsOpen(true)}
+                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
+                  >
+                    <SettingsIcon className="w-4 h-4" />
+                    <span>Settings</span>
+                  </button>
+
+                  <button
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
+                    disabled={!formik.values.prompt}
+                  >
+                    {isCopied ? (
+                      <>
+                        <CheckIcon className="w-4 h-4 text-green-500" />
+                        <span className="text-green-500">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <CopyIcon className="w-4 h-4" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <Textarea
+                placeholder="Define your agent's behavior and personality..."
+                value={formik.values.prompt}
+                onChange={(e) => formik.setFieldValue('prompt', e.target.value)}
+                className="flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700"
+                style={getTextareaStyles()}
               />
+              
+              <div className="flex justify-between items-center mt-2 flex-shrink-0">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {formik.values.prompt.length.toLocaleString()} chars
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Right Side - Advanced Settings - Desktop Only */}
+          <div className="hidden lg:block w-80 flex-shrink-0 min-h-0">
+            <AgentAdvancedSettings 
+              advancedSettings={formik.values.advancedSettings}
+              onFieldChange={formik.setFieldValue}
+            />
+          </div>
+          
         </div>
       </div>
 
