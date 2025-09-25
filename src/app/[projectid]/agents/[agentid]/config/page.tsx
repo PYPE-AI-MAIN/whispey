@@ -9,7 +9,25 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { CopyIcon, CheckIcon, SettingsIcon, TypeIcon, SlidersHorizontal } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { 
+  CopyIcon, 
+  CheckIcon, 
+  SettingsIcon, 
+  TypeIcon, 
+  SlidersHorizontal, 
+  PhoneIcon, 
+  Mic, 
+  MicOff, 
+  PhoneOff, 
+  Volume2,
+  Play,
+  Square,
+  Loader2,
+  MessageSquare,
+  User,
+  Bot
+} from 'lucide-react'
 import { languageOptions, firstMessageModes } from '@/utils/constants'
 import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -20,12 +38,194 @@ import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsS
 import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Label } from 'recharts'
+import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
+import TalkToAssistant from '@/components/agents/TalkToAssistant'
+
+// Agent status service - you'll need to implement this
+const agentStatusService = {
+  checkAgentStatus: async (agentName: string): Promise<AgentStatus> => {
+    try {
+      if (!agentName) {
+        console.warn('⚠️ Agent name is empty or undefined')
+        return { status: 'error' as const, error: 'Agent name is required' }
+      }
+
+      const url = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_status/${encodeURIComponent(agentName)}`
+      console.log('🔍 Checking agent status:', url)
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'pype-api-v1'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Raw agent status response:', data)
+        
+        // Properly typed status mapping
+        const status: AgentStatus['status'] = data.is_active && data.worker_running ? 'running' : 'stopped'
+        
+        const mappedStatus: AgentStatus = {
+          status,
+          pid: data.worker_pid,
+          error: !data.is_active ? 'Agent not active' : 
+                 !data.worker_running ? 'Worker not running' : 
+                 !data.inbound_ready ? 'Inbound not ready' : undefined,
+          raw: data
+        }
+        
+        console.log('🔄 Mapped agent status:', mappedStatus)
+        return mappedStatus
+      }
+      
+      console.error('❌ Agent status request failed:', response.status, response.statusText)
+      return { 
+        status: 'error' as const, 
+        error: `Failed to check status: ${response.status} ${response.statusText}` 
+      }
+    } catch (error) {
+      console.error('❌ Agent status connection error:', error)
+      return { status: 'error' as const, error: 'Connection error' }
+    }
+  },
+  
+  startAgent: async (agentName: string): Promise<AgentStatus> => {
+    try {
+      if (!agentName) {
+        return { status: 'error' as const, error: 'Agent name is required' }
+      }
+
+      console.log('🚀 Starting agent via API:', agentName)
+      
+      // Fixed: Use the correct path that matches your API route
+      const response = await fetch('/api/agents/start_agent', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ agent_name: agentName })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Start agent response:', data)
+        
+        return {
+          status: 'starting' as const,
+          message: data.message || 'Agent start initiated',
+          raw: data
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        return { 
+          status: 'error' as const, 
+          error: errorData.error || `Failed to start agent: ${response.status}` 
+        }
+      }
+    } catch (error) {
+      console.error('❌ Start agent error:', error)
+      return { status: 'error' as const, error: 'Failed to start agent' }
+    }
+  },
+  
+  stopAgent: async (agentName: string): Promise<AgentStatus> => {
+    try {
+      if (!agentName) {
+        return { status: 'error' as const, error: 'Agent name is required' }
+      }
+
+      console.log('🛑 Stopping agent via API:', agentName)
+      
+      // This one was already correct in your code
+      const response = await fetch('/api/agents/stop_agent', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ agent_name: agentName })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Stop agent response:', data)
+        
+        return {
+          status: 'stopping' as const,
+          message: data.message || 'Agent stop initiated',
+          raw: data
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        return { 
+          status: 'error' as const, 
+          error: errorData.error || `Failed to stop agent: ${response.status}` 
+        }
+      }
+    } catch (error) {
+      console.error('❌ Stop agent error:', error)
+      return { status: 'error' as const, error: 'Failed to stop agent' }
+    }
+  },
+  
+  startStatusPolling: (
+    agentName: string, 
+    onStatusUpdate: (status: AgentStatus) => void, 
+    interval: number = 15000
+  ) => {
+    if (!agentName) {
+      console.warn('⚠️ Cannot start polling: agent name is required')
+      return () => {}
+    }
+
+    console.log('📊 Starting status polling for agent:', agentName, 'interval:', interval)
+    
+    const pollStatus = async () => {
+      const status = await agentStatusService.checkAgentStatus(agentName)
+      onStatusUpdate(status)
+    }
+    
+    pollStatus()
+    
+    const intervalId = setInterval(pollStatus, interval)
+    
+    return () => {
+      console.log('🧹 Stopping status polling for agent:', agentName)
+      clearInterval(intervalId)
+    }
+  }
+}
 
 interface AzureConfig {
   endpoint: string
   apiVersion: string
+}
+
+interface AgentStatus {
+  status: 'running' | 'stopped' | 'starting' | 'stopping' | 'error'
+  pid?: number
+  error?: string
+  message?: string
+  raw?: any // Allow for flexible API response data
+}
+
+interface WebSession {
+  room_name: string
+  token: string
+  url: string
+  participant_identity: string
+}
+
+interface Transcript {
+  id: string
+  speaker: 'user' | 'agent'
+  text: string
+  timestamp: Date
+  isFinal: boolean
+  participantIdentity?: string
 }
 
 export default function AgentConfig() {
@@ -33,6 +233,11 @@ export default function AgentConfig() {
   const [isCopied, setIsCopied] = useState(false)
   const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false)
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
+  const [isTalkToAssistantOpen, setIsTalkToAssistantOpen] = useState(false)
+  
+  // Agent status state
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
+  const [isAgentLoading, setIsAgentLoading] = useState(false)
 
   const { getTextareaStyles, settings, setFontSize } = usePromptSettings()
 
@@ -81,6 +286,66 @@ export default function AgentConfig() {
 
   // Use mutations for save operations
   const { saveDraft, saveAndDeploy } = useAgentMutations(agentName)
+
+  // Check agent status on load and set up polling
+  useEffect(() => {
+    if (!agentName) return
+    
+    // Initial status check
+    checkAgentStatus()
+    
+    // Set up polling for status updates
+    const stopPolling = agentStatusService.startStatusPolling(
+      agentName,
+      (status) => {
+        setAgentStatus(status)
+        
+        // Log status changes
+        if (status.status !== agentStatus.status) {
+          console.log(`🔄 Agent status changed: ${agentStatus.status} → ${status.status}`)
+        }
+      },
+      15000 // Poll every 15 seconds
+    )
+    
+    // Cleanup polling on unmount or agent name change
+    return stopPolling
+  }, [agentName])
+
+  const checkAgentStatus = async () => {
+    if (!agentName) return
+    
+    const status = await agentStatusService.checkAgentStatus(agentName)
+    setAgentStatus(status) // Now properly typed
+  }
+  
+  const startAgent = async () => {
+    if (!agentName) return
+    
+    setIsAgentLoading(true)
+    setAgentStatus({ status: 'starting' } as AgentStatus) // Type assertion for immediate state
+    
+    try {
+      const status = await agentStatusService.startAgent(agentName)
+      setAgentStatus(status) // Properly typed return
+    } finally {
+      setIsAgentLoading(false)
+    }
+  }
+  
+  const stopAgent = async () => {
+    if (!agentName) return
+    
+    setIsAgentLoading(true)
+    setAgentStatus({ status: 'stopping' } as AgentStatus) // Type assertion for immediate state
+    
+    try {
+      const status = await agentStatusService.stopAgent(agentName)
+      setAgentStatus(status) // Properly typed return  
+    } finally {
+      setIsAgentLoading(false)
+    }
+  }
 
   const copyToClipboard = async () => {
     try {
@@ -312,6 +577,28 @@ export default function AgentConfig() {
     setHasExternalChanges(true)
   }
 
+  const getAgentStatusColor = () => {
+    switch (agentStatus.status) {
+      case 'running': return 'bg-green-500'
+      case 'starting': return 'bg-yellow-500'
+      case 'stopping': return 'bg-orange-500'
+      case 'stopped': return 'bg-gray-500'
+      case 'error': return 'bg-red-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getAgentStatusText = () => {
+    switch (agentStatus.status) {
+      case 'running': return 'Agent Running'
+      case 'starting': return 'Starting...'
+      case 'stopping': return 'Stopping...'
+      case 'stopped': return 'Agent Stopped'
+      case 'error': return 'Agent Error'
+      default: return 'Unknown'
+    }
+  }
+
   // Loading state
   if (agentLoading || isConfigLoading) {
     return (
@@ -389,19 +676,94 @@ export default function AgentConfig() {
     )
   }
 
-  
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Header with Save Actions */}
+      {/* Header with Agent Controls & Save Actions */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {agentName || 'Loading...'}
-            </span>
+            <div className={`w-2 h-2 rounded-full ${getAgentStatusColor()}`}></div>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {agentName || 'Loading...'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {getAgentStatusText()}
+                {agentStatus.pid && ` (PID: ${agentStatus.pid})`}
+              </span>
+            </div>
           </div>
+          
           <div className="flex items-center gap-3">
+            {/* Agent Controls */}
+            {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={startAgent}
+                disabled={isAgentLoading || !agentName}
+              >
+                {isAgentLoading ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Play className="w-3 h-3 mr-1" />
+                )}
+                Start Agent
+              </Button>
+            ) : agentStatus.status === 'running' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={stopAgent}
+                disabled={isAgentLoading}
+              >
+                {isAgentLoading ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Square className="w-3 h-3 mr-1" />
+                )}
+                Stop Agent
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled
+              >
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                {agentStatus.status === 'starting' ? 'Starting...' : 'Stopping...'}
+              </Button>
+            )}
+
+            {/* Talk to Assistant Button */}
+            <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
+              <SheetHeader className="sr-only">
+                <SheetTitle>Talk to Assistant</SheetTitle>
+              </SheetHeader>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!agentName}
+                >
+                  <PhoneIcon className="w-3 h-3 mr-1" />
+                  Talk to Assistant
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-96 p-0">
+                <TalkToAssistant
+                  agentName={agentName || ''}
+                  isOpen={isTalkToAssistantOpen}
+                  onClose={() => setIsTalkToAssistantOpen(false)}
+                  agentStatus={agentStatus}
+                />
+              </SheetContent>
+            </Sheet>
+
             {(formik.dirty || hasExternalChanges) && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
                 Cancel
@@ -411,6 +773,9 @@ export default function AgentConfig() {
             {/* Advanced Settings Button - Mobile Only */}
             <div className="lg:hidden">
               <Sheet open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Voice Assistant</SheetTitle>
+                </SheetHeader>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 text-xs">
                     <SlidersHorizontal className="w-3 h-3 mr-1" />

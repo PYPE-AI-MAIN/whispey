@@ -162,6 +162,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId' },
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/observability' },
+      { pattern: '/:projectId/agents/:agentId/phone-call-config' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
@@ -189,8 +190,10 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
+      // Configuration items
+      const configItems = []
       if (agentType === 'pype_agent') {
-        baseNavigation.push({ 
+        configItems.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
           icon: 'Settings', 
@@ -199,16 +202,37 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      const navigation = isEnhancedProject ? [
-        ...baseNavigation,
-        { 
+      // Call items
+      const callItems = []
+      if (agentType === 'pype_agent') {
+        callItems.push({
+          id: 'phone-call',
+          name: 'Phone Calls',
+          icon: 'Phone',
+          path: `/${projectId}/agents/${agentId}/phone-call-config`,
+          group: 'call configuration'
+        })
+      }
+
+      // Enhanced project items
+      const enhancedItems = []
+      if (isEnhancedProject) {
+        enhancedItems.push({ 
           id: 'campaign-logs', 
           name: 'Campaign Logs', 
           icon: 'BarChart3', 
           path: `/${projectId}/agents/${agentId}?tab=campaign-logs`, 
           group: 'Batch Calls' 
-        }
-      ] : baseNavigation
+        })
+      }
+
+      // Combine all navigation items
+      const navigation = [
+        ...baseNavigation,
+        ...configItems,
+        // ...callItems,
+        ...enhancedItems
+      ]
 
       return {
         type: 'agent-detail',
