@@ -70,19 +70,34 @@ interface VoiceAgentActions {
   sendTextMessage: (message: string) => Promise<void>
 }
 
-// SECURITY FIX: Cryptographically secure random number generator
+// SECURITY FIX: Cryptographically secure random number generator with unbiased distribution
 function getSecureRandomInt(max: number): number {
+  if (typeof max !== 'number' || !Number.isInteger(max) || max <= 0) {
+    throw new Error('max must be a positive integer')
+  }
+
+  // Use rejection sampling to eliminate modulo bias
+  const UINT32_MAX = 0xFFFFFFFF
+  const threshold = Math.floor((UINT32_MAX + 1) / max) * max
+  
+  let randomInt: number
+
   if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
-    // Browser environment - use Web Crypto API
+    // Browser environment - use Web Crypto API with rejection sampling
     const array = new Uint32Array(1)
-    window.crypto.getRandomValues(array)
-    return array[0] % max
+    do {
+      window.crypto.getRandomValues(array)
+      randomInt = array[0]
+    } while (randomInt >= threshold)
+    return randomInt % max
   } else if (typeof require !== 'undefined') {
-    // Node.js environment - use crypto module
+    // Node.js environment - use crypto module with rejection sampling
     try {
       const crypto = require('crypto')
-      const bytes = crypto.randomBytes(4)
-      const randomInt = bytes.readUInt32BE(0)
+      do {
+        const bytes = crypto.randomBytes(4)
+        randomInt = bytes.readUInt32BE(0)
+      } while (randomInt >= threshold)
       return randomInt % max
     } catch (error) {
       console.warn('Failed to use crypto module, falling back to Math.random():', error)
