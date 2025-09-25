@@ -24,6 +24,7 @@ DROP TABLE IF EXISTS public.pype_voice_spans CASCADE;
 DROP TABLE IF EXISTS public.pype_voice_session_traces CASCADE;
 DROP TABLE IF EXISTS public.pype_voice_custom_totals_configs CASCADE;
 DROP TABLE IF EXISTS public.pype_voice_agent_call_log_views CASCADE;
+DROP TABLE IF EXISTS public.pype_voice_api_keys CASCADE;
 DROP TABLE IF EXISTS public.pype_voice_email_project_mapping CASCADE;
 DROP TABLE IF EXISTS public.pype_voice_call_logs CASCADE;
 DROP TABLE IF EXISTS public.pype_voice_metrics_logs CASCADE;
@@ -133,6 +134,17 @@ CREATE TABLE public.pype_voice_email_project_mapping (
     created_at timestamp with time zone DEFAULT now(),
     clerk_id text,
     is_active boolean DEFAULT true
+);
+
+CREATE TABLE public.pype_voice_api_keys (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id uuid NOT NULL,
+    user_clerk_id text NOT NULL,
+    token_hash text NOT NULL,
+    token_hash_master text NOT NULL,
+    masked_key varchar(50) NOT NULL,
+    created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+    last_used timestamp
 );
 
 CREATE TABLE public.pype_voice_agent_call_log_views (
@@ -327,6 +339,17 @@ BEGIN
     ) THEN
         ALTER TABLE public.pype_voice_email_project_mapping 
             ADD CONSTRAINT fk_email_mapping_project_id 
+            FOREIGN KEY (project_id) REFERENCES public.pype_voice_projects(id) ON DELETE CASCADE;
+    END IF;
+
+    -- Add foreign key for api_keys -> projects
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_api_keys_project_id' 
+        AND table_name = 'pype_voice_api_keys'
+    ) THEN
+        ALTER TABLE public.pype_voice_api_keys 
+            ADD CONSTRAINT fk_api_keys_project_id 
             FOREIGN KEY (project_id) REFERENCES public.pype_voice_projects(id) ON DELETE CASCADE;
     END IF;
 
