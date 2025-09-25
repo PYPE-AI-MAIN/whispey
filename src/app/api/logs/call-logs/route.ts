@@ -5,11 +5,24 @@ import { verifyToken } from '../../../../lib/auth';
 import { totalCostsINR } from '../../../../lib/calculateCost';
 import { processFPOTranscript } from '../../../../lib/transcriptProcessor';
 import { CallLogRequest, TranscriptWithMetrics, UsageData, TelemetryAnalytics, TelemetryData } from '../../../../types/logs';
+import { gunzipSync } from 'zlib';
 
 // Create server-side Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Decompression function for compressed data
+function decompressData(compressedData: string): any {
+  try {
+    const buffer = Buffer.from(compressedData, 'base64');
+    const decompressed = gunzipSync(buffer);
+    return JSON.parse(decompressed.toString('utf-8'));
+  } catch (error) {
+    console.error('❌ Decompression failed:', error);
+    throw new Error('Failed to decompress data');
+  }
+}
 
 // Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
@@ -36,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Safely parse JSON with error handling
+    // Safely parse JSON with error handling and compression support
     let body: CallLogRequest;
     try {
       const text = await request.text();
@@ -46,7 +59,28 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      body = JSON.parse(text);
+      
+      const parsedRequest = JSON.parse(text);
+      
+      // Check if data is compressed
+      if (parsedRequest.compressed === true && parsedRequest.data) {
+        console.log(`🗜️  Received compressed data: ${parsedRequest.compressed_size} bytes (${parsedRequest.compression_ratio?.toFixed(1)}% reduction)`);
+        console.log(`📊 Original size: ${parsedRequest.original_size} bytes`);
+        
+        try {
+          body = decompressData(parsedRequest.data);
+          console.log(`✅ Successfully decompressed data`);
+        } catch (decompressionError) {
+          console.error('❌ Decompression failed:', decompressionError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to decompress data' },
+            { status: 400 }
+          );
+        }
+      } else {
+        // Regular uncompressed data
+        body = parsedRequest;
+      }
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       return NextResponse.json(
