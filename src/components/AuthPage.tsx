@@ -74,9 +74,9 @@ export default function AuthPage() {
         <div className="w-full max-w-md space-y-8">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center">
-            <div className="inline-flex items-center space-x-3 mb-8">
-              <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center">
-                <Mic className="w-6 h-6 text-white" />
+            <div className="inline-flex items-center space-x-3">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                <Image src="/logo.png" alt="Pype AI Logo" width={100} height={100} />
               </div>
               <span className="text-2xl font-bold text-slate-900">Whispey</span>
             </div>

@@ -1,12 +1,7 @@
-// Create: app/api/agent-config/[agentName]/route.ts
+// Create: app/api/agents/running_agents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ agentName: string }> }
-) {
-  const { agentName } = await params
-
+export async function GET(request: NextRequest) {
   try {
     const apiUrl = process.env.PYPEAI_API_URL
     
@@ -18,9 +13,9 @@ export async function GET(
       )
     }
 
-    console.log(`Proxying request to: ${apiUrl}/agent_config/${agentName}`)
+    console.log(`Fetching running agents from: ${apiUrl}/running_agents`)
 
-    const response = await fetch(`${apiUrl}/agent_config/${agentName}`, {
+    const response = await fetch(`${apiUrl}/running_agents`, {
       method: 'GET',
       headers: {
         'x-api-key': 'pype-api-v1',
@@ -34,7 +29,7 @@ export async function GET(
     if (!response.ok) {
       console.error(`Backend API error: ${response.status} ${response.statusText}`)
       return NextResponse.json(
-        { error: `Failed to fetch agent config: ${response.status}` },
+        { error: `Failed to fetch running agents: ${response.status}` },
         { status: response.status }
       )
     }
@@ -50,12 +45,14 @@ export async function GET(
     }
 
     const data = await response.json()
+    console.log('Running agents response:', data)
+    
     return NextResponse.json(data)
 
   } catch (error: any) {
-    console.error('Proxy error:', error)
+    console.error('Running agents proxy error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch agent config', details: error.message },
+      { error: 'Failed to fetch running agents', details: error.message },
       { status: 500 }
     )
   }

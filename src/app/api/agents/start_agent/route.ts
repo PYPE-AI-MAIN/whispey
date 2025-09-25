@@ -1,12 +1,7 @@
-// Create: app/api/agent-config/[agentName]/route.ts
+// app/api/agents/start_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ agentName: string }> }
-) {
-  const { agentName } = await params
-
+export async function POST(request: NextRequest) {
   try {
     const apiUrl = process.env.PYPEAI_API_URL
     
@@ -18,23 +13,39 @@ export async function GET(
       )
     }
 
-    console.log(`Proxying request to: ${apiUrl}/agent_config/${agentName}`)
+    // Parse the request body to get the agent_name
+    const body = await request.json()
+    const { agent_name } = body
 
-    const response = await fetch(`${apiUrl}/agent_config/${agentName}`, {
-      method: 'GET',
+    if (!agent_name) {
+      return NextResponse.json(
+        { error: 'agent_name is required' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`Starting agent: ${agent_name}`)
+    // FIXED: Use the correct backend endpoint /run_agent (not /api/run_agent)
+    console.log(`Proxying request to: ${apiUrl}/run_agent`)
+
+    // FIXED: Call the correct backend endpoint
+    const response = await fetch(`${apiUrl}/run_agent`, {
+      method: 'POST',
       headers: {
         'x-api-key': 'pype-api-v1',
         'ngrok-skip-browser-warning': 'true',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'User-Agent': 'NextJS-Proxy'
-      }
+      },
+      body: JSON.stringify({ agent_name })
     })
 
     if (!response.ok) {
-      console.error(`Backend API error: ${response.status} ${response.statusText}`)
+      const errorText = await response.text().catch(() => 'Unknown error')
+      console.error(`Backend API error: ${response.status} ${response.statusText} - ${errorText}`)
       return NextResponse.json(
-        { error: `Failed to fetch agent config: ${response.status}` },
+        { error: `Failed to start agent: ${response.status} - ${errorText}` },
         { status: response.status }
       )
     }
@@ -50,12 +61,14 @@ export async function GET(
     }
 
     const data = await response.json()
+    console.log('Agent start response:', data)
+    
     return NextResponse.json(data)
 
   } catch (error: any) {
-    console.error('Proxy error:', error)
+    console.error('Start agent proxy error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch agent config', details: error.message },
+      { error: 'Failed to start agent', details: error.message },
       { status: 500 }
     )
   }
