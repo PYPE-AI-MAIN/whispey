@@ -26,8 +26,19 @@ import {
   Loader2,
   MessageSquare,
   User,
-  Bot
+  Bot,
+  MoreVertical,
+  Save,
+  X
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { languageOptions, firstMessageModes } from '@/utils/constants'
 import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -599,6 +610,19 @@ export default function AgentConfig() {
     }
   }
 
+  const getMobileAgentStatusText = () => {
+    switch (agentStatus.status) {
+      case 'running': return 'Running'
+      case 'starting': return 'Starting...'
+      case 'stopping': return 'Stopping...'
+      case 'stopped': return 'Stopped'
+      case 'error': return 'Error'
+      default: return 'Unknown'
+    }
+  }
+
+  const isFormDirty = formik.dirty || hasExternalChanges
+
   // Loading state
   if (agentLoading || isConfigLoading) {
     return (
@@ -678,8 +702,125 @@ export default function AgentConfig() {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Header with Agent Controls & Save Actions */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
+      {/* Mobile Header (< lg) */}
+      <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          {/* Agent Status */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAgentStatusColor()}`}></div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {agentName || 'Loading...'}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {getMobileAgentStatusText()}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Agent Control - Always visible */}
+            {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={startAgent}
+                disabled={isAgentLoading || !agentName}
+              >
+                {isAgentLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
+              </Button>
+            ) : agentStatus.status === 'running' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={stopAgent}
+                disabled={isAgentLoading}
+              >
+                {isAgentLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Square className="w-4 h-4" />
+                )}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled
+              >
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </Button>
+            )}
+
+            {/* Save & Deploy - Show when dirty */}
+            {isFormDirty && (
+              <Button 
+                size="sm" 
+                className="h-8 px-3" 
+                onClick={handleSaveAndDeploy}
+                disabled={saveAndDeploy.isPending}
+              >
+                {saveAndDeploy.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+
+            {/* Three Dot Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuGroup>
+                  {/* Talk to Assistant */}
+                  <DropdownMenuItem 
+                    onSelect={() => setIsTalkToAssistantOpen(true)}
+                    disabled={!agentName}
+                  >
+                    <PhoneIcon className="w-4 h-4 mr-2" />
+                    Talk to Assistant
+                  </DropdownMenuItem>
+
+                  {/* Advanced Settings */}
+                  <DropdownMenuItem onSelect={() => setIsAdvancedSettingsOpen(true)}>
+                    <SlidersHorizontal className="w-4 h-4 mr-2" />
+                    Advanced Settings
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+
+                {isFormDirty && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      {/* Cancel */}
+                      <DropdownMenuItem onSelect={handleCancel}>
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel Changes
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Header (>= lg) */}
+      <div className="hidden lg:block bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className={`w-2 h-2 rounded-full ${getAgentStatusColor()}`}></div>
@@ -764,42 +905,19 @@ export default function AgentConfig() {
               </SheetContent>
             </Sheet>
 
-            {(formik.dirty || hasExternalChanges) && (
+            {/* Cancel Button */}
+            {isFormDirty && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
                 Cancel
               </Button>
             )}
             
-            {/* Advanced Settings Button - Mobile Only */}
-            <div className="lg:hidden">
-              <Sheet open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Voice Assistant</SheetTitle>
-                </SheetHeader>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
-                    <SlidersHorizontal className="w-3 h-3 mr-1" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-full sm:w-96 p-0">
-                  <SheetHeader className="px-4 py-3 border-b">
-                    <SheetTitle className="text-sm">Advanced Settings</SheetTitle>
-                  </SheetHeader>
-                  <div className="flex-1 overflow-y-auto">
-                    <AgentAdvancedSettings 
-                      advancedSettings={formik.values.advancedSettings}
-                      onFieldChange={formik.setFieldValue}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-            
+            {/* Save & Deploy Button */}
             <Button 
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || (!formik.dirty && !hasExternalChanges)}
+              disabled={saveAndDeploy.isPending || !isFormDirty}
             >
               {saveAndDeploy.isPending ? 'Deploying...' : 'Save & Deploy'}
             </Button>
@@ -1008,6 +1126,35 @@ export default function AgentConfig() {
           
         </div>
       </div>
+
+      {/* Mobile Sheets for Talk to Assistant and Advanced Settings */}
+      <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
+        <SheetContent side="right" className="w-full sm:w-96 p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Talk to Assistant</SheetTitle>
+          </SheetHeader>
+          <TalkToAssistant
+            agentName={agentName || ''}
+            isOpen={isTalkToAssistantOpen}
+            onClose={() => setIsTalkToAssistantOpen(false)}
+            agentStatus={agentStatus}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
+        <SheetContent side="right" className="w-full sm:w-96 p-0">
+          <SheetHeader className="px-4 py-3 border-b">
+            <SheetTitle className="text-sm">Advanced Settings</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto">
+            <AgentAdvancedSettings 
+              advancedSettings={formik.values.advancedSettings}
+              onFieldChange={formik.setFieldValue}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <PromptSettingsSheet
         open={isPromptSettingsOpen}
