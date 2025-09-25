@@ -3,9 +3,14 @@
 import { usePathname } from 'next/navigation'
 import { ReactNode, useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
-import Sidebar from './Sidebar'
+import { useMobile } from '@/hooks/use-mobile'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { canViewApiKeys, getUserProjectRole } from '@/services/getUserRole'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
+import { Menu } from 'lucide-react'
+import Sidebar from './Sidebar'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 interface SidebarWrapperProps {
   children: ReactNode
@@ -13,7 +18,7 @@ interface SidebarWrapperProps {
 
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
-// Route pattern definitions
+// All your existing route pattern definitions and configurations
 interface RoutePattern {
   pattern: string
   exact?: boolean
@@ -22,7 +27,7 @@ interface RoutePattern {
 interface SidebarRoute {
   patterns: RoutePattern[]
   getSidebarConfig: (params: RouteParams, context: SidebarContext) => SidebarConfig | null
-  priority?: number // Higher priority routes are checked first
+  priority?: number
 }
 
 interface RouteParams {
@@ -33,7 +38,7 @@ interface SidebarContext {
   isEnhancedProject: boolean
   userCanViewApiKeys: boolean
   projectId?: string
-  agentType?: string // Add agent type to context
+  agentType?: string
 }
 
 interface NavigationItem {
@@ -54,20 +59,18 @@ export interface SidebarConfig {
   backLabel?: string
 }
 
-// Improved utility function to parse route patterns and extract parameters
+// Keep all your existing route matching and configuration logic
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
-  // Handle wildcard patterns first
   if (pattern.endsWith('*')) {
-    const basePattern = pattern.slice(0, -1) // Remove the '*'
+    const basePattern = pattern.slice(0, -1)
     if (!pathname.startsWith(basePattern)) {
       return null
     }
     
-    // Extract parameters from the base pattern (without the wildcard)
     const paramNames: string[] = []
     const regexPattern = basePattern
       .replace(/:[^/]+/g, (match) => {
-        paramNames.push(match.slice(1)) // Remove the ':'
+        paramNames.push(match.slice(1))
         return '([^/]+)'
       })
 
@@ -84,11 +87,10 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
     return params
   }
 
-  // Handle exact patterns
   const paramNames: string[] = []
   const regexPattern = pattern
     .replace(/:[^/]+/g, (match) => {
-      paramNames.push(match.slice(1)) // Remove the ':'
+      paramNames.push(match.slice(1))
       return '([^/]+)'
     })
 
@@ -105,9 +107,7 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   return params
 }
 
-// Define all sidebar routes with their configurations
 const sidebarRoutes: SidebarRoute[] = [
-  // Auth and docs pages - no sidebar (highest priority)
   {
     patterns: [
       { pattern: '/sign*' },
@@ -116,8 +116,6 @@ const sidebarRoutes: SidebarRoute[] = [
     getSidebarConfig: () => null,
     priority: 100
   },
-
-  // Project agents routes - Both list and api-keys pages (high priority)
   {
     patterns: [
       { pattern: '/:projectId/agents' },
@@ -159,22 +157,20 @@ const sidebarRoutes: SidebarRoute[] = [
     },
     priority: 95
   },
-
-  // Individual agent detail pages (high priority but less than project routes above)
   {
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/observability' },
+      { pattern: '/:projectId/agents/:agentId/phone-call-config' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
       const { isEnhancedProject, agentType } = context
 
-      // Additional safety check to prevent reserved words from being treated as agent IDs
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability'];
       if (reservedPaths.includes(agentId)) {
-        return null; // Let other routes handle this
+        return null;
       }
 
       const baseNavigation = [
@@ -194,9 +190,10 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Show Agent Config for pype_agent type agents (instead of checking project ID)
+      // Configuration items
+      const configItems = []
       if (agentType === 'pype_agent') {
-        baseNavigation.push({ 
+        configItems.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
           icon: 'Settings', 
@@ -205,16 +202,37 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      const navigation = isEnhancedProject ? [
-        ...baseNavigation,
-        { 
+      // Call items
+      const callItems = []
+      if (agentType === 'pype_agent') {
+        callItems.push({
+          id: 'phone-call',
+          name: 'Phone Calls',
+          icon: 'Phone',
+          path: `/${projectId}/agents/${agentId}/phone-call-config`,
+          group: 'call configuration'
+        })
+      }
+
+      // Enhanced project items
+      const enhancedItems = []
+      if (isEnhancedProject) {
+        enhancedItems.push({ 
           id: 'campaign-logs', 
           name: 'Campaign Logs', 
           icon: 'BarChart3', 
           path: `/${projectId}/agents/${agentId}?tab=campaign-logs`, 
           group: 'Batch Calls' 
-        }
-      ] : baseNavigation
+        })
+      }
+
+      // Combine all navigation items
+      const navigation = [
+        ...baseNavigation,
+        ...configItems,
+        // ...callItems,
+        ...enhancedItems
+      ]
 
       return {
         type: 'agent-detail',
@@ -227,12 +245,10 @@ const sidebarRoutes: SidebarRoute[] = [
     },
     priority: 90
   },
-
-  // Default home/workspaces sidebar (lowest priority)
   {
     patterns: [
       { pattern: '/', exact: true },
-      { pattern: '*' } // Catch-all
+      { pattern: '*' }
     ],
     getSidebarConfig: () => ({
       type: 'workspaces',
@@ -259,35 +275,24 @@ const sidebarRoutes: SidebarRoute[] = [
   }
 ]
 
-// Main function to get sidebar configuration
 const getSidebarConfig = (
   pathname: string, 
   context: SidebarContext
 ): SidebarConfig | null => {
-  // Sort routes by priority (highest first)
   const sortedRoutes = [...sidebarRoutes].sort((a, b) => (b.priority || 0) - (a.priority || 0))
 
-  // Debug logging to help troubleshoot
-  
   for (const route of sortedRoutes) {
     for (const { pattern, exact } of route.patterns) {
       let params: RouteParams | null = null
 
       if (exact) {
-        // Exact match
         if (pathname === pattern) {
           params = {}
         }
       } else if (pattern.endsWith('*')) {
-        // Wildcard match
         params = matchRoute(pathname, pattern)
-        if (params) {
-        }
       } else {
-        // Pattern match
         params = matchRoute(pathname, pattern)
-        if (params) {
-        }
       }
 
       if (params !== null) {
@@ -304,14 +309,14 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const pathname = usePathname()
   const { user } = useUser()
   
+  const { isMobile, mounted } = useMobile(768)
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false)
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
   
-  // Extract project ID and agent ID from pathname
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
   const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
   
-  // Fetch project data
   const { data: projects } = useSupabaseQuery('pype_voice_projects', 
     projectId && projectId !== 'sign' && projectId !== 'docs' ? {
       select: 'id, name',
@@ -319,7 +324,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     } : null
   )
 
-  // Fetch agent data when we have an agent ID to get the agent_type
   const { data: agents } = useSupabaseQuery('pype_voice_agents', 
     agentId && projectId && projectId !== 'sign' && projectId !== 'docs' ? {
       select: 'id, agent_type',
@@ -327,7 +331,25 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     } : null
   )
   
-  // Fetch user role and permissions
+  // Load collapse preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedState = localStorage.getItem('whispey-sidebar-collapsed')
+      if (savedState !== null) {
+        setIsDesktopCollapsed(JSON.parse(savedState))
+      }
+    }
+  }, [])
+
+  const handleDesktopToggle = () => {
+    const newState = !isDesktopCollapsed
+    setIsDesktopCollapsed(newState)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('whispey-sidebar-collapsed', JSON.stringify(newState))
+    }
+  }
+
+  // Fetch user role and permissions (keep your existing logic)
   useEffect(() => {
     const fetchUserRole = async () => {
       if (!user?.emailAddresses?.[0]?.emailAddress || !projectId || projectId === 'sign' || projectId === 'docs') {
@@ -349,30 +371,78 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   }, [user, projectId])
   
   const project = projects?.[0]
-  const agent = agents?.[0] // Get the agent data
+  const agent = agents?.[0]
   const isEnhancedProject = project?.id === ENHANCED_PROJECT_ID
   
   const sidebarContext: SidebarContext = {
     isEnhancedProject,
     userCanViewApiKeys,
     projectId,
-    agentType: agent?.agent_type // Pass the agent_type from the database query
+    agentType: agent?.agent_type
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)
 
-  // No sidebar - full width layout
-  if (!sidebarConfig) {
+  if (!sidebarConfig || !mounted) {
     return <div className="min-h-screen">{children}</div>
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar config={sidebarConfig} currentPath={pathname} />
-      
-      <main className="flex-1 ml-64 overflow-auto">
-        {children}
-      </main>
+    <div className="h-screen flex">
+      {/* Mobile: Sheet-based sidebar */}
+      {isMobile ? (
+        <>
+          {/* Mobile Header */}
+          <div className="fixed top-0 left-0 right-0 h-14 bg-white dark:bg-gray-800 border-b flex items-center justify-between px-4 z-50 md:hidden">
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="Whispey" className="w-6 h-6" />
+              <span className="font-semibold text-sm">Whispey</span>
+            </div>
+            
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="p-2">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <VisuallyHidden>
+                  <SheetTitle>Navigation Menu</SheetTitle>
+                </VisuallyHidden>
+                <Sidebar 
+                  config={sidebarConfig} 
+                  currentPath={pathname}
+                  isCollapsed={false}
+                  isMobile={true}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
+          
+          {/* Mobile Main Content */}
+          <main className="flex-1 pt-14 overflow-auto">
+            {children}
+          </main>
+        </>
+      ) : (
+        /* Desktop: Fixed sidebar */
+        <>
+          <div className="relative">
+            <Sidebar 
+              config={sidebarConfig} 
+              currentPath={pathname}
+              isCollapsed={isDesktopCollapsed}
+              onToggleCollapse={handleDesktopToggle}
+              isMobile={false}
+            />
+          </div>
+          
+          {/* Desktop Main Content */}
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </>
+      )}
     </div>
   )
 }

@@ -22,7 +22,9 @@ import {
   Play,
   Terminal,
   Key,
-  Download
+  Download,
+  Menu,
+  X
 } from 'lucide-react'
 import Overview from './Overview'
 import CallLogs from './calls/CallLogs'
@@ -39,6 +41,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import QuickStartGuide from './QuickStartGuide'
+import { useMobile } from '@/hooks/use-mobile'
 
 interface DashboardProps {
   agentId: string
@@ -70,25 +73,27 @@ const formatDateISO = (date: Date) => {
 }
 
 // Component for skeleton when agent data is loading
-function AgentHeaderSkeleton() {
+function AgentHeaderSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
-    <div className="flex items-center gap-4">
-      <div className="h-8 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-      <div className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+    <div className="flex items-center gap-3">
+      <div className={`${isMobile ? 'h-6 w-32' : 'h-8 w-40'} bg-gray-200 dark:bg-gray-700 rounded animate-pulse`}></div>
+      <div className={`${isMobile ? 'h-5 w-16' : 'h-6 w-20'} bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse`}></div>
     </div>
   )
 }
 
 // Simple No Calls component for VAPI agents
 function NoCallsMessage() {
+  const { isMobile } = useMobile(768)
+  
   return (
     <div className="flex-1 flex items-center justify-center h-full">
       <div className="text-center">
-        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Bot className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+        <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4`}>
+          <Bot className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} text-gray-400 dark:text-gray-500`} />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No calls yet</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-gray-900 dark:text-gray-100 mb-2`}>No calls yet</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
           Your VAPI agent is ready. Calls will appear here once you start receiving them.
         </p>
       </div>
@@ -99,10 +104,12 @@ function NoCallsMessage() {
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { isMobile } = useMobile(768)
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
   const [vapiStatusLoading, setVapiStatusLoading] = useState(false)
   const [connectingWebhook, setConnectingWebhook] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   
   // Date filter state - these work immediately, no loading needed
   const [quickFilter, setQuickFilter] = useState('7d')
@@ -225,6 +232,11 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     const endDate = new Date()
     const startDate = subDays(endDate, days)
     setDateRange({ from: startDate, to: endDate })
+    
+    // Close mobile menu after selection
+    if (isMobile) {
+      setShowMobileMenu(false)
+    }
   }
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
@@ -252,6 +264,11 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     // Use the full path with projectId
     if (agent?.project_id) {
       router.push(`/${agent.project_id}/agents/${agentId}${query}`)
+    }
+    
+    // Close mobile menu after tab change
+    if (isMobile) {
+      setShowMobileMenu(false)
     }
   }
 
@@ -347,24 +364,24 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     return (
       <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="px-8 py-3">
-            <div className="flex items-center gap-6">
-              <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200">
-                <ChevronLeft className="h-5 w-5" />
+          <div className={`${isMobile ? 'px-4 py-3' : 'px-8 py-3'}`}>
+            <div className="flex items-center gap-4">
+              <button onClick={handleBack} className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200`}>
+                <ChevronLeft className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
               </button>
-              <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                Agent not found
+              <div className={`${isMobile ? 'h-7' : 'h-8'} bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 rounded-lg flex items-center`}>
+                <AlertCircle className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
+                <span className={isMobile ? 'text-xs' : 'text-sm'}>Agent not found</span>
               </div>
             </div>
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 max-w-md text-center">
+          <div className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 ${isMobile ? 'mx-4' : 'max-w-md'} text-center`}>
             <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Agent not found</h2>
+            <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 mb-2`}>Agent not found</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{agentError}</p>
             <Button onClick={handleBack} variant="outline" className="w-full border-gray-200 dark:border-gray-700">
               <ChevronLeft className="h-4 w-4 mr-2" />
@@ -378,29 +395,29 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Header - show structure immediately, skeleton data parts */}
+      {/* Header - Mobile optimized */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="px-8 py-3">
+        <div className={`${isMobile ? 'px-4 py-3' : 'px-8 py-3'}`}>
           <div className="flex items-center justify-between">
             {/* Left: Navigation & Identity */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               <button 
                 onClick={handleBack}
-                className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+                className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200`}
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
               </button>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 {/* Agent name and badge - skeleton while loading */}
                 {agentLoading ? (
-                  <AgentHeaderSkeleton />
+                  <AgentHeaderSkeleton isMobile={isMobile} />
                 ) : agent ? (
                   <>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight truncate max-w-[250px] cursor-default">
+                          <h1 className={`${isMobile ? 'text-lg max-w-[180px]' : 'text-2xl max-w-[250px]'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight truncate cursor-default`}>
                             {agent.name}
                           </h1>
                         </TooltipTrigger>
@@ -410,22 +427,22 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                       </Tooltip>
                     </TooltipProvider>
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-xs font-medium px-3 py-1 rounded-full ${getEnvironmentColor(agent.environment)}`}>
+                      <Badge className={`${isMobile ? 'text-xs px-2 py-0.5' : 'text-xs px-3 py-1'} font-medium rounded-full ${getEnvironmentColor(agent.environment)}`}>
                         {agent.environment}
                       </Badge>
                     </div>
                   </>
                 ) : (
-                  <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-2" />
-                    Agent not found
+                  <div className={`${isMobile ? 'h-7' : 'h-8'} bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 rounded-lg flex items-center`}>
+                    <AlertCircle className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
+                    <span className={isMobile ? 'text-xs' : 'text-sm'}>Agent not found</span>
                   </div>
                 )}
               </div>
 
               {/* VAPI button - show skeleton or button based on agent data */}
               {agentLoading ? (
-                <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse ml-4"></div>
+                <div className={`${isMobile ? 'h-8 w-24' : 'h-9 w-32'} bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse ml-4`}></div>
               ) : isVapiAgent ? (
                 <div className="relative">
                   <Button
@@ -437,22 +454,25 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                       }
                     }}
                     className="ml-4"
+                    size={isMobile ? "sm" : "default"}
                     variant="outline"
                     disabled={vapiStatusLoading || connectingWebhook}
                   >
                     {vapiStatusLoading ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'} animate-spin`} />
                     ) : connectingWebhook ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'} animate-spin`} />
                     ) : vapiStatus?.connected ? (
-                      <Bot className="w-4 h-4 mr-2" />
+                      <Bot className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
                     ) : (
-                      <LinkIcon className="w-4 h-4 mr-2" />
+                      <LinkIcon className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
                     )}
                     
-                    {vapiStatusLoading ? 'Checking...' :
-                    connectingWebhook ? 'Connecting...' :
-                    vapiStatus?.connected ? 'Agent Settings' : 'Connect VAPI'}
+                    <span className={isMobile ? 'text-xs' : 'text-sm'}>
+                      {vapiStatusLoading ? 'Checking...' :
+                      connectingWebhook ? 'Connecting...' :
+                      vapiStatus?.connected ? (isMobile ? 'Settings' : 'Agent Settings') : (isMobile ? 'Connect' : 'Connect VAPI')}
+                    </span>
                   </Button>
                   
                   {!vapiStatusLoading && vapiStatus && (
@@ -470,61 +490,173 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
               ) : null}
             </div>
 
-            {/* Right: Controls - hide when showing Quick Start guide OR No Calls Message */}
+            {/* Right: Controls or Mobile Menu Button */}
             {!showQuickStart && !showNoCallsMessage && (
-              <div className="flex items-center gap-6">
-                {/* Period Filters */}
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Period</span>
-                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                    {quickFilters.map((filter) => (
-                      <button
-                        key={filter.id}
-                        onClick={() => handleQuickFilter(filter.id)}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                          quickFilter === filter.id && !isCustomRange
-                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
-                        }`}
-                      >
-                        {filter.label}
-                      </button>
-                    ))}
-                  </div>
+              <div className="flex items-center gap-4">
+                {isMobile ? (
+                  /* Mobile Menu Button */
+                  <button
+                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                    className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all"
+                  >
+                    {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                  </button>
+                ) : (
+                  /* Desktop Controls */
+                  <>
+                    {/* Period Filters */}
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Period</span>
+                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                        {quickFilters.map((filter) => (
+                          <button
+                            key={filter.id}
+                            onClick={() => handleQuickFilter(filter.id)}
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                              quickFilter === filter.id && !isCustomRange
+                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
+                            }`}
+                          >
+                            {filter.label}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 ${
+                              isCustomRange 
+                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30' 
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            Custom
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
+                          <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={dateRange?.from}
+                            selected={dateRange}
+                            onSelect={handleDateRangeSelect}
+                            numberOfMonths={2}
+                            className="rounded-xl"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    
+                    {/* Field Extractor - skeleton while agent loading */}
+                    {agentLoading ? (
+                      <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                    ) : agent ? (
+                      <FieldExtractorDialog
+                        initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
+                        isEnabled={!!agent?.field_extractor}
+                        onSave={async (data, enabled) => {
+                          const { error } = await supabase
+                            .from('pype_voice_agents')
+                            .update({ field_extractor_prompt: JSON.stringify(data), field_extractor: enabled })
+                            .eq('id', agent.id)
+                          if (!error) {
+                            alert('Saved field extractor config.')
+                            refetchAgent()
+                          } else {
+                            alert('Error saving config: ' + error.message)
+                          }
+                        }}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        {isMobile && showMobileMenu && !showQuickStart && !showNoCallsMessage && (
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div className="px-4 py-3 space-y-3">
+              {/* Period Filters */}
+              <div>
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Period</div>
+                <div className="flex flex-wrap gap-2">
+                  {quickFilters.map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => handleQuickFilter(filter.id)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                        quickFilter === filter.id && !isCustomRange
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
                   
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 ${
+                      <button
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 ${
                           isCustomRange 
-                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30' 
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                         }`}
                       >
-                        <CalendarDays className="mr-2 h-4 w-4" />
+                        <CalendarDays className="h-3 w-3" />
                         Custom
-                      </Button>
+                      </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
+                    <PopoverContent className="w-auto p-0" align="end">
                       <Calendar
                         initialFocus
                         mode="range"
                         defaultMonth={dateRange?.from}
                         selected={dateRange}
                         onSelect={handleDateRangeSelect}
-                        numberOfMonths={2}
-                        className="rounded-xl"
+                        numberOfMonths={1}
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
-                
-                {/* Field Extractor - skeleton while agent loading */}
-                {agentLoading ? (
-                  <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                ) : agent ? (
+              </div>
+
+              {/* Tabs */}
+              {/* <div>
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
+                <div className="space-y-1">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                          activeTab === tab.id
+                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {tab.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div> */}
+
+              {/* Field Extractor for mobile */}
+              {agent && (
+                <div>
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Tools</div>
                   <FieldExtractorDialog
                     initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                     isEnabled={!!agent?.field_extractor}
@@ -541,11 +673,11 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                       }
                     }}
                   />
-                ) : null}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Content - Show Quick Start for non-VAPI agents, simple message for VAPI agents */}

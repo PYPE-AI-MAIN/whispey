@@ -55,6 +55,7 @@ import { Button } from './ui/button'
 import { supabase } from '@/lib/supabase'
 import Papa from 'papaparse'
 import { useTheme } from 'next-themes'
+import { useMobile } from '@/hooks/use-mobile'
 
 interface OverviewProps {
   project: any
@@ -99,27 +100,27 @@ const AVAILABLE_COLUMNS = [
   { key: 'transcription_metrics', label: 'Transcription Metrics', type: 'jsonb' as const }
 ]
 
-// Skeleton components for different sections
-function MetricsGridSkeleton({ role }: { role: string | null }) {
+// Mobile-responsive skeleton components
+function MetricsGridSkeleton({ role, isMobile }: { role: string | null; isMobile: boolean }) {
   const getVisibleCardCount = () => {
     if (role === 'user') return 4 // Hide cost cards for users
     return 6 // Show all cards for other roles
   }
 
   return (
-    <div className="grid grid-cols-6 gap-4">
+    <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-6 gap-4'}`}>
       {Array.from({ length: getVisibleCardCount() }).map((_, index) => (
         <div key={index} className="group">
           <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm">
-            <div className="p-5">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-9 h-9 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                <div className="w-12 h-5 bg-gray-100 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className={isMobile ? 'p-3' : 'p-5'}>
+              <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                <div className={`${isMobile ? 'w-7 h-7' : 'w-9 h-9'} bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse`}></div>
+                <div className={`${isMobile ? 'w-8 h-4' : 'w-12 h-5'} bg-gray-100 dark:bg-gray-700 rounded animate-pulse`}></div>
               </div>
-              <div className="space-y-2">
-                <div className="h-3 w-20 bg-gray-200 dark:bg-gray-600 animate-pulse rounded"></div>
-                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-600 animate-pulse rounded"></div>
-                <div className="h-3 w-16 bg-gray-100 dark:bg-gray-700 animate-pulse rounded"></div>
+              <div className="space-y-1">
+                <div className={`${isMobile ? 'h-2 w-16' : 'h-3 w-20'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
+                <div className={`${isMobile ? 'h-6 w-12' : 'h-8 w-16'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
+                <div className={`${isMobile ? 'h-2 w-12' : 'h-3 w-16'} bg-gray-100 dark:bg-gray-700 animate-pulse rounded`}></div>
               </div>
             </div>
           </div>
@@ -129,29 +130,29 @@ function MetricsGridSkeleton({ role }: { role: string | null }) {
   )
 }
 
-function ChartGridSkeleton() {
+function ChartGridSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
       {Array.from({ length: 4 }).map((_, index) => (
         <div key={index} className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm">
-          <div className="border-b border-gray-200 dark:border-gray-700 px-7 py-6">
+          <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-9 h-9 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+              <div className="flex items-center gap-3">
+                <div className={`${isMobile ? 'w-7 h-7' : 'w-9 h-9'} bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse`}></div>
                 <div>
-                  <div className="h-5 w-32 bg-gray-200 dark:bg-gray-600 animate-pulse rounded mb-2"></div>
-                  <div className="h-4 w-48 bg-gray-100 dark:bg-gray-700 animate-pulse rounded"></div>
+                  <div className={`${isMobile ? 'h-4 w-24 mb-1' : 'h-5 w-32 mb-2'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
+                  <div className={`${isMobile ? 'h-3 w-32' : 'h-4 w-48'} bg-gray-100 dark:bg-gray-700 animate-pulse rounded`}></div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="h-4 w-12 bg-gray-100 dark:bg-gray-700 animate-pulse rounded mb-1"></div>
-                <div className="h-5 w-8 bg-gray-200 dark:bg-gray-600 animate-pulse rounded"></div>
+                <div className={`${isMobile ? 'h-3 w-8 mb-1' : 'h-4 w-12 mb-1'} bg-gray-100 dark:bg-gray-700 animate-pulse rounded`}></div>
+                <div className={`${isMobile ? 'h-4 w-6' : 'h-5 w-8'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
               </div>
             </div>
           </div>
-          <div className="p-7">
-            <div className="h-80 bg-gray-50 dark:bg-gray-800 rounded-lg animate-pulse flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
+          <div className={isMobile ? 'p-4' : 'p-7'}>
+            <div className={`${isMobile ? 'h-48' : 'h-80'} bg-gray-50 dark:bg-gray-800 rounded-lg animate-pulse flex items-center justify-center`}>
+              <Loader2 className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} animate-spin text-gray-400 dark:text-gray-500`} />
             </div>
           </div>
         </div>
@@ -168,6 +169,7 @@ const Overview: React.FC<OverviewProps> = ({
 }) => {
 
   const { theme } = useTheme()
+  const { isMobile } = useMobile(768)
   const [role, setRole] = useState<string | null>(null)
   const [customTotals, setCustomTotals] = useState<CustomTotalConfig[]>([])
   const [customTotalResults, setCustomTotalResults] = useState<CustomTotalResult[]>([])
@@ -536,9 +538,9 @@ const Overview: React.FC<OverviewProps> = ({
   if (parentLoading || roleLoading || analyticsLoading) {
     return (
       <div className="h-full bg-gray-50 dark:bg-gray-900">
-        <div className="p-8 space-y-8">
-          <MetricsGridSkeleton role={role} />
-          <ChartGridSkeleton />
+        <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-8 space-y-8'}`}>
+          <MetricsGridSkeleton role={role} isMobile={isMobile} />
+          <ChartGridSkeleton isMobile={isMobile} />
         </div>
       </div>
     )
@@ -547,14 +549,14 @@ const Overview: React.FC<OverviewProps> = ({
   if (error) {
     return (
       <div className="h-full bg-gray-50 dark:bg-gray-900">
-        <div className="p-8">
+        <div className={isMobile ? 'p-4' : 'p-8'}>
           <div className="flex items-center justify-center py-20">
             <div className="text-center space-y-6 max-w-sm">
-              <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-2xl border border-red-200 dark:border-red-800 flex items-center justify-center mx-auto shadow-sm">
-                <Warning weight="light" className="w-7 h-7 text-red-400 dark:text-red-500" />
+              <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-white dark:bg-gray-800 rounded-2xl border border-red-200 dark:border-red-800 flex items-center justify-center mx-auto shadow-sm`}>
+                <Warning weight="light" className={`${isMobile ? 'w-6 h-6' : 'w-7 h-7'} text-red-400 dark:text-red-500`} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Unable to Load Analytics</h3>
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-gray-900 dark:text-gray-100`}>Unable to Load Analytics</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{error}</p>
               </div>
             </div>
@@ -568,14 +570,14 @@ const Overview: React.FC<OverviewProps> = ({
   if (!analytics) {
     return (
       <div className="h-full bg-gray-50 dark:bg-gray-900">
-        <div className="p-8">
+        <div className={isMobile ? 'p-4' : 'p-8'}>
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-8">
-              <div className="w-20 h-20 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center mx-auto shadow-sm">
-                <CalendarBlank weight="light" className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+              <div className={`${isMobile ? 'w-16 h-16' : 'w-20 h-20'} bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center mx-auto shadow-sm`}>
+                <CalendarBlank weight="light" className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} text-gray-400 dark:text-gray-500`} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100">No Data Available</h3>
+                <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-medium text-gray-900 dark:text-gray-100`}>No Data Available</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
                   No calls found for the selected time period. Try adjusting your date range or check back later.
                 </p>
@@ -589,22 +591,22 @@ const Overview: React.FC<OverviewProps> = ({
 
   return (
     <div className="h-full bg-gray-50 dark:bg-gray-900">
-      <div className="p-8 space-y-8">
-        {/* Metrics Grid - Now shows real data */}
-        <div className="grid grid-cols-6 gap-4">
+      <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-8 space-y-8'}`}>
+        {/* Metrics Grid - Responsive layout */}
+        <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-6 gap-4'}`}>
           {/* Total Calls */}
           <div className="group">
             <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                    <Phone weight="regular" className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className={isMobile ? 'p-3' : 'p-5'}>
+                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                  <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
+                    <Phone weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Calls</h3>
-                  <p className="text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">{analytics?.totalCalls?.toLocaleString() || '0'}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">All time</p>
+                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Total Calls</h3>
+                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalCalls?.toLocaleString() || '0'}</p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>All time</p>
                 </div>
               </div>
             </div>
@@ -613,21 +615,28 @@ const Overview: React.FC<OverviewProps> = ({
           {/* Total Minutes */}
           <div className="group">
             <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
-                    <Clock weight="regular" className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <div className={isMobile ? 'p-3' : 'p-5'}>
+                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                  <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
+                    <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                      {analytics?.totalCalls && analytics?.totalMinutes ? Math.round(analytics.totalMinutes / analytics.totalCalls) : 0}m avg
-                    </span>
-                  </div>
+                  {!isMobile && (
+                    <div className="text-right">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                        {analytics?.totalCalls && analytics?.totalMinutes ? Math.round(analytics.totalMinutes / analytics.totalCalls) : 0}m avg
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Minutes</h3>
-                  <p className="text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">{analytics?.totalMinutes?.toLocaleString() || '0'}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Duration</p>
+                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Total Minutes</h3>
+                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalMinutes?.toLocaleString() || '0'}</p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
+                    {isMobile && analytics?.totalCalls && analytics?.totalMinutes 
+                      ? `${Math.round(analytics.totalMinutes / analytics.totalCalls)}m avg`
+                      : 'Duration'
+                    }
+                  </p>
                 </div>
               </div>
             </div>
@@ -637,19 +646,21 @@ const Overview: React.FC<OverviewProps> = ({
           {role !== 'user' && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800">
-                      <CurrencyDollar weight="regular" className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800`}>
+                      <CurrencyDollar weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-amber-600 dark:text-amber-400`} />
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">INR</span>
-                    </div>
+                    {!isMobile && (
+                      <div className="text-right">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">INR</span>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Cost</h3>
-                    <p className="text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">₹{analytics?.totalCost?.toFixed(2) || '0.00'}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Cumulative</p>
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Total Cost</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>₹{analytics?.totalCost?.toFixed(2) || '0.00'}</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Cumulative</p>
                   </div>
                 </div>
               </div>
@@ -660,19 +671,24 @@ const Overview: React.FC<OverviewProps> = ({
           {role !== 'user' && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800">
-                      <Lightning weight="regular" className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-100 dark:border-purple-800`}>
+                      <Lightning weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-purple-600 dark:text-purple-400`} />
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">avg</span>
-                    </div>
+                    {!isMobile && (
+                      <div className="text-right">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">avg</span>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Response Time</h3>
-                    <p className="text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">{analytics?.averageLatency?.toFixed(2) || '0.00'}<span className="text-lg text-gray-400 dark:text-gray-500 ml-1">s</span></p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Performance</p>
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Response Time</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>
+                      {analytics?.averageLatency?.toFixed(2) || '0.00'}
+                      <span className={`${isMobile ? 'text-sm ml-0.5' : 'text-lg ml-1'} text-gray-400 dark:text-gray-500`}>s</span>
+                    </p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Performance</p>
                   </div>
                 </div>
               </div>
@@ -682,24 +698,24 @@ const Overview: React.FC<OverviewProps> = ({
           {/* Successful Calls */}
           <div className="group">
             <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800">
-                    <CheckCircle weight="regular" className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <div className={isMobile ? 'p-3' : 'p-5'}>
+                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                  <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
+                    <CheckCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-md border border-green-100 dark:border-green-800">
-                      <ArrowUp weight="bold" className="w-3 h-3 text-green-600 dark:text-green-400" />
-                      <span className="text-xs font-bold text-green-600 dark:text-green-400">
+                    <div className={`flex items-center gap-1 bg-green-50 dark:bg-green-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-green-100 dark:border-green-800`}>
+                      <ArrowUp weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-green-600 dark:text-green-400`} />
+                      <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-green-600 dark:text-green-400`}>
                         {analytics ? successRate.toFixed(1) : '0.0'}%
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Successful</h3>
-                  <p className="text-2xl font-light text-green-600 dark:text-green-400 tracking-tight">{analytics?.successfulCalls?.toLocaleString() || '0'}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Completed calls</p>
+                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Successful</h3>
+                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-green-600 dark:text-green-400 tracking-tight`}>{analytics?.successfulCalls?.toLocaleString() || '0'}</p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Completed calls</p>
                 </div>
               </div>
             </div>
@@ -708,24 +724,24 @@ const Overview: React.FC<OverviewProps> = ({
           {/* Failed Calls */}
           <div className="group">
             <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800">
-                    <XCircle weight="regular" className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <div className={isMobile ? 'p-3' : 'p-5'}>
+                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                  <div className={`p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800`}>
+                    <XCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-red-600 dark:text-red-400`} />
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-md border border-red-100 dark:border-red-800">
-                      <ArrowDown weight="bold" className="w-3 h-3 text-red-600 dark:text-red-400" />
-                      <span className="text-xs font-bold text-red-600 dark:text-red-400">
+                    <div className={`flex items-center gap-1 bg-red-50 dark:bg-red-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-red-100 dark:border-red-800`}>
+                      <ArrowDown weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-red-600 dark:text-red-400`} />
+                      <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-red-600 dark:text-red-400`}>
                         {analytics ? (100 - successRate).toFixed(1) : '0.0'}%
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Failed</h3>
-                  <p className="text-2xl font-light text-red-600 dark:text-red-400 tracking-tight">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls).toLocaleString() : '0'}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Incomplete calls</p>
+                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Failed</h3>
+                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-red-600 dark:text-red-400 tracking-tight`}>{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls).toLocaleString() : '0'}</p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Incomplete calls</p>
                 </div>
               </div>
             </div>
@@ -740,30 +756,30 @@ const Overview: React.FC<OverviewProps> = ({
             return (
               <div key={config.id} className="group">
                 <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
+                  <div className={isMobile ? 'p-3' : 'p-5'}>
+                    <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
                       <div className={`p-2 ${colorClass.replace('bg-', 'bg-').replace('text-', 'border-')} rounded-lg border`}>
-                        <IconComponent weight="regular" className={`w-5 h-5 ${colorClass.split(' ')[1]}`} />
+                        <IconComponent weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} ${colorClass.split(' ')[1]}`} />
                       </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className={`flex items-center gap-1 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} p-0 hover:bg-gray-100 dark:hover:bg-gray-700`}
                           onClick={() => handleDownloadCustomTotal(config)}
                           title="Download matching logs"
                         >
-                          <Download className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                          <Download className={`${isMobile ? 'h-2.5 w-2.5' : 'h-3 w-3'} text-gray-400 dark:text-gray-500`} />
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} p-0 hover:bg-gray-100 dark:hover:bg-gray-700`}
                             >
-                              <MoreHorizontal className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                              <MoreHorizontal className={`${isMobile ? 'h-2.5 w-2.5' : 'h-3 w-3'} text-gray-400 dark:text-gray-500`} />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -777,24 +793,24 @@ const Overview: React.FC<OverviewProps> = ({
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate" title={config.name}>
+                      <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate`} title={config.name}>
                         {config.name}
                       </h3>
-                      <p className="text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">
+                      <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>
                         {loadingCustomTotals || !result ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Loader2 className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} animate-spin`} />
                         ) : (
                           formatCustomTotalValue(result, config)
                         )}
                       </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                      <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
                         {config.filters.length > 0 
-                          ? `${config.filters.length} filter${config.filters.length > 1 ? 's' : ''} (${config.filterLogic})`
+                          ? `${config.filters.length} filter${config.filters.length > 1 ? 's' : ''}`
                           : 'No filters'
                         }
                       </p>
                       {result?.error && (
-                        <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                        <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-red-500 dark:text-red-400 mt-1`}>
                           {result.error}
                         </p>
                       )}
@@ -808,7 +824,7 @@ const Overview: React.FC<OverviewProps> = ({
 
         {process.env.NODE_ENV === 'development' && (
           <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
-            <CardContent className="p-4">
+            <CardContent className={isMobile ? 'p-3' : 'p-4'}>
               <div className="text-sm">
                 <strong>Debug - Dynamic Fields:</strong>
                 <div>Metadata: {metadataFields.join(', ') || 'None'}</div>
@@ -818,46 +834,50 @@ const Overview: React.FC<OverviewProps> = ({
           </Card>
         )}
 
-        {/* 2x2 Chart Grid */}
-        <div className="grid grid-cols-2 gap-6">
+        {/* Chart Grid - Single column on mobile */}
+        <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
           {/* Daily Calls Chart */}
           <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-7 py-6">
+            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                    <TrendUp weight="regular" className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
+                    <TrendUp weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Daily Call Volume</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Trend analysis over selected period</p>
+                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Daily Call Volume</h3>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
+                      {isMobile ? 'Trend analysis' : 'Trend analysis over selected period'}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Peak</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {analytics?.dailyData && analytics.dailyData.length > 0 
-                        ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
-                        : 0
-                      }
+                {!isMobile && (
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Peak</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {analytics?.dailyData && analytics.dailyData.length > 0 
+                          ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
+                          : 0
+                        }
+                      </div>
+                    </div>
+                    <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="text-right">
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {analytics?.dailyData && analytics.dailyData.length > 0 
+                          ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
+                          : 0
+                        }
+                      </div>
                     </div>
                   </div>
-                  <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
-                  <div className="text-right">
-                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {analytics?.dailyData && analytics.dailyData.length > 0 
-                        ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
-                        : 0
-                      }
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
-            <div className="p-7">
-              <div className="h-80">
+            <div className={isMobile ? 'p-4' : 'p-7'}>
+              <div className={isMobile ? 'h-48' : 'h-80'}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                     <defs>
@@ -871,7 +891,7 @@ const Overview: React.FC<OverviewProps> = ({
                       dataKey="date" 
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: colors.text, fontWeight: 500 }}
+                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
                       height={40}
                       tickFormatter={(value) => {
                         const date = new Date(value)
@@ -881,15 +901,15 @@ const Overview: React.FC<OverviewProps> = ({
                     <YAxis 
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: colors.text, fontWeight: 500 }}
-                      width={45}
+                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                      width={isMobile ? 35 : 45}
                     />
                     <Tooltip 
                       contentStyle={{
                         backgroundColor: colors.background,
                         border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
                         borderRadius: '12px',
-                        fontSize: '13px',
+                        fontSize: isMobile ? '12px' : '13px',
                         fontWeight: '500',
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
                         backdropFilter: 'blur(20px)',
@@ -910,11 +930,11 @@ const Overview: React.FC<OverviewProps> = ({
                       type="monotone" 
                       dataKey="calls" 
                       stroke={colors.primary} 
-                      strokeWidth={3}
+                      strokeWidth={isMobile ? 2 : 3}
                       fill="url(#callsGradient)"
                       dot={false}
                       activeDot={{ 
-                        r: 6, 
+                        r: isMobile ? 4 : 6, 
                         fill: colors.primary, 
                         strokeWidth: 3, 
                         stroke: colors.background,
@@ -927,37 +947,37 @@ const Overview: React.FC<OverviewProps> = ({
             </div>
           </div>
 
-          {/* Success Analysis Chart */}
+          {/* Success Analysis Chart - Mobile optimized */}
           <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-7 py-6">
+            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800">
-                    <Target weight="regular" className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
+                    <Target weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Success Analysis</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Call completion metrics</p>
+                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Success Analysis</h3>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>Call completion metrics</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Success Rate</div>
-                  <div className="text-2xl font-light text-green-600 dark:text-green-400">{analytics ? successRate.toFixed(1) : '0.0'}%</div>
+                  <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400`}>Success Rate</div>
+                  <div className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-green-600 dark:text-green-400`}>{analytics ? successRate.toFixed(1) : '0.0'}%</div>
                 </div>
               </div>
             </div>
-            <div className="p-7">
-              <div className="h-80 flex items-center justify-center">
+            <div className={isMobile ? 'p-4' : 'p-7'}>
+              <div className={`${isMobile ? 'h-48' : 'h-80'} flex items-center justify-center`}>
                 <div className="relative">
-                  <div className="w-48 h-48">
+                  <div className={isMobile ? 'w-32 h-32' : 'w-48 h-48'}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={successFailureData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={55}
-                          outerRadius={85}
+                          innerRadius={isMobile ? 35 : 55}
+                          outerRadius={isMobile ? 55 : 85}
                           paddingAngle={2}
                           dataKey="value"
                           strokeWidth={0}
@@ -973,7 +993,7 @@ const Overview: React.FC<OverviewProps> = ({
                             backgroundColor: colors.background,
                             border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
                             borderRadius: '12px',
-                            fontSize: '13px',
+                            fontSize: isMobile ? '12px' : '13px',
                             fontWeight: '500',
                             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                             backdropFilter: 'blur(20px)',
@@ -985,20 +1005,20 @@ const Overview: React.FC<OverviewProps> = ({
                     </ResponsiveContainer>
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className="text-3xl font-light text-gray-900 dark:text-gray-100 mb-1">{analytics?.totalCalls || 0}</div>
-                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total</div>
+                    <div className={`${isMobile ? 'text-xl' : 'text-3xl'} font-light text-gray-900 dark:text-gray-100 mb-1`}>{analytics?.totalCalls || 0}</div>
+                    <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide`}>Total</div>
                   </div>
                 </div>
-                <div className="ml-8 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.success }}></div>
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Successful</div>
-                    <div className="text-sm font-light text-gray-500 dark:text-gray-400">{analytics?.successfulCalls || 0}</div>
+                <div className={`${isMobile ? 'ml-4 space-y-2' : 'ml-8 space-y-3'}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.success }}></div>
+                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Success</div>
+                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.successfulCalls || 0}</div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.danger }}></div>
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Failed</div>
-                    <div className="text-sm font-light text-gray-500 dark:text-gray-400">{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
+                  <div className="flex items-center gap-2">
+                    <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.danger }}></div>
+                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Failed</div>
+                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
                   </div>
                 </div>
               </div>
@@ -1007,21 +1027,23 @@ const Overview: React.FC<OverviewProps> = ({
 
           {/* Daily Minutes Chart */}
           <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-7 py-6">
+            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                    <ChartBar weight="regular" className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
+                    <ChartBar weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Usage Minutes</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Daily conversation duration</p>
+                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Usage Minutes</h3>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
+                      {isMobile ? 'Daily duration' : 'Daily conversation duration'}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="p-7">
-              <div className="h-80">
+            <div className={isMobile ? 'p-4' : 'p-7'}>
+              <div className={isMobile ? 'h-48' : 'h-80'}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
                     <defs>
@@ -1035,7 +1057,7 @@ const Overview: React.FC<OverviewProps> = ({
                       dataKey="date" 
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: colors.text, fontWeight: 500 }}
+                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
                       height={40}
                       tickFormatter={(value) => {
                         const date = new Date(value)
@@ -1045,8 +1067,8 @@ const Overview: React.FC<OverviewProps> = ({
                     <YAxis 
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: colors.text, fontWeight: 500 }}
-                      width={40}
+                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                      width={isMobile ? 35 : 40}
                       tickFormatter={(value) => `${value}m`}
                     />
                     <Tooltip 
@@ -1054,7 +1076,7 @@ const Overview: React.FC<OverviewProps> = ({
                         backgroundColor: colors.background,
                         border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
                         borderRadius: '12px',
-                        fontSize: '13px',
+                        fontSize: isMobile ? '12px' : '13px',
                         fontWeight: '500',
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                         backdropFilter: 'blur(20px)',
@@ -1083,21 +1105,23 @@ const Overview: React.FC<OverviewProps> = ({
 
           {/* Average Latency Chart */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-7 py-6">
+            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800">
-                    <Activity weight="regular" className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800`}>
+                    <Activity weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-orange-600 dark:text-orange-400`} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Response Performance</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Average latency metrics</p>
+                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Response Performance</h3>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
+                      {isMobile ? 'Latency metrics' : 'Average latency metrics'}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="p-7">
-              <div className="h-80">
+            <div className={isMobile ? 'p-4' : 'p-7'}>
+              <div className={isMobile ? 'h-48' : 'h-80'}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
                     <defs>
@@ -1111,7 +1135,7 @@ const Overview: React.FC<OverviewProps> = ({
                       dataKey="date" 
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: colors.text, fontWeight: 500 }}
+                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
                       height={40}
                       tickFormatter={(value) => {
                         const date = new Date(value)
@@ -1121,8 +1145,8 @@ const Overview: React.FC<OverviewProps> = ({
                     <YAxis 
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: colors.text, fontWeight: 500 }}
-                      width={40}
+                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                      width={isMobile ? 35 : 40}
                       tickFormatter={(value) => `${value}s`}
                     />
                     <Tooltip 
@@ -1130,7 +1154,7 @@ const Overview: React.FC<OverviewProps> = ({
                         backgroundColor: colors.background,
                         border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
                         borderRadius: '12px',
-                        fontSize: '13px',
+                        fontSize: isMobile ? '12px' : '13px',
                         fontWeight: '500',
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
                         backdropFilter: 'blur(20px)',
@@ -1150,11 +1174,11 @@ const Overview: React.FC<OverviewProps> = ({
                       type="monotone" 
                       dataKey="avg_latency" 
                       stroke="#ff9500" 
-                      strokeWidth={3}
+                      strokeWidth={isMobile ? 2 : 3}
                       fill="url(#latencyGradient)"
                       dot={false}
                       activeDot={{ 
-                        r: 6, 
+                        r: isMobile ? 4 : 6, 
                         fill: '#ff9500', 
                         strokeWidth: 3, 
                         stroke: colors.background,
@@ -1168,32 +1192,34 @@ const Overview: React.FC<OverviewProps> = ({
           </div>
         </div>
 
-        {/* Chart Analytics Section */}
-        <ChartProvider>
-          <div className="space-y-6">
-            <EnhancedChartBuilder 
-              agentId={agent?.id}
-              dateFrom={dateRange.from}
-              dateTo={dateRange.to}
-              metadataFields={metadataFields}
-              transcriptionFields={transcriptionFields}
-              fieldsLoading={fieldsLoading}
-            />
-
-            {/* Floating Action Menu - only show when we have required data */}
-            {userEmail && !fieldsLoading && agent?.id && project?.id && (
-              <FloatingActionMenu
+        {/* Chart Analytics Section - Hidden on mobile for better performance */}
+        {!isMobile && (
+          <ChartProvider>
+            <div className="space-y-6">
+              <EnhancedChartBuilder 
+                agentId={agent?.id}
+                dateFrom={dateRange.from}
+                dateTo={dateRange.to}
                 metadataFields={metadataFields}
                 transcriptionFields={transcriptionFields}
-                agentId={agent.id}
-                projectId={project.id}
-                userEmail={userEmail}
-                availableColumns={AVAILABLE_COLUMNS}
-                onSaveCustomTotal={handleSaveCustomTotal}
+                fieldsLoading={fieldsLoading}
               />
-            )}
-          </div>
-        </ChartProvider>
+
+              {/* Floating Action Menu - only show when we have required data */}
+              {userEmail && !fieldsLoading && agent?.id && project?.id && (
+                <FloatingActionMenu
+                  metadataFields={metadataFields}
+                  transcriptionFields={transcriptionFields}
+                  agentId={agent.id}
+                  projectId={project.id}
+                  userEmail={userEmail}
+                  availableColumns={AVAILABLE_COLUMNS}
+                  onSaveCustomTotal={handleSaveCustomTotal}
+                />
+              )}
+            </div>
+          </ChartProvider>
+        )}
       </div>
     </div>
   )

@@ -567,7 +567,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                     </>
                   ) : (
                     <>
-                      <Phone className="w-4 w-4 mr-2" />
+                      <Phone className="w-4 mr-2" />
                       Start Call
                     </>
                   )}
