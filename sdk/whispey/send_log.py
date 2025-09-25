@@ -3,15 +3,21 @@ import os
 import json
 import asyncio
 import aiohttp
+import gzip
+import base64
 from datetime import datetime
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
 # Configuration
 WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
-# WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"
+# WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"  # Direct to your self-hosted instance
 WHISPEY_API_KEY = os.getenv("WHISPEY_API_KEY")
+
+# Compression settings
+COMPRESSION_THRESHOLD = 10 * 1024  # 10KB - compress if larger than this
 
 def convert_timestamp(timestamp_value):
     """
@@ -46,13 +52,52 @@ def convert_timestamp(timestamp_value):
     # Default: convert to string
     return str(timestamp_value)
 
+def compress_data(data):
+    """
+    Compress data using gzip and encode as base64
+    
+    Args:
+        data (dict): Data to compress
+        
+    Returns:
+        str: Compressed and base64 encoded data
+    """
+    json_str = json.dumps(data)
+    compressed = gzip.compress(json_str.encode('utf-8'))
+    return base64.b64encode(compressed).decode('utf-8')
+
+def get_payload_size(data):
+    """
+    Get the size of JSON serialized data in bytes
+    
+    Args:
+        data (dict): Data to measure
+        
+    Returns:
+        int: Size in bytes
+    """
+    return len(json.dumps(data).encode('utf-8'))
+
+def should_compress(data):
+    """
+    Determine if data should be compressed based on size
+    
+    Args:
+        data (dict): Data to check
+        
+    Returns:
+        bool: True if data should be compressed
+    """
+    return get_payload_size(data) > COMPRESSION_THRESHOLD
+
 async def send_to_whispey(data, apikey=None, api_url=None):
     """
-    Send data to Whispey API
+    Send data to Whispey API with automatic compression for large payloads
     
     Args:
         data (dict): The data to send to the API
         apikey (str, optional): Custom API key to use. If not provided, uses WHISPEY_API_KEY environment variable
+        api_url (str, optional): Custom API URL to use
     
     Returns:
         dict: Response from the API or error information
@@ -76,6 +121,36 @@ async def send_to_whispey(data, apikey=None, api_url=None):
             "error": error_msg
         }
     
+    # Check if data should be compressed
+    original_size = get_payload_size(data)
+    print(f"📊 Original payload size: {original_size:,} bytes ({original_size/1024/1024:.2f} MB)")
+    
+    if should_compress(data):
+        print(f"🗜️  Compressing data (threshold: {COMPRESSION_THRESHOLD/1024:.1f}KB)...")
+        try:
+            compressed_data = compress_data(data)
+            compressed_size = len(compressed_data.encode('utf-8'))
+            compression_ratio = (1 - compressed_size / original_size) * 100
+            
+            print(f"✅ Compression successful: {compressed_size:,} bytes ({compressed_size/1024/1024:.2f} MB)")
+            print(f"📈 Compression ratio: {compression_ratio:.1f}% reduction")
+            
+            # Create compressed payload
+            payload = {
+                "compressed": True,
+                "data": compressed_data,
+                "original_size": original_size,
+                "compressed_size": compressed_size,
+                "compression_ratio": compression_ratio
+            }
+            
+        except Exception as e:
+            print(f"⚠️  Compression failed: {e}, sending uncompressed data")
+            payload = data
+    else:
+        print(f"📤 Data size under threshold, sending uncompressed")
+        payload = data
+    
     # Headers - ensure no None values
     headers = {
         "Content-Type": "application/json",
@@ -86,20 +161,21 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     headers = {k: v for k, v in headers.items() if k is not None and v is not None}
     
     print(f"📤 Sending data to Whispey API...")
-    print(f"Data keys: {list(data.keys())}")
+    print(f"Data keys: {list(payload.keys())}")
     print(f"Call started at: {data.get('call_started_at')}")
     print(f"Call ended at: {data.get('call_ended_at')}")
     
     try:
         # Determine target URL (overrideable)
         url_to_use = api_url if api_url else WHISPEY_API_URL
+        
         # Test JSON serialization first
-        json_str = json.dumps(data)
-        print(f"✅ JSON serialization OK ({len(json_str)} chars)")
+        json_str = json.dumps(payload)
+        print(f"✅ JSON serialization OK ({len(json_str):,} chars)")
         
         # Send the request
         async with aiohttp.ClientSession() as session:
-            async with session.post(url_to_use, json=data, headers=headers) as response:
+            async with session.post(url_to_use, json=payload, headers=headers) as response:
                 print(f"📡 Response status: {response.status}")
                 
                 if response.status >= 400:
@@ -112,6 +188,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     }
                 else:
                     result = await response.json()
+                    print(f"✅ Successfully sent data")
                     return {
                         "success": True,
                         "status": response.status,
