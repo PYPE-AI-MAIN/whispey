@@ -1,3 +1,4 @@
+<!-- docs/self-hosting.md -->
 # 🏠 Self-hosting Guide
 
 Deploy Whispey on your own infrastructure in 3 simple steps!

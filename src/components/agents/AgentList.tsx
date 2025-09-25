@@ -27,7 +27,7 @@ interface AgentListProps {
   projectId: string
   onCopyAgentId: (agentId: string, e: React.MouseEvent) => void
   onDeleteAgent: (agent: Agent) => void
-  showRunningCounter?: boolean // Add this prop to control showing counter
+  showRunningCounter?: boolean
 }
 
 const AgentList: React.FC<AgentListProps> = ({
@@ -60,13 +60,9 @@ const AgentList: React.FC<AgentListProps> = ({
 
       if (response.ok) {
         const data = await response.json()
-        console.log('Agent started:', data)
-        // Refetch running agents to update status
-        setTimeout(fetchRunningAgents, 2000) // Wait 2s for agent to start
+        setTimeout(fetchRunningAgents, 2000)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('Failed to start agent:', errorData.error)
-        // You might want to show a toast notification here
       }
     } catch (error) {
       console.error('Error starting agent:', error)
@@ -89,13 +85,9 @@ const AgentList: React.FC<AgentListProps> = ({
 
       if (response.ok) {
         const data = await response.json()
-        console.log('Agent stopped:', data)
-        // Refetch running agents to update status
-        setTimeout(fetchRunningAgents, 1000) // Wait 1s for agent to stop
+        setTimeout(fetchRunningAgents, 1000)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('Failed to stop agent:', errorData.error)
-        // You might want to show a toast notification here
       }
     } catch (error) {
       console.error('Error stopping agent:', error)
@@ -110,9 +102,6 @@ const AgentList: React.FC<AgentListProps> = ({
     runningAgents.some(ra => ra.agent_name === agent.name)
   )
 
-  // Force list view on mobile for better UX
-  const effectiveViewMode = isMobile ? 'list' : viewMode
-
   // Fetch running agents status
   const fetchRunningAgents = async () => {
     try {
@@ -121,13 +110,10 @@ const AgentList: React.FC<AgentListProps> = ({
       if (response.ok) {
         const data = await response.json()
         setRunningAgents(data || [])
-        console.log('Fetched running agents:', data)
       } else {
-        console.error('Failed to fetch running agents:', response.status)
         setRunningAgents([])
       }
     } catch (error) {
-      console.error('Error fetching running agents:', error)
       setRunningAgents([])
     } finally {
       setIsLoadingStatus(false)
@@ -137,14 +123,11 @@ const AgentList: React.FC<AgentListProps> = ({
   // Fetch running status on component mount and set up polling
   useEffect(() => {
     fetchRunningAgents()
-
-    // Poll every 15 seconds to keep status updated
     const interval = setInterval(fetchRunningAgents, 15000)
-
     return () => clearInterval(interval)
   }, [])
 
-  // Also refetch when agents list changes (in case new Pype agents are added)
+  // Also refetch when agents list changes
   useEffect(() => {
     const hasPypeAgents = agents.some(agent => agent.agent_type === 'pype_agent')
     if (hasPypeAgents) {
@@ -152,14 +135,51 @@ const AgentList: React.FC<AgentListProps> = ({
     }
   }, [agents])
 
-  if (effectiveViewMode === 'list') {
+  // Mobile-first approach: always use optimized list view on mobile
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {/* Mobile loading indicator */}
+        {isLoadingStatus && agents.some(agent => agent.agent_type === 'pype_agent') && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Checking agent status...</span>
+            </div>
+          </div>
+        )}
+        
+        {agents.map((agent, index) => (
+          <AgentListItem
+            key={agent.id}
+            agent={agent}
+            viewMode="mobile"
+            isSelected={selectedAgent === agent.id}
+            isCopied={copiedAgentId === agent.id}
+            isLastItem={index === agents.length - 1}
+            projectId={projectId}
+            runningAgents={runningAgents}
+            onCopyId={(e) => onCopyAgentId(agent.id, e)}
+            onDelete={() => onDeleteAgent(agent)}
+            onStartAgent={handleStartAgent}
+            onStopAgent={handleStopAgent}
+            isStartingAgent={isStartingAgent === agent.name}
+            isStoppingAgent={isStoppingAgent === agent.name}
+            isMobile={true}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // Desktop view modes
+  if (viewMode === 'list') {
     return (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-        {/* Optional: Show loading indicator for status */}
         {isLoadingStatus && agents.some(agent => agent.agent_type === 'pype_agent') && (
-          <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <div className="w-3 h-3 border border-gray-300 dark:border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+            <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+              <div className="w-4 h-4 border border-gray-300 dark:border-gray-600 border-t-transparent rounded-full animate-spin"></div>
               Checking agent status...
             </div>
           </div>
@@ -180,25 +200,21 @@ const AgentList: React.FC<AgentListProps> = ({
             onStopAgent={handleStopAgent}
             isStartingAgent={isStartingAgent === agent.name}
             isStoppingAgent={isStoppingAgent === agent.name}
-            isMobile={isMobile}
+            isMobile={false}
           />
         ))}
       </div>
     )
   }
 
+  // Desktop grid view
   return (
-    <div className={`grid gap-4 ${
-      isMobile 
-        ? 'grid-cols-1' 
-        : 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
-    }`}>
-      {/* Optional: Show loading indicator for status in grid view */}
+    <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
       {isLoadingStatus && agents.some(agent => agent.agent_type === 'pype_agent') && (
         <div className="col-span-full">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <div className="w-3 h-3 border border-gray-300 dark:border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+              <div className="w-4 h-4 border border-gray-300 dark:border-gray-600 border-t-transparent rounded-full animate-spin"></div>
               Checking Pype agent status...
             </div>
           </div>
@@ -220,7 +236,7 @@ const AgentList: React.FC<AgentListProps> = ({
           onStopAgent={handleStopAgent}
           isStartingAgent={isStartingAgent === agent.name}
           isStoppingAgent={isStoppingAgent === agent.name}
-          isMobile={isMobile}
+          isMobile={false}
         />
       ))}
     </div>
