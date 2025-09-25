@@ -40,21 +40,21 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
       <div className={`flex-1 ${isMobile ? 'px-4 py-3' : 'px-6 py-4'}`}>
         <div className="space-y-3">
           {/* Create Agent Option - Disabled */}
-          <div className={`group relative ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 transition-all duration-200 cursor-not-allowed opacity-75`}>
+          <div
+            className={`group relative ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all duration-200 cursor-pointer`}
+            onClick={onCreateAgent}
+          >
             <div className="flex items-start gap-3">
-              <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center flex-shrink-0`}>
-                <Plus className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-gray-400 dark:text-gray-500`} />
+              <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
+                <Plus className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600 dark:text-blue-400`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className={`flex items-center gap-2 ${isMobile ? 'mb-1' : 'mb-2'}`}>
-                  <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-500 dark:text-gray-400`}>
+                  <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100`}>
                     {isMobile ? 'Create New Agent' : 'Create New Agent with Pype'}
                   </h3>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full flex-shrink-0">
-                    coming soon
-                  </span>
                 </div>
-                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-400 dark:text-gray-500 leading-relaxed`}>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-relaxed`}>
                   {isMobile 
                     ? 'Build a new voice agent from scratch with automatic monitoring setup.'
                     : 'Build a new voice agent from scratch. We\'ll create the assistant and set up monitoring automatically.'

@@ -12,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
-      router.push('/sign')
+      router.push('/sign-in')
     }
   }, [isLoaded, isSignedIn, router])
 

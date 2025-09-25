@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey
+        'x-api-key': 'pype-api-v1'
       },
       body: JSON.stringify(body)
     })
