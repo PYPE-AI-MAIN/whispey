@@ -1,4 +1,4 @@
-// Fixed useVoiceAgent.ts - Key changes highlighted
+// Fixed useVoiceAgent.ts - Security improvements for random generation
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -70,6 +70,38 @@ interface VoiceAgentActions {
   sendTextMessage: (message: string) => Promise<void>
 }
 
+// SECURITY FIX: Cryptographically secure random number generator
+function getSecureRandomInt(max: number): number {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    // Browser environment - use Web Crypto API
+    const array = new Uint32Array(1)
+    window.crypto.getRandomValues(array)
+    return array[0] % max
+  } else if (typeof require !== 'undefined') {
+    // Node.js environment - use crypto module
+    try {
+      const crypto = require('crypto')
+      const bytes = crypto.randomBytes(4)
+      const randomInt = bytes.readUInt32BE(0)
+      return randomInt % max
+    } catch (error) {
+      console.warn('Failed to use crypto module, falling back to Math.random():', error)
+      return Math.floor(Math.random() * max)
+    }
+  } else {
+    // Fallback to Math.random() if crypto is not available
+    console.warn('Crypto API not available, using Math.random() fallback')
+    return Math.floor(Math.random() * max)
+  }
+}
+
+// Alternative: Generate a more secure random string for identities
+function generateSecureId(prefix: string = 'user'): string {
+  const timestamp = Date.now()
+  const randomPart = getSecureRandomInt(100000) // 5-digit random number
+  return `${prefix}_${timestamp}_${randomPart}`
+}
+
 export function useVoiceAgent({ 
   agentName, 
   apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL 
@@ -118,13 +150,17 @@ export function useVoiceAgent({
     }
   }, [isConnected])
 
-  // FIXED: Updated startWebSession to handle your API format
+  // SECURITY FIX: Updated startWebSession with secure random generation
   const startWebSession = async (): Promise<WebSession> => {
     if (!apiBaseUrl) {
       throw new Error('API base URL is not configured')
     }
 
     console.log('📞 Making request to:', `${apiBaseUrl}/start_web_session`)
+
+    // Generate secure random identifiers
+    const userIdentity = generateSecureId('user')
+    const userName = `User ${getSecureRandomInt(10000)}` // Increased range for better uniqueness
 
     const response = await fetch(`${apiBaseUrl}/start_web_session`, {
       method: 'POST',
@@ -133,8 +169,8 @@ export function useVoiceAgent({
         'x-api-key': 'pype-api-v1'
       },
       body: JSON.stringify({
-        user_identity: `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        user_name: `User ${Math.floor(Math.random() * 1000)}`,
+        user_identity: userIdentity,
+        user_name: userName,
         agent_name: agentName
       })
     })
@@ -158,7 +194,7 @@ export function useVoiceAgent({
       // Add backward compatibility fields
       room_name: apiData.room,
       token: apiData.user_token,
-      participant_identity: `user_${Date.now()}`,
+      participant_identity: userIdentity, // Use the same secure identity we generated
       
       // CRITICAL: Add the LiveKit server URL
       // or replace this with your actual LiveKit server URL
@@ -324,7 +360,7 @@ export function useVoiceAgent({
                            participant?.metadata?.toLowerCase().includes('assistant')
         
         const transcript: Transcript = {
-          id: segment.id || `${Date.now()}_${Math.random()}`,
+          id: segment.id || `${Date.now()}_${getSecureRandomInt(100000)}`, // SECURITY FIX: Use secure random
           speaker: isFromAgent ? 'agent' : 'user',
           text: segment.text.trim(),
           timestamp: new Date(),
@@ -576,7 +612,7 @@ export function useVoiceAgent({
       console.log('💬 Text message sent:', message.trim())
       
       const userTranscript: Transcript = {
-        id: `user_${Date.now()}_${Math.random()}`,
+        id: `user_${Date.now()}_${getSecureRandomInt(100000)}`, // SECURITY FIX: Use secure random
         speaker: 'user',
         text: message.trim(),
         timestamp: new Date(),
