@@ -8,7 +8,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
-import { CopyIcon, CheckIcon, SettingsIcon, TypeIcon } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Badge } from '@/components/ui/badge'
+import { 
+  CopyIcon, 
+  CheckIcon, 
+  SettingsIcon, 
+  TypeIcon, 
+  SlidersHorizontal, 
+  PhoneIcon, 
+  Mic, 
+  MicOff, 
+  PhoneOff, 
+  Volume2,
+  Play,
+  Square,
+  Loader2,
+  MessageSquare,
+  User,
+  Bot
+} from 'lucide-react'
 import { languageOptions, firstMessageModes } from '@/utils/constants'
 import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -19,18 +38,206 @@ import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsS
 import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Label } from 'recharts'
+import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
+import TalkToAssistant from '@/components/agents/TalkToAssistant'
+
+// Agent status service - you'll need to implement this
+const agentStatusService = {
+  checkAgentStatus: async (agentName: string): Promise<AgentStatus> => {
+    try {
+      if (!agentName) {
+        console.warn('⚠️ Agent name is empty or undefined')
+        return { status: 'error' as const, error: 'Agent name is required' }
+      }
+
+      const url = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_status/${encodeURIComponent(agentName)}`
+      console.log('🔍 Checking agent status:', url)
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'pype-api-v1'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Raw agent status response:', data)
+        
+        // Properly typed status mapping
+        const status: AgentStatus['status'] = data.is_active && data.worker_running ? 'running' : 'stopped'
+        
+        const mappedStatus: AgentStatus = {
+          status,
+          pid: data.worker_pid,
+          error: !data.is_active ? 'Agent not active' : 
+                 !data.worker_running ? 'Worker not running' : 
+                 !data.inbound_ready ? 'Inbound not ready' : undefined,
+          raw: data
+        }
+        
+        console.log('🔄 Mapped agent status:', mappedStatus)
+        return mappedStatus
+      }
+      
+      console.error('❌ Agent status request failed:', response.status, response.statusText)
+      return { 
+        status: 'error' as const, 
+        error: `Failed to check status: ${response.status} ${response.statusText}` 
+      }
+    } catch (error) {
+      console.error('❌ Agent status connection error:', error)
+      return { status: 'error' as const, error: 'Connection error' }
+    }
+  },
+  
+  startAgent: async (agentName: string): Promise<AgentStatus> => {
+    try {
+      if (!agentName) {
+        return { status: 'error' as const, error: 'Agent name is required' }
+      }
+
+      console.log('🚀 Starting agent via API:', agentName)
+      
+      // Fixed: Use the correct path that matches your API route
+      const response = await fetch('/api/agents/start_agent', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ agent_name: agentName })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Start agent response:', data)
+        
+        return {
+          status: 'starting' as const,
+          message: data.message || 'Agent start initiated',
+          raw: data
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        return { 
+          status: 'error' as const, 
+          error: errorData.error || `Failed to start agent: ${response.status}` 
+        }
+      }
+    } catch (error) {
+      console.error('❌ Start agent error:', error)
+      return { status: 'error' as const, error: 'Failed to start agent' }
+    }
+  },
+  
+  stopAgent: async (agentName: string): Promise<AgentStatus> => {
+    try {
+      if (!agentName) {
+        return { status: 'error' as const, error: 'Agent name is required' }
+      }
+
+      console.log('🛑 Stopping agent via API:', agentName)
+      
+      // This one was already correct in your code
+      const response = await fetch('/api/agents/stop_agent', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ agent_name: agentName })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Stop agent response:', data)
+        
+        return {
+          status: 'stopping' as const,
+          message: data.message || 'Agent stop initiated',
+          raw: data
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        return { 
+          status: 'error' as const, 
+          error: errorData.error || `Failed to stop agent: ${response.status}` 
+        }
+      }
+    } catch (error) {
+      console.error('❌ Stop agent error:', error)
+      return { status: 'error' as const, error: 'Failed to stop agent' }
+    }
+  },
+  
+  startStatusPolling: (
+    agentName: string, 
+    onStatusUpdate: (status: AgentStatus) => void, 
+    interval: number = 15000
+  ) => {
+    if (!agentName) {
+      console.warn('⚠️ Cannot start polling: agent name is required')
+      return () => {}
+    }
+
+    console.log('📊 Starting status polling for agent:', agentName, 'interval:', interval)
+    
+    const pollStatus = async () => {
+      const status = await agentStatusService.checkAgentStatus(agentName)
+      onStatusUpdate(status)
+    }
+    
+    pollStatus()
+    
+    const intervalId = setInterval(pollStatus, interval)
+    
+    return () => {
+      console.log('🧹 Stopping status polling for agent:', agentName)
+      clearInterval(intervalId)
+    }
+  }
+}
 
 interface AzureConfig {
   endpoint: string
   apiVersion: string
 }
 
+interface AgentStatus {
+  status: 'running' | 'stopped' | 'starting' | 'stopping' | 'error'
+  pid?: number
+  error?: string
+  message?: string
+  raw?: any // Allow for flexible API response data
+}
+
+interface WebSession {
+  room_name: string
+  token: string
+  url: string
+  participant_identity: string
+}
+
+interface Transcript {
+  id: string
+  speaker: 'user' | 'agent'
+  text: string
+  timestamp: Date
+  isFinal: boolean
+  participantIdentity?: string
+}
+
 export default function AgentConfig() {
   const { agentid } = useParams()
   const [isCopied, setIsCopied] = useState(false)
   const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false)
+  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
+  const [isTalkToAssistantOpen, setIsTalkToAssistantOpen] = useState(false)
+  
+  // Agent status state
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
+  const [isAgentLoading, setIsAgentLoading] = useState(false)
 
   const { getTextareaStyles, settings, setFontSize } = usePromptSettings()
 
@@ -79,6 +286,66 @@ export default function AgentConfig() {
 
   // Use mutations for save operations
   const { saveDraft, saveAndDeploy } = useAgentMutations(agentName)
+
+  // Check agent status on load and set up polling
+  useEffect(() => {
+    if (!agentName) return
+    
+    // Initial status check
+    checkAgentStatus()
+    
+    // Set up polling for status updates
+    const stopPolling = agentStatusService.startStatusPolling(
+      agentName,
+      (status) => {
+        setAgentStatus(status)
+        
+        // Log status changes
+        if (status.status !== agentStatus.status) {
+          console.log(`🔄 Agent status changed: ${agentStatus.status} → ${status.status}`)
+        }
+      },
+      15000 // Poll every 15 seconds
+    )
+    
+    // Cleanup polling on unmount or agent name change
+    return stopPolling
+  }, [agentName])
+
+  const checkAgentStatus = async () => {
+    if (!agentName) return
+    
+    const status = await agentStatusService.checkAgentStatus(agentName)
+    setAgentStatus(status) // Now properly typed
+  }
+  
+  const startAgent = async () => {
+    if (!agentName) return
+    
+    setIsAgentLoading(true)
+    setAgentStatus({ status: 'starting' } as AgentStatus) // Type assertion for immediate state
+    
+    try {
+      const status = await agentStatusService.startAgent(agentName)
+      setAgentStatus(status) // Properly typed return
+    } finally {
+      setIsAgentLoading(false)
+    }
+  }
+  
+  const stopAgent = async () => {
+    if (!agentName) return
+    
+    setIsAgentLoading(true)
+    setAgentStatus({ status: 'stopping' } as AgentStatus) // Type assertion for immediate state
+    
+    try {
+      const status = await agentStatusService.stopAgent(agentName)
+      setAgentStatus(status) // Properly typed return  
+    } finally {
+      setIsAgentLoading(false)
+    }
+  }
 
   const copyToClipboard = async () => {
     try {
@@ -310,6 +577,28 @@ export default function AgentConfig() {
     setHasExternalChanges(true)
   }
 
+  const getAgentStatusColor = () => {
+    switch (agentStatus.status) {
+      case 'running': return 'bg-green-500'
+      case 'starting': return 'bg-yellow-500'
+      case 'stopping': return 'bg-orange-500'
+      case 'stopped': return 'bg-gray-500'
+      case 'error': return 'bg-red-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getAgentStatusText = () => {
+    switch (agentStatus.status) {
+      case 'running': return 'Agent Running'
+      case 'starting': return 'Starting...'
+      case 'stopping': return 'Stopping...'
+      case 'stopped': return 'Agent Stopped'
+      case 'error': return 'Agent Error'
+      default: return 'Unknown'
+    }
+  }
+
   // Loading state
   if (agentLoading || isConfigLoading) {
     return (
@@ -387,36 +676,130 @@ export default function AgentConfig() {
     )
   }
 
-  
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
-      {/* Header with Save Actions */}
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      {/* Header with Agent Controls & Save Actions */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {agentName || 'Loading...'}
-            </span>
+            <div className={`w-2 h-2 rounded-full ${getAgentStatusColor()}`}></div>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {agentName || 'Loading...'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {getAgentStatusText()}
+                {agentStatus.pid && ` (PID: ${agentStatus.pid})`}
+              </span>
+            </div>
           </div>
+          
           <div className="flex items-center gap-3">
-            {(formik.dirty || hasExternalChanges) && <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
-              Cancel
-            </Button>}
-            {/* <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 text-xs" 
-              onClick={handleSaveDraft}
-              disabled={saveDraft.isPending}
-            >
-              {saveDraft.isPending ? 'Saving...' : 'Save Draft'}
-            </Button> */}
+            {/* Agent Controls */}
+            {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={startAgent}
+                disabled={isAgentLoading || !agentName}
+              >
+                {isAgentLoading ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Play className="w-3 h-3 mr-1" />
+                )}
+                Start Agent
+              </Button>
+            ) : agentStatus.status === 'running' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={stopAgent}
+                disabled={isAgentLoading}
+              >
+                {isAgentLoading ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Square className="w-3 h-3 mr-1" />
+                )}
+                Stop Agent
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled
+              >
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                {agentStatus.status === 'starting' ? 'Starting...' : 'Stopping...'}
+              </Button>
+            )}
+
+            {/* Talk to Assistant Button */}
+            <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
+              <SheetHeader className="sr-only">
+                <SheetTitle>Talk to Assistant</SheetTitle>
+              </SheetHeader>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!agentName}
+                >
+                  <PhoneIcon className="w-3 h-3 mr-1" />
+                  Talk to Assistant
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-96 p-0">
+                <TalkToAssistant
+                  agentName={agentName || ''}
+                  isOpen={isTalkToAssistantOpen}
+                  onClose={() => setIsTalkToAssistantOpen(false)}
+                  agentStatus={agentStatus}
+                />
+              </SheetContent>
+            </Sheet>
+
+            {(formik.dirty || hasExternalChanges) && (
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
+                Cancel
+              </Button>
+            )}
+            
+            {/* Advanced Settings Button - Mobile Only */}
+            <div className="lg:hidden">
+              <Sheet open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Voice Assistant</SheetTitle>
+                </SheetHeader>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                    <SlidersHorizontal className="w-3 h-3 mr-1" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:w-96 p-0">
+                  <SheetHeader className="px-4 py-3 border-b">
+                    <SheetTitle className="text-sm">Advanced Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto">
+                    <AgentAdvancedSettings 
+                      advancedSettings={formik.values.advancedSettings}
+                      onFieldChange={formik.setFieldValue}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+            
             <Button 
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={!formik.dirty || hasExternalChanges}
+              disabled={saveAndDeploy.isPending || (!formik.dirty && !hasExternalChanges)}
             >
               {saveAndDeploy.isPending ? 'Deploying...' : 'Save & Deploy'}
             </Button>
@@ -424,232 +807,205 @@ export default function AgentConfig() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 pb-6 pt-3 px-3 overflow-hidden">
-        <div className="w-full h-full flex flex-col max-w-7xl mx-auto">
-          <div className="flex gap-4 flex-1 overflow-hidden">
-            {/* Left Side - Configuration */}
-            <div className="flex-1 overflow-hidden flex flex-col space-y-2">
-              {/* Quick Setup Row */}
-              <div className="flex gap-3 flex-shrink-0">
-                {/* LLM Selection */}
-                <div className="flex-1">
-                  <ModelSelector
-                    selectedProvider={formik.values.selectedProvider}
-                    selectedModel={formik.values.selectedModel}
-                    temperature={formik.values.temperature}
-                    onProviderChange={handleProviderChange}
-                    onModelChange={handleModelChange}
-                    onTemperatureChange={handleTemperatureChange}
-                    azureConfig={azureConfig}
-                    onAzureConfigChange={handleAzureConfigChange}
-                  />
-                </div>
-
-                {/* STT Selection */}
-                <div className="flex-1">
-                  <SelectSTT 
-                    selectedProvider={formik.values.sttProvider}
-                    selectedModel={formik.values.sttModel}
-                    selectedLanguage={formik.values.sttConfig?.language}   
-                    initialConfig={formik.values.sttConfig}                
-                    onSTTSelect={handleSTTSelect}
-                  />
-                </div>
-
-                {/* TTS Selection */}
-                <div className="flex-1">
-                  <SelectTTS 
-                    selectedVoice={formik.values.selectedVoice}
-                    initialProvider={formik.values.ttsProvider}
-                    initialModel={formik.values.ttsModel}
-                    initialConfig={formik.values.ttsVoiceConfig}
-                    onVoiceSelect={handleVoiceSelect}
-                  />
-                </div>
-              </div>
-
-              {/* Conversation Flow */}
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3 flex-shrink-0">
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    Conversation Start
-                  </label>
-                  <Select 
-                    value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
-                    onValueChange={(value) => {
-                      // Handle both old string format and new object format
-                      if (typeof formik.values.firstMessageMode === 'object') {
-                        formik.setFieldValue('firstMessageMode', {
-                          ...formik.values.firstMessageMode,
-                          mode: value
-                        })
-                      } else {
-                        // Convert to new object format
-                        formik.setFieldValue('firstMessageMode', {
-                          mode: value,
-                          allow_interruptions: true,
-                          first_message: formik.values.customFirstMessage || ''
-                        })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-8 text-sm w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {firstMessageModes.map((mode) => (
-                        <SelectItem key={mode.value} value={mode.value} className="text-sm">
-                          {mode.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Allow Interruptions Toggle */}
-                {/* <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">
-                    Allow interruptions during first message
-                  </span>
-                  <Switch
-                    checked={
-                      typeof formik.values.firstMessageMode === 'object' 
-                        ? formik.values.firstMessageMode.allow_interruptions 
-                        : true
-                    }
-                    onCheckedChange={(checked) => {
-                      if (typeof formik.values.firstMessageMode === 'object') {
-                        formik.setFieldValue('firstMessageMode', {
-                          ...formik.values.firstMessageMode,
-                          allow_interruptions: checked
-                        })
-                      } else {
-                        // Convert to new object format
-                        formik.setFieldValue('firstMessageMode', {
-                          mode: formik.values.firstMessageMode || 'assistant_speaks_first',
-                          allow_interruptions: checked,
-                          first_message: formik.values.customFirstMessage || ''
-                        })
-                      }
-                    }}
-                    className="scale-75"
-                  />
-                </div> */}
-
-                {/* First Message Textarea */}
-                {((typeof formik.values.firstMessageMode === 'object' && formik.values.firstMessageMode.mode === 'assistant_speaks_first') ||
-                  (typeof formik.values.firstMessageMode === 'string' && formik.values.firstMessageMode === 'assistant_speaks_first')) && (
-                  <Textarea
-                    placeholder="Enter the first message..."
-                    value={
-                      typeof formik.values.firstMessageMode === 'object' 
-                        ? formik.values.firstMessageMode.first_message 
-                        : formik.values.customFirstMessage
-                    }
-                    onChange={(e) => {
-                      if (typeof formik.values.firstMessageMode === 'object') {
-                        formik.setFieldValue('firstMessageMode', {
-                          ...formik.values.firstMessageMode,
-                          first_message: e.target.value
-                        })
-                      } else {
-                        // Also update the old customFirstMessage field for backward compatibility
-                        formik.setFieldValue('customFirstMessage', e.target.value)
-                        // Convert to new object format
-                        formik.setFieldValue('firstMessageMode', {
-                          mode: formik.values.firstMessageMode || 'assistant_speaks_first',
-                          allow_interruptions: true,
-                          first_message: e.target.value
-                        })
-                      }
-                    }}
-                    className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
-                  />
-                )}
-              </div>
-
-              {/* System Prompt */}
-              <div className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col overflow-hidden">
-                <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                          <TypeIcon className="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-48 p-3" align="start">
-                        <div className="space-y-2">
-                          <Label className="text-xs">Font Size</Label>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs">{settings.fontSize}px</span>
-                            <Slider
-                              value={[settings.fontSize]}
-                              onValueChange={(value) => setFontSize(value[0])} // This will auto-save to localStorage
-                              min={8}
-                              max={18}
-                              step={1}
-                              className="flex-1"
-                            />
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setIsPromptSettingsOpen(true)}
-                      className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
-                    >
-                      <SettingsIcon className="w-4 h-4" />
-                      <span>Settings</span>
-                    </button>
-
-                    <button
-                      onClick={copyToClipboard}
-                      className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
-                      disabled={!formik.values.prompt}
-                    >
-                      {isCopied ? (
-                        <>
-                          <CheckIcon className="w-4 h-4 text-green-500" />
-                          <span className="text-green-500">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <CopyIcon className="w-4 h-4" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <Textarea
-                  placeholder="Define your agent's behavior and personality..."
-                  value={formik.values.prompt}
-                  onChange={(e) => formik.setFieldValue('prompt', e.target.value)}
-                  className="flex-1 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 overflow-auto"
-                  style={getTextareaStyles()}
+      {/* Main Content - Responsive Layout */}
+      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full p-4">
+        <div className="h-full flex gap-4">
+          
+          {/* Left Side - Main Configuration */}
+          <div className="flex-1 min-w-0 flex flex-col space-y-3">
+            
+            {/* Quick Setup Row - Responsive Stack */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+              {/* LLM Selection */}
+              <div className="flex-1 min-w-0">
+                <ModelSelector
+                  selectedProvider={formik.values.selectedProvider}
+                  selectedModel={formik.values.selectedModel}
+                  temperature={formik.values.temperature}
+                  onProviderChange={handleProviderChange}
+                  onModelChange={handleModelChange}
+                  onTemperatureChange={handleTemperatureChange}
+                  azureConfig={azureConfig}
+                  onAzureConfigChange={handleAzureConfigChange}
                 />
-                <div className="flex justify-between items-center mt-2 flex-shrink-0">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {formik.values.prompt.length.toLocaleString()} chars
-                  </span>
-                </div>
+              </div>
+
+              {/* STT Selection */}
+              <div className="flex-1 min-w-0">
+                <SelectSTT 
+                  selectedProvider={formik.values.sttProvider}
+                  selectedModel={formik.values.sttModel}
+                  selectedLanguage={formik.values.sttConfig?.language}   
+                  initialConfig={formik.values.sttConfig}                
+                  onSTTSelect={handleSTTSelect}
+                />
+              </div>
+
+              {/* TTS Selection */}
+              <div className="flex-1 min-w-0">
+                <SelectTTS 
+                  selectedVoice={formik.values.selectedVoice}
+                  initialProvider={formik.values.ttsProvider}
+                  initialModel={formik.values.ttsModel}
+                  initialConfig={formik.values.ttsVoiceConfig}
+                  onVoiceSelect={handleVoiceSelect}
+                />
               </div>
             </div>
 
-            {/* Right Side - Advanced Settings */}
-            <div className="w-80 flex-shrink-0">
-              <AgentAdvancedSettings 
-                advancedSettings={formik.values.advancedSettings}
-                onFieldChange={formik.setFieldValue}
+            {/* Conversation Flow */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3 flex-shrink-0">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Conversation Start
+                </label>
+                <Select 
+                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
+                  onValueChange={(value) => {
+                    // Handle both old string format and new object format
+                    if (typeof formik.values.firstMessageMode === 'object') {
+                      formik.setFieldValue('firstMessageMode', {
+                        ...formik.values.firstMessageMode,
+                        mode: value
+                      })
+                    } else {
+                      // Convert to new object format
+                      formik.setFieldValue('firstMessageMode', {
+                        mode: value,
+                        allow_interruptions: true,
+                        first_message: formik.values.customFirstMessage || ''
+                      })
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-sm w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {firstMessageModes.map((mode) => (
+                      <SelectItem key={mode.value} value={mode.value} className="text-sm">
+                        {mode.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* First Message Textarea */}
+              {((typeof formik.values.firstMessageMode === 'object' && formik.values.firstMessageMode.mode === 'assistant_speaks_first') ||
+                (typeof formik.values.firstMessageMode === 'string' && formik.values.firstMessageMode === 'assistant_speaks_first')) && (
+                <Textarea
+                  placeholder="Enter the first message..."
+                  value={
+                    typeof formik.values.firstMessageMode === 'object' 
+                      ? formik.values.firstMessageMode.first_message 
+                      : formik.values.customFirstMessage
+                  }
+                  onChange={(e) => {
+                    if (typeof formik.values.firstMessageMode === 'object') {
+                      formik.setFieldValue('firstMessageMode', {
+                        ...formik.values.firstMessageMode,
+                        first_message: e.target.value
+                      })
+                    } else {
+                      // Also update the old customFirstMessage field for backward compatibility
+                      formik.setFieldValue('customFirstMessage', e.target.value)
+                      // Convert to new object format
+                      formik.setFieldValue('firstMessageMode', {
+                        mode: formik.values.firstMessageMode || 'assistant_speaks_first',
+                        allow_interruptions: true,
+                        first_message: e.target.value
+                      })
+                    }
+                  }}
+                  className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
+                />
+              )}
+            </div>
+
+            {/* System Prompt */}
+            <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                        <TypeIcon className="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-3" align="start">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Font Size</Label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">{settings.fontSize}px</span>
+                          <Slider
+                            value={[settings.fontSize]}
+                            onValueChange={(value) => setFontSize(value[0])} // This will auto-save to localStorage
+                            min={8}
+                            max={18}
+                            step={1}
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsPromptSettingsOpen(true)}
+                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
+                  >
+                    <SettingsIcon className="w-4 h-4" />
+                    <span>Settings</span>
+                  </button>
+
+                  <button
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
+                    disabled={!formik.values.prompt}
+                  >
+                    {isCopied ? (
+                      <>
+                        <CheckIcon className="w-4 h-4 text-green-500" />
+                        <span className="text-green-500">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <CopyIcon className="w-4 h-4" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <Textarea
+                placeholder="Define your agent's behavior and personality..."
+                value={formik.values.prompt}
+                onChange={(e) => formik.setFieldValue('prompt', e.target.value)}
+                className="flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700"
+                style={getTextareaStyles()}
               />
+              
+              <div className="flex justify-between items-center mt-2 flex-shrink-0">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {formik.values.prompt.length.toLocaleString()} chars
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Right Side - Advanced Settings - Desktop Only */}
+          <div className="hidden lg:block w-80 flex-shrink-0 min-h-0">
+            <AgentAdvancedSettings 
+              advancedSettings={formik.values.advancedSettings}
+              onFieldChange={formik.setFieldValue}
+            />
+          </div>
+          
         </div>
       </div>
 

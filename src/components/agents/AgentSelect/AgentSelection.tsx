@@ -14,6 +14,7 @@ import AgentCreationDialog from '../AgentCreation/AgentCreationDialog'
 import AgentSelectionSkeleton from './AgentSelectionSkeleton'
 import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useMobile } from '@/hooks/use-mobile'
 
 interface Agent {
   id: string
@@ -48,6 +49,8 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
     item: ''
   })
   const router = useRouter()
+
+  const { isMobile } = useMobile(768)
 
   // Fetch project data
   const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
@@ -172,7 +175,7 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className="max-w-6xl mx-auto px-8 py-8">
+      <main className={`max-w-6xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
         <AgentToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
