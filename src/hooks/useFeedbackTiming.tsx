@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useUser } from '@clerk/nextjs'
 
 const mode = process.env.NODE_ENV
 
@@ -28,7 +29,8 @@ const SESSION_KEY = 'feedback_widget_session'
 const SUBMISSION_KEY = 'feedback_last_submission'
 
 // Use test intervals for now, switch to FEEDBACK_INTERVALS for production`
-const INTERVALS = mode === 'development' ? FEEDBACK_INTERVALS_TEST : FEEDBACK_INTERVALS // For production
+// const INTERVALS = mode === 'development' ? FEEDBACK_INTERVALS_TEST : FEEDBACK_INTERVALS // For production
+const INTERVALS = FEEDBACK_INTERVALS // For production
 
 interface FeedbackTimingState {
   feedbackRejectionCount: number
@@ -41,6 +43,7 @@ export function useFeedbackTiming() {
   const [rejectionCount, setRejectionCount] = useState(0)
   const timingStateRef = useRef<FeedbackTimingState | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const { user } = useUser()
 
   // const FEEDBACK_COOLDOWN_MS = mode === 'development' ? FEEDBACK_COOLDOWN_MS_TEST : FEEDBACK_COOLDOWN_MS_PROD
   const FEEDBACK_COOLDOWN_MS = FEEDBACK_COOLDOWN_MS_PROD
@@ -147,7 +150,20 @@ export function useFeedbackTiming() {
         comment,
         rejectionCount: rejectionCount.toString(),
         userAgent: navigator.userAgent,
-        url: window.location.href
+        url: window.location.href,
+        // User identification data from Clerk
+        clerkId: user?.id || 'anonymous',
+        username: user?.username || user?.emailAddresses?.[0]?.emailAddress || 'unknown',
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+        email: user?.emailAddresses?.[0]?.emailAddress || '',
+        // Additional user metadata
+        createdAt: user?.createdAt?.toISOString() || '',
+        lastSignInAt: user?.lastSignInAt?.toISOString() || '',
+        imageUrl: user?.imageUrl || '',
+        // Session info
+        sessionStartTime: timingStateRef.current?.sessionStartTime?.toString() || '',
+        sessionDuration: timingStateRef.current ? (Date.now() - timingStateRef.current.sessionStartTime).toString() : '0'
       })
 
       // Create invisible iframe to submit data - NO FETCH, NO CORS

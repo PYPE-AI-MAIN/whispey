@@ -41,10 +41,9 @@ export default function RootLayout({
 
   return (
     <ClerkProvider
-      signInUrl='/sign-in'
       appearance={{
         variables: {
-          colorPrimary: "#2563eb", // Blue-600
+          colorPrimary: "#2563eb",
         }
       }}
     >
