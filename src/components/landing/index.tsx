@@ -15,78 +15,7 @@ import Image from "next/image"
 import { motion } from "motion/react"
 import React from "react"
 import { useState, useEffect } from "react"
-
-// GitHub Stars Hook with better error handling
-function useGitHubStars(owner: string, repo: string) {
-  const [stars, setStars] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-
-    async function fetchStars() {
-      try {
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-        if (response.ok) {
-          const data = await response.json();
-          setStars(data.stargazers_count);
-        }
-      } catch (error) {
-        console.error('Failed to fetch GitHub stars:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchStars();
-  }, [owner, repo, mounted]);
-
-  return { stars, loading: !mounted || loading };
-}
-
-// GitHub Stars Component
-function GitHubStarsButton() {
-  const { stars, loading } = useGitHubStars('PYPE-AI-MAIN', 'whispey');
-
-  const formatStars = (count: number) => {
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}k`;
-    }
-    return count.toString();
-  };
-
-  return (
-    <Link
-      href="https://github.com/PYPE-AI-MAIN/whispey"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative flex items-center gap-2.5 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-300 rounded-lg hover:bg-accent/50 border border-border/60 hover:border-border hover:shadow-sm active:scale-[0.98] backdrop-blur-sm overflow-hidden"
-    >
-      <Github className="w-4 h-4" />
-      
-      <div className="flex items-center gap-1">
-        <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-        {loading ? (
-          <div className="w-6 h-4 bg-muted rounded animate-pulse" />
-        ) : (
-          <span className="font-semibold text-xs tabular-nums">
-            {stars ? formatStars(stars) : '0'}
-          </span>
-        )}
-      </div>
-      
-      <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
-      
-      {/* Hover shimmer effect */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/10 dark:via-white/5 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-pulse pointer-events-none" />
-    </Link>
-  );
-}
+import Header from "./landing-header"
 
 export default function LandingPage() {
   // FlipWords for the hero heading  
@@ -112,67 +41,7 @@ export default function LandingPage() {
       <div className="min-h-screen bg-background whispey-landing-font">
 
         {/* Enhanced Header */}
-        <header className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              {/* Left side - Logo with enhanced effects */}
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center relative group">
-                  {/* Enhanced glow effect on hover */}
-                  <div className="absolute inset-0 rounded-xl bg-blue-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative z-10"> 
-                    <Image src="/logo.png" alt="Logo" width={40} height={40} />
-                  </div>
-                </div>
-                {/* Enhanced gradient text with new font */}
-                <span className="text-2xl font-bold bg-blue-400 bg-clip-text text-transparent tracking-tight">
-                  Whispey
-                </span>
-              </div>
-
-              {/* Center - Enhanced Navigation */}
-              <nav className="hidden md:flex items-center space-x-6">
-                <Link href="#features" className="text-sm font-medium hover:text-primary transition-colors relative group">
-                  Features
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300" />
-                </Link>
-                <Link href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors relative group">
-                  How it Works
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300" />
-                </Link>
-                {/* <Link href="#pricing" className="text-sm font-medium hover:text-primary transition-colors relative group">
-                  Pricing
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300" />
-                </Link> */}
-                <Link 
-                  href="/docs" 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium hover:text-primary transition-colors relative group"
-                >
-                  Docs
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary group-hover:w-full transition-all duration-300" />
-                </Link>
-              </nav>
-
-              {/* Right side - GitHub + Auth buttons */}
-              <div className="flex items-center space-x-3">
-                <GitHubStarsButton />
-                
-                <div className="w-px h-6 bg-border/60 mx-2" />
-                
-                <Link href="/sign-in">
-                  <Button size="sm" className="hidden sm:inline-flex group relative overflow-hidden font-medium">
-                    <span className="relative z-10">Get Started</span>
-                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform relative z-10" />
-                    {/* Enhanced shimmer effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </header>
+        <Header />
 
         {/* Hero Section with Grid Background */}
         <section className="relative flex flex-col overflow-hidden">
@@ -256,7 +125,12 @@ export default function LandingPage() {
                         <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </Link>
-                    <Button variant="outline" size="lg" className="text-lg px-8 py-6 group bg-transparent font-medium">
+                    <Button 
+                      variant="outline" 
+                      size="lg" 
+                      className="text-lg px-8 py-6 group bg-transparent font-medium"
+                      onClick={() => window.open('https://youtu.be/1POj8h99xnE', '_blank', 'noopener,noreferrer')}
+                    >
                       <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
                       Watch Demo
                     </Button>
@@ -304,8 +178,8 @@ export default function LandingPage() {
                 },
                 {
                   icon: Shield,
-                  title: "Error Detection",
-                  description: "Automatically detect and alert on errors, failures, and performance degradations.",
+                  title: "Bug Report",
+                  description: "Seamlessly report bugs with your voice, using custom commands when you test your agents.",
                 },
                 {
                   icon: Clock,
@@ -434,7 +308,7 @@ export default function LandingPage() {
         </section> */}
 
         {/* CTA Section */}
-        <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10">
+        {/* <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-4xl font-bold text-balance mb-6 tracking-tight">Ready to optimize your Voice AI?</h2>
             <p className="text-xl text-muted-foreground text-balance mb-8 max-w-2xl mx-auto">
@@ -447,12 +321,12 @@ export default function LandingPage() {
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              {/* <Button variant="outline" size="lg" className="text-lg px-8 py-6 bg-transparent font-medium">
+              <Button variant="outline" size="lg" className="text-lg px-8 py-6 bg-transparent font-medium">
                 Schedule Demo
-              </Button> */}
+              </Button>
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* Footer */}
         <footer className="border-t border-border/50 py-12 px-4 sm:px-6 lg:px-8">
@@ -508,20 +382,15 @@ export default function LandingPage() {
                     </Link>
                   </li>
                   <li>
-                    <Link href="/blog" className="hover:text-foreground transition-colors">
+                    <Link href="https://pypeai.com/blog" target="_blank" className="hover:text-foreground transition-colors">
                       Blog
                     </Link>
                   </li>
-                  <li>
-                    <Link href="/careers" className="hover:text-foreground transition-colors">
-                      Careers
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/contact" className="hover:text-foreground transition-colors">
+                  {/* <li>
+                    <Link href="https://pypeai.com/contact" target="_blank" className="hover:text-foreground transition-colors">
                       Contact
                     </Link>
-                  </li>
+                  </li> */}
                 </ul>
               </div>
 

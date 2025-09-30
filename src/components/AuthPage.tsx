@@ -6,7 +6,7 @@ import { Mic, Sparkles, Shield, Zap } from 'lucide-react';
 
 export default function AuthPage() {
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="h-screen bg-white flex overflow-hidden">
       {/* Left Side - Branding & Value Proposition */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
         {/* Background Pattern */}
@@ -19,7 +19,7 @@ export default function AuthPage() {
             {/* Logo */}
             <div className="flex items-center space-x-3 mb-12">
               <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-                <Image src="/logo.png" alt="Pype AI Logo" width={100} height={100} />
+                <Image src="/logo.png" alt="Pype AI Logo" width={32} height={32} />
               </div>
               <span className="text-2xl font-bold text-white">Whispey</span>
             </div>
@@ -30,7 +30,7 @@ export default function AuthPage() {
             </h1>
             
             <p className="text-slate-300 text-lg mb-12 leading-relaxed">
-              Join hundereds of engineers and get complete observability into your Voice AI Applications.
+              Join hundreds of engineers and get complete observability into your Voice AI Applications.
             </p>
 
             {/* Features */}
@@ -70,13 +70,13 @@ export default function AuthPage() {
       </div>
 
       {/* Right Side - Authentication */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-12">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex-1 flex flex-col justify-center px-6 py-16 lg:px-12">
+        <div className="w-full max-w-md mx-auto space-y-8">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center">
             <div className="inline-flex items-center space-x-3">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-                <Image src="/logo.png" alt="Pype AI Logo" width={100} height={100} />
+              <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center border">
+                <Image src="/logo.png" alt="Pype AI Logo" width={32} height={32} />
               </div>
               <span className="text-2xl font-bold text-slate-900">Whispey</span>
             </div>
