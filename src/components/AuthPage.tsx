@@ -117,7 +117,7 @@ export default function AuthPage() {
                   socialButtonsPlacement: "top"
                 }
               }}
-              redirectUrl="/dashboard"
+              redirectUrl="/projects"
             />
           </div>
 

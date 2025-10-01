@@ -1,10 +1,17 @@
+'use client'
+
 import { ArrowRight, ExternalLink, Github, Star, Users } from 'lucide-react';
 import Image from 'next/image'
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import { Button } from '../ui/button';
+import { useUser } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 
 function Header() {
+    const { isSignedIn, isLoaded } = useUser()
+    const router = useRouter()
+
     // GitHub Stars Hook with better error handling
     function useGitHubStars(owner: string, repo: string) {
       const [stars, setStars] = useState<number | null>(null);
@@ -98,7 +105,16 @@ function Header() {
         </Link>
       );
     }
-    
+
+    const handleGetStarted = () => {
+      if (!isLoaded) return
+      
+      if (isSignedIn) {
+        router.push('/projects')
+      } else {
+        router.push('/sign-in')
+      }
+    }
 
   return (
     <header className="border-b border-border/40 sticky top-0 z-50 overflow-hidden">
@@ -167,14 +183,19 @@ function Header() {
               
               <div className="w-px h-6 bg-border/40 mx-2" />
               
-              <Link href="/sign-in">
-                <Button size="sm" className="hidden sm:inline-flex group relative overflow-hidden font-medium bg-white cursor-pointer border-0 shadow-lg shadow-blue-600/25">
-                  <span className="relative z-10">Get Started</span>
-                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform relative z-10" />
-                  {/* Enhanced shimmer effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                </Button>
-              </Link>
+              <Button 
+                size="sm" 
+                className="hidden sm:inline-flex group relative overflow-hidden font-medium bg-white cursor-pointer border-0 shadow-lg shadow-blue-600/25"
+                onClick={handleGetStarted}
+                disabled={!isLoaded}
+              >
+                <span className="relative z-10">
+                  {!isLoaded ? 'Loading...' : isSignedIn ? 'Go to Projects' : 'Get Started'}
+                </span>
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform relative z-10" />
+                {/* Enhanced shimmer effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              </Button>
             </div>
           </div>
         </div>
