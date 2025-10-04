@@ -185,7 +185,7 @@ function Header() {
               
               <Button 
                 size="sm" 
-                className="hidden sm:inline-flex group relative overflow-hidden font-medium bg-white cursor-pointer border-0 shadow-lg shadow-blue-600/25"
+                className="hidden sm:inline-flex group relative overflow-hidden font-medium bg-white dark:bg-gray-900 text-gray-900 dark:text-white cursor-pointer border-0 shadow-lg shadow-blue-600/25 dark:shadow-blue-400/20 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 onClick={handleGetStarted}
                 disabled={!isLoaded}
               >
@@ -193,8 +193,8 @@ function Header() {
                   {!isLoaded ? 'Loading...' : isSignedIn ? 'Go to Projects' : 'Get Started'}
                 </span>
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform relative z-10" />
-                {/* Enhanced shimmer effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                {/* Enhanced shimmer effect with dark mode support */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </Button>
             </div>
           </div>
