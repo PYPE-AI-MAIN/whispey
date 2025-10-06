@@ -1,20 +1,7 @@
-// src/app/page.tsx
 'use client'
 
-import { useUser } from '@clerk/nextjs'
-import ProjectSelection from '../components/projects/ProjectSelection'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import LandingPage from '../components/landing'
 
 export default function Home() {
-  const { isSignedIn, isLoaded } = useUser()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push('/sign')
-    }
-  }, [isLoaded, isSignedIn, router])
-
-  return <ProjectSelection isAuthLoaded={isLoaded} />
+  return <LandingPage />
 }

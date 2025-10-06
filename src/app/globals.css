@@ -142,6 +142,16 @@
       radial-gradient(circle at 1px 1px, hsl(var(--border) / 0.15) 1px, transparent 0);
     background-size: 20px 20px;
   }
+
+  .mask-radial-from-20\% {
+    mask-image: radial-gradient(circle, transparent 20%, black 20%);
+    -webkit-mask-image: radial-gradient(circle, transparent 20%, black 20%);
+  }
+  
+  .mask-radial-at-top {
+    mask-position: center top;
+    -webkit-mask-position: center top;
+  }
 }
 
 /* Professional Component Styles */
@@ -218,4 +228,22 @@
 
 ::-webkit-scrollbar-track {
   background: hsl(var(--muted) / 0.1);
+}
+
+
+@theme inline {
+  --animate-cell-ripple: cell-ripple var(--duration, 200ms) ease-out none 1
+  var(--delay, 0ms);
+
+  @keyframes cell-ripple {
+    0% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.8;
+    }
+    100% {
+      opacity: 0.4;
+    }
+  }
 }

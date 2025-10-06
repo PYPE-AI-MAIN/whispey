@@ -110,13 +110,13 @@ const RawDataView = ({ span }: { span: any }) => {
     };
 
     const categoryLabels = {
-      identifiers: { title: 'Identifiers', icon: <Hash className="w-4 h-4" />, color: 'bg-blue-50 border-blue-200' },
-      timing: { title: 'Timing', icon: <Clock className="w-4 h-4" />, color: 'bg-green-50 border-green-200' },
-      metrics: { title: 'Metrics', icon: <Activity className="w-4 h-4" />, color: 'bg-purple-50 border-purple-200' },
-      content: { title: 'Content', icon: <MessageSquare className="w-4 h-4" />, color: 'bg-orange-50 border-orange-200' },
-      status: { title: 'Status', icon: <CheckCircle2 className="w-4 h-4" />, color: 'bg-gray-50 border-gray-200' },
-      config: { title: 'Configuration', icon: <Zap className="w-4 h-4" />, color: 'bg-yellow-50 border-yellow-200' },
-      other: { title: 'Other', icon: <Code className="w-4 h-4" />, color: 'bg-slate-50 border-slate-200' },
+      identifiers: { title: 'Identifiers', icon: <Hash className="w-4 h-4" />, color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' },
+      timing: { title: 'Timing', icon: <Clock className="w-4 h-4" />, color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' },
+      metrics: { title: 'Metrics', icon: <Activity className="w-4 h-4" />, color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' },
+      content: { title: 'Content', icon: <MessageSquare className="w-4 h-4" />, color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' },
+      status: { title: 'Status', icon: <CheckCircle2 className="w-4 h-4" />, color: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' },
+      config: { title: 'Configuration', icon: <Zap className="w-4 h-4" />, color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' },
+      other: { title: 'Other', icon: <Code className="w-4 h-4" />, color: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700' },
     };
 
     const renderField = ([key, value]: [string, any]) => {
@@ -124,14 +124,14 @@ const RawDataView = ({ span }: { span: any }) => {
       const formattedTimestamp = isTimeField ? formatTimestamp(value) : '';
       
       return (
-        <div key={key} className="group bg-white rounded-lg p-3 border border-slate-200 hover:border-slate-300 transition-colors">
+        <div key={key} className="group bg-white dark:bg-gray-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                   {key.replace(/_/g, ' ')}
                 </span>
-                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                <span className="text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                   {typeof value}
                 </span>
               </div>
@@ -139,11 +139,11 @@ const RawDataView = ({ span }: { span: any }) => {
               <div className="text-sm">
                 {typeof value === 'object' && value !== null ? (
                   <details className="group-inner">
-                    <summary className="cursor-pointer text-slate-600 hover:text-slate-900 font-medium text-xs mb-2">
+                    <summary className="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium text-xs mb-2">
                       View Object ({Object.keys(value).length} properties)
                     </summary>
-                    <div className="bg-slate-50 rounded p-3 mt-2 border">
-                      <pre className="text-xs text-slate-700 font-mono overflow-x-auto whitespace-pre-wrap">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded p-3 mt-2 border border-slate-200 dark:border-slate-700">
+                      <pre className="text-xs text-slate-700 dark:text-slate-300 font-mono overflow-x-auto whitespace-pre-wrap">
                         {JSON.stringify(value, null, 2)}
                       </pre>
                     </div>
@@ -152,19 +152,19 @@ const RawDataView = ({ span }: { span: any }) => {
                   <div className="flex flex-col gap-1">
                     <span className={`font-medium break-all ${
                       value === null || value === undefined 
-                        ? 'text-slate-400 italic' 
+                        ? 'text-slate-400 dark:text-slate-500 italic' 
                         : typeof value === 'boolean'
-                        ? value ? 'text-green-700' : 'text-red-600'
+                        ? value ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                         : typeof value === 'number'
-                        ? 'text-blue-700'
+                        ? 'text-blue-700 dark:text-blue-400'
                         : isTimeField
-                        ? 'text-indigo-700'
-                        : 'text-slate-900'
+                        ? 'text-indigo-700 dark:text-indigo-400'
+                        : 'text-slate-900 dark:text-slate-100'
                     }`}>
                       {formatValue(value)}
                     </span>
                     {isTimeField && formattedTimestamp && (
-                      <span className="text-xs text-slate-500 font-mono">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                         {formattedTimestamp}
                       </span>
                     )}
@@ -197,10 +197,10 @@ const RawDataView = ({ span }: { span: any }) => {
           
           return (
             <div key={category} className={`border rounded-xl p-4 ${config.color}`}>
-              <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
                 {config.icon}
                 {config.title}
-                <span className="text-xs text-slate-500 font-normal">({fields.length})</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">({fields.length})</span>
               </h4>
               <div className="grid grid-cols-1 gap-2">
                 {fields.map(renderField)}
@@ -215,20 +215,20 @@ const RawDataView = ({ span }: { span: any }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Header with toggle */}
-      <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
-        <h3 className="font-semibold flex items-center gap-2 text-slate-800">
-          <Database className="w-4 h-4 text-slate-600" />
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+        <h3 className="font-semibold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+          <Database className="w-4 h-4 text-slate-600 dark:text-slate-400" />
           Raw Span Data
         </h3>
         <div className="flex items-center gap-3">
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-slate-100 rounded-lg p-1">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
             <button
               onClick={() => setViewMode('formatted')}
               className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                 viewMode === 'formatted'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-gray-900 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <FileText className="w-3 h-3" />
@@ -238,8 +238,8 @@ const RawDataView = ({ span }: { span: any }) => {
               onClick={() => setViewMode('raw')}
               className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                 viewMode === 'raw'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-gray-900 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <Braces className="w-3 h-3" />
@@ -266,8 +266,8 @@ const RawDataView = ({ span }: { span: any }) => {
             {renderFormattedData()}
           </div>
         ) : (
-          <div className="bg-slate-900 rounded-lg p-4 min-h-full">
-            <pre className="text-green-400 text-xs font-mono whitespace-pre-wrap leading-5 overflow-auto">
+          <div className="bg-slate-900 dark:bg-gray-950 rounded-lg p-4 min-h-full">
+            <pre className="text-green-400 dark:text-green-300 text-xs font-mono whitespace-pre-wrap leading-5 overflow-auto">
 {JSON.stringify(span, null, 2)}
             </pre>
           </div>
@@ -285,14 +285,14 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
   const getSpanIcon = () => {
     const operationType = span.operation_type?.toLowerCase() || '';
     
-    if (operationType === 'llm') return <Brain className="w-5 h-5 text-purple-600" />;
-    if (operationType === 'tts') return <Volume2 className="w-5 h-5 text-green-600" />;
-    if (operationType === 'stt') return <Mic className="w-5 h-5 text-blue-600" />;
-    if (operationType === 'user_interaction') return <User className="w-5 h-5 text-purple-600" />;
-    if (operationType === 'assistant_interaction') return <Bot className="w-5 h-5 text-blue-600" />;
-    if (operationType === 'tool') return <Zap className="w-5 h-5 text-orange-600" />;
-    if (operationType === 'database') return <Database className="w-5 h-5 text-orange-600" />;
-    return <Activity className="w-5 h-5 text-gray-600" />;
+    if (operationType === 'llm') return <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
+    if (operationType === 'tts') return <Volume2 className="w-5 h-5 text-green-600 dark:text-green-400" />;
+    if (operationType === 'stt') return <Mic className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+    if (operationType === 'user_interaction') return <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
+    if (operationType === 'assistant_interaction') return <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+    if (operationType === 'tool') return <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" />;
+    if (operationType === 'database') return <Database className="w-5 h-5 text-orange-600 dark:text-orange-400" />;
+    return <Activity className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
   };
 
   const getStatusDisplay = () => {
@@ -300,13 +300,13 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
       return {
         icon: <XCircle className="w-4 h-4" />,
         text: 'ERROR',
-        color: 'text-red-600 bg-red-50 border-red-200'
+        color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
       };
     }
     return {
       icon: <CheckCircle2 className="w-4 h-4" />,
       text: 'SUCCESS',
-      color: 'text-green-600 bg-green-50 border-green-200'
+      color: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
     };
   };
 
@@ -342,9 +342,9 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
   const displayTimestamp = formatTimestamp(span?.captured_at);
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[600px] bg-white shadow-2xl border-l z-50 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-[600px] bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-700 z-50 flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-6">
+      <div className="bg-gradient-to-r from-slate-800 to-slate-700 dark:from-slate-900 dark:to-slate-800 text-white p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             {getSpanIcon()}
@@ -352,19 +352,19 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               <h2 className="text-xl font-semibold">
                 {span.name?.replace(/_/g, ' ').toUpperCase() || 'Unknown Operation'}
               </h2>
-              <p className="text-slate-300 text-sm">
+              <p className="text-slate-300 dark:text-slate-400 text-sm">
                 {getSpanDescription()}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-white/10">
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-white hover:bg-white/10 dark:hover:bg-white/5">
             <X className="w-5 h-5" />
           </Button>
         </div>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white/10 rounded-lg p-3">
+          <div className="bg-white/10 dark:bg-white/5 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="w-4 h-4" />
               <span className="text-sm opacity-80">Timestamp</span>
@@ -374,7 +374,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
             </div>
           </div>
           
-          <div className="bg-white/10 rounded-lg p-3">
+          <div className="bg-white/10 dark:bg-white/5 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <Server className="w-4 h-4" />
               <span className="text-sm opacity-80">Status</span>
@@ -385,7 +385,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
             </div>
           </div>
           
-          <div className="bg-white/10 rounded-lg p-3">
+          <div className="bg-white/10 dark:bg-white/5 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-4 h-4" />
               <span className="text-sm opacity-80">Type</span>
@@ -398,7 +398,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b bg-gray-50">
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex">
           {[
             { key: 'overview', label: 'Overview', icon: <MessageSquare className="w-4 h-4" /> },
@@ -410,8 +410,8 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               onClick={() => setActiveTab(tab.key as any)}
               className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
-                  ? 'border-blue-600 text-blue-600 bg-white'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {tab.icon}
@@ -422,31 +422,31 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900">
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* What Happened */}
-            <div className="bg-blue-50 rounded-xl p-4">
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-800">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-300">
                 <MessageSquare className="w-4 h-4" />
                 What Happened
               </h3>
-              <p className="text-blue-900 text-sm leading-relaxed">
+              <p className="text-blue-900 dark:text-blue-200 text-sm leading-relaxed">
                 {getSpanDescription()}
               </p>
             </div>
 
             {/* Key Details */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                   <Hash className="w-4 h-4" />
                   Request ID
                 </h4>
                 <div className="flex items-center gap-2">
                   {span.request_id ? (
                     <>
-                      <code className="bg-white px-2 py-1 rounded text-xs font-mono border">
+                      <code className="bg-white dark:bg-gray-900 px-2 py-1 rounded text-xs font-mono border border-gray-200 dark:border-gray-600">
                         {span.request_id}
                       </code>
                       <Button
@@ -459,17 +459,17 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                       </Button>
                     </>
                   ) : (
-                    <span className="text-sm text-gray-500">Not available</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Not available</span>
                   )}
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                   <ExternalLink className="w-4 h-4" />
                   Source
                 </h4>
-                <span className="text-sm">
+                <span className="text-sm text-gray-900 dark:text-gray-100">
                   {span.request_id_source || 'Not available'}
                 </span>
               </div>
@@ -477,16 +477,16 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
 
             {/* Timeline */}
             <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-green-600" />
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
                 Timeline
               </h3>
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full"></div>
                   <div>
-                    <div className="text-sm font-medium">Operation Executed</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">Operation Executed</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       {displayTimestamp || 'Time not available'}
                     </div>
                   </div>
@@ -499,56 +499,56 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
         {activeTab === 'technical' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-3">Operation Name</h4>
-                <code className="bg-white border rounded p-2 text-sm font-mono block">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Operation Name</h4>
+                <code className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded p-2 text-sm font-mono block text-gray-900 dark:text-gray-100">
                   {span.name || 'Not available'}
                 </code>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-3">Operation Type</h4>
-                <Badge variant="outline" className="text-sm">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Operation Type</h4>
+                <Badge variant="outline" className="text-sm border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
                   {span.operation_type || 'unknown'}
                 </Badge>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-3">Request Identifiers</h4>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Request Identifiers</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Request ID:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Request ID:</span>
                     {span.request_id ? (
-                      <code className="bg-white px-2 py-1 rounded text-xs">
+                      <code className="bg-white dark:bg-gray-900 px-2 py-1 rounded text-xs border border-gray-200 dark:border-gray-600">
                         {span.request_id}
                       </code>
                     ) : (
-                      <span className="text-gray-500">Not available</span>
+                      <span className="text-gray-500 dark:text-gray-400">Not available</span>
                     )}
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Source:</span>
-                    <span>{span.request_id_source || 'Not available'}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Source:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{span.request_id_source || 'Not available'}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-3">Timing Information</h4>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Timing Information</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Captured At:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Captured At:</span>
                     {span.captured_at ? (
-                      <code className="bg-white px-2 py-1 rounded text-xs">
+                      <code className="bg-white dark:bg-gray-900 px-2 py-1 rounded text-xs border border-gray-200 dark:border-gray-600">
                         {span.captured_at}
                       </code>
                     ) : (
-                      <span className="text-gray-500">Not available</span>
+                      <span className="text-gray-500 dark:text-gray-400">Not available</span>
                     )}
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Formatted Time:</span>
-                    <span>{displayTimestamp || 'Not available'}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Formatted Time:</span>
+                    <span className="text-gray-900 dark:text-gray-100">{displayTimestamp || 'Not available'}</span>
                   </div>
                 </div>
               </div>

@@ -416,7 +416,7 @@ const handleRowClick = (trace: TraceLog) => {
                           "grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer border-l-2 transition-all text-sm",
                           hasBugReport
                             ? "border-l-red-500 bg-red-50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            : "border-l-transparent hover:border-l-blue-500"
+                            : "border-l-transparent hover:border-l-blue-500 dark:hover:border-l-blue-400"
                         )}
                       >
                         {/* Trace Info */}
@@ -493,7 +493,7 @@ const handleRowClick = (trace: TraceLog) => {
                             {metrics.length > 0 && (
                               <div className="flex gap-1">
                                 {metrics.map((metric, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                                  <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
                                     {metric.type}
                                   </Badge>
                                 ))}
