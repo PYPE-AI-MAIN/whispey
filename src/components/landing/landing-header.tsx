@@ -27,7 +27,7 @@ function Header() {
     
         async function fetchStars() {
           try {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/stargazers`);
             if (response.ok) {
               const data = await response.json();
               setStars(data.stargazers_count);
