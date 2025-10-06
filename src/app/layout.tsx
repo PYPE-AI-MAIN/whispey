@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import { type Metadata } from 'next'
 import {
   ClerkProvider,
@@ -12,9 +11,7 @@ import { PostHogProvider } from './providers'
 import { FeatureAccessProvider } from './providers/FeatureAccessProvider'
 import { QueryProvider } from './providers/QueryProvider'
 import './globals.css'
-import SidebarWrapper from '@/components/shared/SidebarWrapper'
-import FeedbackWidget from '@/components/feedback/FeedbackWidget'
-import SignOutHandler from '@/components/auth'
+import LayoutContent from './LayoutContent'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -41,10 +38,9 @@ export default function RootLayout({
 
   return (
     <ClerkProvider
-      signInUrl='/sign-in'
       appearance={{
         variables: {
-          colorPrimary: "#2563eb", // Blue-600
+          colorPrimary: "#2563eb",
         }
       }}
     >
@@ -70,21 +66,9 @@ export default function RootLayout({
             <QueryProvider>
               <PostHogProvider>
                 <FeatureAccessProvider>
-                  <main>
-                    <SignedOut>
-                      <div className="min-h-screen">
-                        {children}
-                      </div>
-                    </SignedOut>
-                    <SignedIn>
-                      <SignOutHandler>
-                        <SidebarWrapper>
-                          {children}
-                        </SidebarWrapper>
-                        <FeedbackWidget />
-                      </SignOutHandler>
-                    </SignedIn>
-                  </main>
+                  <LayoutContent>
+                    {children}
+                  </LayoutContent>
                 </FeatureAccessProvider>
               </PostHogProvider>
             </QueryProvider>
