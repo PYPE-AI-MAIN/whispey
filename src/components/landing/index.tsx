@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Play, BarChart3, Zap, Shield, Clock, Code, Mic, Activity, Github, Star, ExternalLink } from "lucide-react"
+import { ArrowRight, Play, BarChart3, Zap, Shield, Clock, Code, Mic, Activity, Github, Star, ExternalLink, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 // import { CompanyMarquee } from "@/components/landing/company-marquee"
@@ -327,6 +327,35 @@ export default function LandingPage() {
             </div>
           </div>
         </section> */}
+
+        <section className="py-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-gradient-to-r from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-cyan-950/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-800/50">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="flex-1 text-center lg:text-left">
+                  <div className="flex items-center justify-center lg:justify-start gap-2 mb-3">
+                    <Users className="w-5 h-5 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-600 dark:text-purple-400">New</span>
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2 tracking-tight">Get Real Expert Feedback</h3>
+                  <p className="text-muted-foreground">
+                    Have seasoned call center professionals test your agents like real customers would. 
+                    Get unbiased feedback on clarity, flow, and customer experience.
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <Button 
+                    size="lg" 
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                    onClick={() => window.open('https://forms.gle/HKtNVwasVnAh3uJ5A', '_blank', 'noopener,noreferrer')}
+                  >
+                    Request Testing
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Footer */}
         <footer className="border-t border-border/50 py-12 px-4 sm:px-6 lg:px-8">
