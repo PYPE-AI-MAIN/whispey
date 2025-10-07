@@ -157,7 +157,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-50 animate-spin" />
-          <div className="text-sm text-gray-500">Loading timeline...</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Loading timeline...</div>
         </div>
       </div>
     );
@@ -166,7 +166,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
   if (!spans.length) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center text-gray-500">
+        <div className="text-center text-gray-500 dark:text-gray-400">
           <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-30" />
           <div className="text-lg font-medium">No timeline data available</div>
           <div className="text-sm mt-1 max-w-md">
@@ -190,25 +190,25 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
 
   const getOperationIcon = (opType: string) => {
     switch (opType) {
-      case 'llm': return <Brain className="w-4 h-4 text-purple-600" />;
-      case 'tts': return <Volume2 className="w-4 h-4 text-green-600" />;
-      case 'stt': return <Mic className="w-4 h-4 text-blue-600" />;
-      case 'user_interaction': return <User className="w-4 h-4 text-blue-500" />;
-      case 'assistant_interaction': return <Bot className="w-4 h-4 text-indigo-500" />;
-      case 'tool': return <Zap className="w-4 h-4 text-orange-600" />;
-      default: return <Activity className="w-4 h-4 text-gray-500" />;
+      case 'llm': return <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+      case 'tts': return <Volume2 className="w-4 h-4 text-green-600 dark:text-green-400" />;
+      case 'stt': return <Mic className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      case 'user_interaction': return <User className="w-4 h-4 text-blue-500 dark:text-blue-300" />;
+      case 'assistant_interaction': return <Bot className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />;
+      case 'tool': return <Zap className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      default: return <Activity className="w-4 h-4 text-gray-500 dark:text-gray-400" />;
     }
   };
 
   const getSpanColor = (opType: string) => {
     switch (opType) {
-      case 'llm': return 'bg-purple-500';
-      case 'tts': return 'bg-green-500';
-      case 'stt': return 'bg-blue-500';
-      case 'user_interaction': return 'bg-blue-400';
-      case 'assistant_interaction': return 'bg-indigo-500';
-      case 'tool': return 'bg-orange-500';
-      default: return 'bg-gray-400';
+      case 'llm': return 'bg-purple-500 dark:bg-purple-600';
+      case 'tts': return 'bg-green-500 dark:bg-green-600';
+      case 'stt': return 'bg-blue-500 dark:bg-blue-600';
+      case 'user_interaction': return 'bg-blue-400 dark:bg-blue-500';
+      case 'assistant_interaction': return 'bg-indigo-500 dark:bg-indigo-600';
+      case 'tool': return 'bg-orange-500 dark:bg-orange-600';
+      default: return 'bg-gray-400 dark:bg-gray-500';
     }
   };
 
@@ -230,71 +230,71 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
     <>
       <div className="flex-1 overflow-y-auto">
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-50 to-gray-50 px-6 py-4 border-b">
+        <div className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">Trace-based Timeline</h2>
-            <div className="text-xs text-gray-500">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Trace-based Timeline</h2>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
               {traceGroups.length} traces • {formatDuration(totalDuration)} total
             </div>
           </div>
           
           <div className="grid grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-lg font-bold text-slate-600">{traceGroups.length}</div>
-              <div className="text-xs text-gray-600">Traces</div>
+              <div className="text-lg font-bold text-slate-600 dark:text-slate-400">{traceGroups.length}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Traces</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">{totalSpans}</div>
-              <div className="text-xs text-gray-600">Total Spans</div>
+              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{totalSpans}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Total Spans</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-purple-600">{formatDuration(totalDuration)}</div>
-              <div className="text-xs text-gray-600">Duration</div>
+              <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{formatDuration(totalDuration)}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Duration</div>
             </div>
             <div className="text-center">
-              <div className={`text-lg font-bold ${totalErrors > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <div className={`text-lg font-bold ${totalErrors > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                 {totalErrors}
               </div>
-              <div className="text-xs text-gray-600">Errors</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">Errors</div>
             </div>
           </div>
         </div>
 
         {/* Trace Groups */}
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-gray-800">
           {traceGroups.map((traceGroup) => (
             <div key={traceGroup.trace_id}>
               {/* Trace Header */}
               <div 
-                className="px-6 py-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between group"
+                className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group"
                 onClick={() => toggleTrace(traceGroup.trace_id)}
               >
                 <div className="flex items-center gap-3">
                   {expandedTraces.has(traceGroup.trace_id) ? 
-                    <ChevronDown className="w-4 h-4 text-gray-400" /> : 
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" /> : 
+                    <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   }
-                  <div className="p-1.5 rounded-full bg-blue-100">
-                    <Database className="w-3 h-3 text-blue-600" />
+                  <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                    <Database className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <span className="font-medium text-sm">
+                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
                       Trace {traceGroup.trace_id.substring(2, 10)}
                     </span>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {traceGroup.operation_summary}
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                   <span>{formatTime(traceGroup.start_time)}</span>
                   <span className="font-mono">{formatDuration(traceGroup.duration_ms)}</span>
-                  <span className="px-2 py-1 bg-gray-100 rounded">
+                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">
                     {traceGroup.span_count} spans
                   </span>
                   {traceGroup.error_count > 0 && (
-                    <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
+                    <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">
                       {traceGroup.error_count} errors
                     </span>
                   )}
@@ -303,7 +303,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
 
               {/* Expanded Spans */}
               {expandedTraces.has(traceGroup.trace_id) && (
-                <div className="bg-gray-50/50">
+                <div className="bg-gray-50/50 dark:bg-gray-800/50">
                   {/* Waterfall Timeline */}
                   <div className="px-12 py-4">
                     <div className="space-y-2">
@@ -316,7 +316,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                         return (
                           <div 
                             key={`${traceGroup.trace_id}-span-${index}`}
-                            className="flex items-center h-8 hover:bg-white cursor-pointer rounded group"
+                            className="flex items-center h-8 hover:bg-white dark:hover:bg-gray-700 cursor-pointer rounded group"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedSpan(span);
@@ -325,13 +325,13 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                             {/* Span name */}
                             <div className="w-48 flex items-center gap-2 text-sm pr-4">
                               {getOperationIcon(span.operation_type)}
-                              <span className="font-medium text-gray-900 truncate">
+                              <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
                                 {span.name}
                               </span>
                             </div>
                             
                             {/* Timeline bar container */}
-                            <div className="flex-1 relative h-6 bg-gray-200 rounded">
+                            <div className="flex-1 relative h-6 bg-gray-200 dark:bg-gray-600 rounded">
                               {/* Span bar */}
                               <div
                                 className={`absolute h-full rounded ${getSpanColor(span.operation_type)} opacity-80 hover:opacity-100 transition-all duration-200 group-hover:shadow-sm`}
@@ -345,9 +345,9 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                             </div>
 
                             {/* Duration and metadata */}
-                            <div className="w-32 text-right text-xs text-gray-500 pl-4">
+                            <div className="w-32 text-right text-xs text-gray-500 dark:text-gray-400 pl-4">
                               <div className="font-mono">{formatDuration(span.duration_ms)}</div>
-                              <div className="text-[10px] uppercase font-medium px-1 py-0.5 bg-gray-200 rounded mt-0.5 inline-block">
+                              <div className="text-[10px] uppercase font-medium px-1 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded mt-0.5 inline-block">
                                 {span.operation_type}
                               </div>
                             </div>
@@ -363,9 +363,9 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
         </div>
 
         {/* Summary */}
-        <div className="mt-8 px-6 py-4 bg-gray-50/50 border-t">
-          <div className="text-sm font-medium text-gray-700 mb-2">Session Summary</div>
-          <div className="text-xs text-gray-600 space-y-1">
+        <div className="mt-8 px-6 py-4 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Session Summary</div>
+          <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
             <div>• {traceGroups.length} distinct traces executed</div>
             <div>• {totalSpans} total operations performed</div>
             <div>• {formatDuration(totalDuration)} total execution time</div>
