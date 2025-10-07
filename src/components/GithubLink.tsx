@@ -15,10 +15,12 @@ export function useGitHubStars(owner: string, repo: string) {
   useEffect(() => {
     async function fetchStars() {
       try {
-        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+        const response = await fetch('/api/github-stars');
         if (response.ok) {
-          const data: GitHubRepo = await response.json();
-          setStars(data.stargazers_count);
+          const data = await response.json();
+          setStars(data.stars);
+        } else {
+          console.error('API route failed:', response.status);
         }
       } catch (error) {
         console.error('Failed to fetch GitHub stars:', error);

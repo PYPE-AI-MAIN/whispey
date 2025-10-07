@@ -108,6 +108,7 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
 }
 
 const sidebarRoutes: SidebarRoute[] = [
+  // Hide sidebar for auth and docs pages
   {
     patterns: [
       { pattern: '/sign*' },
@@ -116,10 +117,13 @@ const sidebarRoutes: SidebarRoute[] = [
     getSidebarConfig: () => null,
     priority: 100
   },
+
+  // Project-level agents routes with Phone Settings
   {
     patterns: [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
+      { pattern: '/:projectId/agents/sip-management' }
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
@@ -136,6 +140,17 @@ const sidebarRoutes: SidebarRoute[] = [
       ]
 
       const configurationItems = []
+      
+      // Add Phone Settings (SIP Management)
+      configurationItems.push({
+        id: 'sip-management',
+        name: 'Phone Settings',
+        icon: 'Phone',
+        path: `/${projectId}/agents/sip-management`,
+        group: 'configuration'
+      })
+
+      // Add API Keys if user has permission
       if (userCanViewApiKeys) {
         configurationItems.push({
           id: 'api-keys',
@@ -151,12 +166,14 @@ const sidebarRoutes: SidebarRoute[] = [
         context: { projectId },
         navigation: [...baseNavigation, ...configurationItems],
         showBackButton: true,
-        backPath: '/',
+        backPath: '/projects',
         backLabel: 'Back to Workspaces'
       }
     },
     priority: 95
   },
+
+  // Individual agent routes (unchanged)
   {
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
@@ -168,7 +185,7 @@ const sidebarRoutes: SidebarRoute[] = [
       const { projectId, agentId } = params
       const { isEnhancedProject, agentType } = context
 
-      const reservedPaths = ['api-keys', 'settings', 'config', 'observability'];
+      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
         return null;
       }
@@ -230,7 +247,7 @@ const sidebarRoutes: SidebarRoute[] = [
       const navigation = [
         ...baseNavigation,
         ...configItems,
-        // ...callItems,
+        ...callItems,
         ...enhancedItems
       ]
 
@@ -245,9 +262,85 @@ const sidebarRoutes: SidebarRoute[] = [
     },
     priority: 90
   },
+
+  // Main workspaces/projects route with Phone Settings in global navigation
   {
     patterns: [
       { pattern: '/', exact: true },
+      { pattern: '/projects', exact: true }
+    ],
+    getSidebarConfig: () => ({
+      type: 'workspaces',
+      context: {},
+      navigation: [
+        { 
+          id: 'workspaces', 
+          name: 'Workspaces', 
+          icon: 'Home', 
+          path: '/projects' 
+        },
+        { 
+          id: 'sip-management', 
+          name: 'Phone Settings', 
+          icon: 'Phone', 
+          path: '/sip-management',
+          group: 'configuration'
+        },
+        { 
+          id: 'docs', 
+          name: 'Documentation', 
+          icon: 'FileText', 
+          path: '/docs', 
+          external: true, 
+          group: 'resources' 
+        }
+      ],
+      showBackButton: false
+    }),
+    priority: 85
+  },
+
+  // Global Phone Settings route
+  {
+    patterns: [
+      { pattern: '/sip-management' }
+    ],
+    getSidebarConfig: () => ({
+      type: 'sip-management',
+      context: {},
+      navigation: [
+        { 
+          id: 'workspaces', 
+          name: 'Workspaces', 
+          icon: 'Home', 
+          path: '/projects' 
+        },
+        { 
+          id: 'sip-management', 
+          name: 'Phone Settings', 
+          icon: 'Phone', 
+          path: '/sip-management',
+          group: 'configuration'
+        },
+        { 
+          id: 'docs', 
+          name: 'Documentation', 
+          icon: 'FileText', 
+          path: '/docs', 
+          external: true, 
+          group: 'resources' 
+        }
+      ],
+      showBackButton: true,
+      backPath: '/projects',
+      backLabel: 'Back to Workspaces'
+    }),
+    priority: 80
+  },
+
+  // Fallback for any other routes
+  {
+    patterns: [
       { pattern: '*' }
     ],
     getSidebarConfig: () => ({
@@ -258,7 +351,14 @@ const sidebarRoutes: SidebarRoute[] = [
           id: 'workspaces', 
           name: 'Workspaces', 
           icon: 'Home', 
-          path: '/' 
+          path: '/projects' 
+        },
+        { 
+          id: 'sip-management', 
+          name: 'Phone Settings', 
+          icon: 'Phone', 
+          path: '/sip-management',
+          group: 'configuration'
         },
         { 
           id: 'docs', 
