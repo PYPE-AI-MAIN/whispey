@@ -83,13 +83,16 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     setCurrentStep('creating')
   
     try {
-      // Use the fetchProjectApiKey function you already created
+      console.log('🚀 Starting agent creation process...')
+      
+      // Use the fetchProjectApiKey function
       const projectApiKey = await fetchProjectApiKey()
+      console.log('🔑 Got project API key:', projectApiKey)
   
       // Step 1: Create monitoring record in your backend (Whispey)
       const agentPayload = {
         name: formData.name.trim(),
-        agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform, // Set based on flow type
+        agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform,
         configuration: {
           description: formData.description.trim() || null,
         },
@@ -97,6 +100,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         environment: 'dev',
         platform: selectedPlatform
       }
+  
+      console.log('📝 Creating local agent record with payload:', agentPayload)
   
       const agentResponse = await fetch('/api/agents', {
         method: 'POST',
@@ -106,97 +111,117 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   
       if (!agentResponse.ok) {
         const errorData = await agentResponse.json()
+        console.error('❌ Failed to create local agent:', errorData)
         throw new Error(errorData.error || 'Failed to create monitoring record')
       }
   
       const localAgent = await agentResponse.json()
+      console.log('✅ Local agent created:', localAgent)
   
       // Step 2: Only create external agent infrastructure if it's a Pype agent
       if (isPypeAgent) {
-        console.log('🔑 Debug - Project API Key:', projectApiKey) // Debug log
-      
-        // Encrypt the API version identifier via server
+        console.log('🔧 Creating PypeAI agent infrastructure...')
+        
+        // Get encrypted API key
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: 'pype-api-v1' })
         })
-      
+  
         if (!encryptResponse.ok) {
+          const encryptError = await encryptResponse.json()
+          console.error('❌ Failed to encrypt API key:', encryptError)
           throw new Error('Failed to encrypt API key')
         }
-      
+  
         const { encrypted: encryptedApiKey } = await encryptResponse.json()
-        console.log('🔐 Debug - Encrypted API Key:', encryptedApiKey) // Debug log
-        
-        const agent = {
-          name: formData.name.trim(),
-          type: 'OUTBOUND',
-          assistant: [{
+        console.log('🔐 Got encrypted API key')
+  
+        // Create the agent payload for PypeAI (matching your exact structure)
+        const pypeAgentPayload = {
+          agent: {
             name: formData.name.trim(),
-            prompt: `You are a helpful ${selectedPlatform} assistant. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
-            variables: {},
-            stt: { 
-              name: selectedPlatform === 'vapi' ? 'deepgram' : 'sarvam', 
-              language: selectedPlatform === 'vapi' ? 'en' : 'en-IN', 
-              model: selectedPlatform === 'vapi' ? 'nova-2' : 'saarika:v2.5' 
-            },
-            llm: { 
-              name: 'openai', 
-              provider: 'openai', 
-              model: 'gpt-4o-mini', 
-              temperature: 0.3, 
-              api_key_env: 'OPENAI_API_KEY' 
-            },
-            tts: {
-              name: 'elevenlabs',
-              voice_id: 'H8bdWZHK2OgZwTN7ponr',
-              model: 'eleven_flash_v2_5',
-              language: 'en',
-              voice_settings: {
-                similarity_boost: 1,
-                stability: 0.7,
-                style: 0.7,
-                use_speaker_boost: false,
-                speed: 1.1
+            type: "OUTBOUND",
+            assistant: [{
+              name: formData.name.trim(),
+              prompt: `You are a helpful voice assistant named ${formData.name.trim()}. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
+              variables: {},
+              stt: { 
+                name: "sarvam", 
+                language: "en-IN", 
+                model: "saarika:v2.5" 
+              },
+              llm: { 
+                name: "openai", 
+                provider: "openai", 
+                model: "gpt-4o-mini", // Fixed model name
+                temperature: 0.3, 
+                api_key_env: "OPENAI_API_KEY" 
+              },
+              tts: {
+                name: "elevenlabs",
+                voice_id: "H8bdWZHK2OgZwTN7ponr",
+                model: "eleven_flash_v2_5",
+                language: "en",
+                voice_settings: {
+                  similarity_boost: 1,
+                  stability: 0.7,
+                  style: 0.7,
+                  use_speaker_boost: false,
+                  speed: 1.1
+                }
+              },
+              vad: { 
+                name: "silero", 
+                min_silence_duration: 0.2 
+              },
+              tools: [],
+              interruptions: {
+                allow_interruptions: false,
+                min_interruption_duration: 1.3,
+                min_interruption_words: 2
+              },
+              first_message_mode: {
+                mode: "assistant_waits_for_user",
+                first_message: "Hello! How can I help you today?",
+                allow_interruptions: false
               }
-            },
-            vad: { name: 'silero', min_silence_duration: 0.2 },
-            tools: [],
-            interruptions: {
-              allow_interruptions: false,
-              min_interruption_duration: 1.3,
-              min_interruption_words: 2
-            },
-            first_message_mode: {
-              mode: 'assistant_waits_for_user',
-              first_message: 'Hello! How can I help you today?',
-              allow_interruptions: false
-            }
-          }],
-          agent_id: localAgent.id,
-          whispey_key_id: projectApiKey
+            }],
+            agent_id: localAgent.id,
+            whispey_key_id: projectApiKey
+          }
         }
-      
+  
+        console.log('📤 Sending PypeAI payload:', JSON.stringify(pypeAgentPayload, null, 2))
+  
         const createResponse = await fetch('/api/agents/create-agent', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'x-api-key': encryptedApiKey
           },
-          body: JSON.stringify({ agent })
+          body: JSON.stringify(pypeAgentPayload)
         })
-      
+  
+        console.log('📡 PypeAI API response status:', createResponse.status)
+  
         if (!createResponse.ok) {
           const createErrorData = await createResponse.json()
-          throw new Error(createErrorData.error || createErrorData.detail || 'Failed to create agent infrastructure')
+          console.error('❌ PypeAI API Error:', createErrorData)
+          throw new Error(createErrorData.error || createErrorData.detail || `PypeAI API error: ${createResponse.status}`)
         }
+  
+        const pypeResponse = await createResponse.json()
+        console.log('✅ PypeAI agent created successfully:', pypeResponse)
       }
       
       setCreatedAgentData(localAgent)
       setCurrentStep('success')
+      console.log('🎉 Agent creation completed successfully!')
       
     } catch (err: unknown) {
+      console.error('💥 Agent creation failed:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to create agent'
       setError(errorMessage)
       setCurrentStep('form')
