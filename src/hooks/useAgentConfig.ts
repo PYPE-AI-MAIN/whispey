@@ -416,7 +416,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
           })) || [],
       },
       fillers: {
-        enableFillerWords: assistant.filler_words?.enabled ?? true,
+        enableFillerWords: assistant.filler_words?.enabled ?? false,
         generalFillers: assistant.filler_words?.general_fillers?.filter((f: string) => f !== "") || [],
         conversationFillers: assistant.filler_words?.conversation_fillers?.filter((f: string) => f !== "") || [],
         conversationKeywords: assistant.filler_words?.conversation_keywords?.filter((f: string) => f !== "") || [],
