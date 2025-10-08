@@ -50,9 +50,24 @@ function InterruptionSettings({
           type="number"
           min="0.1"
           max="10"
-          step="0.1"
+          step="0.01"
           value={minInterruptionDuration}
-          onChange={(e) => onFieldChange('advancedSettings.interruption.minInterruptionDuration', parseFloat(e.target.value) || 0)}
+          onChange={(e) => {
+            // Allow any value during typing, including empty string
+            const value = e.target.value;
+            if (value === '') {
+              onFieldChange('advancedSettings.interruption.minInterruptionDuration', 0);
+            } else {
+              onFieldChange('advancedSettings.interruption.minInterruptionDuration', parseFloat(value));
+            }
+          }}
+          onBlur={(e) => {
+            // Enforce minimum value when user clicks outside
+            const value = parseFloat(e.target.value);
+            if (isNaN(value) || value < 0.1) {
+              onFieldChange('advancedSettings.interruption.minInterruptionDuration', 0.1);
+            }
+          }}
           className="h-7 text-xs"
           disabled={!allowInterruptions}
         />

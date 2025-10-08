@@ -171,7 +171,6 @@ export function useVoiceAgent({
       throw new Error('API base URL is not configured')
     }
 
-    console.log('📞 Making request to:', `${apiBaseUrl}/start_web_session`)
 
     // Generate secure random identifiers
     const userIdentity = generateSecureId('user')
@@ -196,7 +195,6 @@ export function useVoiceAgent({
     }
 
     const apiData = await response.json()
-    console.log('✅ Raw API response:', apiData)
 
     // FIXED: Transform API response to expected format
     const transformedSession: WebSession = {
@@ -218,7 +216,6 @@ export function useVoiceAgent({
            'ws://15.206.157.27:7880' // Fallback - adjust this to your actual LiveKit server
     }
 
-    console.log('🔄 Transformed session data:', transformedSession)
     return transformedSession
   }
 
@@ -236,18 +233,14 @@ export function useVoiceAgent({
   }, [])
 
   const setupRoomListeners = useCallback((liveKitRoom: Room) => {
-    console.log('🎯 Setting up LiveKit room listeners')
-
     // Connection events
     liveKitRoom.on(RoomEvent.Connected, () => {
-      console.log('✅ Connected to LiveKit room')
       setIsConnected(true)
       setIsConnecting(false)
       setConnectionError(null)
     })
 
     liveKitRoom.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
-      console.log('❌ Disconnected from LiveKit room:', reason)
       setIsConnected(false)
       setIsConnecting(false)
       setAgentParticipant(null)
@@ -256,18 +249,15 @@ export function useVoiceAgent({
     })
 
     liveKitRoom.on(RoomEvent.Reconnecting, () => {
-      console.log('🔄 Reconnecting to LiveKit room...')
       setConnectionError('Reconnecting...')
     })
 
     liveKitRoom.on(RoomEvent.Reconnected, () => {
-      console.log('✅ Reconnected to LiveKit room')
       setConnectionError(null)
     })
 
     // Participant events
     liveKitRoom.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
-      console.log('👤 Participant connected:', participant.identity, 'metadata:', participant.metadata)
       
       // Detect agent participant - check various indicators
       const isAgent = participant.identity.toLowerCase().includes('agent') || 
@@ -277,13 +267,11 @@ export function useVoiceAgent({
       
       if (isAgent) {
         setAgentParticipant(participant)
-        console.log('🤖 Agent participant detected:', participant.identity)
         setAgentState('listening')
       }
     })
 
     liveKitRoom.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-      console.log('👤 Participant disconnected:', participant.identity)
       if (participant === agentParticipant) {
         setAgentParticipant(null)
         setAgentState('initializing')
@@ -296,7 +284,6 @@ export function useVoiceAgent({
       publication: RemoteTrackPublication, 
       participant: RemoteParticipant
     ) => {
-      console.log('🎵 Track subscribed:', track.kind, 'from', participant.identity)
       
       if (track.kind === Track.Kind.Audio) {
         try {
@@ -309,11 +296,9 @@ export function useVoiceAgent({
           
           // Add event listeners for debugging
           audioElement.addEventListener('play', () => {
-            console.log('🔊 Audio element started playing')
           })
           
           audioElement.addEventListener('error', (e) => {
-            console.error('❌ Audio element error:', e)
           })
           
           // Add to DOM and track it
@@ -323,7 +308,6 @@ export function useVoiceAgent({
           // Attach track
           track.attach(audioElement)
           
-          console.log('🔊 Audio track attached')
 
           // Clean up when track ends
           const cleanup = () => {
@@ -331,7 +315,6 @@ export function useVoiceAgent({
               track.detach(audioElement)
               audioElement.remove()
               audioElementsRef.current.delete(audioElement)
-              console.log('🧹 Audio track cleaned up')
             } catch (error) {
               console.warn('Error during audio cleanup:', error)
             }
@@ -339,10 +322,8 @@ export function useVoiceAgent({
 
           track.addListener('ended', cleanup)
           track.addListener('muted', () => {
-            console.log('🔇 Audio track muted')
           })
           track.addListener('unmuted', () => {
-            console.log('🔊 Audio track unmuted')
           })
         } catch (error) {
           console.error('❌ Error setting up audio track:', error)
@@ -355,7 +336,6 @@ export function useVoiceAgent({
       publication: RemoteTrackPublication, 
       participant: RemoteParticipant
     ) => {
-      console.log('🎵 Track unsubscribed:', track.kind, 'from', participant.identity)
     })
 
     // Transcription events
@@ -364,7 +344,6 @@ export function useVoiceAgent({
       participant?: Participant, 
       publication?: TrackPublication
     ) => {
-      console.log('📝 Transcription received:', segments.length, 'segments from', participant?.identity)
       
       segments.forEach(segment => {
         if (!segment.text?.trim()) return
@@ -393,9 +372,7 @@ export function useVoiceAgent({
             return [...prev.slice(-99), transcript]
           }
         })
-
-        console.log(`📝 ${transcript.speaker.toUpperCase()}: "${transcript.text}" ${transcript.isFinal ? '(final)' : '(partial)'}`)
-      })
+        })
     })
 
     // Data messages for agent state
@@ -412,7 +389,6 @@ export function useVoiceAgent({
           const newState = data.state as 'initializing' | 'listening' | 'thinking' | 'speaking'
           if (['initializing', 'listening', 'thinking', 'speaking'].includes(newState)) {
             setAgentState(newState)
-            console.log('🤖 Agent state updated:', newState)
           }
         }
         
@@ -420,26 +396,23 @@ export function useVoiceAgent({
           console.log('📨 Agent message:', data.message)
         }
       } catch (error) {
-        console.log('📦 Non-JSON data received:', payload.length, 'bytes')
+        console.log('📦 Non-JSON data received')
       }
     })
 
     // Local track events
     liveKitRoom.on(RoomEvent.LocalTrackPublished, (publication: LocalTrackPublication) => {
-      console.log('📤 Local track published:', publication.kind)
       if (publication.kind === Track.Kind.Audio) {
         setIsMuted(publication.isMuted)
       }
     })
 
     liveKitRoom.on(RoomEvent.LocalTrackUnpublished, (publication: LocalTrackPublication) => {
-      console.log('📤 Local track unpublished:', publication.kind)
     })
 
     // Connection quality events
     liveKitRoom.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
       if (participant === liveKitRoom.localParticipant) {
-        console.log('📶 Local connection quality:', quality)
       }
     })
 
@@ -447,8 +420,6 @@ export function useVoiceAgent({
 
   // FIXED: Updated to use correct field names
   const connect = useCallback(async () => {
-    console.log('🚀 Starting connection to agent:', agentName)
-    
     if (isConnecting || isConnected) {
       console.warn('⚠️ Already connecting or connected')
       return
@@ -464,13 +435,9 @@ export function useVoiceAgent({
 
     try {
       // Start web session
-      console.log('📞 Starting web session...')
       const sessionData = await startWebSession()
       setWebSession(sessionData)
       
-      console.log('✅ Web session started. Room:', sessionData.room)
-      console.log('🔌 Will connect to:', sessionData.url)
-
       // Create and configure room
       const liveKitRoom = new Room({
         audioCaptureDefaults: {
@@ -503,7 +470,6 @@ export function useVoiceAgent({
       }
 
       // Connect to room
-      console.log('🔌 Connecting to LiveKit room:', sessionData.url)
       await liveKitRoom.connect(
         sessionData.url, 
         sessionData.token || sessionData.user_token!, 
@@ -518,8 +484,6 @@ export function useVoiceAgent({
       } catch (micError) {
         console.warn('⚠️ Failed to enable microphone:', micError)
       }
-      
-      console.log('✅ Successfully connected to LiveKit room')
       
     } catch (error) {
       console.error('❌ Failed to connect to voice agent:', error)
@@ -541,8 +505,6 @@ export function useVoiceAgent({
 
   // All other methods remain the same...
   const disconnect = useCallback(async () => {
-    console.log('🔌 Disconnecting from voice agent')
-    
     try {
       if (roomRef.current) {
         roomRef.current.disconnect()
@@ -574,7 +536,6 @@ export function useVoiceAgent({
       const newMutedState = !isMuted
       await roomRef.current.localParticipant.setMicrophoneEnabled(!newMutedState)
       setIsMuted(newMutedState)
-      console.log(newMutedState ? '🔇 Microphone muted' : '🎤 Microphone unmuted')
     } catch (error) {
       console.error('❌ Error toggling mute:', error)
       setConnectionError('Failed to toggle mute')
@@ -593,12 +554,10 @@ export function useVoiceAgent({
       }
     })
     
-    console.log('🔊 Volume updated to:', clampedVolume)
   }, [])
 
   const clearTranscripts = useCallback(() => {
     setTranscripts([])
-    console.log('🧹 Transcripts cleared')
   }, [])
 
   const sendTextMessage = useCallback(async (message: string) => {
@@ -623,8 +582,6 @@ export function useVoiceAgent({
         reliable: true,
         topic: 'chat'
       })
-      
-      console.log('💬 Text message sent:', message.trim())
       
       const userTranscript: Transcript = {
         id: `user_${Date.now()}_${getSecureRandomInt(100000)}`, // SECURITY FIX: Use secure random

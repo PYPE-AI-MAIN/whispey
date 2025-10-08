@@ -27,10 +27,12 @@ function Header() {
     
         async function fetchStars() {
           try {
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/stargazers`);
+            const response = await fetch('/api/github-stars');
             if (response.ok) {
               const data = await response.json();
-              setStars(data.stargazers_count);
+              setStars(data.stars);
+            } else {
+              console.error('API route failed:', response.status);
             }
           } catch (error) {
             console.error('Failed to fetch GitHub stars:', error);
@@ -88,7 +90,7 @@ function Header() {
     function DiscordButton() {
       return (
         <Link
-          href="https://discord.gg/r2eMeAp6"
+          href="https://discord.gg/hrj7H82WQG"
           target="_blank"
           rel="noopener noreferrer"
           className="group relative flex items-center gap-2.5 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all duration-300 rounded-lg hover:bg-accent/50 border border-border/60 hover:border-border hover:shadow-sm active:scale-[0.98] backdrop-blur-sm overflow-hidden"

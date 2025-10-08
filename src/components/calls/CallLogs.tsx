@@ -90,33 +90,6 @@ function TableSkeleton() {
   )
 }
 
-function flattenAndPickColumns(
-  row: CallLog,
-  basic: string[],
-  metadata: string[],
-  transcription: string[]
-): Record<string, any> {
-  const flat: Record<string, any> = {};
-
-  // Basic columns (skip "total_cost")
-  for (const key of basic) {
-    if (key in row) {
-      flat[key] = row[key as keyof CallLog];
-    }
-  }
-
-  // Metadata columns
-  if (row.metadata && typeof row.metadata === "object") {
-    for (const key of metadata) flat[key] = row.metadata[key];
-  }
-
-  // Transcription metrics columns
-  if (row.transcription_metrics && typeof row.transcription_metrics === "object") {
-    for (const key of transcription) flat[key] = row.transcription_metrics[key];
-  }
-
-  return flat;
-}
 
 const TruncatedText: React.FC<{ 
   text: string; 
@@ -806,6 +779,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       hour12: true
     })
   }
+  
 
   // Show skeleton while parent is loading OR role is loading
   if (parentLoading || roleLoading || !agent || !project || loading) {

@@ -120,37 +120,7 @@ const STT_PROVIDERS = {
   }
 }
 
-// Utility Components
-const CopyButton = ({ text }: { text: string }) => {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy text: ', err)
-    }
-  }
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={handleCopy}
-      className="w-7 h-7 p-0"
-    >
-      {copied ? (
-        <Check className="w-3.5 h-3.5 text-green-600" />
-      ) : (
-        <Copy className="w-3.5 h-3.5 text-gray-400" />
-      )}
-    </Button>
-  )
-}
-
+// Provider Card Component
 const ProviderCard = ({ 
   provider, 
   providerKey, 
@@ -219,18 +189,15 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   initialConfig = {},
   onSTTSelect 
 }) => {
-  // DISABLE CONTROLS - Set to true to disable all interactions
+  // Control states
   const DISABLE_SETTINGS = false
-
   const [isOpen, setIsOpen] = useState(false)
   const [activeProvider, setActiveProvider] = useState(selectedProvider || 'openai')
   const [showSettings, setShowSettings] = useState(!!selectedProvider)
+  const [showCustomModel, setShowCustomModel] = useState(false)
+  const [showCustomLanguage, setShowCustomLanguage] = useState(false)
 
-  useEffect(() => {
-    setShowSettings(!!selectedProvider)
-  }, [selectedProvider])
-  
-  // Configuration states - Initialize with received values
+  // Configuration states
   const [openaiConfig, setOpenAIConfig] = useState<OpenAISTTConfig>({
     model: selectedProvider === 'openai' ? selectedModel : 'whisper-1',
     language: selectedProvider === 'openai' ? selectedLanguage : 'en',
@@ -261,12 +228,15 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     enable_formatting: initialConfig?.enable_formatting ?? true
   })
 
-  // Update states when props change
+  // Effects
+  useEffect(() => {
+    setShowSettings(!!selectedProvider)
+  }, [selectedProvider])
+
   useEffect(() => {
     if (selectedProvider) {
       setActiveProvider(selectedProvider)
       
-      // Update the appropriate config based on provider
       if (selectedProvider === 'openai') {
         setOpenAIConfig(prev => ({
           ...prev,
@@ -292,6 +262,17 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     }
   }, [selectedProvider, selectedModel, selectedLanguage, initialConfig])
 
+  // Check if current model/language is custom when provider changes
+  useEffect(() => {
+    const provider = STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]
+    if (provider) {
+      const config = getCurrentConfig() as any
+      setShowCustomModel(!provider.models.some(m => m.id === config.model) && config.model !== '')
+      setShowCustomLanguage(!provider.languages.some(l => l.code === config.language) && config.language !== '')
+    }
+  }, [activeProvider])
+
+  // Helper functions
   const getCurrentConfig = () => {
     switch (activeProvider) {
       case 'openai': return openaiConfig
@@ -322,7 +303,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
   const renderProviderSettings = () => {
     const provider = STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]
-    
     if (!provider) return null
 
     const currentModel = getCurrentModel()
@@ -330,15 +310,18 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
     return (
       <div className="space-y-4 sm:space-y-6">
-        {/* Model Selection - Flexible for custom models */}
+        {/* Model Selection */}
         <div className="space-y-2">
           <Label className="text-sm sm:text-base">Model</Label>
           <div className="space-y-2">
             <Select 
-              value={provider.models.some(m => m.id === currentModel) ? currentModel : 'custom'} 
+              value={showCustomModel ? 'custom' : currentModel} 
               onValueChange={(value) => {
                 if (DISABLE_SETTINGS) return
-                if (value !== 'custom') {
+                if (value === 'custom') {
+                  setShowCustomModel(true)
+                } else {
+                  setShowCustomModel(false)
                   if (activeProvider === 'openai') {
                     setOpenAIConfig(prev => ({ ...prev, model: value }))
                   } else if (activeProvider === 'deepgram') {
@@ -366,8 +349,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               </SelectContent>
             </Select>
             
-            {/* Custom model input - Show if model not in predefined list */}
-            {!provider.models.some(m => m.id === currentModel) && (
+            {/* Custom model input */}
+            {showCustomModel && (
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">Custom Model Name</Label>
                 <Input
@@ -391,15 +374,18 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           </div>
         </div>
 
-        {/* Language Selection - Handle custom languages */}
+        {/* Language Selection */}
         <div className="space-y-2">
           <Label className="text-sm sm:text-base">Language</Label>
           <div className="space-y-2">
             <Select 
-              value={provider.languages.some(l => l.code === currentLanguage) ? currentLanguage : 'custom'} 
+              value={showCustomLanguage ? 'custom' : currentLanguage} 
               onValueChange={(value) => {
                 if (DISABLE_SETTINGS) return
-                if (value !== 'custom') {
+                if (value === 'custom') {
+                  setShowCustomLanguage(true)
+                } else {
+                  setShowCustomLanguage(false)
                   if (activeProvider === 'openai') {
                     setOpenAIConfig(prev => ({ ...prev, language: value }))
                   } else if (activeProvider === 'deepgram') {
@@ -424,8 +410,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               </SelectContent>
             </Select>
             
-            {/* Custom language input - Show if language not in predefined list */}
-            {!provider.languages.some(l => l.code === currentLanguage) && (
+            {/* Custom language input */}
+            {showCustomLanguage && (
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">Custom Language Code</Label>
                 <Input
@@ -615,7 +601,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         </DialogHeader>
         
         <div className="flex-1 flex overflow-hidden">
-          {/* Provider Selection - Hidden on mobile when settings shown */}
+          {/* Provider Selection */}
           <div className={`${showSettings ? 'hidden sm:block sm:w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} p-4 sm:p-6 overflow-y-auto`}>
             <div className="space-y-3 sm:space-y-4">
               <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
@@ -635,7 +621,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             </div>
           </div>
           
-          {/* Settings Panel - Full width on mobile */}
+          {/* Settings Panel */}
           {showSettings && activeProvider && (
             <div className="w-full sm:w-1/2 flex flex-col">
               <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 hidden sm:block">
@@ -654,7 +640,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           )}
         </div>
         
-        {/* Footer - Responsive buttons */}
+        {/* Footer */}
         <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0 flex-shrink-0">
           <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
             {activeProvider && (

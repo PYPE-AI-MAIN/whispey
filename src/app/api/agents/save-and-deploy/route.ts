@@ -4,15 +4,48 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    const { agentName } = body.metadata
-    console.log('🏷️ Agent name:', agentName)
+    let agentConfigBody
+    let agentName
     
-    const agentConfigBody = transformFormDataToAgentConfig(body)
-    console.log('🔄 Transformed config:', JSON.stringify(agentConfigBody, null, 2))
+    // Check if it's the NEW structure (with agent object already built)
+    if (body.agent && body.agent.assistant && Array.isArray(body.agent.assistant)) {
+      console.log('📦 Using NEW structure (pre-built assistant)')
+      agentName = body.agent.name || body.metadata?.agentName
+      
+      // Just pass through the agent object directly
+      agentConfigBody = {
+        agent: body.agent
+      }
+      
+      console.log('✅ Agent config ready (new structure):', JSON.stringify(agentConfigBody, null, 2))
+    } 
+    // Check if it's the OLD structure (needs transformation)
+    else if (body.formikValues && body.metadata) {
+      console.log('📦 Using OLD structure (needs transformation)')
+      agentName = body.metadata.agentName
+      agentConfigBody = transformFormDataToAgentConfig(body)
+      
+      console.log('✅ Agent config transformed (old structure):', JSON.stringify(agentConfigBody, null, 2))
+    } 
+    else {
+      console.error('❌ Invalid request structure:', Object.keys(body))
+      return NextResponse.json(
+        { message: 'Invalid request structure. Expected either {agent: ...} or {formikValues: ...}' },
+        { status: 400 }
+      )
+    }
     
-    // Log the exact URL and headers being sent
+    if (!agentName) {
+      return NextResponse.json(
+        { message: 'Agent name is required' },
+        { status: 400 }
+      )
+    }
+    
+    console.log('🚀 Save and Deploy - Agent:', agentName)
+    
     const apiUrl = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_config/${agentName}`
-    console.log('📡 API URL:', apiUrl)
+    console.log('📡 Sending to PypeAI API:', apiUrl)
     console.log('📦 Payload size:', JSON.stringify(agentConfigBody).length, 'characters')
     
     const response = await fetch(apiUrl, {
@@ -27,16 +60,30 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ PypeAI API Error Response:', errorText)
-      console.error('❌ Response Headers:', [...response.headers.entries()])
-      throw new Error(`PypeAI API error: ${response.status} ${response.statusText}`)
+      console.error('❌ Response Status:', response.status, response.statusText)
+      
+      return NextResponse.json(
+        { 
+          message: `Failed to deploy agent: ${response.status} ${response.statusText}`,
+          error: errorText 
+        },
+        { status: response.status }
+      )
     }
 
     const result = await response.json()
     console.log('✅ PypeAI API Success:', result)
-    return NextResponse.json(result)
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Agent deployed successfully',
+      data: result
+    })
     
   } catch (error: any) {
     console.error('❌ Save and deploy error:', error)
+    console.error('❌ Error stack:', error.stack)
+    
     return NextResponse.json(
       { message: 'Failed to save and deploy agent', error: error.message },
       { status: 500 }
@@ -55,6 +102,13 @@ function transformFormDataToAgentConfig(formData: any) {
     assistantName,
     metadata
   } = formData
+
+  console.log('🔄 Transforming OLD structure with formikValues:', {
+    hasFormikValues: !!formikValues,
+    hasTTS: !!ttsConfiguration,
+    hasSTT: !!sttConfiguration,
+    hasLLM: !!llmConfiguration
+  })
 
   // Handle first_message_mode - ensure it's in the correct object format
   let firstMessageModeConfig
@@ -144,13 +198,11 @@ function transformFormDataToAgentConfig(formData: any) {
             collection_prompt: formikValues.advancedSettings.bugs.collectionPrompt
           },
           turn_detection: formikValues.advancedSettings.session.turn_detection,
-          // NEW: interruptions as separate object (not individual fields)
           interruptions: {
             allow_interruptions: formikValues.advancedSettings.interruption.allowInterruptions,
             min_interruption_duration: formikValues.advancedSettings.interruption.minInterruptionDuration,
             min_interruption_words: formikValues.advancedSettings.interruption.minInterruptionWords
           },
-          // NEW: first_message_mode as object
           first_message_mode: firstMessageModeConfig
         }
       ],
