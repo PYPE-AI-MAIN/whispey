@@ -142,13 +142,13 @@ const sidebarRoutes: SidebarRoute[] = [
       const configurationItems = []
       
       // Add Phone Settings (SIP Management)
-      configurationItems.push({
-        id: 'sip-management',
-        name: 'Phone Settings',
-        icon: 'Phone',
-        path: `/${projectId}/agents/sip-management`,
-        group: 'configuration'
-      })
+      // configurationItems.push({
+      //   id: 'sip-management',
+      //   name: 'Phone Settings',
+      //   icon: 'Phone',
+      //   path: `/${projectId}/agents/sip-management`,
+      //   group: 'configuration'
+      // })
 
       // Add API Keys if user has permission
       if (userCanViewApiKeys) {
@@ -263,7 +263,7 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 90
   },
 
-  // Main workspaces/projects route with Phone Settings in global navigation
+  // Main workspaces/projects route WITHOUT Phone Settings
   {
     patterns: [
       { pattern: '/', exact: true },
@@ -280,13 +280,6 @@ const sidebarRoutes: SidebarRoute[] = [
           path: '/projects' 
         },
         { 
-          id: 'sip-management', 
-          name: 'Phone Settings', 
-          icon: 'Phone', 
-          path: '/sip-management',
-          group: 'configuration'
-        },
-        { 
           id: 'docs', 
           name: 'Documentation', 
           icon: 'FileText', 
@@ -300,45 +293,9 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 85
   },
 
-  // Global Phone Settings route
-  {
-    patterns: [
-      { pattern: '/sip-management' }
-    ],
-    getSidebarConfig: () => ({
-      type: 'sip-management',
-      context: {},
-      navigation: [
-        { 
-          id: 'workspaces', 
-          name: 'Workspaces', 
-          icon: 'Home', 
-          path: '/projects' 
-        },
-        { 
-          id: 'sip-management', 
-          name: 'Phone Settings', 
-          icon: 'Phone', 
-          path: '/sip-management',
-          group: 'configuration'
-        },
-        { 
-          id: 'docs', 
-          name: 'Documentation', 
-          icon: 'FileText', 
-          path: '/docs', 
-          external: true, 
-          group: 'resources' 
-        }
-      ],
-      showBackButton: true,
-      backPath: '/projects',
-      backLabel: 'Back to Workspaces'
-    }),
-    priority: 80
-  },
-
-  // Fallback for any other routes
+  // Global Phone Settings route - REMOVED (no longer needed)
+  
+  // Fallback for any other routes WITHOUT Phone Settings
   {
     patterns: [
       { pattern: '*' }
@@ -352,13 +309,6 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Workspaces', 
           icon: 'Home', 
           path: '/projects' 
-        },
-        { 
-          id: 'sip-management', 
-          name: 'Phone Settings', 
-          icon: 'Phone', 
-          path: '/sip-management',
-          group: 'configuration'
         },
         { 
           id: 'docs', 
@@ -425,7 +375,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   )
 
   const { data: agents } = useSupabaseQuery('pype_voice_agents', 
-    agentId && projectId && projectId !== 'sign' && projectId !== 'docs' ? {
+    agentId && projectId && projectId !== 'sign' && projectId !== 'docs' && agentId !== 'sip-management' ? {
       select: 'id, agent_type',
       filters: [{ column: 'id', operator: 'eq', value: agentId }]
     } : null

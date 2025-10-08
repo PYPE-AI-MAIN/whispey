@@ -52,6 +52,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import TalkToAssistant from '@/components/agents/TalkToAssistant'
+import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
 
 // Agent status service - you'll need to implement this
 const agentStatusService = {
@@ -63,19 +64,17 @@ const agentStatusService = {
       }
 
       const url = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_status/${encodeURIComponent(agentName)}`
-      console.log('🔍 Checking agent status:', url)
       
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'pype-api-v1'
+          'x-api-key': `${process.env.NEXT_PUBLIC_X_API_KEY}`
         }
       })
       
       if (response.ok) {
         const data = await response.json()
-        console.log('✅ Raw agent status response:', data)
         
         // Properly typed status mapping
         const status: AgentStatus['status'] = data.is_active && data.worker_running ? 'running' : 'stopped'
@@ -89,7 +88,6 @@ const agentStatusService = {
           raw: data
         }
         
-        console.log('🔄 Mapped agent status:', mappedStatus)
         return mappedStatus
       }
       
@@ -252,6 +250,8 @@ export default function AgentConfig() {
 
   const { getTextareaStyles, settings, setFontSize } = usePromptSettings()
 
+
+
   // Azure config state for ModelSelector
   const [azureConfig, setAzureConfig] = useState<AzureConfig>({
     endpoint: '',
@@ -294,6 +294,7 @@ export default function AgentConfig() {
     isError: isConfigError,
     refetch: refetchConfig 
   } = useAgentConfig(agentName)
+  
 
   // Use mutations for save operations
   const { saveDraft, saveAndDeploy } = useAgentMutations(agentName)
@@ -304,23 +305,6 @@ export default function AgentConfig() {
     
     // Initial status check
     checkAgentStatus()
-    
-    // Set up polling for status updates
-    const stopPolling = agentStatusService.startStatusPolling(
-      agentName,
-      (status) => {
-        setAgentStatus(status)
-        
-        // Log status changes
-        if (status.status !== agentStatus.status) {
-          console.log(`🔄 Agent status changed: ${agentStatus.status} → ${status.status}`)
-        }
-      },
-      15000 // Poll every 15 seconds
-    )
-    
-    // Cleanup polling on unmount or agent name change
-    return stopPolling
   }, [agentName])
 
   const checkAgentStatus = async () => {
@@ -390,6 +374,21 @@ export default function AgentConfig() {
     }
   })
 
+  const {
+    buildSavePayload,
+    hasUnsavedChanges: hasMultiAssistantChanges,
+    resetUnsavedChanges,
+  } = useMultiAssistantState({
+    initialAssistants: agentConfigData?.agent?.assistant || [],
+    agentId: agentid as string,
+    agentName: agentName || '',
+    agentType: agentDataResponse?.[0]?.agent_type,
+    currentFormik: formik,
+    currentTtsConfig: ttsConfig,
+    currentSttConfig: sttConfig,
+    currentAzureConfig: azureConfig
+  })
+
   // Handle the agent config data when it loads
   useEffect(() => {
     if (agentConfigData?.agent?.assistant?.[0]) {
@@ -439,108 +438,20 @@ export default function AgentConfig() {
   }, [agentConfigData])
 
   const handleSaveDraft = () => {
-    const completeFormData = {
-      formikValues: formik.values,
-      ttsConfiguration: {
-        voiceId: formik.values.selectedVoice,
-        provider: formik.values.ttsProvider || ttsConfig.provider,
-        model: formik.values.ttsModel || ttsConfig.model,
-        config: formik.values.ttsVoiceConfig || ttsConfig.config
-      },
-      sttConfiguration: {
-        provider: sttConfig.provider,
-        model: sttConfig.model,
-        config: sttConfig.config
-      },
-      llmConfiguration: {
-        provider: formik.values.selectedProvider,
-        model: formik.values.selectedModel,
-        temperature: formik.values.temperature,
-        azureConfig: formik.values.selectedProvider === 'azure_openai' ? azureConfig : null
-      },
-      agentSettings: {
-        language: formik.values.selectedLanguage,
-        firstMessageMode: formik.values.firstMessageMode,
-        customFirstMessage: formik.values.customFirstMessage,
-        aiStartsAfterSilence: formik.values.aiStartsAfterSilence,
-        silenceTime: formik.values.silenceTime,
-        prompt: formik.values.prompt
-      },
-      assistantName: agentConfigData?.agent?.assistant?.[0]?.name || 'Assistant',
-      metadata: {
-        agentId: agentid,
-        agentName: agentName,
-        timestamp: new Date().toISOString(),
-        action: 'SAVE_DRAFT'
-      }
-    }
-    
-    console.log('💾 SAVE DRAFT - Complete Configuration:', completeFormData)
-    saveDraft.mutate(completeFormData)
+    const payload = buildSavePayload()
+    console.log('💾 SAVE DRAFT - Multi-Assistant Configuration:', payload)
+    saveDraft.mutate(payload)
   }
 
   const handleSaveAndDeploy = () => {
-    const completeFormData = {
-      formikValues: formik.values,
-      ttsConfiguration: {
-        voiceId: formik.values.selectedVoice,
-        provider: formik.values.ttsProvider || ttsConfig.provider,
-        model: formik.values.ttsModel || ttsConfig.model,
-        config: formik.values.ttsVoiceConfig || ttsConfig.config
-      },
-      sttConfiguration: {
-        provider: sttConfig.provider,
-        model: sttConfig.model,
-        config: sttConfig.config
-      },
-      llmConfiguration: {
-        provider: formik.values.selectedProvider,
-        model: formik.values.selectedModel,
-        temperature: formik.values.temperature,
-        azureConfig: formik.values.selectedProvider === 'azure_openai' ? azureConfig : null
-      },
-      agentSettings: {
-        language: formik.values.selectedLanguage,
-        firstMessageMode: formik.values.firstMessageMode,
-        customFirstMessage: formik.values.customFirstMessage,
-        aiStartsAfterSilence: formik.values.aiStartsAfterSilence,
-        silenceTime: formik.values.silenceTime,
-        prompt: formik.values.prompt
-      },
-      validationStatus: {
-        hasLLM: !!(formik.values.selectedProvider && formik.values.selectedModel),
-        hasTTS: !!(formik.values.selectedVoice && formik.values.ttsProvider),
-        hasSTT: !!(sttConfig.provider),
-        hasPrompt: !!formik.values.prompt.trim(),
-        isReadyForDeploy: !!(
-          formik.values.selectedProvider && 
-          formik.values.selectedModel && 
-          formik.values.prompt.trim()
-        )
-      },
-      assistantName: agentConfigData?.agent?.assistant?.[0]?.name || 'Assistant',
-      metadata: {
-        agentId: agentid,
-        agentName: agentName,
-        timestamp: new Date().toISOString(),
-        action: 'SAVE_AND_DEPLOY'
-      }
-    }
-    
-    console.log('🚀 SAVE & DEPLOY - Complete Configuration:', completeFormData)
-    
-    // Validation before deployment
-    if (!completeFormData.validationStatus.isReadyForDeploy) {
-      console.warn('⚠️ SAVE & DEPLOY - Validation Failed:', completeFormData.validationStatus)
-      return
-    }
-    
-    saveAndDeploy.mutate(completeFormData)
+    const payload = buildSavePayload()
+    saveAndDeploy.mutate(payload)
   }
 
   const handleCancel = () => {
     formik.resetForm()
     setHasExternalChanges(false)
+    resetUnsavedChanges()
   }
 
   const handleVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
@@ -621,7 +532,7 @@ export default function AgentConfig() {
     }
   }
 
-  const isFormDirty = formik.dirty || hasExternalChanges
+  const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
 
   // Loading state
   if (agentLoading || isConfigLoading) {
@@ -760,7 +671,7 @@ export default function AgentConfig() {
               </Button>
             )}
 
-            {/* Save & Deploy - Show when dirty */}
+            {/* Update Conf - Show when dirty */}
             {isFormDirty && (
               <Button 
                 size="sm" 
@@ -908,18 +819,18 @@ export default function AgentConfig() {
             {/* Cancel Button */}
             {isFormDirty && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
-                Cancel
+                Discard Changes
               </Button>
             )}
             
-            {/* Save & Deploy Button */}
+            {/* Update Conf Button */}
             <Button 
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
               disabled={saveAndDeploy.isPending || !isFormDirty}
             >
-              {saveAndDeploy.isPending ? 'Deploying...' : 'Save & Deploy'}
+              {saveAndDeploy.isPending ? 'Updating...' : 'Update Config'}
             </Button>
           </div>
         </div>

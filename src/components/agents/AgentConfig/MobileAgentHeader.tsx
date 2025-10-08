@@ -151,7 +151,7 @@ const MobileAgentHeader: React.FC<MobileHeaderProps> = ({
               </Button>
             )}
 
-            {/* Save & Deploy - Show when dirty */}
+            {/* Update Conf - Show when dirty */}
             {isFormDirty && (
               <Button 
                 size="sm" 
@@ -196,19 +196,19 @@ const MobileAgentHeader: React.FC<MobileHeaderProps> = ({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                      {/* Save & Deploy - Alternative location */}
+                      {/* Update Conf - Alternative location */}
                       <DropdownMenuItem 
                         onSelect={handleSaveAndDeploy}
                         disabled={saveAndDeploy.isPending}
                       >
                         <Save className="w-4 h-4 mr-2" />
-                        {saveAndDeploy.isPending ? 'Deploying...' : 'Save & Deploy'}
+                        {saveAndDeploy.isPending ? 'Updating...' : 'Update Config'}
                       </DropdownMenuItem>
 
                       {/* Cancel */}
                       <DropdownMenuItem onSelect={handleCancel}>
                         <X className="w-4 h-4 mr-2" />
-                        Cancel Changes
+                        Discard Changes
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                   </>
@@ -308,18 +308,18 @@ const MobileAgentHeader: React.FC<MobileHeaderProps> = ({
             {/* Cancel Button */}
             {isFormDirty && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
-                Cancel
+                Discard Changes
               </Button>
             )}
             
-            {/* Save & Deploy Button */}
+            {/* Update Conf Button */}
             <Button 
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
               disabled={saveAndDeploy.isPending || !isFormDirty}
             >
-              {saveAndDeploy.isPending ? 'Deploying...' : 'Save & Deploy'}
+              {saveAndDeploy.isPending ? 'Updating...' : 'Update Config'}
             </Button>
           </div>
         </div>
