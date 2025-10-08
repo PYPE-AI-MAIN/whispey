@@ -28,6 +28,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<'form' | 'creating' | 'success'>('form')
   const [selectedPlatform, setSelectedPlatform] = useState('livekit')
+  const [nameError, setNameError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: ''
@@ -69,6 +70,25 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     }
   }
   
+  const handleNameChange = (value: string) => {
+    // Replace spaces with underscores
+    const sanitized = value.replace(/\s+/g, '_')
+    
+    // Validation checks
+    if (!sanitized) {
+      setNameError(null)
+    } else if (!/^[a-zA-Z]/.test(sanitized)) {
+      setNameError('Agent name must start with a letter')
+    } else if (/\d/.test(sanitized)) {
+      setNameError('Agent name cannot contain numbers')
+    } else if (sanitized.endsWith('_')) {
+      setNameError('Agent name cannot end with a space')
+    } else {
+      setNameError(null)
+    }
+    
+    setFormData({ ...formData, name: sanitized })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,11 +103,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     setCurrentStep('creating')
   
     try {
-      console.log('🚀 Starting agent creation process...')
       
       // Use the fetchProjectApiKey function
       const projectApiKey = await fetchProjectApiKey()
-      console.log('🔑 Got project API key:', projectApiKey)
   
       // Step 1: Create monitoring record in your backend (Whispey)
       const agentPayload = {
@@ -101,7 +119,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         platform: selectedPlatform
       }
   
-      console.log('📝 Creating local agent record with payload:', agentPayload)
   
       const agentResponse = await fetch('/api/agents', {
         method: 'POST',
@@ -116,11 +133,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       }
   
       const localAgent = await agentResponse.json()
-      console.log('✅ Local agent created:', localAgent)
   
       // Step 2: Only create external agent infrastructure if it's a Pype agent
       if (isPypeAgent) {
-        console.log('🔧 Creating PypeAI agent infrastructure...')
         
         // Get encrypted API key
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
@@ -136,7 +151,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         }
   
         const { encrypted: encryptedApiKey } = await encryptResponse.json()
-        console.log('🔐 Got encrypted API key')
   
         // Create the agent payload for PypeAI (matching your exact structure)
         const pypeAgentPayload = {
@@ -193,7 +207,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           }
         }
   
-        console.log('📤 Sending PypeAI payload:', JSON.stringify(pypeAgentPayload, null, 2))
   
         const createResponse = await fetch('/api/agents/create-agent', {
           method: 'POST',
@@ -204,7 +217,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           body: JSON.stringify(pypeAgentPayload)
         })
   
-        console.log('📡 PypeAI API response status:', createResponse.status)
   
         if (!createResponse.ok) {
           const createErrorData = await createResponse.json()
@@ -213,12 +225,10 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         }
   
         const pypeResponse = await createResponse.json()
-        console.log('✅ PypeAI agent created successfully:', pypeResponse)
       }
       
       setCreatedAgentData(localAgent)
       setCurrentStep('success')
-      console.log('🎉 Agent creation completed successfully!')
       
     } catch (err: unknown) {
       console.error('💥 Agent creation failed:', err)
@@ -417,9 +427,16 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               placeholder={selectedPlatform === 'vapi' ? "Customer Support Agent" : "Voice Assistant"}
               value={formData.name}
               autoComplete="off"
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="h-10 px-3 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all"
+              onChange={(e) => handleNameChange(e.target.value)}
+              className={`h-10 px-3 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all ${
+                nameError ? 'border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/20' : ''
+              }`}
             />
+
+            {nameError && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">{nameError}</p>
+            )}
+
           </div>
 
           {/* Description */}
@@ -459,7 +476,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={!formData.name.trim()}
+            disabled={!formData.name.trim() || nameError !== null}
             className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Create Agent
