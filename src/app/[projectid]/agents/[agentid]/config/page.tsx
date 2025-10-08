@@ -318,11 +318,17 @@ export default function AgentConfig() {
     if (!agentName) return
     
     setIsAgentLoading(true)
-    setAgentStatus({ status: 'starting' } as AgentStatus) // Type assertion for immediate state
+    setAgentStatus({ status: 'starting' } as AgentStatus)
     
     try {
       const status = await agentStatusService.startAgent(agentName)
-      setAgentStatus(status) // Properly typed return
+      
+      // If successful, set to running directly
+      if (status.status !== 'error') {
+        setAgentStatus({ status: 'running' })
+      } else {
+        setAgentStatus(status)
+      }
     } finally {
       setIsAgentLoading(false)
     }
@@ -332,11 +338,17 @@ export default function AgentConfig() {
     if (!agentName) return
     
     setIsAgentLoading(true)
-    setAgentStatus({ status: 'stopping' } as AgentStatus) // Type assertion for immediate state
+    setAgentStatus({ status: 'stopping' } as AgentStatus)
     
     try {
       const status = await agentStatusService.stopAgent(agentName)
-      setAgentStatus(status) // Properly typed return  
+      
+      // If successful, set to stopped directly
+      if (status.status !== 'error') {
+        setAgentStatus({ status: 'stopped' })
+      } else {
+        setAgentStatus(status)
+      }
     } finally {
       setIsAgentLoading(false)
     }

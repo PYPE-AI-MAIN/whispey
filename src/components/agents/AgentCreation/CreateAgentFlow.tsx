@@ -83,11 +83,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     setCurrentStep('creating')
   
     try {
-      console.log('🚀 Starting agent creation process...')
       
       // Use the fetchProjectApiKey function
       const projectApiKey = await fetchProjectApiKey()
-      console.log('🔑 Got project API key:', projectApiKey)
   
       // Step 1: Create monitoring record in your backend (Whispey)
       const agentPayload = {
@@ -101,7 +99,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         platform: selectedPlatform
       }
   
-      console.log('📝 Creating local agent record with payload:', agentPayload)
   
       const agentResponse = await fetch('/api/agents', {
         method: 'POST',
@@ -116,11 +113,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       }
   
       const localAgent = await agentResponse.json()
-      console.log('✅ Local agent created:', localAgent)
   
       // Step 2: Only create external agent infrastructure if it's a Pype agent
       if (isPypeAgent) {
-        console.log('🔧 Creating PypeAI agent infrastructure...')
         
         // Get encrypted API key
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
@@ -136,7 +131,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         }
   
         const { encrypted: encryptedApiKey } = await encryptResponse.json()
-        console.log('🔐 Got encrypted API key')
   
         // Create the agent payload for PypeAI (matching your exact structure)
         const pypeAgentPayload = {
@@ -193,7 +187,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           }
         }
   
-        console.log('📤 Sending PypeAI payload:', JSON.stringify(pypeAgentPayload, null, 2))
   
         const createResponse = await fetch('/api/agents/create-agent', {
           method: 'POST',
@@ -204,7 +197,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           body: JSON.stringify(pypeAgentPayload)
         })
   
-        console.log('📡 PypeAI API response status:', createResponse.status)
   
         if (!createResponse.ok) {
           const createErrorData = await createResponse.json()
@@ -213,12 +205,10 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         }
   
         const pypeResponse = await createResponse.json()
-        console.log('✅ PypeAI agent created successfully:', pypeResponse)
       }
       
       setCreatedAgentData(localAgent)
       setCurrentStep('success')
-      console.log('🎉 Agent creation completed successfully!')
       
     } catch (err: unknown) {
       console.error('💥 Agent creation failed:', err)
