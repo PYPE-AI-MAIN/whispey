@@ -207,15 +207,23 @@ export default function ModelSelector({
   onProviderChange = () => {},
   onModelChange = () => {},
   onTemperatureChange = () => {},
-  azureConfig = { endpoint: '', apiVersion: '' },
+  azureConfig = { endpoint: 'https://pype-azure-openai.openai.azure.com/', apiVersion: '2024-10-01-preview' },
   onAzureConfigChange = () => {}
 }: ModelSelectorProps) {
   // DISABLE CONTROLS
   const DISABLE_SETTINGS = false
 
+  const DEFAULT_AZURE_CONFIG = {
+    endpoint: 'https://pype-azure-openai.openai.azure.com/',
+    apiVersion: '2024-10-01-preview'
+  }
+
   const [isOpen, setIsOpen] = useState(false)
   const [isAzureDialogOpen, setIsAzureDialogOpen] = useState(false)
-  const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>(azureConfig)
+  const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>({
+    ...DEFAULT_AZURE_CONFIG,
+    ...azureConfig
+  })
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [mobileSelectedProvider, setMobileSelectedProvider] = useState<string | null>(null)
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
@@ -661,7 +669,7 @@ const getFlattenedMenuItems = () => {
               <Input
                 id="endpoint"
                 placeholder="https://your-resource.openai.azure.com/"
-                value={tempAzureConfig.endpoint}
+                value={tempAzureConfig.endpoint || "https://pype-azure-openai.openai.azure.com/"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}
@@ -672,7 +680,7 @@ const getFlattenedMenuItems = () => {
               <Input
                 id="apiVersion"
                 placeholder="2024-10-01-preview"
-                value={tempAzureConfig.apiVersion}
+                value={tempAzureConfig.apiVersion || "2024-10-01-preview"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}
