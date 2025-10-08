@@ -59,9 +59,22 @@ function VoiceActivitySettings({
           type="number"
           min="0.1"
           max="5.0"
-          step="0.1"
+          step="0.01"
           value={minSilenceDuration}
-          onChange={(e) => onFieldChange('advancedSettings.vad.minSilenceDuration', parseFloat(e.target.value) || 0.1)}
+          onChange={(e) => {
+            const value = e.target.value
+            if (value === '') {
+              onFieldChange('advancedSettings.vad.minSilenceDuration', '')
+            } else {
+              onFieldChange('advancedSettings.vad.minSilenceDuration', parseFloat(value))
+            }
+          }}
+          onBlur={(e) => {
+            const value = parseFloat(e.target.value)
+            if (!value || value < 0.1) {
+              onFieldChange('advancedSettings.vad.minSilenceDuration', 0.1)
+            }
+          }}
           className="h-7 text-xs"
         />
       </div>

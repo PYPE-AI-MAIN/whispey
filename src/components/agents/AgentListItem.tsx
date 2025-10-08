@@ -346,11 +346,18 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onDelete()
-                  }} className="text-red-600 dark:text-red-400 text-sm py-3">
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (!runningStatus?.isRunning) {
+                        onDelete()
+                      }
+                    }} 
+                    className={`text-red-600 dark:text-red-400 text-sm py-3 ${
+                      runningStatus?.isRunning ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
                     <Trash2 className="h-4 w-4 mr-3" />
                     Remove Agent
                   </DropdownMenuItem>
@@ -486,10 +493,18 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                       Copy ID
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete()
-                    }} className="text-red-600 dark:text-red-400 text-sm">
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        if (!runningStatus?.isRunning) {
+                          onDelete()
+                        }
+                      }} 
+                      className={`text-red-600 dark:text-red-400 text-sm ${
+                        runningStatus?.isRunning ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Remove
                     </DropdownMenuItem>
@@ -590,10 +605,18 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                   Copy ID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete()
-                }} className="text-red-600 dark:text-red-400 text-sm">
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    if (!runningStatus?.isRunning) {
+                      onDelete()
+                    }
+                  }} 
+                  className={`text-red-600 dark:text-red-400 text-sm ${
+                    runningStatus?.isRunning ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Remove
                 </DropdownMenuItem>
