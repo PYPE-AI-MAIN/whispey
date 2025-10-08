@@ -74,9 +74,9 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-emerald-500',
     type: 'direct',
     models: [
-      { value: 'gpt-5', label: 'GPT 5' },
-      { value: 'gpt-5-mini', label: 'GPT 5 Mini' },
-      { value: 'gpt-5-nano', label: 'GPT 5 Nano' },
+      // { value: 'gpt-5', label: 'GPT 5' },
+      // { value: 'gpt-5-mini', label: 'GPT 5 Mini' },
+      // { value: 'gpt-5-nano', label: 'GPT 5 Nano' },
       { value: 'gpt-4.1', label: 'GPT 4.1' },
       { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini' },
       { value: 'gpt-4.1-nano', label: 'GPT 4.1 Nano' },
@@ -166,17 +166,17 @@ const modelProviders: Record<string, Provider> = {
       }
     ]
   },
-  anthropic: {
-    label: 'Anthropic',
-    icon: 'A',
-    color: 'bg-amber-500',
-    type: 'direct',
-    models: [
-      { value: 'claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-      { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-      { value: 'claude-3-haiku', label: 'Claude 3 Haiku' },
-    ]
-  },
+  // anthropic: {
+  //   label: 'Anthropic',
+  //   icon: 'A',
+  //   color: 'bg-amber-500',
+  //   type: 'direct',
+  //   models: [
+  //     { value: 'claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+  //     { value: 'claude-3-opus', label: 'Claude 3 Opus' },
+  //     { value: 'claude-3-haiku', label: 'Claude 3 Haiku' },
+  //   ]
+  // },
   cerebras: {
     label: 'Cerebras',
     icon: 'C',
@@ -207,15 +207,23 @@ export default function ModelSelector({
   onProviderChange = () => {},
   onModelChange = () => {},
   onTemperatureChange = () => {},
-  azureConfig = { endpoint: '', apiVersion: '' },
+  azureConfig = { endpoint: 'https://pype-azure-openai.openai.azure.com/', apiVersion: '2024-10-01-preview' },
   onAzureConfigChange = () => {}
 }: ModelSelectorProps) {
   // DISABLE CONTROLS
   const DISABLE_SETTINGS = false
 
+  const DEFAULT_AZURE_CONFIG = {
+    endpoint: 'https://pype-azure-openai.openai.azure.com/',
+    apiVersion: '2024-10-01-preview'
+  }
+
   const [isOpen, setIsOpen] = useState(false)
   const [isAzureDialogOpen, setIsAzureDialogOpen] = useState(false)
-  const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>(azureConfig)
+  const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>({
+    ...DEFAULT_AZURE_CONFIG,
+    ...azureConfig
+  })
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [mobileSelectedProvider, setMobileSelectedProvider] = useState<string | null>(null)
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
@@ -661,7 +669,7 @@ const getFlattenedMenuItems = () => {
               <Input
                 id="endpoint"
                 placeholder="https://your-resource.openai.azure.com/"
-                value={tempAzureConfig.endpoint}
+                value={tempAzureConfig.endpoint || "https://pype-azure-openai.openai.azure.com/"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}
@@ -672,7 +680,7 @@ const getFlattenedMenuItems = () => {
               <Input
                 id="apiVersion"
                 placeholder="2024-10-01-preview"
-                value={tempAzureConfig.apiVersion}
+                value={tempAzureConfig.apiVersion || "2024-10-01-preview"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}

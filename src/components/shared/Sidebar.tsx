@@ -37,7 +37,6 @@ import {
   CreditCard,
   History,
   ChevronLeft,
-  ChevronRight,
   X
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'

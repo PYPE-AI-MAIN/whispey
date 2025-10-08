@@ -1,9 +1,9 @@
 // src/app/agents/[agentId]/observability/page.tsx
 "use client"
 
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Badge } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import TracesTable from "@/components/observabilty/TracesTable"
 import { useState, use } from "react"
 import { extractS3Key } from "@/utils/s3"
@@ -21,6 +21,8 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   const resolvedParams = use(params)
   const resolvedSearchParams = use(searchParams || Promise.resolve({} as { session_id?: string }))
   const sessionId = resolvedSearchParams?.session_id
+
+  const { projectid } = useParams()
   
   const [filters, setFilters] = useState({
     search: "",
@@ -60,6 +62,24 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="px-8 py-3">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push(`/${projectid}/agents/${resolvedParams.agentid}?tab=logs`)}
+              className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+                Observability
+              </h1>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Audio Player - show if we have a recording URL */}
       {recordingUrl && !callLoading && (
