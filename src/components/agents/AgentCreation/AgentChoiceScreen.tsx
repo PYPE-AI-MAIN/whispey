@@ -39,7 +39,7 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
       {/* Content */}
       <div className={`flex-1 ${isMobile ? 'px-4 py-3' : 'px-6 py-4'}`}>
         <div className="space-y-3">
-          {/* Create Agent Option - Disabled */}
+          {/* Create Agent Option */}
           <div
             className={`group relative ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all duration-200 cursor-pointer`}
             onClick={onCreateAgent}
