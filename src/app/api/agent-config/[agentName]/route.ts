@@ -1,62 +1,52 @@
-// Create: app/api/agent-config/[agentName]/route.ts
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server"
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ agentName: string }> }
-) {
-  const { agentName } = await params
-
+export async function GET(req: NextRequest) {
   try {
-    const apiUrl = process.env.PYPEAI_API_URL
-    
-    if (!apiUrl) {
-      console.error('PYPEAI_API_URL environment variable is not set')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
+    const url = new URL(req.url)
+    // pathname = "/api/agent-config/FanaticAuthorship"
+    const pathSegments = url.pathname.split("/")
+    const agentName = pathSegments[pathSegments.length - 1]
+
+    if (!agentName) {
+      return NextResponse.json({ message: "Agent name is required" }, { status: 400 })
     }
 
-    console.log(`Proxying request to: ${apiUrl}/agent_config/${agentName}`)
+    const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
+    if (!baseUrl) {
+      return NextResponse.json({ message: "Missing NEXT_PUBLIC_PYPEAI_API_URL" }, { status: 500 })
+    }
 
-    const response = await fetch(`${apiUrl}/agent_config/${agentName}`, {
-      method: 'GET',
+    const apiUrl = `${baseUrl}/agent_config/${encodeURIComponent(agentName)}`
+    const response = await fetch(apiUrl, {
+      method: "GET",
       headers: {
-        'x-api-key': 'pype-api-v1',
-        'ngrok-skip-browser-warning': 'true',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'NextJS-Proxy'
-      }
+        "Content-Type": "application/json",
+        "x-api-key": "pype-api-v1",
+      },
     })
 
     if (!response.ok) {
-      console.error(`Backend API error: ${response.status} ${response.statusText}`)
+      const errorText = await response.text().catch(() => "")
       return NextResponse.json(
-        { error: `Failed to fetch agent config: ${response.status}` },
-        { status: response.status }
+        {
+          message: `Failed to fetch agent config: ${response.status} ${response.statusText}`,
+          error: errorText || undefined,
+        },
+        { status: response.status },
       )
     }
 
-    const contentType = response.headers.get('content-type')
-    if (!contentType || !contentType.includes('application/json')) {
-      const textResponse = await response.text()
-      console.error('Non-JSON response from backend:', textResponse.substring(0, 200))
-      return NextResponse.json(
-        { error: 'Backend returned non-JSON response' },
-        { status: 502 }
-      )
-    }
+    const data = await response.json().catch(async () => {
+      // fallback for non-JSON content
+      const raw = await response.text().catch(() => "")
+      return raw ? JSON.parse(raw) : null
+    })
 
-    const data = await response.json()
-    return NextResponse.json(data)
-
-  } catch (error: any) {
-    console.error('Proxy error:', error)
+    return NextResponse.json(data, { status: 200 })
+  } catch (err: any) {
     return NextResponse.json(
-      { error: 'Failed to fetch agent config', details: error.message },
-      { status: 500 }
+      { message: "Unexpected error fetching agent config", error: err?.message },
+      { status: 500 },
     )
   }
 }
