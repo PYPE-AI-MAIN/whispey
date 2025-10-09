@@ -119,9 +119,7 @@ const modelProviders: Record<string, Provider> = {
         name: 'OpenAI',
         models: [
           { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
-          { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' },
-          { value: 'whisper-large-v3', label: 'Whisper Large V3' },
-          { value: 'whisper-large-v3-turbo', label: 'Whisper Large V3 Turbo' },
+          { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' }
         ]
       },
       {
