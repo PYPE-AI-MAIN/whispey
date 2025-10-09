@@ -82,8 +82,6 @@ const modelProviders: Record<string, Provider> = {
       { value: 'gpt-4.1-nano', label: 'GPT 4.1 Nano' },
       { value: 'gpt-4o', label: 'GPT 4o' },
       { value: 'gpt-4o-mini', label: 'GPT 4o Mini' },
-      { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
-      { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' },
     ]
   },
   azure_openai: {
@@ -114,13 +112,7 @@ const modelProviders: Record<string, Provider> = {
         name: 'Meta Llama',
         models: [
           { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
-          { value: 'llama-3.1-70b-versatile', label: 'Llama 3.1 70B Versatile' },
           { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
-          { value: 'llama3-70b-8192', label: 'Llama 3 70B' },
-          { value: 'llama3-8b-8192', label: 'Llama 3 8B' },
-          { value: 'llama-3-groq-70b-tool-use', label: 'Llama 3 Groq 70B Tool Use' },
-          { value: 'llama-3-groq-8b-tool-use', label: 'Llama 3 Groq 8B Tool Use' },
-          { value: 'llama-guard-3-8b', label: 'Llama Guard 3 8B' },
         ]
       },
       {

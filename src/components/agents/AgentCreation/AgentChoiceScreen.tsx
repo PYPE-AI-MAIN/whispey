@@ -244,8 +244,8 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
                   canCreatePypeAgent && !hasReachedLimit 
                     ? onCreateAgent 
                     : hasReachedLimit 
-                      ? undefined  // No action when limit reached
-                      : () => setShowRequestForm(true)  // Show request form when not whitelisted
+                      ? undefined 
+                      : () => setShowRequestForm(true) 
                 }
               >
                 <div className="flex items-start gap-3">
