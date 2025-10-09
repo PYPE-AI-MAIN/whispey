@@ -82,8 +82,6 @@ const modelProviders: Record<string, Provider> = {
       { value: 'gpt-4.1-nano', label: 'GPT 4.1 Nano' },
       { value: 'gpt-4o', label: 'GPT 4o' },
       { value: 'gpt-4o-mini', label: 'GPT 4o Mini' },
-      { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
-      { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' },
     ]
   },
   azure_openai: {
@@ -114,22 +112,14 @@ const modelProviders: Record<string, Provider> = {
         name: 'Meta Llama',
         models: [
           { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
-          { value: 'llama-3.1-70b-versatile', label: 'Llama 3.1 70B Versatile' },
           { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
-          { value: 'llama3-70b-8192', label: 'Llama 3 70B' },
-          { value: 'llama3-8b-8192', label: 'Llama 3 8B' },
-          { value: 'llama-3-groq-70b-tool-use', label: 'Llama 3 Groq 70B Tool Use' },
-          { value: 'llama-3-groq-8b-tool-use', label: 'Llama 3 Groq 8B Tool Use' },
-          { value: 'llama-guard-3-8b', label: 'Llama Guard 3 8B' },
         ]
       },
       {
         name: 'OpenAI',
         models: [
           { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
-          { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' },
-          { value: 'whisper-large-v3', label: 'Whisper Large V3' },
-          { value: 'whisper-large-v3-turbo', label: 'Whisper Large V3 Turbo' },
+          { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' }
         ]
       },
       {
@@ -281,27 +271,29 @@ const getFlattenedMenuItems = () => {
     ? currentProvider.groups?.flatMap(g => g.models).find(m => m.value === selectedModel)
     : currentProvider?.models?.find(m => m.value === selectedModel)
 
-  const handleProviderSelect = (providerKey: string) => {
-    if (DISABLE_SETTINGS) return
+    const handleProviderSelect = (providerKey: string) => {
+      if (DISABLE_SETTINGS) return
+      
+      const provider = modelProviders[providerKey]
     
-    const provider = modelProviders[providerKey]
-
-    if (isMobile && (provider.type === 'direct' || provider.type === 'grouped')) {
-      // On mobile, navigate to provider's models instead of opening submenu
-      setMobileSelectedProvider(providerKey)
-      return
+      if (isMobile && (provider.type === 'direct' || provider.type === 'grouped')) {
+        setMobileSelectedProvider(providerKey)
+        return
+      }
+    
+      if (provider.type === 'config' && providerKey === 'azure_openai') {
+        onProviderChange(providerKey)
+        // Set a default Azure model when switching to Azure
+        const defaultAzureModel = provider.models?.[0]?.value || 'gpt-4o'
+        onModelChange(defaultAzureModel)
+        setIsAzureDialogOpen(true)
+      } else if (provider.type === 'direct' && provider.models && provider.models.length > 0) {
+        const firstModel = provider.models[0].value
+        onProviderChange(providerKey)
+        onModelChange(firstModel)
+      }
+      setIsOpen(false)
     }
-
-    if (provider.type === 'config' && providerKey === 'azure_openai') {
-      onProviderChange(providerKey)
-      setIsAzureDialogOpen(true)
-    } else if (provider.type === 'direct' && provider.models && provider.models.length > 0) {
-      const firstModel = provider.models[0].value
-      onProviderChange(providerKey)
-      onModelChange(firstModel)
-    }
-    setIsOpen(false)
-  }
 
   const handleMobileBack = () => {
     setMobileSelectedProvider(null)

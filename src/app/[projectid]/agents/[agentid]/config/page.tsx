@@ -449,6 +449,12 @@ export default function AgentConfig() {
     }
   }, [agentConfigData])
 
+  useEffect(() => {
+    if (saveAndDeploy.isSuccess || saveDraft.isSuccess) {
+      setHasExternalChanges(false)
+    }
+  }, [saveAndDeploy.isSuccess, saveDraft.isSuccess])
+
   const handleSaveDraft = () => {
     const payload = buildSavePayload()
     console.log('💾 SAVE DRAFT - Multi-Assistant Configuration:', payload)

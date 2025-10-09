@@ -131,17 +131,23 @@ export function useMultiAssistantState({
         },
         llm: {
           name: formValues.selectedProvider || 'openai',
-          provider: formValues.selectedProvider || 'openai',
+          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || 'openai',
           model: formValues.selectedModel || 'gpt-4',
           temperature: formValues.temperature || 0.7,
-          ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig?.deployment && {
-            azure_deployment: currentAzureConfig.deployment,
-            azure_endpoint: currentAzureConfig.endpoint,
-            api_version: currentAzureConfig.apiVersion,
+          ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
+            azure_deployment: "gpt-4.1-mini",
+            azure_endpoint: currentAzureConfig.endpoint || 'https://pype-azure-openai.openai.azure.com/',
+            api_version: currentAzureConfig.apiVersion || '2024-10-01-preview',
             api_key_env: 'AZURE_OPENAI_API_KEY'
           }),
           ...(formValues.selectedProvider === 'openai' && {
             api_key_env: 'OPENAI_API_KEY'
+          }),
+          ...(formValues.selectedProvider === 'groq' && {
+            api_key_env: 'GROQ_API_KEY'
+          }),
+          ...(formValues.selectedProvider === 'cerebras' && {
+            api_key_env: 'CEREBRAS_API_KEY'
           })
         },
         tts: {
@@ -205,11 +211,21 @@ export function useMultiAssistantState({
           max_endpointing_delay: formValues.advancedSettings?.session?.maxEndpointingDelay ?? 3
         },
         background_audio: {
-          enabled: formValues.advancedSettings?.backgroundAudio?.enabled ?? false,
-          ...(formValues.advancedSettings?.backgroundAudio?.enabled && {
-            type: formValues.advancedSettings?.backgroundAudio?.type || 'keyboard',
-            volume: formValues.advancedSettings?.backgroundAudio?.volume ?? 50,
-            timing: formValues.advancedSettings?.backgroundAudio?.timing || 'thinking'
+          enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
+          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
+            type: formValues.advancedSettings.backgroundAudio.singleType,
+            volume: formValues.advancedSettings.backgroundAudio.singleVolume,
+            timing: formValues.advancedSettings.backgroundAudio.singleTiming
+          }),
+          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'dual' && {
+            ambient: {
+              type: formValues.advancedSettings.backgroundAudio.ambientType,
+              volume: formValues.advancedSettings.backgroundAudio.ambientVolume
+            },
+            thinking: {
+              type: formValues.advancedSettings.backgroundAudio.thinkingType,
+              volume: formValues.advancedSettings.backgroundAudio.thinkingVolume
+            }
           })
         }
       }
@@ -260,17 +276,23 @@ export function useMultiAssistantState({
         },
         llm: {
           name: formValues.selectedProvider || 'openai',
-          provider: formValues.selectedProvider || 'openai',
+          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || 'openai',
           model: formValues.selectedModel || 'gpt-4',
           temperature: formValues.temperature || 0.7,
-          ...(formValues.selectedProvider === 'azure_openai' && data.azureConfig?.deployment && {
-            azure_deployment: data.azureConfig.deployment,
-            azure_endpoint: data.azureConfig.endpoint,
-            api_version: data.azureConfig.apiVersion,
+          ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
+            azure_deployment: "gpt-4.1-mini", // Use the selected model as deployment
+            azure_endpoint: currentAzureConfig.endpoint || 'https://pype-azure-openai.openai.azure.com/',
+            api_version: currentAzureConfig.apiVersion || '2024-10-01-preview',
             api_key_env: 'AZURE_OPENAI_API_KEY'
           }),
           ...(formValues.selectedProvider === 'openai' && {
             api_key_env: 'OPENAI_API_KEY'
+          }),
+          ...(formValues.selectedProvider === 'groq' && {
+            api_key_env: 'GROQ_API_KEY'
+          }),
+          ...(formValues.selectedProvider === 'cerebras' && {
+            api_key_env: 'CEREBRAS_API_KEY'
           })
         },
         tts: {
@@ -334,11 +356,21 @@ export function useMultiAssistantState({
           max_endpointing_delay: formValues.advancedSettings?.session?.maxEndpointingDelay ?? 3
         },
         background_audio: {
-          enabled: formValues.advancedSettings?.backgroundAudio?.enabled ?? false,
-          ...(formValues.advancedSettings?.backgroundAudio?.enabled && {
-            type: formValues.advancedSettings?.backgroundAudio?.type || 'keyboard',
-            volume: formValues.advancedSettings?.backgroundAudio?.volume ?? 50,
-            timing: formValues.advancedSettings?.backgroundAudio?.timing || 'thinking'
+          enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
+          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
+            type: formValues.advancedSettings.backgroundAudio.singleType,
+            volume: formValues.advancedSettings.backgroundAudio.singleVolume,
+            timing: formValues.advancedSettings.backgroundAudio.singleTiming
+          }),
+          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'dual' && {
+            ambient: {
+              type: formValues.advancedSettings.backgroundAudio.ambientType,
+              volume: formValues.advancedSettings.backgroundAudio.ambientVolume
+            },
+            thinking: {
+              type: formValues.advancedSettings.backgroundAudio.thinkingType,
+              volume: formValues.advancedSettings.backgroundAudio.thinkingVolume
+            }
           })
         }
       }
@@ -385,8 +417,9 @@ export function useMultiAssistantState({
 
   // Check if any assistant has unsaved changes
   const hasUnsavedChanges = useMemo(() => {
-    return Array.from(assistantsData.values()).some(data => data.hasUnsavedChanges)
-  }, [assistantsData])
+    const mapHasChanges = Array.from(assistantsData.values()).some(data => data.hasUnsavedChanges)
+    return mapHasChanges || (currentFormik?.dirty ?? false)
+  }, [assistantsData, currentFormik])
 
   // Reset unsaved changes
   const resetUnsavedChanges = useCallback(() => {

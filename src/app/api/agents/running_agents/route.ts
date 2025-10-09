@@ -45,7 +45,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    console.log('Running agents response:', data)
     
     return NextResponse.json(data)
 
