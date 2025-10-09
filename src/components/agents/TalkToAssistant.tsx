@@ -220,7 +220,7 @@ export default function TalkToAssistant({
           </div>
 
           {/* Text Input - Compact */}
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          {/* <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center gap-2">
               <Input
                 placeholder="Type a message..."
@@ -243,9 +243,9 @@ export default function TalkToAssistant({
                 )}
               </Button>
             </div>
-          </div>
+          </div> */}
 
-          {/* MAIN TRANSCRIPT AREA - Takes most space */}
+          {/* MAIN TRANSCRIPT AREA */}
           <div className="flex-1 flex flex-col min-h-0 p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
