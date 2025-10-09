@@ -281,27 +281,29 @@ const getFlattenedMenuItems = () => {
     ? currentProvider.groups?.flatMap(g => g.models).find(m => m.value === selectedModel)
     : currentProvider?.models?.find(m => m.value === selectedModel)
 
-  const handleProviderSelect = (providerKey: string) => {
-    if (DISABLE_SETTINGS) return
+    const handleProviderSelect = (providerKey: string) => {
+      if (DISABLE_SETTINGS) return
+      
+      const provider = modelProviders[providerKey]
     
-    const provider = modelProviders[providerKey]
-
-    if (isMobile && (provider.type === 'direct' || provider.type === 'grouped')) {
-      // On mobile, navigate to provider's models instead of opening submenu
-      setMobileSelectedProvider(providerKey)
-      return
+      if (isMobile && (provider.type === 'direct' || provider.type === 'grouped')) {
+        setMobileSelectedProvider(providerKey)
+        return
+      }
+    
+      if (provider.type === 'config' && providerKey === 'azure_openai') {
+        onProviderChange(providerKey)
+        // Set a default Azure model when switching to Azure
+        const defaultAzureModel = provider.models?.[0]?.value || 'gpt-4o'
+        onModelChange(defaultAzureModel)
+        setIsAzureDialogOpen(true)
+      } else if (provider.type === 'direct' && provider.models && provider.models.length > 0) {
+        const firstModel = provider.models[0].value
+        onProviderChange(providerKey)
+        onModelChange(firstModel)
+      }
+      setIsOpen(false)
     }
-
-    if (provider.type === 'config' && providerKey === 'azure_openai') {
-      onProviderChange(providerKey)
-      setIsAzureDialogOpen(true)
-    } else if (provider.type === 'direct' && provider.models && provider.models.length > 0) {
-      const firstModel = provider.models[0].value
-      onProviderChange(providerKey)
-      onModelChange(firstModel)
-    }
-    setIsOpen(false)
-  }
 
   const handleMobileBack = () => {
     setMobileSelectedProvider(null)
