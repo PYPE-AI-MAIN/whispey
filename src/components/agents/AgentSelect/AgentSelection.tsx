@@ -15,6 +15,7 @@ import AgentSelectionSkeleton from './AgentSelectionSkeleton'
 import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useMobile } from '@/hooks/use-mobile'
+import { UserPermissionsProvider, useInvalidateUserPermissions } from '@/contexts/UserPermissionsContext'
 
 interface Agent {
   id: string
@@ -27,11 +28,11 @@ interface Agent {
   project_id: string
 }
 
-interface AgentSelectionProps {
+interface AgentSelectionContentProps {
   projectId: string
 }
 
-const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
+const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId }) => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -48,7 +49,9 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
     project: '',
     item: ''
   })
-  const router = useRouter()
+  // const router = useRouter()
+
+  const invalidatePermissions = useInvalidateUserPermissions()
 
   const { isMobile } = useMobile(768)
 
@@ -89,6 +92,9 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
 
   const handleAgentCreated = (agentData: any) => {
     refetch()
+    if (agentData.agent_type === 'pype_agent') {
+      invalidatePermissions()
+    }
   }
 
   const handleDeleteAgent = async (agent: Agent) => {
@@ -100,14 +106,18 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
           'Content-Type': 'application/json',
         },
       })
-
+  
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to remove monitoring')
       }
-
+  
       refetch()
       setShowDeleteConfirm(null)
+      
+      if (agent.agent_type === 'pype_agent') {
+        invalidatePermissions()
+      }
     } catch (error: unknown) {
       console.error('Error removing monitoring:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to remove monitoring'
@@ -256,6 +266,14 @@ const AgentSelection: React.FC<AgentSelectionProps> = ({ projectId }) => {
         </>
       )}
     </div>
+  )
+}
+
+const AgentSelection: React.FC<AgentSelectionContentProps> = ({ projectId }) => {
+  return (
+    <UserPermissionsProvider>
+      <AgentSelectionContent projectId={projectId} />
+    </UserPermissionsProvider>
   )
 }
 

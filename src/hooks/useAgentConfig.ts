@@ -96,6 +96,20 @@ export interface AgentConfigResponse {
         response: string
         collection_prompt: string
       }
+      background_audio?: {
+        enabled: boolean
+        type?: string
+        volume?: number
+        timing?: string
+        ambient?: {
+          type: string
+          volume: number
+        }
+        thinking?: {
+          type: string
+          volume: number
+        }
+      }
     }>
   }
 }
@@ -285,6 +299,18 @@ export const getDefaultFormValues = () => ({
       initialResponse: "",
       collectionPrompt: "",
     },
+    backgroundAudio: {
+      mode: 'disabled' as 'disabled' | 'single' | 'dual',
+      // Single mode settings
+      singleType: 'keyboard' as string,
+      singleVolume: 50,
+      singleTiming: 'thinking' as 'thinking' | 'always',
+      // Dual mode settings
+      ambientType: 'office' as string,
+      ambientVolume: 30,
+      thinkingType: 'keyboard' as string,
+      thinkingVolume: 50,
+    },
   },
 })
 
@@ -427,6 +453,19 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         bugEndCommands: assistant.bug_reports?.bug_end_command || [],
         initialResponse: assistant.bug_reports?.response || "",
         collectionPrompt: assistant.bug_reports?.collection_prompt || "",
+      },
+      backgroundAudio: {
+        mode: (!assistant.background_audio?.enabled ? 'disabled' : 
+               (assistant.background_audio?.ambient && assistant.background_audio?.thinking ? 'dual' : 'single')) as 'disabled' | 'single' | 'dual',
+        // Single mode
+        singleType: assistant.background_audio?.type || 'keyboard',
+        singleVolume: assistant.background_audio?.volume || 50,
+        singleTiming: assistant.background_audio?.timing || 'thinking',
+        // Dual mode
+        ambientType: assistant.background_audio?.ambient?.type || 'office',
+        ambientVolume: assistant.background_audio?.ambient?.volume || 30,
+        thinkingType: assistant.background_audio?.thinking?.type || 'keyboard',
+        thinkingVolume: assistant.background_audio?.thinking?.volume || 50,
       },
     },
   }

@@ -9,6 +9,8 @@ import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettingsProps'
 import FillerWordsSettings from './ConfigParents/FillerWordSettings'
 import BugReportSettings from './ConfigParents/BugReportSettings'
+import { Volume2 } from 'lucide-react'
+import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 
 interface AgentAdvancedSettingsProps {
     advancedSettings: {
@@ -46,6 +48,16 @@ interface AgentAdvancedSettingsProps {
         initialResponse: string
         collectionPrompt: string
       }
+      backgroundAudio?: {
+        mode: 'disabled' | 'single' | 'dual'
+        singleType: string
+        singleVolume: number
+        singleTiming: 'thinking' | 'always'
+        ambientType: string
+        ambientVolume: number
+        thinkingType: string
+        thinkingVolume: number
+      }
     }
     onFieldChange: (field: string, value: any) => void
   }
@@ -57,7 +69,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvance
     session: false,
     tools: false,
     fillers: false,
-    bugs: false
+    bugs: false,
+    backgroundAudio: false
   })
 
   const toggleSection = (section: string) => {
@@ -199,6 +212,34 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvance
             />
           </CollapsibleContent>
         </Collapsible>
+        
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Background Audio */}
+        <Collapsible open={openSections.backgroundAudio} onOpenChange={() => toggleSection('backgroundAudio')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Background Audio</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.backgroundAudio ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <BackgroundAudioSettings
+              mode={advancedSettings.backgroundAudio?.mode || 'disabled'}
+              singleType={advancedSettings.backgroundAudio?.singleType || 'keyboard'}
+              singleVolume={advancedSettings.backgroundAudio?.singleVolume || 50}
+              singleTiming={advancedSettings.backgroundAudio?.singleTiming || 'thinking'}
+              ambientType={advancedSettings.backgroundAudio?.ambientType || 'office'}
+              ambientVolume={advancedSettings.backgroundAudio?.ambientVolume || 30}
+              thinkingType={advancedSettings.backgroundAudio?.thinkingType || 'keyboard'}
+              thinkingVolume={advancedSettings.backgroundAudio?.thinkingVolume || 50}
+              onFieldChange={onFieldChange}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
 
         <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
 

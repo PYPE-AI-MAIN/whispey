@@ -1,3 +1,4 @@
+// src/app/[projectid]/agents/sip-management/page.tsx
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -15,6 +16,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react'
+import PhoneRequestDialog from '@/components/sip-management/PhoneRequestDialog'
 
 interface PhoneAgent {
   id: string
@@ -49,6 +51,8 @@ export default function SimplifiedSipManagement() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showPhoneRequest, setShowPhoneRequest] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -68,8 +72,6 @@ export default function SimplifiedSipManagement() {
       const phoneData: PhoneNumbersResponse = await phoneResponse.json()
       setPhoneAgents(phoneData.agents || [])
 
-      // Since the phone data already includes agent names, we don't need to fetch separately
-      // The phone agents data structure already has the name field
     } catch (err) {
       setError('Failed to load phone configuration')
       console.error('Error loading data:', err)
@@ -96,6 +98,11 @@ export default function SimplifiedSipManagement() {
         year: 'numeric'
       })
     }
+  }
+
+  const handleRequestPhone = (agentId: string, agentName: string) => {
+    setSelectedAgent({ id: agentId, name: agentName })
+    setShowPhoneRequest(true)
   }
 
   const filteredAgents = phoneAgents.filter(phoneAgent => {
@@ -177,7 +184,7 @@ export default function SimplifiedSipManagement() {
       )}
 
       {/* Search Bar */}
-      <div className="px-4 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800">
+      {filteredAgents.length !== 0 && <div className="px-4 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           <Input
@@ -187,90 +194,120 @@ export default function SimplifiedSipManagement() {
             className="pl-9 h-9 text-sm"
           />
         </div>
-      </div>
+      </div>}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
-        {filteredAgents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
-              <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-              {searchQuery ? 'No phone numbers match your search' : 'No Phone Numbers'}
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-sm">
-              {searchQuery 
-                ? 'Try adjusting your search criteria'
-                : 'Phone numbers will appear here once configured'
-              }
-            </p>
-            {searchQuery && (
-              <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="text-xs h-7">
-                Clear Search
-              </Button>
-            )}
+      {filteredAgents.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
+            <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
-        ) : (
-          <div className="p-4">
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              {/* Table Header */}
-              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-                <div className="grid grid-cols-3 gap-4 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                  <div>Number</div>
-                  <div>Assigned Agent Name</div>
-                  <div>Last Updated</div>
-                </div>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+            {searchQuery ? 'No phone numbers match your search' : 'No agents created yet'}
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-sm">
+            {searchQuery 
+              ? 'Try adjusting your search criteria'
+              : 'Create an agent with Pype then request for numbers!'
+            }
+          </p>
+          {searchQuery && (
+            <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="text-xs h-7">
+              Clear Search
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="p-4">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            {/* Table Header */}
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-4 gap-4 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                <div>Number</div>
+                <div>Assigned Agent Name</div>
+                <div>Last Updated</div>
+                <div>Actions</div>
               </div>
-              
-              {/* Table Body */}
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredAgents.map((phoneAgent) => {
-                  return (
-                    <div
-                      key={phoneAgent.id}
-                      className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                    >
-                      <div className="grid grid-cols-3 gap-4 items-center">
-                        {/* Phone Number */}
-                        <div>
-                          <Badge variant="outline" className="text-sm font-mono">
-                            {phoneAgent.phone_number}
-                          </Badge>
-                        </div>
-                        
-                        {/* Assigned Agent */}
-                        <div>
-                          {phoneAgent.name ? (
-                            <div className="flex items-center gap-2">
-                              <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                              <span className="text-sm text-gray-900 dark:text-gray-100">
-                                {phoneAgent.name}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400 dark:text-gray-500 italic">
-                              Unassigned
+            </div>
+            
+            {/* Table Body */}
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredAgents.map((phoneAgent) => {
+                return (
+                  <div
+                    key={phoneAgent.id}
+                    className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="grid grid-cols-4 gap-4 items-center">
+                      {/* Phone Number */}
+                      <div>
+                        <Badge variant="outline" className="text-sm font-mono">
+                          {phoneAgent.phone_number}
+                        </Badge>
+                      </div>
+                      
+                      {/* Assigned Agent */}
+                      <div>
+                        {phoneAgent.name ? (
+                          <div className="flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            <span className="text-sm text-gray-900 dark:text-gray-100">
+                              {phoneAgent.name}
                             </span>
-                          )}
-                        </div>
-                        
-                        {/* Last Updated */}
-                        <div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                            <Clock className="w-4 h-4" />
-                            <span>{formatDate(phoneAgent.created_at)}</span>
                           </div>
+                        ) : (
+                          <span className="text-sm text-gray-400 dark:text-gray-500 italic">
+                            Unassigned
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Last Updated */}
+                      <div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                          <Clock className="w-4 h-4" />
+                          <span>{formatDate(phoneAgent.created_at)}</span>
                         </div>
                       </div>
+
+                      {/* Actions */}
+                      <div>
+                        {!phoneAgent.phone_number && phoneAgent.name && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRequestPhone(phoneAgent.id, phoneAgent.name)}
+                            className="h-7 text-xs"
+                          >
+                            <Phone className="w-3 h-3 mr-1" />
+                            Request Number
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
+
+      <PhoneRequestDialog
+        isOpen={showPhoneRequest}
+        onClose={() => {
+          setShowPhoneRequest(false)
+          setSelectedAgent(null)
+        }}
+        onSuccess={() => {
+          loadData()
+          setSelectedAgent(null)
+        }}
+        agentId={selectedAgent?.id}
+        agentName={selectedAgent?.name}
+      />
     </div>
   )
 }

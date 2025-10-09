@@ -1,6 +1,7 @@
 // src/app/api/agents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { auth } from '@clerk/nextjs/server'
 
 // Create Supabase client for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -85,6 +86,26 @@ export async function DELETE(
       )
     }
 
+    // Get clerk_id for quota update
+    const { userId: clerkId } = await auth()
+    if (!clerkId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get agent details before deletion (we only need the name for backend deletion)
+    const { data: agentData, error: agentFetchError } = await supabase
+      .from('pype_voice_agents')
+      .select('name')
+      .eq('id', agentId)
+      .single()
+
+    if (agentFetchError || !agentData) {
+      console.warn('⚠️ Could not fetch agent details:', agentFetchError)
+    }
+
     // Start cascade deletion process
 
     // 1. Delete call logs for this agent
@@ -132,6 +153,81 @@ export async function DELETE(
     }
     
     console.log(`Successfully deleted agent: ${agentId}`)
+
+    // 5. Call backend to delete agent (if agent name is available)
+    if (agentData && agentData.name) {
+      try {
+        console.log('🔄 Calling backend to delete agent:', agentData.name)
+        
+        const backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': 'pype-api-v1'
+          },
+          body: JSON.stringify({ 
+            agent_name: agentData.name
+          })
+        })
+
+        if (backendDeleteResponse.ok) {
+          console.log('✅ Successfully deleted agent from backend')
+        } else {
+          const errorData = await backendDeleteResponse.text()
+          console.error('❌ Backend delete failed:', backendDeleteResponse.status, errorData)
+        }
+      } catch (backendError) {
+        console.error('❌ Backend delete error:', backendError)
+      }
+    } else {
+      console.warn('⚠️ No agent name available for backend deletion')
+    }
+
+    // 6. Update user's agent quota state to reduce active count and remove agent
+    try {
+      console.log('🔄 Updating user agent quota state...')
+      
+      // Get current user state
+      const { data: userRow, error: fetchError } = await supabase
+        .from('pype_voice_users')
+        .select('agent')
+        .eq('clerk_id', clerkId)
+        .single()
+
+        if (fetchError || !userRow) {
+          console.warn('⚠️ Could not fetch user state for quota update:', fetchError)
+        } else {
+          const currentState = (userRow as any).agent
+          if (currentState && currentState.agents) {
+            // Remove the agent from the agents array and reduce active count
+            const updatedAgents = currentState.agents.filter((agent: any) => agent.id !== agentId)
+            const updatedState = {
+              ...currentState,
+              usage: {
+                ...currentState.usage,
+                active_count: Math.max(0, currentState.usage.active_count - 1)
+              },
+              agents: updatedAgents,
+              last_updated: new Date().toISOString()
+            }
+
+            console.log('🔍 Updated user state:', JSON.stringify(updatedState, null, 2))
+
+            const { error: updateError } = await supabase
+              .from('pype_voice_users')
+              .update({ agent: updatedState })
+              .eq('clerk_id', clerkId)
+
+            if (updateError) {
+              console.error('❌ Failed to update user quota state:', updateError)
+            } else {
+              console.log('✅ Successfully updated user quota state')
+            }
+          }
+        }
+      } catch (quotaError) {
+        console.error('❌ Error updating user quota state:', quotaError)
+      }
 
     return NextResponse.json(
       { 
