@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
 
 interface SidebarWrapperProps {
   children: ReactNode
@@ -39,6 +40,7 @@ interface SidebarContext {
   userCanViewApiKeys: boolean
   projectId?: string
   agentType?: string
+  canAccessPhoneCalls: boolean
 }
 
 interface NavigationItem {
@@ -221,7 +223,7 @@ const sidebarRoutes: SidebarRoute[] = [
 
       // Call items
       const callItems = []
-      if (agentType === 'pype_agent') {
+      if (agentType === 'pype_agent' && context.canAccessPhoneCalls) {
         callItems.push({
           id: 'phone-call',
           name: 'Phone Calls',
@@ -363,6 +365,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false)
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
+
+  const { canAccessPhoneCalls } = useFeatureAccess()
   
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
   const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
@@ -428,7 +432,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     isEnhancedProject,
     userCanViewApiKeys,
     projectId,
-    agentType: agent?.agent_type
+    agentType: agent?.agent_type,
+    canAccessPhoneCalls
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)
