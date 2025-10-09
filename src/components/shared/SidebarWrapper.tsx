@@ -142,13 +142,13 @@ const sidebarRoutes: SidebarRoute[] = [
       const configurationItems = []
       
       // Add Phone Settings (SIP Management)
-      // configurationItems.push({
-      //   id: 'sip-management',
-      //   name: 'Phone Settings',
-      //   icon: 'Phone',
-      //   path: `/${projectId}/agents/sip-management`,
-      //   group: 'configuration'
-      // })
+      configurationItems.push({
+        id: 'sip-management',
+        name: 'Phone Settings',
+        icon: 'Phone',
+        path: `/${projectId}/agents/sip-management`,
+        group: 'configuration'
+      })
 
       // Add API Keys if user has permission
       if (userCanViewApiKeys) {

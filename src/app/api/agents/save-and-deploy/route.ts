@@ -9,26 +9,19 @@ export async function POST(request: NextRequest) {
     
     // Check if it's the NEW structure (with agent object already built)
     if (body.agent && body.agent.assistant && Array.isArray(body.agent.assistant)) {
-      console.log('📦 Using NEW structure (pre-built assistant)')
       agentName = body.agent.name || body.metadata?.agentName
       
       // Just pass through the agent object directly
       agentConfigBody = {
         agent: body.agent
-      }
-      
-      console.log('✅ Agent config ready (new structure):', JSON.stringify(agentConfigBody, null, 2))
+      }      
     } 
     // Check if it's the OLD structure (needs transformation)
     else if (body.formikValues && body.metadata) {
-      console.log('📦 Using OLD structure (needs transformation)')
       agentName = body.metadata.agentName
       agentConfigBody = transformFormDataToAgentConfig(body)
-      
-      console.log('✅ Agent config transformed (old structure):', JSON.stringify(agentConfigBody, null, 2))
     } 
     else {
-      console.error('❌ Invalid request structure:', Object.keys(body))
       return NextResponse.json(
         { message: 'Invalid request structure. Expected either {agent: ...} or {formikValues: ...}' },
         { status: 400 }
@@ -42,11 +35,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log('🚀 Save and Deploy - Agent:', agentName)
     
     const apiUrl = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_config/${agentName}`
-    console.log('📡 Sending to PypeAI API:', apiUrl)
-    console.log('📦 Payload size:', JSON.stringify(agentConfigBody).length, 'characters')
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -59,9 +49,6 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ PypeAI API Error Response:', errorText)
-      console.error('❌ Response Status:', response.status, response.statusText)
-      
       return NextResponse.json(
         { 
           message: `Failed to deploy agent: ${response.status} ${response.statusText}`,
@@ -71,19 +58,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await response.json()
-    console.log('✅ PypeAI API Success:', result)
-    
+    const result = await response.json()    
     return NextResponse.json({
       success: true,
       message: 'Agent deployed successfully',
       data: result
     })
     
-  } catch (error: any) {
-    console.error('❌ Save and deploy error:', error)
-    console.error('❌ Error stack:', error.stack)
-    
+  } catch (error: any) {    
     return NextResponse.json(
       { message: 'Failed to save and deploy agent', error: error.message },
       { status: 500 }

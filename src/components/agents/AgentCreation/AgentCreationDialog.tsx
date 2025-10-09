@@ -6,6 +6,7 @@ import CreateAgentFlow from './CreateAgentFlow'
 import ConnectAgentFlow from './ConnectAgentFlow'
 import AgentChoiceScreen from './AgentChoiceScreen'
 import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
+import { UserPermissionsProvider } from '@/contexts/UserPermissionsContext'
 
 interface AgentCreationDialogProps {
   isOpen: boolean
@@ -123,11 +124,13 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900 max-h-[90vh] flex flex-col">
-        {renderCurrentFlow()}
-      </DialogContent>
-    </Dialog>
+    <UserPermissionsProvider>
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900 max-h-[90vh] flex flex-col">
+          {renderCurrentFlow()}
+        </DialogContent>
+      </Dialog>
+    </UserPermissionsProvider>
   )
 }
 
