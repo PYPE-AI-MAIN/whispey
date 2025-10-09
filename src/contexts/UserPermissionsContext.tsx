@@ -1,7 +1,8 @@
 // src/contexts/UserPermissionsContext.tsx
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface UserPermissions {
   id: string
@@ -29,7 +30,7 @@ interface UserPermissionsContextType {
   error: string | null
   isWhitelisted: boolean
   canCreatePypeAgent: boolean
-  refetchPermissions: () => Promise<void>
+  refetchPermissions: () => void
 }
 
 const UserPermissionsContext = createContext<UserPermissionsContextType | undefined>(undefined)
@@ -42,40 +43,43 @@ export const useUserPermissions = () => {
   return context
 }
 
+// Query key for React Query
+export const USER_PERMISSIONS_QUERY_KEY = ['user', 'permissions']
+
+// Fetch function
+const fetchUserPermissions = async (): Promise<UserPermissions | null> => {
+  const response = await fetch('/api/user/users')
+  
+  if (!response.ok) {
+    if (response.status === 404) {
+      // User doesn't exist in database yet - treat as non-whitelisted
+      console.log('User not found in database - treating as non-whitelisted')
+      return null
+    }
+    throw new Error('Failed to fetch user permissions')
+  }
+  
+  const data = await response.json()
+  console.log('User permissions data:', data) // Debug log
+  return data.data
+}
+
 interface UserPermissionsProviderProps {
   children: ReactNode
 }
 
 export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = ({ children }) => {
-  const [permissions, setPermissions] = useState<UserPermissions | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchPermissions = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      // TODO: Replace with actual API endpoint
-      const response = await fetch('/api/user/permissions')
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch user permissions')
-      }
-      
-      const data = await response.json()
-      setPermissions(data.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load permissions')
-      console.error('Error fetching user permissions:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchPermissions()
-  }, [])
+  const { data: permissions, isLoading: loading, error } = useQuery({
+    queryKey: USER_PERMISSIONS_QUERY_KEY,
+    queryFn: fetchUserPermissions,
+    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
+    retry: 1,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  })
 
   const isWhitelisted = permissions?.roles?.type ? 
     ['ADMIN', 'SUPERADMIN', 'BETA'].includes(permissions.roles.type) : 
@@ -83,18 +87,31 @@ export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = (
 
   const canCreatePypeAgent = isWhitelisted
 
+  const refetchPermissions = () => {
+    queryClient.invalidateQueries({ queryKey: USER_PERMISSIONS_QUERY_KEY })
+  }
+
   return (
     <UserPermissionsContext.Provider 
       value={{
-        permissions,
+        permissions: permissions || null,
         loading,
-        error,
+        error: error?.message || null,
         isWhitelisted,
         canCreatePypeAgent,
-        refetchPermissions: fetchPermissions
+        refetchPermissions
       }}
     >
       {children}
     </UserPermissionsContext.Provider>
   )
+}
+
+// Hook to invalidate user permissions from anywhere in the app
+export const useInvalidateUserPermissions = () => {
+  const queryClient = useQueryClient()
+  
+  return () => {
+    queryClient.invalidateQueries({ queryKey: USER_PERMISSIONS_QUERY_KEY })
+  }
 }

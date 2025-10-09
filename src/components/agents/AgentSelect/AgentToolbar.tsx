@@ -2,6 +2,8 @@ import React from 'react'
 import { Search, Eye, Grid3X3, List, HelpCircle, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
+import PypeAgentUsage from './PypeAgentUsage'
+import { UserPermissionsProvider } from '@/contexts/UserPermissionsContext'
 
 interface AgentToolbarProps {
   searchQuery: string
@@ -29,6 +31,7 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
   if (isMobile) {
     return (
       <div className="space-y-3 mb-4">
+        <PypeAgentUsage />
         {/* Top Row: Search + Create Button */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -146,6 +149,7 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
       </div>
 
       {/* Right: Controls */}
+      <PypeAgentUsage />
       <div className="flex items-center gap-3">
         {/* Status Filter */}
         <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
