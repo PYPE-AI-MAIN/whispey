@@ -9,6 +9,7 @@ import { useUserPermissions } from '@/contexts/UserPermissionsContext'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Loader2, Send } from 'lucide-react'
+import type { EmailNotificationRequest, EmailNotificationResponse } from '@/types/email-notifications'
 
 interface AgentChoiceScreenProps {
   onCreateAgent: () => void
@@ -22,12 +23,15 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
   onClose
 }) => {
   const { isMobile } = useMobile(768)
-  const { canCreatePypeAgent, loading: permissionsLoading } = useUserPermissions()
+  const { canCreatePypeAgent, loading: permissionsLoading, permissions } = useUserPermissions()
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const hasReachedLimit = permissions?.agent && 
+  (permissions.agent.usage.active_count >= permissions.agent.limits.max_agents)
 
   const handleSubmitRequest = async () => {
     if (!reason.trim()) {
@@ -39,19 +43,28 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
     setError(null)
 
     try {
-      const response = await fetch('/api/request-access', {
+      const requestBody: EmailNotificationRequest = {
+        type: 'agent_permission',
+        description: reason.trim()
+      }
+
+      const response = await fetch('/api/email/notify-admins', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          type: 'pype_agent_creation',
-          reason: reason.trim(),
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
-        throw new Error('Failed to send request')
+        const errorData = await response.json().catch(() => ({ error: 'Failed to send request' }))
+        throw new Error(errorData.error || 'Failed to send request')
+      }
+
+      const data: EmailNotificationResponse = await response.json()
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to send request')
       }
 
       setSuccess(true)
@@ -66,7 +79,7 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
         }, 300)
       }, 2000)
     } catch (err) {
-      setError('Failed to send access request. Please try again.')
+      setError(err instanceof Error ? err.message : 'Failed to send access request. Please try again.')
       console.error('Error sending access request:', err)
     } finally {
       setLoading(false)
@@ -223,19 +236,25 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
               {/* Create Agent Option */}
               <div
                 className={`group relative ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 ${
-                  canCreatePypeAgent 
+                  canCreatePypeAgent && !hasReachedLimit
                     ? 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
                     : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800/70'
                 } transition-all duration-200 cursor-pointer`}
-                onClick={canCreatePypeAgent ? onCreateAgent : () => setShowRequestForm(true)}
+                onClick={
+                  canCreatePypeAgent && !hasReachedLimit 
+                    ? onCreateAgent 
+                    : hasReachedLimit 
+                      ? undefined  // No action when limit reached
+                      : () => setShowRequestForm(true)  // Show request form when not whitelisted
+                }
               >
                 <div className="flex items-start gap-3">
                   <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} ${
-                    canCreatePypeAgent
+                    canCreatePypeAgent && !hasReachedLimit
                       ? 'bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50'
                       : 'bg-gray-100 dark:bg-gray-800'
                   } rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
-                    {canCreatePypeAgent ? (
+                    {canCreatePypeAgent && !hasReachedLimit ? (
                       <Plus className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600 dark:text-blue-400`} />
                     ) : (
                       <Lock className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-gray-400 dark:text-gray-500`} />
@@ -244,33 +263,39 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className={`flex items-center gap-2 ${isMobile ? 'mb-1' : 'mb-2'}`}>
                       <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold ${
-                        canCreatePypeAgent 
-                          ? 'text-gray-900 dark:text-gray-100' 
-                          : 'text-gray-600 dark:text-gray-400'
-                      }`}>
+                          canCreatePypeAgent && !hasReachedLimit
+                            ? 'text-gray-900 dark:text-gray-100' 
+                            : 'text-gray-600 dark:text-gray-400'
+                        }`}>
                         {isMobile ? 'Create Pype Agent' : 'Create New Agent with Pype'}
                       </h3>
-                      {!canCreatePypeAgent && (
+                      {(!canCreatePypeAgent || hasReachedLimit) && (
                         <span className="text-xs font-medium px-2 py-0.5 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
-                          Beta
+                          {hasReachedLimit ? 'Limit Reached' : 'Beta'}
                         </span>
                       )}
                     </div>
                     <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${
-                      canCreatePypeAgent
-                        ? 'text-gray-600 dark:text-gray-400'
-                        : 'text-gray-500 dark:text-gray-500'
-                    } leading-relaxed`}>
-                      {canCreatePypeAgent ? (
-                        isMobile 
-                          ? 'Build a new voice agent from scratch with automatic monitoring setup.'
-                          : 'Build a new voice agent from scratch. We\'ll create the assistant and set up monitoring automatically.'
-                      ) : (
-                        <span className="font-medium">
-                          Want access to create agents with Pype? <span className="text-blue-500 dark:text-blue-400">Get in touch →</span>
-                        </span>
-                      )}
-                    </p>
+                        canCreatePypeAgent && !hasReachedLimit
+                          ? 'text-gray-600 dark:text-gray-400'
+                          : 'text-gray-500 dark:text-gray-500'
+                      } leading-relaxed`}>
+                        {canCreatePypeAgent ? (
+                          hasReachedLimit ? (
+                            <span className="font-medium">
+                              Agent limit reached. Delete an existing agent to create a new one.
+                            </span>
+                          ) : (
+                            isMobile 
+                              ? 'Build a new voice agent from scratch with automatic monitoring setup.'
+                              : 'Build a new voice agent from scratch. We\'ll create the assistant and set up monitoring automatically.'
+                          )
+                        ) : (
+                          <span className="font-medium">
+                            Want access to create agents with Pype? <span className="text-blue-500 dark:text-blue-400">Get in touch →</span>
+                          </span>
+                        )}
+                      </p>
                   </div>
                 </div>
               </div>

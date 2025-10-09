@@ -1,4 +1,4 @@
-//Fetch data from pype_voice_users table
+// src/app/api/user/users/route.ts
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'

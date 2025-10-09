@@ -1,15 +1,9 @@
 // src/app/api/email/notify-admins/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 // Email templates
-const EMAIL_TEMPLATES = {
+const EMAIL_TEMPLATES: Record<'agent_permission' | 'phone_number_request', { subject: string; html: (userEmail: string, userName: string, description?: string) => string }> = {
   agent_permission: {
     subject: 'Agent Creation Permission Request',
     html: (userEmail: string, userName: string, description?: string) => {
