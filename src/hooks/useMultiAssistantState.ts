@@ -417,8 +417,9 @@ export function useMultiAssistantState({
 
   // Check if any assistant has unsaved changes
   const hasUnsavedChanges = useMemo(() => {
-    return Array.from(assistantsData.values()).some(data => data.hasUnsavedChanges)
-  }, [assistantsData])
+    const mapHasChanges = Array.from(assistantsData.values()).some(data => data.hasUnsavedChanges)
+    return mapHasChanges || (currentFormik?.dirty ?? false)
+  }, [assistantsData, currentFormik])
 
   // Reset unsaved changes
   const resetUnsavedChanges = useCallback(() => {
