@@ -15,19 +15,6 @@ export default function ProjectsPage() {
     }
   }, [isLoaded, isSignedIn, router])
 
-  // 🔍 Debug log for specific user only
-
-  console.log({user})
-  useEffect(() => {
-    if (user?.emailAddresses[0]?.emailAddress === 'soma2tatin3@gmail.com') {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('🔑 CLERK ID:', user.id)
-      console.log('📧 EMAIL:', user.emailAddresses[0]?.emailAddress)
-      console.log('👤 NAME:', user.firstName, user.lastName)
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    }
-  }, [user])
-
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
