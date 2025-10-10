@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 export default function ProjectsPage() {
-  const { isSignedIn, isLoaded } = useUser()
+  const { isSignedIn, isLoaded, user } = useUser()
   const router = useRouter()
 
   useEffect(() => {
@@ -14,6 +14,17 @@ export default function ProjectsPage() {
       router.push('/sign-in')
     }
   }, [isLoaded, isSignedIn, router])
+
+  // 🔍 Debug log for specific user only
+  useEffect(() => {
+    if (user?.emailAddresses[0]?.emailAddress === 'soma2tatin3@gmail.com') {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      console.log('🔑 CLERK ID:', user.id)
+      console.log('📧 EMAIL:', user.emailAddresses[0]?.emailAddress)
+      console.log('👤 NAME:', user.firstName, user.lastName)
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    }
+  }, [user])
 
   if (!isLoaded) {
     return (
@@ -24,7 +35,7 @@ export default function ProjectsPage() {
   }
 
   if (!isSignedIn) {
-    return null // Redirect will handle this
+    return null
   }
 
   return <ProjectSelection isAuthLoaded={isLoaded} />

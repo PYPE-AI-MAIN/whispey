@@ -688,7 +688,8 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
           <NoCallsMessage />
         ) : (
           <>
-            {activeTab === 'overview' && (
+            {/* Keep all tabs mounted, just hide inactive ones */}
+            <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
               <Overview 
                 project={project} 
                 agent={agent}
@@ -697,22 +698,28 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                 isCustomRange={isCustomRange}
                 isLoading={agentLoading || projectLoading}
               />
-            )}
-            {activeTab === 'logs' && (
-              <CallLogs 
-                project={project} 
-                agent={agent} 
-                onBack={handleBack}
-                isLoading={agentLoading || projectLoading || callsCheckLoading}
-              />
-            )}
-            {activeTab === 'campaign-logs' && isEnhancedProject && (
-              <CampaignLogs 
-                project={project} 
-                agent={agent} 
-                onBack={handleBack}
-                isLoading={agentLoading || projectLoading}
-              />
+            </div>
+            
+            <div className={activeTab === 'logs' ? 'block h-full' : 'hidden'}>
+              {agent && (
+                <CallLogs 
+                  project={project} 
+                  agent={agent}
+                  onBack={handleBack}
+                  isLoading={agentLoading || projectLoading || callsCheckLoading}
+                />
+              )}
+            </div>
+            
+            {isEnhancedProject && (
+              <div className={activeTab === 'campaign-logs' ? 'block h-full' : 'hidden'}>
+                <CampaignLogs 
+                  project={project} 
+                  agent={agent} 
+                  onBack={handleBack}
+                  isLoading={agentLoading || projectLoading}
+                />
+              </div>
             )}
           </>
         )}
