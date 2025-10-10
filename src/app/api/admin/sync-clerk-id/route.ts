@@ -12,7 +12,7 @@ const supabase = createClient(
 // Whitelist of emails that can be synced (for safety)
 const ALLOWED_EMAILS = [
   'soma2tatin3@gmail.com',
-  // Add other 5 emails here when ready:
+  'suryadipta@pypeai.com',
   // 'user2@example.com',
   // 'user3@example.com',
   // 'user4@example.com',
