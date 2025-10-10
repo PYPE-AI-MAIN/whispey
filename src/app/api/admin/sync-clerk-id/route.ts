@@ -9,19 +9,19 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Whitelist of emails that can be synced (for safety)
-const ALLOWED_EMAILS = [
-  'soma2tatin3@gmail.com',
-  'suryadipta@pypeai.com',
-  // 'user2@example.com',
-  // 'user3@example.com',
-  // 'user4@example.com',
-  // 'user5@example.com',
-  // 'user6@example.com',
-]
+// Parse allowed emails from environment variable
+const ALLOWED_EMAILS = process.env.ALLOWED_SYNC_EMAILS?.split(',').map(email => email.trim()) || []
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify we have allowed emails configured
+    if (ALLOWED_EMAILS.length === 0) {
+      console.error('⚠️ No allowed emails configured in ALLOWED_SYNC_EMAILS')
+      return NextResponse.json({ 
+        error: 'Configuration error: No allowed emails configured' 
+      }, { status: 500 })
+    }
+
     // Get current user from Clerk
     const { userId } = await auth()
     if (!userId) {
