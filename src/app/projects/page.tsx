@@ -17,7 +17,7 @@ export default function ProjectsPage() {
 
   // 🔍 Debug log for specific user only
   useEffect(() => {
-    if (user?.emailAddresses[0]?.emailAddress === 'suryadipta@pypeai.com') {
+    if (user?.emailAddresses[0]?.emailAddress === 'soma2tatin3@gmail.com') {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('🔑 CLERK ID:', user.id)
       console.log('📧 EMAIL:', user.emailAddresses[0]?.emailAddress)
