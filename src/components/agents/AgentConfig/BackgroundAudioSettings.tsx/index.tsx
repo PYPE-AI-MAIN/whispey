@@ -2,9 +2,8 @@
 import React from 'react'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Volume2, VolumeX } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
 
@@ -36,6 +35,37 @@ export default function BackgroundAudioSettings({
   thinkingVolume,
   onFieldChange
 }: BackgroundAudioSettingsProps) {
+  const [localSingleVolume, setLocalSingleVolume] = React.useState(singleVolume.toString())
+  const [localAmbientVolume, setLocalAmbientVolume] = React.useState(ambientVolume.toString())
+  const [localThinkingVolume, setLocalThinkingVolume] = React.useState(thinkingVolume.toString())
+
+  const handleVolumeChange = (field: string, value: string, setter: (v: string) => void) => {
+    setter(value)
+    if (value === '') {
+      return
+    }
+    const numValue = parseFloat(value)
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+      onFieldChange(field, numValue)
+    }
+  }
+  
+  const handleVolumeBlur = (field: string, value: string, setter: (v: string) => void) => {
+    if (value === '') {
+      onFieldChange(field, 0)
+      setter('0')
+      return
+    }
+    const numValue = parseFloat(value)
+    if (isNaN(numValue) || numValue < 0) {
+      onFieldChange(field, 0)
+      setter('0')
+    } else if (numValue > 100) {
+      onFieldChange(field, 100)
+      setter('100')
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Mode Selection */}
@@ -91,22 +121,19 @@ export default function BackgroundAudioSettings({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">Volume</Label>
-              <span className="text-xs text-gray-500">{singleVolume}%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <VolumeX className="w-3 h-3 text-gray-400" />
-              <Slider
-                value={[singleVolume]}
-                onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.singleVolume', value[0])}
-                max={100}
-                min={0}
-                step={5}
-                className="flex-1"
-              />
-              <Volume2 className="w-3 h-3 text-gray-400" />
-            </div>
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              Volume (0-100)
+            </Label>
+            <Input
+              type="number"
+              value={localSingleVolume}
+              onChange={(e) => handleVolumeChange('advancedSettings.backgroundAudio.singleVolume', e.target.value, setLocalSingleVolume)}
+              onBlur={(e) => handleVolumeBlur('advancedSettings.backgroundAudio.singleVolume', e.target.value, setLocalSingleVolume)}
+              min={0}
+              max={100}
+              step={0.1}
+              className="h-8"
+            />
           </div>
 
           <div className="space-y-2">
@@ -159,22 +186,19 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600 dark:text-gray-400">Volume</Label>
-                <span className="text-xs text-gray-500">{ambientVolume}%</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <VolumeX className="w-3 h-3 text-gray-400" />
-                <Slider
-                  value={[ambientVolume]}
-                  onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.ambientVolume', value[0])}
-                  max={100}
-                  min={0}
-                  step={5}
-                  className="flex-1"
-                />
-                <Volume2 className="w-3 h-3 text-gray-400" />
-              </div>
+              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                Volume (0-100)
+              </Label>
+              <Input
+                type="number"
+                value={localAmbientVolume}
+                onChange={(e) => handleVolumeChange('advancedSettings.backgroundAudio.ambientVolume', e.target.value, setLocalAmbientVolume)}
+                onBlur={(e) => handleVolumeBlur('advancedSettings.backgroundAudio.ambientVolume', e.target.value, setLocalAmbientVolume)}
+                min={0}
+                max={100}
+                step={0.1}
+                className="h-8"
+              />
             </div>
           </div>
 
@@ -202,22 +226,19 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600 dark:text-gray-400">Volume</Label>
-                <span className="text-xs text-gray-500">{thinkingVolume}%</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <VolumeX className="w-3 h-3 text-gray-400" />
-                <Slider
-                  value={[thinkingVolume]}
-                  onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.thinkingVolume', value[0])}
-                  max={100}
-                  min={0}
-                  step={5}
-                  className="flex-1"
-                />
-                <Volume2 className="w-3 h-3 text-gray-400" />
-              </div>
+              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                Volume (0-100)
+              </Label>
+              <Input
+                type="number"
+                value={localThinkingVolume}
+                onChange={(e) => handleVolumeChange('advancedSettings.backgroundAudio.thinkingVolume', e.target.value, setLocalThinkingVolume)}
+                onBlur={(e) => handleVolumeBlur('advancedSettings.backgroundAudio.thinkingVolume', e.target.value, setLocalThinkingVolume)}
+                min={0}
+                max={100}
+                step={0.1}
+                className="h-8"
+              />
             </div>
           </div>
         </div>
