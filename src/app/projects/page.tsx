@@ -16,6 +16,8 @@ export default function ProjectsPage() {
   }, [isLoaded, isSignedIn, router])
 
   // 🔍 Debug log for specific user only
+
+  console.log({user})
   useEffect(() => {
     if (user?.emailAddresses[0]?.emailAddress === 'soma2tatin3@gmail.com') {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
