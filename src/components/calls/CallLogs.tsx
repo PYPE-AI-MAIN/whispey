@@ -18,6 +18,7 @@ import Papa from 'papaparse'
 import { useUser } from "@clerk/nextjs"
 import { getUserProjectRole } from "@/services/getUserRole"
 import { useRouter } from "next/navigation"
+import { useCallLogs } from "@/hooks/useCallLogs"
 
 interface CallLogsProps {
   project: any
@@ -255,7 +256,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
     return !restrictedColumns.includes(columnKey)
   }
 
-  const dynamicColumnsKey = (() => {
+  const dynamicColumnsKey = useMemo(() => {
     if (!agent?.field_extractor_prompt) return []
     try {
       const prompt = agent.field_extractor_prompt;
@@ -270,7 +271,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       console.error('Error parsing field_extractor_prompt:', error);
       return [];
     }
-  })();
+  }, [agent?.field_extractor_prompt])
 
   const [roleLoading, setRoleLoading] = useState(true)
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null)
@@ -469,11 +470,10 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
     return supabaseFilters
   }
 
-  const queryOptions = useMemo(() => {
-    if (!agent?.id || !role) return null
-
-    // Build select clause based on role permissions
-    let selectColumns = [
+  const selectColumns = useMemo(() => {
+    if (!role) return '*'
+    
+    let columns = [
       'id',
       'agent_id',
       'call_id',
@@ -490,28 +490,42 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       'created_at',
       'transcription_metrics'
     ]
-
-    // Add role-restricted columns only if user has permission
+  
     if (isColumnVisibleForRole('avg_latency', role)) {
-      selectColumns.push('avg_latency')
+      columns.push('avg_latency')
     }
     
     if (isColumnVisibleForRole('total_llm_cost', role)) {
-      selectColumns.push('total_llm_cost', 'total_tts_cost', 'total_stt_cost')
+      columns.push('total_llm_cost', 'total_tts_cost', 'total_stt_cost')
     }
+  
+    return columns.join(',')
+  }, [role])
 
-    return {
-      select: selectColumns.join(','),
-      filters: convertToSupabaseFilters(activeFilters),
-      orderBy: { column: "created_at", ascending: false },
-      limit: 50,
-    }
-  }, [agent?.id, activeFilters, role])
-
-  const { data: calls, loading, hasMore, error, loadMore, refresh } = useInfiniteScroll(
-    "pype_voice_call_logs", 
-    queryOptions,
-  )
+  const { 
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    error: queryError,
+    fetchNextPage,
+    refetch 
+  } = useCallLogs({
+    agentId: agent?.id,
+    filters: convertToSupabaseFilters(activeFilters),
+    select: selectColumns,
+    enabled: !!agent?.id
+  })
+  
+  // Flatten pages into single array
+  const calls = data?.pages.flat() ?? []
+  
+  // Map to match old API
+  const loading = isLoading || isFetchingNextPage
+  const hasMore = hasNextPage ?? false
+  const loadMore = fetchNextPage
+  const refresh = refetch
+  const error = queryError?.message
 
   // Extract all unique keys from metadata and transcription_metrics across all calls
   const dynamicColumns = useMemo(() => {
@@ -536,16 +550,40 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
 
   // Initialize visible columns when dynamic columns change
   useEffect(() => {
-    setVisibleColumns((prev) => ({
-      basic: prev.basic ?? basicColumns.map((col) => col.key),
-      metadata: Array.from(
+    setVisibleColumns((prev) => {
+      // Only update if actually needed
+      const newBasic = prev.basic.length === 0 
+        ? basicColumns.filter(col => !col.hidden).map((col) => col.key)
+        : prev.basic
+        
+      const newMetadata = Array.from(
         new Set(
-          (prev.metadata.length === 0 ? dynamicColumns.metadata : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col)))
+          prev.metadata.length === 0 
+            ? dynamicColumns.metadata 
+            : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col))
         )
-      ),
-      transcription_metrics: dynamicColumnsKey
-    }))
-  }, [dynamicColumns, basicColumns, JSON.stringify(dynamicColumnsKey)])
+      )
+      
+      const newTranscription = prev.transcription_metrics.length === 0
+        ? dynamicColumnsKey
+        : prev.transcription_metrics
+      
+      // Only update if something actually changed
+      if (
+        JSON.stringify(prev.basic) === JSON.stringify(newBasic) &&
+        JSON.stringify(prev.metadata) === JSON.stringify(newMetadata) &&
+        JSON.stringify(prev.transcription_metrics) === JSON.stringify(newTranscription)
+      ) {
+        return prev // No change, return previous state to prevent re-render
+      }
+      
+      return {
+        basic: newBasic,
+        metadata: newMetadata,
+        transcription_metrics: newTranscription
+      }
+    })
+  }, [dynamicColumns.metadata, dynamicColumnsKey, basicColumns])
 
   const handleColumnChange = (type: 'basic' | 'metadata' | 'transcription_metrics', column: string, visible: boolean) => {
     setVisibleColumns(prev => ({
@@ -724,27 +762,21 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (queryOptions) {
-      refresh()
-    }
-  }, [activeFilters, queryOptions])
-
-  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading) {
-          loadMore()
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
         }
       },
       { threshold: 0.1 },
     )
-
+  
     if (loadMoreRef.current) {
       observer.observe(loadMoreRef.current)
     }
-
+  
     return () => observer.disconnect()
-  }, [hasMore, loading, loadMore])
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const handleFiltersChange = (filters: FilterRule[]) => {
     setActiveFilters(filters)
@@ -755,9 +787,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
   }
 
   const handleRefresh = () => {
-    if (queryOptions) {
-      refresh()
-    }
+    refetch()
   }
 
   const formatDuration = (seconds: number) => {
@@ -782,7 +812,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
   
 
   // Show skeleton while parent is loading OR role is loading
-  if (parentLoading || roleLoading || !agent || !project || loading) {
+  if (parentLoading || roleLoading || !agent || !project || (isLoading && !data)) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <FilterHeaderSkeleton />
@@ -1013,14 +1043,14 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
               </Table>
               
               {/* Load More Trigger */}
-              {hasMore && (
+              {hasNextPage && (
                 <div ref={loadMoreRef} className="py-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                  {loading && <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />}
+                  {isFetchingNextPage && <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />}
                 </div>
               )}
 
               {/* End of List */}
-              {!hasMore && calls.length > 0 && (
+              {!hasNextPage && calls.length > 0 && (
                 <div className="py-4 text-muted-foreground dark:text-gray-400 text-sm border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-center">
                   All calls loaded ({calls.length} total)
                 </div>
