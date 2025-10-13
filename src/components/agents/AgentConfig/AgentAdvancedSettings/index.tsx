@@ -75,8 +75,6 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvance
     bugs: false,
     backgroundAudio: false
   })
-
-  console.log({advancedSettings})
   
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({

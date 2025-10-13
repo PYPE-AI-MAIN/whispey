@@ -71,10 +71,10 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   }
   
   const handleNameChange = (value: string) => {
-    // Replace spaces with underscores
-    const sanitized = value.replace(/\s+/g, '_')
+    let sanitized = value.replace(/\s+/g, '_')
     
-    // Validation checks
+    sanitized = sanitized.replace(/[^a-zA-Z0-9_]/g, '')
+    
     if (!sanitized) {
       setNameError(null)
     } else if (!/^[a-zA-Z]/.test(sanitized)) {
@@ -104,10 +104,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   
     try {
       
-      // Use the fetchProjectApiKey function
       const projectApiKey = await fetchProjectApiKey()
   
-      // Step 1: Create monitoring record in your backend (Whispey)
       const agentPayload = {
         name: formData.name.trim(),
         agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform,
@@ -133,10 +131,13 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       }
   
       const localAgent = await agentResponse.json()
+
+      const sanitizedAgentId = localAgent.id.replace(/-/g, '_')
+
+      // Construct the agent name with ID suffix
+      const agentNameWithId = `${formData.name.trim()}_${sanitizedAgentId}`
   
-      // Step 2: Only create external agent infrastructure if it's a Pype agent
       if (isPypeAgent) {
-        
         // Get encrypted API key
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
           method: 'POST',
@@ -155,10 +156,10 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         // Create the agent payload for PypeAI (matching your exact structure)
         const pypeAgentPayload = {
           agent: {
-            name: formData.name.trim(),
+            name: agentNameWithId,
             type: "OUTBOUND",
             assistant: [{
-              name: formData.name.trim(),
+              name: agentNameWithId,
               prompt: `You are a helpful voice assistant named ${formData.name.trim()}. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
               variables: {},
               stt: { 
@@ -169,7 +170,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               llm: { 
                 name: "openai", 
                 provider: "openai", 
-                model: "gpt-4o-mini", // Fixed model name
+                model: "gpt-4o-mini",
                 temperature: 0.3, 
                 api_key_env: "OPENAI_API_KEY" 
               },
@@ -488,4 +489,3 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 }
 
 export default CreateAgentFlow
-// pype_bfccd9fd5d891de547842dddfa2da71f459e4b1d4e4b933d0001ed2626d8086a

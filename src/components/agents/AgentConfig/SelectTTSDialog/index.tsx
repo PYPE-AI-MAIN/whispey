@@ -334,7 +334,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="justify-start text-xs font-normal w-full">
+        <Button variant="outline" size="sm" className="justify-start text-xs font-normal w-full text-ellipsis overflow-hidden">
           <Volume2 className="w-3.5 h-3.5 mr-2" />
           {getSelectedVoiceName()}
         </Button>
