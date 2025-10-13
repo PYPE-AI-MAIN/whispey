@@ -104,17 +104,17 @@ const STT_PROVIDERS = {
       { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Latest multilingual model' }
     ],
     languages: [
-      { code: 'hi', name: 'Hindi' },
-      { code: 'en', name: 'English' },
-      { code: 'bn', name: 'Bengali' },
-      { code: 'gu', name: 'Gujarati' },
-      { code: 'kn', name: 'Kannada' },
-      { code: 'ml', name: 'Malayalam' },
-      { code: 'mr', name: 'Marathi' },
-      { code: 'or', name: 'Odia' },
-      { code: 'pa', name: 'Punjabi' },
-      { code: 'ta', name: 'Tamil' },
-      { code: 'te', name: 'Telugu' },
+      { code: 'hi-IN', name: 'Hindi' },
+      { code: 'en-IN', name: 'English' },
+      { code: 'bn-IN', name: 'Bengali' },
+      { code: 'gu-IN', name: 'Gujarati' },
+      { code: 'kn-IN', name: 'Kannada' },
+      { code: 'ml-IN', name: 'Malayalam' },
+      { code: 'mr-IN', name: 'Marathi' },
+      { code: 'or-IN', name: 'Odia' },
+      { code: 'pa-IN', name: 'Punjabi' },
+      { code: 'ta-IN', name: 'Tamil' },
+      { code: 'te-IN', name: 'Telugu' },
       { code: 'unknown', name: 'Unknown/Auto-detect' }
     ]
   }
