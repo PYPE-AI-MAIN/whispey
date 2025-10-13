@@ -1,74 +1,310 @@
-'use client'
-
-import React from 'react'
-import { Label } from '@/components/ui/label'
+import React, { useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Info } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SessionBehaviourSettingsProps {
   preemptiveGeneration: 'enabled' | 'disabled'
-  turn_detection: 'multilingual' | 'english' | 'disabled'
+  turn_detection: 'multilingual' | 'english' | 'smollm2turndetector' | 'llmturndetector' | 'smollm360m' | 'disabled'
+  unlikely_threshold?: number
+  min_endpointing_delay?: number
+  max_endpointing_delay?: number
   onFieldChange: (field: string, value: any) => void
 }
 
-function SessionBehaviourSettings({
+export default function SessionBehaviourSettings({
   preemptiveGeneration,
   turn_detection,
+  unlikely_threshold = 0.6,
+  min_endpointing_delay = 0.5,
+  max_endpointing_delay = 3,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
-  return (
-    <div className="space-y-3">
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-        Configure session behavior settings
-      </div>
-      
-      {/* Preemptive Generation */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-          Preemptive Generation
-        </Label>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-          Enable or disable preemptive text generation
-        </div>
-        <Select 
-          value={preemptiveGeneration} 
-          onValueChange={(value) => onFieldChange('advancedSettings.session.preemptiveGeneration', value)}
-        >
-          <SelectTrigger className="h-7 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="enabled" className="text-xs">Enabled</SelectItem>
-            <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+  // Local state for input values to handle intermediate states
+  const [thresholdInput, setThresholdInput] = useState(String(unlikely_threshold))
+  const [minDelayInput, setMinDelayInput] = useState(String(min_endpointing_delay))
+  const [maxDelayInput, setMaxDelayInput] = useState(String(max_endpointing_delay))
 
-      {/* Turn Detection */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-          Turn Detection
-        </Label>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-          Language detection mode for turn-taking
+  // Sync with props when they change externally
+  React.useEffect(() => {
+    setThresholdInput(String(unlikely_threshold))
+  }, [unlikely_threshold])
+
+  React.useEffect(() => {
+    setMinDelayInput(String(min_endpointing_delay))
+  }, [min_endpointing_delay])
+
+  React.useEffect(() => {
+    setMaxDelayInput(String(max_endpointing_delay))
+  }, [max_endpointing_delay])
+
+  const handleNumberInput = (
+    value: string,
+    field: string,
+    setter: (val: string) => void,
+    min: number = 0,
+    max?: number
+  ) => {
+    // Allow empty string, single decimal point, or partial numbers
+    if (value === '' || value === '.' || value === '0.') {
+      setter(value)
+      return
+    }
+
+    // Allow partial decimals like "0." or "1."
+    if (value.endsWith('.') && !isNaN(parseFloat(value.slice(0, -1)))) {
+      setter(value)
+      return
+    }
+
+    // Validate it's a number
+    const numValue = parseFloat(value)
+    if (isNaN(numValue)) {
+      return // Don't update if invalid
+    }
+
+    // Update local state
+    setter(value)
+
+    // Apply constraints and update parent
+    let constrainedValue = numValue
+    if (constrainedValue < min) constrainedValue = min
+    if (max !== undefined && constrainedValue > max) constrainedValue = max
+
+    onFieldChange(field, constrainedValue)
+  }
+
+  const handleBlur = (
+    value: string,
+    field: string,
+    setter: (val: string) => void,
+    min: number = 0,
+    max?: number
+  ) => {
+    // If empty, default to 0 (not the original default value)
+    if (value === '' || value === '.' || isNaN(parseFloat(value))) {
+      setter('0')
+      onFieldChange(field, 0)
+      return
+    }
+
+    // Clean up trailing decimal point
+    if (value.endsWith('.')) {
+      const cleanValue = value.slice(0, -1) || '0'
+      setter(cleanValue)
+      onFieldChange(field, parseFloat(cleanValue))
+      return
+    }
+
+    // Apply final constraints
+    let numValue = parseFloat(value)
+    if (numValue < min) numValue = min
+    if (max !== undefined && numValue > max) numValue = max
+    
+    setter(String(numValue))
+    onFieldChange(field, numValue)
+  }
+
+  return (
+    <TooltipProvider>
+      <div className="space-y-4">
+        {/* Preemptive Generation */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              Preemptive Generation
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  When enabled, the agent starts generating responses before the user finishes speaking, reducing latency.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Select
+            value={preemptiveGeneration}
+            onValueChange={(value) => 
+              onFieldChange('advancedSettings.session.preemptiveGeneration', value)
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="enabled" className="text-xs">Enabled</SelectItem>
+              <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select 
-          value={turn_detection} 
-          onValueChange={(value) => onFieldChange('advancedSettings.session.turn_detection', value)}
-        >
-          <SelectTrigger className="h-7 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="english" className="text-xs">English</SelectItem>
-            <SelectItem value="multilingual" className="text-xs">Multilingual</SelectItem>
-            <SelectItem value="SmolLM2TurnDetector" className="text-xs">SmolLM2TurnDetector</SelectItem>
-            <SelectItem value="llmturndetector" className="text-xs">LLMTurnDetector</SelectItem>
-            <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
-          </SelectContent>
-        </Select>
+
+        {/* Turn Detection */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              Turn Detection
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  Controls how the agent detects when the user has finished speaking.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Select
+            value={turn_detection}
+            onValueChange={(value) => 
+              onFieldChange('advancedSettings.session.turn_detection', value)
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="multilingual" className="text-xs">Multilingual</SelectItem>
+              <SelectItem value="english" className="text-xs">English</SelectItem>
+              <SelectItem value="smollm2turndetector" className="text-xs">SmolLM2 Turn Detector</SelectItem>
+              <SelectItem value="llmturndetector" className="text-xs">LLM Turn Detector</SelectItem>
+              <SelectItem value="smollm360m" className="text-xs">SmolLM360M</SelectItem>
+              <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Unlikely Threshold - Only show for English and Multilingual */}
+        {(turn_detection === 'english' || turn_detection === 'multilingual') && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                Unlikely Threshold
+              </Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs">
+                  <p className="text-xs">
+                    Confidence threshold for detecting incomplete utterances. Range: 0.0 to 1.0. Lower values are more sensitive.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              value={thresholdInput}
+              onChange={(e) => handleNumberInput(
+                e.target.value,
+                'advancedSettings.session.unlikely_threshold',
+                setThresholdInput,
+                0,
+                1
+              )}
+              onBlur={(e) => handleBlur(
+                e.target.value,
+                'advancedSettings.session.unlikely_threshold',
+                setThresholdInput,
+                0,
+                1
+              )}
+              className="h-8 text-xs"
+              placeholder="0.6"
+            />
+            <p className="text-xs text-gray-400">Range: 0.0 - 1.0 (Step: 0.01)</p>
+          </div>
+        )}
+
+        {/* Min Endpointing Delay */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              Min Endpointing Delay (seconds)
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  Minimum silence duration (in seconds) before detecting end of user turn. Set to 0 for instant detection.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={minDelayInput}
+            onChange={(e) => handleNumberInput(
+              e.target.value,
+              'advancedSettings.session.min_endpointing_delay',
+              setMinDelayInput,
+              0
+            )}
+            onBlur={(e) => handleBlur(
+              e.target.value,
+              'advancedSettings.session.min_endpointing_delay',
+              setMinDelayInput,
+              0
+            )}
+            className="h-8 text-xs"
+            placeholder="0.5"
+          />
+          <p className="text-xs text-gray-400">Minimum: 0 seconds (Step: 0.01)</p>
+        </div>
+
+        {/* Max Endpointing Delay */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              Max Endpointing Delay (seconds)
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  Maximum silence duration (in seconds) before forcing end of user turn.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={maxDelayInput}
+            onChange={(e) => handleNumberInput(
+              e.target.value,
+              'advancedSettings.session.max_endpointing_delay',
+              setMaxDelayInput,
+              0
+            )}
+            onBlur={(e) => handleBlur(
+              e.target.value,
+              'advancedSettings.session.max_endpointing_delay',
+              setMaxDelayInput,
+              0
+            )}
+            className="h-8 text-xs"
+            placeholder="3"
+          />
+          <p className="text-xs text-gray-400">Minimum: 0 seconds (Step: 0.01)</p>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
-
-export default SessionBehaviourSettings
