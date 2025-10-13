@@ -25,7 +25,10 @@ interface AgentAdvancedSettingsProps {
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
-        turn_detection: 'multilingual' | 'english' | 'disabled'
+        turn_detection: 'multilingual' | 'english' | 'smollm2turndetector' | 'llmturndetector' | 'smollm360m' | 'disabled'
+        unlikely_threshold?: number
+        min_endpointing_delay?: number
+        max_endpointing_delay?: number
       }
       tools: {
         tools: Array<{
@@ -73,6 +76,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvance
     backgroundAudio: false
   })
 
+  console.log({advancedSettings})
+  
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({
       ...prev,
@@ -134,13 +139,16 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvance
               <UserIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Behaviour</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transforms ${openSections.session ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.session ? 'rotate-180' : ''}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <SessionBehaviourSettings
               preemptiveGeneration={advancedSettings.session.preemptiveGeneration}
               turn_detection={advancedSettings.session.turn_detection}
+              unlikely_threshold={advancedSettings.session.unlikely_threshold}
+              min_endpointing_delay={advancedSettings.session.min_endpointing_delay}
+              max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

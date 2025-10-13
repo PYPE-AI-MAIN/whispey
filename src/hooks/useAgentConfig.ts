@@ -64,14 +64,12 @@ export interface AgentConfigResponse {
         min_interruption_duration: number
         min_interruption_words: number
       }
-      turn_detection?: string
       first_message?: string
       ai_starts_after_silence?: boolean
       silence_time?: number
       allow_interruptions?: boolean
       min_interruption_duration?: number
       min_interruption_words?: number
-      preemptive_generation?: string
       tools?: Array<{
         type: "end_call" | "handoff" | "custom_function" | string
         name?: string
@@ -109,6 +107,13 @@ export interface AgentConfigResponse {
           type: string
           volume: number
         }
+      }
+      session_behavior?: {
+        preemptive_generation: string
+        turn_detection: "multilingual" | "english" | "smollm2" | "llm" | "smollm360m" | "disabled"
+        unlikely_threshold?: number
+        min_endpointing_delay?: number
+        max_endpointing_delay?: number
       }
     }>
   }
@@ -276,7 +281,10 @@ export const getDefaultFormValues = () => ({
     },
     session: {
       preemptiveGeneration: "enabled" as "enabled" | "disabled",
-      turn_detection: "multilingual" as "multilingual" | "english" | "disabled",
+      turn_detection: "multilingual" as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
+      unlikely_threshold: 0.6,
+      min_endpointing_delay: 0.5,
+      max_endpointing_delay: 3,
     },
     tools: {
       tools: [] as Array<{
@@ -301,11 +309,9 @@ export const getDefaultFormValues = () => ({
     },
     backgroundAudio: {
       mode: 'disabled' as 'disabled' | 'single' | 'dual',
-      // Single mode settings
       singleType: 'keyboard' as string,
       singleVolume: 50,
       singleTiming: 'thinking' as 'thinking' | 'always',
-      // Dual mode settings
       ambientType: 'office' as string,
       ambientVolume: 30,
       thinkingType: 'keyboard' as string,
@@ -328,7 +334,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
     mappedProvider = "azure_openai"
   } else if (modelValue.includes("claude")) {
     mappedProvider = "anthropic"
-  } else if (modelValue.includes("cerebras")) {
+  } else if (modelValue.includes("cerebras") || providerValue === "cerebras") {
     mappedProvider = "cerebras"
   }
 
@@ -363,13 +369,30 @@ export const buildFormValuesFromAgent = (assistant: any) => {
     customFirstMessageValue = assistant.first_message || ""
   }
 
+  // FIXED: Map session_behavior correctly
+  const sessionBehavior = assistant.session_behavior || {}
+
+  // FIXED: Background audio mapping with proper null checks
+  const backgroundAudio = assistant.background_audio || {}
+  const hasAmbient = backgroundAudio.ambient?.type !== undefined
+  const hasThinking = backgroundAudio.thinking?.type !== undefined
+  
+  let backgroundAudioMode: 'disabled' | 'single' | 'dual' = 'disabled'
+  if (backgroundAudio.enabled) {
+    if (hasAmbient && hasThinking) {
+      backgroundAudioMode = 'dual'
+    } else if (hasThinking || hasAmbient) {
+      backgroundAudioMode = 'single'
+    }
+  }
+
   return {
     selectedProvider: mappedProvider,
     selectedModel: modelValue,
     selectedVoice: assistant.tts?.voice_id || assistant.tts?.speaker || "",
     selectedLanguage: assistant.tts?.language || assistant.stt?.language || languageOptions[0]?.value || "en",
     firstMessageMode: firstMessageModeValue,
-    customFirstMessage: customFirstMessageValue, // Keep for backward compatibility
+    customFirstMessage: customFirstMessageValue,
     aiStartsAfterSilence: assistant.ai_starts_after_silence || false,
     silenceTime: assistant.silence_time || 10,
     prompt: assistant.prompt || "",
@@ -420,8 +443,11 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         minSilenceDuration: assistant.vad?.min_silence_duration || 0.1,
       },
       session: {
-        preemptiveGeneration: (assistant.preemptive_generation || "enabled") as "enabled" | "disabled",
-        turn_detection: (assistant.turn_detection || "multilingual") as "multilingual" | "english" | "disabled",
+        preemptiveGeneration: (sessionBehavior.preemptive_generation || "enabled") as "enabled" | "disabled",
+        turn_detection: (sessionBehavior.turn_detection || "multilingual") as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
+        unlikely_threshold: sessionBehavior.unlikely_threshold ?? 0.6,
+        min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? 0.5,
+        max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? 3,
       },
       tools: {
         tools:
@@ -455,17 +481,16 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         collectionPrompt: assistant.bug_reports?.collection_prompt || "",
       },
       backgroundAudio: {
-        mode: (!assistant.background_audio?.enabled ? 'disabled' : 
-               (assistant.background_audio?.ambient && assistant.background_audio?.thinking ? 'dual' : 'single')) as 'disabled' | 'single' | 'dual',
-        // Single mode
-        singleType: assistant.background_audio?.type || 'keyboard',
-        singleVolume: assistant.background_audio?.volume || 50,
-        singleTiming: assistant.background_audio?.timing || 'thinking',
+        mode: backgroundAudioMode,
+        // Single mode - prefer thinking, fallback to ambient, then default
+        singleType: backgroundAudio.thinking?.type || backgroundAudio.ambient?.type || backgroundAudio.type || 'keyboard',
+        singleVolume: backgroundAudio.thinking?.volume ?? backgroundAudio.ambient?.volume ?? backgroundAudio.volume ?? 50,
+        singleTiming: (backgroundAudio.timing || 'thinking') as 'thinking' | 'always',
         // Dual mode
-        ambientType: assistant.background_audio?.ambient?.type || 'office',
-        ambientVolume: assistant.background_audio?.ambient?.volume || 30,
-        thinkingType: assistant.background_audio?.thinking?.type || 'keyboard',
-        thinkingVolume: assistant.background_audio?.thinking?.volume || 50,
+        ambientType: backgroundAudio.ambient?.type || 'office',
+        ambientVolume: backgroundAudio.ambient?.volume ?? 30,
+        thinkingType: backgroundAudio.thinking?.type || 'keyboard',
+        thinkingVolume: backgroundAudio.thinking?.volume ?? 50,
       },
     },
   }
