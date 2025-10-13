@@ -221,7 +221,6 @@ export default function SessionBehaviourSettings({
               className="h-8 text-xs"
               placeholder="0.6"
             />
-            <p className="text-xs text-gray-400">Range: 0.0 - 1.0 (Step: 0.01)</p>
           </div>
         )}
 
@@ -262,7 +261,6 @@ export default function SessionBehaviourSettings({
             className="h-8 text-xs"
             placeholder="0.5"
           />
-          <p className="text-xs text-gray-400">Minimum: 0 seconds (Step: 0.01)</p>
         </div>
 
         {/* Max Endpointing Delay */}
@@ -302,7 +300,6 @@ export default function SessionBehaviourSettings({
             className="h-8 text-xs"
             placeholder="3"
           />
-          <p className="text-xs text-gray-400">Minimum: 0 seconds (Step: 0.01)</p>
         </div>
       </div>
     </TooltipProvider>
