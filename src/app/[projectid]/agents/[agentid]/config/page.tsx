@@ -285,6 +285,7 @@ export default function AgentConfig() {
   const sanitizedAgentId = typeof agentid === 'string' ? agentid.replace(/-/g, '_') : Array.isArray(agentid) ? agentid[0]?.replace(/-/g, '_') : ''
 
   const agentName = `${agentDataResponse?.[0]?.name}_${sanitizedAgentId}`
+  const agentNameHeader = `${agentDataResponse?.[0]?.name}`
 
   // Use React Query for agent config
   const { 
@@ -753,7 +754,7 @@ export default function AgentConfig() {
             <div className={`w-2 h-2 rounded-full ${getAgentStatusColor()}`}></div>
             <div className="flex flex-col">
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {agentName || 'Loading...'}
+                {agentNameHeader || 'Loading...'}
               </span>
               <span className="text-xs text-gray-500">
                 {getAgentStatusText()}
