@@ -76,7 +76,6 @@ const agentStatusService = {
       if (response.ok) {
         const data = await response.json()
         
-        // Properly typed status mapping
         const status: AgentStatus['status'] = data.is_active && data.worker_running ? 'running' : 'stopped'
         
         const mappedStatus: AgentStatus = {
@@ -110,7 +109,6 @@ const agentStatusService = {
 
       console.log('🚀 Starting agent via API:', agentName)
       
-      // Fixed: Use the correct path that matches your API route
       const response = await fetch('/api/agents/start_agent', {
         method: 'POST',
         headers: { 
@@ -284,7 +282,9 @@ export default function AgentConfig() {
     limit: 1
   })
 
-  const agentName = agentDataResponse?.[0]?.name
+  const sanitizedAgentId = typeof agentid === 'string' ? agentid.replace(/-/g, '_') : Array.isArray(agentid) ? agentid[0]?.replace(/-/g, '_') : ''
+
+  const agentName = `${agentDataResponse?.[0]?.name}_${sanitizedAgentId}`
 
   // Use React Query for agent config
   const { 
@@ -311,7 +311,7 @@ export default function AgentConfig() {
     if (!agentName) return
     
     const status = await agentStatusService.checkAgentStatus(agentName)
-    setAgentStatus(status) // Now properly typed
+    setAgentStatus(status)
   }
   
   const startAgent = async () => {
@@ -455,11 +455,11 @@ export default function AgentConfig() {
     }
   }, [saveAndDeploy.isSuccess, saveDraft.isSuccess])
 
-  const handleSaveDraft = () => {
-    const payload = buildSavePayload()
-    console.log('💾 SAVE DRAFT - Multi-Assistant Configuration:', payload)
-    saveDraft.mutate(payload)
-  }
+  // const handleSaveDraft = () => {
+  //   const payload = buildSavePayload()
+  //   console.log('💾 SAVE DRAFT - Multi-Assistant Configuration:', payload)
+  //   saveDraft.mutate(payload)
+  // }
 
   const handleSaveAndDeploy = () => {
     const payload = buildSavePayload()
@@ -484,9 +484,7 @@ export default function AgentConfig() {
       provider: provider,
       model: model || '',
       config: config || {}
-    })
-    
-    console.log('✅ TTS config stored successfully')
+    })    
   }
 
   const handleSTTSelect = (provider: string, model: string, config: any) => {
@@ -955,9 +953,7 @@ export default function AgentConfig() {
                         first_message: e.target.value
                       })
                     } else {
-                      // Also update the old customFirstMessage field for backward compatibility
                       formik.setFieldValue('customFirstMessage', e.target.value)
-                      // Convert to new object format
                       formik.setFieldValue('firstMessageMode', {
                         mode: formik.values.firstMessageMode || 'assistant_speaks_first',
                         allow_interruptions: true,
@@ -988,7 +984,7 @@ export default function AgentConfig() {
                           <span className="text-xs">{settings.fontSize}px</span>
                           <Slider
                             value={[settings.fontSize]}
-                            onValueChange={(value) => setFontSize(value[0])} // This will auto-save to localStorage
+                            onValueChange={(value) => setFontSize(value[0])}
                             min={8}
                             max={18}
                             step={1}
