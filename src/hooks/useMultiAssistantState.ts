@@ -206,9 +206,9 @@ export function useMultiAssistantState({
         session_behavior: {
           preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || 'enabled',
           turn_detection: formValues.advancedSettings?.session?.turn_detection || 'multilingual',
-          unlikely_threshold: formValues.advancedSettings?.session?.unlikelyThreshold ?? 0.6,
-          min_endpointing_delay: formValues.advancedSettings?.session?.minEndpointingDelay ?? 0.5,
-          max_endpointing_delay: formValues.advancedSettings?.session?.maxEndpointingDelay ?? 3
+          unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold,
+          min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay,
+          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
@@ -351,9 +351,9 @@ export function useMultiAssistantState({
         session_behavior: {
           preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || 'enabled',
           turn_detection: formValues.advancedSettings?.session?.turn_detection || 'multilingual',
-          unlikely_threshold: formValues.advancedSettings?.session?.unlikelyThreshold ?? 0.6,
-          min_endpointing_delay: formValues.advancedSettings?.session?.minEndpointingDelay ?? 0.5,
-          max_endpointing_delay: formValues.advancedSettings?.session?.maxEndpointingDelay ?? 3
+          unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold,
+          min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay,
+          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
