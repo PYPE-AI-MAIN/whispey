@@ -282,10 +282,17 @@ export default function AgentConfig() {
     limit: 1
   })
 
-  const sanitizedAgentId = typeof agentid === 'string' ? agentid.replace(/-/g, '_') : Array.isArray(agentid) ? agentid[0]?.replace(/-/g, '_') : ''
+  const sanitizedAgentId = typeof agentid === 'string' 
+  ? agentid.replace(/-/g, '_') 
+  : Array.isArray(agentid) 
+    ? agentid[0]?.replace(/-/g, '_') 
+    : ''
 
-  const agentName = `${agentDataResponse?.[0]?.name}_${sanitizedAgentId}`
-  const agentNameHeader = `${agentDataResponse?.[0]?.name}`
+  const agentNameWithId = `${agentDataResponse?.[0]?.name}_${sanitizedAgentId}`
+  const agentNameLegacy = agentDataResponse?.[0]?.name
+  const agentNameHeader = agentDataResponse?.[0]?.name
+
+  const [resolvedAgentName, setResolvedAgentName] = useState<string>('')
 
   // Use React Query for agent config
   const { 
@@ -294,35 +301,47 @@ export default function AgentConfig() {
     error: configError,
     isError: isConfigError,
     refetch: refetchConfig 
-  } = useAgentConfig(agentName)
+  } = useAgentConfig(agentNameWithId, agentNameLegacy)
+
+
+  useEffect(() => {
+    if (agentConfigData && !isConfigLoading) {
+      const usedName = agentConfigData._usedAgentName || agentNameWithId
+      console.log(`🎯 Resolved agent name: ${usedName}`)
+      setResolvedAgentName(usedName)
+    }
+  }, [agentConfigData, isConfigLoading, agentNameWithId])
+
+
+  const activeAgentName = resolvedAgentName || agentNameWithId
   
 
   // Use mutations for save operations
-  const { saveDraft, saveAndDeploy } = useAgentMutations(agentName)
+  const { saveDraft, saveAndDeploy } = useAgentMutations(activeAgentName)
 
   // Check agent status on load and set up polling
   useEffect(() => {
-    if (!agentName) return
+    if (!activeAgentName) return
     
     // Initial status check
     checkAgentStatus()
-  }, [agentName])
+  }, [activeAgentName])
 
   const checkAgentStatus = async () => {
-    if (!agentName) return
+    if (!activeAgentName) return
     
-    const status = await agentStatusService.checkAgentStatus(agentName)
+    const status = await agentStatusService.checkAgentStatus(activeAgentName)
     setAgentStatus(status)
   }
   
   const startAgent = async () => {
-    if (!agentName) return
+    if (!activeAgentName) return
     
     setIsAgentLoading(true)
     setAgentStatus({ status: 'starting' } as AgentStatus)
     
     try {
-      const status = await agentStatusService.startAgent(agentName)
+      const status = await agentStatusService.startAgent(activeAgentName)
       
       // If successful, set to running directly
       if (status.status !== 'error') {
@@ -336,13 +355,13 @@ export default function AgentConfig() {
   }
   
   const stopAgent = async () => {
-    if (!agentName) return
+    if (!activeAgentName) return
     
     setIsAgentLoading(true)
     setAgentStatus({ status: 'stopping' } as AgentStatus)
     
     try {
-      const status = await agentStatusService.stopAgent(agentName)
+      const status = await agentStatusService.stopAgent(activeAgentName)
       
       // If successful, set to stopped directly
       if (status.status !== 'error') {
@@ -394,7 +413,7 @@ export default function AgentConfig() {
   } = useMultiAssistantState({
     initialAssistants: agentConfigData?.agent?.assistant || [],
     agentId: agentid as string,
-    agentName: agentName || '',
+    agentName: activeAgentName || '',
     agentType: agentDataResponse?.[0]?.agent_type,
     currentFormik: formik,
     currentTtsConfig: ttsConfig,
@@ -453,8 +472,12 @@ export default function AgentConfig() {
   useEffect(() => {
     if (saveAndDeploy.isSuccess || saveDraft.isSuccess) {
       setHasExternalChanges(false)
+      resetUnsavedChanges()
+      
+      formik.resetForm({ values: formik.values })
+      
     }
-  }, [saveAndDeploy.isSuccess, saveDraft.isSuccess])
+  }, [saveAndDeploy.isSuccess, saveDraft.isSuccess, resetUnsavedChanges])
 
   // const handleSaveDraft = () => {
   //   const payload = buildSavePayload()
@@ -638,7 +661,7 @@ export default function AgentConfig() {
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAgentStatusColor()}`}></div>
             <div className="min-w-0">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {agentName || 'Loading...'}
+                {activeAgentName || 'Loading...'}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {getMobileAgentStatusText()}
@@ -655,7 +678,7 @@ export default function AgentConfig() {
                 size="sm"
                 className="h-8"
                 onClick={startAgent}
-                disabled={isAgentLoading || !agentName}
+                disabled={isAgentLoading || !activeAgentName}
               >
                 {isAgentLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -716,7 +739,7 @@ export default function AgentConfig() {
                   {/* Talk to Assistant */}
                   <DropdownMenuItem 
                     onSelect={() => setIsTalkToAssistantOpen(true)}
-                    disabled={!agentName}
+                    disabled={!activeAgentName}
                   >
                     <PhoneIcon className="w-4 h-4 mr-2" />
                     Talk to Assistant
@@ -771,7 +794,7 @@ export default function AgentConfig() {
                 size="sm"
                 className="h-8 text-xs"
                 onClick={startAgent}
-                disabled={isAgentLoading || !agentName}
+                disabled={isAgentLoading || !activeAgentName}
               >
                 {isAgentLoading ? (
                   <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -817,7 +840,7 @@ export default function AgentConfig() {
                   variant="outline"
                   size="sm"
                   className="h-8 text-xs"
-                  disabled={!agentName}
+                  disabled={!activeAgentName}
                 >
                   <PhoneIcon className="w-3 h-3 mr-1" />
                   Talk to Assistant
@@ -825,7 +848,7 @@ export default function AgentConfig() {
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-96 p-0">
                 <TalkToAssistant
-                  agentName={agentName || ''}
+                  agentName={activeAgentName || ''}
                   isOpen={isTalkToAssistantOpen}
                   onClose={() => setIsTalkToAssistantOpen(false)}
                   agentStatus={agentStatus}
@@ -1060,7 +1083,7 @@ export default function AgentConfig() {
             <SheetTitle>Talk to Assistant</SheetTitle>
           </SheetHeader>
           <TalkToAssistant
-            agentName={agentName || ''}
+            agentName={activeAgentName || ''}
             isOpen={isTalkToAssistantOpen}
             onClose={() => setIsTalkToAssistantOpen(false)}
             agentStatus={agentStatus}

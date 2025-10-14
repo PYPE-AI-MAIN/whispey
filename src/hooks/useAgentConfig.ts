@@ -117,40 +117,70 @@ export interface AgentConfigResponse {
       }
     }>
   }
+  _usedAgentName?: string
 }
 
-const fetchAgentConfig = async (agentName: string): Promise<AgentConfigResponse> => {
-  if (!agentName) {
+const fetchAgentConfigWithFallback = async (
+  primaryAgentName: string,
+  fallbackAgentName?: string
+): Promise<AgentConfigResponse> => {
+  if (!primaryAgentName) {
     throw new Error("Agent name is required")
   }
 
-  // Use your Next.js API proxy instead of direct external API call
-  const response = await fetch(`/api/agent-config/${agentName}`, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch agent config: ${response.status} ${response.statusText}`)
-  }
-
-  // Check if response is actually JSON
-  const contentType = response.headers.get("content-type")
-  if (!contentType || !contentType.includes("application/json")) {
-    const textResponse = await response.text()
-    console.error("Non-JSON response received:", textResponse.substring(0, 200))
-    throw new Error(`Expected JSON response but received: ${contentType || "unknown content type"}`)
-  }
-
+  // Try primary name first (new format with ID)
   try {
-    return await response.json()
-  } catch (jsonError) {
-    const textResponse = await response.text()
-    console.error("Failed to parse JSON response:", textResponse.substring(0, 200))
-    throw new Error("Invalid JSON response from server")
+    const response = await fetch(`/api/agent-config/${primaryAgentName}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    })
+
+    if (response.ok) {
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const textResponse = await response.text()
+        console.error("Non-JSON response received:", textResponse.substring(0, 200))
+        throw new Error(`Expected JSON response but received: ${contentType || "unknown content type"}`)
+      }
+      const data = await response.json()
+      // Mark which name was used
+      data._usedAgentName = primaryAgentName
+      console.log(`✅ Found agent using new format: ${primaryAgentName}`)
+      return data
+    }
+
+    // If 404 and we have a fallback, try legacy format (without ID)
+    if (response.status === 404 && fallbackAgentName && fallbackAgentName !== primaryAgentName) {
+      
+      const fallbackResponse = await fetch(`/api/agent-config/${fallbackAgentName}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (fallbackResponse.ok) {
+        const contentType = fallbackResponse.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          const textResponse = await fallbackResponse.text()
+          console.error("Non-JSON response received:", textResponse.substring(0, 200))
+          throw new Error(`Expected JSON response but received: ${contentType || "unknown content type"}`)
+        }
+        const data = await fallbackResponse.json()
+        
+        data._usedAgentName = fallbackAgentName
+        console.log(`✅ Found agent using legacy format: ${fallbackAgentName}`)
+        return data
+      }
+    }
+
+    throw new Error(`Failed to fetch agent config: ${response.status} ${response.statusText}`)
+  } catch (error) {
+    throw error
   }
 }
 
@@ -185,10 +215,13 @@ const saveAndDeployAgent = async (data: any) => {
 }
 
 // Hook to fetch agent config
-export const useAgentConfig = (agentName: string | null | undefined) => {
+export const useAgentConfig = (
+  agentName: string | null | undefined,
+  legacyAgentName?: string | null
+) => {
   return useQuery({
-    queryKey: ["agent-config", agentName],
-    queryFn: () => fetchAgentConfig(agentName!),
+    queryKey: ["agent-config", agentName, legacyAgentName],
+    queryFn: () => fetchAgentConfigWithFallback(agentName!, legacyAgentName || undefined),
     enabled: !!agentName,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
