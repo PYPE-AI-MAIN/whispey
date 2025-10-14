@@ -44,6 +44,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { GitHubStarsButton } from '../GithubLink'
 import SupportSheet from './SupportPanel'
 import { SidebarConfig } from './SidebarWrapper'
+import OrganizationSwitcher from '../projects/OrganisationSwitcher'
+import ProjectCreationDialog from '../projects/ProjectCreationDialog'
 
 // Extended icon mapping to support new page types
 const ICONS = {
@@ -95,10 +97,10 @@ interface SidebarProps {
 
 // Extended pricing configurations
 const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; features: string[]; upgradeText: string; upgradeLink: string }> = {
-  workspaces: {
+  organisations: {
     showPricingBox: false,
     plan: 'Free Plan',
-    features: ['5 Workspaces', 'Basic Analytics', 'Community Support'],
+    features: ['5 Organisations', 'Basic Analytics', 'Community Support'],
     upgradeText: 'Upgrade to Pro',
     upgradeLink: '/pricing'
   },
@@ -148,8 +150,10 @@ export default function Sidebar({
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false)
 
-  // Hotkey for toggling sidebar
+  // Hotkey for toggling sidebar (Cmd/Ctrl + B)
   useHotkeys('meta+B', (e) => {
     e.preventDefault()
     if (!isMobile && onToggleCollapse) {
@@ -161,7 +165,6 @@ export default function Sidebar({
     enabled: !isMobile && !!onToggleCollapse
   })
 
-  // Also add Ctrl+B for Windows/Linux users
   useHotkeys('ctrl+B', (e) => {
     e.preventDefault()
     if (!isMobile && onToggleCollapse) {
@@ -171,6 +174,23 @@ export default function Sidebar({
     enableOnFormTags: true,
     enableOnContentEditable: true,
     enabled: !isMobile && !!onToggleCollapse
+  })
+
+  // Hotkey for creating new organization (N key)
+  useHotkeys('n', (e) => {
+    e.preventDefault()
+    // If org switcher is open, close it first
+    if (orgSwitcherOpen) {
+      setOrgSwitcherOpen(false)
+      setTimeout(() => {
+        setShowCreateDialog(true)
+      }, 150)
+    } else {
+      setShowCreateDialog(true)
+    }
+  }, {
+    enableOnFormTags: false,
+    enableOnContentEditable: false,
   })
 
   useEffect(() => {
@@ -247,7 +267,7 @@ export default function Sidebar({
     const groups: Record<string, NavigationItem[]> = {}
     const ungrouped: NavigationItem[] = []
 
-    config.navigation.forEach((item: any) => { // TODO: fix type here
+    config.navigation.forEach((item: any) => {
       if (item.group) {
         // Normalize group names for consistency
         const normalizedGroup = item.group.toLowerCase()
@@ -477,6 +497,19 @@ export default function Sidebar({
 
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <OrganizationSwitcher 
+            isCollapsed={isCollapsed}
+            isMobile={isMobile}
+            externalOpen={orgSwitcherOpen}
+            onExternalOpenChange={setOrgSwitcherOpen}
+            onCreateNew={() => {
+              setOrgSwitcherOpen(false)
+              setTimeout(() => {
+                setShowCreateDialog(true)
+              }, 150)
+            }}
+          />
+
           {groupedNavigation().map((group, groupIndex) => (
             <div key={group.id}>
               {/* Group Header - only show if group has a name and we're not collapsed */}
@@ -492,7 +525,7 @@ export default function Sidebar({
               {group.name && isCollapsed && !isMobile && groupIndex > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
               )}
-              
+
               {/* Group Items */}
               <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
                 {group.items.map(item => renderNavigationItem(item))}
@@ -599,12 +632,6 @@ export default function Sidebar({
                         </>
                       )}
                     </DropdownMenuItem>
-                    {/* <DropdownMenuItem asChild className="px-3 py-2 text-xs">
-                      <Link href="/settings">
-                        <Settings className="w-4 h-4 mr-2" />
-                        Settings
-                      </Link>
-                    </DropdownMenuItem> */}
                   </div>
                   <DropdownMenuSeparator />
                   <div className="py-1">
@@ -646,6 +673,16 @@ export default function Sidebar({
       <SupportSheet 
         isOpen={isSupportOpen} 
         onClose={() => setIsSupportOpen(false)}
+      />
+      
+      {/* Project Creation Dialog */}
+      <ProjectCreationDialog
+        isOpen={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onProjectCreated={(newProject) => {
+          setShowCreateDialog(false)
+          router.push(`/${newProject.id}/agents`)
+        }}
       />
     </>
   )
