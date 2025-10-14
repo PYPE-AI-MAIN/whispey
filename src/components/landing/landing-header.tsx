@@ -11,6 +11,30 @@ import { useRouter } from 'next/navigation'
 function Header() {
     const { isSignedIn, isLoaded } = useUser()
     const router = useRouter()
+    const [organizations, setOrganizations] = useState<any[]>([])
+    const [orgsLoading, setOrgsLoading] = useState(false)
+
+    // Fetch organizations when user is signed in
+    useEffect(() => {
+      if (isSignedIn && isLoaded) {
+        fetchOrganizations()
+      }
+    }, [isSignedIn, isLoaded])
+
+    const fetchOrganizations = async () => {
+      setOrgsLoading(true)
+      try {
+        const res = await fetch('/api/projects')
+        if (res.ok) {
+          const data = await res.json()
+          setOrganizations(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch organizations:', err)
+      } finally {
+        setOrgsLoading(false)
+      }
+    }
 
     // GitHub Stars Hook with better error handling
     function useGitHubStars(owner: string, repo: string) {
@@ -108,14 +132,60 @@ function Header() {
       );
     }
 
-    const handleGetStarted = () => {
+    const handleGetStarted = async () => {
       if (!isLoaded) return
       
       if (isSignedIn) {
-        router.push('/projects')
+        // Smart navigation logic:
+        // 1. Check localStorage for last visited org
+        // 2. Fallback to first org in list
+        // 3. Fallback to /projects if no orgs
+        
+        if (typeof window !== 'undefined') {
+          const lastVisitedOrgId = localStorage.getItem('whispey-last-org')
+          
+          // If organizations haven't loaded yet, fetch them first
+          let orgsToCheck = organizations
+          if (orgsToCheck.length === 0 && !orgsLoading) {
+            try {
+              const res = await fetch('/api/projects')
+              if (res.ok) {
+                orgsToCheck = await res.json()
+              }
+            } catch (err) {
+              console.error('Failed to fetch organizations:', err)
+            }
+          }
+          
+          // Check if last visited org exists in current orgs list
+          const lastVisitedOrg = orgsToCheck.find((org: any) => org.id === lastVisitedOrgId)
+          
+          if (lastVisitedOrg) {
+            router.push(`/${lastVisitedOrgId}/agents`)
+          } else if (orgsToCheck.length > 0) {
+            // Navigate to first org
+            const firstOrgId = orgsToCheck[0].id
+            localStorage.setItem('whispey-last-org', firstOrgId)
+            router.push(`/${firstOrgId}/agents`)
+          } else {
+            // No orgs available, go to projects page
+            router.push('/projects')
+          }
+        }
       } else {
         router.push('/sign-in')
       }
+    }
+
+    // Determine button text
+    const getButtonText = () => {
+      if (!isLoaded || orgsLoading) return 'Loading...'
+      if (!isSignedIn) return 'Get Started'
+      
+      if (organizations.length > 0) {
+        return 'Go to Dashboard'
+      }
+      return 'Go to Projects'
     }
 
   return (
@@ -189,10 +259,10 @@ function Header() {
                 size="sm" 
                 className="hidden sm:inline-flex group relative overflow-hidden font-medium bg-white dark:bg-gray-900 text-gray-900 dark:text-white cursor-pointer border-0 shadow-lg shadow-blue-600/25 dark:shadow-blue-400/20 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 onClick={handleGetStarted}
-                disabled={!isLoaded}
+                disabled={!isLoaded || orgsLoading}
               >
                 <span className="relative z-10">
-                  {!isLoaded ? 'Loading...' : isSignedIn ? 'Go to Projects' : 'Get Started'}
+                  {getButtonText()}
                 </span>
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform relative z-10" />
                 {/* Enhanced shimmer effect with dark mode support */}

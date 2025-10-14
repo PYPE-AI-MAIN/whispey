@@ -19,7 +19,6 @@ interface SidebarWrapperProps {
 
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
-// All your existing route pattern definitions and configurations
 interface RoutePattern {
   pattern: string
   exact?: boolean
@@ -61,7 +60,6 @@ export interface SidebarConfig {
   backLabel?: string
 }
 
-// Keep all your existing route matching and configuration logic
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   if (pattern.endsWith('*')) {
     const basePattern = pattern.slice(0, -1)
@@ -120,12 +118,13 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 100
   },
 
-  // Project-level agents routes with Phone Settings
+  // Project-level agents routes with Phone Settings AND Organization Settings
   {
     patterns: [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
-      { pattern: '/:projectId/agents/sip-management' }
+      { pattern: '/:projectId/agents/sip-management' },
+      { pattern: '/:projectId/settings' }
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
@@ -163,19 +162,28 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
+      // Add Organization Settings
+      configurationItems.push({
+        id: 'org-settings',
+        name: 'Organization Settings',
+        icon: 'Settings',
+        path: `/${projectId}/settings`,
+        group: 'configuration'
+      })
+
       return {
         type: 'project-agents',
         context: { projectId },
         navigation: [...baseNavigation, ...configurationItems],
-        showBackButton: true,
+        showBackButton: false,
         backPath: '/projects',
-        backLabel: 'Back to Workspaces'
+        backLabel: 'Back to Organisations'
       }
     },
     priority: 95
   },
 
-  // Individual agent routes (unchanged)
+  // Individual agent routes
   {
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
@@ -209,7 +217,6 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Configuration items
       const configItems = []
       if (agentType === 'pype_agent') {
         configItems.push({ 
@@ -221,7 +228,6 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      // Call items
       const callItems = []
       if (agentType === 'pype_agent' && context.canAccessPhoneCalls) {
         callItems.push({
@@ -233,7 +239,6 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      // Enhanced project items
       const enhancedItems = []
       if (isEnhancedProject) {
         enhancedItems.push({ 
@@ -245,7 +250,6 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      // Combine all navigation items
       const navigation = [
         ...baseNavigation,
         ...configItems,
@@ -265,22 +269,16 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 90
   },
 
-  // Main workspaces/projects route WITHOUT Phone Settings
+  // Main Organisations/projects route
   {
     patterns: [
       { pattern: '/', exact: true },
       { pattern: '/projects', exact: true }
     ],
     getSidebarConfig: () => ({
-      type: 'workspaces',
+      type: 'organisations',
       context: {},
       navigation: [
-        { 
-          id: 'workspaces', 
-          name: 'Workspaces', 
-          icon: 'Home', 
-          path: '/projects' 
-        },
         { 
           id: 'docs', 
           name: 'Documentation', 
@@ -295,20 +293,18 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 85
   },
 
-  // Global Phone Settings route - REMOVED (no longer needed)
-  
-  // Fallback for any other routes WITHOUT Phone Settings
+  // Fallback for any other routes
   {
     patterns: [
       { pattern: '*' }
     ],
     getSidebarConfig: () => ({
-      type: 'workspaces',
+      type: 'organisations',
       context: {},
       navigation: [
         { 
-          id: 'workspaces', 
-          name: 'Workspaces', 
+          id: 'organisations', 
+          name: 'Organisations', 
           icon: 'Home', 
           path: '/projects' 
         },
@@ -385,7 +381,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     } : null
   )
   
-  // Load collapse preference
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedState = localStorage.getItem('whispey-sidebar-collapsed')
@@ -403,7 +398,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     }
   }
 
-  // Fetch user role and permissions (keep your existing logic)
   useEffect(() => {
     const fetchUserRole = async () => {
       if (!user?.emailAddresses?.[0]?.emailAddress || !projectId || projectId === 'sign' || projectId === 'docs') {
@@ -444,10 +438,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
 
   return (
     <div className="h-screen flex">
-      {/* Mobile: Sheet-based sidebar */}
       {isMobile ? (
         <>
-          {/* Mobile Header */}
           <div className="fixed top-0 left-0 right-0 h-14 bg-white dark:bg-gray-800 border-b flex items-center justify-between px-4 z-50 md:hidden">
             <div className="flex items-center gap-2">
               <img src="/logo.png" alt="Whispey" className="w-6 h-6" />
@@ -474,13 +466,11 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             </Sheet>
           </div>
           
-          {/* Mobile Main Content */}
           <main className="flex-1 pt-14 overflow-auto">
             {children}
           </main>
         </>
       ) : (
-        /* Desktop: Fixed sidebar */
         <>
           <div className="relative">
             <Sidebar 
@@ -492,7 +482,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             />
           </div>
           
-          {/* Desktop Main Content */}
           <main className="flex-1 overflow-auto">
             {children}
           </main>
