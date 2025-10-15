@@ -15,8 +15,8 @@ load_dotenv()
 
 # Initialize Whispey with optimized bug reporting
 pype = LivekitObserve(
-    agent_id="959649dc-b7b0-4c36-b18b-df1e7f90bca4", 
-    apikey="pype_f8c1672185f9fc16b0e77c0c425858b2858fd75ecd5b0684b7c9c5229fbc7a42"
+    agent_id="5551677a-567b-41ec-8bdb-289408612968", 
+    apikey="pype_d8a47a4043bb61a1e81b718c3196aea1dc8bfe07d0b68ec87415a43e964191b5"
 )
 
 
