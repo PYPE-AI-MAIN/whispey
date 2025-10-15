@@ -124,7 +124,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   }
 
   return (
-    <UserPermissionsProvider>
+    <UserPermissionsProvider projectId={projectId}>
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900 max-h-[90vh] flex flex-col">
           {renderCurrentFlow()}

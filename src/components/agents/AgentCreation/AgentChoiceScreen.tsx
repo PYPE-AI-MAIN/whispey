@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Loader2, Send } from 'lucide-react'
 import type { EmailNotificationRequest, EmailNotificationResponse } from '@/types/email-notifications'
+import { useParams } from 'next/navigation'
 
 interface AgentChoiceScreenProps {
   onCreateAgent: () => void
@@ -23,7 +24,10 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
   onClose
 }) => {
   const { isMobile } = useMobile(768)
-  const { canCreatePypeAgent, loading: permissionsLoading, permissions } = useUserPermissions()
+  const params = useParams()
+  const projectId = params.projectid as string
+
+  const { canCreatePypeAgent, loading: permissionsLoading, permissions } = useUserPermissions({ projectId: projectId })
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
@@ -45,7 +49,7 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
     try {
       const requestBody: EmailNotificationRequest = {
         type: 'agent_permission',
-        description: reason.trim()
+        description: `${reason.trim()}\n\nProject ID: ${projectId}`
       }
 
       const response = await fetch('/api/email/notify-admins', {

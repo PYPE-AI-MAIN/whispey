@@ -16,19 +16,19 @@ type AgentQuotaState = {
   last_updated: string
 }
 
-async function getOrInitUserAgentState(clerkId: string): Promise<{
-  userId: string
+async function getOrInitProjectAgentState(projectId: string): Promise<{
+  projectId: string
   state: AgentQuotaState
   error?: string
 }> {
-  const { data: userRow, error: fetchError } = await supabase
-    .from('pype_voice_users')
+  const { data: projectRow, error: fetchError } = await supabase
+    .from('pype_voice_projects')
     .select('id, agent')
-    .eq('clerk_id', clerkId)
+    .eq('id', projectId)
     .single()
 
-  if (fetchError || !userRow) {
-    return { userId: '', state: {} as AgentQuotaState, error: fetchError?.message || 'User not found' }
+  if (fetchError || !projectRow) {
+    return { projectId: '', state: {} as AgentQuotaState, error: fetchError?.message || 'Project not found' }
   }
 
   const defaultState: AgentQuotaState = {
@@ -39,20 +39,20 @@ async function getOrInitUserAgentState(clerkId: string): Promise<{
   }
 
   // If column exists but value is null/absent, initialize it
-  let nextState: AgentQuotaState = (userRow as any).agent || defaultState
+  let nextState: AgentQuotaState = (projectRow as any).agent || defaultState
 
-  if (!(userRow as any).agent) {
+  if (!(projectRow as any).agent) {
     const { error: initError } = await supabase
-      .from('pype_voice_users')
+      .from('pype_voice_projects')
       .update({ agent: nextState })
-      .eq('id', userRow.id)
+      .eq('id', projectRow.id)
 
     if (initError) {
-      return { userId: userRow.id, state: nextState, error: initError.message }
+      return { projectId: projectRow.id, state: nextState, error: initError.message }
     }
   }
 
-  return { userId: userRow.id, state: nextState }
+  return { projectId: projectRow.id, state: nextState }
 }
 
 // Helper function to rollback agent creation
@@ -97,14 +97,14 @@ async function rollbackAgentCreation(agentId: string, agentName?: string): Promi
 }
 
 // Helper function to rollback Supabase state
-async function rollbackSupabaseState(userId: string, originalState: AgentQuotaState): Promise<void> {
+async function rollbackSupabaseState(projectId: string, originalState: AgentQuotaState): Promise<void> {
   try {
-    console.log('🔄 Attempting to rollback Supabase state for user:', userId)
+    console.log('🔄 Attempting to rollback Supabase state for project:', projectId)
     
     const { error: rollbackError } = await supabase
-      .from('pype_voice_users')
-      .update({ agent: originalState })
-      .eq('id', userId)
+      .from('pype_voice_projects')
+      .update({ agent: originalState }) 
+      .eq('id', projectId)
 
     if (rollbackError) {
       console.error('❌ Failed to rollback Supabase state:', rollbackError)
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
   let createdAgentId: string | null = null
   let createdAgentName: string | null = null
   let originalState: AgentQuotaState | null = null
-  let dbUserId: string | null = null
+  let dbProjectId: string | null = null
   let step1Completed = false
   let step2Completed = false
   
@@ -129,6 +129,43 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json()
     const apiKey = request.headers.get('x-api-key')
+    
+    // Extract project ID from request body (preferred method)
+    let projectId = body?.project_id || body?.projectId || body?.project?.id
+    
+    // If project ID not provided in body, try to look it up from the agent data (fallback)
+    if (!projectId) {
+      const agentId = body?.agent?.agent_id || body?.agent_id || body?.id || body?.agentId
+      if (agentId) {
+        console.log('🔍 Project ID not in request body, looking up from agent ID:', agentId)
+        
+        // Look up the project ID from the agent record
+        const { data: agentRecord, error: agentError } = await supabase
+          .from('pype_voice_agents')
+          .select('project_id')
+          .eq('id', agentId)
+          .single()
+        
+        if (agentError || !agentRecord) {
+          console.error('❌ Failed to look up project ID from agent:', agentError)
+          return NextResponse.json(
+            { error: 'Project ID is required and could not be determined from agent data' },
+            { status: 400 }
+          )
+        }
+        
+        projectId = agentRecord.project_id
+        console.log('✅ Found project ID from agent lookup:', projectId)
+      } else {
+        console.error('❌ No project ID provided in request body and no agent ID to look up')
+        return NextResponse.json(
+          { error: 'Project ID is required in request body' },
+          { status: 400 }
+        )
+      }
+    } else {
+      console.log('✅ Using project ID from request body:', projectId)
+    }
     
     // Extract agent name and ID from request body for potential rollback
     createdAgentName = body?.agent?.name || body?.name || body?.agent_name || body?.agentName || null
@@ -150,7 +187,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Identify current user via Clerk to enforce agent quotas per user
+    // Identify current user via Clerk for authorization
     const { userId: clerkUserId } = await auth()
     if (!clerkUserId) {
       return NextResponse.json(
@@ -159,12 +196,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Ensure agent quota state exists, and check limits
-    const { userId: userIdFromState, state, error: stateError } = await getOrInitUserAgentState(clerkUserId)
-    dbUserId = userIdFromState
+    // Ensure agent quota state exists for the project, and check limits
+    const { projectId: projectIdFromState, state, error: stateError } = await getOrInitProjectAgentState(projectId)
+    dbProjectId = projectIdFromState
     if (stateError) {
-      console.error('❌ Supabase user/agent state error:', stateError)
-      return NextResponse.json({ error: 'Failed to load user state' }, { status: 500 })
+      console.error('❌ Supabase project/agent state error:', stateError)
+      return NextResponse.json({ error: 'Failed to load project state' }, { status: 500 })
     }
 
     const currentActive = state?.usage?.active_count ?? 0
@@ -205,9 +242,9 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Step 1 - Updated state to save:', JSON.stringify(step1State, null, 2))
 
       const { error: step1Error } = await supabase
-        .from('pype_voice_users')
+        .from('pype_voice_projects')
         .update({ agent: step1State })
-        .eq('id', dbUserId)
+        .eq('id', dbProjectId)
 
       if (step1Error) {
         console.error('❌ STEP 1 FAILED - Supabase update error:', step1Error)
@@ -260,7 +297,7 @@ export async function POST(request: NextRequest) {
       console.log('🔍 STEP 2 ROLLBACK CHECK:')
       console.log('🔍 - step1Completed:', step1Completed)
       console.log('🔍 - originalState exists:', !!originalState)
-      console.log('🔍 - dbUserId:', dbUserId)
+      console.log('🔍 - dbProjectId:', dbProjectId)
       console.log('🔍 - step2Completed:', step2Completed)
       console.log('🔍 - createdAgentId:', createdAgentId)
       console.log('🔍 - createdAgentName:', createdAgentName)
@@ -276,7 +313,7 @@ export async function POST(request: NextRequest) {
       // Rollback Step 1: Revert Supabase state
       if (step1Completed && originalState) {
         console.log('🔄 Rolling back Step 1 - Reverting Supabase state...')
-        await rollbackSupabaseState(dbUserId, originalState)
+        await rollbackSupabaseState(dbProjectId, originalState)
       } else {
         console.log('🔄 STEP 1 ROLLBACK SKIPPED - step1Completed:', step1Completed, 'originalState exists:', !!originalState)
       }
@@ -314,9 +351,9 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Step 3 - Final state to save:', JSON.stringify(step3State, null, 2))
 
       const { error: step3Error } = await supabase
-        .from('pype_voice_users')
+        .from('pype_voice_projects')
         .update({ agent: step3State })
-        .eq('id', dbUserId)
+        .eq('id', dbProjectId)
 
       if (step3Error) {
         console.error('❌ STEP 3 FAILED - Supabase update error:', step3Error)
@@ -336,7 +373,7 @@ export async function POST(request: NextRequest) {
       console.log('🔍 - createdAgentName:', createdAgentName)
       console.log('🔍 - step1Completed:', step1Completed)
       console.log('🔍 - originalState exists:', !!originalState)
-      console.log('🔍 - dbUserId:', dbUserId)
+      console.log('🔍 - dbProjectId:', dbProjectId)
       
       // Rollback Step 2: Delete PypeAPI agent
       if (step2Completed && createdAgentId) {
@@ -349,7 +386,7 @@ export async function POST(request: NextRequest) {
       // Rollback Step 1: Revert Supabase state
       if (step1Completed && originalState) {
         console.log('🔄 Rolling back Step 1 - Reverting Supabase state...')
-        await rollbackSupabaseState(dbUserId, originalState)
+        await rollbackSupabaseState(dbProjectId, originalState)
       } else {
         console.log('🔄 STEP 1 ROLLBACK SKIPPED - step1Completed:', step1Completed, 'originalState exists:', !!originalState)
       }
@@ -368,7 +405,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 - createdAgentName:', createdAgentName)
     console.log('🔍 - step1Completed:', step1Completed)
     console.log('🔍 - originalState exists:', !!originalState)
-    console.log('🔍 - dbUserId:', dbUserId)
+    console.log('🔍 - dbProjectId:', dbProjectId)
     
     // Comprehensive rollback
     if (step2Completed && createdAgentId) {
@@ -378,11 +415,11 @@ export async function POST(request: NextRequest) {
       console.log('🔄 CRITICAL: Step 2 rollback SKIPPED - step2Completed:', step2Completed, 'createdAgentId:', createdAgentId)
     }
     
-    if (step1Completed && originalState && dbUserId) {
+    if (step1Completed && originalState && dbProjectId) {
       console.log('🔄 CRITICAL: Rolling back Step 1 - Reverting Supabase state...')
-      await rollbackSupabaseState(dbUserId, originalState)
+      await rollbackSupabaseState(dbProjectId, originalState)
     } else {
-      console.log('🔄 CRITICAL: Step 1 rollback SKIPPED - step1Completed:', step1Completed, 'originalState exists:', !!originalState, 'dbUserId:', dbUserId)
+      console.log('🔄 CRITICAL: Step 1 rollback SKIPPED - step1Completed:', step1Completed, 'originalState exists:', !!originalState, 'dbProjectId:', dbProjectId)
     }
     
     return NextResponse.json(
