@@ -278,3 +278,45 @@ export async function DELETE(
     )
   }
 }
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: projectId } = await params
+
+    if (!projectId) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      )
+    }
+
+    console.log('Fetching project:', projectId);
+
+    const { data: projectRow, error: fetchError } = await supabase
+      .from('pype_voice_projects')
+      .select('id, agent, plans')
+      .eq('id', projectId)
+      .single()
+
+    if (fetchError || !projectRow) {
+      console.error('Error fetching project:', fetchError)
+      
+      // Handle specific Supabase errors
+      if (fetchError?.code === 'PGRST116') {
+        // No rows found - user doesn't exist in our database
+        return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+      }
+      
+      return NextResponse.json({ error: 'Failed to fetch project' }, { status: 500 })
+    }
+    console.log('Project row:', projectRow);
+
+    return NextResponse.json({ data: projectRow }, { status: 200 })
+  } catch (error) {
+    console.error('Unexpected error fetching project:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
