@@ -254,7 +254,7 @@ export default function OrganizationSwitcher({
                         key={org.id}
                         value={org.name}
                         onSelect={() => handleSelect(org.id)}
-                        className="cursor-pointer px-2 py-2 rounded-md aria-selected:bg-gray-50 dark:aria-selected:bg-gray-800"
+                        className={`${(currentOrgId === org.id || (!currentOrgId && lastVisitedOrgId === org.id)) ? 'bg-gray-50 dark:bg-gray-800' : ''} cursor-pointer px-2 py-2 rounded-md aria-selected:bg-gray-50 dark:aria-selected:bg-gray-800`}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
