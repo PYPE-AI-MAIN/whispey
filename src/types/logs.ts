@@ -6,6 +6,7 @@ export interface CallLog {
   call_ended_reason: string
   transcript_type: string
   transcript_json: any
+  billing_duration_seconds?:number | null
   metadata: any
   environment: string
   call_started_at: string
