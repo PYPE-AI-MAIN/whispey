@@ -104,7 +104,7 @@ const AVAILABLE_COLUMNS = [
 // Mobile-responsive skeleton components
 function MetricsGridSkeleton({ role, isMobile }: { role: string | null; isMobile: boolean }) {
   const getVisibleCardCount = () => {
-    if (role === 'user') return 4 // Hide cost cards for users
+    if (role === 'user') return 3 // Hide cost and billing duration cards for users
     return 6 // Show all cards for other roles
   }
 
@@ -643,35 +643,37 @@ const Overview: React.FC<OverviewProps> = ({
             </div>
           </div>
           
-          {/* Total Billing Minutes */}
-          <div className="group">
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className={isMobile ? 'p-3' : 'p-5'}>
-                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                  <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
-                    <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
-                  </div>
-                  {!isMobile && (
-                    <div className="text-right">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                        {analytics?.totalCalls && analytics?.totalBillingMinutes ? Math.round(analytics.totalBillingMinutes / analytics.totalCalls) : 0}m avg
-                      </span>
+          {/* Total Billing Minutes - Only show if user has permission */}
+          {role !== 'user' && (
+            <div className="group">
+              <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
+                      <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
                     </div>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}> Billing Minutes</h3>
-                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalBillingMinutes?.toLocaleString() || '0'}</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
-                    {isMobile && analytics?.totalCalls && analytics?.totalBillingMinutes 
-                      ? `${Math.round(analytics.totalBillingMinutes / analytics.totalCalls)}m avg`
-                      : 'Duration'
-                    }
-                  </p>
+                    {!isMobile && (
+                      <div className="text-right">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                          {analytics?.totalCalls && analytics?.totalBillingMinutes ? Math.round(analytics.totalBillingMinutes / analytics.totalCalls) : 0}m avg
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}> Billing Minutes</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalBillingMinutes?.toLocaleString() || '0'}</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
+                      {isMobile && analytics?.totalCalls && analytics?.totalBillingMinutes 
+                        ? `${Math.round(analytics.totalBillingMinutes / analytics.totalCalls)}m avg`
+                        : 'Duration'
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Total Cost - Only show if user has permission */}
           {role !== 'user' && (
@@ -1244,7 +1246,10 @@ const Overview: React.FC<OverviewProps> = ({
                   agentId={agent.id}
                   projectId={project.id}
                   userEmail={userEmail}
-                  availableColumns={AVAILABLE_COLUMNS}
+                  availableColumns={role === 'user' 
+                    ? AVAILABLE_COLUMNS.filter(col => col.key !== 'billing_duration_seconds')
+                    : AVAILABLE_COLUMNS
+                  }
                   onSaveCustomTotal={handleSaveCustomTotal}
                 />
               )}

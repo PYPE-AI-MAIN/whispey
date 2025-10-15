@@ -244,7 +244,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       'total_llm_cost', 
       'total_tts_cost',
       'total_stt_cost',
-      'avg_latency'
+      'avg_latency',
+      'billing_duration_seconds'
     ],
   }
 
