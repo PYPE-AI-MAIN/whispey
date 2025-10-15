@@ -57,7 +57,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
 
   // Fetch project data
   const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
-    select: 'id, name, description, environment, created_at, is_active',
+    select: 'id, name, description, environment, created_at, is_active, plans, agent',
     filters: [{ column: 'id', operator: 'eq', value: projectId }]
   })
 
@@ -271,7 +271,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
 
 const AgentSelection: React.FC<AgentSelectionContentProps> = ({ projectId }) => {
   return (
-    <UserPermissionsProvider>
+    <UserPermissionsProvider projectId={projectId}>
       <AgentSelectionContent projectId={projectId} />
     </UserPermissionsProvider>
   )

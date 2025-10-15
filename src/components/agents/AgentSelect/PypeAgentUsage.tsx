@@ -9,11 +9,19 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useMobile } from '@/hooks/use-mobile'
+import { useParams } from 'next/navigation'
 
 const PypeAgentUsage: React.FC = () => {
-  const { permissions, canCreatePypeAgent } = useUserPermissions()
+  
+  const params = useParams()
+  const projectId = params.projectid as string
+
+  const { permissions, canCreatePypeAgent } = useUserPermissions({ projectId: projectId })
   const { isMobile } = useMobile(768)
   const [showDetails, setShowDetails] = useState(false)
+
+  console.log('Permissions:', permissions);
+  console.log('Can create Pype agent:', canCreatePypeAgent);
   
   // Don't show if user can't create Pype agents
   if (!canCreatePypeAgent || !permissions?.agent) {
