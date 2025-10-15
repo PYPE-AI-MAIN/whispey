@@ -95,15 +95,28 @@ export async function DELETE(
       )
     }
 
-    // Get agent details before deletion (we only need the name for backend deletion)
+    // Get agent details before deletion (we need name for backend deletion and project_id for quota update)
     const { data: agentData, error: agentFetchError } = await supabase
       .from('pype_voice_agents')
-      .select('name')
+      .select('name, project_id')
       .eq('id', agentId)
       .single()
 
     if (agentFetchError || !agentData) {
       console.warn('⚠️ Could not fetch agent details:', agentFetchError)
+      return NextResponse.json(
+        { error: 'Agent not found' },
+        { status: 404 }
+      )
+    }
+
+    const projectId = agentData.project_id
+    if (!projectId) {
+      console.error('❌ Agent has no project_id associated')
+      return NextResponse.json(
+        { error: 'Agent has no associated project' },
+        { status: 400 }
+      )
     }
 
     // Start cascade deletion process
@@ -154,27 +167,49 @@ export async function DELETE(
     
     console.log(`Successfully deleted agent: ${agentId}`)
 
-    // 5. Call backend to delete agent (if agent name is available)
+    // 5. Call backend to delete agent with fallback strategy
     if (agentData && agentData.name) {
       try {
-        console.log('🔄 Calling backend to delete agent:', agentData.name)
+        console.log('🔄 Attempting backend agent deletion...')
         
-        const backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+        // First attempt: Try with just agent_name_agent_id (sanitize agent ID)
+        const sanitizedAgentId = agentId.replace(/-/g, '_')
+        const fallbackAgentName = `${agentData.name}_${sanitizedAgentId}`
+        console.log('🔄 First attempt: Deleting with agent_name:', fallbackAgentName)
+        
+        let backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': 'pype-api-v1'
           },
           body: JSON.stringify({ 
-            agent_name: agentData.name
+            agent_name: fallbackAgentName
           })
         })
+
+        // If first attempt failed, try with agent_name
+        if (!backendDeleteResponse.ok) {
+          console.log('🔄 First attempt failed, trying with agent_name only')
+          console.log('🔄 Second attempt: Deleting with fallback name:', agentData.name)
+          
+          backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': 'pype-api-v1'
+            },
+            body: JSON.stringify({ 
+              agent_name: fallbackAgentName
+            })
+          })
+        }
 
         if (backendDeleteResponse.ok) {
           console.log('✅ Successfully deleted agent from backend')
         } else {
           const errorData = await backendDeleteResponse.text()
-          console.error('❌ Backend delete failed:', backendDeleteResponse.status, errorData)
+          console.error('❌ Backend delete failed on both attempts:', backendDeleteResponse.status, errorData)
         }
       } catch (backendError) {
         console.error('❌ Backend delete error:', backendError)
@@ -183,21 +218,21 @@ export async function DELETE(
       console.warn('⚠️ No agent name available for backend deletion')
     }
 
-    // 6. Update user's agent quota state to reduce active count and remove agent
+    // 6. Update project's agent quota state to reduce active count and remove agent
     try {
-      console.log('🔄 Updating user agent quota state...')
+      console.log('🔄 Updating project agent quota state...')
       
-      // Get current user state
-      const { data: userRow, error: fetchError } = await supabase
-        .from('pype_voice_users')
+      // Get current project state
+      const { data: projectRow, error: fetchError } = await supabase
+        .from('pype_voice_projects')
         .select('agent')
-        .eq('clerk_id', clerkId)
+        .eq('id', projectId)
         .single()
 
-        if (fetchError || !userRow) {
-          console.warn('⚠️ Could not fetch user state for quota update:', fetchError)
+        if (fetchError || !projectRow) {
+          console.warn('⚠️ Could not fetch project state for quota update:', fetchError)
         } else {
-          const currentState = (userRow as any).agent
+          const currentState = (projectRow as any).agent
           if (currentState && currentState.agents) {
             // Remove the agent from the agents array and reduce active count
             const updatedAgents = currentState.agents.filter((agent: any) => agent.id !== agentId)
@@ -211,22 +246,22 @@ export async function DELETE(
               last_updated: new Date().toISOString()
             }
 
-            console.log('🔍 Updated user state:', JSON.stringify(updatedState, null, 2))
+            console.log('🔍 Updated project state:', JSON.stringify(updatedState, null, 2))
 
             const { error: updateError } = await supabase
-              .from('pype_voice_users')
+              .from('pype_voice_projects')
               .update({ agent: updatedState })
-              .eq('clerk_id', clerkId)
+              .eq('id', projectId)
 
             if (updateError) {
-              console.error('❌ Failed to update user quota state:', updateError)
+              console.error('❌ Failed to update project quota state:', updateError)
             } else {
-              console.log('✅ Successfully updated user quota state')
+              console.log('✅ Successfully updated project quota state')
             }
           }
         }
       } catch (quotaError) {
-        console.error('❌ Error updating user quota state:', quotaError)
+        console.error('❌ Error updating project quota state:', quotaError)
       }
 
     return NextResponse.json(

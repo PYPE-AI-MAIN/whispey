@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Phone, Loader2, Send, AlertCircle } from 'lucide-react'
 import { useMobile } from '@/hooks/use-mobile'
+import { useParams } from 'next/navigation'
 import type { EmailNotificationRequest, EmailNotificationResponse } from '@/types/email-notifications'
 
 interface PhoneRequestDialogProps {
@@ -26,6 +27,8 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
   agentName
 }) => {
   const { isMobile } = useMobile(768)
+  const params = useParams()
+  const projectId = params.projectid as string
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -43,7 +46,7 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
     try {
       const requestBody: EmailNotificationRequest = {
         type: 'phone_number_request',
-        description: `${reason.trim()}-------AgentId: ${agentId}--------AgentName: ${agentName}`
+        description: `${reason.trim()}\n\nProject ID: ${projectId}\nAgent ID: ${agentId}\nAgent Name: ${agentName}`
       }
 
       const response = await fetch('/api/email/notify-admins', {
