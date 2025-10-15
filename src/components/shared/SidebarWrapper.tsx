@@ -123,13 +123,12 @@ const sidebarRoutes: SidebarRoute[] = [
     patterns: [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
-      { pattern: '/:projectId/agents/sip-management' },
-      { pattern: '/:projectId/settings' }
+      { pattern: '/:projectId/agents/sip-management' }
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys } = context
-
+      const { userCanViewApiKeys, canAccessPhoneCalls } = context  // Add canAccessPhoneCalls here
+  
       const baseNavigation = [
         {
           id: 'agent-list', 
@@ -139,18 +138,20 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'Agents' 
         }
       ]
-
+  
       const configurationItems = []
       
-      // Add Phone Settings (SIP Management)
-      configurationItems.push({
-        id: 'sip-management',
-        name: 'Phone Settings',
-        icon: 'Phone',
-        path: `/${projectId}/agents/sip-management`,
-        group: 'configuration'
-      })
-
+      // Add Phone Settings (SIP Management) - ONLY for blacklisted users
+      if (canAccessPhoneCalls) {  // Add this condition
+        configurationItems.push({
+          id: 'sip-management',
+          name: 'Phone Settings',
+          icon: 'Phone',
+          path: `/${projectId}/agents/sip-management`,
+          group: 'configuration'
+        })
+      }
+  
       // Add API Keys if user has permission
       if (userCanViewApiKeys) {
         configurationItems.push({
@@ -161,23 +162,14 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'configuration'
         })
       }
-
-      // Add Organization Settings
-      configurationItems.push({
-        id: 'org-settings',
-        name: 'Organization Settings',
-        icon: 'Settings',
-        path: `/${projectId}/settings`,
-        group: 'configuration'
-      })
-
+  
       return {
         type: 'project-agents',
         context: { projectId },
         navigation: [...baseNavigation, ...configurationItems],
-        showBackButton: false,
+        showBackButton: true,
         backPath: '/projects',
-        backLabel: 'Back to Organisations'
+        backLabel: 'Back to Workspaces'
       }
     },
     priority: 95
