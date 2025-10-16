@@ -1,4 +1,5 @@
 // hooks/useAgentConfig.ts
+import { AGENT_DEFAULT_CONFIG, getFallback, getFormDefaults } from "@/config/agentDefaults"
 import { languageOptions } from "@/utils/constants"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -280,86 +281,14 @@ export const useAgentMutations = (agentName: string | null) => {
   }
 }
 
-export const getDefaultFormValues = () => ({
-  selectedProvider: "openai",
-  selectedModel: "gpt-4o",
-  selectedVoice: "",
-  selectedLanguage: languageOptions[0]?.value || "en",
-  firstMessageMode: {
-    mode: "user_speaks_first",
-    allow_interruptions: true,
-    first_message: "",
-  },
-  customFirstMessage: "",
-  aiStartsAfterSilence: false,
-  silenceTime: 10,
-  prompt: "",
-  variables: [],
-  temperature: 0.7,
-  ttsProvider: "",
-  ttsModel: "",
-  ttsVoiceConfig: {},
-  sttProvider: "",
-  sttModel: "",
-  sttConfig: { language: "en" },
-  advancedSettings: {
-    interruption: {
-      allowInterruptions: true,
-      minInterruptionDuration: 1.5,
-      minInterruptionWords: 2,
-    },
-    vad: {
-      vadProvider: "silero",
-      minSilenceDuration: 0.5,
-    },
-    session: {
-      preemptiveGeneration: "enabled" as "enabled" | "disabled",
-      turn_detection: "multilingual" as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
-      unlikely_threshold: 0.6,
-      min_endpointing_delay: 0.5,
-      max_endpointing_delay: 3,
-    },
-    tools: {
-      tools: [] as Array<{
-        id: string
-        type: "end_call" | "handoff" | "custom_function"
-        name: string
-        config: any
-      }>,
-    },
-    fillers: {
-      enableFillerWords: true,
-      generalFillers: [] as string[],
-      conversationFillers: [] as string[],
-      conversationKeywords: [] as string[],
-    },
-    bugs: {
-      enableBugReport: false,
-      bugStartCommands: [] as string[],
-      bugEndCommands: [] as string[],
-      initialResponse: "",
-      collectionPrompt: "",
-    },
-    backgroundAudio: {
-      mode: 'disabled' as 'disabled' | 'single' | 'dual',
-      singleType: 'keyboard' as string,
-      singleVolume: 50,
-      singleTiming: 'thinking' as 'thinking' | 'always',
-      ambientType: 'office' as string,
-      ambientVolume: 30,
-      thinkingType: 'keyboard' as string,
-      thinkingVolume: 50,
-    },
-  },
-})
+export const getDefaultFormValues = getFormDefaults
 
 export const buildFormValuesFromAgent = (assistant: any) => {
   const llmConfig = assistant.llm || {}
-  const modelValue = llmConfig.model || "gpt-4o"
-  const providerValue = llmConfig.provider || llmConfig.name || "openai"
-  const temperatureValue = llmConfig.temperature || 0.7
+  const modelValue = llmConfig.model || getFallback(null, 'llm.model')
+  const providerValue = llmConfig.provider || llmConfig.name || getFallback(null, 'llm.name')
+  const temperatureValue = llmConfig.temperature ?? getFallback(null, 'llm.temperature')
 
-  // Provider mapping
   let mappedProvider = providerValue
   if (providerValue === "groq") {
     mappedProvider = "groq"
@@ -376,36 +305,31 @@ export const buildFormValuesFromAgent = (assistant: any) => {
 
   if (assistant.first_message_mode) {
     if (typeof assistant.first_message_mode === "object") {
-      // New object format
       firstMessageModeValue = {
-        mode: assistant.first_message_mode.mode || "user_speaks_first",
-        allow_interruptions: assistant.first_message_mode.allow_interruptions ?? true,
-        first_message: assistant.first_message_mode.first_message || "",
+        mode: assistant.first_message_mode.mode || getFallback(null, 'first_message_mode.mode'),
+        allow_interruptions: assistant.first_message_mode.allow_interruptions ?? getFallback(null, 'first_message_mode.allow_interruptions'),
+        first_message: assistant.first_message_mode.first_message || getFallback(null, 'first_message_mode.first_message'),
       }
-      customFirstMessageValue = assistant.first_message_mode.first_message || ""
+      customFirstMessageValue = assistant.first_message_mode.first_message || getFallback(null, 'first_message_mode.first_message')
     } else {
-      // Old string format - convert to object
       firstMessageModeValue = {
         mode: assistant.first_message_mode,
-        allow_interruptions: true,
-        first_message: assistant.first_message || "",
+        allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions'),
+        first_message: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
       }
-      customFirstMessageValue = assistant.first_message || ""
+      customFirstMessageValue = assistant.first_message || getFallback(null, 'first_message_mode.first_message')
     }
   } else {
-    // Fallback to old individual fields
     firstMessageModeValue = {
-      mode: "user_speaks_first",
-      allow_interruptions: true,
-      first_message: assistant.first_message || "",
+      mode: getFallback(null, 'first_message_mode.mode'),
+      allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions'),
+      first_message: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
     }
-    customFirstMessageValue = assistant.first_message || ""
+    customFirstMessageValue = assistant.first_message || getFallback(null, 'first_message_mode.first_message')
   }
 
-  // FIXED: Map session_behavior correctly
   const sessionBehavior = assistant.session_behavior || {}
 
-  // FIXED: Background audio mapping with proper null checks
   const backgroundAudio = assistant.background_audio || {}
   const hasAmbient = backgroundAudio.ambient?.type !== undefined
   const hasThinking = backgroundAudio.thinking?.type !== undefined
@@ -422,8 +346,8 @@ export const buildFormValuesFromAgent = (assistant: any) => {
   return {
     selectedProvider: mappedProvider,
     selectedModel: modelValue,
-    selectedVoice: assistant.tts?.voice_id || assistant.tts?.speaker || "",
-    selectedLanguage: assistant.tts?.language || assistant.stt?.language || languageOptions[0]?.value || "en",
+    selectedVoice: assistant.tts?.voice_id || assistant.tts?.speaker || getFallback(null, 'tts.voice_id'),
+    selectedLanguage: assistant.tts?.language || assistant.stt?.language || getFallback(null, 'stt.language'),
     firstMessageMode: firstMessageModeValue,
     customFirstMessage: customFirstMessageValue,
     aiStartsAfterSilence: assistant.ai_starts_after_silence || false,
@@ -437,8 +361,8 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         }))
       : [],
     temperature: temperatureValue,
-    ttsProvider: assistant.tts?.name || "elevenlabs",
-    ttsModel: assistant.tts?.model || "eleven_multilingual_v2",
+    ttsProvider: assistant.tts?.name || getFallback(null, 'tts.name'),
+    ttsModel: assistant.tts?.model || getFallback(null, 'tts.model'),
     ttsVoiceConfig:
       assistant.tts?.name === "sarvam" || assistant.tts?.name === "sarvam_tts"
         ? {
@@ -449,38 +373,37 @@ export const buildFormValuesFromAgent = (assistant: any) => {
           }
         : assistant.tts?.name === "elevenlabs"
           ? {
-              voiceId: assistant.tts?.voice_id ?? "",
-              language: assistant.tts?.language ?? "en",
-              similarityBoost: assistant.tts?.voice_settings?.similarity_boost ?? 0.75,
-              stability: assistant.tts?.voice_settings?.stability ?? 0.5,
-              style: assistant.tts?.voice_settings?.style ?? 0,
-              useSpeakerBoost: assistant.tts?.voice_settings?.use_speaker_boost ?? true,
-              speed: assistant.tts?.voice_settings?.speed ?? 1.0,
+              voiceId: assistant.tts?.voice_id ?? getFallback(null, 'tts.voice_id'),
+              language: assistant.tts?.language ?? getFallback(null, 'tts.language'),
+              similarityBoost: assistant.tts?.voice_settings?.similarity_boost ?? getFallback(null, 'tts.voice_settings.similarity_boost'),
+              stability: assistant.tts?.voice_settings?.stability ?? getFallback(null, 'tts.voice_settings.stability'),
+              style: assistant.tts?.voice_settings?.style ?? getFallback(null, 'tts.voice_settings.style'),
+              useSpeakerBoost: assistant.tts?.voice_settings?.use_speaker_boost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
+              speed: assistant.tts?.voice_settings?.speed ?? getFallback(null, 'tts.voice_settings.speed'),
             }
           : {},
-    sttProvider: assistant.stt?.provider || assistant.stt?.name || "openai",
-    sttModel: assistant.stt?.model || "whisper-1",
+    sttProvider: assistant.stt?.provider || assistant.stt?.name || getFallback(null, 'stt.name'),
+    sttModel: assistant.stt?.model || getFallback(null, 'stt.model'),
     sttConfig: {
-      language: assistant.stt?.language || "en",
+      language: assistant.stt?.language || getFallback(null, 'stt.language'),
       ...(assistant.stt?.config || {}),
     },
     advancedSettings: {
       interruption: {
-        allowInterruptions: assistant.interruptions?.allow_interruptions ?? assistant.allow_interruptions ?? true,
-        minInterruptionDuration:
-          assistant.interruptions?.min_interruption_duration ?? assistant.min_interruption_duration ?? 1.2,
-        minInterruptionWords: assistant.interruptions?.min_interruption_words ?? assistant.min_interruption_words ?? 2,
+        allowInterruptions: assistant.interruptions?.allow_interruptions ?? assistant.allow_interruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
+        minInterruptionDuration: assistant.interruptions?.min_interruption_duration ?? assistant.min_interruption_duration ?? getFallback(null, 'interruptions.min_interruption_duration'),
+        minInterruptionWords: assistant.interruptions?.min_interruption_words ?? assistant.min_interruption_words ?? getFallback(null, 'interruptions.min_interruption_words'),
       },
       vad: {
-        vadProvider: assistant.vad?.name || "silero",
-        minSilenceDuration: assistant.vad?.min_silence_duration || 0.1,
+        vadProvider: assistant.vad?.name || getFallback(null, 'vad.name'),
+        minSilenceDuration: assistant.vad?.min_silence_duration ?? getFallback(null, 'vad.min_silence_duration'),
       },
       session: {
-        preemptiveGeneration: (sessionBehavior.preemptive_generation || "enabled") as "enabled" | "disabled",
-        turn_detection: (sessionBehavior.turn_detection || "multilingual") as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
-        unlikely_threshold: sessionBehavior.unlikely_threshold ?? 0.6,
-        min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? 0.5,
-        max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? 3,
+        preemptiveGeneration: (sessionBehavior.preemptive_generation || getFallback(null, 'session_behavior.preemptive_generation')) as "enabled" | "disabled",
+        turn_detection: (sessionBehavior.turn_detection || getFallback(null, 'session_behavior.turn_detection')) as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
+        unlikely_threshold: sessionBehavior.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
+        min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
+        max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
       },
       tools: {
         tools:
@@ -489,8 +412,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             type: tool.type,
             name: tool.name || (tool.type === "end_call" ? "End Call" : ""),
             config: {
-              description:
-                tool.description || (tool.type === "end_call" ? "Allow assistant to end the conversation" : ""),
+              description: tool.description || (tool.type === "end_call" ? "Allow assistant to end the conversation" : ""),
               endpoint: tool.api_url || "",
               method: tool.http_method || "GET",
               timeout: tool.timeout || 10,
@@ -498,16 +420,23 @@ export const buildFormValuesFromAgent = (assistant: any) => {
               headers: tool.headers || {},
               parameters: tool.parameters || [],
             },
-          })) || [],
+          })) || AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({
+            id: `tool_${tool.type}_${Date.now()}_${index}`,
+            type: tool.type as "end_call" | "handoff" | "custom_function",
+            name: tool.type === "end_call" ? "End Call" : "",
+            config: {
+              description: tool.type === "end_call" ? "Allow assistant to end the conversation" : ""
+            }
+          })),
       },
       fillers: {
-        enableFillerWords: assistant.filler_words?.enabled ?? false,
+        enableFillerWords: assistant.filler_words?.enabled ?? getFallback(null, 'filler_words.enabled'),
         generalFillers: assistant.filler_words?.general_fillers?.filter((f: string) => f !== "") || [],
         conversationFillers: assistant.filler_words?.conversation_fillers?.filter((f: string) => f !== "") || [],
         conversationKeywords: assistant.filler_words?.conversation_keywords?.filter((f: string) => f !== "") || [],
       },
       bugs: {
-        enableBugReport: assistant.bug_reports?.enable ?? false,
+        enableBugReport: assistant.bug_reports?.enable ?? getFallback(null, 'bug_reports.enable'),
         bugStartCommands: assistant.bug_reports?.bug_start_command || [],
         bugEndCommands: assistant.bug_reports?.bug_end_command || [],
         initialResponse: assistant.bug_reports?.response || "",
@@ -515,15 +444,13 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       },
       backgroundAudio: {
         mode: backgroundAudioMode,
-        // Single mode - prefer thinking, fallback to ambient, then default
         singleType: backgroundAudio.thinking?.type || backgroundAudio.ambient?.type || backgroundAudio.type || 'keyboard',
         singleVolume: backgroundAudio.thinking?.volume ?? backgroundAudio.ambient?.volume ?? backgroundAudio.volume ?? 50,
         singleTiming: (backgroundAudio.timing || 'thinking') as 'thinking' | 'always',
-        // Dual mode
-        ambientType: backgroundAudio.ambient?.type || 'office',
-        ambientVolume: backgroundAudio.ambient?.volume ?? 30,
-        thinkingType: backgroundAudio.thinking?.type || 'keyboard',
-        thinkingVolume: backgroundAudio.thinking?.volume ?? 50,
+        ambientType: backgroundAudio.ambient?.type || getFallback(null, 'background_audio.ambient.type'),
+        ambientVolume: backgroundAudio.ambient?.volume ?? getFallback(null, 'background_audio.ambient.volume'),
+        thinkingType: backgroundAudio.thinking?.type || getFallback(null, 'background_audio.thinking.type'),
+        thinkingVolume: backgroundAudio.thinking?.volume ?? getFallback(null, 'background_audio.thinking.volume'),
       },
     },
   }

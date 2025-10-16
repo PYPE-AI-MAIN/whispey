@@ -60,7 +60,6 @@ const fetchUserPermissions = async (): Promise<UserPermissions | null> => {
   }
   
   const data = await response.json()
-  console.log('User permissions data:', data) // Debug log
   return data.data
 }
 

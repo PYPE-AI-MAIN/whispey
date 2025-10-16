@@ -139,7 +139,6 @@ function Header() {
         if (typeof window !== 'undefined') {
           const lastVisitedOrgId = localStorage.getItem('whispey-last-org')
           
-          // If organizations haven't loaded yet, fetch them first
           let orgsToCheck = organizations
           if (orgsToCheck.length === 0 && !orgsLoading) {
             try {
