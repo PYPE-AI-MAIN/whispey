@@ -3,8 +3,8 @@
 import { usePathname } from 'next/navigation'
 import { ReactNode, useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useQuery } from '@tanstack/react-query'
 import { useMobile } from '@/hooks/use-mobile'
-import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { canViewApiKeys, getUserProjectRole } from '@/services/getUserRole'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
@@ -18,6 +18,9 @@ interface SidebarWrapperProps {
 }
 
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
+
+// Reserved paths that are NOT project IDs
+const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service']
 
 interface RoutePattern {
   pattern: string
@@ -108,7 +111,7 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
 }
 
 const sidebarRoutes: SidebarRoute[] = [
-  // Hide sidebar for auth and docs pages
+  // Hide sidebar for auth and docs pages ONLY
   {
     patterns: [
       { pattern: '/sign*' },
@@ -118,17 +121,41 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 100
   },
 
-  // Project-level agents routes with Phone Settings AND Organization Settings
+  // Onboarding route - show sidebar but minimal nav
+  {
+    patterns: [
+      { pattern: '/onboarding' }
+    ],
+    getSidebarConfig: () => ({
+      type: 'onboarding',
+      context: {},
+      navigation: [
+        { 
+          id: 'docs', 
+          name: 'Documentation', 
+          icon: 'FileText', 
+          path: '/docs', 
+          external: true, 
+          group: 'resources' 
+        }
+      ],
+      showBackButton: false
+    }),
+    priority: 96
+  },
+
+  // Project-level agents routes
   {
     patterns: [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
-      { pattern: '/:projectId/agents/sip-management' }
+      { pattern: '/:projectId/agents/sip-management' },
+      { pattern: '/:projectId/settings' }
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys, canAccessPhoneCalls } = context  // Add canAccessPhoneCalls here
-  
+      const { userCanViewApiKeys, canAccessPhoneCalls } = context
+
       const baseNavigation = [
         {
           id: 'agent-list', 
@@ -138,11 +165,10 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'Agents' 
         }
       ]
-  
+
       const configurationItems = []
       
-      // Add Phone Settings (SIP Management) - ONLY for blacklisted users
-      if (canAccessPhoneCalls) {  // Add this condition
+      if (canAccessPhoneCalls) {
         configurationItems.push({
           id: 'sip-management',
           name: 'Phone Settings',
@@ -151,25 +177,34 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'configuration'
         })
       }
-  
-      // Add API Keys if user has permission
+
+      const projectSettingItems = []
+
       if (userCanViewApiKeys) {
-        configurationItems.push({
+        projectSettingItems.push({
           id: 'api-keys',
           name: 'Project API Key',
           icon: 'Key',
           path: `/${projectId}/agents/api-keys`,
-          group: 'configuration'
+          group: 'Project Settings'
         })
       }
-  
+      
+      projectSettingItems.push({
+        id: 'settings',
+        name: 'Settings',
+        icon: 'Settings',
+        path: `/${projectId}/settings`,
+        group: 'Project Settings'
+      })
+
       return {
         type: 'project-agents',
         context: { projectId },
-        navigation: [...baseNavigation, ...configurationItems],
-        showBackButton: true,
+        navigation: [...baseNavigation, ...configurationItems, ...projectSettingItems],
+        showBackButton: false,
         backPath: '/projects',
-        backLabel: 'Back to Workspaces'
+        backLabel: 'Back to Organisations'
       }
     },
     priority: 95
@@ -345,6 +380,21 @@ const getSidebarConfig = (
   return null
 }
 
+// Fetch functions for React Query
+const fetchProject = async (projectId: string) => {
+  const response = await fetch(`/api/projects`)
+  if (!response.ok) throw new Error('Failed to fetch projects')
+  const projects = await response.json()
+  return projects.find((p: any) => p.id === projectId)
+}
+
+const fetchAgent = async (agentId: string) => {
+  const response = await fetch(`/api/supabase?table=pype_voice_agents&select=id,agent_type&id=eq.${agentId}`)
+  if (!response.ok) throw new Error('Failed to fetch agent')
+  const data = await response.json()
+  return data[0]
+}
+
 export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const pathname = usePathname()
   const { user } = useUser()
@@ -359,19 +409,30 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
   const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
   
-  const { data: projects } = useSupabaseQuery('pype_voice_projects', 
-    projectId && projectId !== 'sign' && projectId !== 'docs' ? {
-      select: 'id, name',
-      filters: [{ column: 'id', operator: 'eq', value: projectId }]
-    } : null
-  )
+  // Check if projectId is valid (not a reserved path)
+  const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
+  
+  // Use React Query for project data
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => fetchProject(projectId!),
+    enabled: !!isValidProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
 
-  const { data: agents } = useSupabaseQuery('pype_voice_agents', 
-    agentId && projectId && projectId !== 'sign' && projectId !== 'docs' && agentId !== 'sip-management' ? {
-      select: 'id, agent_type',
-      filters: [{ column: 'id', operator: 'eq', value: agentId }]
-    } : null
-  )
+  // Use React Query for agent data
+  const { data: agent } = useQuery({
+    queryKey: ['agent', agentId],
+    queryFn: () => fetchAgent(agentId!),
+    enabled: !!agentId && !!isValidProjectId && agentId !== 'sip-management',
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -392,13 +453,13 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
 
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (!user?.emailAddresses?.[0]?.emailAddress || !projectId || projectId === 'sign' || projectId === 'docs') {
+      if (!user?.emailAddresses?.[0]?.emailAddress || !isValidProjectId) {
         setPermissionsLoading(false)
         return
       }
 
       try {
-        const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId)
+        const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId!)
         setUserCanViewApiKeys(canViewApiKeys(role))
       } catch (error) {
         setUserCanViewApiKeys(false)
@@ -408,10 +469,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     }
 
     fetchUserRole()
-  }, [user, projectId])
+  }, [user, projectId, isValidProjectId])
   
-  const project = projects?.[0]
-  const agent = agents?.[0]
   const isEnhancedProject = project?.id === ENHANCED_PROJECT_ID
   
   const sidebarContext: SidebarContext = {

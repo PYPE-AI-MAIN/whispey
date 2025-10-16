@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   ChevronsUpDown, 
   Plus, 
@@ -43,6 +44,13 @@ interface OrganizationSwitcherProps {
   onExternalOpenChange?: (open: boolean) => void
 }
 
+// React Query fetch function
+const fetchOrganizations = async (): Promise<Organization[]> => {
+  const res = await fetch('/api/projects')
+  if (!res.ok) throw new Error('Failed to fetch organizations')
+  return res.json()
+}
+
 export default function OrganizationSwitcher({ 
   isCollapsed = false, 
   isMobile = false,
@@ -50,8 +58,7 @@ export default function OrganizationSwitcher({
   externalOpen,
   onExternalOpenChange 
 }: OrganizationSwitcherProps) {
-  const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
@@ -62,6 +69,14 @@ export default function OrganizationSwitcher({
 
   const router = useRouter()
   const pathname = usePathname()
+
+  // Use React Query for data fetching
+  const { data: organizations = [], isLoading: loading } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: fetchOrganizations,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: true,
+  })
 
   // Extract current org ID from pathname
   const currentOrgId = pathname.match(/^\/([^/]+)/)?.[1]
@@ -74,10 +89,6 @@ export default function OrganizationSwitcher({
     return null
   })
 
-  useEffect(() => {
-    fetchOrganizations()
-  }, [])
-
   // Save current org to localStorage when URL changes
   useEffect(() => {
     if (currentOrgId && currentOrgId !== 'sign' && currentOrgId !== 'docs' && currentOrgId !== 'projects') {
@@ -87,20 +98,6 @@ export default function OrganizationSwitcher({
       }
     }
   }, [currentOrgId])
-
-  const fetchOrganizations = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/projects')
-      if (!res.ok) throw new Error('Failed to fetch organizations')
-      const data = await res.json()
-      setOrganizations(data)
-    } catch (err) {
-      console.error('Error fetching organizations:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSelect = (orgId: string) => {
     setOpen(false)
@@ -248,76 +245,140 @@ export default function OrganizationSwitcher({
                   <Loader2 className="w-5 h-5 animate-spin text-gray-400 dark:text-gray-500" />
                 </div>
               ) : (
-                <CommandGroup className="px-2 pb-2">
-                  {filteredOrganizations.map((org) => (
-                    <CommandItem
-                        key={org.id}
-                        value={org.name}
-                        onSelect={() => handleSelect(org.id)}
-                        className={`${(currentOrgId === org.id || (!currentOrgId && lastVisitedOrgId === org.id)) ? 'bg-gray-50 dark:bg-gray-800' : ''} cursor-pointer px-2 py-2 rounded-md aria-selected:bg-gray-50 dark:aria-selected:bg-gray-800`}
-                    >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
-                          {getOrganizationInitials(org.name)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="font-medium text-xs truncate text-gray-900 dark:text-gray-100">{org.name}</span>
-                            {(currentOrgId === org.id || (!currentOrgId && lastVisitedOrgId === org.id)) && (
-                              <Check className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
-                            )}
+                <>
+                  {/* Current Organization */}
+                  {(() => {
+                    const selectedOrg = filteredOrganizations.find(org => 
+                      currentOrgId === org.id || (!currentOrgId && lastVisitedOrgId === org.id)
+                    )
+                    
+                    if (!selectedOrg) return null
+                    
+                    return (
+                      <CommandGroup heading="Current Organization" className="px-2 pb-2">
+                        <CommandItem
+                          key={selectedOrg.id}
+                          value={selectedOrg.name}
+                          onSelect={() => handleSelect(selectedOrg.id)}
+                          className="cursor-pointer px-2 py-2 rounded-md transition-colors bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+                              {getOrganizationInitials(selectedOrg.name)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="font-medium text-xs truncate text-indigo-900 dark:text-indigo-100">
+                                  {selectedOrg.name}
+                                </span>
+                                <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-[10px] font-normal ${getEnvironmentColor(selectedOrg.environment)} border-0 px-1.5 py-0 h-4`}
+                                >
+                                  {selectedOrg.environment}
+                                </Badge>
+                                {selectedOrg.agent_count !== undefined && (
+                                  <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                    {selectedOrg.agent_count} agents
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <Badge 
-                              variant="outline" 
-                              className={`text-[10px] font-normal ${getEnvironmentColor(org.environment)} border-0 px-1.5 py-0 h-4`}
-                            >
-                              {org.environment}
-                            </Badge>
-                            {org.agent_count !== undefined && (
-                              <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                                {org.agent_count} agents
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                        </CommandItem>
+                      </CommandGroup>
+                    )
+                  })()}
+
+                  {/* Other Organizations */}
+                  {(() => {
+                    const otherOrgs = filteredOrganizations.filter(org => 
+                      !(currentOrgId === org.id || (!currentOrgId && lastVisitedOrgId === org.id))
+                    )
+                    
+                    if (otherOrgs.length === 0) return null
+                    
+                    return (
+                      <CommandGroup heading="Other Organizations" className="px-2 pb-2">
+                        {otherOrgs.map((org) => (
+                          <CommandItem
+                            key={org.id}
+                            value={org.name}
+                            onSelect={() => handleSelect(org.id)}
+                            className="cursor-pointer px-2 py-2 rounded-md transition-colors aria-selected:bg-gray-50 dark:aria-selected:bg-gray-800 border border-transparent"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+                                {getOrganizationInitials(org.name)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="font-medium text-xs truncate text-gray-900 dark:text-gray-100">
+                                    {org.name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-[10px] font-normal ${getEnvironmentColor(org.environment)} border-0 px-1.5 py-0 h-4`}
+                                  >
+                                    {org.environment}
+                                  </Badge>
+                                  {org.agent_count !== undefined && (
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                      {org.agent_count} agents
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )
+                  })()}
+                </>
               )}
             </CommandList>
           </Command>
 
           <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 backdrop-blur-sm">
             <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Button 
-                    onClick={handleCreateNew}
-                    variant="ghost"
-                    size="sm"
-                    className="w-fit justify-start text-xs h-7 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-normal px-2"
+                  onClick={handleCreateNew}
+                  variant="ghost"
+                  size="sm"
+                  className="w-fit justify-start text-xs h-7 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-normal px-2"
                 >
-                    <Plus className="w-3 h-3 mr-1.5" />
-                    Create new organization
+                  <Plus className="w-3 h-3 mr-1.5" />
+                  Create new organization
                 </Button>
                 <kbd className="px-1.5 py-0.5 font-mono bg-gray-800/50 dark:bg-gray-700/50 text-gray-300 border border-gray-700 dark:border-gray-600 rounded text-[10px]">N</kbd>
-                </div>
-                
-                <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
+              </div>
+              
+              <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
                 <div className="flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 font-mono bg-gray-800/50 dark:bg-gray-700/50 text-gray-300 border border-gray-700 dark:border-gray-600 rounded">↑↓</kbd>
-                    <span>navigate</span>
+                  <kbd className="px-1.5 py-0.5 font-mono bg-gray-800/50 dark:bg-gray-700/50 text-gray-300 border border-gray-700 dark:border-gray-600 rounded">↑↓</kbd>
+                  <span>navigate</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 font-mono bg-gray-800/50 dark:bg-gray-700/50 text-gray-300 border border-gray-700 dark:border-gray-600 rounded">↵</kbd>
-                    <span>select</span>
+                  <kbd className="px-1.5 py-0.5 font-mono bg-gray-800/50 dark:bg-gray-700/50 text-gray-300 border border-gray-700 dark:border-gray-600 rounded">↵</kbd>
+                  <span>select</span>
                 </div>
-                </div>
+              </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
     </>
   )
+}
+
+// Export function to invalidate the organizations cache
+export const invalidateOrganizationsCache = (queryClient: any) => {
+  queryClient.invalidateQueries({ queryKey: ['organizations'] })
 }
