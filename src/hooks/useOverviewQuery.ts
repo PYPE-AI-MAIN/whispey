@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 interface OverviewData {
   totalCalls: number
   totalMinutes: number
+  totalBillingSeconds: number
   successfulCalls: number
   successRate: number
   averageLatency: number
@@ -50,7 +51,9 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
             unique_customers,
             successful_calls,
             success_rate,
-            total_cost
+            total_cost,
+            total_billing_minutes,
+            total_billing_seconds
           `)
           .eq('agent_id', agentId)
           .gte('call_date', dateFrom)
@@ -65,12 +68,14 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQuery
         const successfulCalls = dailyStats?.reduce((sum, day) => sum + day.successful_calls, 0) || 0
         const totalCost = dailyStats?.reduce((sum, day) => sum + day.total_cost, 0) || 0
 
+        console.log(dailyStats)
 
     
         const typedData: OverviewData = {
           totalCalls,
           totalCost,
           totalMinutes: dailyStats?.reduce((sum, day) => sum + day.total_minutes, 0) || 0,
+          totalBillingSeconds: dailyStats?.reduce((sum, day) => sum + day.total_billing_seconds, 0) || 0,
           successfulCalls,
           successRate: totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0,
           averageLatency: dailyStats && dailyStats.length > 0

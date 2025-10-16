@@ -224,6 +224,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       { key: "call_id", label: "Call ID" },
       { key: "call_ended_reason", label: "Call Status" },
       { key: "duration_seconds", label: "Duration" },
+      { key: "billing_duration_seconds", label: "Billing Duration" },
       {
         key: "total_cost",
         label: "Total Cost (₹)",
@@ -243,7 +244,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       'total_llm_cost', 
       'total_tts_cost',
       'total_stt_cost',
-      'avg_latency'
+      'avg_latency',
+      'billing_duration_seconds'
     ],
   }
 
@@ -488,7 +490,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       'transcript_type',
       'transcript_json',
       'created_at',
-      'transcription_metrics'
+      'transcription_metrics',
+      'billing_duration_seconds'
     ]
   
     if (isColumnVisibleForRole('avg_latency', role)) {
@@ -981,6 +984,14 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                               </Badge>
                             )
                             break
+                          case "billing_duration_seconds":
+                              value = (
+                                <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                <Clock className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
+                                {formatDuration(call?.billing_duration_seconds ?? 0)}
+                              </div>
+                              )
+                              break
                           case "duration_seconds":
                             value = (
                               <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">

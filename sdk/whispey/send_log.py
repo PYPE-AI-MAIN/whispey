@@ -160,10 +160,6 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     # Validate headers
     headers = {k: v for k, v in headers.items() if k is not None and v is not None}
     
-    print(f"📤 Sending data to Whispey API...")
-    print(f"Data keys: {list(payload.keys())}")
-    print(f"Call started at: {data.get('call_started_at')}")
-    print(f"Call ended at: {data.get('call_ended_at')}")
     
     try:
         # Determine target URL (overrideable)

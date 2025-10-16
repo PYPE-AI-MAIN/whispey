@@ -156,6 +156,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   
         // Create the agent payload for PypeAI (matching your exact structure)
         const pypeAgentPayload = {
+          project_id: projectId, // Add project ID for easier backend processing
           agent: {
             name: agentNameWithId,
             type: "OUTBOUND",

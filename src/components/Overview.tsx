@@ -90,6 +90,7 @@ const COLOR_CLASSES = {
 const AVAILABLE_COLUMNS = [
   { key: 'customer_number', label: 'Customer Number', type: 'text' as const },
   { key: 'duration_seconds', label: 'Duration (seconds)', type: 'number' as const },
+  { key: 'billing_duration_seconds', label: 'Billing Duration (seconds)', type: 'number' as const },
   { key: 'avg_latency', label: 'Avg Latency', type: 'number' as const },
   { key: 'call_started_at', label: 'Call Date', type: 'date' as const },
   { key: 'call_ended_reason', label: 'Call Status', type: 'text' as const },
@@ -103,7 +104,7 @@ const AVAILABLE_COLUMNS = [
 // Mobile-responsive skeleton components
 function MetricsGridSkeleton({ role, isMobile }: { role: string | null; isMobile: boolean }) {
   const getVisibleCardCount = () => {
-    if (role === 'user') return 4 // Hide cost cards for users
+    if (role === 'user') return 3 // Hide cost and billing duration cards for users
     return 6 // Show all cards for other roles
   }
 
@@ -634,6 +635,53 @@ const Overview: React.FC<OverviewProps> = ({
                   <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
                     {isMobile && analytics?.totalCalls && analytics?.totalMinutes 
                       ? `${Math.round(analytics.totalMinutes / analytics.totalCalls)}m avg`
+                      : 'Duration'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Total Billing Minutes */}
+          <div className="group">
+            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
+              <div className={isMobile ? 'p-3' : 'p-5'}>
+                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                  <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
+                    <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
+                  </div>
+                  {!isMobile && (
+                    <div className="text-right">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                        {analytics?.totalCalls && analytics?.totalBillingSeconds ? (() => {
+                          const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
+                          const minutes = Math.floor(avgSeconds / 60);
+                          const seconds = avgSeconds % 60;
+                          return `${minutes}m ${seconds}s avg`;
+                        })() : '0m 0s avg'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}> Billing Minutes</h3>
+                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>
+                    {analytics?.totalBillingSeconds ? (() => {
+                      const totalSeconds = analytics.totalBillingSeconds;
+                      const minutes = Math.floor(totalSeconds / 60);
+                      const seconds = totalSeconds % 60;
+                      return `${minutes}m ${seconds}s`;
+                    })() : '0m 0s'}
+                  </p>
+                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
+                    {isMobile && analytics?.totalCalls && analytics?.totalBillingSeconds 
+                      ? (() => {
+                          const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
+                          const minutes = Math.floor(avgSeconds / 60);
+                          const seconds = avgSeconds % 60;
+                          return `${minutes}m ${seconds}s avg`;
+                        })()
                       : 'Duration'
                     }
                   </p>
@@ -1213,7 +1261,10 @@ const Overview: React.FC<OverviewProps> = ({
                   agentId={agent.id}
                   projectId={project.id}
                   userEmail={userEmail}
-                  availableColumns={AVAILABLE_COLUMNS}
+                  availableColumns={role === 'user' 
+                    ? AVAILABLE_COLUMNS.filter(col => col.key !== 'billing_duration_seconds')
+                    : AVAILABLE_COLUMNS
+                  }
                   onSaveCustomTotal={handleSaveCustomTotal}
                 />
               )}

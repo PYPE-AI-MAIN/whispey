@@ -19,22 +19,41 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get the user's data from pype_voice_users table
-    const { data: userData, error: userError } = await supabase
-      .from('pype_voice_users')
-      .select('agent, email')
-      .eq('clerk_id', userId)
+    // Get project ID from query parameters
+    const { searchParams } = new URL(request.url)
+    const projectId = searchParams.get('project_id')
+    
+    if (!projectId) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Get the project's data from pype_voice_projects table
+    const { data: projectData, error: projectError } = await supabase
+      .from('pype_voice_projects')
+      .select('agent, owner_clerk_id')
+      .eq('id', projectId)
       .single()
 
-    if (userError) {
-      console.error('Error fetching user data:', userError)
+    if (projectError) {
+      console.error('Error fetching project data:', projectError)
       return NextResponse.json(
-        { error: 'Failed to fetch user data' },
+        { error: 'Failed to fetch project data' },
         { status: 500 }
       )
     }
 
-    if (!userData || !userData.agent) {
+    // Verify the user owns this project
+    if (!projectData) {
+      return NextResponse.json(
+        { error: 'Project not found or access denied' },
+        { status: 404 }
+      )
+    }
+
+    if (!projectData.agent) {
       // Return empty structure if no agent data exists
       return NextResponse.json({
         usage: { active_count: 0 },
@@ -45,7 +64,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Return the agent data directly as it's already in the correct format
-    return NextResponse.json(userData.agent)
+    return NextResponse.json(projectData.agent)
 
   } catch (error) {
     console.error('API Error:', error)
@@ -78,9 +97,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!body.project_id) {
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Verify the user owns this project
+    const { data: projectData, error: projectError } = await supabase
+      .from('pype_voice_projects')
+      .select('owner_clerk_id')
+      .eq('id', body.project_id)
+      .single()
+
+    if (projectError || !projectData || projectData.owner_clerk_id !== userId) {
+      return NextResponse.json(
+        { error: 'Project not found or access denied' },
+        { status: 404 }
+      )
+    }
+
     // Update the agent field in the database
     const { error: updateError } = await supabase
-      .from('pype_voice_users')
+      .from('pype_voice_projects')
       .update({
         agent: {
           usage: body.usage || { active_count: body.agents.length },
@@ -90,10 +130,10 @@ export async function POST(request: NextRequest) {
         },
         updated_at: new Date().toISOString()
       })
-      .eq('clerk_id', userId)
+      .eq('id', body.project_id)
 
     if (updateError) {
-      console.error('Error updating user data:', updateError)
+      console.error('Error updating project data:', updateError)
       return NextResponse.json(
         { error: 'Failed to update phone numbers' },
         { status: 500 }
@@ -127,46 +167,53 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { agentId, updates } = body
+    const { agentId, updates, project_id } = body
 
-    if (!agentId || !updates) {
+    if (!agentId || !updates || !project_id) {
       return NextResponse.json(
-        { error: 'Missing agentId or updates' },
+        { error: 'Missing agentId, updates, or project_id' },
         { status: 400 }
       )
     }
 
-    // First, get the current agent data
-    const { data: userData, error: fetchError } = await supabase
-      .from('pype_voice_users')
-      .select('agent')
-      .eq('clerk_id', userId)
+    // Verify the user owns this project
+    const { data: projectData, error: projectError } = await supabase
+      .from('pype_voice_projects')
+      .select('agent, owner_clerk_id')
+      .eq('id', project_id)
       .single()
 
-    if (fetchError || !userData?.agent) {
+    if (projectError || !projectData || projectData.owner_clerk_id !== userId) {
       return NextResponse.json(
-        { error: 'Failed to fetch current data' },
-        { status: 500 }
+        { error: 'Project not found or access denied' },
+        { status: 404 }
+      )
+    }
+
+    if (!projectData.agent) {
+      return NextResponse.json(
+        { error: 'No agent data found for this project' },
+        { status: 404 }
       )
     }
 
     // Update the specific agent
-    const updatedAgents = userData.agent.agents.map((agent: any) => 
+    const updatedAgents = projectData.agent.agents.map((agent: any) => 
       agent.id === agentId ? { ...agent, ...updates } : agent
     )
 
     // Update the database
     const { error: updateError } = await supabase
-      .from('pype_voice_users')
+      .from('pype_voice_projects')
       .update({
         agent: {
-          ...userData.agent,
+          ...projectData.agent,
           agents: updatedAgents,
           last_updated: new Date().toISOString()
         },
         updated_at: new Date().toISOString()
       })
-      .eq('clerk_id', userId)
+      .eq('id', project_id)
 
     if (updateError) {
       console.error('Error updating agent:', updateError)
