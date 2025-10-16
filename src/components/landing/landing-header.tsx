@@ -135,12 +135,7 @@ function Header() {
     const handleGetStarted = async () => {
       if (!isLoaded) return
       
-      if (isSignedIn) {
-        // Smart navigation logic:
-        // 1. Check localStorage for last visited org
-        // 2. Fallback to first org in list
-        // 3. Fallback to /projects if no orgs
-        
+      if (isSignedIn) {        
         if (typeof window !== 'undefined') {
           const lastVisitedOrgId = localStorage.getItem('whispey-last-org')
           
