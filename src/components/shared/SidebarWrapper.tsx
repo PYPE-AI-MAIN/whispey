@@ -380,7 +380,6 @@ const getSidebarConfig = (
   return null
 }
 
-// Fetch functions for React Query
 const fetchProject = async (projectId: string) => {
   const response = await fetch(`/api/projects`)
   if (!response.ok) throw new Error('Failed to fetch projects')
@@ -389,10 +388,14 @@ const fetchProject = async (projectId: string) => {
 }
 
 const fetchAgent = async (agentId: string) => {
-  const response = await fetch(`/api/supabase?table=pype_voice_agents&select=id,agent_type&id=eq.${agentId}`)
-  if (!response.ok) throw new Error('Failed to fetch agent')
-  const data = await response.json()
-  return data[0]
+  const response = await fetch(`/api/agents/${agentId}/type`)
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null
+    }
+    throw new Error('Failed to fetch agent')
+  }
+  return response.json()
 }
 
 export default function SidebarWrapper({ children }: SidebarWrapperProps) {
@@ -412,6 +415,10 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   // Check if projectId is valid (not a reserved path)
   const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
   
+  // ✅ ADDED: Check if agentId is valid (not a reserved path)
+  const agentReservedPaths = ['api-keys', 'sip-management']
+  const isValidAgentId = agentId && !agentReservedPaths.includes(agentId)
+  
   // Use React Query for project data
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -423,16 +430,16 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     refetchOnMount: false,
   })
 
-  // Use React Query for agent data
   const { data: agent } = useQuery({
     queryKey: ['agent', agentId],
     queryFn: () => fetchAgent(agentId!),
-    enabled: !!agentId && !!isValidProjectId && agentId !== 'sip-management',
+    enabled: !!isValidAgentId && !!isValidProjectId,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   })
+
   
   useEffect(() => {
     if (typeof window !== 'undefined') {

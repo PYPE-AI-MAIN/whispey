@@ -249,6 +249,10 @@ export default function AgentConfig() {
   const { getTextareaStyles, settings, setFontSize } = usePromptSettings()
 
 
+  const defaultFormValues = getDefaultFormValues()
+  console.log({defaultFormValues})
+
+
 
   // Azure config state for ModelSelector
   const [azureConfig, setAzureConfig] = useState<AzureConfig>({
