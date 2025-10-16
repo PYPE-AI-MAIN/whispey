@@ -62,11 +62,12 @@ export default function SimplifiedSipManagement() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // Fetch phone numbers from the API
-      const phoneResponse = await fetch('/api/phone-numbers/list')
+      // Fetch phone numbers from the API with project ID
+      const phoneResponse = await fetch(`/api/phone-numbers/list?project_id=${projectId}`)
 
       if (!phoneResponse.ok) {
-        throw new Error('Failed to fetch phone numbers')
+        const errorData = await phoneResponse.json()
+        throw new Error(errorData.error || 'Failed to fetch phone numbers')
       }
 
       const phoneData: PhoneNumbersResponse = await phoneResponse.json()
@@ -98,6 +99,20 @@ export default function SimplifiedSipManagement() {
         year: 'numeric'
       })
     }
+  }
+
+  const cleanAgentName = (name: string) => {
+    // UUID pattern with underscores (8_4_4_4_12 format)
+    const uuidPattern = /_[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{12}$/i
+    
+    // Check if the name ends with a UUID pattern
+    if (uuidPattern.test(name)) {
+      // Remove the UUID suffix (including the underscore before it)
+      return name.replace(uuidPattern, '')
+    }
+    
+    // Return the name as-is if no UUID pattern found
+    return name
   }
 
   const handleRequestPhone = (agentId: string, agentName: string) => {
@@ -251,9 +266,9 @@ export default function SimplifiedSipManagement() {
                       <div>
                         {phoneAgent.name ? (
                           <div className="flex items-center gap-2">
-                            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                            <span className="text-sm text-gray-900 dark:text-gray-100">
-                              {phoneAgent.name}
+                            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]" title={phoneAgent.name}>
+                              {cleanAgentName(phoneAgent.name)}
                             </span>
                           </div>
                         ) : (
@@ -266,8 +281,10 @@ export default function SimplifiedSipManagement() {
                       {/* Last Updated */}
                       <div>
                         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                          <Clock className="w-4 h-4" />
-                          <span>{formatDate(phoneAgent.created_at)}</span>
+                          <Clock className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate max-w-[150px]" title={formatDate(phoneAgent.created_at)}>
+                            {formatDate(phoneAgent.created_at)}
+                          </span>
                         </div>
                       </div>
 

@@ -219,6 +219,94 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
         # Still return session_id so caller can handle gracefully
         return session_id
 
+def calculate_bill_duration(transcript_data: list, usage_summary: dict = None) -> int:
+    """
+    Calculate bill duration based on STT/TTS timestamps with multiple fallbacks
+    
+    Args:
+        transcript_data: List of conversation turns with timestamps
+        usage_summary: Usage summary with audio durations as fallback
+        
+    Returns:
+        Bill duration in seconds (integer)
+    """
+    if not transcript_data or len(transcript_data) == 0:
+        # Fallback 1: Use usage summary audio durations
+        if usage_summary:
+            stt_duration = usage_summary.get('stt_audio_duration', 0)
+            tts_duration = usage_summary.get('tts_audio_duration', 0)
+            total_duration = stt_duration + tts_duration
+            if total_duration > 0:
+                return int(total_duration)
+        return 0
+    
+    # Extract audio timestamps from STT/TTS metrics (preferred method)
+    audio_timestamps = []
+    for turn in transcript_data:
+        # Skip None turns
+        if turn is None:
+            continue
+            
+        # Get STT timestamp (when user started speaking)
+        stt_metrics = turn.get('stt_metrics')
+        if stt_metrics and stt_metrics.get('timestamp'):
+            audio_timestamps.append(stt_metrics['timestamp'])
+        
+        # Get TTS timestamp (when agent started speaking)  
+        tts_metrics = turn.get('tts_metrics')
+        if tts_metrics and tts_metrics.get('timestamp'):
+            audio_timestamps.append(tts_metrics['timestamp'])
+    
+    # Add end timestamps by adding duration to start timestamps
+    end_timestamps = []
+    for turn in transcript_data:
+        if turn is None:
+            continue
+            
+        # Calculate STT end time (start + duration)
+        stt_metrics = turn.get('stt_metrics')
+        if stt_metrics and stt_metrics.get('timestamp') and stt_metrics.get('audio_duration'):
+            end_time = stt_metrics['timestamp'] + stt_metrics['audio_duration']
+            end_timestamps.append(end_time)
+        
+        # Calculate TTS end time (start + duration)
+        tts_metrics = turn.get('tts_metrics')
+        if tts_metrics and tts_metrics.get('timestamp') and tts_metrics.get('audio_duration'):
+            end_time = tts_metrics['timestamp'] + tts_metrics['audio_duration']
+            end_timestamps.append(end_time)
+    
+    # Combine start and end timestamps
+    all_timestamps = audio_timestamps + end_timestamps
+    
+    # If we have timestamps (start + end), use them
+    if len(all_timestamps) >= 2:
+        return int(max(all_timestamps) - min(all_timestamps))
+    
+    # Edge case: Fallback to turn timestamps
+    turn_timestamps = []
+    for turn in transcript_data:
+        # Skip None turns
+        if turn is None:
+            continue
+            
+        if isinstance(turn, dict) and 'timestamp' in turn:
+            timestamp = turn['timestamp']
+            if timestamp and isinstance(timestamp, (int, float)):
+                turn_timestamps.append(timestamp)
+    
+    if len(turn_timestamps) >= 2:
+        return int(max(turn_timestamps) - min(turn_timestamps))
+    
+    # Final fallback: Use usage summary audio durations
+    if usage_summary:
+        stt_duration = usage_summary.get('stt_audio_duration', 0)
+        tts_duration = usage_summary.get('tts_audio_duration', 0)
+        total_duration = stt_duration + tts_duration
+        if total_duration > 0:
+            return int(total_duration)
+    
+    return 0
+
 def generate_whispey_data(session_id: str, status: str = "in_progress", error: str = None) -> Dict[str, Any]:
     """Generate Whispey data for a session"""
     if session_id not in _session_data_store:
@@ -288,6 +376,28 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     if session_data:
         transcript_data = session_data.get("transcript_with_metrics", [])
         
+        # Calculate bill duration based on STT/TTS timestamps with fallback
+        bill_duration_seconds = calculate_bill_duration(transcript_data, usage_summary)
+        
+        # Determine which method was used for logging
+        if len(transcript_data) == 0 and usage_summary:
+            method_used = "usage summary audio durations"
+        else:
+            audio_timestamps_count = 0
+            for turn in transcript_data:
+                if turn is None:
+                    continue
+                stt_metrics = turn.get('stt_metrics')
+                if stt_metrics and stt_metrics.get('timestamp'):
+                    audio_timestamps_count += 1
+                tts_metrics = turn.get('tts_metrics')
+                if tts_metrics and tts_metrics.get('timestamp'):
+                    audio_timestamps_count += 1
+            
+            method_used = "STT/TTS timestamps" if audio_timestamps_count >= 2 else "turn timestamps (fallback)"
+        
+        print(f"📊 Bill Duration: {bill_duration_seconds}s ({len(transcript_data)} transcripts, using {method_used})")
+        
         # Ensure trace fields are included in each turn
         enhanced_transcript = []
         for turn in transcript_data:
@@ -309,6 +419,9 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
             enhanced_transcript.append(enhanced_turn)
         
         whispey_data["transcript_with_metrics"] = enhanced_transcript
+        
+        # Add bill duration to metadata
+        whispey_data["billing_duration_seconds"] = bill_duration_seconds
         
         # Extract transcript_json from session history if available
         if hasattr(session_data, 'history'):
@@ -748,6 +861,7 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     # REPLACE the simple telemetry_spans assignment with structured data
     structured_telemetry = structure_telemetry_data(session_id)
     whispey_data["telemetry_data"] = structured_telemetry
+
 
     
     
