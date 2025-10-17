@@ -12,7 +12,8 @@ export const blacklistedEmails = [
   "friends@pypeai.com",
   "agrawaldeepesh546@gmail.com",
   "mihirvt@gmail.com",
-  "test@pypeai.com"
+  "test@pypeai.com",
+  "asmin.m@quantana.in"
 ];
 
 
