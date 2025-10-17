@@ -18,10 +18,6 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
   const { permissions, canCreatePypeAgent, loading } = useUserPermissions({ projectId })
   const { isMobile } = useMobile(768)
   const [showDetails, setShowDetails] = useState(false)
-
-  console.log('Permissions:', permissions);
-  console.log('Can create Pype agent:', canCreatePypeAgent);
-  console.log('Loading:', loading);
   
   // Show skeleton while loading
   if (loading) {

@@ -1,21 +1,6 @@
 // src/app/[projectid]/agents/[agentid]/config/page.tsx
 export const plivoRate = 0.70;
 
-export const blacklistedEmails = [
-  "da76780@gmail.com",
-  "deepesh@pypeai.com",
-  "adarsh@pypeai.com",
-  "ashish@pypeai.com",
-  "dhruv@pypeai.com",
-  "suryadipta@pypeai.com",
-  "abhinav@pypeai.com",
-  "friends@pypeai.com",
-  "agrawaldeepesh546@gmail.com",
-  "mihirvt@gmail.com",
-  "test@pypeai.com"
-];
-
-
 // Agent Config Constants
 export const modelOptions = [
   { value: "anthropic", label: "Anthropic" },
