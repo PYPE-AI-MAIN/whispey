@@ -86,7 +86,7 @@ export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = (
     enabled: !!projectId,
   })
 
-  const isWhitelisted = permissions?.plans?.type ? 
+  const isWhitelisted = permissions?.plans?.type ?
     ['ADMIN', 'SUPERADMIN', 'BETA'].includes(permissions.plans.type) : 
     false
 

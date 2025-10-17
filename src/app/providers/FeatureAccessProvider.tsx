@@ -46,8 +46,6 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
   const [canAccessPhoneCalls, setCanAccessPhoneCalls] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
-  console.log(getAgentCreationWhitelist())
-
   useEffect(() => {
     if (isLoaded) {
       const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase()
