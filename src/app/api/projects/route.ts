@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
       const { error: mappingError } = await supabase
         .from('pype_voice_email_project_mapping')
         .insert({
+          clerk_id: userId,
           email: userEmail,
           project_id: project.id,
           role: 'owner',
@@ -112,7 +113,8 @@ export async function POST(request: NextRequest) {
             delete: true,
             admin: true
           },
-          added_by_clerk_id: userId
+          added_by_clerk_id: userId,
+          is_active: true
         })
 
       if (mappingError) {
@@ -174,6 +176,7 @@ export async function GET(request: NextRequest) {
         role
       `)
       .eq('email', userEmail)
+      .or('is_active.is.null,is_active.eq.true')
 
     if (error) {
       console.error('Error fetching projects:', error)
@@ -182,6 +185,7 @@ export async function GET(request: NextRequest) {
 
     // Return only active projects with user role included
     const activeProjects = projectMappings
+      .filter(mapping => mapping.project)
       .map(mapping => ({
         ...mapping.project,
         user_role: mapping.role

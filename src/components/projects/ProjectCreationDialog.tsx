@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
@@ -9,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Loader2, Copy, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Loader2, CheckCircle } from 'lucide-react'
 
 interface ProjectCreationDialogProps {
   isOpen: boolean
@@ -22,6 +24,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
   onClose, 
   onProjectCreated 
 }) => {
+  const queryClient = useQueryClient()
   const [currentStep, setCurrentStep] = useState<'form' | 'success'>('form')
   const [formData, setFormData] = useState({
     name: '',
@@ -31,8 +34,6 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createdProjectData, setCreatedProjectData] = useState<any>(null)
-  const [showToken, setShowToken] = useState(false)
-  const [tokenCopied, setTokenCopied] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,24 +67,19 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
       setCreatedProjectData(data)
       setCurrentStep('success')
       
+      // Invalidate the organizations query to refetch the list
+      await queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      
+      // Show success toast
+      toast.success(`Project "${data.name}" created successfully!`)
+      
     } catch (err: unknown) {
       console.error('Error creating project:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to create project'
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleCopyToken = async () => {
-    if (createdProjectData?.api_token) {
-      try {
-        await navigator.clipboard.writeText(createdProjectData.api_token)
-        setTokenCopied(true)
-        setTimeout(() => setTokenCopied(false), 2000)
-      } catch (err) {
-        console.error('Failed to copy token:', err)
-      }
     }
   }
 
@@ -97,8 +93,6 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
       })
       setError(null)
       setCreatedProjectData(null)
-      setShowToken(false)
-      setTokenCopied(false)
       onClose()
     }
   }
@@ -203,57 +197,12 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                 Project Created Successfully!
               </DialogTitle>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-normal">
-                Your project "{createdProjectData?.name}" has been created with API access
+                Your project "{createdProjectData?.name}" has been created
               </p>
             </DialogHeader>
 
             {/* Success Content */}
             <div className="px-6 pb-6 space-y-4">
-              {/* API Token */}
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  API Token
-                </label>
-                <div className="relative">
-                  <input
-                    type={showToken ? 'text' : 'password'}
-                    value={createdProjectData?.api_token || ''}
-                    readOnly
-                    className="w-full h-11 px-4 pr-20 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 rounded-lg font-mono"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowToken(!showToken)}
-                      className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      {showToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleCopyToken}
-                      className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-                {tokenCopied && (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Token copied to clipboard!</p>
-                )}
-              </div>
-
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                  <strong>Important:</strong> This token will only be shown once. Please save it in a secure location.
-                  You can regenerate it later if needed.
-                </p>
-              </div> */}
-
               {/* Project Details */}
               <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Project Details</h4>

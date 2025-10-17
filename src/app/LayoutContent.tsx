@@ -9,11 +9,12 @@ import SignOutHandler from '@/components/auth'
 
 // Routes that should never show sidebar (even when signed in)
 const noSidebarRoutes = [
-  '/',                    // Landing page
-  '/sign-in',            // Auth pages
+  '/',
+  '/sign-in',
   '/sign-up',
-  '/privacy-policy',     // Legal pages
-  '/terms-of-service'
+  '/privacy-policy',
+  '/terms-of-service',
+  '/onboarding'  // ✅ ADD THIS
 ]
 
 function shouldShowSidebar(pathname: string): boolean {

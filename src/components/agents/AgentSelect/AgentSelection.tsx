@@ -1,8 +1,9 @@
+// src/components/agents/AgentSelect/AgentSelection.tsx
 'use client'
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, X } from 'lucide-react'
+import { AlertCircle, X, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSupabaseQuery } from '../../../hooks/useSupabase'
 import AgentToolbar from './AgentToolbar'
@@ -42,6 +43,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
   const [copiedAgentId, setCopiedAgentId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [breadcrumb, setBreadcrumb] = useState<{
     project?: string;
     item?: string;
@@ -78,7 +80,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
     filters: [
       { column: 'project_id', operator: 'eq', value: projectId }
     ],
-    orderBy: { column: 'created_at', ascending: false }
+    orderBy: { column: 'created_at', ascending: sortOrder === 'asc' }
   })
 
   const handleCreateAgent = () => {
@@ -90,10 +92,14 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
     setShowHelpDialog(true)
   }
 
+  const handleSortToggle = () => {
+    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')
+  }
+
   const handleAgentCreated = (agentData: any) => {
     refetch()
     if (agentData.agent_type === 'pype_agent') {
-      invalidatePermissions()
+      invalidatePermissions(projectId)
     }
   }
 
@@ -116,7 +122,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
       setShowDeleteConfirm(null)
       
       if (agent.agent_type === 'pype_agent') {
-        invalidatePermissions()
+        invalidatePermissions(projectId) // Pass projectId
       }
     } catch (error: unknown) {
       console.error('Error removing monitoring:', error)
@@ -195,6 +201,8 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
           onViewModeChange={setViewMode}
           onCreateAgent={handleCreateAgent}
           onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
+          sortOrder={sortOrder}
+          onSortToggle={handleSortToggle}
         />
 
         {filteredAgents.length > 0 ? (

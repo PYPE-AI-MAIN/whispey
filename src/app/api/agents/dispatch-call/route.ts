@@ -38,11 +38,9 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/dispatch_call`, {
       method: 'POST',
       headers: {
-        'x-api-key': 'pype-api-v1', // Match the API key from your backend
-        'ngrok-skip-browser-warning': 'true',
+        'x-api-key': 'pype-api-v1',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'User-Agent': 'NextJS-Proxy'
       },
       body: JSON.stringify({ 
         agent_name, 

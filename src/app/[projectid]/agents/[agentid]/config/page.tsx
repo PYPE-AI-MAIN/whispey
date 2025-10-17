@@ -249,6 +249,10 @@ export default function AgentConfig() {
   const { getTextareaStyles, settings, setFontSize } = usePromptSettings()
 
 
+  const defaultFormValues = getDefaultFormValues()
+  console.log({defaultFormValues})
+
+
 
   // Azure config state for ModelSelector
   const [azureConfig, setAzureConfig] = useState<AzureConfig>({
@@ -608,7 +612,7 @@ export default function AgentConfig() {
   
             {/* Description */}
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-              This agent exists in your workspace but couldn't be found in the current command center environment. 
+              This agent exists in your organisation but couldn't be found in the current command center environment. 
               It might be deployed to a different environment or needs to be created.
             </p>
   

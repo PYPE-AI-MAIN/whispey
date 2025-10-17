@@ -1,3 +1,4 @@
+// src/app/[projectid]/agents/api-keys/page.tsx
 'use client'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
@@ -186,15 +187,9 @@ const ApiKeys = () => {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
-        <div className="flex items-center justify-center py-32">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return null
+  // }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
