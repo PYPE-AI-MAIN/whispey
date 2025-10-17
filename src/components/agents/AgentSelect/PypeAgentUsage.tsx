@@ -9,19 +9,42 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useMobile } from '@/hooks/use-mobile'
-import { useParams } from 'next/navigation'
 
-const PypeAgentUsage: React.FC = () => {
-  
-  const params = useParams()
-  const projectId = params.projectid as string
+interface PypeAgentUsageProps {
+  projectId: string
+}
 
-  const { permissions, canCreatePypeAgent } = useUserPermissions({ projectId: projectId })
+const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
+  const { permissions, canCreatePypeAgent, loading } = useUserPermissions({ projectId })
   const { isMobile } = useMobile(768)
   const [showDetails, setShowDetails] = useState(false)
 
   console.log('Permissions:', permissions);
   console.log('Can create Pype agent:', canCreatePypeAgent);
+  console.log('Loading:', loading);
+  
+  // Show skeleton while loading
+  if (loading) {
+    return (
+      <div
+        className={`
+          flex items-center gap-2 px-3 py-1.5 rounded-lg
+          bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+          animate-pulse
+          ${isMobile ? 'text-xs' : 'text-sm'}
+        `}
+      >
+        {/* Skeleton text */}
+        <div className="h-3 w-20 bg-gray-300 dark:bg-gray-600 rounded"></div>
+        
+        {/* Skeleton progress bar */}
+        <div className="w-16 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+        
+        {/* Skeleton icon */}
+        <div className="w-3.5 h-3.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+      </div>
+    )
+  }
   
   // Don't show if user can't create Pype agents
   if (!canCreatePypeAgent || !permissions?.agent) {

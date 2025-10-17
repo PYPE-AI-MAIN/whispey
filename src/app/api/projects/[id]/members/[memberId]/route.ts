@@ -44,35 +44,49 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
-    // Check if current user has admin/owner access
-    const { data: allMappings } = await supabase
+    // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
+    const { data: userAccessMapping, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
-      .select('*')
+      .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
+      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
       .or('is_active.is.null,is_active.eq.true')
+      .maybeSingle()
 
-    const userAccess = allMappings?.find(
-      (m: any) => m.clerk_id === userId || m.email?.toLowerCase() === userEmail?.toLowerCase()
-    )
+    if (accessError) {
+      console.error('Error checking user access:', accessError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
-    if (!userAccess || !['admin', 'owner'].includes(userAccess.role)) {
+    if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get the member being updated
-    const memberToUpdate = allMappings?.find((m: any) => m.id.toString() === memberId)
+    // ✅ FIXED: Get the member being updated (check only active members for role changes)
+    const { data: memberToUpdate, error: memberError } = await supabase
+      .from('pype_voice_email_project_mapping')
+      .select('*')
+      .eq('id', memberId)
+      .eq('project_id', projectId)
+      .or('is_active.is.null,is_active.eq.true')
+      .maybeSingle()
+
+    if (memberError) {
+      console.error('Error fetching member:', memberError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
     if (!memberToUpdate) {
-      return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Active member not found' }, { status: 404 })
     }
 
     // Don't allow changing owner role unless you're the owner
-    if (memberToUpdate.role === 'owner' && userAccess.role !== 'owner') {
+    if (memberToUpdate.role === 'owner' && userAccessMapping.role !== 'owner') {
       return NextResponse.json({ error: 'Only owners can change owner roles' }, { status: 403 })
     }
 
     // Don't allow non-owners to assign owner role
-    if (role === 'owner' && userAccess.role !== 'owner') {
+    if (role === 'owner' && userAccessMapping.role !== 'owner') {
       return NextResponse.json({ error: 'Only owners can assign owner role' }, { status: 403 })
     }
 
@@ -125,34 +139,42 @@ export async function DELETE(
     const { id: projectId, memberId } = await params
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
-    // ✅ NEW: Get permanent flag from query params
+    // Get permanent flag from query params
     const { searchParams } = new URL(request.url)
     const permanent = searchParams.get('permanent') === 'true'
 
-    // Check if current user has admin/owner access
-    const { data: allMappings } = await supabase
+    // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
+    const { data: userAccessMapping, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
-      .select('*')
+      .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
+      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
       .or('is_active.is.null,is_active.eq.true')
+      .maybeSingle()
 
-    const userAccess = allMappings?.find(
-      (m: any) => m.clerk_id === userId || m.email?.toLowerCase() === userEmail?.toLowerCase()
-    )
+    if (accessError) {
+      console.error('Error checking user access:', accessError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
-    if (!userAccess || !['admin', 'owner'].includes(userAccess.role)) {
+    if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get the member to delete (check ALL records, not just active)
+    // ✅ FIXED: Get the member to delete (check ALL records, not just active)
     const { data: memberToDelete, error: fetchError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('*')
       .eq('id', memberId)
       .eq('project_id', projectId)
-      .single()
+      .maybeSingle()
 
-    if (fetchError || !memberToDelete) {
+    if (fetchError) {
+      console.error('Error fetching member to delete:', fetchError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+
+    if (!memberToDelete) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 })
     }
 
@@ -160,7 +182,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot remove project owner' }, { status: 400 })
     }
 
-    // ✅ NEW: Handle permanent vs soft delete
+    // Don't allow removing yourself
+    if (memberToDelete.clerk_id === userId || memberToDelete.email?.toLowerCase() === userEmail?.toLowerCase()) {
+      return NextResponse.json({ error: 'You cannot remove yourself' }, { status: 400 })
+    }
+
+    // Handle permanent vs soft delete
     if (permanent) {
       // Hard delete - permanently remove from database
       const { error: deleteError } = await supabase

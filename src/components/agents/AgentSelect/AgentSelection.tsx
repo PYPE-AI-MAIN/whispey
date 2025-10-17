@@ -94,7 +94,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
   const handleAgentCreated = (agentData: any) => {
     refetch()
     if (agentData.agent_type === 'pype_agent') {
-      invalidatePermissions()
+      invalidatePermissions(projectId)
     }
   }
 
@@ -117,7 +117,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
       setShowDeleteConfirm(null)
       
       if (agent.agent_type === 'pype_agent') {
-        invalidatePermissions()
+        invalidatePermissions(projectId) // Pass projectId
       }
     } catch (error: unknown) {
       console.error('Error removing monitoring:', error)

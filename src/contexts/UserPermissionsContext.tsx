@@ -43,19 +43,20 @@ export const useUserPermissions = ({ projectId }: { projectId?: string }) => {
   return context
 }
 
-// Query key for React Query
-export const USER_PERMISSIONS_QUERY_KEY = ['user', 'permissions']
+// Query key factory function - UPDATED to include projectId
+export const getUserPermissionsQueryKey = (projectId: string) => ['user', 'permissions', projectId]
 
 // Fetch function
 const fetchProjectPermissions = async (projectId: string): Promise<ProjectPermissions | null> => {
-  const response = await fetch(`/api/projects/${projectId}`,{
-    method: 'GET',headers: {
-    'Content-Type': 'application/json'
-  }})
+  const response = await fetch(`/api/projects/${projectId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
   
   if (!response.ok) {
     if (response.status === 404) {
-      // User doesn't exist in database yet - treat as non-whitelisted
       console.log('Project not found in database - treating as non-whitelisted')
       return null
     }
@@ -75,13 +76,14 @@ export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = (
   const queryClient = useQueryClient()
 
   const { data: permissions, isLoading: loading, error } = useQuery({
-    queryKey: USER_PERMISSIONS_QUERY_KEY,
+    queryKey: getUserPermissionsQueryKey(projectId),
     queryFn: () => fetchProjectPermissions(projectId),
-    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
+    enabled: !!projectId,
   })
 
   const isWhitelisted = permissions?.plans?.type ? 
@@ -91,7 +93,7 @@ export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = (
   const canCreatePypeAgent = isWhitelisted
 
   const refetchPermissions = () => {
-    queryClient.invalidateQueries({ queryKey: USER_PERMISSIONS_QUERY_KEY })
+    queryClient.invalidateQueries({ queryKey: getUserPermissionsQueryKey(projectId) })
   }
 
   return (
@@ -114,7 +116,22 @@ export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = (
 export const useInvalidateUserPermissions = () => {
   const queryClient = useQueryClient()
   
-  return () => {
-    queryClient.invalidateQueries({ queryKey: USER_PERMISSIONS_QUERY_KEY })
+  return (projectId?: string) => {
+    if (projectId) {
+      // Invalidate specific project
+      queryClient.invalidateQueries({ queryKey: getUserPermissionsQueryKey(projectId) })
+    } else {
+      // Invalidate all user permissions
+      queryClient.invalidateQueries({ queryKey: ['user', 'permissions'] })
+    }
+  }
+}
+
+// Export function to invalidate permissions cache
+export const invalidatePermissionsCache = (queryClient: any, projectId?: string) => {
+  if (projectId) {
+    queryClient.invalidateQueries({ queryKey: getUserPermissionsQueryKey(projectId) })
+  } else {
+    queryClient.invalidateQueries({ queryKey: ['user', 'permissions'] })
   }
 }

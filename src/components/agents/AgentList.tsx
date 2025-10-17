@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import AgentListItem from './AgentListItem'
 import { useMobile } from '@/hooks/use-mobile'
+import { useQuery } from '@tanstack/react-query'
 
 interface Agent {
   id: string
@@ -41,9 +42,27 @@ const AgentList: React.FC<AgentListProps> = ({
   showRunningCounter = true
 }) => {
   const { isMobile } = useMobile(768)
-  const [runningAgents, setRunningAgents] = useState<RunningAgent[]>([])
   const [isStartingAgent, setIsStartingAgent] = useState<string | null>(null)
   const [isStoppingAgent, setIsStoppingAgent] = useState<string | null>(null)
+
+  // Check if there are any pype agents
+  const hasPypeAgents = agents.some(agent => agent.agent_type === 'pype_agent')
+
+  // Fetch running agents using React Query
+  const { data: runningAgents = [], isLoading: isLoadingRunningAgents, refetch: refetchRunningAgents } = useQuery({
+    queryKey: ['runningAgents', projectId],
+    queryFn: async () => {
+      const response = await fetch('/api/agents/running_agents')
+      if (!response.ok) {
+        return []
+      }
+      const data = await response.json()
+      return data || []
+    },
+    enabled: hasPypeAgents, // Only fetch if there are pype agents
+    // refetchInterval: 30000, // Refetch every 30 seconds
+    // staleTime: 20000, // Consider data stale after 20 seconds
+  })
 
   // Start agent handler
   const handleStartAgent = async (agentName: string) => {
@@ -59,7 +78,8 @@ const AgentList: React.FC<AgentListProps> = ({
 
       if (response.ok) {
         const data = await response.json()
-        setTimeout(fetchRunningAgents, 2000)
+        // Refetch after 2 seconds to allow agent to start
+        setTimeout(() => refetchRunningAgents(), 2000)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
       }
@@ -84,7 +104,8 @@ const AgentList: React.FC<AgentListProps> = ({
 
       if (response.ok) {
         const data = await response.json()
-        setTimeout(fetchRunningAgents, 1000)
+        // Refetch after 1 second to confirm agent stopped
+        setTimeout(() => refetchRunningAgents(), 1000)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
       }
@@ -98,38 +119,25 @@ const AgentList: React.FC<AgentListProps> = ({
   // Calculate running agents stats
   const pypeAgents = agents.filter(agent => agent.agent_type === 'pype_agent')
   const runningPypeAgents = pypeAgents.filter(agent => 
-    runningAgents.some(ra => ra.agent_name === agent.name)
+    runningAgents.some((ra: RunningAgent) => {
+      // Sanitize agent ID by replacing hyphens with underscores
+      const sanitizedAgentId = agent.id.replace(/-/g, '_')
+      
+      // First try: Check with name_sanitizedAgentId format (new format)
+      const newFormat = `${agent.name}_${sanitizedAgentId}`
+      if (ra.agent_name === newFormat) {
+        return true
+      }
+      
+      // Second try: Check with just name (backward compatibility)
+      if (ra.agent_name === agent.name) {
+        return true
+      }
+      
+      return false
+    })
   )
 
-  // Fetch running agents status
-  const fetchRunningAgents = async () => {
-    try {
-      const response = await fetch('/api/agents/running_agents')
-      if (response.ok) {
-        const data = await response.json()
-        setRunningAgents(data || [])
-      } else {
-        setRunningAgents([])
-      }
-    } catch (error) {
-      setRunningAgents([])
-    }
-  }
-
-  // Fetch running status on component mount only
-  useEffect(() => {
-    fetchRunningAgents()
-  }, [])
-
-  // Also refetch when agents list changes
-  useEffect(() => {
-    const hasPypeAgents = agents.some(agent => agent.agent_type === 'pype_agent')
-    if (hasPypeAgents) {
-      fetchRunningAgents()
-    }
-  }, [agents])
-
-  // Mobile-first approach: always use optimized list view on mobile
   if (isMobile) {
     return (
       <div className="space-y-3">
@@ -143,6 +151,7 @@ const AgentList: React.FC<AgentListProps> = ({
             isLastItem={index === agents.length - 1}
             projectId={projectId}
             runningAgents={runningAgents}
+            isLoadingRunningAgents={isLoadingRunningAgents}
             onCopyId={(e) => onCopyAgentId(agent.id, e)}
             onDelete={() => onDeleteAgent(agent)}
             onStartAgent={handleStartAgent}
@@ -170,6 +179,7 @@ const AgentList: React.FC<AgentListProps> = ({
             isLastItem={index === agents.length - 1}
             projectId={projectId}
             runningAgents={runningAgents}
+            isLoadingRunningAgents={isLoadingRunningAgents}
             onCopyId={(e) => onCopyAgentId(agent.id, e)}
             onDelete={() => onDeleteAgent(agent)}
             onStartAgent={handleStartAgent}
@@ -196,6 +206,7 @@ const AgentList: React.FC<AgentListProps> = ({
           isLastItem={false}
           projectId={projectId}
           runningAgents={runningAgents}
+          isLoadingRunningAgents={isLoadingRunningAgents}
           onCopyId={(e) => onCopyAgentId(agent.id, e)}
           onDelete={() => onDeleteAgent(agent)}
           onStartAgent={handleStartAgent}

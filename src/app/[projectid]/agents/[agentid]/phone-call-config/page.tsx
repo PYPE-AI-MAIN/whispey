@@ -15,6 +15,12 @@ interface Agent {
   is_active: boolean
 }
 
+interface RunningAgent {
+  agent_name: string
+  pid: number
+  status: string
+}
+
 interface DispatchResponse {
   status: string
   room_name?: string
@@ -30,6 +36,8 @@ const COUNTRIES = [
 export default function PhoneCallConfig() {
   const params = useParams()
   const [agent, setAgent] = useState<Agent | null>(null)
+  const [runningAgents, setRunningAgents] = useState<RunningAgent[]>([])
+  const [isCheckingRunning, setIsCheckingRunning] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('US')
   const [isLoading, setIsLoading] = useState(false)
@@ -40,6 +48,52 @@ export default function PhoneCallConfig() {
 
   const agentId = params.agentid as string
   const currentCountry = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[0]
+
+  // Helper function to check if agent is running and get the correct format
+  const getRunningAgentName = (agent: Agent, runningAgents: RunningAgent[]): { isRunning: boolean; agentName: string | null } => {
+    if (agent.agent_type !== 'pype_agent' || !runningAgents.length) {
+      return { isRunning: false, agentName: null }
+    }
+
+    // Sanitize agent ID by replacing hyphens with underscores
+    const sanitizedAgentId = agent.id.replace(/-/g, '_')
+    
+    // First try: Check with name_sanitizedAgentId format (new format)
+    const newFormat = `${agent.name}_${sanitizedAgentId}`
+    let runningAgent = runningAgents.find(ra => ra.agent_name === newFormat)
+    
+    if (runningAgent) {
+      return { isRunning: true, agentName: newFormat }
+    }
+    
+    // Second try: Check with just name (backward compatibility)
+    runningAgent = runningAgents.find(ra => ra.agent_name === agent.name)
+    
+    if (runningAgent) {
+      return { isRunning: true, agentName: agent.name }
+    }
+    
+    return { isRunning: false, agentName: null }
+  }
+
+  // Fetch running agents
+  const fetchRunningAgents = async () => {
+    try {
+      setIsCheckingRunning(true)
+      const response = await fetch('/api/agents/running_agents')
+      if (response.ok) {
+        const data = await response.json()
+        setRunningAgents(data || [])
+      } else {
+        setRunningAgents([])
+      }
+    } catch (error) {
+      console.error('Error fetching running agents:', error)
+      setRunningAgents([])
+    } finally {
+      setIsCheckingRunning(false)
+    }
+  }
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -62,6 +116,13 @@ export default function PhoneCallConfig() {
     }
   }, [agentId])
 
+  // Fetch running agents when agent is loaded
+  useEffect(() => {
+    if (agent && agent.agent_type === 'pype_agent') {
+      fetchRunningAgents()
+    }
+  }, [agent])
+
   const handleDispatchCall = async () => {
     if (!agent || !phoneNumber.trim()) return
 
@@ -72,18 +133,30 @@ export default function PhoneCallConfig() {
       return
     }
 
+    // Check if agent is running and get the correct agent name format
+    const { isRunning, agentName } = getRunningAgentName(agent, runningAgents)
+
+    if (!isRunning || !agentName) {
+      setMessage('Agent is not currently running. Please start the agent first.')
+      setMessageType('error')
+      return
+    }
+
     setIsLoading(true)
     setMessage('')
     setMessageType('')
 
     try {
       const formattedNumber = `${currentCountry.prefix}${cleaned}`
+
+      console.log('🔍 Dispatching call to:', formattedNumber)
+      console.log('🔍 Agent name:', agentName)
       
       const response = await fetch('/api/agents/dispatch-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agent_name: agent.name,
+          agent_name: agentName, // Use the detected running agent name
           phone_number: formattedNumber,
         }),
       })
@@ -139,6 +212,8 @@ export default function PhoneCallConfig() {
     )
   }
 
+  const runningStatus = getRunningAgentName(agent, runningAgents)
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <div className="px-8 py-12">
@@ -157,7 +232,24 @@ export default function PhoneCallConfig() {
             
             {/* Agent Status */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-              {agent.is_active ? (
+              {isCheckingRunning ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-400">Checking...</span>
+                </>
+              ) : agent.agent_type === 'pype_agent' ? (
+                runningStatus.isRunning ? (
+                  <>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">Running</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-red-700 dark:text-red-400">Stopped</span>
+                  </>
+                )
+              ) : agent.is_active ? (
                 <>
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-sm font-medium text-green-700 dark:text-green-400">Active</span>
@@ -242,11 +334,29 @@ export default function PhoneCallConfig() {
                 </div>
               )}
 
+              {/* Warning for non-running Pype agents */}
+              {agent.agent_type === 'pype_agent' && !runningStatus.isRunning && !isCheckingRunning && (
+                <div className="p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">
+                      Agent must be running to dispatch calls. Please start the agent first.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Dispatch Button */}
               <Button 
                 onClick={handleDispatchCall}
-                disabled={isLoading || !phoneNumber.trim() || !agent.is_active}
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium text-base"
+                disabled={
+                  isLoading || 
+                  !phoneNumber.trim() || 
+                  isCheckingRunning ||
+                  (agent.agent_type === 'pype_agent' && !runningStatus.isRunning) ||
+                  (agent.agent_type !== 'pype_agent' && !agent.is_active)
+                }
+                className="w-full h-12 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <>
@@ -261,7 +371,12 @@ export default function PhoneCallConfig() {
                 )}
               </Button>
 
-              {!agent.is_active && (
+              {agent.agent_type === 'pype_agent' && !runningStatus.isRunning && !isCheckingRunning && (
+                <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+                  Agent must be running to dispatch calls
+                </p>
+              )}
+              {agent.agent_type !== 'pype_agent' && !agent.is_active && (
                 <p className="text-sm text-center text-gray-500 dark:text-gray-400">
                   Agent must be active to dispatch calls
                 </p>
