@@ -37,6 +37,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [initialFlow, setInitialFlow] = useState<'choice' | 'create' | 'connect'>('choice')
   const [showHelpDialog, setShowHelpDialog] = useState(false)
   const [deletingAgent, setDeletingAgent] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Agent | null>(null)
@@ -84,6 +85,13 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
   })
 
   const handleCreateAgent = () => {
+    setInitialFlow('create')
+    setShowCreateDialog(true)
+    setShowHelpDialog(false)
+  }
+
+  const handleConnectAgent = () => {
+    setInitialFlow('connect')
     setShowCreateDialog(true)
     setShowHelpDialog(false)
   }
@@ -200,6 +208,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           onCreateAgent={handleCreateAgent}
+          onConnectAgent={handleConnectAgent}
           onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
           sortOrder={sortOrder}
           onSortToggle={handleSortToggle}
@@ -220,7 +229,10 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
             searchQuery={searchQuery}
             totalAgents={agents?.length || 0}
             onClearSearch={() => setSearchQuery('')}
-            onCreateAgent={handleCreateAgent}
+            onCreateAgent={() => {
+              setInitialFlow('choice')
+              setShowCreateDialog(true)
+            }}
           />
         )}
       </main>
@@ -231,6 +243,7 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
         onClose={() => setShowCreateDialog(false)}
         onAgentCreated={handleAgentCreated}
         projectId={projectId}
+        initialFlow={initialFlow}
       />
 
       <AgentDeleteDialog
@@ -265,7 +278,8 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
                   onClearSearch={() => {}}
                   onCreateAgent={() => {
                     setShowHelpDialog(false)
-                    handleCreateAgent()
+                    setInitialFlow('choice')
+                    setShowCreateDialog(true)
                   }}
                 />
               </div>

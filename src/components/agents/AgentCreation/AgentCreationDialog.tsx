@@ -13,6 +13,7 @@ interface AgentCreationDialogProps {
   onClose: () => void
   onAgentCreated: (agentData: any) => void
   projectId: string
+  initialFlow: 'choice' | 'create' | 'connect'
 }
 
 type FlowType = 'choice' | 'create' | 'connect'
@@ -21,7 +22,8 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   isOpen, 
   onClose, 
   onAgentCreated,
-  projectId
+  projectId,
+  initialFlow
 }) => {
   const [currentFlow, setCurrentFlow] = useState<FlowType>('choice')
   const [loading, setLoading] = useState(false)
@@ -30,15 +32,16 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   // Reset flow when dialog opens and determine initial flow
   useEffect(() => {
     if (isOpen && !featureLoading) {
-      if (canCreatePypeAgent) {
-        // Internal users: show choice screen
-        setCurrentFlow('choice')
-      } else {
-        // External users: skip choice screen and go directly to connect
+      if (initialFlow === 'create' && canCreatePypeAgent) {
+        setCurrentFlow('create')
+      } else if (initialFlow === 'connect') {
         setCurrentFlow('connect')
+      } else {
+        // Always show choice screen when initialFlow is 'choice'
+        setCurrentFlow('choice')
       }
     }
-  }, [isOpen, canCreatePypeAgent, featureLoading])
+  }, [isOpen, canCreatePypeAgent, featureLoading, initialFlow])
 
   const handleClose = () => {
     if (!loading) {
