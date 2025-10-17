@@ -7,10 +7,10 @@ const mode = process.env.NODE_ENV
 
 // Feedback intervals - increasing each time they reject a feedback
 const FEEDBACK_INTERVALS = {
-  0: 5 * 60 * 1000,  // 5 minutes first time
-  1: 10 * 60 * 1000,  // 10 minutes after 1
-  2: 15 * 60 * 1000,  // 15 minutes after 2
-  3: 20 * 60 * 1000,  // 20 minutes after 3
+  0: 15 * 60 * 1000,  // 5 minutes first time
+  1: 20 * 60 * 1000,  // 10 minutes after 1
+  2: 25 * 60 * 1000,  // 15 minutes after 2
+  3: 30 * 60 * 1000,  // 20 minutes after 3
   default: 60 * 60 * 1000  // 60 minutes for normal feedback (doesn't increase further)
 }
 

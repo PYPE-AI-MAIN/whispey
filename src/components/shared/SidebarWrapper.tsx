@@ -3,8 +3,8 @@
 import { usePathname } from 'next/navigation'
 import { ReactNode, useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useQuery } from '@tanstack/react-query'
 import { useMobile } from '@/hooks/use-mobile'
-import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { canViewApiKeys, getUserProjectRole } from '@/services/getUserRole'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
@@ -19,7 +19,9 @@ interface SidebarWrapperProps {
 
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
-// All your existing route pattern definitions and configurations
+// Reserved paths that are NOT project IDs
+const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service']
+
 interface RoutePattern {
   pattern: string
   exact?: boolean
@@ -61,7 +63,6 @@ export interface SidebarConfig {
   backLabel?: string
 }
 
-// Keep all your existing route matching and configuration logic
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   if (pattern.endsWith('*')) {
     const basePattern = pattern.slice(0, -1)
@@ -110,7 +111,7 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
 }
 
 const sidebarRoutes: SidebarRoute[] = [
-  // Hide sidebar for auth and docs pages
+  // Hide sidebar for auth and docs pages ONLY
   {
     patterns: [
       { pattern: '/sign*' },
@@ -120,16 +121,40 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 100
   },
 
-  // Project-level agents routes with Phone Settings
+  // Onboarding route - show sidebar but minimal nav
+  {
+    patterns: [
+      { pattern: '/onboarding' }
+    ],
+    getSidebarConfig: () => ({
+      type: 'onboarding',
+      context: {},
+      navigation: [
+        { 
+          id: 'docs', 
+          name: 'Documentation', 
+          icon: 'FileText', 
+          path: '/docs', 
+          external: true, 
+          group: 'resources' 
+        }
+      ],
+      showBackButton: false
+    }),
+    priority: 96
+  },
+
+  // Project-level agents routes
   {
     patterns: [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
-      { pattern: '/:projectId/agents/sip-management' }
+      { pattern: '/:projectId/agents/sip-management' },
+      { pattern: '/:projectId/settings' }
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys } = context
+      const { userCanViewApiKeys, canAccessPhoneCalls } = context
 
       const baseNavigation = [
         {
@@ -143,39 +168,49 @@ const sidebarRoutes: SidebarRoute[] = [
 
       const configurationItems = []
       
-      // Add Phone Settings (SIP Management)
-      configurationItems.push({
-        id: 'sip-management',
-        name: 'Phone Settings',
-        icon: 'Phone',
-        path: `/${projectId}/agents/sip-management`,
-        group: 'configuration'
-      })
-
-      // Add API Keys if user has permission
-      if (userCanViewApiKeys) {
+      if (canAccessPhoneCalls) {
         configurationItems.push({
-          id: 'api-keys',
-          name: 'Project API Key',
-          icon: 'Key',
-          path: `/${projectId}/agents/api-keys`,
+          id: 'sip-management',
+          name: 'Phone Settings',
+          icon: 'Phone',
+          path: `/${projectId}/agents/sip-management`,
           group: 'configuration'
         })
       }
 
+      const projectSettingItems = []
+
+      if (userCanViewApiKeys) {
+        projectSettingItems.push({
+          id: 'api-keys',
+          name: 'Project API Key',
+          icon: 'Key',
+          path: `/${projectId}/agents/api-keys`,
+          group: 'Project Settings'
+        })
+      }
+      
+      projectSettingItems.push({
+        id: 'settings',
+        name: 'Settings',
+        icon: 'Settings',
+        path: `/${projectId}/settings`,
+        group: 'Project Settings'
+      })
+
       return {
         type: 'project-agents',
         context: { projectId },
-        navigation: [...baseNavigation, ...configurationItems],
-        showBackButton: true,
+        navigation: [...baseNavigation, ...configurationItems, ...projectSettingItems],
+        showBackButton: false,
         backPath: '/projects',
-        backLabel: 'Back to Workspaces'
+        backLabel: 'Back to Organisations'
       }
     },
     priority: 95
   },
 
-  // Individual agent routes (unchanged)
+  // Individual agent routes
   {
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
@@ -209,7 +244,6 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Configuration items
       const configItems = []
       if (agentType === 'pype_agent') {
         configItems.push({ 
@@ -221,7 +255,6 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      // Call items
       const callItems = []
       if (agentType === 'pype_agent' && context.canAccessPhoneCalls) {
         callItems.push({
@@ -233,7 +266,6 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      // Enhanced project items
       const enhancedItems = []
       if (isEnhancedProject) {
         enhancedItems.push({ 
@@ -245,7 +277,6 @@ const sidebarRoutes: SidebarRoute[] = [
         })
       }
 
-      // Combine all navigation items
       const navigation = [
         ...baseNavigation,
         ...configItems,
@@ -265,22 +296,16 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 90
   },
 
-  // Main workspaces/projects route WITHOUT Phone Settings
+  // Main Organisations/projects route
   {
     patterns: [
       { pattern: '/', exact: true },
       { pattern: '/projects', exact: true }
     ],
     getSidebarConfig: () => ({
-      type: 'workspaces',
+      type: 'organisations',
       context: {},
       navigation: [
-        { 
-          id: 'workspaces', 
-          name: 'Workspaces', 
-          icon: 'Home', 
-          path: '/projects' 
-        },
         { 
           id: 'docs', 
           name: 'Documentation', 
@@ -295,20 +320,18 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 85
   },
 
-  // Global Phone Settings route - REMOVED (no longer needed)
-  
-  // Fallback for any other routes WITHOUT Phone Settings
+  // Fallback for any other routes
   {
     patterns: [
       { pattern: '*' }
     ],
     getSidebarConfig: () => ({
-      type: 'workspaces',
+      type: 'organisations',
       context: {},
       navigation: [
         { 
-          id: 'workspaces', 
-          name: 'Workspaces', 
+          id: 'organisations', 
+          name: 'Organisations', 
           icon: 'Home', 
           path: '/projects' 
         },
@@ -357,6 +380,24 @@ const getSidebarConfig = (
   return null
 }
 
+const fetchProject = async (projectId: string) => {
+  const response = await fetch(`/api/projects`)
+  if (!response.ok) throw new Error('Failed to fetch projects')
+  const projects = await response.json()
+  return projects.find((p: any) => p.id === projectId)
+}
+
+const fetchAgent = async (agentId: string) => {
+  const response = await fetch(`/api/agents/${agentId}/type`)
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null
+    }
+    throw new Error('Failed to fetch agent')
+  }
+  return response.json()
+}
+
 export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const pathname = usePathname()
   const { user } = useUser()
@@ -371,21 +412,35 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
   const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
   
-  const { data: projects } = useSupabaseQuery('pype_voice_projects', 
-    projectId && projectId !== 'sign' && projectId !== 'docs' ? {
-      select: 'id, name',
-      filters: [{ column: 'id', operator: 'eq', value: projectId }]
-    } : null
-  )
-
-  const { data: agents } = useSupabaseQuery('pype_voice_agents', 
-    agentId && projectId && projectId !== 'sign' && projectId !== 'docs' && agentId !== 'sip-management' ? {
-      select: 'id, agent_type',
-      filters: [{ column: 'id', operator: 'eq', value: agentId }]
-    } : null
-  )
+  // Check if projectId is valid (not a reserved path)
+  const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
   
-  // Load collapse preference
+  // ✅ ADDED: Check if agentId is valid (not a reserved path)
+  const agentReservedPaths = ['api-keys', 'sip-management']
+  const isValidAgentId = agentId && !agentReservedPaths.includes(agentId)
+  
+  // Use React Query for project data
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => fetchProject(projectId!),
+    enabled: !!isValidProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  const { data: agent } = useQuery({
+    queryKey: ['agent', agentId],
+    queryFn: () => fetchAgent(agentId!),
+    enabled: !!isValidAgentId && !!isValidProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
+
+  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedState = localStorage.getItem('whispey-sidebar-collapsed')
@@ -403,16 +458,15 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     }
   }
 
-  // Fetch user role and permissions (keep your existing logic)
   useEffect(() => {
     const fetchUserRole = async () => {
-      if (!user?.emailAddresses?.[0]?.emailAddress || !projectId || projectId === 'sign' || projectId === 'docs') {
+      if (!user?.emailAddresses?.[0]?.emailAddress || !isValidProjectId) {
         setPermissionsLoading(false)
         return
       }
 
       try {
-        const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId)
+        const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId!)
         setUserCanViewApiKeys(canViewApiKeys(role))
       } catch (error) {
         setUserCanViewApiKeys(false)
@@ -422,10 +476,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     }
 
     fetchUserRole()
-  }, [user, projectId])
+  }, [user, projectId, isValidProjectId])
   
-  const project = projects?.[0]
-  const agent = agents?.[0]
   const isEnhancedProject = project?.id === ENHANCED_PROJECT_ID
   
   const sidebarContext: SidebarContext = {
@@ -444,10 +496,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
 
   return (
     <div className="h-screen flex">
-      {/* Mobile: Sheet-based sidebar */}
       {isMobile ? (
         <>
-          {/* Mobile Header */}
           <div className="fixed top-0 left-0 right-0 h-14 bg-white dark:bg-gray-800 border-b flex items-center justify-between px-4 z-50 md:hidden">
             <div className="flex items-center gap-2">
               <img src="/logo.png" alt="Whispey" className="w-6 h-6" />
@@ -474,13 +524,11 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             </Sheet>
           </div>
           
-          {/* Mobile Main Content */}
           <main className="flex-1 pt-14 overflow-auto">
             {children}
           </main>
         </>
       ) : (
-        /* Desktop: Fixed sidebar */
         <>
           <div className="relative">
             <Sidebar 
@@ -492,7 +540,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             />
           </div>
           
-          {/* Desktop Main Content */}
           <main className="flex-1 overflow-auto">
             {children}
           </main>

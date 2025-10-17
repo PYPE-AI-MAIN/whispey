@@ -8,6 +8,7 @@ import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Loader2, CheckCircle, AlertCircle, Zap, Activity, Info, Copy, ArrowRight } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { AGENT_DEFAULT_CONFIG } from '@/config/agentDefaults'
 
 interface CreateAgentFlowProps {
   projectId: string
@@ -107,7 +108,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       const projectApiKey = await fetchProjectApiKey()
   
       const agentPayload = {
-        name: formData.name.trim(),
+        name: formData.name.trim(),// add agentId in name here also for consistency in backend
         agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform,
         configuration: {
           description: formData.description.trim() || null,
@@ -163,46 +164,17 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               name: agentNameWithId,
               prompt: `You are a helpful voice assistant named ${formData.name.trim()}. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
               variables: {},
-              stt: { 
-                name: "sarvam", 
-                language: "en-IN", 
-                model: "saarika:v2.5" 
-              },
-              llm: { 
-                name: "openai", 
-                provider: "openai", 
-                model: "gpt-4o-mini",
-                temperature: 0.3, 
-                api_key_env: "OPENAI_API_KEY" 
-              },
-              tts: {
-                name: "elevenlabs",
-                voice_id: "H8bdWZHK2OgZwTN7ponr",
-                model: "eleven_flash_v2_5",
-                language: "en",
-                voice_settings: {
-                  similarity_boost: 1,
-                  stability: 0.7,
-                  style: 0.7,
-                  use_speaker_boost: false,
-                  speed: 1.1
-                }
-              },
-              vad: { 
-                name: "silero", 
-                min_silence_duration: 0.2 
-              },
-              tools: [],
-              interruptions: {
-                allow_interruptions: false,
-                min_interruption_duration: 1.3,
-                min_interruption_words: 2
-              },
-              first_message_mode: {
-                mode: "assistant_waits_for_user",
-                first_message: "Hello! How can I help you today?",
-                allow_interruptions: false
-              }
+              stt: AGENT_DEFAULT_CONFIG.stt,
+              llm: AGENT_DEFAULT_CONFIG.llm,
+              tts: AGENT_DEFAULT_CONFIG.tts,
+              vad: AGENT_DEFAULT_CONFIG.vad,
+              tools: AGENT_DEFAULT_CONFIG.tools,
+              interruptions: AGENT_DEFAULT_CONFIG.interruptions,
+              first_message_mode: AGENT_DEFAULT_CONFIG.first_message_mode,
+              session_behavior: AGENT_DEFAULT_CONFIG.session_behavior,
+              background_audio: AGENT_DEFAULT_CONFIG.background_audio,
+              filler_words: AGENT_DEFAULT_CONFIG.filler_words,
+              bug_reports: AGENT_DEFAULT_CONFIG.bug_reports
             }],
             agent_id: localAgent.id,
             whispey_key_id: projectApiKey

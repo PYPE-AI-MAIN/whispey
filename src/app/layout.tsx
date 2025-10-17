@@ -7,6 +7,7 @@ import {
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import Script from 'next/script'
+import { Toaster } from 'react-hot-toast' // ADD THIS LINE
 import { PostHogProvider } from './providers'
 import { FeatureAccessProvider } from './providers/FeatureAccessProvider'
 import { QueryProvider } from './providers/QueryProvider'
@@ -66,6 +67,30 @@ export default function RootLayout({
             <QueryProvider>
               <PostHogProvider>
                 <FeatureAccessProvider>
+                  <Toaster 
+                    position="top-right"
+                    toastOptions={{
+                      duration: 3000,
+                      style: {
+                        background: '#fff',
+                        color: '#363636',
+                        border: '1px solid #e5e7eb',
+                      },
+                      className: 'dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700',
+                      success: {
+                        iconTheme: {
+                          primary: '#10b981',
+                          secondary: '#fff',
+                        },
+                      },
+                      error: {
+                        iconTheme: {
+                          primary: '#ef4444',
+                          secondary: '#fff',
+                        },
+                      },
+                    }}
+                  />
                   <LayoutContent>
                     {children}
                   </LayoutContent>
