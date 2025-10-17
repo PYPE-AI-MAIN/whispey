@@ -108,7 +108,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       const projectApiKey = await fetchProjectApiKey()
   
       const agentPayload = {
-        name: formData.name.trim(),
+        name: formData.name.trim(),// add agentId in name here also for consistency in backend
         agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform,
         configuration: {
           description: formData.description.trim() || null,

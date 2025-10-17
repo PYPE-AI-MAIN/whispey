@@ -94,12 +94,15 @@ export default function OrganizationSettings({
   })
 
   // Fetch team members for this organization
-  const { data: membersData, isLoading: loadingMembers, refetch: refetchMembers } = useQuery({
+  const { data: membersData, isLoading: loadingMembers, error: membersError, refetch: refetchMembers } = useQuery({
     queryKey: ['organization-members', organizationId],
     queryFn: async () => {
       const response = await fetch(`/api/projects/${organizationId}/members`)
-      if (!response.ok) throw new Error('Failed to fetch members')
-      return response.json()
+      if (!response.ok) {
+        throw new Error('Failed to fetch members')
+      }
+      const data = await response.json()
+      return data
     },
     enabled: !!organizationId,
     staleTime: 30000,
@@ -150,7 +153,7 @@ export default function OrganizationSettings({
   const [changingRole, setChangingRole] = useState<string | null>(null)
   const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft') // ✅ ADDED
 
-  const currentUserRole = teamMembers.find(
+  const currentUserRole = membersData?.currentUserRole || teamMembers.find(
     m => m.email === user?.emailAddresses?.[0]?.emailAddress
   )?.role || pendingMembers.find(
     m => m.email === user?.emailAddresses?.[0]?.emailAddress

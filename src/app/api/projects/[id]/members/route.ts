@@ -215,82 +215,47 @@ export async function GET(
     const { userId } = await auth()
     const user = await currentUser()
     
-    console.log("=== MEMBERS API CALLED ===")
-    console.log("1. Auth Check:")
-    console.log("   - userId from auth():", userId)
-    
     if (!userId) {
-      console.log("❌ UNAUTHORIZED - No userId")
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id: projectId } = await params
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
-    console.log("2. Request Details:")
-    console.log("   - projectId:", projectId)
-    console.log("   - userEmail:", userEmail)
+    // ✅ FIXED: Check if user has ANY access to the project (not just admin)
+    const { data: userAccessMapping, error: accessError } = await supabase
+      .from('pype_voice_email_project_mapping')
+      .select('role, clerk_id, email, is_active')
+      .eq('project_id', projectId)
+      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+      .or('is_active.is.null,is_active.eq.true')
+      .maybeSingle()
 
-    // ✅ CRITICAL FIX: Fetch ALL mappings including inactive ones
-    console.log("3. Fetching ALL mappings for project (including inactive)...")
+    if (accessError) {
+      console.error('Error checking user access:', accessError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+
+    if (!userAccessMapping) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+
+    // ✅ Everyone can view members, no role restriction here
+
+    // ✅ Now fetch ALL mappings (including inactive) for display
     const { data: allProjectMappings, error: mappingsError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('*')
       .eq('project_id', projectId)
-      // ✅ NO FILTER HERE - We want ALL members (active + inactive)
-    
-    console.log("   - Query error:", mappingsError)
-    console.log("   - Total mappings found:", allProjectMappings?.length || 0)
-    
-    if (allProjectMappings && allProjectMappings.length > 0) {
-      console.log("   - Mapping details:")
-      allProjectMappings.forEach((m: any, index: number) => {
-        console.log(`     [${index}] email: ${m.email}, clerk_id: ${m.clerk_id}, role: ${m.role}, is_active: ${m.is_active}`)
-      })
+
+    if (mappingsError) {
+      console.error('Error fetching mappings:', mappingsError)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
-
-    // Check user's access - only check active mappings for access control
-    console.log("4. Looking for user's mapping...")
-    let accessCheck = allProjectMappings?.find(
-      (mapping: any) => {
-        const isActive = mapping.is_active !== false // null or true counts as active
-        const matchesUser = mapping.clerk_id === userId || mapping.email?.toLowerCase() === userEmail?.toLowerCase()
-        return matchesUser && isActive
-      }
-    )
-
-    console.log("5. Access Check Result:")
-    console.log("   - Found mapping:", !!accessCheck)
-    if (accessCheck) {
-      console.log("   - Mapping details:", {
-        id: accessCheck.id,
-        email: accessCheck.email,
-        role: accessCheck.role
-      })
-    }
-
-    if (!accessCheck) {
-      console.log("❌ ACCESS DENIED - No matching active mapping found")
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
-
-    console.log("6. Role Check:")
-    console.log("   - User role:", accessCheck.role)
-    
-    if (!['admin', 'owner'].includes(accessCheck.role)) {
-      console.log("❌ FORBIDDEN - User does not have admin/owner role")
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    console.log("✅ ACCESS GRANTED - User has", accessCheck.role, "role")
 
     // Separate members into groups
     const membersWithClerkId = allProjectMappings?.filter((m: any) => m.clerk_id) || []
     const pendingMappings = allProjectMappings?.filter((m: any) => !m.clerk_id) || []
-
-    console.log("7. Processing members...")
-    console.log("   - Members with clerk_id:", membersWithClerkId.length)
-    console.log("   - Pending mappings:", pendingMappings.length)
 
     // Get user details for members with clerk_id
     let membersWithDetails: any[] = []
@@ -303,13 +268,11 @@ export async function GET(
         .in('clerk_id', clerkIds)
 
       if (usersError) {
-        console.error("❌ Error fetching users:", usersError)
+        console.error('Error fetching users:', usersError)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
       }
 
-      console.log("   - User details fetched:", users?.length || 0)
-
-      // Combine mapping data with user data - INCLUDE is_active field
+      // ✅ Combine mapping data with user data - INCLUDE is_active field
       membersWithDetails = membersWithClerkId.map((mapping: any) => {
         const user = users?.find((u: any) => u.clerk_id === mapping.clerk_id)
         return {
@@ -317,7 +280,7 @@ export async function GET(
           clerk_id: mapping.clerk_id,
           role: mapping.role,
           permissions: mapping.permissions,
-          is_active: mapping.is_active, // ✅ CRITICAL: Include is_active
+          is_active: mapping.is_active,
           joined_at: mapping.created_at,
           user: {
             email: user?.email || mapping.email,
@@ -335,23 +298,17 @@ export async function GET(
       email: mapping.email,
       role: mapping.role,
       permissions: mapping.permissions,
-      is_active: mapping.is_active, // ✅ CRITICAL: Include is_active
+      is_active: mapping.is_active,
       created_at: mapping.created_at,
     }))
 
-    console.log("8. Sending response:")
-    console.log("   - Total members:", membersWithDetails.length)
-    console.log("   - Total pending:", formattedPending.length)
-    console.log("   - Active members:", membersWithDetails.filter((m: any) => m.is_active !== false).length)
-    console.log("   - Inactive members:", membersWithDetails.filter((m: any) => m.is_active === false).length)
-    console.log("=== END ===\n")
-
     return NextResponse.json({ 
       members: membersWithDetails,
-      pending_mappings: formattedPending
+      pending_mappings: formattedPending,
+      currentUserRole: userAccessMapping.role
     }, { status: 200 })
   } catch (error) {
-    console.error('❌ UNEXPECTED ERROR:', error)
+    console.error('Unexpected error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

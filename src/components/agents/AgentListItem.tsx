@@ -44,6 +44,7 @@ interface AgentListItemProps {
   isLastItem: boolean
   projectId: string
   runningAgents?: RunningAgent[]
+  isLoadingRunningAgents?: boolean
   onCopyId: (e: React.MouseEvent) => void
   onDelete: () => void
   onStartAgent?: (agentName: string) => void
@@ -94,12 +95,40 @@ const getEnvironmentBadgeColor = (environment: string) => {
 }
 
 // Helper function to get agent running status
-const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[]) => {
-  if (agent.agent_type !== 'pype_agent' || !runningAgents) {
+const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isLoading?: boolean) => {
+  if (agent.agent_type !== 'pype_agent') {
     return null
   }
   
-  const runningAgent = runningAgents.find(ra => ra.agent_name === agent.name)
+  // Show loading state if data is being fetched
+  if (isLoading) {
+    return {
+      isRunning: false,
+      pid: null,
+      status: 'loading'
+    }
+  }
+  
+  if (!runningAgents) {
+    return {
+      isRunning: false,
+      pid: null,
+      status: 'stopped'
+    }
+  }
+  
+  // Sanitize agent ID by replacing hyphens with underscores
+  const sanitizedAgentId = agent.id.replace(/-/g, '_')
+  
+  // First try: Check with name_sanitizedAgentId format (new format)
+  const newFormat = `${agent.name}_${sanitizedAgentId}`
+  let runningAgent = runningAgents.find(ra => ra.agent_name === newFormat)
+  
+  // Second try: Check with just name (backward compatibility)
+  if (!runningAgent) {
+    runningAgent = runningAgents.find(ra => ra.agent_name === agent.name)
+  }
+  
   return runningAgent ? {
     isRunning: true,
     pid: runningAgent.pid,
@@ -112,13 +141,19 @@ const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[]) => 
 }
 
 // Helper function to get status indicator
-const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 'sm' | 'md' = 'sm') => {
-  const runningStatus = getAgentRunningStatus(agent, runningAgents)
+const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 'sm' | 'md' = 'sm', isLoading?: boolean) => {
+  const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoading)
   const dotSize = size === 'md' ? 'w-3 h-3' : 'w-2 h-2'
   
   if (!runningStatus) {
     return (
       <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-gray-300 dark:bg-gray-600`}></div>
+    )
+  }
+  
+  if (runningStatus.status === 'loading') {
+    return (
+      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-gray-400 dark:bg-gray-500`}></div>
     )
   }
   
@@ -130,21 +165,29 @@ const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 
 }
 
 // Helper function to get status text
-const getStatusText = (agent: Agent, runningAgents?: RunningAgent[]) => {
-  const runningStatus = getAgentRunningStatus(agent, runningAgents)
+const getStatusText = (agent: Agent, runningAgents?: RunningAgent[], isLoading?: boolean) => {
+  const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoading)
   
   if (!runningStatus) {
     return 'Monitoring'
+  }
+  
+  if (runningStatus.status === 'loading') {
+    return 'Loading...'
   }
   
   return runningStatus.isRunning ? 'Running' : 'Stopped'
 }
 
 // Helper function to get status color
-const getStatusColor = (agent: Agent, runningAgents?: RunningAgent[]) => {
-  const runningStatus = getAgentRunningStatus(agent, runningAgents)
+const getStatusColor = (agent: Agent, runningAgents?: RunningAgent[], isLoading?: boolean) => {
+  const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoading)
   
   if (!runningStatus) {
+    return 'text-gray-500 dark:text-gray-400'
+  }
+  
+  if (runningStatus.status === 'loading') {
     return 'text-gray-500 dark:text-gray-400'
   }
   
@@ -161,6 +204,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
   isLastItem,
   projectId,
   runningAgents,
+  isLoadingRunningAgents,
   onCopyId,
   onDelete,
   onStartAgent,
@@ -169,7 +213,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
   isStoppingAgent,
   isMobile = false
 }) => {
-  const runningStatus = getAgentRunningStatus(agent, runningAgents)
+  const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoadingRunningAgents)
 
   // Handler for start/stop actions
   const handleStartStop = (e: React.MouseEvent) => {
@@ -201,7 +245,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                 {getAgentTypeIcon(agent.agent_type)}
               </div>
               <div className="absolute -bottom-1 -right-1">
-                {getStatusIndicator(agent, runningAgents, 'md')}
+                {getStatusIndicator(agent, runningAgents, 'md', isLoadingRunningAgents)}
               </div>
             </div>
             
@@ -232,12 +276,14 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               {agent.environment}
             </span>
             
-            <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents)}`}>
+            <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
               {agent.agent_type === 'pype_agent' && runningStatus && (
                 <>
                   {isStartingAgent ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : isStoppingAgent ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : runningStatus.status === 'loading' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : runningStatus.isRunning ? (
                     <Play className="w-4 h-4" />
@@ -247,7 +293,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                 </>
               )}
               <span>
-                {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents)}
+                {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents, isLoadingRunningAgents)}
               </span>
             </div>
           </div>
@@ -296,7 +342,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                   size="sm"
                   variant="outline"
                   onClick={handleStartStop}
-                  disabled={isStartingAgent || isStoppingAgent}
+                  disabled={isStartingAgent || isStoppingAgent || isLoadingRunningAgents}
                   className="h-9 px-4 text-sm"
                 >
                   {isStartingAgent || isStoppingAgent ? (
@@ -367,7 +413,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
           </div>
 
           {/* Show PID for running agents */}
-          {!isStartingAgent && !isStoppingAgent && runningStatus?.isRunning && runningStatus.pid && (
+          {!isStartingAgent && !isStoppingAgent && !isLoadingRunningAgents && runningStatus?.isRunning && runningStatus.pid && (
             <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 <span className="font-medium">Process ID:</span> {runningStatus.pid}
@@ -393,7 +439,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
             <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 relative">
               {getAgentTypeIcon(agent.agent_type)}
               <div className="absolute -bottom-0.5 -right-0.5">
-                {getStatusIndicator(agent, runningAgents)}
+                {getStatusIndicator(agent, runningAgents, 'sm', isLoadingRunningAgents)}
               </div>
             </div>
 
@@ -413,12 +459,14 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                     </Badge>
                   )}
                 </div>
-                <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents)}`}>
+                <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
                   {agent.agent_type === 'pype_agent' && runningStatus && (
                     <>
                       {isStartingAgent ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : isStoppingAgent ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : runningStatus.status === 'loading' ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : runningStatus.isRunning ? (
                         <Play className="w-4 h-4" />
@@ -427,8 +475,8 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                       )}
                     </>
                   )}
-                  {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents)}
-                  {!isStartingAgent && !isStoppingAgent && runningStatus?.isRunning && runningStatus.pid && (
+                  {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents, isLoadingRunningAgents)}
+                  {!isStartingAgent && !isStoppingAgent && !isLoadingRunningAgents && runningStatus?.isRunning && runningStatus.pid && (
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       (PID: {runningStatus.pid})
                     </span>
@@ -456,7 +504,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                   <DropdownMenuContent align="end" className="w-44">
                     {agent.agent_type === 'pype_agent' && (
                       <>
-                        <DropdownMenuItem onClick={handleStartStop} className="text-sm">
+                        <DropdownMenuItem 
+                          onClick={handleStartStop}
+                          disabled={isLoadingRunningAgents}
+                          className="text-sm"
+                        >
                           {runningStatus?.isRunning ? (
                             <>
                               <Square className="h-4 w-4 mr-2" />
@@ -539,7 +591,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center flex-shrink-0 relative">
                 {getAgentTypeIcon(agent.agent_type)}
                 <div className="absolute -bottom-1 -right-1">
-                  {getStatusIndicator(agent, runningAgents, 'md')}
+                  {getStatusIndicator(agent, runningAgents, 'md', isLoadingRunningAgents)}
                 </div>
               </div>
               <div className="min-w-0 flex-1">
@@ -573,7 +625,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               <DropdownMenuContent align="end" className="w-36">
                 {agent.agent_type === 'pype_agent' && (
                   <>
-                    <DropdownMenuItem onClick={handleStartStop} className="text-sm">
+                    <DropdownMenuItem 
+                      onClick={handleStartStop}
+                      disabled={isLoadingRunningAgents}
+                      className="text-sm"
+                    >
                       {runningStatus?.isRunning ? (
                         <>
                           <Square className="h-4 w-4 mr-2" />
@@ -664,22 +720,24 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               <Clock className="w-3.5 h-3.5" />
               <span>{formatDate(agent.created_at, isMobile)}</span>
             </div>
-            <div className={`font-medium flex items-center gap-1.5 ${getStatusColor(agent, runningAgents)}`}>
+            <div className={`font-medium flex items-center gap-1.5 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
               {agent.agent_type === 'pype_agent' && runningStatus && (
                 <>
-                  {runningStatus.isRunning ? (
+                  {runningStatus.status === 'loading' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : runningStatus.isRunning ? (
                     <Play className="w-3.5 h-3.5" />
                   ) : (
                     <Square className="w-3.5 h-3.5" />
                   )}
                 </>
               )}
-              {getStatusText(agent, runningAgents)}
+              {getStatusText(agent, runningAgents, isLoadingRunningAgents)}
             </div>
           </div>
 
           {/* Show PID for running Pype agents */}
-          {runningStatus?.isRunning && runningStatus.pid && (
+          {!isLoadingRunningAgents && runningStatus?.isRunning && runningStatus.pid && (
             <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 PID: {runningStatus.pid}
