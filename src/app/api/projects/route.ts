@@ -174,6 +174,7 @@ export async function GET(request: NextRequest) {
         role
       `)
       .eq('email', userEmail)
+      .order('created_at', { referencedTable: 'pype_voice_projects', ascending: false })
 
     if (error) {
       console.error('Error fetching projects:', error)

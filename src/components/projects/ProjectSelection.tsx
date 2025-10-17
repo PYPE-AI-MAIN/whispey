@@ -211,7 +211,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const filteredProjects = projects?.filter(project =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  ) || []
+  )?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || []
 
   // Comfortable Card Component (Original Style)
   const ComfortableCard = ({ project }: { project: Project }) => (
