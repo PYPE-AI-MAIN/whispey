@@ -6,13 +6,24 @@ import { useUser } from '@clerk/nextjs'
 
 import posthog from 'posthog-js'
 import { PostHogProvider as PHProvider } from 'posthog-js/react'
-import { blacklistedEmails } from "@/utils/constants"
+
+// Parse the PostHogBlacklist from environment variable
+const getPostHogBlacklist = (): string[] => {
+  const blacklist = process.env.NEXT_PUBLIC_POSTHOG_BLACKLIST || ''
+  return blacklist
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .map(email => email.replace(/^["']|["']$/g, ''))
+    .filter(email => email.length > 0)
+}
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser()
 
   useEffect(() => {
     try {
+      const posthogBlacklist = getPostHogBlacklist()
+      
       posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
         api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
         person_profiles: 'identified_only',
@@ -29,7 +40,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
                            event.properties?.$email ||
                            posthog.get_property('email');
           
-          if (userEmail && blacklistedEmails.includes(userEmail.toLowerCase())) {
+          if (userEmail && posthogBlacklist.includes(userEmail.toLowerCase())) {
             return null;
           }
           return event;
@@ -42,14 +53,15 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 
   // Handle user identification after PostHog is initialized
   useEffect(() => {
-    
     if (isLoaded && user) {
       // Get user email from Clerk
       const userEmail = user.emailAddresses?.[0]?.emailAddress
       
       if (userEmail) {
+        const posthogBlacklist = getPostHogBlacklist()
+        
         // Check if user is blacklisted before identifying
-        if (blacklistedEmails.includes(userEmail.toLowerCase())) {
+        if (posthogBlacklist.includes(userEmail.toLowerCase())) {
           // Optionally disable session recording for blacklisted users
           posthog.stopSessionRecording();
           return;
@@ -58,7 +70,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         posthog.reset()
         
         setTimeout(() => {
-          
           // Identify user in PostHog
           posthog.identify(userEmail, {
             email: userEmail,
@@ -71,9 +82,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           
           // Enable pageview tracking after identification
           posthog.capture('$pageview')
-          
         }, 100)
-      } else {
       }
     } else if (isLoaded && !user) {
       posthog.reset()
