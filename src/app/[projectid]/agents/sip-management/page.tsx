@@ -71,6 +71,15 @@ export default function SimplifiedSipManagement() {
       }
 
       const phoneData: PhoneNumbersResponse = await phoneResponse.json()
+
+
+      console.log('📱 Full API Response:', phoneData)
+      console.log('📊 Phone Agents Array:', phoneData.agents)
+      console.log('📈 Phone Agents Length:', phoneData.agents?.length || 0)
+      console.log('🔢 Usage Count:', phoneData.usage)
+      console.log('📋 Limits:', phoneData.limits)
+
+
       setPhoneAgents(phoneData.agents || [])
 
     } catch (err) {

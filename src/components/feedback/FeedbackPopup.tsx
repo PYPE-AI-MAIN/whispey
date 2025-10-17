@@ -20,20 +20,22 @@ export default function FeedbackPopup({ onDismiss, onSubmit, feedbackMessage }: 
 
   const handleRatingSelect = (selectedRating: 'positive' | 'negative') => {
     setRating(selectedRating)
-    setStep('comment')
+    
+    // If negative, force them to comment by going to comment step
+    if (selectedRating === 'negative') {
+      setStep('comment')
+    } else {
+      // For positive, just submit immediately without comment
+      onSubmit(selectedRating, '')
+    }
   }
 
   const handleSubmit = () => {
-    // Send feedback data to parent component
-    onSubmit(rating!, comment)
-  }
-
-  const handleSkip = () => {
-    if (rating) {
-      handleSubmit()
-    } else {
-      onDismiss()
+    if (rating === 'negative' && !comment.trim()) {
+      // Don't allow submission of negative feedback without a comment
+      return
     }
+    onSubmit(rating!, comment)
   }
 
   return (
@@ -84,41 +86,39 @@ export default function FeedbackPopup({ onDismiss, onSubmit, feedbackMessage }: 
         {step === 'comment' && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 mb-2">
-              {rating === 'positive' ? (
-                <ThumbsUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-              ) : (
-                <ThumbsDown className="w-4 h-4 text-red-600 dark:text-red-400" />
-              )}
+              <ThumbsDown className="w-4 h-4 text-red-600 dark:text-red-400" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {rating === 'positive' ? 'Glad you like it!' : 'Sorry to hear that!'}
+                Sorry to hear that! Please tell us why
               </span>
             </div>
             
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder={
-                rating === 'positive' 
-                  ? "What do you like most? (optional)"
-                  : "What can we improve? (optional)"
-              }
+              placeholder="What can we improve? (required)"
               className="w-full p-2 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               rows={3}
+              autoFocus
             />
+            
+            {!comment.trim() && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                Please tell us what went wrong so we can fix it
+              </p>
+            )}
             
             <div className="flex gap-2 pt-2">
               <button
-                onClick={handleSkip}
-                className="flex-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-              >
-                {comment.trim() ? 'Skip comment' : 'Skip'}
-              </button>
-              <button
                 onClick={handleSubmit}
-                className="flex-1 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                disabled={!comment.trim()}
+                className={`w-full px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-center gap-1 ${
+                  !comment.trim()
+                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
                 <MessageSquare className="w-3 h-3" />
-                Submit
+                Submit Feedback
               </button>
             </div>
           </div>
