@@ -1,9 +1,10 @@
 import React from 'react'
-import { Search, Eye, Grid3X3, List, HelpCircle, Plus, ArrowUpDown } from 'lucide-react'
+import { Search, Eye, Grid3X3, List, HelpCircle, Plus, ArrowUpDown, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
 import PypeAgentUsage from './PypeAgentUsage'
 import { useParams } from 'next/navigation'
+import { useUserPermissions } from '@/contexts/UserPermissionsContext'
 
 interface AgentToolbarProps {
   searchQuery: string
@@ -13,6 +14,7 @@ interface AgentToolbarProps {
   viewMode: 'grid' | 'list'
   onViewModeChange: (mode: 'grid' | 'list') => void
   onCreateAgent: () => void
+  onConnectAgent: () => void
   onShowHelp?: () => void
   sortOrder: 'asc' | 'desc'
   onSortToggle: () => void
@@ -26,17 +28,28 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
   viewMode,
   onViewModeChange,
   onCreateAgent,
+  onConnectAgent,
   onShowHelp,
   sortOrder,
   onSortToggle
 }) => {
   const { projectId } = useParams()
   const { isMobile } = useMobile(768)
+  const { permissions, canCreatePypeAgent, loading: permissionsLoading } = useUserPermissions({ projectId: projectId as string })
+
+  // Simple logic based on permissions
+  const hasReachedLimit = permissions?.agent && 
+    (permissions.agent.usage.active_count >= permissions.agent.limits.max_agents)
+  
+  // Show Create Agent always (with beta/lock styling), Connect Agent always
+  const showCreateButton = true
+  const showConnectButton = true
+  const isCreateButtonDisabled = !canCreatePypeAgent || hasReachedLimit
 
   if (isMobile) {
     return (
       <div className="space-y-3 mb-4">
-        {/* Top Row: Search + Action */}
+        {/* Top Row: Search + Actions */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
@@ -48,81 +61,72 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
               className="w-full pl-9 pr-3 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all text-gray-900 dark:text-gray-100"
             />
           </div>
-          <Button 
-            onClick={onCreateAgent}
-            size="sm"
-            className="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-3 py-2.5 text-sm font-medium flex-shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
+          
+          {/* Mobile Actions */}
+          <div className="flex items-center gap-1">
+            {showCreateButton && (
+              <Button 
+                onClick={onCreateAgent}
+                disabled={isCreateButtonDisabled}
+                size="sm"
+                className={`px-2 py-2.5 text-sm font-medium flex-shrink-0 ${
+                  isCreateButtonDisabled
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white'
+                }`}
+                title={isCreateButtonDisabled ? (hasReachedLimit ? 'Agent limit reached' : 'Beta feature') : 'Create Agent'}
+              >
+                {isCreateButtonDisabled ? (
+                  <Lock className="w-4 h-4" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+            
+            {showConnectButton && (
+              <Button 
+                onClick={onConnectAgent}
+                size="sm"
+                variant="outline"
+                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-2 py-2.5 text-sm font-medium flex-shrink-0"
+                title="Connect Agent"
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Middle Row: Usage Info */}
         <PypeAgentUsage projectId={projectId as string} />
 
-        {/* Bottom Row: Filters */}
+        {/* Bottom Row: Sort + Help */}
         <div className="flex items-center justify-between">
-          {/* Status Filter */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-            <button
-              onClick={() => onStatusFilterChange('all')}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'all' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => onStatusFilterChange('active')}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'active' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => onStatusFilterChange('inactive')}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'inactive' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              Inactive
-            </button>
-          </div>
+          {/* Sort Toggle */}
+          <button
+            onClick={onSortToggle}
+            className={`flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg transition-colors ${
+              sortOrder === 'desc' 
+                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' 
+                : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+            }`}
+            title={`Sort by date ${sortOrder === 'desc' ? '(newest first)' : '(oldest first)'}`}
+          >
+            <ArrowUpDown className="w-3.5 h-3.5" />
+            {sortOrder === 'desc' ? 'DESC' : 'ASC'}
+          </button>
 
-          {/* Right: Sort + Help */}
-          <div className="flex items-center gap-2">
-            {/* Sort Toggle */}
+          {/* Help Link */}
+          {onShowHelp && (
             <button
-              onClick={onSortToggle}
-              className={`flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg transition-colors ${
-                sortOrder === 'desc' 
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' 
-                  : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-              }`}
-              title={`Sort by date ${sortOrder === 'desc' ? '(newest first)' : '(oldest first)'}`}
+              onClick={onShowHelp}
+              className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
             >
-              <ArrowUpDown className="w-3.5 h-3.5" />
-              {sortOrder === 'desc' ? 'DESC' : 'ASC'}
+              <HelpCircle className="w-3.5 h-3.5" />
+              Help
             </button>
-
-            {/* Help Link */}
-            {onShowHelp && (
-              <button
-                onClick={onShowHelp}
-                className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-                Help
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     )
@@ -145,40 +149,6 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
               className="w-80 pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all text-gray-900 dark:text-gray-100"
             />
           </div>
-          
-          {/* Quick Status Filter */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-            <button
-              onClick={() => onStatusFilterChange('all')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'all' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => onStatusFilterChange('active')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'active' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => onStatusFilterChange('inactive')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'inactive' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Inactive
-            </button>
-          </div>
         </div>
 
         {/* Right: Primary Action + Secondary Controls */}
@@ -186,14 +156,46 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
           {/* Usage Info */}
           <PypeAgentUsage projectId={projectId as string} />
           
-          {/* Primary Action */}
-          <Button 
-            onClick={onCreateAgent}
-            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-4 py-2.5 text-sm font-medium shadow-sm"
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            Start Observing
-          </Button>
+          {/* Primary Action - Simple conditional buttons */}
+          <div className="flex items-center gap-2">
+            {/* Create Agent - Show only for new users or if they have permission */}
+            {showCreateButton && (
+              <Button 
+                onClick={onCreateAgent}
+                disabled={isCreateButtonDisabled}
+                className={`px-4 py-2.5 text-sm font-medium shadow-sm ${
+                  isCreateButtonDisabled
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white'
+                }`}
+                title={isCreateButtonDisabled ? (hasReachedLimit ? 'Agent limit reached' : 'Beta feature - contact support') : 'Create a new agent'}
+              >
+                {isCreateButtonDisabled ? (
+                  <Lock className="w-4 h-4 mr-2" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                Create Agent
+                {!canCreatePypeAgent && (
+                  <span className="ml-1 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
+                    Beta
+                  </span>
+                )}
+              </Button>
+            )}
+            
+            {/* Connect Agent - Always show */}
+            {showConnectButton && (
+              <Button 
+                onClick={onConnectAgent}
+                variant="outline"
+                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-2.5 text-sm font-medium"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Connect Agent
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -248,16 +250,53 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
           </div>
         </div>
 
-        {/* Right: Help */}
-        {onShowHelp && (
-          <button
-            onClick={onShowHelp}
-            className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
-          >
-            <HelpCircle className="w-4 h-4" />
-            Help
-          </button>
-        )}
+        {/* Right: Status Filter + Help */}
+        <div className="flex items-center gap-3">
+          {/* Status Filter */}
+          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+            <button
+              onClick={() => onStatusFilterChange('all')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                statusFilter === 'all' 
+                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => onStatusFilterChange('active')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                statusFilter === 'active' 
+                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => onStatusFilterChange('inactive')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                statusFilter === 'inactive' 
+                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              Inactive
+            </button>
+          </div>
+
+          {/* Help */}
+          {onShowHelp && (
+            <button
+              onClick={onShowHelp}
+              className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Help
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
