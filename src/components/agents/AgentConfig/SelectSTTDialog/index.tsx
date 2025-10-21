@@ -1,16 +1,47 @@
 import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
-import { Mic, Settings, CheckCircle, Copy, Check, ArrowLeft } from 'lucide-react'
+import { Mic, Settings, CheckCircle, ArrowLeft } from 'lucide-react'
 
 // Types
+// Language and Model interfaces
+interface Language {
+  code: string;
+  name: string;
+}
+
+interface Model {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Provider type interfaces
+interface BaseProvider {
+  name: string;
+  models: Model[];
+}
+
+interface StandardProvider extends BaseProvider {
+  languages: Language[];
+}
+
+interface DeepgramProvider extends BaseProvider {
+  languagesByModel: {
+    [modelId: string]: Language[];
+  };
+}
+
+interface STTProviders {
+  openai: StandardProvider;
+  deepgram: DeepgramProvider;
+  sarvam: StandardProvider;
+}
+
+// Config interfaces
 interface OpenAISTTConfig {
   model: string;
   language: string;
@@ -50,7 +81,7 @@ interface SelectSTTProps {
 }
 
 // STT Provider Data
-const STT_PROVIDERS = {
+const STT_PROVIDERS: STTProviders = {
   openai: {
     name: 'OpenAI',
     models: [
@@ -72,18 +103,93 @@ const STT_PROVIDERS = {
   deepgram: {
     name: 'Deepgram',
     models: [
-      { id: 'nova-2', name: 'Nova 2', tier: 'nova-2' },
-      { id: 'nova-3', name: 'Nova 3', tier: 'nova-3' },
+      { id: 'nova-2', name: 'Nova 2' },
+      { id: 'nova-3', name: 'Nova 3' },
     ],
-    languages: [
-      { code: 'en', name: 'English' },
-      { code: 'en-US', name: 'English (US)' },
-      { code: 'en-GB', name: 'English (UK)' },
-      { code: 'en-AU', name: 'English (AU)' },
-      { code: 'id', name: 'Indonesian' },
-      { code: 'fr', name: 'French' },
-      { code: 'multi', name: 'Multilingual' },
-    ]
+    languagesByModel: {
+      'nova-2': [
+        { code: 'multi', name: 'Multilingual (Spanish + English)' },
+        { code: 'bg', name: 'Bulgarian' },
+        { code: 'ca', name: 'Catalan' },
+        { code: 'zh', name: 'Chinese (Mandarin, Simplified)' },
+        { code: 'zh-CN', name: 'Chinese (Mandarin, Simplified - CN)' },
+        { code: 'zh-Hans', name: 'Chinese (Simplified - Hans)' },
+        { code: 'zh-TW', name: 'Chinese (Mandarin, Traditional - TW)' },
+        { code: 'zh-Hant', name: 'Chinese (Traditional - Hant)' },
+        { code: 'zh-HK', name: 'Chinese (Cantonese, Traditional)' },
+        { code: 'cs', name: 'Czech' },
+        { code: 'da', name: 'Danish' },
+        { code: 'da-DK', name: 'Danish (DK)' },
+        { code: 'nl', name: 'Dutch' },
+        { code: 'nl-BE', name: 'Flemish' },
+        { code: 'en', name: 'English' },
+        { code: 'en-US', name: 'English (US)' },
+        { code: 'en-AU', name: 'English (AU)' },
+        { code: 'en-GB', name: 'English (GB)' },
+        { code: 'en-NZ', name: 'English (NZ)' },
+        { code: 'en-IN', name: 'English (IN)' },
+        { code: 'et', name: 'Estonian' },
+        { code: 'fi', name: 'Finnish' },
+        { code: 'fr', name: 'French' },
+        { code: 'fr-CA', name: 'French (CA)' },
+        { code: 'de', name: 'German' },
+        { code: 'de-CH', name: 'German (Switzerland)' },
+        { code: 'el', name: 'Greek' },
+        { code: 'hi', name: 'Hindi' },
+        { code: 'hu', name: 'Hungarian' },
+        { code: 'id', name: 'Indonesian' },
+        { code: 'it', name: 'Italian' },
+        { code: 'ja', name: 'Japanese' },
+        { code: 'ko', name: 'Korean' },
+        { code: 'ko-KR', name: 'Korean (KR)' },
+        { code: 'lv', name: 'Latvian' },
+        { code: 'lt', name: 'Lithuanian' },
+        { code: 'ms', name: 'Malay' },
+        { code: 'no', name: 'Norwegian' },
+        { code: 'pl', name: 'Polish' },
+        { code: 'pt', name: 'Portuguese' },
+        { code: 'pt-BR', name: 'Portuguese (BR)' },
+        { code: 'pt-PT', name: 'Portuguese (PT)' },
+        { code: 'ro', name: 'Romanian' },
+        { code: 'ru', name: 'Russian' },
+        { code: 'sk', name: 'Slovak' },
+        { code: 'es', name: 'Spanish' },
+        { code: 'es-419', name: 'Spanish (Latin America)' },
+        { code: 'sv', name: 'Swedish' },
+        { code: 'sv-SE', name: 'Swedish (SE)' },
+        { code: 'th', name: 'Thai' },
+        { code: 'th-TH', name: 'Thai (TH)' },
+        { code: 'tr', name: 'Turkish' },
+        { code: 'uk', name: 'Ukrainian' },
+        { code: 'vi', name: 'Vietnamese' }
+      ],
+      'nova-3': [
+        { code: 'multi', name: 'Multilingual' },
+        { code: 'en', name: 'English' },
+        { code: 'en-US', name: 'English (US)' },
+        { code: 'en-AU', name: 'English (AU)' },
+        { code: 'en-GB', name: 'English (GB)' },
+        { code: 'en-IN', name: 'English (IN)' },
+        { code: 'en-NZ', name: 'English (NZ)' },
+        { code: 'de', name: 'German' },
+        { code: 'nl', name: 'Dutch' },
+        { code: 'sv', name: 'Swedish' },
+        { code: 'sv-SE', name: 'Swedish (SE)' },
+        { code: 'da', name: 'Danish' },
+        { code: 'da-DK', name: 'Danish (DK)' },
+        { code: 'es', name: 'Spanish' },
+        { code: 'es-419', name: 'Spanish (Latin America)' },
+        { code: 'fr', name: 'French' },
+        { code: 'fr-CA', name: 'French (CA)' },
+        { code: 'pt', name: 'Portuguese' },
+        { code: 'pt-BR', name: 'Portuguese (BR)' },
+        { code: 'pt-PT', name: 'Portuguese (PT)' },
+        { code: 'it', name: 'Italian' },
+        { code: 'tr', name: 'Turkish' },
+        { code: 'no', name: 'Norwegian' },
+        { code: 'id', name: 'Indonesian' }
+      ]
+    }
   },
   sarvam: {
     name: 'Sarvam AI',
@@ -139,6 +245,17 @@ const ProviderCard = ({
     }
   }
 
+  const getLanguageCount = () => {
+    if ('languagesByModel' in provider) {
+      const allLanguages = new Set<string>()
+      Object.values(provider.languagesByModel).forEach((langs: any) => {
+        langs.forEach((lang: any) => allLanguages.add(lang.code))
+      })
+      return allLanguages.size
+    }
+    return provider.languages?.length || 0
+  }
+
   return (
     <div
       onClick={disabled ? undefined : onSelect}
@@ -160,7 +277,7 @@ const ProviderCard = ({
             {isSelected && <CheckCircle className="w-4 h-4 text-green-600" />}
           </div>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-            {provider.models.length} models • {provider.languages.length} languages
+            {provider.models.length} models • {getLanguageCount()} languages
           </p>
         </div>
       </div>
@@ -176,7 +293,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   initialConfig = {},
   onSTTSelect 
 }) => {
-  // Control states
   const DISABLE_SETTINGS = false
   const [isOpen, setIsOpen] = useState(false)
   const [activeProvider, setActiveProvider] = useState(selectedProvider || 'openai')
@@ -184,7 +300,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   const [showCustomModel, setShowCustomModel] = useState(false)
   const [showCustomLanguage, setShowCustomLanguage] = useState(false)
 
-  // Configuration states
   const [openaiConfig, setOpenAIConfig] = useState<OpenAISTTConfig>({
     model: selectedProvider === 'openai' ? selectedModel : 'whisper-1',
     language: selectedProvider === 'openai' ? selectedLanguage : 'en',
@@ -215,7 +330,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     enable_formatting: initialConfig?.enable_formatting ?? true
   })
 
-  // Effects
   useEffect(() => {
     setShowSettings(!!selectedProvider)
   }, [selectedProvider])
@@ -249,17 +363,21 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     }
   }, [selectedProvider, selectedModel, selectedLanguage, initialConfig])
 
-  // Check if current model/language is custom when provider changes
   useEffect(() => {
-    const provider = STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]
+    const provider = STT_PROVIDERS[activeProvider as keyof STTProviders]
     if (provider) {
       const config = getCurrentConfig() as any
       setShowCustomModel(!provider.models.some(m => m.id === config.model) && config.model !== '')
-      setShowCustomLanguage(!provider.languages.some(l => l.code === config.language) && config.language !== '')
+      
+      if ('languagesByModel' in provider) {
+        const availableLangs = provider.languagesByModel[config.model] || []
+        setShowCustomLanguage(!availableLangs.some(l => l.code === config.language) && config.language !== '')
+      } else if ('languages' in provider) {
+        setShowCustomLanguage(!provider.languages.some(l => l.code === config.language) && config.language !== '')
+      }
     }
   }, [activeProvider])
 
-  // Helper functions
   const getCurrentConfig = () => {
     switch (activeProvider) {
       case 'openai': return openaiConfig
@@ -270,7 +388,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   }
 
   const getCurrentModel = () => {
-    const config = getCurrentConfig() as any
+    const config = getCurrentConfig() as OpenAISTTConfig | DeepgramConfig | SarvamConfig
     return config.model || ''
   }
 
@@ -295,9 +413,24 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     const currentModel = getCurrentModel()
     const currentLanguage = (getCurrentConfig() as any).language
 
+    const getAvailableLanguages = (): Language[] => {
+      const currentProvider = STT_PROVIDERS[activeProvider as keyof STTProviders]
+      
+      if (activeProvider === 'deepgram' && 'languagesByModel' in currentProvider) {
+        return currentProvider.languagesByModel[currentModel] || currentProvider.languagesByModel['nova-2'] || []
+      }
+      
+      if ('languages' in currentProvider) {
+        return currentProvider.languages
+      }
+      
+      return []
+    }
+
+    const availableLanguages = getAvailableLanguages()
+
     return (
       <div className="space-y-4 sm:space-y-6">
-        {/* Model Selection */}
         <div className="space-y-2">
           <Label className="text-sm sm:text-base">Model</Label>
           <div className="space-y-2">
@@ -312,7 +445,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   if (activeProvider === 'openai') {
                     setOpenAIConfig(prev => ({ ...prev, model: value }))
                   } else if (activeProvider === 'deepgram') {
-                    setDeepgramConfig(prev => ({ ...prev, model: value }))
+                    setDeepgramConfig(prev => ({ ...prev, model: value, language: 'en' }))
                   } else if (activeProvider === 'sarvam') {
                     setSarvamConfig(prev => ({ ...prev, model: value }))
                   }
@@ -336,7 +469,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           </div>
         </div>
 
-        {/* Language Selection */}
         <div className="space-y-2">
           <Label className="text-sm sm:text-base">Language</Label>
           <div className="space-y-2">
@@ -363,7 +495,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {provider.languages.map((lang) => (
+                {availableLanguages.map((lang: any) => (
                   <SelectItem key={lang.code} value={lang.code}>
                     {lang.name}
                   </SelectItem>
@@ -430,7 +562,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         </DialogHeader>
         
         <div className="flex-1 flex overflow-hidden">
-          {/* Provider Selection */}
           <div className={`${showSettings ? 'hidden sm:block sm:w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} p-4 sm:p-6 overflow-y-auto`}>
             <div className="space-y-3 sm:space-y-4">
               <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
@@ -450,7 +581,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             </div>
           </div>
           
-          {/* Settings Panel */}
           {showSettings && activeProvider && (
             <div className="w-full sm:w-1/2 flex flex-col">
               <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 hidden sm:block">
@@ -469,7 +599,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           )}
         </div>
         
-        {/* Footer */}
         <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0 flex-shrink-0">
           <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
             {activeProvider && (
