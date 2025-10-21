@@ -297,7 +297,7 @@ class LivekitObserve:
             set_tracer_provider(tracer_provider)
 
     
-    def start_session(self, session, **kwargs):
+    def start_session(self, session,room=None, **kwargs):
         """Start session with earlier telemetry setup"""
         # Setup telemetry BEFORE observe_session if enabled
         temp_session_id = f"temp_{int(time.time())}"
@@ -307,8 +307,9 @@ class LivekitObserve:
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(
             session, 
-            self.agent_id, 
-            self.host_url, 
+            room=room,
+            agent_id=self.agent_id, 
+            host_url=self.host_url, 
             bug_detector=bug_detector,
             enable_otel=self.enable_otel,
             telemetry_instance=self,
