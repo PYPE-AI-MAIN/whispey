@@ -66,7 +66,7 @@ export const AGENT_DEFAULT_CONFIG = {
   
     // Session Behavior Configuration
     session_behavior: {
-      preemptive_generation: "enabled",
+      preemptive_generation: "disabled",
       turn_detection: "disabled",
       unlikely_threshold: 0.6,
       min_endpointing_delay: 0.8,
@@ -170,7 +170,7 @@ export const AGENT_DEFAULT_CONFIG = {
         minSilenceDuration: AGENT_DEFAULT_CONFIG.vad.min_silence_duration
       },
       session: {
-        preemptiveGeneration: AGENT_DEFAULT_CONFIG.session_behavior.preemptive_generation as "enabled" | "disabled",
+        preemptiveGeneration: AGENT_DEFAULT_CONFIG.session_behavior.preemptive_generation as "disabled" | "enabled",
         turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
         unlikely_threshold: AGENT_DEFAULT_CONFIG.session_behavior.unlikely_threshold,
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
