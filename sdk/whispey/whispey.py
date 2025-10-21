@@ -208,7 +208,6 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
 
         # CHANGE 3: Only setup room tracking if room is provided
         if room:
-            logger.info(f"✅ Room-based billing enabled for {session_id}")
             
             # CHANGE 4: Check for existing participants
             for participant_identity, participant in room.remote_participants.items():
@@ -217,7 +216,7 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
                     if not session_info['user_connected']:
                         session_info['participant_join_time'] = time.time()
                         session_info['user_connected'] = True
-                        logger.info(f"💰 BILLING START: User '{participant_identity}' was already in room")
+                        logger.info(f"BSTART: User '{participant_identity}' was already in room")
             
             # Track participant join/leave for billing
             @room.on("participant_connected")
@@ -228,7 +227,7 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
                         if not session_info['user_connected']:
                             session_info['participant_join_time'] = time.time()
                             session_info['user_connected'] = True
-                            logger.info(f"💰 BILLING START: User '{participant.identity}' joined at {time.time()}")
+                            logger.info(f"BSTART: User '{participant.identity}' joined at {time.time()}")
 
             @room.on("participant_disconnected")
             def on_participant_disconnected(participant):
@@ -238,7 +237,7 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
                         if session_info['user_connected'] and not session_info['participant_leave_time']:
                             session_info['participant_leave_time'] = time.time()
                             duration = int(time.time() - session_info['participant_join_time'])
-                            logger.info(f"💰 BILLING END: User '{participant.identity}' left. Duration: {duration}s")
+                            logger.info(f"BEND: User '{participant.identity}' left. Duration: {duration}s")
         else:
             logger.info(f"⚠️ Room not provided - using transcript-based billing fallback")  # CHANGE 5: Log fallback
         
@@ -290,14 +289,11 @@ def calculate_bill_duration(transcript_data: list = None, usage_summary: dict = 
                 leave_time = time.time()
             
             duration = int(leave_time - join_time)
-            logger.info(f"📊 Billing (Room-based): {duration}s ({duration//60}m {duration%60}s)")
             return duration
         else:
-            logger.info(f"📊 Billing (Room-based): 0s (user never joined)")
             return 0
     
     # METHOD 2: Fall back to transcript-based billing
-    logger.info(f"📊 Using transcript-based billing (room not provided)")
     
     if not transcript_data or len(transcript_data) == 0:
         # Fallback: Use usage summary audio durations
@@ -306,7 +302,6 @@ def calculate_bill_duration(transcript_data: list = None, usage_summary: dict = 
             tts_duration = usage_summary.get('tts_audio_duration', 0)
             total_duration = stt_duration + tts_duration
             if total_duration > 0:
-                logger.info(f"📊 Billing (Usage Summary): {int(total_duration)}s")
                 return int(total_duration)
         return 0
     
@@ -339,7 +334,7 @@ def calculate_bill_duration(transcript_data: list = None, usage_summary: dict = 
         latest_end = max(event['end'] for event in speech_events)
         
         billing_duration = int(latest_end - earliest_start)
-        logger.info(f"📊 Billing (Transcript): {billing_duration}s ({billing_duration//60}m {billing_duration%60}s)")
+        # logger.info(f"📊 Billing (Transcript): {billing_duration}s ({billing_duration//60}m {billing_duration%60}s)")
         return billing_duration
     
     # Last resort: usage summary
@@ -348,10 +343,8 @@ def calculate_bill_duration(transcript_data: list = None, usage_summary: dict = 
         tts_duration = usage_summary.get('tts_audio_duration', 0)
         total_duration = stt_duration + tts_duration
         if total_duration > 0:
-            logger.info(f"📊 Billing (Usage Summary): {int(total_duration)}s")
             return int(total_duration)
     
-    logger.info(f"📊 Billing: 0s (no data available)")
     return 0
 
 def generate_whispey_data(session_id: str, status: str = "in_progress", error: str = None) -> Dict[str, Any]:
