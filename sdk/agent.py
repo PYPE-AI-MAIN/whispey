@@ -84,7 +84,8 @@ async def entrypoint(ctx: agents.JobContext):
     
     # Set up observability after session creation with HealthBench evaluation
     session_id = pype.start_session(
-        session, 
+        session=session, 
+        room=ctx.room,
         phone_number="+1234567890",
         eval="healthbench",  # Enable HealthBench evaluation
         eval_grader_model="gpt-4o-mini",  # Use cost-effective grader model
