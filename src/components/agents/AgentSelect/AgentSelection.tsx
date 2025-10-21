@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { AlertCircle, X, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSupabaseQuery } from '../../../hooks/useSupabase'
@@ -29,11 +29,9 @@ interface Agent {
   project_id: string
 }
 
-interface AgentSelectionContentProps {
-  projectId: string
-}
 
-const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId }) => {
+
+const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -291,7 +289,9 @@ const AgentSelectionContent: React.FC<AgentSelectionContentProps> = ({ projectId
   )
 }
 
-const AgentSelection: React.FC<AgentSelectionContentProps> = ({ projectId }) => {
+const AgentSelection = () => {
+  const params = useParams()
+  const projectId = params.projectid as string
   return (
     <UserPermissionsProvider projectId={projectId}>
       <AgentSelectionContent projectId={projectId} />
