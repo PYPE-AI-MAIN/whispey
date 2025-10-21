@@ -10,7 +10,7 @@ export default function ProjectAgentsPage() {
 
   return (
     <>
-      <AgentSelection projectId={projectId} />
+      <AgentSelection />
     </>
   )
 }
