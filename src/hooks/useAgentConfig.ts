@@ -399,7 +399,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         minSilenceDuration: assistant.vad?.min_silence_duration ?? getFallback(null, 'vad.min_silence_duration'),
       },
       session: {
-        preemptiveGeneration: (sessionBehavior.preemptive_generation || getFallback(null, 'session_behavior.preemptive_generation')) as "enabled" | "disabled",
+        preemptiveGeneration: (sessionBehavior.preemptive_generation || getFallback(null, 'session_behavior.preemptive_generation')) as "disabled" | "enabled",
         turn_detection: (sessionBehavior.turn_detection || getFallback(null, 'session_behavior.turn_detection')) as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
         unlikely_threshold: sessionBehavior.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
         min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
