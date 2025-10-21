@@ -165,7 +165,7 @@ def _run_healthbench_evaluation(transcript_data: list, eval_config: Dict[str, An
         }
 
 
-def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=False, otel_endpoint=None, telemetry_instance=None, **kwargs):
+def observe_session(session, agent_id, host_url, room=None, bug_detector=None, enable_otel=False, otel_endpoint=None, telemetry_instance=None, **kwargs):  # CHANGE 1: room=None (optional)
     session_id = str(uuid.uuid4())
     
     try:        
@@ -192,7 +192,11 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
             'call_active': True,
             'whispey_data': None,
             'bug_detector': bug_detector,
-            'telemetry_instance': telemetry_instance  # Store telemetry instance
+            'telemetry_instance': telemetry_instance,
+            'participant_join_time': None,
+            'participant_leave_time': None,
+            'user_connected': False,
+            'room_billing_enabled': room is not None  # CHANGE 2: Add this flag
         }
         
         # Setup telemetry if enabled
@@ -201,6 +205,42 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
         
         # Setup event handlers with session
         setup_session_event_handlers(session, session_data, usage_collector, None, bug_detector)
+
+        # CHANGE 3: Only setup room tracking if room is provided
+        if room:
+            logger.info(f"✅ Room-based billing enabled for {session_id}")
+            
+            # CHANGE 4: Check for existing participants
+            for participant_identity, participant in room.remote_participants.items():
+                if not participant_identity.lower().startswith("agent"):
+                    session_info = _session_data_store[session_id]
+                    if not session_info['user_connected']:
+                        session_info['participant_join_time'] = time.time()
+                        session_info['user_connected'] = True
+                        logger.info(f"💰 BILLING START: User '{participant_identity}' was already in room")
+            
+            # Track participant join/leave for billing
+            @room.on("participant_connected")
+            def on_participant_connected(participant):
+                if participant.identity and not participant.identity.lower().startswith("agent"):
+                    if session_id in _session_data_store:
+                        session_info = _session_data_store[session_id]
+                        if not session_info['user_connected']:
+                            session_info['participant_join_time'] = time.time()
+                            session_info['user_connected'] = True
+                            logger.info(f"💰 BILLING START: User '{participant.identity}' joined at {time.time()}")
+
+            @room.on("participant_disconnected")
+            def on_participant_disconnected(participant):
+                if participant.identity and not participant.identity.lower().startswith("agent"):
+                    if session_id in _session_data_store:
+                        session_info = _session_data_store[session_id]
+                        if session_info['user_connected'] and not session_info['participant_leave_time']:
+                            session_info['participant_leave_time'] = time.time()
+                            duration = int(time.time() - session_info['participant_join_time'])
+                            logger.info(f"💰 BILLING END: User '{participant.identity}' left. Duration: {duration}s")
+        else:
+            logger.info(f"⚠️ Room not provided - using transcript-based billing fallback")  # CHANGE 5: Log fallback
         
         # Add custom handlers for Whispey integration
         @session.on("disconnected")
@@ -216,95 +256,102 @@ def observe_session(session, agent_id, host_url, bug_detector=None, enable_otel=
         
     except Exception as e:
         logger.error(f"⚠️ Failed to set up metrics collection: {e}")
-        # Still return session_id so caller can handle gracefully
         return session_id
 
-def calculate_bill_duration(transcript_data: list, usage_summary: dict = None) -> int:
+def calculate_bill_duration(transcript_data: list = None, usage_summary: dict = None, session_id: str = None) -> int:
     """
-    Calculate bill duration based on STT/TTS timestamps with multiple fallbacks
+    Calculate bill duration with smart fallback:
+    1. Try room-based billing (if room was passed): participant_leave_time - participant_join_time
+    2. Fall back to transcript-based billing: STT/TTS timestamps
     
     Args:
-        transcript_data: List of conversation turns with timestamps
-        usage_summary: Usage summary with audio durations as fallback
+        transcript_data: List of conversation turns with timestamps (for fallback)
+        usage_summary: Usage summary with audio durations (for fallback)
+        session_id: Session ID to get billing data
         
     Returns:
         Bill duration in seconds (integer)
     """
+    
+    if not session_id or session_id not in _session_data_store:
+        logger.error(f"❌ Session {session_id} not found")
+        return 0
+    
+    session_info = _session_data_store[session_id]
+    
+    # METHOD 1: Try room-based billing (if room was passed to start_session)
+    if session_info.get('room_billing_enabled'):
+        join_time = session_info.get('participant_join_time')
+        leave_time = session_info.get('participant_leave_time')
+        
+        if join_time:
+            # User joined - calculate room-based duration
+            if not leave_time:
+                leave_time = time.time()
+            
+            duration = int(leave_time - join_time)
+            logger.info(f"📊 Billing (Room-based): {duration}s ({duration//60}m {duration%60}s)")
+            return duration
+        else:
+            logger.info(f"📊 Billing (Room-based): 0s (user never joined)")
+            return 0
+    
+    # METHOD 2: Fall back to transcript-based billing
+    logger.info(f"📊 Using transcript-based billing (room not provided)")
+    
     if not transcript_data or len(transcript_data) == 0:
-        # Fallback 1: Use usage summary audio durations
+        # Fallback: Use usage summary audio durations
         if usage_summary:
             stt_duration = usage_summary.get('stt_audio_duration', 0)
             tts_duration = usage_summary.get('tts_audio_duration', 0)
             total_duration = stt_duration + tts_duration
             if total_duration > 0:
+                logger.info(f"📊 Billing (Usage Summary): {int(total_duration)}s")
                 return int(total_duration)
         return 0
     
-    # Extract audio timestamps from STT/TTS metrics (preferred method)
-    audio_timestamps = []
+    # Extract speech events with start and end times
+    speech_events = []
+    
     for turn in transcript_data:
-        # Skip None turns
         if turn is None:
             continue
-            
-        # Get STT timestamp (when user started speaking)
-        stt_metrics = turn.get('stt_metrics')
+        
+        # Process STT (user speech)
+        stt_metrics = turn.get('stt_metrics', {})
         if stt_metrics and stt_metrics.get('timestamp'):
-            audio_timestamps.append(stt_metrics['timestamp'])
+            start_time = stt_metrics['timestamp']
+            duration = stt_metrics.get('audio_duration', 0)
+            end_time = start_time + duration
+            speech_events.append({'start': start_time, 'end': end_time})
         
-        # Get TTS timestamp (when agent started speaking)  
-        tts_metrics = turn.get('tts_metrics')
+        # Process TTS (agent speech)
+        tts_metrics = turn.get('tts_metrics', {})
         if tts_metrics and tts_metrics.get('timestamp'):
-            audio_timestamps.append(tts_metrics['timestamp'])
+            start_time = tts_metrics['timestamp']
+            duration = tts_metrics.get('audio_duration', 0)
+            end_time = start_time + duration
+            speech_events.append({'start': start_time, 'end': end_time})
     
-    # Add end timestamps by adding duration to start timestamps
-    end_timestamps = []
-    for turn in transcript_data:
-        if turn is None:
-            continue
-            
-        # Calculate STT end time (start + duration)
-        stt_metrics = turn.get('stt_metrics')
-        if stt_metrics and stt_metrics.get('timestamp') and stt_metrics.get('audio_duration'):
-            end_time = stt_metrics['timestamp'] + stt_metrics['audio_duration']
-            end_timestamps.append(end_time)
+    # Calculate duration from speech events
+    if len(speech_events) > 0:
+        earliest_start = min(event['start'] for event in speech_events)
+        latest_end = max(event['end'] for event in speech_events)
         
-        # Calculate TTS end time (start + duration)
-        tts_metrics = turn.get('tts_metrics')
-        if tts_metrics and tts_metrics.get('timestamp') and tts_metrics.get('audio_duration'):
-            end_time = tts_metrics['timestamp'] + tts_metrics['audio_duration']
-            end_timestamps.append(end_time)
+        billing_duration = int(latest_end - earliest_start)
+        logger.info(f"📊 Billing (Transcript): {billing_duration}s ({billing_duration//60}m {billing_duration%60}s)")
+        return billing_duration
     
-    # Combine start and end timestamps
-    all_timestamps = audio_timestamps + end_timestamps
-    
-    # If we have timestamps (start + end), use them
-    if len(all_timestamps) >= 2:
-        return int(max(all_timestamps) - min(all_timestamps))
-    
-    # Edge case: Fallback to turn timestamps
-    turn_timestamps = []
-    for turn in transcript_data:
-        # Skip None turns
-        if turn is None:
-            continue
-            
-        if isinstance(turn, dict) and 'timestamp' in turn:
-            timestamp = turn['timestamp']
-            if timestamp and isinstance(timestamp, (int, float)):
-                turn_timestamps.append(timestamp)
-    
-    if len(turn_timestamps) >= 2:
-        return int(max(turn_timestamps) - min(turn_timestamps))
-    
-    # Final fallback: Use usage summary audio durations
+    # Last resort: usage summary
     if usage_summary:
         stt_duration = usage_summary.get('stt_audio_duration', 0)
         tts_duration = usage_summary.get('tts_audio_duration', 0)
         total_duration = stt_duration + tts_duration
         if total_duration > 0:
+            logger.info(f"📊 Billing (Usage Summary): {int(total_duration)}s")
             return int(total_duration)
     
+    logger.info(f"📊 Billing: 0s (no data available)")
     return 0
 
 def generate_whispey_data(session_id: str, status: str = "in_progress", error: str = None) -> Dict[str, Any]:
@@ -377,7 +424,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         transcript_data = session_data.get("transcript_with_metrics", [])
         
         # Calculate bill duration based on STT/TTS timestamps with fallback
-        bill_duration_seconds = calculate_bill_duration(transcript_data, usage_summary)
+        bill_duration_seconds = calculate_bill_duration(transcript_data,usage_summary,session_id=session_id)
         
         # Determine which method was used for logging
         if len(transcript_data) == 0 and usage_summary:
