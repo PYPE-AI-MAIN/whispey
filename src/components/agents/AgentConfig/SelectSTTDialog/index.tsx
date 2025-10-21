@@ -81,7 +81,7 @@ const STT_PROVIDERS = {
       { code: 'en-GB', name: 'English (UK)' },
       { code: 'en-AU', name: 'English (AU)' },
       { code: 'id', name: 'Indonesian' },
-      { code: 'fr', name: "French"},
+      { code: 'fr', name: 'French' },
       { code: 'multi', name: 'Multilingual' },
     ]
   },
