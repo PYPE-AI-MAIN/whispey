@@ -38,9 +38,9 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
   sortOrder,
   onSortToggle
 }) => {
-  const { projectId } = useParams()
+  const { projectid } = useParams()
   const { isMobile } = useMobile(768)
-  const { permissions, canCreatePypeAgent, loading: permissionsLoading } = useUserPermissions({ projectId: projectId as string })
+  const { permissions, canCreatePypeAgent, loading: permissionsLoading } = useUserPermissions({ projectId: projectid as string })
   const { canCreatePypeAgent: canCreateFromWhitelist } = useFeatureAccess()
 
   // Request access dialog state
@@ -71,7 +71,7 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
     try {
       const requestBody: EmailNotificationRequest = {
         type: 'agent_permission',
-        description: `${reason.trim()}\n\nProject ID: ${projectId}`
+        description: `${reason.trim()}\n\nProject ID: ${projectid}`
       }
 
       const response = await fetch('/api/email/notify-admins', {
@@ -175,7 +175,7 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
         </div>
 
         {/* Middle Row: Usage Info */}
-        <PypeAgentUsage projectId={projectId as string} />
+        <PypeAgentUsage projectId={projectid as string} />
 
         {/* Bottom Row: Sort + Help */}
         <div className="flex items-center justify-between">
@@ -230,7 +230,7 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
         {/* Right: Primary Action + Secondary Controls */}
         <div className="flex items-center gap-3">
           {/* Usage Info */}
-          <PypeAgentUsage projectId={projectId as string} />
+          <PypeAgentUsage projectId={projectid as string} />
           
           {/* Primary Action - Simple conditional buttons */}
           <div className="flex items-center gap-2">

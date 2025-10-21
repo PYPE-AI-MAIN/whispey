@@ -378,40 +378,50 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-5 pb-6">
           {/* Agent Name */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                Agent Name
-              </label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400">
-                      <Info size={16} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>This will be the name of your voice agent</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Agent Name
+                  </label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400">
+                          <Info size={16} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>This will be the name of your voice agent</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <span className="text-xs italic text-gray-400 dark:text-gray-500">
+                  {formData.name.length}/14
+                </span>
+              </div>
+              
+              <Input
+                placeholder={selectedPlatform === 'vapi' ? "SupportAgent" : "VoiceHelper"}
+                value={formData.name}
+                autoComplete="off"
+                maxLength={14}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className={`h-10 px-3 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all ${
+                  nameError ? 'border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/20' : ''
+                }`}
+              />
+
+              {nameError ? (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{nameError}</p>
+              ) : (
+                <p className="text-[11px] italic text-gray-400 dark:text-gray-500">
+                  *max 14 characters
+                </p>
+              )}
+
             </div>
-            
-            <Input
-              placeholder={selectedPlatform === 'vapi' ? "Customer Support Agent" : "Voice Assistant"}
-              value={formData.name}
-              autoComplete="off"
-              onChange={(e) => handleNameChange(e.target.value)}
-              className={`h-10 px-3 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all ${
-                nameError ? 'border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/20' : ''
-              }`}
-            />
-
-            {nameError && (
-              <p className="text-xs text-red-600 dark:text-red-400 mt-1">{nameError}</p>
-            )}
-
-          </div>
 
           {/* Description */}
           <div className="space-y-2">

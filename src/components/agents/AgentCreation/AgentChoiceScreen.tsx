@@ -21,11 +21,14 @@ interface AgentChoiceScreenProps {
 const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
   onCreateAgent,
   onConnectAgent,
-  onClose
+  onClose,
 }) => {
   const { isMobile } = useMobile(768)
   const params = useParams()
   const projectId = params.projectid as string
+
+  console.log({projectId})
+
 
   const { canCreatePypeAgent, loading: permissionsLoading, permissions } = useUserPermissions({ projectId: projectId })
   const [showRequestForm, setShowRequestForm] = useState(false)
