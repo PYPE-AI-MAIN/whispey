@@ -72,35 +72,21 @@ const STT_PROVIDERS = {
   deepgram: {
     name: 'Deepgram',
     models: [
-      { id: 'nova-2', name: 'Nova 2', description: 'Latest general model' },
-      { id: 'nova', name: 'Nova', description: 'Previous generation model' },
-      { id: 'enhanced', name: 'Enhanced', description: 'Enhanced accuracy model' },
-      { id: 'base', name: 'Base', description: 'Base model' }
+      { id: 'nova-2', name: 'Nova 2', tier: 'nova-2' },
+      { id: 'nova-3', name: 'Nova 3', tier: 'nova-3' },
     ],
     languages: [
       { code: 'en', name: 'English' },
       { code: 'en-US', name: 'English (US)' },
       { code: 'en-GB', name: 'English (UK)' },
       { code: 'en-AU', name: 'English (AU)' },
-      { code: 'es', name: 'Spanish' },
-      { code: 'es-419', name: 'Spanish (Latin America)' },
-      { code: 'fr', name: 'French' },
-      { code: 'de', name: 'German' },
-      { code: 'it', name: 'Italian' },
-      { code: 'pt', name: 'Portuguese' },
-      { code: 'pt-BR', name: 'Portuguese (Brazil)' },
-      { code: 'nl', name: 'Dutch' },
       { code: 'hi', name: 'Hindi' },
-      { code: 'ja', name: 'Japanese' },
-      { code: 'ko', name: 'Korean' },
-      { code: 'zh', name: 'Chinese' }
+      { code: 'multi', name: 'Multilingual' },
     ]
   },
   sarvam: {
     name: 'Sarvam AI',
     models: [
-      { id: 'saaras:v1', name: 'Saaras v1', description: 'Multilingual speech recognition' },
-      { id: 'saaras:v2', name: 'Saaras v2', description: 'Enhanced multilingual model' },
       { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Latest multilingual model' }
     ],
     languages: [
@@ -221,8 +207,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   })
 
   const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>({
-    model: selectedProvider === 'sarvam' ? selectedModel : 'saaras:v2',
-    language: selectedProvider === 'sarvam' ? selectedLanguage : 'en',
+    model: selectedProvider === 'sarvam' ? selectedModel : 'saarika:v2.5',
+    language: selectedProvider === 'sarvam' ? selectedLanguage : 'hi-IN',
     domain: initialConfig?.domain || 'general',
     with_timestamps: initialConfig?.with_timestamps ?? true,
     enable_formatting: initialConfig?.enable_formatting ?? true
@@ -341,36 +327,11 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   <SelectItem key={model.id} value={model.id}>
                     <div>
                       <div className="font-medium text-sm">{model.name}</div>
-                      <div className="text-xs text-gray-500">{model.description}</div>
                     </div>
                   </SelectItem>
                 ))}
-                <SelectItem value="custom">Custom Model</SelectItem>
               </SelectContent>
             </Select>
-            
-            {/* Custom model input */}
-            {showCustomModel && (
-              <div className="space-y-1">
-                <Label className="text-xs text-gray-500">Custom Model Name</Label>
-                <Input
-                  placeholder="Enter custom model name (e.g., saarika:v2.5)"
-                  value={currentModel}
-                  onChange={(e) => {
-                    if (DISABLE_SETTINGS) return
-                    if (activeProvider === 'openai') {
-                      setOpenAIConfig(prev => ({ ...prev, model: e.target.value }))
-                    } else if (activeProvider === 'deepgram') {
-                      setDeepgramConfig(prev => ({ ...prev, model: e.target.value }))
-                    } else if (activeProvider === 'sarvam') {
-                      setSarvamConfig(prev => ({ ...prev, model: e.target.value }))
-                    }
-                  }}
-                  className="text-sm h-10 sm:h-9"
-                  disabled={DISABLE_SETTINGS}
-                />
-              </div>
-            )}
           </div>
         </div>
 
@@ -406,143 +367,10 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                     {lang.name}
                   </SelectItem>
                 ))}
-                <SelectItem value="custom">Custom Language</SelectItem>
               </SelectContent>
             </Select>
-            
-            {/* Custom language input */}
-            {showCustomLanguage && (
-              <div className="space-y-1">
-                <Label className="text-xs text-gray-500">Custom Language Code</Label>
-                <Input
-                  placeholder="Enter language code (e.g., unknown)"
-                  value={currentLanguage}
-                  onChange={(e) => {
-                    if (DISABLE_SETTINGS) return
-                    if (activeProvider === 'openai') {
-                      setOpenAIConfig(prev => ({ ...prev, language: e.target.value }))
-                    } else if (activeProvider === 'deepgram') {
-                      setDeepgramConfig(prev => ({ ...prev, language: e.target.value }))
-                    } else if (activeProvider === 'sarvam') {
-                      setSarvamConfig(prev => ({ ...prev, language: e.target.value }))
-                    }
-                  }}
-                  className="text-sm h-10 sm:h-9"
-                  disabled={DISABLE_SETTINGS}
-                />
-              </div>
-            )}
           </div>
         </div>
-
-        {/* Provider-specific settings */}
-        {activeProvider === 'openai' && (
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <Label className="text-sm sm:text-base">Temperature: {openaiConfig.temperature}</Label>
-              <Slider
-                value={[openaiConfig.temperature]}
-                onValueChange={([value]) => setOpenAIConfig(prev => ({ ...prev, temperature: value }))}
-                min={0}
-                max={1}
-                step={0.1}
-                disabled={DISABLE_SETTINGS}
-                className="touch-pan-x"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-sm sm:text-base">Response Format</Label>
-              <Select 
-                value={openaiConfig.response_format}
-                onValueChange={(value) => setOpenAIConfig(prev => ({ ...prev, response_format: value }))}
-                disabled={DISABLE_SETTINGS}
-              >
-                <SelectTrigger className="h-10 sm:h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="json">JSON</SelectItem>
-                  <SelectItem value="text">Text</SelectItem>
-                  <SelectItem value="srt">SRT</SelectItem>
-                  <SelectItem value="verbose_json">Verbose JSON</SelectItem>
-                  <SelectItem value="vtt">VTT</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {activeProvider === 'deepgram' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-1">
-              <Label className="text-sm sm:text-base">Smart Formatting</Label>
-              <Switch
-                checked={deepgramConfig.smart_format}
-                onCheckedChange={(checked) => setDeepgramConfig(prev => ({ ...prev, smart_format: checked }))}
-                disabled={DISABLE_SETTINGS}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between py-1">
-              <Label className="text-sm sm:text-base">Punctuation</Label>
-              <Switch
-                checked={deepgramConfig.punctuate}
-                onCheckedChange={(checked) => setDeepgramConfig(prev => ({ ...prev, punctuate: checked }))}
-                disabled={DISABLE_SETTINGS}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between py-1">
-              <Label className="text-sm sm:text-base">Speaker Diarization</Label>
-              <Switch
-                checked={deepgramConfig.diarize}
-                onCheckedChange={(checked) => setDeepgramConfig(prev => ({ ...prev, diarize: checked }))}
-                disabled={DISABLE_SETTINGS}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-sm sm:text-base">Tier</Label>
-              <Select 
-                value={deepgramConfig.tier}
-                onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, tier: value }))}
-                disabled={DISABLE_SETTINGS}
-              >
-                <SelectTrigger className="h-10 sm:h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nova">Nova</SelectItem>
-                  <SelectItem value="enhanced">Enhanced</SelectItem>
-                  <SelectItem value="base">Base</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {activeProvider === 'sarvam' && (
-          <div className="space-y-4">            
-            <div className="flex items-center justify-between py-1">
-              <Label className="text-sm sm:text-base">Include Timestamps</Label>
-              <Switch
-                disabled={DISABLE_SETTINGS}
-                checked={sarvamConfig.with_timestamps}
-                onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, with_timestamps: checked }))}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between py-1">
-              <Label className="text-sm sm:text-base">Enable Formatting</Label>
-              <Switch
-                disabled={DISABLE_SETTINGS}
-                checked={sarvamConfig.enable_formatting}
-                onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, enable_formatting: checked }))}
-              />
-            </div>
-          </div>
-        )}
       </div>
     )
   }
