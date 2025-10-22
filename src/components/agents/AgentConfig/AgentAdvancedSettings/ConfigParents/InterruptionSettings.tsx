@@ -83,7 +83,7 @@ function InterruptionSettings({
         </div>
         <Input
           type="number"
-          min="1"
+          min="0"
           max="20"
           step="1"
           value={minInterruptionWords}
