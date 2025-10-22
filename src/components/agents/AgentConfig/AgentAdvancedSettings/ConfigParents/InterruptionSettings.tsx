@@ -87,7 +87,7 @@ function InterruptionSettings({
           max="20"
           step="1"
           value={minInterruptionWords}
-          onChange={(e) => onFieldChange('advancedSettings.interruption.minInterruptionWords', parseInt(e.target.value) || 1)}
+          onChange={(e) => onFieldChange('advancedSettings.interruption.minInterruptionWords', parseInt(e.target.value) || 0)}
           className="h-7 text-xs"
           disabled={!allowInterruptions}
         />
