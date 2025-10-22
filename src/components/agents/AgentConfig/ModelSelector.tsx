@@ -139,7 +139,6 @@ const modelProviders: Record<string, Provider> = {
       { value: 'llama-3.3-70b', label: 'Llama 3.3 70b' },
       { value: 'qwen-3-32b', label: 'Qwen 3 32b' },
       { value: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235b Instruct' },
-      { value: 'gpt-oss-120b', label: 'GPT OSS 120b' },
     ]
   }
 }
