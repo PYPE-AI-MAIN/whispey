@@ -54,7 +54,7 @@ export const AGENT_DEFAULT_CONFIG = {
     interruptions: {
       allow_interruptions: true,
       min_interruption_duration: 0.8,
-      min_interruption_words: 1
+      min_interruption_words: 0
     },
   
     // First Message Configuration
@@ -69,8 +69,8 @@ export const AGENT_DEFAULT_CONFIG = {
       preemptive_generation: "disabled",
       turn_detection: "disabled",
       unlikely_threshold: 0.6,
-      min_endpointing_delay: 0.8,
-      max_endpointing_delay: 3
+      min_endpointing_delay: 0.7,
+      max_endpointing_delay: 0.7
     },
   
     // Background Audio Configuration

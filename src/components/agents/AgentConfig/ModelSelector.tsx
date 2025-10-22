@@ -74,9 +74,6 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-emerald-500',
     type: 'direct',
     models: [
-      // { value: 'gpt-5', label: 'GPT 5' },
-      // { value: 'gpt-5-mini', label: 'GPT 5 Mini' },
-      // { value: 'gpt-5-nano', label: 'GPT 5 Nano' },
       { value: 'gpt-4.1', label: 'GPT 4.1' },
       { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini' },
       { value: 'gpt-4.1-nano', label: 'GPT 4.1 Nano' },
@@ -102,71 +99,35 @@ const modelProviders: Record<string, Provider> = {
     type: 'grouped',
     groups: [
       {
-        name: 'Groq Native',
+        name: 'Production Systems',
         models: [
           { value: 'groq/compound', label: 'Compound' },
           { value: 'groq/compound-mini', label: 'Compound Mini' },
         ]
       },
       {
-        name: 'Meta Llama',
+        name: 'Production Models',
         models: [
-          { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
           { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
+          { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
+          { value: 'meta-llama/llama-guard-4-12b', label: 'Llama Guard 4 12B' },
         ]
       },
       {
-        name: 'OpenAI',
+        name: 'Preview Models',
         models: [
-          { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
-          { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B' }
-        ]
-      },
-      {
-        name: 'Mixtral',
-        models: [
-          { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
-          { value: 'mixtral-8x22b-instruct-v0.1', label: 'Mixtral 8x22B Instruct' },
-        ]
-      },
-      {
-        name: 'Google',
-        models: [
-          { value: 'gemma2-9b-it', label: 'Gemma 2 9B IT' },
-          { value: 'gemma-7b-it', label: 'Gemma 7B IT' },
-        ]
-      },
-      {
-        name: 'Qwen',
-        models: [
-          { value: 'qwen/qwen3-32b', label: 'Qwen3 32B' },
-          { value: 'qwen/qwen2.5-coder-32b-instruct', label: 'Qwen2.5 Coder 32B' },
-        ]
-      },
-      {
-        name: 'Other Models',
-        models: [
-          { value: 'deepseek-r1-distill-llama-70b', label: 'DeepSeek R1 Distill Llama 70B' },
-          { value: 'allam-2-7b', label: 'ALLaM 2 7B' },
-          { value: 'moonshotai/kimi-k2-instruct', label: 'Kimi K2 Instruct' },
+          { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick 17B 128E' },
+          { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B 16E' },
+          { value: 'meta-llama/llama-prompt-guard-2-22m', label: 'Llama Prompt Guard 2 22M' },
+          { value: 'meta-llama/llama-prompt-guard-2-86m', label: 'Prompt Guard 2 86M' },
           { value: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2 0905' },
           { value: 'playai-tts', label: 'PlayAI TTS' },
           { value: 'playai-tts-arabic', label: 'PlayAI TTS Arabic' },
+          { value: 'qwen/qwen3-32b', label: 'Qwen3 32B' },
         ]
       }
     ]
   },
-  // anthropic: {
-  //   label: 'Anthropic',
-  //   icon: 'A',
-  //   color: 'bg-amber-500',
-  //   type: 'direct',
-  //   models: [
-  //     { value: 'claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-  //     { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-  //     { value: 'claude-3-haiku', label: 'Claude 3 Haiku' },
-  //   ]
-  // },
   cerebras: {
     label: 'Cerebras',
     icon: 'C',
