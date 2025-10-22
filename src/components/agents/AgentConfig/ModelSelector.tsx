@@ -111,6 +111,10 @@ const modelProviders: Record<string, Provider> = {
           { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
           { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
           { value: 'meta-llama/llama-guard-4-12b', label: 'Llama Guard 4 12B' },
+          { value: 'moonshotai/kimi-k2-instruct', label: 'MoonshotAI kimi k2 instruct' },
+          { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20b' },
+          { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120b' },
+
         ]
       },
       {
@@ -135,7 +139,11 @@ const modelProviders: Record<string, Provider> = {
     type: 'direct',
     models: [
       { value: 'llama3.1-8b', label: 'Llama 3.1 8B' },
-      { value: 'llama3.1-70b', label: 'Llama 3.1 70b' },
+      { value: 'llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17b' },
+      { value: 'llama-3.3-70b', label: 'Llama 3.3 70b' },
+      { value: 'qwen-3-32b', label: 'Qwen 3 32b' },
+      { value: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235b Instruct' },
+      { value: 'gpt-oss-120b', label: 'GPT OSS 120b' },
     ]
   }
 }
