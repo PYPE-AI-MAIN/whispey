@@ -18,8 +18,8 @@ export default function SessionBehaviourSettings({
   preemptiveGeneration,
   turn_detection,
   unlikely_threshold = 0.6,
-  min_endpointing_delay = 0.5,
-  max_endpointing_delay = 3,
+  min_endpointing_delay = 0.7,
+  max_endpointing_delay = 0.7,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
   // Local state for input values to handle intermediate states
