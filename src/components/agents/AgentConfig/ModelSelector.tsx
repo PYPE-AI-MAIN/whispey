@@ -108,12 +108,11 @@ const modelProviders: Record<string, Provider> = {
       {
         name: 'Production Models',
         models: [
+          { value: 'openai/gpt-oss-20b', label: 'GPT oss 20b' },
+          { value: 'openai/gpt-oss-120b', label: 'GPT oss 120b' },
           { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
           { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
-          { value: 'meta-llama/llama-guard-4-12b', label: 'Llama Guard 4 12B' },
           { value: 'moonshotai/kimi-k2-instruct', label: 'MoonshotAI kimi k2 instruct' },
-          { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20b' },
-          { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120b' },
 
         ]
       },
@@ -122,11 +121,7 @@ const modelProviders: Record<string, Provider> = {
         models: [
           { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick 17B 128E' },
           { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B 16E' },
-          { value: 'meta-llama/llama-prompt-guard-2-22m', label: 'Llama Prompt Guard 2 22M' },
-          { value: 'meta-llama/llama-prompt-guard-2-86m', label: 'Prompt Guard 2 86M' },
           { value: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2 0905' },
-          { value: 'playai-tts', label: 'PlayAI TTS' },
-          { value: 'playai-tts-arabic', label: 'PlayAI TTS Arabic' },
           { value: 'qwen/qwen3-32b', label: 'Qwen3 32B' },
         ]
       }
@@ -138,12 +133,12 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-purple-500',
     type: 'direct',
     models: [
+      { value: 'gpt-oss-120b', label: 'GPT oss 120b' },
       { value: 'llama3.1-8b', label: 'Llama 3.1 8B' },
       { value: 'llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17b' },
       { value: 'llama-3.3-70b', label: 'Llama 3.3 70b' },
       { value: 'qwen-3-32b', label: 'Qwen 3 32b' },
       { value: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235b Instruct' },
-      { value: 'gpt-oss-120b', label: 'GPT OSS 120b' },
     ]
   }
 }
