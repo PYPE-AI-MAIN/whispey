@@ -75,14 +75,14 @@ export const AGENT_DEFAULT_CONFIG = {
   
     // Background Audio Configuration
     background_audio: {
-      enabled: true,
+      enabled: false,
       ambient: {
         type: "office",
-        volume: 8
+        volume: 5
       },
       thinking: {
         type: "keyboard",
-        volume: 0.8
+        volume: 0.5
       }
     },
   
@@ -200,7 +200,7 @@ export const AGENT_DEFAULT_CONFIG = {
         collectionPrompt: AGENT_DEFAULT_CONFIG.bug_reports.collection_prompt
       },
       backgroundAudio: {
-        mode: 'dual' as 'disabled' | 'single' | 'dual',
+        mode: 'disabled' as 'disabled' | 'single' | 'dual',
         singleType: 'keyboard',
         singleVolume: 50,
         singleTiming: 'thinking' as 'thinking' | 'always',
