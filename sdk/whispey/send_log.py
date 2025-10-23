@@ -12,9 +12,32 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
-# WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"  # Direct to your self-hosted instance
-WHISPEY_API_KEY = os.getenv("WHISPEY_API_KEY")
+class WhispeyConfig:
+    """Configuration class for Whispey SDK"""
+    
+    def __init__(self, environment="production", api_key=None):
+        """
+        Initialize Whispey configuration
+        
+        Args:
+            environment (str): Environment - "development" or "production" (default: "production")
+            api_key (str): API key for authentication (default: from env WHISPEY_API_KEY)
+        """
+        self.environment = environment.lower()
+        self.api_key = api_key or os.getenv("WHISPEY_API_KEY")
+        self.api_url = self._get_api_url()
+    
+    def _get_api_url(self):
+        """Get the appropriate API URL based on environment"""
+        if self.environment == "development":
+            return "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/dev/send-call-log"
+        else:
+            return "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
+
+# Default configuration (for backward compatibility)
+DEFAULT_CONFIG = WhispeyConfig()
+WHISPEY_API_URL = DEFAULT_CONFIG.api_url
+WHISPEY_API_KEY = DEFAULT_CONFIG.api_key
 
 # Compression settings
 COMPRESSION_THRESHOLD = 10 * 1024  # 10KB - compress if larger than this
@@ -90,7 +113,7 @@ def should_compress(data):
     """
     return get_payload_size(data) > COMPRESSION_THRESHOLD
 
-async def send_to_whispey(data, apikey=None, api_url=None):
+async def send_to_whispey(data, apikey=None, api_url=None, environment="production"):
     """
     Send data to Whispey API with automatic compression for large payloads
     
@@ -98,6 +121,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
         data (dict): The data to send to the API
         apikey (str, optional): Custom API key to use. If not provided, uses WHISPEY_API_KEY environment variable
         api_url (str, optional): Custom API URL to use
+        environment (str): Environment - "development" or "production" (default: "production")
     
     Returns:
         dict: Response from the API or error information
@@ -163,7 +187,12 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     
     try:
         # Determine target URL (overrideable)
-        url_to_use = api_url if api_url else WHISPEY_API_URL
+        if api_url:
+            url_to_use = api_url
+        else:
+            # Create config instance based on environment
+            config = WhispeyConfig(environment=environment, api_key=apikey)
+            url_to_use = config.api_url
         
         # Test JSON serialization first
         json_str = json.dumps(payload)

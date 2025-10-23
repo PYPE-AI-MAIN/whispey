@@ -19,6 +19,7 @@ class LivekitObserve:
         agent_id="whispey-agent",
         apikey=None, 
         host_url=None, 
+        environment="production",
         bug_reports_enable=False,
         bug_reports_config: Dict[str, Any] = {},
         enable_otel: bool = True,
@@ -26,6 +27,7 @@ class LivekitObserve:
         self.agent_id = agent_id
         self.apikey = apikey
         self.host_url = host_url
+        self.environment = environment.lower()
         self.enable_otel = enable_otel
         self.spans_data = []  
         self._current_turn_context = {
@@ -806,6 +808,7 @@ class LivekitObserve:
             recording_url, 
             apikey=self.apikey, 
             api_url=self.host_url,
+            environment=self.environment,
         )
 
 __all__ = ['LivekitObserve', 'observe_session', 'send_session_to_whispey']

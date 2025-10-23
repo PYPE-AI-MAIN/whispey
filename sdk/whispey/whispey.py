@@ -867,7 +867,7 @@ def structure_telemetry_data(session_id: str) -> Dict[str, Any]:
 
 
 
-async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True, apikey: str = None, api_url: str = None, **extra_data) -> dict:
+async def send_session_to_whispey(session_id: str, recording_url: str = "", additional_transcript: list = None, force_end: bool = True, apikey: str = None, api_url: str = None, environment: str = "production", **extra_data) -> dict:
     """
     Send session data to Whispey API
     
@@ -919,7 +919,7 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     
     try:
         logger.info(f"📤 Sending to Whispey API...")
-        result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
+        result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url, environment=environment)
         
         if result.get("success"):
             logger.info(f"✅ Successfully sent session {session_id} to Whispey")
