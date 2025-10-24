@@ -81,6 +81,19 @@ const modelProviders: Record<string, Provider> = {
       { value: 'gpt-4o-mini', label: 'GPT 4o Mini' },
     ]
   },
+  google: {
+    label: 'Google',
+    icon: 'G',
+    color: 'bg-blue-500',
+    type: 'direct',
+    models: [
+      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { value: 'gemini-2.5-flash-preview-09-2025', label: 'Gemini 2.5 Flash Preview' },
+      { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-lite' },
+      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+      { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash-lite' },
+    ]
+  },
   azure_openai: {
     label: 'Azure OpenAI',
     icon: 'Az',
@@ -148,6 +161,7 @@ const getProviderIcon = (providerKey: string) => {
     openai: <Zap className="h-3 w-3" />,
     anthropic: <Brain className="h-3 w-3" />,
     groq: <Cpu className="h-3 w-3" />,
+    google: <Cloud className="h-3 w-3" />,
     azure_openai: <Cloud className="h-3 w-3" />,
     cerebras: <Cpu className="h-3 w-3" />
   }
