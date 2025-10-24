@@ -5,6 +5,7 @@ export const plivoRate = 0.70;
 export const modelOptions = [
   { value: "anthropic", label: "Anthropic" },
   { value: "openai", label: "OpenAI" },
+  { value: "google", label: "Google" },
   { value: "azure_openai", label: "Azure OpenAI" },
   { value: "groq", label: "Groq" },
   { value: "cerebras", label: "Cerebras" },
