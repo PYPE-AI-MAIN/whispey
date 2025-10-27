@@ -37,6 +37,7 @@ import {
   CreditCard,
   History,
   ChevronLeft,
+  Calendar,
   X
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
@@ -68,7 +69,9 @@ const ICONS = {
   TrendingUp,
   BarChart,
   CreditCard,
-  History
+  History,
+  Calendar,
+  X
 } as const
 
 interface NavigationItem {

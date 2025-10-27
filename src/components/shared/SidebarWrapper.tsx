@@ -110,6 +110,7 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   return params
 }
 
+// sidebarRoutes array
 const sidebarRoutes: SidebarRoute[] = [
   // Hide sidebar for auth and docs pages ONLY
   {
@@ -144,12 +145,13 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 96
   },
 
-  // Project-level agents routes
+  // Project-level agents routes (UPDATED - now includes campaigns)
   {
     patterns: [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
       { pattern: '/:projectId/agents/sip-management' },
+      { pattern: '/:projectId/campaigns' },
       { pattern: '/:projectId/settings' }
     ],
     getSidebarConfig: (params, context) => {
@@ -165,6 +167,18 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'Agents' 
         }
       ]
+
+    
+      const campaignsItems = []
+      if (canAccessPhoneCalls) {
+        campaignsItems.push({
+          id: 'campaigns',
+          name: 'Campaigns',
+          icon: 'Calendar',
+          path: `/${projectId}/campaigns`,
+          group: 'Batch Calls'
+        })
+      }
 
       const configurationItems = []
       
@@ -201,7 +215,12 @@ const sidebarRoutes: SidebarRoute[] = [
       return {
         type: 'project-agents',
         context: { projectId },
-        navigation: [...baseNavigation, ...configurationItems, ...projectSettingItems],
+        navigation: [
+          ...baseNavigation, 
+          ...campaignsItems, // ✅ NEW: Added campaigns items here
+          ...configurationItems, 
+          ...projectSettingItems
+        ],
         showBackButton: false,
         backPath: '/projects',
         backLabel: 'Back to Organisations'
@@ -220,7 +239,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType } = context
+      const { isEnhancedProject, agentType, canAccessPhoneCalls } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -256,7 +275,7 @@ const sidebarRoutes: SidebarRoute[] = [
       }
 
       const callItems = []
-      if (agentType === 'pype_agent' && context.canAccessPhoneCalls) {
+      if (agentType === 'pype_agent' && canAccessPhoneCalls) {
         callItems.push({
           id: 'phone-call',
           name: 'Phone Calls',
