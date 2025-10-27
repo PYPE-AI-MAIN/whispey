@@ -170,8 +170,15 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
             Handoff Agent
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAddTool('custom_function')} className="text-xs">
-            <CodeIcon className="w-3 h-3 mr-2" />
-            Custom Tool
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center">
+                <CodeIcon className="w-3 h-3 mr-2" />
+                Custom Tool
+              </div>
+              <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full">
+                Beta
+              </span>
+            </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
