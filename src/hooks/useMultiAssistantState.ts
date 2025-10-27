@@ -158,21 +158,66 @@ export function useMultiAssistantState({
           name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
           min_silence_duration: formValues.advancedSettings?.vad?.minSilenceDuration ?? getFallback(null, 'vad.min_silence_duration')
         },
-        tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => ({
-          type: tool.type,
-          ...(tool.type !== 'end_call' && {
+        tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
+          const baseToolConfig = {
+            type: tool.type
+          }
+
+          // end_call has no additional fields
+          if (tool.type === 'end_call') {
+            return baseToolConfig
+          }
+
+          // handoff and custom_function have these common fields
+          const commonFields = {
             name: tool.name,
-            description: tool.config?.description || '',
-            ...(tool.type === 'custom_function' && {
+            description: tool.config?.description || ''
+          }
+
+          // custom_function has additional fields
+          if (tool.type === 'custom_function') {
+            // Parse response_mapping_raw to create response_mapping object
+            let responseMappingObject = {}
+            try {
+              if (tool.config?.responseMapping) {
+                responseMappingObject = JSON.parse(tool.config.responseMapping)
+              }
+            } catch (e) {
+              console.warn('Failed to parse response mapping:', e)
+            }
+
+            return {
+              ...baseToolConfig,
+              ...commonFields,
               api_url: tool.config?.endpoint || '',
               http_method: tool.config?.method || 'GET',
               timeout: tool.config?.timeout || 10,
               async: tool.config?.asyncExecution || false,
               headers: tool.config?.headers || {},
-              parameters: tool.config?.parameters || []
-            })
-          })
-        })) || getFallback(null, 'tools'),
+              parameters: tool.config?.parameters?.map((param: any) => ({
+                name: param.name,
+                type: param.type,
+                description: param.description,
+                required: param.required
+              })) || [],
+              custom_payload: tool.config?.body || '',
+              response_mapping: responseMappingObject,
+              response_mapping_raw: tool.config?.responseMapping || '{}'
+            }
+          }
+
+          // handoff specific fields (if needed in future)
+          if (tool.type === 'handoff') {
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              target_agent: tool.config?.targetAgent || '',
+              handoff_message: tool.config?.handoffMessage || ''
+            }
+          }
+
+          return baseToolConfig
+        }) || getFallback(null, 'tools'),
         filler_words: {
           enabled: formValues.advancedSettings?.fillers?.enableFillerWords ?? getFallback(null, 'filler_words.enabled'),
           general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.general_fillers'),
@@ -301,21 +346,66 @@ export function useMultiAssistantState({
           name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
           min_silence_duration: formValues.advancedSettings?.vad?.minSilenceDuration ?? getFallback(null, 'vad.min_silence_duration')
         },
-        tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => ({
-          type: tool.type,
-          ...(tool.type !== 'end_call' && {
+        tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
+          const baseToolConfig = {
+            type: tool.type
+          }
+
+          // end_call has no additional fields
+          if (tool.type === 'end_call') {
+            return baseToolConfig
+          }
+
+          // handoff and custom_function have these common fields
+          const commonFields = {
             name: tool.name,
-            description: tool.config?.description || '',
-            ...(tool.type === 'custom_function' && {
+            description: tool.config?.description || ''
+          }
+
+          // custom_function has additional fields
+          if (tool.type === 'custom_function') {
+            // Parse response_mapping_raw to create response_mapping object
+            let responseMappingObject = {}
+            try {
+              if (tool.config?.responseMapping) {
+                responseMappingObject = JSON.parse(tool.config.responseMapping)
+              }
+            } catch (e) {
+              console.warn('Failed to parse response mapping:', e)
+            }
+
+            return {
+              ...baseToolConfig,
+              ...commonFields,
               api_url: tool.config?.endpoint || '',
               http_method: tool.config?.method || 'GET',
               timeout: tool.config?.timeout || 10,
               async: tool.config?.asyncExecution || false,
               headers: tool.config?.headers || {},
-              parameters: tool.config?.parameters || []
-            })
-          })
-        })) || getFallback(null, 'tools'),
+              parameters: tool.config?.parameters?.map((param: any) => ({
+                name: param.name,
+                type: param.type,
+                description: param.description,
+                required: param.required
+              })) || [],
+              custom_payload: tool.config?.body || '',
+              response_mapping: responseMappingObject,
+              response_mapping_raw: tool.config?.responseMapping || '{}'
+            }
+          }
+
+          // handoff specific fields (if needed in future)
+          if (tool.type === 'handoff') {
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              target_agent: tool.config?.targetAgent || '',
+              handoff_message: tool.config?.handoffMessage || ''
+            }
+          }
+
+          return baseToolConfig
+        }) || getFallback(null, 'tools'),
         filler_words: {
           enabled: formValues.advancedSettings?.fillers?.enableFillerWords ?? getFallback(null, 'filler_words.enabled'),
           general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.general_fillers'),
