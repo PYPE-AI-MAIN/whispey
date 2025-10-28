@@ -406,28 +406,30 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
       },
       tools: {
-        tools:
-          assistant.tools?.map((tool: any) => ({
-            id: `tool_${Date.now()}_${Math.random()}`,
-            type: tool.type,
-            name: tool.name || (tool.type === "end_call" ? "End Call" : ""),
-            config: {
-              description: tool.description || (tool.type === "end_call" ? "Allow assistant to end the conversation" : ""),
-              endpoint: tool.api_url || "",
-              method: tool.http_method || "GET",
-              timeout: tool.timeout || 10,
-              asyncExecution: tool.async || false,
-              headers: tool.headers || {},
-              parameters: tool.parameters || [],
-            },
-          })) || AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({
-            id: `tool_${tool.type}_${Date.now()}_${index}`,
-            type: tool.type as "end_call" | "handoff" | "custom_function",
-            name: tool.type === "end_call" ? "End Call" : "",
-            config: {
-              description: tool.type === "end_call" ? "Allow assistant to end the conversation" : ""
-            }
-          })),
+        tools: assistant.tools?.map((tool: any) => ({
+          id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
+          type: tool.type,
+          name: tool.name || (tool.type === 'end_call' ? 'End Call' : tool.type === 'handoff' ? 'Handoff Agent' : 'Custom Tool'),
+          config: {
+            description: tool.description || '',
+            endpoint: tool.api_url || '',
+            method: tool.http_method || 'GET',
+            headers: tool.headers || {},
+            body: tool.custom_payload || '',
+            targetAgent: tool.target_agent || '',
+            handoffMessage: tool.handoff_message || '',
+            timeout: tool.timeout || 10,
+            asyncExecution: tool.async || false,
+            parameters: tool.parameters?.map((param: any) => ({
+              id: `param_${param.name}_${Date.now()}_${Math.random()}`,
+              name: param.name,
+              type: param.type,
+              description: param.description,
+              required: param.required
+            })) || [],
+            responseMapping: tool.response_mapping_raw || '{}'
+          }
+        })) || []
       },
       fillers: {
         enableFillerWords: assistant.filler_words?.enabled ?? getFallback(null, 'filler_words.enabled'),

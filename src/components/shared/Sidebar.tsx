@@ -37,6 +37,7 @@ import {
   CreditCard,
   History,
   ChevronLeft,
+  Calendar,
   X
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
@@ -68,7 +69,9 @@ const ICONS = {
   TrendingUp,
   BarChart,
   CreditCard,
-  History
+  History,
+  Calendar,
+  X
 } as const
 
 interface NavigationItem {
@@ -152,6 +155,7 @@ export default function Sidebar({
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false)
+  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false)
 
   // Hotkey for toggling sidebar (Cmd/Ctrl + B)
   useHotkeys('meta+B', (e) => {
@@ -197,6 +201,36 @@ export default function Sidebar({
     setMounted(true)
   }, [])
 
+  // Auto-collapse sidebar on specific routes
+  useEffect(() => {
+    if (isMobile || !mounted) return
+    
+    // Define routes that should auto-collapse the sidebar
+    const autoCollapseRoutes = [
+      '/campaigns/create',
+      '/campaigns/edit'
+    ]
+    
+    // Check if current path matches any auto-collapse route
+    const shouldAutoCollapse = autoCollapseRoutes.some(route => 
+      currentPath.includes(route)
+    )
+    
+    // Only auto-collapse once when entering these routes
+    if (shouldAutoCollapse && !isCollapsed && !hasAutoCollapsed) {
+      onToggleCollapse?.()
+      setHasAutoCollapsed(true)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('whispey-sidebar-collapsed', JSON.stringify(true))
+      }
+    }
+    
+    // Reset the flag when leaving auto-collapse routes
+    if (!shouldAutoCollapse && hasAutoCollapsed) {
+      setHasAutoCollapsed(false)
+    }
+  }, [currentPath, isMobile, mounted, isCollapsed, hasAutoCollapsed, onToggleCollapse])
+
   const isActiveLinkWithSearchParams = (path: string) => {
     // Split path and query string
     const [navPath, navQuery] = path.split('?')
@@ -213,16 +247,22 @@ export default function Sidebar({
       }
     }
     
+    // Check for parent route matching (e.g., /campaigns matches /campaigns/xxx)
+    // This makes parent nav items active when on child routes
+    if (currentBasePath.startsWith(navPath + '/')) {
+      return true
+    }
+    
     // Check if base path matches
     if (currentBasePath !== navPath) {
       return false
     }
-  
+
     // If no query params in nav item, just check path
     if (!navQuery) {
       return currentBasePath === navPath
     }
-  
+
     // Parse nav query params
     const navParams = new URLSearchParams(navQuery)
     
@@ -238,7 +278,7 @@ export default function Sidebar({
         return false
       }
     }
-  
+
     return true
   }
 
