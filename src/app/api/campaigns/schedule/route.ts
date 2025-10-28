@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    const apiUrl = `${baseUrl}/dev/api/v1/campaigns/${campaignId}/schedule`
+    const apiUrl = `${baseUrl}/api/v1/campaigns/${campaignId}/schedule`
 
     const response = await fetch(apiUrl, {
       method: 'POST',

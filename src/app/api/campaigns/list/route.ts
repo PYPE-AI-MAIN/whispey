@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    const apiUrl = `${baseUrl}/dev/api/v1/projects/${projectId}/campaigns?limit=${limit}`
+    const apiUrl = `${baseUrl}/api/v1/projects/${projectId}/campaigns?limit=${limit}`
 
     const response = await fetch(apiUrl, {
       method: 'GET',
