@@ -59,83 +59,83 @@ export function CsvUploadSection({
   }
 
   const validatePhoneNumber = (phone: string): boolean => {
-    if (!phone) return false
-    const cleaned = phone.replace(/[\s\-\(\)]/g, '')
-    return /^\+?[1-9]\d{1,14}$/.test(cleaned)
+  if (!phone) return false
+  
+  // Remove all whitespace, hyphens, and parentheses
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '')
+  
+  // Check if phone starts with + followed by country code
+  if (!cleaned.startsWith('+')) {
+    return false
   }
-
-  const validateEmail = (email: string): boolean => {
-    if (!email) return false
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  
+  // Check for valid country codes (+91 for India, +1 for US/Canada)
+  const hasValidCountryCode = cleaned.startsWith('+91') || cleaned.startsWith('+1')
+  
+  if (!hasValidCountryCode) {
+    return false
   }
+  
+  // Validate format: +[country code][10 digits for India, 10 digits for US]
+  const phoneRegex = /^\+(?:91[6-9]\d{9}|1[2-9]\d{9})$/
+  
+  return phoneRegex.test(cleaned)
+}
 
-  const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
-    const errors: CsvValidationError[] = []
+const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
+  const errors: CsvValidationError[] = []
 
-    data.forEach((row, index) => {
-      // Validate name
-      if (!row.name || row.name.trim() === '') {
-        errors.push({
-          row: index + 2, // +2 because row 1 is header and we're 0-indexed
-          field: 'name',
-          value: 'empty',
-          error: 'Name is required'
-        })
-      }
+  data.forEach((row, index) => {
+    // Validate name
+    if (!row.name || row.name.trim() === '') {
+      errors.push({
+        row: index + 2,
+        field: 'name',
+        value: 'empty',
+        error: 'Name is required'
+      })
+    }
 
-      // Validate phone number
-      if (!validatePhoneNumber(row.phone)) {
-        errors.push({
-          row: index + 2,
-          field: 'phone',
-          value: row.phone || 'empty',
-          error: 'Invalid phone number format (use +1234567890)'
-        })
-      }
+    // Validate phone number
+    if (!validatePhoneNumber(row.phone)) {
+      errors.push({
+        row: index + 2,
+        field: 'phone',
+        value: row.phone || 'empty',
+        error: 'Invalid phone number format. Must start with +91 (India) or +1 (US/Canada) followed by 10 digits'
+      })
+    }
 
-      // Validate email
-      if (!validateEmail(row.email)) {
-        errors.push({
-          row: index + 2,
-          field: 'email',
-          value: row.email || 'empty',
-          error: 'Invalid email format'
-        })
-      }
+    if (!row.company || row.company.trim() === '') {
+      errors.push({
+        row: index + 2,
+        field: 'company',
+        value: 'empty',
+        error: 'Company is required'
+      })
+    }
 
-      // Validate company
-      if (!row.company || row.company.trim() === '') {
-        errors.push({
-          row: index + 2,
-          field: 'company',
-          value: 'empty',
-          error: 'Company is required'
-        })
-      }
+    if (!row.city || row.city.trim() === '') {
+      errors.push({
+        row: index + 2,
+        field: 'city',
+        value: 'empty',
+        error: 'City is required'
+      })
+    }
 
-      // Validate city
-      if (!row.city || row.city.trim() === '') {
-        errors.push({
-          row: index + 2,
-          field: 'city',
-          value: 'empty',
-          error: 'City is required'
-        })
-      }
+    if (!row.industry || row.industry.trim() === '') {
+      errors.push({
+        row: index + 2,
+        field: 'industry',
+        value: 'empty',
+        error: 'Industry is required'
+      })
+    }
+  })
 
-      // Validate industry
-      if (!row.industry || row.industry.trim() === '') {
-        errors.push({
-          row: index + 2,
-          field: 'industry',
-          value: 'empty',
-          error: 'Industry is required'
-        })
-      }
-    })
-
-    return errors
-  }
+  return errors
+}
 
   const handleFileUpload = useCallback((file: File) => {
     Papa.parse(file, {
