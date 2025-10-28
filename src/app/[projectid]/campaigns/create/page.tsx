@@ -57,6 +57,7 @@ function CreateCampaign() {
     callWindowStart: '00:00',
     callWindowEnd: '23:59',
     reservedConcurrency: 5,
+    selectedDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], // Default to weekdays
   }
 
   // Fetch phone numbers when component mounts
@@ -164,26 +165,22 @@ function CreateCampaign() {
         ? new Date(values.scheduleDate).toISOString()
         : new Date().toISOString()
 
-      const days = values.sendType === 'schedule'
-        ? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-        : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-
       const scheduleResponse = await fetch('/api/campaigns/schedule', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            campaignId,
-            startTime: values.callWindowStart,
-            endTime: values.callWindowEnd,
-            timezone: values.timezone,
-            startDate: scheduleDate,
-            frequency: values.reservedConcurrency,
-            enabled: true,
-            days,
+          campaignId,
+          startTime: values.callWindowStart,
+          endTime: values.callWindowEnd,
+          timezone: values.timezone,
+          startDate: scheduleDate,
+          frequency: values.reservedConcurrency,
+          enabled: true,
+          days: values.selectedDays.length > 0 ? values.selectedDays : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
         }),
-        })
+      })
 
       if (!scheduleResponse.ok) {
         const error = await scheduleResponse.json()
@@ -259,6 +256,8 @@ function CreateCampaign() {
                     callWindowStart={values.callWindowStart}
                     callWindowEnd={values.callWindowEnd}
                     onCallWindowChange={setFieldValue}
+                    selectedDays={values.selectedDays}
+                    onDaysChange={(days) => setFieldValue('selectedDays', days)}
                 />
 
                 {/* Action Buttons */}

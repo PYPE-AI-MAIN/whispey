@@ -47,6 +47,10 @@ function ViewCampaign() {
   const [hasMore, setHasMore] = useState(false)
   const [nextKey, setNextKey] = useState<string | null>(null)
 
+
+
+  const sanitizedCampaignAgentName = (campaignDetails?.callConfig.agentName.split('_')[0] || '').replace(/[^a-zA-Z0-9]/g, '')
+
   // Fetch campaign details
   const fetchCampaignDetails = async () => {
     try {
@@ -288,7 +292,7 @@ function ViewCampaign() {
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Agent</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {campaignDetails.callConfig.agentName}
+                  {sanitizedCampaignAgentName}
                 </p>
               </div>
               <div>

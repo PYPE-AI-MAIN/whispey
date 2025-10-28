@@ -152,7 +152,9 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/api-keys' },
       { pattern: '/:projectId/agents/sip-management' },
       { pattern: '/:projectId/campaigns' },
-      { pattern: '/:projectId/settings' }
+      { pattern: '/:projectId/settings' },
+      { pattern: '/:projectId/campaigns/:campaignId' },
+      { pattern: '/:projectId/campaigns/create' }
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
