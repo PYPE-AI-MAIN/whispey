@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    const apiUrl = `${baseUrl}/dev/api/v1/campaigns/upload-v2`
+    const apiUrl = `${baseUrl}/api/v1/campaigns/upload-v2`
 
     const response = await fetch(apiUrl, {
       method: 'POST',
