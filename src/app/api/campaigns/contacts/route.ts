@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    let apiUrl = `${baseUrl}/dev/api/v1/campaigns/${campaignId}/contacts?limit=${limit}`
+    let apiUrl = `${baseUrl}/api/v1/campaigns/${campaignId}/contacts?limit=${limit}`
     
     if (lastKey) {
       apiUrl += `&lastKey=${encodeURIComponent(lastKey)}`
