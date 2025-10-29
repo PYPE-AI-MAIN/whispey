@@ -48,10 +48,7 @@ export function RecipientsPreview({ csvData }: RecipientsPreviewProps) {
                 header === 'name' ? 'w-40' :
                 header === 'phone' ? 'w-36' :
                 header === 'email' ? 'w-48' :
-                header === 'company' ? 'w-40' :
-                header === 'city' ? 'w-32' :
-                header === 'industry' ? 'w-36' :
-                'w-40'
+                'w-0'
               }`}
             >
               <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 capitalize">
@@ -81,21 +78,6 @@ export function RecipientsPreview({ csvData }: RecipientsPreviewProps) {
               <div className="w-48 px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <span className="text-xs text-gray-900 dark:text-gray-100">
                   {row.email || '-'}
-                </span>
-              </div>
-              <div className="w-40 px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <span className="text-xs text-gray-900 dark:text-gray-100">
-                  {row.company || '-'}
-                </span>
-              </div>
-              <div className="w-32 px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <span className="text-xs text-gray-900 dark:text-gray-100">
-                  {row.city || '-'}
-                </span>
-              </div>
-              <div className="w-36 px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <span className="text-xs text-gray-900 dark:text-gray-100">
-                  {row.industry || '-'}
                 </span>
               </div>
             </div>

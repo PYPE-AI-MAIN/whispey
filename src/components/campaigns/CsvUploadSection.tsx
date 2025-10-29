@@ -105,33 +105,6 @@ const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
         error: 'Invalid phone number format. Must start with +91 (India) or +1 (US/Canada) followed by 10 digits'
       })
     }
-
-    if (!row.company || row.company.trim() === '') {
-      errors.push({
-        row: index + 2,
-        field: 'company',
-        value: 'empty',
-        error: 'Company is required'
-      })
-    }
-
-    if (!row.city || row.city.trim() === '') {
-      errors.push({
-        row: index + 2,
-        field: 'city',
-        value: 'empty',
-        error: 'City is required'
-      })
-    }
-
-    if (!row.industry || row.industry.trim() === '') {
-      errors.push({
-        row: index + 2,
-        field: 'industry',
-        value: 'empty',
-        error: 'Industry is required'
-      })
-    }
   })
 
   return errors
