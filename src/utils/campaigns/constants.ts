@@ -1,11 +1,11 @@
 // utils/campaigns/constants.ts (update the relevant parts)
 
 export const CSV_TEMPLATE = {
-  headers: ['name', 'phone', 'email', 'company', 'city', 'industry'],
+  headers: ['name', 'phone', 'email'],
   exampleRows: [
-    ['John Doe', '+91 98765 43210', 'john@example.com', 'Acme Corp', 'Mumbai', 'Technology'],
-    ['Jane Smith', '+1 555 123 4567', 'jane@example.com', 'Tech Inc', 'New York', 'Finance'],
-    ['Raj Kumar', '+91 87654 32109', 'raj@example.com', 'InfoSys Ltd', 'Bangalore', 'IT Services'],
+    ['John Doe', '+91 98765 43210', 'john@example.com'],
+    ['Jane Smith', '+1 555 123 4567', 'jane@example.com'],
+    ['Raj Kumar', '+91 87654 32109', 'raj@example.com'],
   ]
 }
 
