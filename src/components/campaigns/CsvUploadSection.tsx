@@ -15,12 +15,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import Papa from 'papaparse'
-import { CSV_TEMPLATE, RecipientRow, CsvValidationError } from '@/utils/campaigns/constants'
+import { CSV_TEMPLATE, CsvValidationError } from '@/utils/campaigns/constants'
 
 interface CsvUploadSectionProps {
   csvFile: File | null
-  csvData: RecipientRow[]
-  onFileUpload: (file: File, data: RecipientRow[], errors: CsvValidationError[]) => void
+  csvData: Record<string, any>[]
+  onFileUpload: (file: File, data: Record<string, any>[], errors: CsvValidationError[]) => void
   onRemoveFile: () => void
 }
 
@@ -51,64 +51,62 @@ export function CsvUploadSection({
     window.URL.revokeObjectURL(url)
   }
 
-  const validateCsvHeaders = (headers: string[]): boolean => {
-    const requiredHeaders = CSV_TEMPLATE.headers
-    return requiredHeaders.every(header => 
-      headers.map(h => h.trim().toLowerCase()).includes(header.toLowerCase())
-    )
-  }
-
   const validatePhoneNumber = (phone: string): boolean => {
-  if (!phone) return false
-  
-  // Remove all whitespace, hyphens, and parentheses
-  const cleaned = phone.replace(/[\s\-\(\)]/g, '')
-  
-  // Check if phone starts with + followed by country code
-  if (!cleaned.startsWith('+')) {
-    return false
+    if (!phone) return false
+    
+    // Remove all whitespace, hyphens, and parentheses
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '')
+    
+    // Check if phone starts with + followed by country code
+    if (!cleaned.startsWith('+')) {
+      return false
+    }
+    
+    // Check for valid country codes (+91 for India, +1 for US/Canada)
+    const hasValidCountryCode = cleaned.startsWith('+91') || cleaned.startsWith('+1')
+    
+    if (!hasValidCountryCode) {
+      return false
+    }
+    
+    // Validate format: +[country code][10 digits for India, 10 digits for US]
+    const phoneRegex = /^\+(?:91[6-9]\d{9}|1[2-9]\d{9})$/
+    
+    return phoneRegex.test(cleaned)
   }
-  
-  // Check for valid country codes (+91 for India, +1 for US/Canada)
-  const hasValidCountryCode = cleaned.startsWith('+91') || cleaned.startsWith('+1')
-  
-  if (!hasValidCountryCode) {
-    return false
-  }
-  
-  // Validate format: +[country code][10 digits for India, 10 digits for US]
-  const phoneRegex = /^\+(?:91[6-9]\d{9}|1[2-9]\d{9})$/
-  
-  return phoneRegex.test(cleaned)
-}
 
-const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
-  const errors: CsvValidationError[] = []
+  const validateCsvData = (data: Record<string, any>[], headers: string[]): CsvValidationError[] => {
+    const errors: CsvValidationError[] = []
 
-  data.forEach((row, index) => {
-    // Validate name
-    if (!row.name || row.name.trim() === '') {
+    // Check if phone column exists
+    const phoneColumn = headers.find(h => h.toLowerCase().trim() === 'phone')
+    
+    if (!phoneColumn) {
       errors.push({
-        row: index + 2,
-        field: 'name',
-        value: 'empty',
-        error: 'Name is required'
+        row: 1,
+        field: 'headers',
+        value: headers.join(', '),
+        error: 'CSV must contain a "phone" column'
       })
+      return errors
     }
 
-    // Validate phone number
-    if (!validatePhoneNumber(row.phone)) {
-      errors.push({
-        row: index + 2,
-        field: 'phone',
-        value: row.phone || 'empty',
-        error: 'Invalid phone number format. Must start with +91 (India) or +1 (US/Canada) followed by 10 digits'
-      })
-    }
-  })
+    // Validate each row's phone number
+    data.forEach((row, index) => {
+      const phoneValue = row[phoneColumn]
+      
+      if (!validatePhoneNumber(phoneValue)) {
+        errors.push({
+          row: index + 2, // +2 because: +1 for header, +1 for 1-based indexing
+          field: 'phone',
+          value: phoneValue || 'empty',
+          error: 'Invalid phone number format. Must start with +91 (India) or +1 (US/Canada) followed by 10 digits'
+        })
+      }
+    })
 
-  return errors
-}
+    return errors
+  }
 
   const handleFileUpload = useCallback((file: File) => {
     Papa.parse(file, {
@@ -117,19 +115,19 @@ const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
       complete: (results) => {
         const headers = results.meta.fields || []
         
-        if (!validateCsvHeaders(headers)) {
+        if (headers.length === 0) {
           setValidationErrors([{
             row: 1,
             field: 'headers',
-            value: headers.join(', '),
-            error: `Invalid CSV format. Required headers: ${CSV_TEMPLATE.headers.join(', ')}`
+            value: 'none',
+            error: 'CSV file must have at least one column'
           }])
           setShowErrorDialog(true)
           return
         }
 
-        const data = results.data as RecipientRow[]
-        const errors = validateCsvData(data)
+        const data = results.data as Record<string, any>[]
+        const errors = validateCsvData(data, headers)
         
         setValidationErrors(errors)
         
@@ -244,7 +242,7 @@ const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
               Choose a csv or drag & drop it here.
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Up to 50 MB
+              Up to 50 MB. Must contain a "phone" column.
             </p>
             <Input
               type="file"
@@ -305,7 +303,7 @@ const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
                     <p className="text-xs text-red-700 dark:text-red-300 mt-1">
                       {error.error}
                     </p>
-                    {error.value !== 'empty' && (
+                    {error.value !== 'empty' && error.value !== 'none' && (
                       <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-mono bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
                         Value: {error.value}
                       </p>

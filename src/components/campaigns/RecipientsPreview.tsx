@@ -3,13 +3,15 @@
 
 import React from 'react'
 import { Upload } from 'lucide-react'
-import { CSV_TEMPLATE, RecipientRow } from '@/utils/campaigns/constants'
 
 interface RecipientsPreviewProps {
-  csvData: RecipientRow[]
+  csvData: Record<string, any>[]
 }
 
 export function RecipientsPreview({ csvData }: RecipientsPreviewProps) {
+  // Extract headers from the first data row
+  const headers = csvData.length > 0 ? Object.keys(csvData[0]) : []
+
   if (csvData.length === 0) {
     return (
       <div className="border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex flex-col w-80">
@@ -30,8 +32,15 @@ export function RecipientsPreview({ csvData }: RecipientsPreviewProps) {
     )
   }
 
+  // Calculate dynamic column width based on content
+  const getColumnWidth = (header: string) => {
+    const lowerHeader = header.toLowerCase()
+    if (lowerHeader === 'phone') return 'w-36'
+    return 'w-32' // default width for variable columns
+  }
+
   return (
-    <div className="border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex flex-col w-[900px]">
+    <div className="border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex flex-col w-full max-w-4xl">
       <div className="p-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           Recipients ({csvData.length})
@@ -41,15 +50,10 @@ export function RecipientsPreview({ csvData }: RecipientsPreviewProps) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Fixed Excel-like header */}
         <div className="flex border-b-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 flex-shrink-0 sticky top-0 z-10">
-          {CSV_TEMPLATE.headers.map((header) => (
+          {headers.map((header) => (
             <div 
               key={header}
-              className={`px-3 py-2 border-r border-gray-300 dark:border-gray-600 flex-shrink-0 ${
-                header === 'name' ? 'w-40' :
-                header === 'phone' ? 'w-36' :
-                header === 'email' ? 'w-48' :
-                'w-0'
-              }`}
+              className={`px-3 py-2 border-r border-gray-300 dark:border-gray-600 flex-shrink-0 ${getColumnWidth(header)}`}
             >
               <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 capitalize">
                 {header}
@@ -65,21 +69,18 @@ export function RecipientsPreview({ csvData }: RecipientsPreviewProps) {
               key={rowIdx}
               className="flex border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"
             >
-              <div className="w-40 px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <span className="text-xs text-gray-900 dark:text-gray-100">
-                  {row.name || '-'}
-                </span>
-              </div>
-              <div className="w-36 px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <span className="text-xs text-gray-900 dark:text-gray-100 font-mono">
-                  {row.phone || '-'}
-                </span>
-              </div>
-              <div className="w-48 px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <span className="text-xs text-gray-900 dark:text-gray-100">
-                  {row.email || '-'}
-                </span>
-              </div>
+              {headers.map((header) => (
+                <div 
+                  key={`${rowIdx}-${header}`}
+                  className={`px-3 py-2 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 ${getColumnWidth(header)}`}
+                >
+                  <span className={`text-xs text-gray-900 dark:text-gray-100 ${
+                    header.toLowerCase() === 'phone' ? 'font-mono' : ''
+                  }`}>
+                    {row[header] || '-'}
+                  </span>
+                </div>
+              ))}
             </div>
           ))}
         </div>

@@ -8,7 +8,7 @@ import * as Yup from 'yup'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { RecipientRow, CsvValidationError, PhoneNumber } from '@/utils/campaigns/constants'
+import { CsvValidationError, PhoneNumber } from '@/utils/campaigns/constants'
 import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
@@ -43,7 +43,7 @@ function CreateCampaign() {
   const projectId = params.projectid as string
 
   const [csvFile, setCsvFile] = useState<File | null>(null)
-  const [csvData, setCsvData] = useState<RecipientRow[]>([])
+  const [csvData, setCsvData] = useState<Record<string, any>[]>([])
   const [validationErrors, setValidationErrors] = useState<CsvValidationError[]>([])
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
 
@@ -57,7 +57,7 @@ function CreateCampaign() {
     callWindowStart: '00:00',
     callWindowEnd: '23:59',
     reservedConcurrency: 5,
-    selectedDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], // Default to weekdays
+    selectedDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
   }
 
   // Fetch phone numbers when component mounts
@@ -80,7 +80,7 @@ function CreateCampaign() {
     fetchPhoneNumbers()
   }, [projectId])
 
-  const handleFileUpload = (file: File, data: RecipientRow[], errors: CsvValidationError[]) => {
+  const handleFileUpload = (file: File, data: Record<string, any>[], errors: CsvValidationError[]) => {
     setCsvFile(file)
     setCsvData(data)
     setValidationErrors(errors)
@@ -110,9 +110,11 @@ function CreateCampaign() {
       const campaignId = uuidv4()
 
       // Step 1: Upload CSV to S3
+      // Get all headers from first row
+      const headers = Object.keys(csvData[0])
       const csvContent = [
-        Object.keys(csvData[0]).join(','),
-        ...csvData.map(row => Object.values(row).join(','))
+        headers.join(','),
+        ...csvData.map(row => headers.map(h => row[h] || '').join(','))
       ].join('\n')
 
       const uploadResponse = await fetch(`/api/campaigns/upload-file?campaignId=${campaignId}`, {
@@ -198,11 +200,6 @@ function CreateCampaign() {
     }
   }
 
-  const handleSaveDraft = (values: typeof initialValues) => {
-    console.log('Saving draft:', values)
-    router.push(`/${projectId}/campaigns`)
-  }
-
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
       {/* Header */}
@@ -262,15 +259,6 @@ function CreateCampaign() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2 pb-4">
-                  {/* <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleSaveDraft(values)}
-                    disabled={!dirty || isSubmitting}
-                    className="flex-1 h-8 text-xs"
-                  >
-                    Save as draft
-                  </Button> */}
                   <Button
                     type="button"
                     onClick={() => formikHandleSubmit()}

@@ -1,11 +1,11 @@
-// utils/campaigns/constants.ts (update the relevant parts)
+// utils/campaigns/constants.ts
 
 export const CSV_TEMPLATE = {
-  headers: ['name', 'phone', 'email'],
+  headers: ['phone', 'var1', 'var2', 'var3'],
   exampleRows: [
-    ['John Doe', '+91 98765 43210', 'john@example.com'],
-    ['Jane Smith', '+1 555 123 4567', 'jane@example.com'],
-    ['Raj Kumar', '+91 87654 32109', 'raj@example.com'],
+    ['+919876543210', 'John Doe', 'john@example.com', 'Mumbai'],
+    ['+15551234567', 'Jane Smith', 'jane@example.com', 'New York'],
+    ['+918765432109', 'Raj Kumar', 'raj@example.com', 'Delhi'],
   ]
 }
 
@@ -24,15 +24,6 @@ export const TIMEZONES = [
   'Europe/London',
   'Asia/Tokyo',
 ]
-
-export interface RecipientRow {
-  name: string
-  phone: string
-  email: string
-  company: string
-  city: string
-  industry: string
-}
 
 export interface CsvValidationError {
   row: number
