@@ -8,7 +8,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { 
   ArrowLeft,
   Activity,
@@ -236,10 +235,8 @@ export default function Sidebar({
     const [navPath, navQuery] = path.split('?')
     const [currentBasePath] = currentPath.split('?')
     
-    // Special case: treat /observability route as part of Call Logs tab
     if (navQuery && navQuery.includes('tab=logs')) {
-      // If nav item is for logs tab, also match /observability route
-      const baseNavPath = navPath // e.g., /projectId/agents/agentId
+      const baseNavPath = navPath
       const observabilityPath = `${baseNavPath}/observability`
       
       if (currentBasePath === observabilityPath) {
@@ -247,32 +244,24 @@ export default function Sidebar({
       }
     }
     
-    // IMPORTANT: Only enable parent route matching for items WITHOUT query parameters
-    // This prevents tabs (with ?tab=xxx) from being active when on child routes like /config
     if (!navQuery && currentBasePath.startsWith(navPath + '/')) {
       return true
     }
     
-    // Check if base path matches
     if (currentBasePath !== navPath) {
       return false
     }
 
-    // If no query params in nav item, just check path
     if (!navQuery) {
       return currentBasePath === navPath
     }
 
-    // Parse nav query params
     const navParams = new URLSearchParams(navQuery)
     
-    // Special case: If nav item is for "tab=overview" and current URL has no tab parameter,
-    // consider it active (since overview is the default tab)
     if (navParams.get('tab') === 'overview' && !searchParams.get('tab')) {
       return true
     }
     
-    // Check if all nav params match current params
     for (const [key, value] of navParams.entries()) {
       if (searchParams.get(key) !== value) {
         return false
