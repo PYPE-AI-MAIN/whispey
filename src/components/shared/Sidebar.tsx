@@ -247,9 +247,9 @@ export default function Sidebar({
       }
     }
     
-    // Check for parent route matching (e.g., /campaigns matches /campaigns/xxx)
-    // This makes parent nav items active when on child routes
-    if (currentBasePath.startsWith(navPath + '/')) {
+    // IMPORTANT: Only enable parent route matching for items WITHOUT query parameters
+    // This prevents tabs (with ?tab=xxx) from being active when on child routes like /config
+    if (!navQuery && currentBasePath.startsWith(navPath + '/')) {
       return true
     }
     
