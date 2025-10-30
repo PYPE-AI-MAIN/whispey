@@ -293,9 +293,7 @@ const AgentSelection = () => {
   const params = useParams()
   const projectId = params.projectid as string
   return (
-    <UserPermissionsProvider projectId={projectId}>
       <AgentSelectionContent projectId={projectId} />
-    </UserPermissionsProvider>
   )
 }
 

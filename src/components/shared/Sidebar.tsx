@@ -8,7 +8,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { 
   ArrowLeft,
   Activity,
@@ -37,6 +36,7 @@ import {
   CreditCard,
   History,
   ChevronLeft,
+  Calendar,
   X
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
@@ -68,7 +68,9 @@ const ICONS = {
   TrendingUp,
   BarChart,
   CreditCard,
-  History
+  History,
+  Calendar,
+  X
 } as const
 
 interface NavigationItem {
@@ -152,6 +154,7 @@ export default function Sidebar({
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false)
+  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false)
 
   // Hotkey for toggling sidebar (Cmd/Ctrl + B)
   useHotkeys('meta+B', (e) => {
@@ -197,11 +200,40 @@ export default function Sidebar({
     setMounted(true)
   }, [])
 
+  // Auto-collapse sidebar on specific routes
+  useEffect(() => {
+    if (isMobile || !mounted) return
+    
+    // Define routes that should auto-collapse the sidebar
+    const autoCollapseRoutes = [
+      '/campaigns/create',
+      '/campaigns/edit'
+    ]
+    
+    // Check if current path matches any auto-collapse route
+    const shouldAutoCollapse = autoCollapseRoutes.some(route => 
+      currentPath.includes(route)
+    )
+    
+    // Only auto-collapse once when entering these routes
+    if (shouldAutoCollapse && !isCollapsed && !hasAutoCollapsed) {
+      onToggleCollapse?.()
+      setHasAutoCollapsed(true)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('whispey-sidebar-collapsed', JSON.stringify(true))
+      }
+    }
+    
+    // Reset the flag when leaving auto-collapse routes
+    if (!shouldAutoCollapse && hasAutoCollapsed) {
+      setHasAutoCollapsed(false)
+    }
+  }, [currentPath, isMobile, mounted, isCollapsed, hasAutoCollapsed, onToggleCollapse])
+
   const isActiveLinkWithSearchParams = (path: string) => {
     const [navPath, navQuery] = path.split('?')
     const [currentBasePath] = currentPath.split('?')
     
-    // Special case: treat /observability route as part of Call Logs tab
     if (navQuery && navQuery.includes('tab=logs')) {
       const observabilityPath = `${navPath}/observability`
       if (currentBasePath === observabilityPath) {
