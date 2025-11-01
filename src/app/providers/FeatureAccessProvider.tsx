@@ -7,6 +7,7 @@ import { useUser } from '@clerk/nextjs'
 interface FeatureAccessContextType {
   canCreatePypeAgent: boolean
   canAccessPhoneCalls: boolean
+  canAccessPhoneSettings: boolean
   userEmail: string | null
   isLoading: boolean
 }
@@ -14,6 +15,7 @@ interface FeatureAccessContextType {
 const FeatureAccessContext = createContext<FeatureAccessContextType>({
   canCreatePypeAgent: false,
   canAccessPhoneCalls: false,
+  canAccessPhoneSettings: false,
   userEmail: null,
   isLoading: true,
 })
@@ -52,6 +54,7 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
   const { user, isLoaded } = useUser()
   const [canCreatePypeAgent, setCanCreatePypeAgent] = useState(false)
   const [canAccessPhoneCalls, setCanAccessPhoneCalls] = useState(false)
+  const [canAccessPhoneSettings, setCanAccessPhoneSettings] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -68,6 +71,9 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
       const phoneCallsWhitelist = getPhoneCallsWhitelist()
       const canAccessCalls = email ? phoneCallsWhitelist.includes(email) : false
       setCanAccessPhoneCalls(canAccessCalls)
+
+      // Phone settings: accessible to either agent creators OR phone calls users
+      setCanAccessPhoneSettings(canCreateAgent || canAccessCalls)
     }
   }, [user, isLoaded])
 
@@ -76,6 +82,7 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
       value={{
         canCreatePypeAgent,
         canAccessPhoneCalls,
+        canAccessPhoneSettings,
         userEmail,
         isLoading: !isLoaded,
       }}

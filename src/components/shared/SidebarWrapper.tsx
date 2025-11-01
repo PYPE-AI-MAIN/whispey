@@ -43,6 +43,7 @@ interface SidebarContext {
   projectId?: string
   agentType?: string
   canAccessPhoneCalls: boolean
+  canAccessPhoneSettings: boolean
 }
 
 interface NavigationItem {
@@ -158,7 +159,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys, canAccessPhoneCalls } = context
+      const { userCanViewApiKeys, canAccessPhoneCalls, canAccessPhoneSettings } = context
 
       const baseNavigation = [
         {
@@ -184,7 +185,7 @@ const sidebarRoutes: SidebarRoute[] = [
 
       const configurationItems = []
       
-      if (canAccessPhoneCalls) {
+      if (canAccessPhoneSettings) {
         configurationItems.push({
           id: 'sip-management',
           name: 'Phone Settings',
@@ -219,7 +220,7 @@ const sidebarRoutes: SidebarRoute[] = [
         context: { projectId },
         navigation: [
           ...baseNavigation, 
-          ...campaignsItems, // ✅ NEW: Added campaigns items here
+          ...campaignsItems,
           ...configurationItems, 
           ...projectSettingItems
         ],
@@ -428,7 +429,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
 
-  const { canAccessPhoneCalls } = useFeatureAccess()
+  const { canAccessPhoneCalls, canAccessPhoneSettings } = useFeatureAccess()
   
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
   const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
@@ -436,7 +437,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   // Check if projectId is valid (not a reserved path)
   const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
   
-  // ✅ ADDED: Check if agentId is valid (not a reserved path)
+  // Check if agentId is valid (not a reserved path)
   const agentReservedPaths = ['api-keys', 'sip-management']
   const isValidAgentId = agentId && !agentReservedPaths.includes(agentId)
   
@@ -506,7 +507,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     userCanViewApiKeys,
     projectId,
     agentType: agent?.agent_type,
-    canAccessPhoneCalls
+    canAccessPhoneCalls,
+    canAccessPhoneSettings
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)

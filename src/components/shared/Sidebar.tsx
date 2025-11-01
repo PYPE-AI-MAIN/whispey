@@ -231,7 +231,6 @@ export default function Sidebar({
   }, [currentPath, isMobile, mounted, isCollapsed, hasAutoCollapsed, onToggleCollapse])
 
   const isActiveLinkWithSearchParams = (path: string) => {
-    // Split path and query string
     const [navPath, navQuery] = path.split('?')
     const [currentBasePath] = currentPath.split('?')
     
@@ -244,31 +243,52 @@ export default function Sidebar({
       }
     }
     
+    if (currentBasePath === navPath) {
+      if (navQuery) {
+        const navParams = new URLSearchParams(navQuery)
+        
+        if (navParams.get('tab') === 'overview' && !searchParams.get('tab')) {
+          return true
+        }
+        
+        for (const [key, value] of navParams.entries()) {
+          if (searchParams.get(key) !== value) {
+            return false
+          }
+        }
+        
+        return true
+      }
+      
+      return true
+    }
+    
+
     if (!navQuery && currentBasePath.startsWith(navPath + '/')) {
-      return true
-    }
-    
-    if (currentBasePath !== navPath) {
-      return false
-    }
-
-    if (!navQuery) {
-      return currentBasePath === navPath
-    }
-
-    const navParams = new URLSearchParams(navQuery)
-    
-    if (navParams.get('tab') === 'overview' && !searchParams.get('tab')) {
-      return true
-    }
-    
-    for (const [key, value] of navParams.entries()) {
-      if (searchParams.get(key) !== value) {
+      const specialSubRoutes = [
+        '/api-keys',
+        '/sip-management',
+        '/config',
+        '/observability',
+        '/phone-call-config',
+        '/settings'
+      ]
+      
+      // Check if current path contains any special sub-route
+      const hasSpecialSubRoute = specialSubRoutes.some(subRoute => 
+        currentBasePath.includes(subRoute)
+      )
+      
+      // If on special sub-route, only activate exact matches
+      if (hasSpecialSubRoute) {
         return false
       }
+      
+      // Otherwise, allow prefix matching (for dynamic routes like agent details)
+      return true
     }
-
-    return true
+    
+    return false
   }
 
   const getUserDisplayName = () => {
