@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Parse the request body
     const body = await request.json()
-    const { agent_name, phone_number } = body
+    const { agent_name, phone_number, sip_trunk_id, provider } = body
 
     if (!agent_name) {
       return NextResponse.json(
@@ -31,7 +31,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!sip_trunk_id) {
+      return NextResponse.json(
+        { error: 'sip_trunk_id is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!provider) {
+      return NextResponse.json(
+        { error: 'provider is required' },
+        { status: 400 }
+      )
+    }
+
     console.log(`Dispatching call: Agent ${agent_name} to ${phone_number}`)
+    console.log(`SIP Trunk ID: ${sip_trunk_id}, Provider: ${provider}`)
     console.log(`Proxying request to: ${apiUrl}/dispatch_call`)
 
     // Call the backend /dispatch_call endpoint
@@ -44,7 +59,9 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({ 
         agent_name, 
-        phone_number 
+        phone_number,
+        sip_trunk_id,
+        provider
       })
     })
 

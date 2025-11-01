@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon } from 'lucide-react'
 
 interface ToolParameter {
   id: string
@@ -21,7 +21,7 @@ interface ToolParameter {
 
 interface Tool {
   id: string
-  type: 'end_call' | 'handoff' | 'custom_function'
+  type: 'end_call' | 'handoff' | 'transfer_call' | 'custom_function'
   name: string
   config: {
     description?: string
@@ -31,6 +31,7 @@ interface Tool {
     body?: string
     targetAgent?: string
     handoffMessage?: string
+    transferNumber?: string
     timeout?: number
     asyncExecution?: boolean
     parameters?: ToolParameter[]
@@ -45,7 +46,7 @@ interface ToolsActionsSettingsProps {
 
 function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'custom_function' | null>(null)
+  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'custom_function' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
 
   const [formData, setFormData] = useState({
@@ -57,13 +58,14 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
     body: '',
     targetAgent: '',
     handoffMessage: '',
+    transferNumber: '',
     timeout: 10,
     asyncExecution: false,
     parameters: [] as ToolParameter[],
     responseMapping: '{}'
   })
 
-  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'custom_function') => {
+  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'custom_function') => {
     setSelectedToolType(toolType)
     setEditingTool(null)
     
@@ -77,6 +79,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         body: '',
         targetAgent: '',
         handoffMessage: '',
+        transferNumber: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -92,6 +95,23 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         body: '',
         targetAgent: '',
         handoffMessage: 'Transferring you to another agent...',
+        transferNumber: '',
+        timeout: 10,
+        asyncExecution: false,
+        parameters: [],
+        responseMapping: '{}'
+      })
+    } else if (toolType === 'transfer_call') {
+      setFormData({ 
+        name: 'Transfer Call', 
+        description: 'Transfer the call by creating a conference with another party', 
+        endpoint: '', 
+        method: 'POST', 
+        headers: {}, 
+        body: '',
+        targetAgent: '',
+        handoffMessage: '',
+        transferNumber: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -107,6 +127,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         body: '',
         targetAgent: '',
         handoffMessage: '',
+        transferNumber: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -129,6 +150,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
       body: tool.config.body || '',
       targetAgent: tool.config.targetAgent || '',
       handoffMessage: tool.config.handoffMessage || '',
+      transferNumber: tool.config.transferNumber || '',
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
       parameters: tool.config.parameters || [],
@@ -148,6 +170,9 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         method: formData.method,
         headers: formData.headers,
         body: formData.body,
+        targetAgent: formData.targetAgent,
+        handoffMessage: formData.handoffMessage,
+        transferNumber: formData.transferNumber,
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
         parameters: formData.parameters,
@@ -205,6 +230,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
     switch (type) {
       case 'end_call': return <PhoneOffIcon className="w-3 h-3" />
       case 'handoff': return <ArrowRightIcon className="w-3 h-3" />
+      case 'transfer_call': return <PhoneForwardedIcon className="w-3 h-3" />
       case 'custom_function': return <CodeIcon className="w-3 h-3" />
       default: return <CodeIcon className="w-3 h-3" />
     }
@@ -232,6 +258,10 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
           <DropdownMenuItem onClick={() => handleAddTool('handoff')} className="text-xs">
             <ArrowRightIcon className="w-3 h-3 mr-2" />
             Handoff Agent
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleAddTool('transfer_call')} className="text-xs">
+            <PhoneForwardedIcon className="w-3 h-3 mr-2" />
+            Transfer Call
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAddTool('custom_function')} className="text-xs">
             <CodeIcon className="w-3 h-3 mr-2" />
@@ -283,7 +313,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <DialogTitle className="text-sm text-gray-900 dark:text-gray-100">
-              {editingTool ? 'Edit' : 'Add'} {selectedToolType === 'end_call' ? 'End Call' : selectedToolType === 'handoff' ? 'Handoff Agent' : 'Custom Tool'}
+              {editingTool ? 'Edit' : 'Add'} {selectedToolType === 'end_call' ? 'End Call' : selectedToolType === 'handoff' ? 'Handoff Agent' : selectedToolType === 'transfer_call' ? 'Transfer Call' : 'Custom Tool'}
             </DialogTitle>
           </DialogHeader>
           
@@ -331,6 +361,24 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
                     className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder="Message to display during transfer"
                   />
+                </div>
+              </>
+            )}
+
+            {/* Transfer Call specific fields */}
+            {selectedToolType === 'transfer_call' && (
+              <>
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Transfer Number</Label>
+                  <Input
+                    value={formData.transferNumber}
+                    onChange={(e) => setFormData(prev => ({ ...prev, transferNumber: e.target.value }))}
+                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="e.g., +1234567890"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    The phone number to transfer the call to. The call will be transferred to this number in a conference.
+                  </p>
                 </div>
               </>
             )}
