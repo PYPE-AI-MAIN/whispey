@@ -27,8 +27,8 @@ import {
   Crown,
   Eye,
   User,
-  RefreshCw,  // ✅ ADDED
-  UserX       // ✅ ADDED
+  RefreshCw,  
+  UserX       
 } from 'lucide-react'
 import {
   Dialog,
@@ -54,7 +54,7 @@ interface TeamMember {
   id: string
   email: string
   role: 'owner' | 'admin' | 'member' | 'user' | 'viewer'
-  status: 'active' | 'pending' | 'inactive' // ✅ ADDED 'inactive'
+  status: 'active' | 'pending' | 'inactive'
   joinedAt: string
 }
 

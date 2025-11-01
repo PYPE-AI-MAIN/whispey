@@ -5,7 +5,7 @@ import React, { createContext, useContext, ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface ProjectPermissions {
-  id: string
+  id?: string
   agent: {
     usage: {
       active_count: number
@@ -14,10 +14,10 @@ interface ProjectPermissions {
     limits: {
       max_agents: number
     }
-    last_updated: string
+    last_updated?: string
   }
   plans: {
-    type: 'USER' | 'ADMIN' | 'SUPERADMIN' | 'BETA'
+    type: 'USER' | 'ADMIN' | 'SUPERADMIN' | 'BETA' | 'FREE' | 'PAID'
     level: number
     metadata: any
     permissions: string[]
@@ -28,7 +28,14 @@ interface UserPermissionsContextType {
   permissions: ProjectPermissions | null
   loading: boolean
   error: string | null
-  isWhitelisted: boolean
+  userProjectRole: string | null
+  userProjectPermissions: {
+    read: boolean
+    write: boolean
+    delete: boolean
+    admin: boolean
+    can_create_agents?: boolean
+  } | null
   canCreatePypeAgent: boolean
   refetchPermissions: () => void
 }
@@ -43,12 +50,12 @@ export const useUserPermissions = ({ projectId }: { projectId?: string }) => {
   return context
 }
 
-// Query key factory function - UPDATED to include projectId
+// Query key factory function
 export const getUserPermissionsQueryKey = (projectId: string) => ['user', 'permissions', projectId]
 
-// Fetch function
-const fetchProjectPermissions = async (projectId: string): Promise<ProjectPermissions | null> => {
-  const response = await fetch(`/api/projects/${projectId}`, {
+// ✅ NEW: Single endpoint to fetch all project access data
+const fetchProjectAccess = async (projectId: string) => {
+  const response = await fetch(`/api/user/check-access?project_id=${projectId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'
@@ -56,15 +63,26 @@ const fetchProjectPermissions = async (projectId: string): Promise<ProjectPermis
   })
   
   if (!response.ok) {
-    if (response.status === 404) {
-      console.log('Project not found in database - treating as non-whitelisted')
+    if (response.status === 404 || response.status === 403) {
+      console.log('User does not have access to this project')
       return null
     }
-    throw new Error('Failed to fetch project permissions')
+    throw new Error('Failed to fetch project access')
   }
   
   const data = await response.json()
-  return data.data
+  
+  if (!data.hasProjectAccess) {
+    return null
+  }
+  
+  return {
+    role: data.role,
+    permissions: data.permissions,
+    agentData: data.agentData,
+    projectPlan: data.projectPlan,
+    isSuperAdmin: data.isSuperAdmin
+  }
 }
 
 interface UserPermissionsProviderProps {
@@ -75,9 +93,10 @@ interface UserPermissionsProviderProps {
 export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = ({ children, projectId }) => {
   const queryClient = useQueryClient()
 
-  const { data: permissions, isLoading: loading, error } = useQuery({
+  // ✅ Single query to get all project access data
+  const { data: accessData, isLoading, error } = useQuery({
     queryKey: getUserPermissionsQueryKey(projectId),
-    queryFn: () => fetchProjectPermissions(projectId),
+    queryFn: () => fetchProjectAccess(projectId),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 1,
@@ -86,11 +105,33 @@ export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = (
     enabled: !!projectId,
   })
 
-  const isWhitelisted = permissions?.plans?.type ?
-    ['ADMIN', 'SUPERADMIN', 'BETA'].includes(permissions.plans.type) : 
-    false
+  // ✅ Build permissions object from accessData
+  const permissions: ProjectPermissions | null = React.useMemo(() => {
+    if (!accessData) return null
+    
+    return {
+      agent: accessData.agentData || {
+        usage: { active_count: 0 },
+        agents: [],
+        limits: { max_agents: 0 }
+      },
+      plans: accessData.projectPlan || {
+        type: 'FREE',
+        level: 1,
+        metadata: {},
+        permissions: []
+      }
+    }
+  }, [accessData])
 
-  const canCreatePypeAgent = isWhitelisted
+  // ✅ Calculate if user can create agents
+  // Must have can_create_agents permission in their project mapping
+  const canCreatePypeAgent = React.useMemo(() => {
+    if (!accessData) return false
+    
+    // Check explicit permission
+    return accessData.permissions?.can_create_agents === true
+  }, [accessData])
 
   const refetchPermissions = () => {
     queryClient.invalidateQueries({ queryKey: getUserPermissionsQueryKey(projectId) })
@@ -99,10 +140,11 @@ export const UserPermissionsProvider: React.FC<UserPermissionsProviderProps> = (
   return (
     <UserPermissionsContext.Provider 
       value={{
-        permissions: permissions || null,
-        loading,
+        permissions,
+        loading: isLoading,
         error: error?.message || null,
-        isWhitelisted,
+        userProjectRole: accessData?.role || null,
+        userProjectPermissions: accessData?.permissions || null,
         canCreatePypeAgent,
         refetchPermissions
       }}
@@ -118,10 +160,8 @@ export const useInvalidateUserPermissions = () => {
   
   return (projectId?: string) => {
     if (projectId) {
-      // Invalidate specific project
       queryClient.invalidateQueries({ queryKey: getUserPermissionsQueryKey(projectId) })
     } else {
-      // Invalidate all user permissions
       queryClient.invalidateQueries({ queryKey: ['user', 'permissions'] })
     }
   }

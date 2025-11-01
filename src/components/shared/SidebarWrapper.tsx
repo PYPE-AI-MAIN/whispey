@@ -20,7 +20,7 @@ interface SidebarWrapperProps {
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
 // Reserved paths that are NOT project IDs
-const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service']
+const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service', 'unauthorized', 'admin']
 
 interface RoutePattern {
   pattern: string
@@ -122,6 +122,42 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 100
   },
 
+  // Admin routes - simplified to 2 options
+  {
+    patterns: [
+      { pattern: '/admin*' }
+    ],
+    getSidebarConfig: () => ({
+      type: 'admin',
+      context: {},
+      navigation: [
+        { 
+          id: 'admin-users', 
+          name: 'User Management', 
+          icon: 'Users', 
+          path: '/admin/users',
+          group: 'Management'
+        },
+        { 
+          id: 'admin-projects', 
+          name: 'Project Management', 
+          icon: 'Building2', 
+          path: '/admin/projects',
+          group: 'Management'
+        },
+        { 
+          id: 'back-to-projects', 
+          name: 'Back to Projects', 
+          icon: 'ArrowLeft', 
+          path: '/projects',
+          group: 'Navigation'
+        }
+      ],
+      showBackButton: false
+    }),
+    priority: 99
+  },
+
   // Onboarding route - show sidebar but minimal nav
   {
     patterns: [
@@ -145,7 +181,7 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 96
   },
 
-  // Project-level agents routes (UPDATED - now includes campaigns)
+  // Project-level agents routes
   {
     patterns: [
       { pattern: '/:projectId/agents' },
@@ -170,7 +206,6 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-    
       const campaignsItems = []
       if (canAccessPhoneCalls) {
         campaignsItems.push({
@@ -219,7 +254,7 @@ const sidebarRoutes: SidebarRoute[] = [
         context: { projectId },
         navigation: [
           ...baseNavigation, 
-          ...campaignsItems, // ✅ NEW: Added campaigns items here
+          ...campaignsItems,
           ...configurationItems, 
           ...projectSettingItems
         ],
@@ -428,7 +463,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
 
-  const { canAccessPhoneCalls } = useFeatureAccess()
+  const { isSuperAdmin } = useFeatureAccess()
   
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
   const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
@@ -436,11 +471,11 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   // Check if projectId is valid (not a reserved path)
   const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
   
-  // ✅ ADDED: Check if agentId is valid (not a reserved path)
+  // Check if agentId is valid (not a reserved path)
   const agentReservedPaths = ['api-keys', 'sip-management']
   const isValidAgentId = agentId && !agentReservedPaths.includes(agentId)
   
-  // Use React Query for project data
+  // Use React Query for project data - ONLY if valid project ID
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => fetchProject(projectId!),
@@ -461,7 +496,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     refetchOnMount: false,
   })
 
-  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedState = localStorage.getItem('whispey-sidebar-collapsed')
@@ -506,7 +540,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     userCanViewApiKeys,
     projectId,
     agentType: agent?.agent_type,
-    canAccessPhoneCalls
+    canAccessPhoneCalls: isSuperAdmin // fix this 
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)

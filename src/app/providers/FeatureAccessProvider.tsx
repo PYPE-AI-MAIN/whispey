@@ -5,15 +5,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 
 interface FeatureAccessContextType {
-  canCreatePypeAgent: boolean
-  canAccessPhoneCalls: boolean
+  isSuperAdmin: boolean
   userEmail: string | null
   isLoading: boolean
 }
 
 const FeatureAccessContext = createContext<FeatureAccessContextType>({
-  canCreatePypeAgent: false,
-  canAccessPhoneCalls: false,
+  isSuperAdmin: false,
   userEmail: null,
   isLoading: true,
 })
@@ -30,40 +28,52 @@ interface FeatureAccessProviderProps {
   children: React.ReactNode
 }
 
-// Parse the whitelist from environment variable
-const getAgentCreationWhitelist = (): string[] => {
-  const whitelist = process.env.NEXT_PUBLIC_AGENT_CREATION_WHITELIST || ''
-  return whitelist
-    .split(',')
-    .map(email => email.trim().toLowerCase())
-    .filter(email => email.length > 0)
-}
-
-
 export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) {
   const { user, isLoaded } = useUser()
-  const [canCreatePypeAgent, setCanCreatePypeAgent] = useState(false)
-  const [canAccessPhoneCalls, setCanAccessPhoneCalls] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isLoaded) {
-      const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase()
-      setUserEmail(email || null)
-      
-      const whitelist = getAgentCreationWhitelist()
-      const isWhitelisted = email ? whitelist.includes(email) : false
+    if (!isLoaded) return
 
-      setCanCreatePypeAgent(isWhitelisted)
-      setCanAccessPhoneCalls(isWhitelisted)
+    const checkSuperAdmin = async () => {
+      if (!user) {
+        setIsSuperAdmin(false)
+        setUserEmail(null)
+        return
+      }
+
+      const email = user.emailAddresses?.[0]?.emailAddress
+      setUserEmail(email || null)
+
+      try {
+        // ✅ Use new endpoint without project_id
+        const response = await fetch('/api/user/check-access')
+        
+        if (!response.ok) {
+          console.log('User access check failed, defaulting to non-superadmin')
+          setIsSuperAdmin(false)
+          return
+        }
+
+        const data = await response.json()
+        setIsSuperAdmin(data.isSuperAdmin || false)
+
+        console.log(`✅ User access loaded: ${data.isSuperAdmin ? 'SUPERADMIN' : 'Regular User'}`)
+        
+      } catch (error) {
+        console.error('Error checking superadmin status:', error)
+        setIsSuperAdmin(false)
+      }
     }
+
+    checkSuperAdmin()
   }, [user, isLoaded])
 
   return (
     <FeatureAccessContext.Provider
       value={{
-        canCreatePypeAgent,
-        canAccessPhoneCalls,
+        isSuperAdmin,
         userEmail,
         isLoading: !isLoaded,
       }}

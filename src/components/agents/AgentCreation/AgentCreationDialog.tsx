@@ -6,7 +6,7 @@ import CreateAgentFlow from './CreateAgentFlow'
 import ConnectAgentFlow from './ConnectAgentFlow'
 import AgentChoiceScreen from './AgentChoiceScreen'
 import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
-import { UserPermissionsProvider } from '@/contexts/UserPermissionsContext'
+import { useUserPermissions } from '@/contexts/UserPermissionsContext'
 
 interface AgentCreationDialogProps {
   isOpen: boolean
@@ -27,11 +27,18 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 }) => {
   const [currentFlow, setCurrentFlow] = useState<FlowType>('choice')
   const [loading, setLoading] = useState(false)
-  const { canCreatePypeAgent, isLoading: featureLoading } = useFeatureAccess()
+  
+  // ✅ Updated to use new context structure
+  const { isSuperAdmin, isLoading: featureLoading } = useFeatureAccess()
+  const { permissions, userProjectPermissions, loading: permissionsLoading } = useUserPermissions({ projectId })
+  
+  // ✅ Determine if user can create Pype agents
+  const canCreatePypeAgent = isSuperAdmin || userProjectPermissions?.can_create_agents === true
+  const isLoading = featureLoading || permissionsLoading
 
   // Reset flow when dialog opens and determine initial flow
   useEffect(() => {
-    if (isOpen && !featureLoading) {
+    if (isOpen && !isLoading) {
       if (initialFlow === 'create' && canCreatePypeAgent) {
         setCurrentFlow('create')
       } else if (initialFlow === 'connect') {
@@ -41,7 +48,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
         setCurrentFlow('choice')
       }
     }
-  }, [isOpen, canCreatePypeAgent, featureLoading, initialFlow])
+  }, [isOpen, canCreatePypeAgent, isLoading, initialFlow])
 
   const handleClose = () => {
     if (!loading) {
@@ -66,7 +73,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
   const renderCurrentFlow = () => {
     // Show loading while checking feature access
-    if (featureLoading) {
+    if (isLoading) {
       return (
         <div className="flex items-center justify-center py-16">
           <div className="animate-pulse">
@@ -80,7 +87,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
     switch (currentFlow) {
       case 'choice':
-        // Only show choice screen for internal users
+        // Only show choice screen for users who can create Pype agents
         if (canCreatePypeAgent) {
           return (
             <AgentChoiceScreen
@@ -127,11 +134,11 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
   }
 
   return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900 max-h-[90vh] flex flex-col">
-          {renderCurrentFlow()}
-        </DialogContent>
-      </Dialog>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900 max-h-[90vh] flex flex-col">
+        {renderCurrentFlow()}
+      </DialogContent>
+    </Dialog>
   )
 }
 

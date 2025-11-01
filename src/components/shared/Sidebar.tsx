@@ -37,7 +37,9 @@ import {
   History,
   ChevronLeft,
   Calendar,
-  X
+  X,
+  Building2,
+  ShieldCheck
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -70,7 +72,10 @@ const ICONS = {
   CreditCard,
   History,
   Calendar,
-  X
+  X,
+  Building2,
+  ArrowLeft,
+  ShieldCheck
 } as const
 
 interface NavigationItem {
@@ -155,6 +160,32 @@ export default function Sidebar({
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false)
   const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [checkingAdmin, setCheckingAdmin] = useState(true)
+
+  // Check if user is SUPERADMIN
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!isLoaded || !user) {
+        setCheckingAdmin(false)
+        return
+      }
+
+      try {
+        const response = await fetch('/api/user/users')
+        if (response.ok) {
+          const result = await response.json()
+          setIsSuperAdmin(result.data?.roles?.type === 'SUPERADMIN')
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error)
+      } finally {
+        setCheckingAdmin(false)
+      }
+    }
+
+    checkAdminStatus()
+  }, [user, isLoaded])
 
   // Hotkey for toggling sidebar (Cmd/Ctrl + B)
   useHotkeys('meta+B', (e) => {
@@ -182,7 +213,6 @@ export default function Sidebar({
   // Hotkey for creating new organization (N key)
   useHotkeys('n', (e) => {
     e.preventDefault()
-    // If org switcher is open, close it first
     if (orgSwitcherOpen) {
       setOrgSwitcherOpen(false)
       setTimeout(() => {
@@ -204,18 +234,15 @@ export default function Sidebar({
   useEffect(() => {
     if (isMobile || !mounted) return
     
-    // Define routes that should auto-collapse the sidebar
     const autoCollapseRoutes = [
       '/campaigns/create',
       '/campaigns/edit'
     ]
     
-    // Check if current path matches any auto-collapse route
     const shouldAutoCollapse = autoCollapseRoutes.some(route => 
       currentPath.includes(route)
     )
     
-    // Only auto-collapse once when entering these routes
     if (shouldAutoCollapse && !isCollapsed && !hasAutoCollapsed) {
       onToggleCollapse?.()
       setHasAutoCollapsed(true)
@@ -224,7 +251,6 @@ export default function Sidebar({
       }
     }
     
-    // Reset the flag when leaving auto-collapse routes
     if (!shouldAutoCollapse && hasAutoCollapsed) {
       setHasAutoCollapsed(false)
     }
@@ -296,7 +322,6 @@ export default function Sidebar({
 
     config.navigation.forEach((item: any) => {
       if (item.group) {
-        // Normalize group names for consistency
         const normalizedGroup = item.group.toLowerCase()
         if (!groups[normalizedGroup]) {
           groups[normalizedGroup] = []
@@ -309,7 +334,6 @@ export default function Sidebar({
 
     const result: NavigationGroup[] = []
     
-    // Add ungrouped items first (no group header)
     if (ungrouped.length > 0) {
       result.push({
         id: 'ungrouped',
@@ -318,19 +342,19 @@ export default function Sidebar({
       })
     }
 
-    // Define group order for consistency
     const groupOrder = [
       'logs', 'agents', 'reports', 'analytics', 'integrations', 
-      'team', 'settings', 'configuration', 'batch calls', 'resources'
+      'team', 'settings', 'configuration', 'batch calls', 'management', 'navigation', 'resources'
     ]
 
-    // Add groups in preferred order
     groupOrder.forEach(groupId => {
       if (groups[groupId]) {
         result.push({
           id: groupId,
           name: groupId === 'logs' ? 'LOGS' : 
                 groupId === 'batch calls' ? 'Batch Calls' :
+                groupId === 'management' ? 'Management' :
+                groupId === 'navigation' ? 'Navigation' :
                 groupId.charAt(0).toUpperCase() + groupId.slice(1),
           items: groups[groupId]
         })
@@ -338,7 +362,6 @@ export default function Sidebar({
       }
     })
 
-    // Add any remaining groups
     Object.entries(groups).forEach(([groupId, items]) => {
       result.push({
         id: groupId,
@@ -391,7 +414,6 @@ export default function Sidebar({
       </Link>
     )
 
-    // Wrap with tooltip when collapsed on desktop
     if (isCollapsed && !isMobile) {
       return (
         <TooltipProvider key={item.id}>
@@ -432,7 +454,6 @@ export default function Sidebar({
     return null
   }
 
-  // Get pricing config with fallback for new types
   const pricingConfig = PRICING_CONFIGS[config.type] || {
     showPricingBox: false,
     plan: '',
@@ -491,7 +512,7 @@ export default function Sidebar({
             )}
           </Link>
 
-          {/* Circular Collapse Button - positioned on the right edge */}
+          {/* Circular Collapse Button */}
           {!isMobile && onToggleCollapse && (
             <div className="absolute -right-3 top-1/2 -translate-y-1/2 z-10">
               <TooltipProvider>
@@ -539,7 +560,6 @@ export default function Sidebar({
 
           {groupedNavigation().map((group, groupIndex) => (
             <div key={group.id}>
-              {/* Group Header - only show if group has a name and we're not collapsed */}
               {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
                   <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
@@ -548,17 +568,55 @@ export default function Sidebar({
                 </div>
               )}
               
-              {/* Group separator for collapsed mode */}
               {group.name && isCollapsed && !isMobile && groupIndex > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
               )}
 
-              {/* Group Items */}
               <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
                 {group.items.map(item => renderNavigationItem(item))}
               </div>
             </div>
           ))}
+
+          {/* Admin Panel Link - Only visible to SUPERADMIN */}
+          {!checkingAdmin && isSuperAdmin && (
+            <>
+              <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      href="/admin" 
+                      onClick={() => {
+                        if (isMobile && onMobileClose) {
+                          onMobileClose()
+                        }
+                      }}
+                    >
+                      <div className={`
+                        flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
+                        ${currentPath.startsWith('/admin')
+                          ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800' 
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+                        }
+                        ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
+                      `}>
+                        <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${currentPath.startsWith('/admin') ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}`} />
+                        {(!isCollapsed || isMobile) && (
+                          <span className="truncate">Admin Panel</span>
+                        )}
+                      </div>
+                    </Link>
+                  </TooltipTrigger>
+                  {isCollapsed && !isMobile && (
+                    <TooltipContent side="right">
+                      <p>Admin Panel</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            </>
+          )}
         </nav>
 
         {/* GitHub Stars */}

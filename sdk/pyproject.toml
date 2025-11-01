@@ -25,7 +25,7 @@ classifiers = [
 ]
 requires-python = ">=3.8"
 dependencies = [
-    "livekit-agents>=1.2.2",
+    "livekit-agents[ultravox]>=1.2.2",
     "aiohttp>=3.8.0",
     "python-dotenv>=1.0.0",
 ]
