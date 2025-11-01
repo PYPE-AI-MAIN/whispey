@@ -40,6 +40,8 @@ export default function PhoneCallConfig() {
   const [isCheckingRunning, setIsCheckingRunning] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('US')
+  const [sipTrunkId, setSipTrunkId] = useState('')
+  const [provider, setProvider] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingAgent, setIsLoadingAgent] = useState(true)
   const [message, setMessage] = useState('')
@@ -133,6 +135,18 @@ export default function PhoneCallConfig() {
       return
     }
 
+    if (!sipTrunkId.trim()) {
+      setMessage('SIP Trunk ID is required')
+      setMessageType('error')
+      return
+    }
+
+    if (!provider.trim()) {
+      setMessage('Provider is required')
+      setMessageType('error')
+      return
+    }
+
     // Check if agent is running and get the correct agent name format
     const { isRunning, agentName } = getRunningAgentName(agent, runningAgents)
 
@@ -151,6 +165,8 @@ export default function PhoneCallConfig() {
 
       console.log('🔍 Dispatching call to:', formattedNumber)
       console.log('🔍 Agent name:', agentName)
+      console.log('🔍 SIP Trunk ID:', sipTrunkId)
+      console.log('🔍 Provider:', provider)
       
       const response = await fetch('/api/agents/dispatch-call', {
         method: 'POST',
@@ -158,6 +174,8 @@ export default function PhoneCallConfig() {
         body: JSON.stringify({
           agent_name: agentName, // Use the detected running agent name
           phone_number: formattedNumber,
+          sip_trunk_id: sipTrunkId,
+          provider: provider,
         }),
       })
 
@@ -168,6 +186,8 @@ export default function PhoneCallConfig() {
         setMessageType('success')
         setRecentCalls(prev => [{ ...result, phone_number: formattedNumber }, ...prev.slice(0, 4)])
         setPhoneNumber('')
+        setSipTrunkId('')
+        setProvider('')
       } else {
         setMessage(result.error || 'Failed to dispatch call')
         setMessageType('error')
@@ -298,7 +318,7 @@ export default function PhoneCallConfig() {
               {/* Phone Number Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Phone Number
+                  Phone Number *
                 </label>
                 <div className="flex">
                   <div className="flex items-center px-4 bg-gray-100 dark:bg-gray-700 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-lg">
@@ -314,6 +334,34 @@ export default function PhoneCallConfig() {
                     className="rounded-l-none bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 h-12 text-base font-mono focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
                   />
                 </div>
+              </div>
+
+              {/* SIP Trunk ID Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  SIP Trunk ID *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g., ST_abc123def456"
+                  value={sipTrunkId}
+                  onChange={(e) => setSipTrunkId(e.target.value)}
+                  className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 h-12 text-base focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
+                />
+              </div>
+
+              {/* Provider Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Provider *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g., Airtel"
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                  className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 h-12 text-base focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
+                />
               </div>
 
               {/* Message Display */}
@@ -352,6 +400,8 @@ export default function PhoneCallConfig() {
                 disabled={
                   isLoading || 
                   !phoneNumber.trim() || 
+                  !sipTrunkId.trim() ||
+                  !provider.trim() ||
                   isCheckingRunning ||
                   (agent.agent_type === 'pype_agent' && !runningStatus.isRunning) ||
                   (agent.agent_type !== 'pype_agent' && !agent.is_active)

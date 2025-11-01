@@ -216,6 +216,15 @@ export function useMultiAssistantState({
             }
           }
 
+          // transfer_call specific fields
+          if (tool.type === 'transfer_call') {
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              transfer_number: tool.config?.transferNumber || ''
+            }
+          }
+
           return baseToolConfig
         }) || getFallback(null, 'tools'),
         filler_words: {
@@ -401,6 +410,15 @@ export function useMultiAssistantState({
               ...commonFields,
               target_agent: tool.config?.targetAgent || '',
               handoff_message: tool.config?.handoffMessage || ''
+            }
+          }
+
+          // transfer_call specific fields
+          if (tool.type === 'transfer_call') {
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              transfer_number: tool.config?.transferNumber || ''
             }
           }
 

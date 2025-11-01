@@ -163,6 +163,8 @@ function transformFormDataToAgentConfig(formData: any) {
                 async: tool.config.asyncExecution,
                 headers: tool.config.headers,
                 parameters: tool.config.parameters
+              } : tool.type === 'transfer_call' ? {
+                transfer_number: tool.config.transferNumber
               } : {})
             } : {})
           })),
