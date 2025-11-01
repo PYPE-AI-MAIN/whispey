@@ -30,7 +30,7 @@ interface FeatureAccessProviderProps {
   children: React.ReactNode
 }
 
-// Parse the whitelist from environment variable
+// Parse the agent creation whitelist from environment variable
 const getAgentCreationWhitelist = (): string[] => {
   const whitelist = process.env.NEXT_PUBLIC_AGENT_CREATION_WHITELIST || ''
   return whitelist
@@ -39,6 +39,14 @@ const getAgentCreationWhitelist = (): string[] => {
     .filter(email => email.length > 0)
 }
 
+// Parse the phone calls whitelist from PostHog blacklist environment variable
+const getPhoneCallsWhitelist = (): string[] => {
+  const whitelist = process.env.NEXT_PUBLIC_POSTHOG_BLACKLIST || ''
+  return whitelist
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(email => email.length > 0)
+}
 
 export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) {
   const { user, isLoaded } = useUser()
@@ -51,11 +59,15 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
       const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase()
       setUserEmail(email || null)
       
-      const whitelist = getAgentCreationWhitelist()
-      const isWhitelisted = email ? whitelist.includes(email) : false
+      // Check agent creation whitelist
+      const agentWhitelist = getAgentCreationWhitelist()
+      const canCreateAgent = email ? agentWhitelist.includes(email) : false
+      setCanCreatePypeAgent(canCreateAgent)
 
-      setCanCreatePypeAgent(isWhitelisted)
-      setCanAccessPhoneCalls(isWhitelisted)
+      // Check phone calls whitelist (from PostHog blacklist)
+      const phoneCallsWhitelist = getPhoneCallsWhitelist()
+      const canAccessCalls = email ? phoneCallsWhitelist.includes(email) : false
+      setCanAccessPhoneCalls(canAccessCalls)
     }
   }, [user, isLoaded])
 
