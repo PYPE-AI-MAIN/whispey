@@ -409,7 +409,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         tools: assistant.tools?.map((tool: any) => ({
           id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
           type: tool.type,
-          name: tool.name || (tool.type === 'end_call' ? 'End Call' : tool.type === 'handoff' ? 'Handoff Agent' : 'Custom Tool'),
+          name: tool.name || (tool.type === 'end_call' ? 'End Call' : tool.type === 'handoff' ? 'Handoff Agent' : tool.type === 'transfer_call' ? 'Transfer Call' : 'Custom Tool'),
           config: {
             description: tool.description || '',
             endpoint: tool.api_url || '',
@@ -418,6 +418,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             body: tool.custom_payload || '',
             targetAgent: tool.target_agent || '',
             handoffMessage: tool.handoff_message || '',
+            transferNumber: tool.transfer_number || '',
             timeout: tool.timeout || 10,
             asyncExecution: tool.async || false,
             parameters: tool.parameters?.map((param: any) => ({
