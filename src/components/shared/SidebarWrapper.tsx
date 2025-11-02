@@ -173,7 +173,7 @@ const sidebarRoutes: SidebarRoute[] = [
 
     
       const campaignsItems = []
-      if (canAccessPhoneCalls) {
+      if (canAccessPhoneSettings) {
         campaignsItems.push({
           id: 'campaigns',
           name: 'Campaigns',
