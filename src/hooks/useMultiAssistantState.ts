@@ -221,7 +221,8 @@ export function useMultiAssistantState({
             return {
               ...baseToolConfig,
               ...commonFields,
-              transfer_number: tool.config?.transferNumber || ''
+              transfer_number: tool.config?.transferNumber || '',
+              sip_outbound_trunk: tool.config?.sipTrunkId || ''
             }
           }
 
@@ -418,7 +419,8 @@ export function useMultiAssistantState({
             return {
               ...baseToolConfig,
               ...commonFields,
-              transfer_number: tool.config?.transferNumber || ''
+              transfer_number: tool.config?.transferNumber || '',
+              sip_outbound_trunk: tool.config?.sipTrunkId || ''
             }
           }
 
