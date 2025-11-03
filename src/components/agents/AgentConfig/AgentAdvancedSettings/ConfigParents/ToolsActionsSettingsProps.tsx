@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,7 +9,15 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone } from 'lucide-react'
+
+interface PhoneNumber {
+  id: string
+  phone_number: string
+  trunk_id: string
+  provider: string | null
+  project_id: string | null
+}
 
 interface ToolParameter {
   id: string
@@ -32,6 +40,7 @@ interface Tool {
     targetAgent?: string
     handoffMessage?: string
     transferNumber?: string
+    sipTrunkId?: string
     timeout?: number
     asyncExecution?: boolean
     parameters?: ToolParameter[]
@@ -42,12 +51,15 @@ interface Tool {
 interface ToolsActionsSettingsProps {
   tools: Tool[]
   onFieldChange: (field: string, value: any) => void
+  projectId?: string
 }
 
-function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProps) {
+function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'custom_function' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
+  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
+  const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -58,12 +70,44 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
     body: '',
     targetAgent: '',
     handoffMessage: '',
+    selectedPhoneId: '',
     transferNumber: '',
+    sipTrunkId: '',
     timeout: 10,
     asyncExecution: false,
     parameters: [] as ToolParameter[],
     responseMapping: '{}'
   })
+
+  // Fetch phone numbers when component mounts
+  useEffect(() => {
+    const fetchPhoneNumbers = async () => {
+      try {
+        setLoadingPhoneNumbers(true)
+        const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
+        const response = await fetch(`${baseUrl}/api/calls/phone-numbers/?limit=50`)
+        
+        if (response.ok) {
+          const data: PhoneNumber[] = await response.json()
+          
+          // Filter by project_id if projectId is provided
+          const filteredNumbers = projectId 
+            ? data.filter(phone => phone.project_id === projectId)
+            : data
+          
+          setPhoneNumbers(filteredNumbers)
+        }
+      } catch (error) {
+        console.error('Error fetching phone numbers:', error)
+      } finally {
+        setLoadingPhoneNumbers(false)
+      }
+    }
+
+    if (projectId) {
+      fetchPhoneNumbers()
+    }
+  }, [projectId])
 
   const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'custom_function') => {
     setSelectedToolType(toolType)
@@ -79,7 +123,9 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         body: '',
         targetAgent: '',
         handoffMessage: '',
+        selectedPhoneId: '',
         transferNumber: '',
+        sipTrunkId: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -95,7 +141,9 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         body: '',
         targetAgent: '',
         handoffMessage: 'Transferring you to another agent...',
+        selectedPhoneId: '',
         transferNumber: '',
+        sipTrunkId: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -111,7 +159,9 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         body: '',
         targetAgent: '',
         handoffMessage: '',
+        selectedPhoneId: '',
         transferNumber: '',
+        sipTrunkId: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -127,7 +177,9 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         body: '',
         targetAgent: '',
         handoffMessage: '',
+        selectedPhoneId: '',
         transferNumber: '',
+        sipTrunkId: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -141,6 +193,14 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
   const handleEditTool = (tool: Tool) => {
     setEditingTool(tool)
     setSelectedToolType(tool.type)
+    
+    // Find the phone ID if we have a sipTrunkId
+    let selectedPhoneId = ''
+    if (tool.config.sipTrunkId) {
+      const matchingPhone = phoneNumbers.find(p => p.trunk_id === tool.config.sipTrunkId)
+      selectedPhoneId = matchingPhone?.id || ''
+    }
+    
     setFormData({
       name: tool.name,
       description: tool.config.description || '',
@@ -150,7 +210,9 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
       body: tool.config.body || '',
       targetAgent: tool.config.targetAgent || '',
       handoffMessage: tool.config.handoffMessage || '',
+      selectedPhoneId: selectedPhoneId,
       transferNumber: tool.config.transferNumber || '',
+      sipTrunkId: tool.config.sipTrunkId || '',
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
       parameters: tool.config.parameters || [],
@@ -173,6 +235,7 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
         targetAgent: formData.targetAgent,
         handoffMessage: formData.handoffMessage,
         transferNumber: formData.transferNumber,
+        sipTrunkId: formData.sipTrunkId,
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
         parameters: formData.parameters,
@@ -379,6 +442,61 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     The phone number to transfer the call to. The call will be transferred to this number in a conference.
                   </p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+                    <Phone className="w-3 h-3" />
+                    SIP Trunk
+                  </Label>
+                  {loadingPhoneNumbers ? (
+                    <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                  ) : phoneNumbers.length === 0 ? (
+                    <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {projectId ? 'No phone numbers available for this project' : 'No phone numbers available for outbound calls'}
+                      </span>
+                    </div>
+                  ) : (
+                    <Select
+                      value={formData.selectedPhoneId}
+                      onValueChange={(phoneId) => {
+                        const selectedPhone = phoneNumbers.find(p => p.id === phoneId)
+                        if (selectedPhone) {
+                          setFormData(prev => ({
+                            ...prev,
+                            selectedPhoneId: phoneId,
+                            sipTrunkId: selectedPhone.trunk_id
+                          }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full h-8 text-sm">
+                        <SelectValue placeholder="Select phone number" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {phoneNumbers.map((phone) => (
+                          <SelectItem key={phone.id} value={phone.id}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs">{phone.phone_number}</span>
+                              {phone.provider && (
+                                <span className="text-gray-500 text-xs">({phone.provider})</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Select a phone number to use its SIP trunk for the transfer. The trunk ID will be automatically used.
+                  </p>
+                  {formData.sipTrunkId && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Selected SIP Trunk: <span className="font-mono">{formData.sipTrunkId}</span>
+                    </p>
+                  )}
                 </div>
               </>
             )}
