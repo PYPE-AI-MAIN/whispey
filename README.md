@@ -49,7 +49,7 @@
 
 ## 🚀 Quick Start
 
-### Cloud Platform (Recommended)
+ ### Cloud Platform (Recommended)
 
 Get started in under 2 minutes with our hosted platform:
 
