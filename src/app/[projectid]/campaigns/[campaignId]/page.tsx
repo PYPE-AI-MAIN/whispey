@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Contact } from '@/utils/campaigns/constants'
+import { Contact, RetryConfig } from '@/utils/campaigns/constants'
 
 interface CampaignDetails {
   campaignId: string
@@ -24,6 +24,7 @@ interface CampaignDetails {
     timezone: string
     enabled: boolean
     frequency: number
+    retryConfig?: RetryConfig[]
   }
   callConfig: {
     agentName: string
@@ -326,6 +327,56 @@ function ViewCampaign() {
                 </p>
               </div>
             </div>
+
+            {/* Retry Configuration */}
+            {campaignDetails.schedule.retryConfig && campaignDetails.schedule.retryConfig.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-1.5">
+                  <RefreshCw className="w-3 h-3" />
+                  Retry Configuration
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {campaignDetails.schedule.retryConfig.map((config, index) => {
+                    const errorCode = config.errorCodes[0]
+                    const errorLabels: { [key: string]: string } = {
+                      '480': 'Temporarily Unavailable',
+                      '486': 'Busy Here',
+                    }
+                    const label = errorLabels[errorCode] || errorCode
+
+                    return (
+                      <div 
+                        key={index} 
+                        className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-mono text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {errorCode}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {label}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Delay:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                              {config.delayMinutes} min
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Retries:</span>
+                            <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                              {config.maxRetries}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Contacts Table */}
