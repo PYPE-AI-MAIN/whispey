@@ -66,6 +66,13 @@ export interface PhoneNumber {
   assigned_at: string | null
 }
 
+// Retry Configuration
+export interface RetryConfig {
+  errorCodes: string[]
+  delayMinutes: number
+  maxRetries: number
+}
+
 // Campaign types
 export interface Campaign {
   campaignId: string
@@ -83,6 +90,7 @@ export interface Campaign {
     timezone: string
     enabled: boolean
     frequency: number
+    retryConfig?: RetryConfig[]
   }
   callConfig: {
     agentName: string
