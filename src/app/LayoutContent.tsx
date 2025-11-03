@@ -39,8 +39,9 @@ function useIntelligentClerkSync() {
         const userCheckData = await userCheckResponse.json()
         
         if (userCheckResponse.status === 404 && userCheckData.error === 'User not found') {
-          console.log('🔍 User not found with current Clerk ID, attempting sync...')
+          console.log('🔍 User not found, trying sync or create...')
           
+          // Try sync first (for whitelisted migrated users)
           const syncResponse = await fetch('/api/admin/sync-clerk-id', {
             method: 'POST',
           })
@@ -48,14 +49,22 @@ function useIntelligentClerkSync() {
           if (syncResponse.ok) {
             const syncData = await syncResponse.json()
             if (syncData.synced) {
-              console.log('✅ Clerk ID automatically synced')
-            } else {
-              console.log('ℹ️ Sync not needed:', syncData.reason)
+              console.log('✅ User synced')
+              return
             }
+          }
+
+          // If sync didn't work, create new user
+          const createResponse = await fetch('/api/user/create', {
+            method: 'POST',
+          })
+          
+          if (createResponse.ok) {
+            console.log('✅ User created')
           }
         }
       } catch (error) {
-        console.error('Background sync check error:', error)
+        console.error('Sync error:', error)
       } finally {
         syncAttempted.current = true
       }
