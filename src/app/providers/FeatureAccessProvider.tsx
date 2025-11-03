@@ -7,6 +7,7 @@ import { useUser } from '@clerk/nextjs'
 interface FeatureAccessContextType {
   canCreatePypeAgent: boolean
   canAccessPhoneCalls: boolean
+  canAccessPhoneSettings: boolean
   userEmail: string | null
   isLoading: boolean
 }
@@ -14,6 +15,7 @@ interface FeatureAccessContextType {
 const FeatureAccessContext = createContext<FeatureAccessContextType>({
   canCreatePypeAgent: false,
   canAccessPhoneCalls: false,
+  canAccessPhoneSettings: false,
   userEmail: null,
   isLoading: true,
 })
@@ -30,7 +32,7 @@ interface FeatureAccessProviderProps {
   children: React.ReactNode
 }
 
-// Parse the whitelist from environment variable
+// Parse the agent creation whitelist from environment variable
 const getAgentCreationWhitelist = (): string[] => {
   const whitelist = process.env.NEXT_PUBLIC_AGENT_CREATION_WHITELIST || ''
   return whitelist
@@ -39,11 +41,20 @@ const getAgentCreationWhitelist = (): string[] => {
     .filter(email => email.length > 0)
 }
 
+// Parse the phone calls whitelist from PostHog blacklist environment variable
+const getPhoneCallsWhitelist = (): string[] => {
+  const whitelist = process.env.NEXT_PUBLIC_POSTHOG_BLACKLIST || ''
+  return whitelist
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(email => email.length > 0)
+}
 
 export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) {
   const { user, isLoaded } = useUser()
   const [canCreatePypeAgent, setCanCreatePypeAgent] = useState(false)
   const [canAccessPhoneCalls, setCanAccessPhoneCalls] = useState(false)
+  const [canAccessPhoneSettings, setCanAccessPhoneSettings] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
@@ -51,11 +62,18 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
       const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase()
       setUserEmail(email || null)
       
-      const whitelist = getAgentCreationWhitelist()
-      const isWhitelisted = email ? whitelist.includes(email) : false
+      // Check agent creation whitelist
+      const agentWhitelist = getAgentCreationWhitelist()
+      const canCreateAgent = email ? agentWhitelist.includes(email) : false
+      setCanCreatePypeAgent(canCreateAgent)
 
-      setCanCreatePypeAgent(isWhitelisted)
-      setCanAccessPhoneCalls(isWhitelisted)
+      // Check phone calls whitelist (from PostHog blacklist)
+      const phoneCallsWhitelist = getPhoneCallsWhitelist()
+      const canAccessCalls = email ? phoneCallsWhitelist.includes(email) : false
+      setCanAccessPhoneCalls(canAccessCalls)
+
+      // Phone settings: accessible to either agent creators OR phone calls users
+      setCanAccessPhoneSettings(canCreateAgent || canAccessCalls)
     }
   }, [user, isLoaded])
 
@@ -64,6 +82,7 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
       value={{
         canCreatePypeAgent,
         canAccessPhoneCalls,
+        canAccessPhoneSettings,
         userEmail,
         isLoading: !isLoaded,
       }}
