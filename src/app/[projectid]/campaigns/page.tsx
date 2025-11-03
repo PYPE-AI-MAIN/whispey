@@ -58,11 +58,13 @@ function Campaigns() {
     }
   }, [projectId])
 
-  const filteredCampaigns = campaigns.filter(campaign => 
-    campaign.campaignName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    campaign.campaignId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    campaign.callConfig.agentName.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredCampaigns = campaigns
+    .filter(campaign => 
+      campaign.campaignName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      campaign.campaignId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      campaign.callConfig.agentName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -275,15 +277,15 @@ function Campaigns() {
                           <div 
                             className="bg-green-500 dark:bg-green-600 h-1.5 rounded-full transition-all"
                             style={{ 
-                              width: campaign.totalContacts > 0 
-                                ? `${(campaign.successCalls / campaign.totalContacts) * 100}%`
+                              width: campaign.processedContacts > 0 
+                                ? `${Math.min(100, Math.max(0, (campaign.successCalls / campaign.processedContacts) * 100))}%`
                                 : '0%'
                             }}
                           />
                         </div>
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {campaign.totalContacts > 0 
-                            ? Math.round((campaign.successCalls / campaign.totalContacts) * 100)
+                          {campaign.processedContacts > 0 
+                            ? Math.min(100, Math.max(0, Math.round((campaign.successCalls / campaign.processedContacts) * 100)))
                             : 0}%
                         </span>
                       </div>
@@ -411,8 +413,8 @@ function Campaigns() {
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Success Rate</span>
                       <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {selectedCampaign.totalContacts > 0 
-                          ? Math.round((selectedCampaign.successCalls / selectedCampaign.totalContacts) * 100)
+                        {selectedCampaign.processedContacts > 0 
+                          ? Math.min(100, Math.max(0, Math.round((selectedCampaign.successCalls / selectedCampaign.processedContacts) * 100)))
                           : 0}%
                       </span>
                     </div>
@@ -420,8 +422,8 @@ function Campaigns() {
                       <div 
                         className="bg-green-500 dark:bg-green-600 h-3 rounded-full transition-all"
                         style={{ 
-                          width: selectedCampaign.totalContacts > 0 
-                            ? `${(selectedCampaign.successCalls / selectedCampaign.totalContacts) * 100}%`
+                          width: selectedCampaign.processedContacts > 0 
+                            ? `${Math.min(100, Math.max(0, (selectedCampaign.successCalls / selectedCampaign.processedContacts) * 100))}%`
                             : '0%'
                         }}
                       />

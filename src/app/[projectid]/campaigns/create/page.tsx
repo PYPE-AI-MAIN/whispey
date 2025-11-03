@@ -13,6 +13,7 @@ import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
 import { RecipientsPreview } from '@/components/campaigns/RecipientsPreview'
+import { RetryConfiguration } from '@/components/campaigns/RetryConfiguration'
 
 const validationSchema = Yup.object({
   campaignName: Yup.string()
@@ -35,6 +36,19 @@ const validationSchema = Yup.object({
     .required('Campaign concurrency is required')
     .min(1, 'Must be at least 1')
     .max(5, 'Cannot exceed 5'),
+  retryConfig: Yup.array().of(
+    Yup.object().shape({
+      errorCodes: Yup.array().of(Yup.string()).required(),
+      delayMinutes: Yup.number()
+        .required('Delay minutes is required')
+        .min(0, 'Must be at least 0')
+        .max(1440, 'Cannot exceed 1440 minutes'),
+      maxRetries: Yup.number()
+        .required('Max retries is required')
+        .min(0, 'Must be at least 0')
+        .max(10, 'Cannot exceed 10'),
+    })
+  ),
 })
 
 function CreateCampaign() {
@@ -58,6 +72,18 @@ function CreateCampaign() {
     callWindowEnd: '23:59',
     reservedConcurrency: 5,
     selectedDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], // Default to weekdays
+    retryConfig: [
+      {
+        errorCodes: ['480'],
+        delayMinutes: 30,
+        maxRetries: 2,
+      },
+      {
+        errorCodes: ['486'],
+        delayMinutes: 30,
+        maxRetries: 2,
+      },
+    ],
   }
 
   // Fetch phone numbers when component mounts
@@ -179,6 +205,7 @@ function CreateCampaign() {
           frequency: values.reservedConcurrency,
           enabled: true,
           days: values.selectedDays.length > 0 ? values.selectedDays : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+          retryConfig: values.retryConfig,
         }),
       })
 
@@ -245,6 +272,14 @@ function CreateCampaign() {
                   csvData={csvData}
                   onFileUpload={handleFileUpload}
                   onRemoveFile={handleRemoveFile}
+                />
+
+                {/* Retry Configuration */}
+                <RetryConfiguration
+                  onFieldChange={setFieldValue}
+                  values={{
+                    retryConfig: values.retryConfig,
+                  }}
                 />
 
                 {/* Schedule Selector */}
