@@ -439,20 +439,18 @@ function ToolsActionsSettings({ tools, onFieldChange }: ToolsActionsSettingsProp
                 </div>
 
                 {/* Custom Payload */}
-                {formData.method !== 'GET' && (
-                  <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Custom Payload (JSON Template)</Label>
-                    <Textarea
-                      value={formData.body}
-                      onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-                      className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                      placeholder='e.g., {"order": {"customer_id": customer_id, "items": items, "timestamp": "{{timestamp}}"}}'
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Use parameter names as variables and {`{{timestamp}}`} for current timestamp
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Custom Payload (JSON Template)</Label>
+                  <Textarea
+                    value={formData.body}
+                    onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder='e.g., {"order": {"customer_id": customer_id, "items": items, "timestamp": "{{timestamp}}"}}'
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Use parameter names as variables and {`{{timestamp}}`} for current timestamp
+                  </p>
+                </div>
 
                 {/* Headers Configuration */}
                 <div>
