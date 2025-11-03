@@ -164,7 +164,8 @@ function transformFormDataToAgentConfig(formData: any) {
                 headers: tool.config.headers,
                 parameters: tool.config.parameters
               } : tool.type === 'transfer_call' ? {
-                transfer_number: tool.config.transferNumber
+                transfer_number: tool.config.transferNumber,
+                sip_outbound_trunk: tool.config.sipTrunkId
               } : {})
             } : {})
           })),

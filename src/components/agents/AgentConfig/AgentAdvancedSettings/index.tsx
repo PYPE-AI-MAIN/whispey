@@ -63,9 +63,10 @@ interface AgentAdvancedSettingsProps {
       }
     }
     onFieldChange: (field: string, value: any) => void
+    projectId?: string
   }
 
-function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvancedSettingsProps) {
+function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId }: AgentAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
@@ -168,6 +169,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange }: AgentAdvance
             <ToolsActionsSettings
               tools={advancedSettings.tools.tools}
               onFieldChange={onFieldChange}
+              projectId={projectId}
             />
           </CollapsibleContent>
         </Collapsible>

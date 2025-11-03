@@ -419,6 +419,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             targetAgent: tool.target_agent || '',
             handoffMessage: tool.handoff_message || '',
             transferNumber: tool.transfer_number || '',
+            sipTrunkId: tool.sip_outbound_trunk || '',
             timeout: tool.timeout || 10,
             asyncExecution: tool.async || false,
             parameters: tool.parameters?.map((param: any) => ({

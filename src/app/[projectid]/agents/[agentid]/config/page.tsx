@@ -236,7 +236,9 @@ interface Transcript {
 }
 
 export default function AgentConfig() {
-  const { agentid } = useParams()
+  const params = useParams()
+  const agentid = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
+  const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
   const [isCopied, setIsCopied] = useState(false)
   const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false)
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
@@ -286,11 +288,7 @@ export default function AgentConfig() {
     limit: 1
   })
 
-  const sanitizedAgentId = typeof agentid === 'string' 
-  ? agentid.replace(/-/g, '_') 
-  : Array.isArray(agentid) 
-    ? agentid[0]?.replace(/-/g, '_') 
-    : ''
+  const sanitizedAgentId = agentid.replace(/-/g, '_')
 
   const agentNameWithId = `${agentDataResponse?.[0]?.name}_${sanitizedAgentId}`
   const agentNameLegacy = agentDataResponse?.[0]?.name
@@ -1074,6 +1072,7 @@ export default function AgentConfig() {
             <AgentAdvancedSettings 
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              projectId={projectId}
             />
           </div>
           
@@ -1104,6 +1103,7 @@ export default function AgentConfig() {
             <AgentAdvancedSettings 
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              projectId={projectId}
             />
           </div>
         </SheetContent>
