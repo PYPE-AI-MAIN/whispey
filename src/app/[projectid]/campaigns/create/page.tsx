@@ -75,12 +75,12 @@ function CreateCampaign() {
     retryConfig: [
       {
         errorCodes: ['480'],
-        delayMinutes: 30,
+        delayMinutes: 5,
         maxRetries: 2,
       },
       {
         errorCodes: ['486'],
-        delayMinutes: 30,
+        delayMinutes: 5,
         maxRetries: 2,
       },
     ],
