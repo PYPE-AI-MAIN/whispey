@@ -1,16 +1,25 @@
 // src/lib/vapi-encryption.ts
 import crypto from 'crypto'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-server'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Cached master key (lazy initialization)
+let cachedMasterKey: string | null = null
 
-// Get master key from environment
-const VAPI_MASTER_KEY = process.env.VAPI_MASTER_KEY
-
-if (!VAPI_MASTER_KEY) {
-  throw new Error('VAPI_MASTER_KEY environment variable is required')
+/**
+ * Get and cache the master key from environment
+ * @returns The VAPI master key
+ * @throws Error if master key is not set
+ */
+function getMasterKey(): string {
+  if (cachedMasterKey) return cachedMasterKey
+  
+  const key = process.env.VAPI_MASTER_KEY
+  if (!key) {
+    throw new Error('VAPI_MASTER_KEY environment variable is required')
+  }
+  
+  cachedMasterKey = key
+  return cachedMasterKey
 }
 
 /**
@@ -19,9 +28,9 @@ if (!VAPI_MASTER_KEY) {
  * @returns Buffer containing the derived key (32 bytes for AES-256)
  */
 export function generateProjectEncryptionKey(projectId: string): Buffer {
-  // Use scrypt like crypto.ts (not pbkdf2) for consistency
-  // VAPI_MASTER_KEY is guaranteed to be defined due to check above
-  return crypto.scryptSync(VAPI_MASTER_KEY!, projectId, 32)
+  // ✅ GOOD: Get master key at runtime, not build time
+  const masterKey = getMasterKey()
+  return crypto.scryptSync(masterKey, projectId, 32)
 }
 
 /**
@@ -140,6 +149,9 @@ export async function getDecryptedVapiKeys(agentId: string): Promise<{
   apiKey: string
   projectApiKey: string
 }> {
+  // ✅ GOOD: Create client inside function
+  const supabase = getSupabaseClient()
+  
   const { data: agent, error } = await supabase
     .from('pype_voice_agents')
     .select('vapi_api_key_encrypted, vapi_project_key_encrypted, project_id')
