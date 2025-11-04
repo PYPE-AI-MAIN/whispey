@@ -63,13 +63,11 @@ const agentStatusService = {
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
-      const url = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_status/${encodeURIComponent(agentName)}`
-      
-      const response = await fetch(url, {
+      // Call Next.js API route instead of backend directly
+      const response = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': `${process.env.NEXT_PUBLIC_X_API_KEY}`
         }
       })
       
@@ -91,9 +89,10 @@ const agentStatusService = {
       }
       
       console.error('❌ Agent status request failed:', response.status, response.statusText)
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
       return { 
         status: 'error' as const, 
-        error: `Failed to check status: ${response.status} ${response.statusText}` 
+        error: errorData.error || `Failed to check status: ${response.status}` 
       }
     } catch (error) {
       console.error('❌ Agent status connection error:', error)
@@ -147,7 +146,6 @@ const agentStatusService = {
 
       console.log('🛑 Stopping agent via API:', agentName)
       
-      // This one was already correct in your code
       const response = await fetch('/api/agents/stop_agent', {
         method: 'POST',
         headers: { 
@@ -206,6 +204,8 @@ const agentStatusService = {
   }
 }
 
+
+
 interface AzureConfig {
   endpoint: string
   apiVersion: string
@@ -252,8 +252,6 @@ export default function AgentConfig() {
 
 
   const defaultFormValues = getDefaultFormValues()
-  console.log({defaultFormValues})
-
 
 
   // Azure config state for ModelSelector
@@ -309,7 +307,6 @@ export default function AgentConfig() {
   useEffect(() => {
     if (agentConfigData && !isConfigLoading) {
       const usedName = agentConfigData._usedAgentName || agentNameWithId
-      console.log(`🎯 Resolved agent name: ${usedName}`)
       setResolvedAgentName(usedName)
     }
   }, [agentConfigData, isConfigLoading, agentNameWithId])
