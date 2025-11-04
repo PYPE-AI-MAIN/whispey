@@ -3,17 +3,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
 
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Helper function to create Supabase client (lazy initialization)
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// ADD THIS GET METHOD to your existing file
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables')
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
+
+// GET method to fetch agent details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { id: agentId } = await params
 
     // Fetch agent data from database
@@ -71,12 +79,13 @@ export async function GET(
   }
 }
 
-// Your existing DELETE method stays exactly the same
+// DELETE method to remove agent and all related data
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { id: agentId } = await params
 
     if (!agentId) {
@@ -229,40 +238,40 @@ export async function DELETE(
         .eq('id', projectId)
         .single()
 
-        if (fetchError || !projectRow) {
-          console.warn('⚠️ Could not fetch project state for quota update:', fetchError)
-        } else {
-          const currentState = (projectRow as any).agent
-          if (currentState && currentState.agents) {
-            // Remove the agent from the agents array and reduce active count
-            const updatedAgents = currentState.agents.filter((agent: any) => agent.id !== agentId)
-            const updatedState = {
-              ...currentState,
-              usage: {
-                ...currentState.usage,
-                active_count: Math.max(0, currentState.usage.active_count - 1)
-              },
-              agents: updatedAgents,
-              last_updated: new Date().toISOString()
-            }
+      if (fetchError || !projectRow) {
+        console.warn('⚠️ Could not fetch project state for quota update:', fetchError)
+      } else {
+        const currentState = (projectRow as any).agent
+        if (currentState && currentState.agents) {
+          // Remove the agent from the agents array and reduce active count
+          const updatedAgents = currentState.agents.filter((agent: any) => agent.id !== agentId)
+          const updatedState = {
+            ...currentState,
+            usage: {
+              ...currentState.usage,
+              active_count: Math.max(0, currentState.usage.active_count - 1)
+            },
+            agents: updatedAgents,
+            last_updated: new Date().toISOString()
+          }
 
-            console.log('🔍 Updated project state:', JSON.stringify(updatedState, null, 2))
+          console.log('🔍 Updated project state:', JSON.stringify(updatedState, null, 2))
 
-            const { error: updateError } = await supabase
-              .from('pype_voice_projects')
-              .update({ agent: updatedState })
-              .eq('id', projectId)
+          const { error: updateError } = await supabase
+            .from('pype_voice_projects')
+            .update({ agent: updatedState })
+            .eq('id', projectId)
 
-            if (updateError) {
-              console.error('❌ Failed to update project quota state:', updateError)
-            } else {
-              console.log('✅ Successfully updated project quota state')
-            }
+          if (updateError) {
+            console.error('❌ Failed to update project quota state:', updateError)
+          } else {
+            console.log('✅ Successfully updated project quota state')
           }
         }
-      } catch (quotaError) {
-        console.error('❌ Error updating project quota state:', quotaError)
       }
+    } catch (quotaError) {
+      console.error('❌ Error updating project quota state:', quotaError)
+    }
 
     return NextResponse.json(
       { 
