@@ -20,7 +20,7 @@ export const languageOptions = [
 ]
 
 export const firstMessageModes = [
-  { value: 'user_speaks_first', label: 'User speaks first' },
+  { value: 'assistant_waits_for_user', label: 'User speaks first' },
   { value: 'assistant_speaks_first', label: 'Assistant speaks first' },
   { value: 'assistant_speaks_with_generated', label: 'Assistant with generated message' },
 ]
