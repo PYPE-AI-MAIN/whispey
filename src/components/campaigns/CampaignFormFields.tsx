@@ -40,13 +40,13 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
   // Get agents from permissions
   const agents = permissions?.agent?.agents || []
 
-  // Fetch phone numbers
+  // Fetch phone numbers with outbound filter
   useEffect(() => {
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhones(true)
         const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-        const response = await fetch(`${baseUrl}/api/calls/phone-numbers/?limit=50`)
+        const response = await fetch(`${baseUrl}/api/calls/phone-numbers/?limit=100`)
         
         if (!response.ok) {
           throw new Error('Failed to fetch phone numbers')
@@ -54,8 +54,12 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
 
         const data: PhoneNumber[] = await response.json()
         
-        // Filter by project_id matching current project
-        const filteredNumbers = data.filter(phone => phone.project_id === projectId)
+        // Filter by: project_id matching AND trunk_direction = 'outbound' AND status = 'active'
+        const filteredNumbers = data.filter(phone => 
+          phone.project_id === projectId && 
+          phone.trunk_direction === 'outbound' &&
+          phone.status === 'active'
+        )
         setPhoneNumbers(filteredNumbers)
       } catch (error) {
         console.error('Error fetching phone numbers:', error)
@@ -139,11 +143,11 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
         <ErrorMessage name="agentId" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
       </div>
 
-      {/* From Number */}
+      {/* From Number - Now filtered for outbound only */}
       <div>
         <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
           <Phone className="w-3 h-3" />
-          From Number
+          From Number (Outbound)
         </Label>
         <Field name="fromNumber">
           {({ field }: any) => (
@@ -154,7 +158,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
                 </div>
               ) : phoneNumbers.length === 0 ? (
                 <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">No phone numbers available for this project</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">No outbound phone numbers available for this project</span>
                 </div>
               ) : (
                 <Select 
@@ -167,8 +171,10 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
                   <SelectContent>
                     {phoneNumbers.map((phone) => (
                       <SelectItem key={phone.id} value={phone.id}>
-                      <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs">{phone.phone_number}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs">
+                            {phone.formatted_number || phone.phone_number}
+                          </span>
                           {phone.provider && (
                             <span className="text-gray-500 text-xs">({phone.provider})</span>
                           )}
@@ -183,7 +189,6 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
         </Field>
         <ErrorMessage name="fromNumber" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
       </div>
-
 
       {/* Campaign Concurrency */}
       <div>
