@@ -4,17 +4,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 // Parse allowed emails from environment variable
-const ALLOWED_EMAILS = process.env.ALLOWED_SYNC_EMAILS?.split(',').map(email => email.trim()) || []
+const getAllowedEmails = () => {
+  return process.env.ALLOWED_SYNC_EMAILS?.split(',').map(email => email.trim()) || []
+}
+
+// Create Supabase client lazily (only when needed)
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase configuration is missing')
+  }
+
+  return createClient(supabaseUrl, supabaseKey)
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Get Supabase client inside the function (runtime, not build time)
+    const supabase = getSupabaseClient()
+    
     // Verify we have allowed emails configured
+    const ALLOWED_EMAILS = getAllowedEmails()
     if (ALLOWED_EMAILS.length === 0) {
       console.error('⚠️ No allowed emails configured in ALLOWED_SYNC_EMAILS')
       return NextResponse.json({ 
