@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { JSX } from 'react'
 import Link from 'next/link'
 import { 
   MoreHorizontal, 
@@ -47,7 +47,7 @@ interface AgentListItemProps {
   isLoadingRunningAgents?: boolean
   onCopyId: (e: React.MouseEvent) => void
   onDelete: () => void
-  onStartAgent?: (agentName: string) => void
+  onStartAgent?: (agent: Agent) => void
   onStopAgent?: (agentName: string) => void
   isStartingAgent?: boolean
   isStoppingAgent?: boolean
@@ -69,12 +69,12 @@ const getAgentTypeIcon = (type: string) => {
 const formatDate = (dateString: string, isMobile: boolean = false) => {
   const date = new Date(dateString)
   if (isMobile) {
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       month: 'short', 
       day: 'numeric'
     })
   }
-  return date.toLocaleDateString('en-US', { 
+  return date.toLocaleDateString('en-US', {
     month: 'short', 
     day: 'numeric', 
     year: 'numeric' 
@@ -132,7 +132,8 @@ const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isL
   return runningAgent ? {
     isRunning: true,
     pid: runningAgent.pid,
-    status: runningAgent.status
+    status: runningAgent.status,
+    actualAgentName: runningAgent.agent_name
   } : {
     isRunning: false,
     pid: null,
@@ -225,9 +226,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
     }
     
     if (runningStatus?.isRunning) {
-      onStopAgent?.(agent.name)
+      // Use the actualAgentName for stopping, asserting its type as string
+      onStopAgent?.(runningStatus.actualAgentName as string)
     } else {
-      onStartAgent?.(agent.name)
+      // Pass the entire agent object for starting
+      onStartAgent?.(agent)
     }
   }
 
