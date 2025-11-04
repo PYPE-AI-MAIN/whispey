@@ -149,7 +149,6 @@ const fetchAgentConfigWithFallback = async (
       const data = await response.json()
       // Mark which name was used
       data._usedAgentName = primaryAgentName
-      console.log(`✅ Found agent using new format: ${primaryAgentName}`)
       return data
     }
 
@@ -174,7 +173,6 @@ const fetchAgentConfigWithFallback = async (
         const data = await fallbackResponse.json()
         
         data._usedAgentName = fallbackAgentName
-        console.log(`✅ Found agent using legacy format: ${fallbackAgentName}`)
         return data
       }
     }
