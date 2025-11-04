@@ -14,7 +14,7 @@ const noSidebarRoutes = [
   '/sign-up',
   '/privacy-policy',
   '/terms-of-service',
-  '/onboarding'  // ✅ ADD THIS
+  '/onboarding'
 ]
 
 function shouldShowSidebar(pathname: string): boolean {
