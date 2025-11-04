@@ -42,10 +42,10 @@ function ViewCampaign() {
   const campaignId = params.campaignId as string
 
   const [loading, setLoading] = useState(true)
-  const [loadingContacts, setLoadingContacts] = useState(true)
+  const [loadingLogs, setLoadingLogs] = useState(true)
   const [campaignDetails, setCampaignDetails] = useState<CampaignDetails | null>(null)
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [hasMore, setHasMore] = useState(false)
+  const [logs, setLogs] = useState<any[]>([])
+  const [hasMoreLogs, setHasMoreLogs] = useState(false)
   const [nextKey, setNextKey] = useState<string | null>(null)
 
 
@@ -82,8 +82,8 @@ function ViewCampaign() {
   // Fetch contacts
   const fetchContacts = async (lastKey?: string) => {
     try {
-      setLoadingContacts(true)
-      let url = `/api/campaigns/contacts?campaignId=${campaignId}&limit=50`
+      setLoadingLogs(true)
+      let url = `/api/campaigns/contacts?campaignId=${campaignId}&limit=100`
       
       if (lastKey) {
         url += `&lastKey=${lastKey}`
@@ -99,19 +99,19 @@ function ViewCampaign() {
       
       if (lastKey) {
         // Append to existing contacts for pagination
-        setContacts(prev => [...prev, ...(data.contacts || [])])
+        setLogs(prev => [...prev, ...(data.contacts || [])])
       } else {
         // Replace contacts for initial load or refresh
-        setContacts(data.contacts || [])
+        setLogs(data.contacts || [])
       }
       
-      setHasMore(data.pagination?.hasMore || false)
+      setHasMoreLogs(data.pagination?.hasMore || false)
       setNextKey(data.pagination?.nextKey || null)
     } catch (error) {
       console.error('Error fetching contacts:', error)
       alert('Failed to load contacts')
     } finally {
-      setLoadingContacts(false)
+      setLoadingLogs(false)
     }
   }
 
@@ -126,11 +126,237 @@ function ViewCampaign() {
   }
 
   const handleLoadMore = () => {
-    if (nextKey && !loadingContacts) {
+    if (nextKey && !loadingLogs) {
       fetchContacts(nextKey)
     }
   }
 
+  // Helper function to parse DynamoDB AttributeValue format
+  const parseDynamoDBValue = (value: any): any => {
+    if (value === null || value === undefined) {
+      return null
+    }
+    
+    // If it's already a plain value, return it
+    if (typeof value !== 'object' || Array.isArray(value)) {
+      return value
+    }
+    
+    // Check if it's DynamoDB AttributeValue format
+    if (value.S !== undefined) {
+      return value.S // String
+    } else if (value.N !== undefined) {
+      return Number(value.N) // Number
+    } else if (value.BOOL !== undefined) {
+      return value.BOOL // Boolean
+    } else if (value.L !== undefined) {
+      return value.L.map((item: any) => parseDynamoDBValue(item)) // List
+    } else if (value.M !== undefined) {
+      const result: any = {}
+      Object.keys(value.M).forEach(key => {
+        result[key] = parseDynamoDBValue(value.M[key])
+      })
+      return result // Map
+    }
+    
+    // If it's a regular object, check if it's a DynamoDB Map (all values are AttributeValues)
+    const keys = Object.keys(value)
+    if (keys.length > 0) {
+      const firstKey = keys[0]
+      const firstValue = value[firstKey]
+      // Check if first value looks like DynamoDB AttributeValue (has S, N, BOOL, etc.)
+      if (firstValue && typeof firstValue === 'object' && !Array.isArray(firstValue) &&
+          (firstValue.S !== undefined || firstValue.N !== undefined || firstValue.BOOL !== undefined || 
+           firstValue.M !== undefined || firstValue.L !== undefined)) {
+        // It's a DynamoDB Map format
+        const result: any = {}
+        Object.keys(value).forEach(key => {
+          result[key] = parseDynamoDBValue(value[key])
+        })
+        return result
+      }
+    }
+    
+    // Regular object, return as-is
+    return value
+  }
+
+  // Get all unique keys from logs to create dynamic columns
+  const getAllColumns = () => {
+    if (logs.length === 0) return []
+    
+    // Define the standard columns order
+    const standardColumns = ['status', 'retryCount', 'lastCallAt']
+    // Define priority additionalData columns that should appear at the beginning
+    const priorityAdditionalColumns = ['appointment_time', 'doctor_name', 'patient_name', 'phone', 'appointment_date']
+    const allKeys = new Set<string>()
+    const additionalDataKeys = new Set<string>()
+    const priorityAdditionalKeys = new Set<string>()
+    
+    logs.forEach(log => {
+      // Add standard columns if they exist
+      standardColumns.forEach(key => {
+        if (log[key] !== undefined) {
+          allKeys.add(key)
+        }
+      })
+      
+      // Always add retryCount (it's a DynamoDB column)
+      allKeys.add('retryCount')
+      
+      // Add other direct keys (excluding internal fields and additionalData)
+      Object.keys(log).forEach(key => {
+        if (!['contactId', 'campaignId', 'id', 'additionalData', 'name', 'email', 'phoneNumber', 'callAttempts'].includes(key) && 
+            !standardColumns.includes(key)) {
+          allKeys.add(key)
+        }
+      })
+      
+      // Parse additionalData if it exists and collect its keys separately
+      if (log.additionalData) {
+        try {
+          let parsedData: any = {}
+          
+          // Handle both string and object formats
+          if (typeof log.additionalData === 'string') {
+            try {
+              const parsed = JSON.parse(log.additionalData)
+              parsedData = parseDynamoDBValue(parsed)
+            } catch (parseError) {
+              // If JSON parsing fails, try to parse as DynamoDB format directly
+              parsedData = parseDynamoDBValue(log.additionalData)
+            }
+          } else if (typeof log.additionalData === 'object') {
+            parsedData = parseDynamoDBValue(log.additionalData)
+          }
+          
+          // Debug: Log the parsed data structure
+          if (logs.indexOf(log) === 0) {
+            console.log('First log additionalData (raw):', log.additionalData)
+            console.log('First log additionalData (parsed):', parsedData)
+            console.log('Parsed keys:', parsedData ? Object.keys(parsedData) : [])
+          }
+          
+          // Ensure parsedData is an object with keys
+          if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+            // Collect keys from additionalData
+            Object.keys(parsedData).forEach(key => {
+              // Don't add if it's already a standard column, already in allKeys, or is excluded (name, email, callAttempts)
+              if (!standardColumns.includes(key) && !allKeys.has(key) && 
+                  !['name', 'email', 'callattempts'].includes(key.toLowerCase())) {
+                // Check if it's a priority column (case-insensitive match)
+                const keyLower = key.toLowerCase()
+                const isPriority = priorityAdditionalColumns.some(priority => priority.toLowerCase() === keyLower)
+                
+                if (isPriority) {
+                  // Store with original case from data
+                  priorityAdditionalKeys.add(key)
+                  if (logs.indexOf(log) === 0) {
+                    console.log(`Added priority key: ${key} (matches ${priorityAdditionalColumns.find(p => p.toLowerCase() === keyLower)})`)
+                  }
+                } else {
+                  additionalDataKeys.add(key)
+                }
+              } else if (logs.indexOf(log) === 0) {
+                console.log(`Skipped key: ${key} (standard: ${standardColumns.includes(key)}, in allKeys: ${allKeys.has(key)}, excluded: ${['name', 'email'].includes(key.toLowerCase())})`)
+              }
+            })
+          }
+        } catch (e) {
+          // If parsing fails, log error but continue
+          console.warn('Failed to parse additionalData:', e, 'Raw data:', log.additionalData)
+        }
+      }
+    })
+    
+    // Build final column array: status first, then priority additionalData columns, then other standard columns, then other columns, then remaining additionalData columns
+    const finalColumns: string[] = []
+    
+    // Add status first if it exists
+    if (allKeys.has('status')) {
+      finalColumns.push('status')
+    }
+    
+    // Add priority additionalData columns after status (in order)
+    priorityAdditionalColumns.forEach(priorityCol => {
+      // Find matching key from data (case-insensitive)
+      const matchingKey = Array.from(priorityAdditionalKeys).find(key => 
+        key.toLowerCase() === priorityCol.toLowerCase()
+      ) || Array.from(additionalDataKeys).find(key => 
+        key.toLowerCase() === priorityCol.toLowerCase()
+      )
+      
+      if (matchingKey) {
+        finalColumns.push(matchingKey)
+        // Remove from both sets if present
+        priorityAdditionalKeys.delete(matchingKey)
+        additionalDataKeys.delete(matchingKey)
+      }
+    })
+    
+    // Debug: Log what we found
+    if (priorityAdditionalKeys.size > 0 || additionalDataKeys.size > 0) {
+      console.log('Priority keys found:', Array.from(priorityAdditionalKeys))
+      console.log('Additional data keys found:', Array.from(additionalDataKeys))
+    }
+    
+    // Add other standard columns (excluding status which we already added)
+    standardColumns.forEach(col => {
+      if (col !== 'status' && (allKeys.has(col) || col === 'retryCount')) {
+        finalColumns.push(col)
+      }
+    })
+    
+    // Add other columns (excluding standard ones)
+    Array.from(allKeys)
+      .filter(col => !standardColumns.includes(col) && col !== 'status')
+      .sort()
+      .forEach(col => finalColumns.push(col))
+    
+    // Add remaining additionalData columns at the end
+    Array.from(additionalDataKeys)
+      .sort()
+      .forEach(col => finalColumns.push(col))
+    
+    return finalColumns
+  }
+
+  const columns = getAllColumns()
+  
+  // Helper function to get value from log (checks additionalData if not found in main object)
+  const getValue = (log: any, column: string) => {
+    // First check if it's a direct property
+    if (log[column] !== undefined) {
+      return log[column]
+    }
+    
+    // If not found, check inside additionalData
+    if (log.additionalData) {
+      try {
+        let additionalData: any = {}
+        
+        // Handle DynamoDB AttributeValue format
+        if (typeof log.additionalData === 'string') {
+          try {
+            const parsed = JSON.parse(log.additionalData)
+            additionalData = parseDynamoDBValue(parsed)
+          } catch {
+            // If parsing fails, try as regular object
+            additionalData = JSON.parse(log.additionalData)
+          }
+        } else if (typeof log.additionalData === 'object') {
+          additionalData = parseDynamoDBValue(log.additionalData)
+        }
+        
+        return additionalData?.[column]
+      } catch {
+        return null
+      }
+    }
+    
+    return null
+  }
+  
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -379,22 +605,22 @@ function ViewCampaign() {
             )}
           </div>
 
-          {/* Contacts Table */}
+          {/* Campaign Logs Table */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Contacts ({contacts.length})
+                Campaign Logs ({logs.length})
               </h2>
             </div>
 
-            {loadingContacts && contacts.length === 0 ? (
+            {loadingLogs && logs.length === 0 ? (
               <div className="p-8 text-center">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Loading contacts...</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
               </div>
-            ) : contacts.length === 0 ? (
+            ) : logs.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">No contacts found</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
               </div>
             ) : (
               <>
@@ -402,49 +628,125 @@ function ViewCampaign() {
                   <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-gray-900/50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400">
-                          Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400">
-                          Phone Number
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400">
-                          Attempts
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400">
-                          Last Call
-                        </th>
+                        {columns.map((column) => {
+                          // Map column names to display labels
+                          const columnLabels: { [key: string]: string } = {
+                            'status': 'Status',
+                            'retryCount': 'Retry Count',
+                            'lastCallAt': 'Last Call',
+                          }
+                          
+                          const label = columnLabels[column] || 
+                            column.split(/(?=[A-Z])/).map(word => 
+                              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                            ).join(' ')
+                          
+                          return (
+                            <th 
+                              key={column}
+                              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap"
+                            >
+                              {label}
+                            </th>
+                          )
+                        })}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {contacts.map((contact) => (
+                      {logs.map((log, index) => (
                         <tr 
-                          key={contact.contactId}
+                          key={log.contactId || log.id || index}
                           className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
                         >
-                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                            {contact.name}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-100">
-                            {contact.phoneNumber}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge className={getStatusColor(contact.status)}>
-                              {contact.status}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                            {contact.callAttempts}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                            {contact.lastCallAt 
-                              ? new Date(contact.lastCallAt).toLocaleString()
-                              : '-'
+                          {columns.map((column) => {
+                            const value = getValue(log, column)
+                            let displayValue: React.ReactNode = value
+
+                            // Handle specific column mappings
+                            if (column === 'status') {
+                              displayValue = value ? (
+                                <Badge className={getStatusColor(value)}>
+                                  {value}
+                                </Badge>
+                              ) : <span className="text-gray-400">-</span>
+                            } else if (column === 'retryCount') {
+                              displayValue = value !== undefined && value !== null ? value : 0
+                            } else if (column === 'phoneNumber' || column === 'phone') {
+                              displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-gray-400">-</span>
+                            } else if (column === 'lastCallAt') {
+                              if (value) {
+                                try {
+                                  displayValue = new Date(value as string).toLocaleString()
+                                } catch {
+                                  displayValue = value
+                                }
+                              } else {
+                                displayValue = <span className="text-gray-400">-</span>
+                              }
+                            } else {
+                              // Format phone numbers
+                              if (column.toLowerCase().includes('phone') && typeof value === 'string') {
+                                displayValue = <span className="font-mono text-xs">{value}</span>
+                              }
+                              // Format status with badge
+                              else if (column.toLowerCase().includes('status') && typeof value === 'string') {
+                                displayValue = (
+                                  <Badge className={getStatusColor(value)}>
+                                    {value}
+                                  </Badge>
+                                )
+                              }
+                              // Format dates - be more specific to avoid false positives
+                              else if (value && typeof value === 'string') {
+                                // Only format as date if column name explicitly indicates it's a date/time field
+                                // Exclude appointment_date and appointment_time - show them as-is
+                                const columnLower = column.toLowerCase()
+                                const isDateColumn = (columnLower.endsWith('date') && columnLower !== 'appointment_date') || 
+                                                   (columnLower.endsWith('at') && columnLower !== 'appointment_time') ||
+                                                   columnLower === 'createdat' ||
+                                                   columnLower === 'updatedat' ||
+                                                   columnLower === 'lastcallat' ||
+                                                   columnLower === 'nextcallat'
+                                
+                                if (isDateColumn) {
+                                  try {
+                                    const dateValue = new Date(value)
+                                    if (!isNaN(dateValue.getTime())) {
+                                      displayValue = dateValue.toLocaleString()
+                                    } else {
+                                      displayValue = value
+                                    }
+                                  } catch {
+                                    displayValue = value
+                                  }
+                                } else {
+                                  // For non-date columns (including appointment_date and appointment_time), just display the value as-is
+                                  displayValue = value
+                                }
+                              }
+                              // Format numbers
+                              else if (typeof value === 'number') {
+                                displayValue = value.toLocaleString()
+                              }
+                              // Handle null/undefined
+                              else if (value === null || value === undefined) {
+                                displayValue = <span className="text-gray-400">-</span>
+                              }
+                              // Handle objects
+                              else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                                displayValue = <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>
+                              }
                             }
-                          </td>
+
+                            return (
+                              <td 
+                                key={column}
+                                className="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
+                              >
+                                {displayValue}
+                              </td>
+                            )
+                          })}
                         </tr>
                       ))}
                     </tbody>
@@ -452,16 +754,16 @@ function ViewCampaign() {
                 </div>
 
                 {/* Load More Button */}
-                {hasMore && (
+                {hasMoreLogs && (
                   <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-center">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleLoadMore}
-                      disabled={loadingContacts}
+                      disabled={loadingLogs}
                       className="text-xs"
                     >
-                      {loadingContacts ? (
+                      {loadingLogs ? (
                         <>
                           <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
                           Loading...

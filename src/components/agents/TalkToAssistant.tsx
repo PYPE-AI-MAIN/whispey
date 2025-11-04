@@ -34,13 +34,15 @@ interface TalkToAssistantProps {
   isOpen: boolean
   onClose: () => void
   agentStatus: AgentStatus
+  onAgentStatusChange?: () => void
 }
 
 export default function TalkToAssistant({ 
   agentName, 
   isOpen, 
   onClose,
-  agentStatus 
+  agentStatus,
+  onAgentStatusChange
 }: TalkToAssistantProps) {
   const [textMessage, setTextMessage] = useState('')
   const [isSendingText, setIsSendingText] = useState(false)
@@ -59,6 +61,12 @@ export default function TalkToAssistant({
       transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [voiceState.transcripts])
+
+  useEffect(() => {
+    if (voiceState.isConnected) {
+      onAgentStatusChange?.()
+    }
+  }, [voiceState.isConnected, onAgentStatusChange])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
