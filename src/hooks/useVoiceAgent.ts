@@ -165,22 +165,15 @@ export function useVoiceAgent({
     }
   }, [isConnected])
 
-  // SECURITY FIX: Updated startWebSession with secure random generation
   const startWebSession = async (): Promise<WebSession> => {
-    if (!apiBaseUrl) {
-      throw new Error('API base URL is not configured')
-    }
-
-
-    // Generate secure random identifiers
     const userIdentity = generateSecureId('user')
-    const userName = `User ${getSecureRandomInt(10000)}` // Increased range for better uniqueness
+    const userName = `User ${getSecureRandomInt(10000)}`
 
-    const response = await fetch(`${apiBaseUrl}/start_web_session`, {
+    // Call your Next.js API route instead of directly calling backend
+    const response = await fetch('/api/agents/start-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': 'pype-api-v1'
       },
       body: JSON.stringify({
         user_identity: userIdentity,
@@ -190,33 +183,14 @@ export function useVoiceAgent({
     })
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error')
-      throw new Error(`Failed to start web session: ${response.status} ${response.statusText} - ${errorText}`)
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(
+        `Failed to start web session: ${response.status} ${response.statusText} - ${errorData.error || 'Unknown error'}`
+      )
     }
 
-    const apiData = await response.json()
-
-    // FIXED: Transform API response to expected format
-    const transformedSession: WebSession = {
-      // Map your API fields to expected fields
-      room: apiData.room,
-      user_token: apiData.user_token,
-      agent_name: apiData.agent_name,
-      dispatch_cli_output: apiData.dispatch_cli_output,
-      
-      // Add backward compatibility fields
-      room_name: apiData.room,
-      token: apiData.user_token,
-      participant_identity: userIdentity, // Use the same secure identity we generated
-      
-      // CRITICAL: Add the LiveKit server URL
-      // or replace this with your actual LiveKit server URL
-      url: process.env.NEXT_PUBLIC_LIVEKIT_URL || 
-           `ws://${apiBaseUrl?.split('://')[1]?.split('/')[0]?.replace(':8000', ':7880')}` ||
-           'ws://15.206.157.27:7880' // Fallback - adjust this to your actual LiveKit server
-    }
-
-    return transformedSession
+    const sessionData: WebSession = await response.json()
+    return sessionData
   }
 
   // All other functions remain exactly the same...
