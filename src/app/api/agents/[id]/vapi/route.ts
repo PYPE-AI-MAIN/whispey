@@ -1,17 +1,14 @@
 // src/app/api/agents/[id]/vapi/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { decryptApiKey } from '@/lib/vapi-encryption'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { id: agentId } = await params
 
     console.log('🔍 Fetching Vapi agent data for ID:', agentId)
@@ -138,6 +135,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { id: agentId } = await params
     const body = await request.json()
     const { action, ...actionData } = body

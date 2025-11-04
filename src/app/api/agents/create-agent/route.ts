@@ -1,13 +1,7 @@
 // src/app/api/agents/create-agent/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
-
-// Server-side Supabase client (prefer service role for row updates)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { getSupabaseServiceClient } from '@/lib/supabase-server'
 
 type AgentQuotaState = {
   limits: { max_agents: number }
@@ -21,6 +15,8 @@ async function getOrInitProjectAgentState(projectId: string): Promise<{
   state: AgentQuotaState
   error?: string
 }> {
+  const supabase = getSupabaseServiceClient()
+  
   const { data: projectRow, error: fetchError } = await supabase
     .from('pype_voice_projects')
     .select('id, agent')
@@ -99,6 +95,7 @@ async function rollbackAgentCreation(agentId: string, agentName?: string): Promi
 // Helper function to rollback Supabase state
 async function rollbackSupabaseState(projectId: string, originalState: AgentQuotaState): Promise<void> {
   try {
+    const supabase = getSupabaseServiceClient()
     console.log('🔄 Attempting to rollback Supabase state for project:', projectId)
     
     const { error: rollbackError } = await supabase
@@ -117,6 +114,7 @@ async function rollbackSupabaseState(projectId: string, originalState: AgentQuot
 }
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseServiceClient()
   let createdAgentId: string | null = null
   let createdAgentName: string | null = null
   let originalState: AgentQuotaState | null = null
@@ -294,28 +292,17 @@ export async function POST(request: NextRequest) {
       
     } catch (step2Error) {
       console.error('❌ STEP 2 FAILED:', step2Error)
-      console.log('🔍 STEP 2 ROLLBACK CHECK:')
-      console.log('🔍 - step1Completed:', step1Completed)
-      console.log('🔍 - originalState exists:', !!originalState)
-      console.log('🔍 - dbProjectId:', dbProjectId)
-      console.log('🔍 - step2Completed:', step2Completed)
-      console.log('🔍 - createdAgentId:', createdAgentId)
-      console.log('🔍 - createdAgentName:', createdAgentName)
       
-      // Rollback Step 2: Delete PypeAPI agent (even though step2Completed is false, PypeAPI might have partially created it)
+      // Rollback Step 2: Delete PypeAPI agent
       if (createdAgentId && createdAgentName) {
         console.log('🔄 Rolling back Step 2 - Deleting PypeAPI agent...')
         await rollbackAgentCreation(createdAgentId, createdAgentName)
-      } else {
-        console.log('🔄 STEP 2 ROLLBACK SKIPPED - createdAgentId:', createdAgentId, 'createdAgentName:', createdAgentName)
       }
       
       // Rollback Step 1: Revert Supabase state
       if (step1Completed && originalState) {
         console.log('🔄 Rolling back Step 1 - Reverting Supabase state...')
         await rollbackSupabaseState(dbProjectId, originalState)
-      } else {
-        console.log('🔄 STEP 1 ROLLBACK SKIPPED - step1Completed:', step1Completed, 'originalState exists:', !!originalState)
       }
       
       return NextResponse.json(
@@ -340,7 +327,7 @@ export async function POST(request: NextRequest) {
 
       const step3State: AgentQuotaState = {
         limits: { max_agents: maxAllowed },
-        usage: { active_count: currentActive + 1 }, // Increment active_count for active agents
+        usage: { active_count: currentActive + 1 },
         agents: [
           ...(state?.agents || []),
           finalAgentEntry
@@ -367,28 +354,17 @@ export async function POST(request: NextRequest) {
       
     } catch (step3Error) {
       console.error('❌ STEP 3 FAILED:', step3Error)
-      console.log('🔍 STEP 3 ROLLBACK CHECK:')
-      console.log('🔍 - step2Completed:', step2Completed)
-      console.log('🔍 - createdAgentId:', createdAgentId)
-      console.log('🔍 - createdAgentName:', createdAgentName)
-      console.log('🔍 - step1Completed:', step1Completed)
-      console.log('🔍 - originalState exists:', !!originalState)
-      console.log('🔍 - dbProjectId:', dbProjectId)
       
       // Rollback Step 2: Delete PypeAPI agent
       if (step2Completed && createdAgentId) {
         console.log('🔄 Rolling back Step 2 - Deleting PypeAPI agent...')
         await rollbackAgentCreation(createdAgentId, createdAgentName || undefined)
-      } else {
-        console.log('🔄 STEP 2 ROLLBACK SKIPPED - step2Completed:', step2Completed, 'createdAgentId:', createdAgentId)
       }
       
       // Rollback Step 1: Revert Supabase state
       if (step1Completed && originalState) {
         console.log('🔄 Rolling back Step 1 - Reverting Supabase state...')
         await rollbackSupabaseState(dbProjectId, originalState)
-      } else {
-        console.log('🔄 STEP 1 ROLLBACK SKIPPED - step1Completed:', step1Completed, 'originalState exists:', !!originalState)
       }
       
       return NextResponse.json(
@@ -399,27 +375,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('💥 CRITICAL ERROR - Transaction failed:', error)
-    console.log('🔍 CRITICAL ERROR ROLLBACK CHECK:')
-    console.log('🔍 - step2Completed:', step2Completed)
-    console.log('🔍 - createdAgentId:', createdAgentId)
-    console.log('🔍 - createdAgentName:', createdAgentName)
-    console.log('🔍 - step1Completed:', step1Completed)
-    console.log('🔍 - originalState exists:', !!originalState)
-    console.log('🔍 - dbProjectId:', dbProjectId)
     
     // Comprehensive rollback
     if (step2Completed && createdAgentId) {
       console.log('🔄 CRITICAL: Rolling back Step 2 - Deleting PypeAPI agent...')
       await rollbackAgentCreation(createdAgentId, createdAgentName || undefined)
-    } else {
-      console.log('🔄 CRITICAL: Step 2 rollback SKIPPED - step2Completed:', step2Completed, 'createdAgentId:', createdAgentId)
     }
     
     if (step1Completed && originalState && dbProjectId) {
       console.log('🔄 CRITICAL: Rolling back Step 1 - Reverting Supabase state...')
       await rollbackSupabaseState(dbProjectId, originalState)
-    } else {
-      console.log('🔄 CRITICAL: Step 1 rollback SKIPPED - step1Completed:', step1Completed, 'originalState exists:', !!originalState, 'dbProjectId:', dbProjectId)
     }
     
     return NextResponse.json(

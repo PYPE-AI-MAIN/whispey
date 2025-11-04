@@ -1,12 +1,7 @@
 // src/app/api/projects/[id]/members/[memberId]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 function getPermissionsByRole(role: string): Record<string, boolean> {
   const rolePermissions: Record<string, Record<string, boolean>> = {
@@ -25,6 +20,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { userId } = await auth()
     const user = await currentUser()
     
@@ -129,6 +125,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { userId } = await auth()
     const user = await currentUser()
     

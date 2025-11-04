@@ -1,14 +1,12 @@
+// src/app/api/phone-numbers/list/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    
     // Get the authenticated user
     const { userId } = await auth()
     
@@ -78,6 +76,7 @@ export async function GET(request: NextRequest) {
 // Optional: Add POST endpoint to update phone numbers
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
     const { userId } = await auth()
     
     if (!userId) {
@@ -157,6 +156,7 @@ export async function POST(request: NextRequest) {
 // Optional: Add PUT endpoint to update a specific agent
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
     const { userId } = await auth()
     
     if (!userId) {

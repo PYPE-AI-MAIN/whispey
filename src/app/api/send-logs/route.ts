@@ -1,16 +1,12 @@
-// app/api/call-logs/route.ts
+// app/api/send-logs/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
-
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 // Helper function to verify token
 const verifyToken = async (token: string, environment = 'dev') => {
   try {
+    const supabase = getSupabaseClient()
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
     const { data: authToken, error } = await supabase
@@ -36,6 +32,8 @@ const verifyToken = async (token: string, environment = 'dev') => {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    
     // Parse request body
     const body = await request.json()
     const token = request.headers.get('x-pype-token')
@@ -187,8 +185,6 @@ export async function POST(request: NextRequest) {
         console.log(`Inserted ${conversationTurns.length} conversation turns to Supabase`)
       }
     }
-
-
 
     return NextResponse.json({
       message: 'Call log saved successfully',
