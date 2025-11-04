@@ -1,19 +1,15 @@
 // src/app/api/agents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
+import { getSupabaseClient } from '@/lib/supabase-server'
 
-// Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// ADD THIS GET METHOD to your existing file
+// GET method to fetch agent
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { id: agentId } = await params
 
     // Fetch agent data from database
@@ -50,11 +46,9 @@ export async function GET(
       created_at: agent.created_at,
       updated_at: agent.updated_at,
       user_id: agent.user_id,
-      // Include boolean flags but not the actual encrypted keys
       has_vapi_keys: Boolean(agent.vapi_api_key_encrypted && agent.vapi_project_key_encrypted),
-      vapi_api_key_encrypted: agent.vapi_api_key_encrypted, // Keep for the check
-      vapi_project_key_encrypted: agent.vapi_project_key_encrypted, // Keep for the check
-      // Include other fields you might have
+      vapi_api_key_encrypted: agent.vapi_api_key_encrypted,
+      vapi_project_key_encrypted: agent.vapi_project_key_encrypted,
       field_extractor: agent.field_extractor,
       field_extractor_prompt: agent.field_extractor_prompt,
       field_extractor_keys: agent.field_extractor_keys
@@ -71,12 +65,13 @@ export async function GET(
   }
 }
 
-// Your existing DELETE method stays exactly the same
+// DELETE method
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
     const { id: agentId } = await params
 
     if (!agentId) {
@@ -86,7 +81,6 @@ export async function DELETE(
       )
     }
 
-    // Get clerk_id for quota update
     const { userId: clerkId } = await auth()
     if (!clerkId) {
       return NextResponse.json(
@@ -95,7 +89,7 @@ export async function DELETE(
       )
     }
 
-    // Get agent details before deletion (we need name for backend deletion and project_id for quota update)
+    // Get agent details before deletion
     const { data: agentData, error: agentFetchError } = await supabase
       .from('pype_voice_agents')
       .select('name, project_id')
@@ -119,9 +113,7 @@ export async function DELETE(
       )
     }
 
-    // Start cascade deletion process
-
-    // 1. Delete call logs for this agent
+    // 1. Delete call logs
     const { error: callLogsError } = await supabase
       .from('pype_voice_call_logs')
       .delete()
@@ -136,13 +128,12 @@ export async function DELETE(
     }
     console.log('Successfully deleted call logs')
 
-    // 2. Delete metrics logs (adjust based on your schema relationships)
+    // 2. Delete metrics logs
     const { error: metricsError } = await supabase
       .from('pype_voice_metrics_logs')
       .delete()
-      .eq('session_id', agentId) // Adjust this field based on your actual schema
+      .eq('session_id', agentId)
 
-    // Don't fail if metrics logs have different relationships
     if (metricsError) {
       console.warn('Warning: Could not delete metrics logs:', metricsError)
     } else {
@@ -151,7 +142,7 @@ export async function DELETE(
 
     console.log('Successfully deleted auth tokens')
 
-    // 4. Finally, delete the agent itself
+    // 3. Delete the agent
     const { error: agentError } = await supabase
       .from('pype_voice_agents')
       .delete()
@@ -167,12 +158,11 @@ export async function DELETE(
     
     console.log(`Successfully deleted agent: ${agentId}`)
 
-    // 5. Call backend to delete agent with fallback strategy
+    // 4. Call backend to delete agent
     if (agentData && agentData.name) {
       try {
         console.log('🔄 Attempting backend agent deletion...')
         
-        // First attempt: Try with just agent_name_agent_id (sanitize agent ID)
         const sanitizedAgentId = agentId.replace(/-/g, '_')
         const fallbackAgentName = `${agentData.name}_${sanitizedAgentId}`
         console.log('🔄 First attempt: Deleting with agent_name:', fallbackAgentName)
@@ -188,10 +178,8 @@ export async function DELETE(
           })
         })
 
-        // If first attempt failed, try with agent_name
         if (!backendDeleteResponse.ok) {
           console.log('🔄 First attempt failed, trying with agent_name only')
-          console.log('🔄 Second attempt: Deleting with fallback name:', agentData.name)
           
           backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
             method: 'DELETE',
@@ -209,70 +197,62 @@ export async function DELETE(
           console.log('✅ Successfully deleted agent from backend')
         } else {
           const errorData = await backendDeleteResponse.text()
-          console.error('❌ Backend delete failed on both attempts:', backendDeleteResponse.status, errorData)
+          console.error('❌ Backend delete failed:', backendDeleteResponse.status, errorData)
         }
       } catch (backendError) {
         console.error('❌ Backend delete error:', backendError)
       }
-    } else {
-      console.warn('⚠️ No agent name available for backend deletion')
     }
 
-    // 6. Update project's agent quota state to reduce active count and remove agent
+    // 5. Update project quota
     try {
       console.log('🔄 Updating project agent quota state...')
       
-      // Get current project state
       const { data: projectRow, error: fetchError } = await supabase
         .from('pype_voice_projects')
         .select('agent')
         .eq('id', projectId)
         .single()
 
-        if (fetchError || !projectRow) {
-          console.warn('⚠️ Could not fetch project state for quota update:', fetchError)
-        } else {
-          const currentState = (projectRow as any).agent
-          if (currentState && currentState.agents) {
-            // Remove the agent from the agents array and reduce active count
-            const updatedAgents = currentState.agents.filter((agent: any) => agent.id !== agentId)
-            const updatedState = {
-              ...currentState,
-              usage: {
-                ...currentState.usage,
-                active_count: Math.max(0, currentState.usage.active_count - 1)
-              },
-              agents: updatedAgents,
-              last_updated: new Date().toISOString()
-            }
+      if (fetchError || !projectRow) {
+        console.warn('⚠️ Could not fetch project state:', fetchError)
+      } else {
+        const currentState = (projectRow as any).agent
+        if (currentState && currentState.agents) {
+          const updatedAgents = currentState.agents.filter((agent: any) => agent.id !== agentId)
+          const updatedState = {
+            ...currentState,
+            usage: {
+              ...currentState.usage,
+              active_count: Math.max(0, currentState.usage.active_count - 1)
+            },
+            agents: updatedAgents,
+            last_updated: new Date().toISOString()
+          }
 
-            console.log('🔍 Updated project state:', JSON.stringify(updatedState, null, 2))
+          const { error: updateError } = await supabase
+            .from('pype_voice_projects')
+            .update({ agent: updatedState })
+            .eq('id', projectId)
 
-            const { error: updateError } = await supabase
-              .from('pype_voice_projects')
-              .update({ agent: updatedState })
-              .eq('id', projectId)
-
-            if (updateError) {
-              console.error('❌ Failed to update project quota state:', updateError)
-            } else {
-              console.log('✅ Successfully updated project quota state')
-            }
+          if (updateError) {
+            console.error('❌ Failed to update quota:', updateError)
+          } else {
+            console.log('✅ Successfully updated quota')
           }
         }
-      } catch (quotaError) {
-        console.error('❌ Error updating project quota state:', quotaError)
       }
+    } catch (quotaError) {
+      console.error('❌ Error updating quota:', quotaError)
+    }
 
     return NextResponse.json(
-      { 
-        message: 'Agent and all related data deleted successfully'
-      },
+      { message: 'Agent and all related data deleted successfully' },
       { status: 200 }
     )
 
   } catch (error) {
-    console.error('Unexpected error during agent deletion:', error)
+    console.error('Unexpected error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

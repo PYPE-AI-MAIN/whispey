@@ -1,14 +1,9 @@
 // app/api/projects/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import crypto from 'crypto'
 import { createProjectApiKey } from '@/lib/api-key-management'
-
-// Create Supabase client for server-side operations (use service role for admin operations)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 // Generate a secure API token
 function generateApiToken(): string {
@@ -24,6 +19,8 @@ function hashToken(token: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    
     // Check authentication
     const { userId } = await auth()
     if (!userId) {
@@ -145,6 +142,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
+    
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

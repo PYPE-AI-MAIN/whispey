@@ -1,19 +1,16 @@
 // src/app/api/projects/[id]/api-keys/[keyId]/decrypt/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; keyId: string }> }
 ) {
   try {
+    const supabase = getSupabaseClient()
+    
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

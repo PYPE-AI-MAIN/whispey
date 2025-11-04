@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { getSupabaseClient } from '@/lib/supabase-server'
 
 export async function GET(
   request: NextRequest,
@@ -14,6 +9,8 @@ export async function GET(
   console.log('=== API Route Hit: GET /api/projects/[id]/api-keys ===')
   
   try {
+    const supabase = getSupabaseClient()
+    
     const { userId } = await auth()
     console.log('User ID from auth:', userId)
     
