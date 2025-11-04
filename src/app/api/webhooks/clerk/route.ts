@@ -1,7 +1,7 @@
 // app/api/webhooks/clerk/route.ts
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-server' // ✅ Changed
 import { NextRequest, NextResponse } from 'next/server'
 
 interface ClerkWebhookEvent {
@@ -19,7 +19,6 @@ interface ClerkWebhookEvent {
   type: string
 }
 
-
 export async function POST(req: NextRequest): Promise<NextResponse> {
   console.log('🎯 Webhook received')
   
@@ -30,10 +29,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return new NextResponse('Missing webhook secret', { status: 500 })
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  
-  const supabase = createClient(supabaseUrl, supabaseAnonKey)
+  // ✅ Create client inside function
+  const supabase = getSupabaseClient()
   
   // Get the headers
   const headerPayload = await headers()

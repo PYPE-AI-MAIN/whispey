@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
-import { verifyToken } from '../../../../lib/auth';
-import { FailureReportRequest } from '../../../../types/logs';
+import { getSupabaseClient } from '@/lib/supabase-server'; // ✅ Changed
+import { verifyToken } from '@/lib/auth';
+import { FailureReportRequest } from '@/types/logs';
 
 // Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
@@ -17,6 +17,9 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // ✅ Create client inside function
+    const supabase = getSupabaseClient();
+    
     const body: FailureReportRequest = await request.json();
     const {
       token,
