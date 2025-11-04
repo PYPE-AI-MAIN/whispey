@@ -854,6 +854,7 @@ export default function AgentConfig() {
                   isOpen={isTalkToAssistantOpen}
                   onClose={() => setIsTalkToAssistantOpen(false)}
                   agentStatus={agentStatus}
+                  onAgentStatusChange={checkAgentStatus}
                 />
               </SheetContent>
             </Sheet>
@@ -1090,6 +1091,7 @@ export default function AgentConfig() {
             isOpen={isTalkToAssistantOpen}
             onClose={() => setIsTalkToAssistantOpen(false)}
             agentStatus={agentStatus}
+            onAgentStatusChange={checkAgentStatus}
           />
         </SheetContent>
       </Sheet>
