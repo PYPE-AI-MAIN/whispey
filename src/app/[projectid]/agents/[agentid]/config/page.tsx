@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -326,12 +326,12 @@ export default function AgentConfig() {
     checkAgentStatus()
   }, [activeAgentName])
 
-  const checkAgentStatus = async () => {
+  const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
     
     const status = await agentStatusService.checkAgentStatus(activeAgentName)
     setAgentStatus(status)
-  }
+  }, [activeAgentName])
   
   const startAgent = async () => {
     if (!activeAgentName) return
