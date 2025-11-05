@@ -98,7 +98,7 @@ async function sendToPype(dbData: DBCallData, xPypeToken: string, agentId: strin
       }
     };
 
-    const response = await fetch('https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log', {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL_SEND_CALL_LOG_LAMBDA}/send-call-log`, {
       method: 'POST',
       headers: {
         'x-pype-token': xPypeToken,

@@ -79,7 +79,8 @@ export async function POST(request: NextRequest) {
     s3FormData.append('file', csvFile)
     s3FormData.append('project_id', projectId)
 
-    const s3Response = await fetch('https://3vakfucpd4.execute-api.ap-south-1.amazonaws.com/dev/api/v1/s3/upload', {
+    // THIS IS OLD METHOD FOR SAMUNNATI CAMPAIGN LOGS CSV UPLOAD
+    const s3Response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL_S3_UPLOAD}/api/v1/s3/upload`, {
       method: 'POST',
       body: s3FormData,
     })
