@@ -297,12 +297,16 @@ class LivekitObserve:
             set_tracer_provider(tracer_provider)
 
     
-    def start_session(self, session,room=None, **kwargs):
+    def start_session(self, session, room=None, **kwargs):
         """Start session with earlier telemetry setup"""
         # Setup telemetry BEFORE observe_session if enabled
         temp_session_id = f"temp_{int(time.time())}"
         if self.enable_otel:
             self._setup_telemetry(temp_session_id)
+        
+        # Add call_ended_reason to kwargs if not already provided (default to "completed")
+        if 'call_ended_reason' not in kwargs:
+            kwargs['call_ended_reason'] = 'completed'
         
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(
@@ -320,15 +324,20 @@ class LivekitObserve:
         if self.enable_otel and session_id != temp_session_id:
             self._setup_telemetry(session_id)
         
-        self._setup_prompt_capture(session, session_id)
-        
-        if self.enable_bug_reports:
-            self._setup_bug_report_handling(session, session_id)
+        # Only setup prompt capture and bug reports if session is provided
+        if session is not None:
+            self._setup_prompt_capture(session, session_id)
+            
+            if self.enable_bug_reports:
+                self._setup_bug_report_handling(session, session_id)
         
         return session_id
 
     def _setup_prompt_capture(self, session, session_id):
         """Setup prompt data capture by wrapping session.start"""
+        if session is None:
+            return
+        
         original_start = session.start
         
         async def wrapped_start(*args, **kwargs):
@@ -505,6 +514,8 @@ class LivekitObserve:
     
     def _setup_bug_report_handling(self, session, session_id):
         """Setup simplified bug report handling - STT interception only"""
+        if session is None:
+            return
         
         original_start = session.start
         

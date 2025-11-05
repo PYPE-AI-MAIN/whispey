@@ -103,6 +103,10 @@ async def send_to_whispey(data, apikey=None, api_url=None):
         dict: Response from the API or error information
     """
     
+    # Handle call_ended_reason - set default to "completed" if not provided
+    if "call_ended_reason" not in data:
+        data["call_ended_reason"] = "completed"
+    
     # Convert timestamp fields to proper ISO format
     if "call_started_at" in data:
         data["call_started_at"] = convert_timestamp(data["call_started_at"])
