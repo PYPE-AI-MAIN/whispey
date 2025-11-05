@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call external schedule API
-    const scheduleResponse = await fetch('https://3vakfucpd4.execute-api.ap-south-1.amazonaws.com/dev/api/v1/cron/create-schedule', {
+    const scheduleResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL_OLD_CAMPAIGN}/api/v1/cron/create-schedule`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
