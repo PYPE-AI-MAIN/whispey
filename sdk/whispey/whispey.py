@@ -203,8 +203,11 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
         if enable_otel and telemetry_instance:
             telemetry_instance._setup_telemetry(session_id)
         
-        # Setup event handlers with session
-        setup_session_event_handlers(session, session_data, usage_collector, None, bug_detector)
+        # Setup event handlers with session only if session is provided
+        if session is not None:
+            setup_session_event_handlers(session, session_data, usage_collector, None, bug_detector)
+        else:
+            logger.info(f"⚠️ Session is None - skipping event handlers setup. Data-only mode enabled.")
 
         # CHANGE 3: Only setup room tracking if room is provided
         if room:
@@ -241,15 +244,16 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
         else:
             logger.info(f"⚠️ Room not provided - using transcript-based billing fallback")  # CHANGE 5: Log fallback
         
-        # Add custom handlers for Whispey integration
-        @session.on("disconnected")
-        def on_disconnected(event):
-            end_session_manually(session_id, "disconnected")
-        
-        @session.on("close")
-        def on_session_close(event):
-            error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
-            end_session_manually(session_id, "completed", error_msg)
+        # Add custom handlers for Whispey integration only if session is provided
+        if session is not None:
+            @session.on("disconnected")
+            def on_disconnected(event):
+                end_session_manually(session_id, "disconnected")
+            
+            @session.on("close")
+            def on_session_close(event):
+                error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
+                end_session_manually(session_id, "completed", error_msg)
         
         return session_id
         
@@ -392,12 +396,15 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         if k not in {"phone_number", "customer_number", "phone"}
     }
 
+    # Check for call_ended_reason, default to "completed" if not provided
+    call_ended_reason = dynamic_params.get('call_ended_reason', 'completed')
+
     # FIXED: Define whispey_data at function level, not inside if block
     whispey_data = {
         "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
         "agent_id": session_info['agent_id'],
         "customer_number": session_info['dynamic_params'].get('phone_number', 'unknown'),
-        "call_ended_reason": status,
+        "call_ended_reason": call_ended_reason,
         "call_started_at": start_time,
         "call_ended_at": current_time,
         "transcript_type": "agent",
