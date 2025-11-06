@@ -52,10 +52,13 @@ export function CsvUploadSection({
   }
 
   const validateCsvHeaders = (headers: string[]): boolean => {
-    const requiredHeaders = CSV_TEMPLATE.headers
-    return requiredHeaders.every(header => 
-      headers.map(h => h.trim().toLowerCase()).includes(header.toLowerCase())
-    )
+    if (!headers || headers.length === 0) {
+      return false
+    }
+    
+    // Headers are already normalized (lowercase, spaces replaced with underscores, trimmed)
+    // Just check if "phone" exists
+    return headers.includes('phone')
   }
 
   const validatePhoneNumber = (phone: string): boolean => {
@@ -82,16 +85,32 @@ export function CsvUploadSection({
   return phoneRegex.test(cleaned)
 }
 
-const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
+const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidationError[] => {
   const errors: CsvValidationError[] = []
+  
+  // Headers are already normalized, so "phone" should be exactly "phone"
+  const phoneColumnName = headers.find(h => h === 'phone')
+  
+  if (!phoneColumnName) {
+    errors.push({
+      row: 1,
+      field: 'phone',
+      value: 'not found',
+      error: 'Phone column not found in CSV headers'
+    })
+    return errors
+  }
 
   data.forEach((row, index) => {
+    // Access phone value using the normalized column name
+    const phoneValue = (row as any)[phoneColumnName]
+    
     // Validate phone number only
-    if (!validatePhoneNumber(row.phone)) {
+    if (!validatePhoneNumber(phoneValue)) {
       errors.push({
         row: index + 2,
         field: 'phone',
-        value: row.phone || 'empty',
+        value: phoneValue || 'empty',
         error: 'Invalid phone number format. Must start with +91 (India) or +1 (US/Canada) followed by 10 digits'
       })
     }
@@ -104,22 +123,67 @@ const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      quoteChar: '"', // Handle quoted fields properly (important for fields with commas)
+      transformHeader: (header) => {
+        // Remove BOM, trim whitespace, convert to lowercase, replace spaces with underscores
+        return header
+          .replace(/^\uFEFF/, '') // Remove BOM
+          .trim() // Trim whitespace
+          .toLowerCase() // Convert to lowercase
+          .replace(/\s+/g, '_') // Replace spaces with underscores
+      },
       complete: (results) => {
         const headers = results.meta.fields || []
+        
+        // Debug: Log headers for troubleshooting
+        console.log('Parsed headers:', headers)
+        console.log('Required headers:', CSV_TEMPLATE.headers)
+        console.log('Total rows parsed:', results.data?.length || 0)
+        
+        // Check if headers exist
+        if (!headers || headers.length === 0) {
+          setValidationErrors([{
+            row: 1,
+            field: 'headers',
+            value: 'No headers found',
+            error: `CSV file must have a header row with a "phone" column (case-insensitive)`
+          }])
+          setShowErrorDialog(true)
+          return
+        }
         
         if (!validateCsvHeaders(headers)) {
           setValidationErrors([{
             row: 1,
             field: 'headers',
-            value: headers.join(', '),
-            error: `Invalid CSV format. Required headers: ${CSV_TEMPLATE.headers.join(', ')}`
+            value: headers.length > 0 ? headers.join(', ') : 'No headers found',
+            error: `CSV file must contain a "phone" column (case-insensitive). Required header: phone. Found headers: ${headers.length > 0 ? headers.join(', ') : 'none'}`
           }])
           setShowErrorDialog(true)
           return
         }
 
-        const data = results.data as RecipientRow[]
-        const errors = validateCsvData(data)
+        // Filter out empty rows and rows where phone is missing
+        const data = (results.data as RecipientRow[]).filter(row => {
+          const phoneValue = (row as any)['phone']
+          return phoneValue !== undefined && phoneValue !== null && phoneValue !== ''
+        })
+        
+        console.log('Filtered data rows:', data.length)
+        
+        // Check if data is empty after filtering
+        if (!data || data.length === 0) {
+          setValidationErrors([{
+            row: 2,
+            field: 'data',
+            value: 'empty',
+            error: 'CSV file contains no valid data rows with phone numbers'
+          }])
+          setShowErrorDialog(true)
+          return
+        }
+        
+        const errors = validateCsvData(data, headers)
         
         setValidationErrors(errors)
         
