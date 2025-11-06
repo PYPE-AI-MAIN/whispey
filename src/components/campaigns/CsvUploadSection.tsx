@@ -56,9 +56,8 @@ export function CsvUploadSection({
       return false
     }
     
-    // Headers are already normalized (lowercase, spaces replaced with underscores, trimmed)
-    // Just check if "phone" exists
-    return headers.includes('phone')
+    // Check if "phone" exists (case-insensitive)
+    return headers.some(h => h.toLowerCase().trim() === 'phone')
   }
 
   const validatePhoneNumber = (phone: string): boolean => {
@@ -88,8 +87,8 @@ export function CsvUploadSection({
 const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidationError[] => {
   const errors: CsvValidationError[] = []
   
-  // Headers are already normalized, so "phone" should be exactly "phone"
-  const phoneColumnName = headers.find(h => h === 'phone')
+  // Find phone column case-insensitively
+  const phoneColumnName = headers.find(h => h.toLowerCase().trim() === 'phone')
   
   if (!phoneColumnName) {
     errors.push({
@@ -102,7 +101,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
   }
 
   data.forEach((row, index) => {
-    // Access phone value using the normalized column name
+    // Access phone value using the actual column name from CSV
     const phoneValue = (row as any)[phoneColumnName]
     
     // Validate phone number only
@@ -124,14 +123,6 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
       header: true,
       skipEmptyLines: true,
       quoteChar: '"', // Handle quoted fields properly (important for fields with commas)
-      transformHeader: (header) => {
-        // Remove BOM, trim whitespace, convert to lowercase, replace spaces with underscores
-        return header
-          .replace(/^\uFEFF/, '') // Remove BOM
-          .trim() // Trim whitespace
-          .toLowerCase() // Convert to lowercase
-          .replace(/\s+/g, '_') // Replace spaces with underscores
-      },
       complete: (results) => {
         const headers = results.meta.fields || []
         
@@ -163,25 +154,10 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
           return
         }
 
-        // Filter out empty rows and rows where phone is missing
-        const data = (results.data as RecipientRow[]).filter(row => {
-          const phoneValue = (row as any)['phone']
-          return phoneValue !== undefined && phoneValue !== null && phoneValue !== ''
-        })
+        // Use all data as-is, including empty values
+        const data = (results.data as RecipientRow[]) || []
         
-        console.log('Filtered data rows:', data.length)
-        
-        // Check if data is empty after filtering
-        if (!data || data.length === 0) {
-          setValidationErrors([{
-            row: 2,
-            field: 'data',
-            value: 'empty',
-            error: 'CSV file contains no valid data rows with phone numbers'
-          }])
-          setShowErrorDialog(true)
-          return
-        }
+        console.log('Total data rows:', data.length)
         
         const errors = validateCsvData(data, headers)
         
