@@ -5,6 +5,7 @@ import React, { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Formik } from 'formik'
 import * as Yup from 'yup'
+import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
@@ -136,10 +137,26 @@ function CreateCampaign() {
       const campaignId = uuidv4()
 
       // Step 1: Upload CSV to S3
-      const csvContent = [
-        Object.keys(csvData[0]).join(','),
-        ...csvData.map(row => Object.values(row).join(','))
-      ].join('\n')
+      // Use Papa.unparse to properly format CSV with quoted fields
+      // Preserve all columns from the CSV - phone is required, others will be stored as additionalData
+      const normalizedData = csvData.map(row => {
+        const rowData: any = {}
+        // Include all columns from the parsed CSV (headers are already normalized)
+        Object.keys(row).forEach(key => {
+          const value = (row as any)[key]
+          // Only include non-empty values
+          if (value !== undefined && value !== null && value !== '') {
+            rowData[key] = value
+          }
+        })
+        return rowData
+      })
+      
+      const csvContent = Papa.unparse(normalizedData, {
+        header: true,
+        quotes: true,
+        quoteChar: '"',
+      })
 
       const uploadResponse = await fetch(`/api/campaigns/upload-file?campaignId=${campaignId}`, {
         method: 'POST',

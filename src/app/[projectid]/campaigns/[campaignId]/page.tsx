@@ -624,9 +624,9 @@ function ViewCampaign() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-900/50">
+                    <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
                       <tr>
                         {columns.map((column) => {
                           // Map column names to display labels
