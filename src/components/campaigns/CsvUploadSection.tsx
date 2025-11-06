@@ -86,17 +86,7 @@ const validateCsvData = (data: RecipientRow[]): CsvValidationError[] => {
   const errors: CsvValidationError[] = []
 
   data.forEach((row, index) => {
-    // Validate name
-    if (!row.name || row.name.trim() === '') {
-      errors.push({
-        row: index + 2,
-        field: 'name',
-        value: 'empty',
-        error: 'Name is required'
-      })
-    }
-
-    // Validate phone number
+    // Validate phone number only
     if (!validatePhoneNumber(row.phone)) {
       errors.push({
         row: index + 2,
