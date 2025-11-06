@@ -154,29 +154,10 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
           return
         }
 
-        // Find phone column case-insensitively
-        const phoneColumnName = headers.find(h => h.toLowerCase().trim() === 'phone')
+        // Use all data as-is, including empty values
+        const data = (results.data as RecipientRow[]) || []
         
-        // Filter out empty rows and rows where phone is missing
-        const data = (results.data as RecipientRow[]).filter(row => {
-          if (!phoneColumnName) return false
-          const phoneValue = (row as any)[phoneColumnName]
-          return phoneValue !== undefined && phoneValue !== null && phoneValue !== ''
-        })
-        
-        console.log('Filtered data rows:', data.length)
-        
-        // Check if data is empty after filtering
-        if (!data || data.length === 0) {
-          setValidationErrors([{
-            row: 2,
-            field: 'data',
-            value: 'empty',
-            error: 'CSV file contains no valid data rows with phone numbers'
-          }])
-          setShowErrorDialog(true)
-          return
-        }
+        console.log('Total data rows:', data.length)
         
         const errors = validateCsvData(data, headers)
         
