@@ -27,7 +27,7 @@ interface CsvUploadSectionProps {
 export function CsvUploadSection({ 
   csvFile, 
   csvData, 
-  onFileUpload, 
+  onFileUpload,
   onRemoveFile 
 }: CsvUploadSectionProps) {
   const [isDragging, setIsDragging] = useState(false)

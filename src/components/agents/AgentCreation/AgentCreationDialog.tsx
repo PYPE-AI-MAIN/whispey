@@ -6,7 +6,6 @@ import CreateAgentFlow from './CreateAgentFlow'
 import ConnectAgentFlow from './ConnectAgentFlow'
 import AgentChoiceScreen from './AgentChoiceScreen'
 import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
-import { UserPermissionsProvider } from '@/contexts/UserPermissionsContext'
 
 interface AgentCreationDialogProps {
   isOpen: boolean

@@ -407,7 +407,13 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         tools: assistant.tools?.map((tool: any) => ({
           id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
           type: tool.type,
-          name: tool.name || (tool.type === 'end_call' ? 'End Call' : tool.type === 'handoff' ? 'Handoff Agent' : tool.type === 'transfer_call' ? 'Transfer Call' : 'Custom Tool'),
+          name: tool.name || (
+            tool.type === 'end_call' ? 'End Call' : 
+            tool.type === 'handoff' ? 'Handoff Agent' : 
+            tool.type === 'transfer_call' ? 'Transfer Call' : 
+            tool.type === 'ivr_navigator' ? 'Send DTMF' : 
+            'Custom Tool'
+          ),
           config: {
             description: tool.description || '',
             endpoint: tool.api_url || '',
@@ -427,7 +433,16 @@ export const buildFormValuesFromAgent = (assistant: any) => {
               description: param.description,
               required: param.required
             })) || [],
-            responseMapping: tool.response_mapping_raw || '{}'
+            responseMapping: tool.response_mapping_raw || '{}',
+            // IVR Navigator fields
+            function_name: tool.function_name || 'send_dtmf_code',
+            docstring: tool.docstring || '',
+            cooldown_seconds: tool.cooldown_seconds || 3,
+            publish_topic: tool.publish_topic || 'dtmf_code',
+            publish_data: tool.publish_data ?? true,
+            instruction_template: tool.instruction_template || '',
+            default_task: tool.default_task || 'Reach a live support representative',
+            task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
           }
         })) || []
       },
