@@ -159,7 +159,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys, canAccessPhoneCalls, canAccessPhoneSettings } = context
+      const { userCanViewApiKeys, canAccessPhoneSettings } = context
 
       const baseNavigation = [
         {

@@ -1,3 +1,4 @@
+// src/app/[projectid]/agents/[agentid]/config/page.tsx
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
@@ -6,27 +7,17 @@ import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Badge } from '@/components/ui/badge'
 import { 
   CopyIcon, 
   CheckIcon, 
   SettingsIcon, 
   TypeIcon, 
   SlidersHorizontal, 
-  PhoneIcon, 
-  Mic, 
-  MicOff, 
-  PhoneOff, 
-  Volume2,
+  PhoneIcon,
   Play,
   Square,
   Loader2,
-  MessageSquare,
-  User,
-  Bot,
   MoreVertical,
   Save,
   X
@@ -39,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { languageOptions, firstMessageModes } from '@/utils/constants'
+import { firstMessageModes } from '@/utils/constants'
 import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
@@ -53,8 +44,17 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
+import { VariableTextarea } from '@/components/agents/variables/VariableTextarea'
+import { VariableValidationIndicator } from '@/components/agents/variables/VariableErrorDisplay'
+import { ValidationResult } from '@/utils/variableValidator'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
-// Agent status service - you'll need to implement this
+// Agent status service
 const agentStatusService = {
   checkAgentStatus: async (agentName: string): Promise<AgentStatus> => {
     try {
@@ -63,7 +63,6 @@ const agentStatusService = {
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
-      // Call Next.js API route instead of backend directly
       const response = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}`, {
         method: 'GET',
         headers: {
@@ -73,7 +72,6 @@ const agentStatusService = {
       
       if (response.ok) {
         const data = await response.json()
-        
         const status: AgentStatus['status'] = data.is_active && data.worker_running ? 'running' : 'stopped'
         
         const mappedStatus: AgentStatus = {
@@ -174,37 +172,8 @@ const agentStatusService = {
       console.error('❌ Stop agent error:', error)
       return { status: 'error' as const, error: 'Failed to stop agent' }
     }
-  },
-  
-  startStatusPolling: (
-    agentName: string, 
-    onStatusUpdate: (status: AgentStatus) => void, 
-    interval: number = 15000
-  ) => {
-    if (!agentName) {
-      console.warn('⚠️ Cannot start polling: agent name is required')
-      return () => {}
-    }
-
-    console.log('📊 Starting status polling for agent:', agentName, 'interval:', interval)
-    
-    const pollStatus = async () => {
-      const status = await agentStatusService.checkAgentStatus(agentName)
-      onStatusUpdate(status)
-    }
-    
-    pollStatus()
-    
-    const intervalId = setInterval(pollStatus, interval)
-    
-    return () => {
-      console.log('🧹 Stopping status polling for agent:', agentName)
-      clearInterval(intervalId)
-    }
   }
 }
-
-
 
 interface AzureConfig {
   endpoint: string
@@ -216,23 +185,7 @@ interface AgentStatus {
   pid?: number
   error?: string
   message?: string
-  raw?: any // Allow for flexible API response data
-}
-
-interface WebSession {
-  room_name: string
-  token: string
-  url: string
-  participant_identity: string
-}
-
-interface Transcript {
-  id: string
-  speaker: 'user' | 'agent'
-  text: string
-  timestamp: Date
-  isFinal: boolean
-  participantIdentity?: string
+  raw?: any
 }
 
 export default function AgentConfig() {
@@ -248,19 +201,17 @@ export default function AgentConfig() {
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
   const [isAgentLoading, setIsAgentLoading] = useState(false)
 
+  // Variable validation state
+  const [promptValidation, setPromptValidation] = useState<ValidationResult>({
+    isValid: true,
+    errors: [],
+    validVariables: new Set()
+  })
+
   const { getTextareaStyles, settings, setFontSize } = usePromptSettings()
-
-
-  const defaultFormValues = getDefaultFormValues()
-
 
   // Azure config state for ModelSelector
   const [azureConfig, setAzureConfig] = useState<AzureConfig>({
-    endpoint: '',
-    apiVersion: ''
-  })
-
-  const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>({
     endpoint: '',
     apiVersion: ''
   })
@@ -286,11 +237,17 @@ export default function AgentConfig() {
     limit: 1
   })
 
-  const sanitizedAgentId = agentid.replace(/-/g, '_')
+  const agentNameWithId = useMemo(() => {
+    if (!agentDataResponse?.[0]?.name || !agentid) {
+      return ''
+    }
+    
+    const sanitizedAgentId = agentid.replace(/-/g, '_')
+    return `${agentDataResponse[0].name}_${sanitizedAgentId}`
+  }, [agentDataResponse, agentid])
 
-  const agentNameWithId = `${agentDataResponse?.[0]?.name}_${sanitizedAgentId}`
-  const agentNameLegacy = agentDataResponse?.[0]?.name
-  const agentNameHeader = agentDataResponse?.[0]?.name
+  const agentNameHeader = agentDataResponse?.[0]?.name || ''
+  const agentNameLegacy = agentDataResponse?.[0]?.name || ''
 
   const [resolvedAgentName, setResolvedAgentName] = useState<string>('')
 
@@ -298,11 +255,9 @@ export default function AgentConfig() {
   const { 
     data: agentConfigData, 
     isLoading: isConfigLoading, 
-    error: configError,
     isError: isConfigError,
     refetch: refetchConfig 
   } = useAgentConfig(agentNameWithId, agentNameLegacy)
-
 
   useEffect(() => {
     if (agentConfigData && !isConfigLoading) {
@@ -311,20 +266,16 @@ export default function AgentConfig() {
     }
   }, [agentConfigData, isConfigLoading, agentNameWithId])
 
-
-  const activeAgentName = resolvedAgentName || agentNameWithId
-  
-
-  // Use mutations for save operations
-  const { saveDraft, saveAndDeploy } = useAgentMutations(activeAgentName)
-
-  // Check agent status on load and set up polling
-  useEffect(() => {
-    if (!activeAgentName) return
+  const activeAgentName = useMemo(() => {
+    if (agentLoading || !agentDataResponse?.[0]?.name) {
+      return ''
+    }
     
-    // Initial status check
-    checkAgentStatus()
-  }, [activeAgentName])
+    return resolvedAgentName || agentNameWithId
+  }, [resolvedAgentName, agentNameWithId, agentLoading, agentDataResponse])
+  
+  // Use mutations for save operations
+  const { saveAndDeploy } = useAgentMutations(activeAgentName)
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
@@ -332,7 +283,16 @@ export default function AgentConfig() {
     const status = await agentStatusService.checkAgentStatus(activeAgentName)
     setAgentStatus(status)
   }, [activeAgentName])
-  
+
+  // Check agent status on load
+  useEffect(() => {
+    if (!activeAgentName || agentLoading || activeAgentName.startsWith('undefined_')) {
+      return
+    }
+    
+    checkAgentStatus()
+  }, [activeAgentName, agentLoading, checkAgentStatus])
+
   const startAgent = async () => {
     if (!activeAgentName) return
     
@@ -342,7 +302,6 @@ export default function AgentConfig() {
     try {
       const status = await agentStatusService.startAgent(activeAgentName)
       
-      // If successful, set to running directly
       if (status.status !== 'error') {
         setAgentStatus({ status: 'running' })
       } else {
@@ -362,7 +321,6 @@ export default function AgentConfig() {
     try {
       const status = await agentStatusService.stopAgent(activeAgentName)
       
-      // If successful, set to stopped directly
       if (status.status !== 'error') {
         setAgentStatus({ status: 'stopped' })
       } else {
@@ -420,12 +378,21 @@ export default function AgentConfig() {
     currentAzureConfig: azureConfig
   })
 
+  // useEffect(() => {
+  //   const validVariables = Array.from(promptValidation.validVariables)
+  //   const variablesArray = validVariables.map(name => ({ name, value: '', description: '' }))
+    
+  //   // Only update if different to avoid infinite loops
+  //   if (JSON.stringify(formik.values.variables) !== JSON.stringify(variablesArray)) {
+  //     formik.setFieldValue('variables', variablesArray)
+  //   }
+  // }, [promptValidation.validVariables])
+
   // Handle the agent config data when it loads
   useEffect(() => {
     if (agentConfigData?.agent?.assistant?.[0]) {
       const assistant = agentConfigData.agent.assistant[0]
       
-      // Only handle the external state that's not in Formik
       const formValues = buildFormValuesFromAgent(assistant)
       
       setTtsConfig({
@@ -443,7 +410,6 @@ export default function AgentConfig() {
         }
       })
       
-      // Set Azure config if it's an Azure provider
       const llmConfig = assistant.llm || {}
       const providerValue = llmConfig.provider || llmConfig.name || 'openai'
       let mappedProvider = providerValue
@@ -463,29 +429,48 @@ export default function AgentConfig() {
           apiVersion: assistant.llm.api_version || ''
         }
         setAzureConfig(azureConfigData)
-        setTempAzureConfig(azureConfigData)
       }
     }
   }, [agentConfigData])
 
   useEffect(() => {
-    if (saveAndDeploy.isSuccess || saveDraft.isSuccess) {
+    if (saveAndDeploy.isSuccess) {
       setHasExternalChanges(false)
       resetUnsavedChanges()
-      
-      formik.resetForm({ values: formik.values })
-      
+      // CRITICAL: Store current values and reset to clear dirty flag
+      const currentValues = formik.values
+      formik.resetForm()
+      formik.setValues(currentValues, false) // false = don't validate
     }
-  }, [saveAndDeploy.isSuccess, saveDraft.isSuccess, resetUnsavedChanges])
-
-  // const handleSaveDraft = () => {
-  //   const payload = buildSavePayload()
-  //   console.log('💾 SAVE DRAFT - Multi-Assistant Configuration:', payload)
-  //   saveDraft.mutate(payload)
-  // }
+  }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
 
   const handleSaveAndDeploy = () => {
+    if (!promptValidation.isValid) {
+      console.error('❌ Cannot save: Variable validation errors exist')
+      return
+    }
+
     const payload = buildSavePayload()
+    
+    // This part is correct - only override on save
+    const validVariables = Array.from(promptValidation.validVariables)
+    const validVariablesArray = validVariables.map(name => {
+      const existing = formik.values.variables?.find((v: any) => v.name === name)
+      return {
+        name,
+        value: existing?.value || '',
+        description: existing?.description || ''
+      }
+    })
+    
+    if (payload.agent?.assistant?.[0]) {
+      payload.agent.assistant[0].variables = validVariablesArray.reduce((acc: any, v: any) => {
+        acc[v.name] = v.value
+        return acc
+      }, {})
+    }
+    
+    console.log('💾 Saving with validated variables:', validVariables)
     saveAndDeploy.mutate(payload)
   }
 
@@ -496,8 +481,6 @@ export default function AgentConfig() {
   }
 
   const handleVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
-    console.log('TTS Configuration received:', { voiceId, provider, model, config })
-    
     formik.setFieldValue('selectedVoice', voiceId)
     formik.setFieldValue('ttsProvider', provider)
     formik.setFieldValue('ttsModel', model || '')
@@ -511,8 +494,6 @@ export default function AgentConfig() {
   }
 
   const handleSTTSelect = (provider: string, model: string, config: any) => {
-    console.log('STT Configuration received:', { provider, model, config })
-    
     formik.setFieldValue('sttProvider', provider)
     formik.setFieldValue('sttModel', model)
     formik.setFieldValue('sttConfig', config)
@@ -520,7 +501,6 @@ export default function AgentConfig() {
     setSTTConfig({ provider, model, config })
   }
   
-  // Handlers for ModelSelector
   const handleProviderChange = (provider: string) => {
     formik.setFieldValue('selectedProvider', provider)
   }
@@ -571,6 +551,21 @@ export default function AgentConfig() {
     }
   }
 
+console.log('🔍 Unmapped check:', {
+  validVariablesSize: promptValidation.validVariables.size,
+  validVariables: Array.from(promptValidation.validVariables),
+  formikVariablesLength: formik.values.variables?.length,
+  formikVariables: formik.values.variables,
+  shouldShowRed: promptValidation.validVariables.size > (formik.values.variables?.length || 0)
+})
+
+const unmappedVariablesCount = useMemo(() => {
+  const validVars = Array.from(promptValidation.validVariables)
+  const mappedVars = new Set(formik.values.variables?.map((v: any) => v.name) || [])
+  const unmapped = validVars.filter(name => !mappedVars.has(name))
+  return unmapped.length
+}, [promptValidation.validVariables, formik.values.variables])
+
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
 
   // Loading state
@@ -593,25 +588,21 @@ export default function AgentConfig() {
       <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
         <div className="max-w-md w-full">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center shadow-lg">
-            {/* Icon */}
             <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
               <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
   
-            {/* Title */}
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Agent Not Found in Command Center
             </h3>
   
-            {/* Description */}
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
               This agent exists in your organisation but couldn't be found in the current command center environment. 
               It might be deployed to a different environment or needs to be created.
             </p>
   
-            {/* Environment Info */}
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 mb-6 text-left">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-500 dark:text-gray-400">Current Environment:</span>
@@ -621,7 +612,6 @@ export default function AgentConfig() {
               </div>
             </div>
   
-            {/* Actions */}
             <div className="space-y-3">
               <Button 
                 onClick={() => refetchConfig()} 
@@ -640,7 +630,6 @@ export default function AgentConfig() {
               </Button>
             </div>
   
-            {/* Help Text */}
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
               Need help? Check if the agent was deployed to the correct environment.
             </p>
@@ -652,10 +641,9 @@ export default function AgentConfig() {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Mobile Header (< lg) */}
+      {/* Mobile Header */}
       <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          {/* Agent Status */}
           <div className="flex items-center gap-3 min-w-0">
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAgentStatusColor()}`}></div>
             <div className="min-w-0">
@@ -668,9 +656,7 @@ export default function AgentConfig() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Agent Control - Always visible */}
             {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
               <Button
                 variant="outline"
@@ -710,13 +696,12 @@ export default function AgentConfig() {
               </Button>
             )}
 
-            {/* Update Conf - Show when dirty */}
             {isFormDirty && (
               <Button 
                 size="sm" 
                 className="h-8 px-3" 
                 onClick={handleSaveAndDeploy}
-                disabled={saveAndDeploy.isPending}
+                disabled={saveAndDeploy.isPending || !promptValidation.isValid}
               >
                 {saveAndDeploy.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -726,7 +711,6 @@ export default function AgentConfig() {
               </Button>
             )}
 
-            {/* Three Dot Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 w-8 p-0">
@@ -735,16 +719,14 @@ export default function AgentConfig() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuGroup>
-                  {/* Talk to Assistant */}
                   <DropdownMenuItem 
                     onSelect={() => setIsTalkToAssistantOpen(true)}
-                    disabled={!activeAgentName}
+                    disabled={!activeAgentName || !promptValidation.isValid}
                   >
                     <PhoneIcon className="w-4 h-4 mr-2" />
                     Talk to Assistant
                   </DropdownMenuItem>
 
-                  {/* Advanced Settings */}
                   <DropdownMenuItem onSelect={() => setIsAdvancedSettingsOpen(true)}>
                     <SlidersHorizontal className="w-4 h-4 mr-2" />
                     Advanced Settings
@@ -755,7 +737,6 @@ export default function AgentConfig() {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                      {/* Cancel */}
                       <DropdownMenuItem onSelect={handleCancel}>
                         <X className="w-4 h-4 mr-2" />
                         Cancel Changes
@@ -769,7 +750,7 @@ export default function AgentConfig() {
         </div>
       </div>
 
-      {/* Desktop Header (>= lg) */}
+      {/* Desktop Header */}
       <div className="hidden lg:block bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -786,7 +767,6 @@ export default function AgentConfig() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Agent Controls */}
             {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
               <Button
                 variant="outline"
@@ -829,7 +809,6 @@ export default function AgentConfig() {
               </Button>
             )}
 
-            {/* Talk to Assistant Button */}
             <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
               <SheetHeader className="sr-only">
                 <SheetTitle>Talk to Assistant</SheetTitle>
@@ -839,7 +818,7 @@ export default function AgentConfig() {
                   variant="outline"
                   size="sm"
                   className="h-8 text-xs"
-                  disabled={!activeAgentName}
+                  disabled={!activeAgentName || !promptValidation.isValid}
                 >
                   <PhoneIcon className="w-3 h-3 mr-1" />
                   Talk to Assistant
@@ -856,19 +835,17 @@ export default function AgentConfig() {
               </SheetContent>
             </Sheet>
 
-            {/* Cancel Button */}
             {isFormDirty && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
                 Discard Changes
               </Button>
             )}
             
-            {/* Update Conf Button */}
             <Button 
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || !isFormDirty}
+              disabled={saveAndDeploy.isPending || !isFormDirty || !promptValidation.isValid}
             >
               {saveAndDeploy.isPending ? 'Updating...' : 'Update Config'}
             </Button>
@@ -876,16 +853,15 @@ export default function AgentConfig() {
         </div>
       </div>
 
-      {/* Main Content - Responsive Layout */}
+      {/* Main Content */}
       <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full p-4">
         <div className="h-full flex gap-4">
           
-          {/* Left Side - Main Configuration */}
+          {/* Left Side */}
           <div className="flex-1 min-w-0 flex flex-col space-y-3">
             
-            {/* Quick Setup Row - Responsive Stack */}
+            {/* Quick Setup Row */}
             <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-              {/* LLM Selection */}
               <div className="flex-1 min-w-0">
                 <ModelSelector
                   selectedProvider={formik.values.selectedProvider}
@@ -899,7 +875,6 @@ export default function AgentConfig() {
                 />
               </div>
 
-              {/* STT Selection */}
               <div className="flex-1 min-w-0">
                 <SelectSTT 
                   selectedProvider={formik.values.sttProvider}
@@ -910,7 +885,6 @@ export default function AgentConfig() {
                 />
               </div>
 
-              {/* TTS Selection */}
               <div className="flex-1 min-w-0">
                 <SelectTTS 
                   selectedVoice={formik.values.selectedVoice}
@@ -931,14 +905,12 @@ export default function AgentConfig() {
                 <Select 
                   value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
                   onValueChange={(value) => {
-                    // Handle both old string format and new object format
                     if (typeof formik.values.firstMessageMode === 'object') {
                       formik.setFieldValue('firstMessageMode', {
                         ...formik.values.firstMessageMode,
                         mode: value
                       })
                     } else {
-                      // Convert to new object format
                       formik.setFieldValue('firstMessageMode', {
                         mode: value,
                         allow_interruptions: true,
@@ -960,7 +932,6 @@ export default function AgentConfig() {
                 </Select>
               </div>
 
-              {/* First Message Textarea */}
               {((typeof formik.values.firstMessageMode === 'object' && formik.values.firstMessageMode.mode === 'assistant_speaks_first') ||
                 (typeof formik.values.firstMessageMode === 'string' && formik.values.firstMessageMode === 'assistant_speaks_first')) && (
                 <Textarea
@@ -1021,13 +992,34 @@ export default function AgentConfig() {
                 </div>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsPromptSettingsOpen(true)}
-                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
-                  >
-                    <SettingsIcon className="w-4 h-4" />
-                    <span>Settings</span>
-                  </button>
+                 <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => setIsPromptSettingsOpen(true)}
+                          className={`flex items-center gap-1 text-xs transition-colors ${
+                            unmappedVariablesCount > 0
+                              ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300' 
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                          }`}
+                        >
+                          <SettingsIcon className="w-4 h-4" />
+                          <span>Settings</span>
+                          {unmappedVariablesCount > 0 && (
+                            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">
+                          {unmappedVariablesCount > 0
+                            ? `${unmappedVariablesCount} unmapped variable${unmappedVariablesCount > 1 ? 's' : ''} - click to configure`
+                            : 'Prompt settings'}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
 
                   <button
                     onClick={copyToClipboard}
@@ -1049,23 +1041,31 @@ export default function AgentConfig() {
                 </div>
               </div>
               
-              <Textarea
-                placeholder="Define your agent's behavior and personality..."
+              {/* Variable Textarea - NO overlay, just validation */}
+              <VariableTextarea
                 value={formik.values.prompt}
-                onChange={(e) => formik.setFieldValue('prompt', e.target.value)}
+                onChange={(value) => formik.setFieldValue('prompt', value)}
+                onValidationChange={setPromptValidation}
+                placeholder="Define your agent's behavior and personality... Use {{variable_name}} for dynamic values."
                 className="flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700"
                 style={getTextareaStyles()}
               />
               
-              <div className="flex justify-between items-center mt-2 flex-shrink-0">
+              {/* Compact Validation Indicator */}
+              <div className="mt-2 flex justify-between items-center flex-shrink-0">
                 <span className="text-xs text-gray-400 dark:text-gray-500">
                   {formik.values.prompt.length.toLocaleString()} chars
                 </span>
+                
+                <VariableValidationIndicator
+                  errors={promptValidation.errors}
+                  validVariables={Array.from(promptValidation.validVariables)}
+                />
               </div>
             </div>
           </div>
 
-          {/* Right Side - Advanced Settings - Desktop Only */}
+          {/* Right Side - Desktop Only */}
           <div className="hidden lg:block w-80 flex-shrink-0 min-h-0">
             <AgentAdvancedSettings 
               advancedSettings={formik.values.advancedSettings}
@@ -1077,7 +1077,7 @@ export default function AgentConfig() {
         </div>
       </div>
 
-      {/* Mobile Sheets for Talk to Assistant and Advanced Settings */}
+      {/* Mobile Sheets */}
       <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
         <SheetContent side="right" className="w-full sm:w-96 p-0">
           <SheetHeader className="sr-only">
