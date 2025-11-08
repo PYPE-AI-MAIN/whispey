@@ -141,9 +141,6 @@ export const validateVariables = (text: string): ValidationResult => {
       continue; // Don't add to validVariables
     }
 
-    // Convert to lowercase
-    varName = varName.toLowerCase();
-
     // ONLY add to validVariables if ALL checks passed
     if (isThisVariableValid) {
       result.validVariables.add(varName);
