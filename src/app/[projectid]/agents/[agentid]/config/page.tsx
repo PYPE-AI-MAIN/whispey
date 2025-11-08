@@ -551,14 +551,6 @@ export default function AgentConfig() {
     }
   }
 
-console.log('🔍 Unmapped check:', {
-  validVariablesSize: promptValidation.validVariables.size,
-  validVariables: Array.from(promptValidation.validVariables),
-  formikVariablesLength: formik.values.variables?.length,
-  formikVariables: formik.values.variables,
-  shouldShowRed: promptValidation.validVariables.size > (formik.values.variables?.length || 0)
-})
-
 const unmappedVariablesCount = useMemo(() => {
   const validVars = Array.from(promptValidation.validVariables)
   const mappedVars = new Set(formik.values.variables?.map((v: any) => v.name) || [])
