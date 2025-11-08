@@ -1,7 +1,7 @@
 // src/utils/variableValidator.ts
 
 export interface ValidationError {
-  type: 'unclosed' | 'empty' | 'invalid_chars' | 'too_long' | 'starts_with_number';
+  type: 'unclosed' | 'empty' | 'invalid_chars' | 'too_long' | 'starts_with_number' | 'invalid_underscore';
   variable: string;
   position: number;
   message: string;
@@ -20,9 +20,10 @@ export interface ValidationResult {
  * 2. Cannot be empty
  * 3. Only alphanumeric and underscores (NO spaces)
  * 4. Cannot start with a number
- * 5. Max 12 characters
- * 6. Trimmed whitespace
- * 7. Converted to lowercase
+ * 5. Cannot start or end with underscore
+ * 6. Max 16 characters
+ * 7. Trimmed whitespace
+ * 8. Converted to lowercase
  * 
  * IMPORTANT: Variables are only added to validVariables if they pass ALL checks
  */
@@ -114,7 +115,20 @@ export const validateVariables = (text: string): ValidationResult => {
       continue; // Don't add to validVariables
     }
 
-    // Check length (max 12 characters)
+    // Check if starts or ends with underscore
+    if (/^_/.test(varName) || /_$/.test(varName)) {
+      result.isValid = false;
+      isThisVariableValid = false;
+      result.errors.push({
+        type: 'invalid_underscore',
+        variable: fullMatch,
+        position,
+        message: 'Variable cannot start or end with an underscore'
+      });
+      continue; // Don't add to validVariables
+    }
+
+    // Check length (max 16 characters)
     if (varName.length > 16) {
       result.isValid = false;
       isThisVariableValid = false;

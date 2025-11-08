@@ -1,9 +1,19 @@
 // src/components/variables/VariableTextarea.tsx
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react';
-import Editor from 'react-simple-code-editor';
+import React, { useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { validateVariables, ValidationResult } from '@/utils/variableValidator';
+
+// Dynamically import Monaco Editor with no SSR
+const Editor = dynamic(() => import('@monaco-editor/react'), { 
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-white dark:bg-[#283442] border border-gray-200 dark:border-gray-700 rounded-lg">
+      <p className="text-sm text-gray-500 dark:text-gray-400">Loading editor...</p>
+    </div>
+  )
+});
 
 interface VariableTextareaProps {
   value: string;
@@ -24,15 +34,13 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
   style,
   disabled = false
 }) => {
-  const [validation, setValidation] = useState<ValidationResult>({
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const [validation, setValidation] = React.useState<ValidationResult>({
     isValid: true,
     errors: [],
     validVariables: new Set()
   });
-  
-  const editorRef = useRef<any>(null);
-  const initialValueRef = useRef(value);
-  const hasSetInitialHistory = useRef(false);
 
   useEffect(() => {
     const result = validateVariables(value);
@@ -43,206 +51,138 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
     }
   }, [value, onValidationChange]);
 
-  // Fix undo history on initial load
-  useEffect(() => {
-    if (!hasSetInitialHistory.current && value && editorRef.current) {
-      // Small delay to ensure editor is mounted
-      setTimeout(() => {
-        if (editorRef.current?._input) {
-          // Clear any existing history
-          const textarea = editorRef.current._input;
-          
-          // Trick: set value, blur, focus to reset undo stack
-          const currentValue = textarea.value;
-          textarea.value = '';
-          textarea.value = currentValue;
-          
-          // Mark as set so we don't do this again
-          hasSetInitialHistory.current = true;
+  const handleEditorWillMount = useCallback((monaco: any) => {
+    monacoRef.current = monaco;
+
+    // Register a custom language
+    monaco.languages.register({ id: 'prompt-with-variables' });
+
+    // Define tokens for syntax highlighting
+    monaco.languages.setMonarchTokensProvider('prompt-with-variables', {
+        tokenizer: {
+        root: [
+            // Valid variables: {{variable_name}}
+            // Must start with letter, can contain letters/numbers/underscores, must end with letter/number
+            // Max 16 characters
+            [/\{\{[a-zA-Z][a-zA-Z0-9_]{0,14}[a-zA-Z0-9]\}\}/, 'variable.valid'],
+            // Single character valid variable (just a letter)
+            [/\{\{[a-zA-Z]\}\}/, 'variable.valid'],
+            // Invalid variables: anything else between {{ }}
+            [/\{\{[^}]*\}\}/, 'variable.invalid'],
+            // Unclosed braces
+            [/\{\{[^}]*$/, 'variable.invalid'],
+        ]
         }
-      }, 100);
-    }
-  }, [value]);
-
-  const highlightCode = (code: string) => {
-    if (!code) return '';
-
-    const errorVars = new Set(validation.errors.map(e => e.variable));
-    
-    let highlighted = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-    
-    highlighted = highlighted.replace(/\{\{([^{}]*)\}\}/g, (match) => {
-      const escapedMatch = match
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      
-      const hasError = errorVars.has(match);
-      
-      if (hasError) {
-        return `<span class="var-error">${escapedMatch}</span>`;
-      } else {
-        return `<span class="var-valid">${escapedMatch}</span>`;
-      }
     });
 
-    return highlighted;
-  };
+    // Define colors for tokens
+    monaco.editor.defineTheme('variable-theme-light', {
+        base: 'vs',
+        inherit: true,
+        rules: [
+        { token: 'variable.valid', foreground: '0969da', fontStyle: 'italic' },
+        { token: 'variable.invalid', foreground: 'd1242f', fontStyle: 'underline' }
+        ],
+        colors: {
+        'editor.background': '#ffffff',
+        }
+    });
+
+    monaco.editor.defineTheme('variable-theme-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+        { token: 'variable.valid', foreground: '58a6ff', fontStyle: 'italic' },
+        { token: 'variable.invalid', foreground: 'ff7b72', fontStyle: 'underline' }
+        ],
+        colors: {
+        'editor.background': '#283442',
+        }
+    });
+    }, []);
+
+    const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    // No onKeyDown needed anymore!
+    }, []);
+
+  // Detect dark mode
+  const [isDark, setIsDark] = React.useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+
+    checkDarkMode();
+
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className={`var-editor ${className}`}>
-      <style jsx global>{`
-        /* Container */
-        .var-editor {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            border-radius: 8px;
-            background: #ffffff;
-            transition: border-color 0.15s ease;
-        }
-
-        .var-editor:focus-within {
-            border-color: rgba(0, 0, 0, 0.12);
-        }
-
-        .dark .var-editor {
-            border-color: rgba(255, 255, 255, 0.06);
-            background: rgba(255, 255, 255, 0.03);
-        }
-
-        .dark .var-editor:focus-within {
-            border-color: rgba(255, 255, 255, 0.12);
-        }
-
-        /* Editor text */
-        .var-editor textarea,
-        .var-editor pre {
-            font-family: ${style?.fontFamily || 'ui-monospace, SF Mono, Monaco, Cascadia Code, Courier New, monospace'} !important;
-            font-size: ${style?.fontSize || '13px'} !important;
-            line-height: ${style?.lineHeight || '1.6'} !important;
-        }
-
-        .var-editor textarea {
-            outline: none !important;
-            border: none !important;
-            background: transparent !important;
-            resize: none !important;
-            padding: 12px !important;
-            color: #1a1a1a !important;
-        }
-
-        .dark .var-editor textarea {
-            color: rgba(255, 255, 255, 0.9) !important;
-        }
-
-        .var-editor textarea::placeholder {
-            color: rgba(0, 0, 0, 0.3) !important;
-        }
-
-        .dark .var-editor textarea::placeholder {
-            color: rgba(255, 255, 255, 0.3) !important;
-        }
-
-        .var-editor pre {
-            padding: 12px !important;
-            margin: 0 !important;
-            white-space: pre-wrap !important;
-            word-wrap: break-word !important;
-        }
-
-        /* Valid Variable - Blue italic, NO background */
-        .var-valid {
-            color: #0969da;
-            font-style: italic;
-        }
-
-        .dark .var-valid {
-            color: #58a6ff;
-        }
-
-        /* Invalid Variable - Red underline */
-        .var-error {
-            color: #d1242f;
-            text-decoration: underline;
-            text-decoration-color: #d1242f;
-            text-decoration-thickness: 1.5px;
-            text-underline-offset: 2px;
-        }
-
-        .dark .var-error {
-            color: #ff7b72;
-            text-decoration-color: #ff7b72;
-        }
-
-        /* Editor container */
-        .var-editor > div {
-            height: 100% !important;
-            overflow: auto !important;
-        }
-
-        /* Scrollbar */
-        .var-editor > div::-webkit-scrollbar {
-            width: 14px;
-            height: 14px;
-        }
-
-        .var-editor > div::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .var-editor > div::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: 10px;
-            border: 4px solid transparent;
-            background-clip: padding-box;
-        }
-
-        .var-editor > div::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 0, 0, 0.25);
-            border: 3px solid transparent;
-            background-clip: padding-box;
-        }
-
-        .dark .var-editor > div::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .dark .var-editor > div::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
-
-        /* Selection color */
-        .var-editor ::selection {
-            background: rgba(46, 170, 220, 0.2);
-        }
-
-        .dark .var-editor ::selection {
-            background: rgba(88, 166, 255, 0.25);
-        }
-        `}</style>
-
-      <Editor
-        ref={editorRef}
-        value={value}
-        onValueChange={onChange}
-        highlight={highlightCode}
-        padding={0}
-        disabled={disabled}
-        placeholder={placeholder}
-        style={{
-          ...style,
-          fontFamily: style?.fontFamily || 'ui-monospace, SF Mono, Monaco, Cascadia Code, Courier New, monospace',
-          fontSize: style?.fontSize || '13px',
-          lineHeight: style?.lineHeight || '1.6',
-          minHeight: '100%',
-          backgroundColor: 'transparent',
-        }}
-      />
+    <div 
+      className={`var-editor-monaco border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-[#283442] ${className}`} 
+      style={{ ...style, minHeight: style?.minHeight || '200px' }}
+    >
+      {/* Padding wrapper for left/right spacing */}
+      <div className="px-3 h-full">
+        <Editor
+          height="100%"
+          defaultLanguage="prompt-with-variables"
+          theme={isDark ? 'variable-theme-dark' : 'variable-theme-light'}
+          value={value}
+          onChange={(val) => onChange(val || '')}
+          onMount={handleEditorDidMount}
+          beforeMount={handleEditorWillMount}
+          options={{
+            minimap: { enabled: false },
+            lineNumbers: 'off',
+            glyphMargin: false,
+            folding: false,
+            lineDecorationsWidth: 0,
+            lineNumbersMinChars: 0,
+            renderLineHighlight: 'none',
+            scrollBeyondLastLine: false,
+            wordWrap: 'on',
+            fontSize: 13,
+            fontFamily: 'ui-monospace, SF Mono, Monaco, Cascadia Code, Courier New, monospace',
+            readOnly: disabled,
+            scrollbar: {
+              vertical: 'auto',
+              horizontal: 'auto',
+              useShadows: false,
+              verticalScrollbarSize: 14,
+              horizontalScrollbarSize: 14
+            },
+            padding: { 
+              top: 16, 
+              bottom: 16
+            },
+            hover: {
+              enabled: false
+            },
+            quickSuggestions: false,
+            parameterHints: {
+              enabled: false
+            },
+            suggestOnTriggerCharacters: false,
+            acceptSuggestionOnCommitCharacter: false,
+            tabCompletion: 'off',
+            wordBasedSuggestions: 'off',
+            // Disable all validation markers and error squiggles
+            'semanticHighlighting.enabled': false,
+          }}
+        />
+      </div>
     </div>
   );
 };
