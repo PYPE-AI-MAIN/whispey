@@ -179,8 +179,23 @@ export default function Sidebar({
     enabled: !isMobile && !!onToggleCollapse
   })
 
-  // Hotkey for creating new organization (N key)
-  useHotkeys('n', (e) => {
+  useHotkeys('meta+k', (e) => {
+    e.preventDefault()
+    // If org switcher is open, close it first
+    if (orgSwitcherOpen) {
+      setOrgSwitcherOpen(false)
+      setTimeout(() => {
+        setShowCreateDialog(true)
+      }, 150)
+    } else {
+      setShowCreateDialog(true)
+    }
+  }, {
+    enableOnFormTags: false,
+    enableOnContentEditable: false,
+  })
+
+  useHotkeys('ctrl+k', (e) => {
     e.preventDefault()
     // If org switcher is open, close it first
     if (orgSwitcherOpen) {

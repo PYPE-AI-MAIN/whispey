@@ -1,11 +1,11 @@
 // utils/campaigns/constants.ts (update the relevant parts)
 
 export const CSV_TEMPLATE = {
-  headers: ['phone'],
+  headers: ['phone', 'var_1', 'var_2', 'var_3'],
   exampleRows: [
-    ['+91 98765 43210'],
-    ['+1 555 123 4567'],
-    ['+91 87654 32109'],
+    ['+91 98765 43210', 'var_1_value', 'var_2_value', 'var_3_value'],
+    ['+1 555 123 4567', 'var_1_value', 'var_2_value', 'var_3_value'],
+    ['+91 87654 32109', 'var_1_value', 'var_2_value', 'var_3_value'],
   ]
 }
 

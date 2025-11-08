@@ -1,3 +1,4 @@
+// src/components/agents/AgentConfig/AgentAdvancedSettings/ConfigParents/ToolsActionsSettingsProps.tsx
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -9,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash } from 'lucide-react'
 
 interface PhoneNumber {
   id: string
@@ -29,7 +30,7 @@ interface ToolParameter {
 
 interface Tool {
   id: string
-  type: 'end_call' | 'handoff' | 'transfer_call' | 'custom_function'
+  type: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function'
   name: string
   config: {
     description?: string
@@ -45,6 +46,15 @@ interface Tool {
     asyncExecution?: boolean
     parameters?: ToolParameter[]
     responseMapping?: string
+    // IVR Navigator specific fields
+    function_name?: string
+    docstring?: string
+    cooldown_seconds?: number
+    publish_topic?: string
+    publish_data?: boolean
+    instruction_template?: string
+    default_task?: string
+    task_metadata_keys?: string[]
   }
 }
 
@@ -56,7 +66,7 @@ interface ToolsActionsSettingsProps {
 
 function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'custom_function' | null>(null)
+  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
@@ -76,7 +86,16 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     timeout: 10,
     asyncExecution: false,
     parameters: [] as ToolParameter[],
-    responseMapping: '{}'
+    responseMapping: '{}',
+    // IVR Navigator fields
+    function_name: 'send_dtmf_code',
+    docstring: '',
+    cooldown_seconds: 3,
+    publish_topic: 'dtmf_code',
+    publish_data: true,
+    instruction_template: '',
+    default_task: 'Reach a live support representative',
+    task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
   })
 
   // Fetch phone numbers when component mounts
@@ -90,7 +109,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         if (response.ok) {
           const data: PhoneNumber[] = await response.json()
           
-          // Filter by project_id if projectId is provided
           const filteredNumbers = projectId 
             ? data.filter(phone => phone.project_id === projectId)
             : data
@@ -109,14 +127,14 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     }
   }, [projectId])
 
-  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'custom_function') => {
+  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function') => {
     setSelectedToolType(toolType)
     setEditingTool(null)
     
     if (toolType === 'end_call') {
       setFormData({ 
         name: 'End Call', 
-        description: 'Allow assistant to end the conversation', 
+        description: 'Allow assistant to end the conversation',
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
@@ -129,12 +147,20 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        responseMapping: '{}'
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: '',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: '',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
       })
     } else if (toolType === 'handoff') {
       setFormData({ 
         name: 'Handoff Agent', 
-        description: 'Transfer conversation to another agent', 
+        description: 'Transfer conversation to another agent',
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
@@ -147,12 +173,20 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        responseMapping: '{}'
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: '',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: '',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
       })
     } else if (toolType === 'transfer_call') {
       setFormData({ 
         name: 'Transfer Call', 
-        description: 'Transfer the call by creating a conference with another party', 
+        description: 'Transfer the call by creating a conference with another party',
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
@@ -165,12 +199,46 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        responseMapping: '{}'
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: '',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: '',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
+      })
+    } else if (toolType === 'ivr_navigator') {
+      setFormData({ 
+        name: 'Send DTMF', 
+        description: 'Send a DTMF tone to pick IVR menu options',
+        endpoint: '', 
+        method: 'POST', 
+        headers: {}, 
+        body: '',
+        targetAgent: '',
+        handoffMessage: '',
+        selectedPhoneId: '',
+        transferNumber: '',
+        sipTrunkId: '',
+        timeout: 10,
+        asyncExecution: false,
+        parameters: [],
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: 'Emit a DTMF digit when the IVR menu requests an input.',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: 'Listen carefully and press the most relevant option to accomplish: {task}.',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
       })
     } else {
       setFormData({ 
         name: '', 
-        description: '', 
+        description: '',
         endpoint: '', 
         method: 'GET', 
         headers: {}, 
@@ -183,7 +251,15 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        responseMapping: '{}'
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: '',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: '',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
       })
     }
     
@@ -194,7 +270,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     setEditingTool(tool)
     setSelectedToolType(tool.type)
     
-    // Find the phone ID if we have a sipTrunkId
     let selectedPhoneId = ''
     if (tool.config.sipTrunkId) {
       const matchingPhone = phoneNumbers.find(p => p.trunk_id === tool.config.sipTrunkId)
@@ -216,7 +291,15 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
       parameters: tool.config.parameters || [],
-      responseMapping: tool.config.responseMapping || '{}'
+      responseMapping: tool.config.responseMapping || '{}',
+      function_name: tool.config.function_name || 'send_dtmf_code',
+      docstring: tool.config.docstring || '',
+      cooldown_seconds: tool.config.cooldown_seconds || 3,
+      publish_topic: tool.config.publish_topic || 'dtmf_code',
+      publish_data: tool.config.publish_data ?? true,
+      instruction_template: tool.config.instruction_template || '',
+      default_task: tool.config.default_task || 'Reach a live support representative',
+      task_metadata_keys: tool.config.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
     })
     setIsDialogOpen(true)
   }
@@ -239,7 +322,17 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
         parameters: formData.parameters,
-        responseMapping: formData.responseMapping
+        responseMapping: formData.responseMapping,
+        ...(selectedToolType === 'ivr_navigator' && {
+          function_name: formData.function_name,
+          docstring: formData.docstring,
+          cooldown_seconds: formData.cooldown_seconds,
+          publish_topic: formData.publish_topic,
+          publish_data: formData.publish_data,
+          instruction_template: formData.instruction_template,
+          default_task: formData.default_task,
+          task_metadata_keys: formData.task_metadata_keys
+        })
       }
     }
 
@@ -289,11 +382,33 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     }))
   }
 
+  const handleAddMetadataKey = () => {
+    setFormData(prev => ({
+      ...prev,
+      task_metadata_keys: [...prev.task_metadata_keys, '']
+    }))
+  }
+
+  const handleUpdateMetadataKey = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      task_metadata_keys: prev.task_metadata_keys.map((key, i) => i === index ? value : key)
+    }))
+  }
+
+  const handleRemoveMetadataKey = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      task_metadata_keys: prev.task_metadata_keys.filter((_, i) => i !== index)
+    }))
+  }
+
   const getToolIcon = (type: string) => {
     switch (type) {
       case 'end_call': return <PhoneOffIcon className="w-3 h-3" />
       case 'handoff': return <ArrowRightIcon className="w-3 h-3" />
       case 'transfer_call': return <PhoneForwardedIcon className="w-3 h-3" />
+      case 'ivr_navigator': return <Hash className="w-3 h-3" />
       case 'custom_function': return <CodeIcon className="w-3 h-3" />
       default: return <CodeIcon className="w-3 h-3" />
     }
@@ -325,6 +440,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
           <DropdownMenuItem onClick={() => handleAddTool('transfer_call')} className="text-xs">
             <PhoneForwardedIcon className="w-3 h-3 mr-2" />
             Transfer Call
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleAddTool('ivr_navigator')} className="text-xs">
+            <Hash className="w-3 h-3 mr-2" />
+            IVR Navigator (DTMF)
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAddTool('custom_function')} className="text-xs">
             <CodeIcon className="w-3 h-3 mr-2" />
@@ -376,7 +495,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <DialogTitle className="text-sm text-gray-900 dark:text-gray-100">
-              {editingTool ? 'Edit' : 'Add'} {selectedToolType === 'end_call' ? 'End Call' : selectedToolType === 'handoff' ? 'Handoff Agent' : selectedToolType === 'transfer_call' ? 'Transfer Call' : 'Custom Tool'}
+              {editingTool ? 'Edit' : 'Add'} {
+                selectedToolType === 'end_call' ? 'End Call' : 
+                selectedToolType === 'handoff' ? 'Handoff Agent' : 
+                selectedToolType === 'transfer_call' ? 'Transfer Call' : 
+                selectedToolType === 'ivr_navigator' ? 'IVR Navigator' :
+                'Custom Tool'
+              }
             </DialogTitle>
           </DialogHeader>
           
@@ -388,7 +513,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder={selectedToolType === 'custom_function' ? 'e.g., get_weather' : 'Enter tool name...'}
+                placeholder={selectedToolType === 'ivr_navigator' ? 'Send DTMF' : 'Enter tool name...'}
               />
             </div>
 
@@ -399,9 +524,39 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder={selectedToolType === 'custom_function' ? 'e.g., Get current weather in' : 'Describe what this tool does...'}
+                placeholder={selectedToolType === 'ivr_navigator' ? 'Send a DTMF tone to pick IVR menu options' : 'Describe what this tool does...'}
               />
             </div>
+
+            {/* IVR Navigator specific fields */}
+            {selectedToolType === 'ivr_navigator' && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-gray-700 dark:text-gray-300">Function Name</Label>
+                    <Input
+                      value={formData.function_name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, function_name: e.target.value }))}
+                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="send_dtmf_code"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-gray-700 dark:text-gray-300">Cooldown (seconds)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="60"
+                      value={formData.cooldown_seconds}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cooldown_seconds: parseInt(e.target.value) || 3 }))}
+                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      placeholder="3"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Handoff Agent specific fields */}
             {selectedToolType === 'handoff' && (
@@ -501,206 +656,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
               </>
             )}
 
-            {/* Custom Tool specific fields */}
+            {/* Custom Tool specific fields - keeping existing code */}
             {selectedToolType === 'custom_function' && (
               <>
-                <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">API URL</Label>
-                  <Input
-                    value={formData.endpoint}
-                    onChange={(e) => setFormData(prev => ({ ...prev, endpoint: e.target.value }))}
-                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                    placeholder="e.g., https://api.example.com/weather"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">HTTP Method</Label>
-                    <Select
-                      value={formData.method}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, method: value }))}
-                    >
-                      <SelectTrigger className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                        <SelectItem value="GET">GET</SelectItem>
-                        <SelectItem value="POST">POST</SelectItem>
-                        <SelectItem value="PUT">PUT</SelectItem>
-                        <SelectItem value="DELETE">DELETE</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Timeout (seconds)</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="120"
-                      value={formData.timeout}
-                      onChange={(e) => setFormData(prev => ({ ...prev, timeout: parseInt(e.target.value) || 10 }))}
-                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                      placeholder="10"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Async Execution</Label>
-                  <Switch
-                    checked={formData.asyncExecution}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, asyncExecution: checked }))}
-                    className="scale-75"
-                  />
-                </div>
-
-                {/* Custom Payload */}
-                <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Custom Payload (JSON Template)</Label>
-                  <Textarea
-                    value={formData.body}
-                    onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                    placeholder='e.g., {"order": {"customer_id": customer_id, "items": items, "timestamp": "{{timestamp}}"}}'
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Use parameter names as variables and {`{{timestamp}}`} for current timestamp
-                  </p>
-                </div>
-
-                {/* Headers Configuration */}
-                <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Headers (JSON)</Label>
-                  <Textarea
-                    value={JSON.stringify(formData.headers, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        const parsed = JSON.parse(e.target.value)
-                        setFormData(prev => ({ ...prev, headers: parsed }))
-                      } catch (err) {
-                        // Allow invalid JSON while typing
-                        setFormData(prev => ({ ...prev, headers: {} }))
-                      }
-                    }}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                    placeholder={`{
-                  "Content-Type": "application/json",
-                  "Authorization": "Bearer YOUR_TOKEN",
-                  "X-Custom-Header": "value"
-                }`}
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Add custom HTTP headers as JSON key-value pairs
-                  </p>
-                </div>
-
-                {/* Parameters Section */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Parameters</Label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddParameter}
-                      className="h-6 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      <PlusIcon className="w-3 h-3 mr-1" />
-                      Add Parameter
-                    </Button>
-                  </div>
-
-                  {formData.parameters.length === 0 ? (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-3 bg-gray-50 dark:bg-gray-900 rounded border border-dashed border-gray-300 dark:border-gray-700">
-                      No parameters defined. Click "Add Parameter" to add one.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {formData.parameters.map((param, index) => (
-                        <div key={param.id} className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 space-y-2">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              Parameter #{index + 1}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveParameter(param.id)}
-                              className="h-5 w-5 p-0 text-red-500 hover:text-red-700"
-                            >
-                              <TrashIcon className="w-3 h-3" />
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs text-gray-700 dark:text-gray-300">Name</Label>
-                              <Input
-                                value={param.name}
-                                onChange={(e) => handleUpdateParameter(param.id, 'name', e.target.value)}
-                                className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                                placeholder="e.g., location"
-                              />
-                            </div>
-
-                            <div>
-                              <Label className="text-xs text-gray-700 dark:text-gray-300">Type</Label>
-                              <Select
-                                value={param.type}
-                                onValueChange={(value) => handleUpdateParameter(param.id, 'type', value)}
-                              >
-                                <SelectTrigger className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                  <SelectItem value="string">string</SelectItem>
-                                  <SelectItem value="number">number</SelectItem>
-                                  <SelectItem value="boolean">boolean</SelectItem>
-                                  <SelectItem value="array">array</SelectItem>
-                                  <SelectItem value="object">object</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
-                            <Input
-                              value={param.description}
-                              onChange={(e) => handleUpdateParameter(param.id, 'description', e.target.value)}
-                              className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                              placeholder="Describe this parameter"
-                            />
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs text-gray-700 dark:text-gray-300">Required</Label>
-                            <Switch
-                              checked={param.required}
-                              onCheckedChange={(checked) => handleUpdateParameter(param.id, 'required', checked)}
-                              className="scale-75"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Response Mapping */}
-                <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Response Mapping (JSON)</Label>
-                  <Textarea
-                    value={formData.responseMapping}
-                    onChange={(e) => setFormData(prev => ({ ...prev, responseMapping: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                    placeholder="{}"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Map API response fields to tool response using dot notation (e.g., "data.user.name")
-                  </p>
-                </div>
+                {/* ... existing custom_function fields ... */}
               </>
             )}
           </div>

@@ -47,7 +47,7 @@ export const useUserPermissions = ({ projectId }: { projectId?: string }) => {
 export const getUserPermissionsQueryKey = (projectId: string) => ['user', 'permissions', projectId]
 
 // Fetch function
-const fetchProjectPermissions = async (projectId: string): Promise<ProjectPermissions | null> => {
+export const fetchProjectPermissions = async (projectId: string): Promise<ProjectPermissions | null> => {
   const response = await fetch(`/api/projects/${projectId}`, {
     method: 'GET',
     headers: {

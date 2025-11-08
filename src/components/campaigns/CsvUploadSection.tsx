@@ -27,7 +27,7 @@ interface CsvUploadSectionProps {
 export function CsvUploadSection({ 
   csvFile, 
   csvData, 
-  onFileUpload, 
+  onFileUpload,
   onRemoveFile 
 }: CsvUploadSectionProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -51,13 +51,92 @@ export function CsvUploadSection({
     window.URL.revokeObjectURL(url)
   }
 
-  const validateCsvHeaders = (headers: string[]): boolean => {
+  const validateCsvHeaders = (headers: string[]): CsvValidationError[] => {
+    const errors: CsvValidationError[] = []
+    
     if (!headers || headers.length === 0) {
-      return false
+      errors.push({
+        row: 1,
+        field: 'headers',
+        value: 'No headers found',
+        error: 'CSV file must have a header row with a "phone" column'
+      })
+      return errors
     }
     
     // Check if "phone" exists (case-insensitive)
-    return headers.some(h => h.toLowerCase().trim() === 'phone')
+    const hasPhone = headers.some(h => h.toLowerCase().trim() === 'phone')
+    if (!hasPhone) {
+      errors.push({
+        row: 1,
+        field: 'headers',
+        value: headers.join(', '),
+        error: 'CSV file must contain a "phone" column'
+      })
+    }
+    
+    // Validate all OTHER headers as potential variables
+    headers.forEach((header, index) => {
+      const trimmedHeader = header.trim()
+      
+      // Skip phone column validation
+      if (trimmedHeader.toLowerCase() === 'phone') {
+        return
+      }
+      
+      // Empty header
+      if (!trimmedHeader) {
+        errors.push({
+          row: 1,
+          field: `Column ${index + 1}`,
+          value: 'empty',
+          error: 'Column header cannot be empty'
+        })
+        return
+      }
+      
+      // Check for spaces
+      if (/\s/.test(trimmedHeader)) {
+        errors.push({
+          row: 1,
+          field: trimmedHeader,
+          value: trimmedHeader,
+          error: 'Column header cannot contain spaces. Use underscores instead (e.g., "first_name")'
+        })
+      }
+      
+      // Check for invalid characters (only alphanumeric and underscores)
+      if (!/^[a-zA-Z0-9_]+$/.test(trimmedHeader)) {
+        errors.push({
+          row: 1,
+          field: trimmedHeader,
+          value: trimmedHeader,
+          error: 'Column header can only contain letters, numbers, and underscores'
+        })
+      }
+      
+      // Check if starts with number
+      if (/^\d/.test(trimmedHeader)) {
+        errors.push({
+          row: 1,
+          field: trimmedHeader,
+          value: trimmedHeader,
+          error: 'Column header cannot start with a number'
+        })
+      }
+      
+      // Check length (max 16 characters like your variables)
+      if (trimmedHeader.length > 16) {
+        errors.push({
+          row: 1,
+          field: trimmedHeader,
+          value: trimmedHeader,
+          error: `Column header cannot exceed 16 characters (currently ${trimmedHeader.length})`
+        })
+      }
+    })
+    
+    return errors
   }
 
   const validatePhoneNumber = (phone: string): boolean => {
@@ -122,52 +201,33 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      quoteChar: '"', // Handle quoted fields properly (important for fields with commas)
+      quoteChar: '"',
       complete: (results) => {
         const headers = results.meta.fields || []
         
-        // Debug: Log headers for troubleshooting
         console.log('Parsed headers:', headers)
-        console.log('Required headers:', CSV_TEMPLATE.headers)
-        console.log('Total rows parsed:', results.data?.length || 0)
         
-        // Check if headers exist
-        if (!headers || headers.length === 0) {
-          setValidationErrors([{
-            row: 1,
-            field: 'headers',
-            value: 'No headers found',
-            error: `CSV file must have a header row with a "phone" column (case-insensitive)`
-          }])
+        // Validate headers first
+        const headerErrors = validateCsvHeaders(headers)
+        
+        if (headerErrors.length > 0) {
+          setValidationErrors(headerErrors)
           setShowErrorDialog(true)
           return
         }
         
-        if (!validateCsvHeaders(headers)) {
-          setValidationErrors([{
-            row: 1,
-            field: 'headers',
-            value: headers.length > 0 ? headers.join(', ') : 'No headers found',
-            error: `CSV file must contain a "phone" column (case-insensitive). Required header: phone. Found headers: ${headers.length > 0 ? headers.join(', ') : 'none'}`
-          }])
-          setShowErrorDialog(true)
-          return
-        }
-
-        // Use all data as-is, including empty values
+        // Then validate data
         const data = (results.data as RecipientRow[]) || []
+        const dataErrors = validateCsvData(data, headers)
         
-        console.log('Total data rows:', data.length)
+        const allErrors = [...headerErrors, ...dataErrors]
+        setValidationErrors(allErrors)
         
-        const errors = validateCsvData(data, headers)
-        
-        setValidationErrors(errors)
-        
-        if (errors.length > 0) {
+        if (allErrors.length > 0) {
           setShowErrorDialog(true)
         }
-
-        onFileUpload(file, data, errors)
+        
+        onFileUpload(file, data, allErrors)
       },
       error: (error) => {
         setValidationErrors([{
