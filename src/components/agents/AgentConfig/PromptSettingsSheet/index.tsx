@@ -1,16 +1,12 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
-import { ChevronDownIcon, PlusIcon, SettingsIcon, TrashIcon, TypeIcon, VariableIcon } from 'lucide-react'
-import { Textarea } from '@/components/ui/textarea'
-import { usePromptSettings } from '@/hooks/usePromptSettings'
+import { ChevronDownIcon, PlusIcon, SettingsIcon, TrashIcon, VariableIcon, AlertCircleIcon } from 'lucide-react'
+import { extractValidVariables } from '@/utils/variableValidator'
 
 interface Variable {
   name: string
@@ -36,72 +32,51 @@ export default function PromptSettingsSheet({
   onVariablesChange
 }: PromptSettingsSheetProps) {
   const [isVariablesOpen, setIsVariablesOpen] = useState(true)
-  const [isDisplayOpen, setIsDisplayOpen] = useState(false)
-  const [lastPrompt, setLastPrompt] = useState(prompt)
   
-  // Use the custom hook for settings
-  const { settings, setFontSize, setFontFamily } = usePromptSettings()
-  
-  // Auto-detect variables from prompt
+  // Detect variables in prompt
   const detectedVariables = useMemo(() => {
-    const matches = prompt.match(/\{\{([^}]+)\}\}/g) || []
-    const variableNames = matches.map(match => match.replace(/[{}]/g, ''))
-    return [...new Set(variableNames)]
+    return extractValidVariables(prompt)
   }, [prompt])
 
-  // Memoize the callback to prevent unnecessary re-renders
-  const handleVariablesChange = useCallback((newVariables: Variable[]) => {
-    onVariablesChange(newVariables)
-  }, [onVariablesChange])
+  // Find unmapped variables
+  const unmappedVariables = useMemo(() => {
+    const existingNames = new Set(variables.map(v => v.name))
+    return detectedVariables.filter(name => !existingNames.has(name)) // Use .has() for Set
+  }, [detectedVariables, variables])
 
-  useEffect(() => {
-    // Only run if prompt actually changed
-    if (prompt !== lastPrompt) {
-      setLastPrompt(prompt)
-      
-      const existingVariableNames = variables.map(v => v.name)
-      const newVariables = detectedVariables.filter(name => !existingVariableNames.includes(name))
-      
-      if (newVariables.length > 0) {
-        const updatedVariables = [
-          ...variables,
-          ...newVariables.map(name => ({ name, value: '', description: '' }))
-        ]
-        handleVariablesChange(updatedVariables)
-      }
-    }
-  }, [prompt, detectedVariables, variables, handleVariablesChange, lastPrompt])
-
-  const addVariable = () => {
-    console.log('Adding new variable')
+  const addVariable = (name?: string) => {
     const newVariable: Variable = {
-      name: `variable_${variables.length + 1}`,
+      name: name || `variable_${variables.length + 1}`,
       value: '',
       description: ''
     }
-    handleVariablesChange([...variables, newVariable])
+    onVariablesChange([...variables, newVariable])
+  }
+
+  const addAllUnmapped = () => {
+    const newVariables = unmappedVariables.map(name => ({
+      name,
+      value: '',
+      description: ''
+    }))
+    onVariablesChange([...variables, ...newVariables])
   }
 
   const updateVariable = (index: number, field: keyof Variable, value: string) => {
     const updatedVariables = variables.map((variable, i) => 
       i === index ? { ...variable, [field]: value } : variable
     )
-    handleVariablesChange(updatedVariables)
+    onVariablesChange(updatedVariables)
   }
 
   const removeVariable = (index: number) => {
     const variableToRemove = variables[index]
     const updatedVariables = variables.filter((_, i) => i !== index)
-    handleVariablesChange(updatedVariables)
+    onVariablesChange(updatedVariables)
     
     // Remove variable references from prompt
     const updatedPrompt = prompt.replace(new RegExp(`\\{\\{${variableToRemove.name}\\}\\}`, 'g'), '')
     onPromptChange(updatedPrompt)
-  }
-
-  const insertVariableIntoPrompt = (variableName: string) => {
-    const variableReference = `{{${variableName}}}`
-    onPromptChange(prompt + variableReference)
   }
 
   const replaceVariablesInPrompt = () => {
@@ -124,11 +99,40 @@ export default function PromptSettingsSheet({
             Prompt Settings
           </SheetTitle>
           <SheetDescription>
-            Configure variables
+            Configure variables detected in your prompt
           </SheetDescription>
         </SheetHeader>
 
         <div className="space-y-6 mt-6">
+          {/* Unmapped Variables Warning */}
+          {unmappedVariables.length > 0 && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 flex-1">
+                  <AlertCircleIcon className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-red-800 dark:text-red-200">
+                    <p className="font-medium mb-1">{unmappedVariables.length} unmapped variable{unmappedVariables.length > 1 ? 's' : ''}</p>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {unmappedVariables.map(name => (
+                        <code key={name} className="bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
+                          {name}
+                        </code>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={addAllUnmapped}
+                  className="h-7 text-xs flex-shrink-0 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
+                >
+                  Map All
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Variables Section */}
           <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
             <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -144,53 +148,78 @@ export default function PromptSettingsSheet({
               <ChevronDownIcon className={`w-4 h-4 transition-transform ${isVariablesOpen ? 'rotate-180' : ''}`} />
             </CollapsibleTrigger>
             
-            
             <CollapsibleContent className="space-y-4 mt-4">
               <div className="flex gap-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => addVariable()}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <PlusIcon className="w-3 h-3" />
+                  Add Variable
+                </Button>
+                
+                {variables.length > 0 && variables.some(v => v.value) && (
                   <Button 
-                    variant="outline" 
-                    onClick={addVariable}
-                    className="flex items-center gap-1 text-xs"
+                    variant="secondary" 
+                    onClick={replaceVariablesInPrompt}
+                    className="text-xs"
                   >
-                    <PlusIcon className="w-3 h-3" />
-                    Add Variable
+                    Replace Variables in Prompt
                   </Button>
-                  
-                  {variables.length > 0 && variables.some(v => v.value) && (
-                    <Button 
-                      variant="secondary" 
-                      onClick={replaceVariablesInPrompt}
-                      className="text-xs"
-                    >
-                      Replace Variables in Prompt
-                    </Button>
-                  )}
-                </div>
+                )}
+              </div>
+
               <div className="space-y-3">
                 {variables.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <VariableIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No variables defined</p>
-                    <p className="text-xs">Use <code>{`{{variable_name}}`}</code> in your prompt to reference variables</p>
+                    <p className="text-sm">No variables mapped</p>
+                    <p className="text-xs mt-1">Use <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt</p>
                   </div>
                 ) : (
                   variables.map((variable, index) => (
                     <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
                       <div className="flex w-full items-center justify-center gap-1">
-                        <div className="flex-1 w-1/2">
+                        <div className="flex-1 w-1/2 space-y-1">
                           <Input
                             value={variable.name}
                             placeholder="variable_name"
-                            onChange={(e) => updateVariable(index, 'name', e.target.value)}
-                            className="h-8 text-xs mt-1"
+                            onChange={(e) => {
+                              let value = e.target.value
+                              
+                              // Replace spaces with underscores
+                              value = value.replace(/\s/g, '_')
+                              
+                              // Only allow alphanumeric and underscores
+                              value = value.replace(/[^a-zA-Z0-9_]/g, '')
+                              
+                              // Convert to lowercase
+                              value = value.toLowerCase()
+                              
+                              // Max 32 characters
+                              value = value.slice(0, 16)
+                              
+                              updateVariable(index, 'name', value)
+                            }}
+                            className={`h-8 text-xs ${
+                              variable.name && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(variable.name)
+                                ? 'border-red-300 dark:border-red-700'
+                                : ''
+                            }`}
                           />
+                          {variable.name && /^\d/.test(variable.name) && (
+                            <p className="text-[10px] text-red-600 dark:text-red-400">
+                              Cannot start with a number
+                            </p>
+                          )}
                         </div>
                         <div className="w-1/2">
                           <Input
                             value={variable.value}
                             onChange={(e) => updateVariable(index, 'value', e.target.value)}
-                            className="h-8 text-xs mt-1"
-                            placeholder={`Value to replace`}
+                            className="h-8 text-xs"
+                            placeholder="Default value"
                           />
                         </div>
                         <Button

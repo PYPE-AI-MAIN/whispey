@@ -226,6 +226,21 @@ export function useMultiAssistantState({
             }
           }
 
+          if (tool.type === 'ivr_navigator') {
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              function_name: tool.config?.function_name || 'send_dtmf_code',
+              docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
+              cooldown_seconds: tool.config?.cooldown_seconds || 3,
+              publish_topic: tool.config?.publish_topic || 'dtmf_code',
+              publish_data: tool.config?.publish_data ?? true,
+              instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
+              default_task: tool.config?.default_task || 'Reach a live support representative',
+              task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+            }
+          }
+
           return baseToolConfig
         }) || getFallback(null, 'tools'),
         filler_words: {
@@ -421,6 +436,21 @@ export function useMultiAssistantState({
               ...commonFields,
               transfer_number: tool.config?.transferNumber || '',
               sip_outbound_trunk: tool.config?.sipTrunkId || ''
+            }
+          }
+
+          if (tool.type === 'ivr_navigator') {
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              function_name: tool.config?.function_name || 'send_dtmf_code',
+              docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
+              cooldown_seconds: tool.config?.cooldown_seconds || 3,
+              publish_topic: tool.config?.publish_topic || 'dtmf_code',
+              publish_data: tool.config?.publish_data ?? true,
+              instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
+              default_task: tool.config?.default_task || 'Reach a live support representative',
+              task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
             }
           }
 
