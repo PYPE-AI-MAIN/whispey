@@ -521,9 +521,6 @@ export default function Sidebar({
                 <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                   Whispey
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  LiveKit Platform
-                </p>
               </div>
             )}
           </Link>
