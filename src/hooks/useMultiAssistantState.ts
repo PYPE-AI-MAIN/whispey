@@ -275,7 +275,7 @@ export function useMultiAssistantState({
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
           ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
             type: formValues.advancedSettings.backgroundAudio.singleType || 'keyboard',
-            volume: formValues.advancedSettings.backgroundAudio.singleVolume ?? 50,
+            volume: formValues.advancedSettings.backgroundAudio.singleVolume ?? 0.5,
             timing: formValues.advancedSettings.backgroundAudio.singleTiming || 'thinking'
           }),
           ...(formValues.advancedSettings?.backgroundAudio?.mode === 'dual' && {
