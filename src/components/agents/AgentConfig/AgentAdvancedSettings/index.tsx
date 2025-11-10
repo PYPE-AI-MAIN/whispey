@@ -238,12 +238,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId }: A
             <BackgroundAudioSettings
               mode={advancedSettings.backgroundAudio?.mode || 'disabled'}
               singleType={advancedSettings.backgroundAudio?.singleType || 'keyboard'}
-              singleVolume={advancedSettings.backgroundAudio?.singleVolume || 50}
+              singleVolume={advancedSettings.backgroundAudio?.singleVolume || 0.5}
               singleTiming={advancedSettings.backgroundAudio?.singleTiming || 'thinking'}
               ambientType={advancedSettings.backgroundAudio?.ambientType || 'office'}
               ambientVolume={advancedSettings.backgroundAudio?.ambientVolume || 30}
               thinkingType={advancedSettings.backgroundAudio?.thinkingType || 'keyboard'}
-              thinkingVolume={advancedSettings.backgroundAudio?.thinkingVolume || 50}
+              thinkingVolume={advancedSettings.backgroundAudio?.thinkingVolume || 0.5}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

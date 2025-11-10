@@ -112,6 +112,12 @@ const modelProviders: Record<string, Provider> = {
     type: 'grouped',
     groups: [
       {
+        name: 'Featured Systems',
+        models: [
+          { value: 'groq/compound', label: 'Groq Compound' },
+        ]
+      },
+      {
         name: 'Production Systems',
         models: [
           { value: 'groq/compound', label: 'Compound' },
@@ -121,12 +127,11 @@ const modelProviders: Record<string, Provider> = {
       {
         name: 'Production Models',
         models: [
-          { value: 'openai/gpt-oss-20b', label: 'GPT oss 20b' },
-          { value: 'openai/gpt-oss-120b', label: 'GPT oss 120b' },
-          { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
-          { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile' },
-          { value: 'moonshotai/kimi-k2-instruct', label: 'MoonshotAI kimi k2 instruct' },
-
+          { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B' },
+          { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
+          { value: 'meta-llama/llama-guard-4-12b', label: 'Llama Guard 4 12B' },
+          { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+          { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
         ]
       },
       {
@@ -134,8 +139,11 @@ const modelProviders: Record<string, Provider> = {
         models: [
           { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick 17B 128E' },
           { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B 16E' },
+          { value: 'meta-llama/llama-prompt-guard-2-22m', label: 'Llama Prompt Guard 2 22M' },
+          { value: 'meta-llama/llama-prompt-guard-2-86m', label: 'Prompt Guard 2 86M' },
           { value: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2 0905' },
-          { value: 'qwen/qwen3-32b', label: 'Qwen3 32B' },
+          { value: 'openai/gpt-oss-safeguard-20b', label: 'Safety GPT-OSS 20B' },
+          { value: 'qwen/qwen3-32b', label: 'Qwen3-32B' },
         ]
       }
     ]
@@ -144,14 +152,25 @@ const modelProviders: Record<string, Provider> = {
     label: 'Cerebras',
     icon: 'C',
     color: 'bg-purple-500',
-    type: 'direct',
-    models: [
-      { value: 'gpt-oss-120b', label: 'GPT oss 120b' },
-      { value: 'llama3.1-8b', label: 'Llama 3.1 8B' },
-      { value: 'llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17b' },
-      { value: 'llama-3.3-70b', label: 'Llama 3.3 70b' },
-      { value: 'qwen-3-32b', label: 'Qwen 3 32b' },
-      { value: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235b Instruct' },
+    type: 'grouped',
+    groups: [
+      {
+        name: 'Production Models',
+        models: [
+          { value: 'llama3.1-8b', label: 'Llama 3.1 8B' },
+          { value: 'llama-3.3-70b', label: 'Llama 3.3 70B' },
+          { value: 'gpt-oss-120b', label: 'OpenAI GPT-OSS 120B' },
+          { value: 'qwen-3-32b', label: 'Qwen 3 32B' },
+        ]
+      },
+      {
+        name: 'Preview Models',
+        models: [
+          { value: 'qwen-3-235b-a22b-instruct-2507', label: 'Qwen 3 235B Instruct' },
+          { value: 'qwen-3-235b-a22b-thinking-2507', label: 'Qwen 3 235B Thinking' },
+          { value: 'zai-glm-4.6', label: 'Z.ai GLM 4.6' },
+        ]
+      }
     ]
   }
 }
