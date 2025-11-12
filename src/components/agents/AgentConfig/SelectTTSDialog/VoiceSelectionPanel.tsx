@@ -324,14 +324,14 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
     <div className={`${showSettings ? 'w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} flex flex-col`}>
       <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col flex-1 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <TabsList className="grid w-full grid-cols-1 h-10">
-            {/* <TabsTrigger value="sarvam" className="text-sm">
+          <TabsList className="grid w-full grid-cols-2 h-10">
+            <TabsTrigger value="sarvam" className="text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full"></div>
                 Sarvam AI
                 <Badge variant="secondary" className="text-xs">{getCompatibleSarvamVoices(sarvamConfig.model).length}</Badge>
               </div>
-            </TabsTrigger> */}
+            </TabsTrigger>
             <TabsTrigger value="elevenlabs" className="text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full"></div>

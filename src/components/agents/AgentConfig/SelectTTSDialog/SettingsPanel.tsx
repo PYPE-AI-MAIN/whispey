@@ -77,15 +77,17 @@ const ConfigSection = ({ title, children }: { title: string, children: React.Rea
 
 // Language display mapping for user-friendly names
 const languageDisplayMap: Record<string, string> = {
-  'en-IN': 'Hindi (en-IN)',
-  'hi': 'Hindi (hi)', 
-  'en': 'English (en)',
-  'ta': 'Tamil (ta)',
-  'te': 'Telugu (te)',
-  'ml': 'Malayalam (ml)',
-  'kn': 'Kannada (kn)',
-  'gu': 'Gujarati (gu)',
-  'bn': 'Bengali (bn)',
+  'hi-IN': 'Hindi (hi-IN)',
+  'bn-IN': 'Bengali (bn-IN)',
+  'ta-IN': 'Tamil (ta-IN)',
+  'te-IN': 'Telugu (te-IN)',
+  'gu-IN': 'Gujarati (gu-IN)',
+  'kn-IN': 'Kannada (kn-IN)',
+  'ml-IN': 'Malayalam (ml-IN)',
+  'mr-IN': 'Marathi (mr-IN)',
+  'pa-IN': 'Punjabi (pa-IN)',
+  'od-IN': 'Odia (od-IN)',
+  'en-IN': 'English (en-IN)',
 }
 
 const getLanguageDisplay = (code: string) => {
@@ -140,15 +142,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="en-IN">Hindi (en-IN)</SelectItem>
-                      <SelectItem value="hi">Hindi (hi)</SelectItem>
-                      <SelectItem value="en">English (en)</SelectItem>
-                      <SelectItem value="ta">Tamil (ta)</SelectItem>
-                      <SelectItem value="te">Telugu (te)</SelectItem>
-                      <SelectItem value="ml">Malayalam (ml)</SelectItem>
-                      <SelectItem value="kn">Kannada (kn)</SelectItem>
-                      <SelectItem value="gu">Gujarati (gu)</SelectItem>
-                      <SelectItem value="bn">Bengali (bn)</SelectItem>
+                      <SelectItem value="hi-IN">Hindi (hi-IN)</SelectItem>
+                      <SelectItem value="bn-IN">Bengali (bn-IN)</SelectItem>
+                      <SelectItem value="ta-IN">Tamil (ta-IN)</SelectItem>
+                      <SelectItem value="te-IN">Telugu (te-IN)</SelectItem>
+                      <SelectItem value="gu-IN">Gujarati (gu-IN)</SelectItem>
+                      <SelectItem value="kn-IN">Kannada (kn-IN)</SelectItem>
+                      <SelectItem value="ml-IN">Malayalam (ml-IN)</SelectItem>
+                      <SelectItem value="mr-IN">Marathi (mr-IN)</SelectItem>
+                      <SelectItem value="pa-IN">Punjabi (pa-IN)</SelectItem>
+                      <SelectItem value="od-IN">Odia (od-IN)</SelectItem>
+                      <SelectItem value="en-IN">English (en-IN)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
