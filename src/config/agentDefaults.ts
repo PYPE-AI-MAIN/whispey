@@ -157,8 +157,8 @@ export const AGENT_DEFAULT_CONFIG = {
     variables: [],
     // Note: The following predefined system variables are automatically available if user wants to use:
     // - wcalling_number: The phone number (if provided)
-    // - wcurrent_time: Current Indian time (IST)
-    // - wcurrent_date: Current date in Indian timezone
+    // - wcurrent_time: Current time (IST)
+    // - wcurrent_date: Current date in timezone
     // These variables are populated by the system and don't need to be added to the variables array
     aiStartsAfterSilence: false,
     silenceTime: 10,
