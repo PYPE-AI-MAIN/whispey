@@ -14,6 +14,25 @@ interface Variable {
   description?: string
 }
 
+// Predefined system variables that are automatically available
+const PREDEFINED_VARIABLES = [
+  {
+    name: 'wcalling_number',
+    description: 'The phone number (if provided)',
+    isSystem: true
+  },
+  {
+    name: 'wcurrent_time',
+    description: 'Current Indian time (IST)',
+    isSystem: true
+  },
+  {
+    name: 'wcurrent_date',
+    description: 'Current date in Indian timezone',
+    isSystem: true
+  }
+] as const
+
 interface PromptSettingsSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -38,10 +57,13 @@ export default function PromptSettingsSheet({
     return extractValidVariables(prompt)
   }, [prompt])
 
-  // Find unmapped variables
+  // Find unmapped variables (excluding predefined system variables)
   const unmappedVariables = useMemo(() => {
     const existingNames = new Set(variables.map(v => v.name))
-    return detectedVariables.filter(name => !existingNames.has(name)) // Use .has() for Set
+    const predefinedNames = new Set(PREDEFINED_VARIABLES.map(v => v.name) as string[])
+    return detectedVariables.filter(name => 
+      !existingNames.has(name) && !predefinedNames.has(name)
+    )
   }, [detectedVariables, variables])
 
   const addVariable = (name?: string) => {
@@ -149,91 +171,122 @@ export default function PromptSettingsSheet({
             </CollapsibleTrigger>
             
             <CollapsibleContent className="space-y-4 mt-4">
-              <div className="flex gap-2 mt-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => addVariable()}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  <PlusIcon className="w-3 h-3" />
-                  Add Variable
-                </Button>
-                
-                {variables.length > 0 && variables.some(v => v.value) && (
-                  <Button 
-                    variant="secondary" 
-                    onClick={replaceVariablesInPrompt}
-                    className="text-xs"
-                  >
-                    Replace Variables in Prompt
-                  </Button>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {variables.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <VariableIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No variables mapped</p>
-                    <p className="text-xs mt-1">Use <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt</p>
-                  </div>
-                ) : (
-                  variables.map((variable, index) => (
-                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
-                      <div className="flex w-full items-center justify-center gap-1">
-                        <div className="flex-1 w-1/2 space-y-1">
-                          <Input
-                            value={variable.name}
-                            placeholder="variable_name"
-                            onChange={(e) => {
-                              let value = e.target.value
-                              
-                              // Replace spaces with underscores
-                              value = value.replace(/\s/g, '_')
-                              
-                              // Only allow alphanumeric and underscores
-                              value = value.replace(/[^a-zA-Z0-9_]/g, '')
-                              
-                              // Convert to lowercase
-                              value = value.toLowerCase()
-                              
-                              // Max 32 characters
-                              value = value.slice(0, 16)
-                              
-                              updateVariable(index, 'name', value)
-                            }}
-                            className={`h-8 text-xs ${
-                              variable.name && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(variable.name)
-                                ? 'border-red-300 dark:border-red-700'
-                                : ''
-                            }`}
-                          />
-                          {variable.name && /^\d/.test(variable.name) && (
-                            <p className="text-[10px] text-red-600 dark:text-red-400">
-                              Cannot start with a number
-                            </p>
-                          )}
-                        </div>
-                        <div className="w-1/2">
-                          <Input
-                            value={variable.value}
-                            onChange={(e) => updateVariable(index, 'value', e.target.value)}
-                            className="h-8 text-xs"
-                            placeholder="Default value"
-                          />
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeVariable(index)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 flex justify-center items-center"
-                        >
-                          <TrashIcon className="w-3 h-3" />
-                        </Button>
+              {/* Predefined System Variables */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Predefined System Variables</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">(Automatically available)</span>
+                </div>
+                <div className="space-y-2">
+                  {PREDEFINED_VARIABLES.map((predefinedVar) => (
+                    <div 
+                      key={predefinedVar.name} 
+                      className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs font-mono bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded text-blue-900 dark:text-blue-200">
+                          {`{{${predefinedVar.name}}}`}
+                        </code>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          {predefinedVar.description}
+                        </span>
                       </div>
                     </div>
-                  ))
-                )}
+                  ))}
+                </div>
+              </div>
+
+              {/* User Variables */}
+              <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Custom Variables</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => addVariable()}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <PlusIcon className="w-3 h-3" />
+                    Add Variable
+                  </Button>
+                  
+                  {variables.length > 0 && variables.some(v => v.value) && (
+                    <Button 
+                      variant="secondary" 
+                      onClick={replaceVariablesInPrompt}
+                      className="text-xs"
+                    >
+                      Replace Variables in Prompt
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {variables.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                      <VariableIcon className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">No custom variables mapped</p>
+                      <p className="text-[10px] mt-1">Use <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt</p>
+                    </div>
+                  ) : (
+                    variables.map((variable, index) => (
+                      <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+                        <div className="flex w-full items-center justify-center gap-1">
+                          <div className="flex-1 w-1/2 space-y-1">
+                            <Input
+                              value={variable.name}
+                              placeholder="variable_name"
+                              onChange={(e) => {
+                                let value = e.target.value
+                                
+                                // Replace spaces with underscores
+                                value = value.replace(/\s/g, '_')
+                                
+                                // Only allow alphanumeric and underscores
+                                value = value.replace(/[^a-zA-Z0-9_]/g, '')
+                                
+                                // Convert to lowercase
+                                value = value.toLowerCase()
+                                
+                                // Max 32 characters
+                                value = value.slice(0, 16)
+                                
+                                updateVariable(index, 'name', value)
+                              }}
+                              className={`h-8 text-xs ${
+                                variable.name && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(variable.name)
+                                  ? 'border-red-300 dark:border-red-700'
+                                  : ''
+                              }`}
+                            />
+                            {variable.name && /^\d/.test(variable.name) && (
+                              <p className="text-[10px] text-red-600 dark:text-red-400">
+                                Cannot start with a number
+                              </p>
+                            )}
+                          </div>
+                          <div className="w-1/2">
+                            <Input
+                              value={variable.value}
+                              onChange={(e) => updateVariable(index, 'value', e.target.value)}
+                              className="h-8 text-xs"
+                              placeholder="Default value"
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeVariable(index)}
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 flex justify-center items-center"
+                          >
+                            <TrashIcon className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
