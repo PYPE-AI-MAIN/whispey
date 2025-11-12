@@ -460,14 +460,14 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
           </div>
         ) : (
           tools.map((tool) => (
-            <div key={tool.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2">
+            <div key={tool.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 {getToolIcon(tool.type)}
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                   {tool.name}
                 </span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
