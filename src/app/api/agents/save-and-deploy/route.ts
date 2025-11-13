@@ -134,19 +134,48 @@ function transformFormDataToAgentConfig(formData: any) {
             model: llmConfiguration.model,
             temperature: llmConfiguration.temperature,
           },
-          tts: {
-            name: ttsConfiguration.provider,
-            voice_id: ttsConfiguration.voiceId,
-            model: ttsConfiguration.model,
-            language: ttsConfiguration.config.language || "en",
-            voice_settings: {
-              similarity_boost: ttsConfiguration.config.similarityBoost || 1,
-              stability: ttsConfiguration.config.stability || 0.7,
-              style: ttsConfiguration.config.style || 0.7,
-              use_speaker_boost: ttsConfiguration.config.useSpeakerBoost || false,
-              speed: ttsConfiguration.config.speed || 1.15
+          tts: (() => {
+            const ttsProvider = ttsConfiguration.provider
+            const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
+            
+            if (isSarvam) {
+              // Sarvam TTS configuration - using ElevenLabs format
+              const targetLanguageCode = ttsConfiguration.config.target_language_code || "en-IN"
+              const sarvamSpeed = ttsConfiguration.config.speed ?? 1.0
+              const sarvamLoudness = ttsConfiguration.config.loudness ?? 1.0
+              
+              return {
+                name: ttsProvider,
+                voice_id: ttsConfiguration.voiceId,
+                model: ttsConfiguration.model,
+                language: targetLanguageCode, // Map target_language_code to language
+                voice_settings: {
+                  similarity_boost: 1, // Default for Sarvam
+                  stability: 0.8, // Default for Sarvam
+                  style: 1, // Default for Sarvam
+                  use_speaker_boost: true, // Default for Sarvam
+                  speed: sarvamSpeed, // Map speed from Sarvam config
+                  loudness: sarvamLoudness, // Include loudness in voice_settings
+                  enable_preprocessing: ttsConfiguration.config.enable_preprocessing ?? true
+                }
+              }
+            } else {
+              // ElevenLabs or other TTS configuration
+              return {
+                name: ttsProvider,
+                voice_id: ttsConfiguration.voiceId,
+                model: ttsConfiguration.model,
+                language: ttsConfiguration.config.language || "en",
+                voice_settings: {
+                  similarity_boost: ttsConfiguration.config.similarityBoost || 1,
+                  stability: ttsConfiguration.config.stability || 0.7,
+                  style: ttsConfiguration.config.style || 0.7,
+                  use_speaker_boost: ttsConfiguration.config.useSpeakerBoost || false,
+                  speed: ttsConfiguration.config.speed || 1.15
+                }
+              }
             }
-          },
+          })(),
           vad: {
             name: formikValues.advancedSettings.vad.vadProvider,
             min_silence_duration: formikValues.advancedSettings.vad.minSilenceDuration
