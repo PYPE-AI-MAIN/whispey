@@ -118,18 +118,10 @@ const modelProviders: Record<string, Provider> = {
         ]
       },
       {
-        name: 'Production Systems',
-        models: [
-          { value: 'groq/compound', label: 'Compound' },
-          { value: 'groq/compound-mini', label: 'Compound Mini' },
-        ]
-      },
-      {
         name: 'Production Models',
         models: [
           { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B' },
           { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
-          { value: 'meta-llama/llama-guard-4-12b', label: 'Llama Guard 4 12B' },
           { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
           { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
         ]
@@ -139,8 +131,6 @@ const modelProviders: Record<string, Provider> = {
         models: [
           { value: 'meta-llama/llama-4-maverick-17b-128e-instruct', label: 'Llama 4 Maverick 17B 128E' },
           { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B 16E' },
-          { value: 'meta-llama/llama-prompt-guard-2-22m', label: 'Llama Prompt Guard 2 22M' },
-          { value: 'meta-llama/llama-prompt-guard-2-86m', label: 'Prompt Guard 2 86M' },
           { value: 'moonshotai/kimi-k2-instruct-0905', label: 'Kimi K2 0905' },
           { value: 'openai/gpt-oss-safeguard-20b', label: 'Safety GPT-OSS 20B' },
           { value: 'qwen/qwen3-32b', label: 'Qwen3-32B' },
