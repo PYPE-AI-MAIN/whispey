@@ -39,10 +39,6 @@ function VoiceActivitySettings({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="silero" className="text-xs">Silero</SelectItem>
-            <SelectItem value="webrtc" className="text-xs">WebRTC</SelectItem>
-            <SelectItem value="deepgram" className="text-xs">Deepgram</SelectItem>
-            <SelectItem value="azure" className="text-xs">Azure Speech</SelectItem>
-            <SelectItem value="custom" className="text-xs">Custom</SelectItem>
           </SelectContent>
         </Select>
       </div>

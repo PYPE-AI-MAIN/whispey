@@ -182,7 +182,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId }: A
           <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
             <div className="flex items-center gap-2">
               <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Fillers Words & Natural Speech</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Fillers Words</span>
             </div>
             <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.fillers ? 'rotate-180' : ''}`} />
           </CollapsibleTrigger>

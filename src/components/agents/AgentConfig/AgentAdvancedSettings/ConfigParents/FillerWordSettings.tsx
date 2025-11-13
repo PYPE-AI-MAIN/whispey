@@ -5,7 +5,8 @@ import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { PlusIcon, XIcon } from 'lucide-react'
+import { PlusIcon, XIcon, InfoIcon } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface FillerWordsSettingsProps {
   enableFillerWords: boolean
@@ -90,13 +91,20 @@ function FillerWordsSettings({
           {/* General Fillers */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-1.5">
                 <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  General Fillers
+                  Fillers
                 </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Words like "um", "uh", "you know" for natural speech
-                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      <p className="text-xs">Words like "um", "uh", "you know" for natural speech. These will be inserted randomly, after each user conversation turn ends.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <Button
                 variant="outline"
@@ -136,103 +144,6 @@ function FillerWordsSettings({
             </div>
           </div>
 
-          {/* Conversation Fillers */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  Conversation Fillers
-                </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Phrases used during transitions or thinking
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => addFiller('conversation')}
-                className="h-6 text-xs"
-              >
-                <PlusIcon className="w-3 h-3 mr-1" />
-                Add Filler
-              </Button>
-            </div>
-            
-            <div className="space-y-2">
-              {conversationFillers.map((filler, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    value={filler}
-                    onChange={(e) => updateFiller('conversation', index, e.target.value)}
-                    className="h-7 text-xs"
-                    placeholder="e.g., Let me think about that, Just a moment"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFiller('conversation', index)}
-                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <XIcon className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-              {conversationFillers.length === 0 && (
-                <div className="text-xs text-gray-400 italic py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded text-center">
-                  No conversation fillers added yet
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Conversation Keywords */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  Conversation Keywords
-                </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Keywords that trigger specific responses
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => addFiller('keywords')}
-                className="h-6 text-xs"
-              >
-                <PlusIcon className="w-3 h-3 mr-1" />
-                Add Keyword
-              </Button>
-            </div>
-            
-            <div className="space-y-2">
-              {conversationKeywords.map((keyword, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    value={keyword}
-                    onChange={(e) => updateFiller('keywords', index, e.target.value)}
-                    className="h-7 text-xs"
-                    placeholder="e.g., please talk to them, transfer me"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFiller('keywords', index)}
-                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <XIcon className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-              {conversationKeywords.length === 0 && (
-                <div className="text-xs text-gray-400 italic py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded text-center">
-                  No conversation keywords added yet
-                </div>
-              )}
-            </div>
-          </div>
         </>
       )}
     </div>

@@ -74,13 +74,11 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
 
   const [vapiData, setVapiData] = useState<{
     apiKey: string;
-    projectApiKey: string;
     availableAssistants: VapiAssistant[];
     selectedAssistantId: string;
     connectLoading: boolean;
   }>({
     apiKey: '',
-    projectApiKey: '',
     availableAssistants: [],
     selectedAssistantId: '',
     connectLoading: false
@@ -106,6 +104,39 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
     }
   }, [vapiData.availableAssistants.length])
 
+  const fetchProjectApiKey = async (): Promise<string> => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/api-keys`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch API keys')
+      }
+      
+      const data = await response.json()
+      const keys = data.keys || []
+      
+      if (keys.length === 0) {
+        throw new Error('No API key found for this project')
+      }
+      
+      const keyToUse = keys[0]
+      
+      if (keyToUse.legacy) {
+        throw new Error('Cannot use legacy API key. Please regenerate your API key first.')
+      }
+      
+      if (!keyToUse.token_hash_master) {
+        throw new Error('No encrypted key found for this project')
+      }
+      
+      return keyToUse.token_hash_master
+      
+    } catch (error) {
+      console.error('Error fetching project API key:', error)
+      throw error
+    }
+  }
+
   const handleVapiConnect = async () => {
     if (!vapiData.apiKey.trim()) {
       setError('Vapi API key is required')
@@ -116,12 +147,13 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
     setError(null)
 
     try {
-      console.log('🔑 Connecting to Vapi to fetch assistants:', vapiData.apiKey.slice(0, 10) + '...')
+      const trimmedApiKey = vapiData.apiKey.trim()
+      console.log('Connecting to Vapi to fetch assistants:', trimmedApiKey.slice(0, 10) + '...')
       
       const response = await fetch('https://api.vapi.ai/assistant', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${vapiData.apiKey.trim()}`,
+          'Authorization': `Bearer ${trimmedApiKey}`,
           'Content-Type': 'application/json',
         },
       })
@@ -204,10 +236,6 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
         setError('Please select an assistant to monitor')
         return
       }
-      if (!vapiData.projectApiKey.trim()) {
-        setError('Project API key is required')
-        return
-      }
     }
 
     onLoadingChange(true)
@@ -228,6 +256,9 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
           platform: 'livekit'
         }
       } else {
+        // Fetch the encrypted project API key automatically
+        const encryptedProjectApiKey = await fetchProjectApiKey()
+        
         const selectedAssistant = vapiData.availableAssistants.find((a: VapiAssistant) => a.id === vapiData.selectedAssistantId)
         payload = {
           name: formData.name.trim(),
@@ -235,7 +266,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
           configuration: {
             vapi: {
               apiKey: vapiData.apiKey.trim(),
-              projectApiKey: vapiData.projectApiKey.trim(),
+              projectApiKey: encryptedProjectApiKey, // Send encrypted key
               assistantId: vapiData.selectedAssistantId,
               assistantName: selectedAssistant?.name,
               model: selectedAssistant?.model,
@@ -700,25 +731,6 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                     </Select>
                   </div>
                 )}
-
-                {/* Project API Key */}
-                {vapiData.selectedAssistantId && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Project API Key
-                    </label>
-                    <Input
-                      type="password"
-                      placeholder="Your project API key..."
-                      value={vapiData.projectApiKey}
-                      onChange={(e) => setVapiData({ ...vapiData, projectApiKey: e.target.value })}
-                      className="h-10 font-mono bg-white dark:bg-gray-900 border-teal-200 dark:border-teal-800 focus:border-teal-600 dark:focus:border-teal-400 focus:ring-teal-600/20 dark:focus:ring-teal-400/20"
-                    />
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Your internal project API key for this monitoring setup
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -750,7 +762,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             disabled={
               vapiData.connectLoading ||
               (selectedPlatform === 'livekit' && !formData.name.trim()) ||
-              (selectedPlatform === 'vapi' && (!formData.name.trim() || !vapiData.selectedAssistantId || !vapiData.projectApiKey.trim()))
+              (selectedPlatform === 'vapi' && (!formData.name.trim() || !vapiData.selectedAssistantId))
             }
             className={`flex-1 h-10 font-medium text-white ${
               selectedPlatform === 'vapi' 

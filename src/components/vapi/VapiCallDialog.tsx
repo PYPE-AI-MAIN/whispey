@@ -27,8 +27,8 @@ import { WebCallWidget } from './WebCallWidget'
 
 interface CallDialogProps {
   assistantName: string
-  agentId: string  // Database agent ID for API calls to our backend
-  vapiAssistantId: string  // Actual Vapi assistant ID for phone number queries
+  agentId: string
+  vapiAssistantId: string
 }
 
 interface CountryCode {
@@ -88,15 +88,12 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
   const [callId, setCallId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   
-  // Phone number management
   const [availablePhoneNumbers, setAvailablePhoneNumbers] = useState<PhoneNumber[]>([])
   const [selectedPhoneNumberId, setSelectedPhoneNumberId] = useState<string>('')
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
   const [phoneNumberError, setPhoneNumberError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'phone' | 'web'>('phone')
 
-
-  // Fetch available phone numbers when dialog opens
   useEffect(() => {
     if (isOpen) {
       fetchPhoneNumbers()
@@ -108,18 +105,17 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
     setPhoneNumberError(null)
     
     try {
-      console.log(`📱 Fetching phone numbers for Vapi assistant ID: ${vapiAssistantId}`)
-      console.log(`🔧 Using agent ID: ${agentId}`)
+      console.log(`Fetching phone numbers for Vapi assistant ID: ${vapiAssistantId}`)
+      console.log(`Using agent ID: ${agentId}`)
       
-      // ✅ Use the agent-specific secure endpoint
       const url = `/api/agents/${agentId}/vapi/phone-numbers?assistantId=${vapiAssistantId}`
-      console.log(`🌐 Calling endpoint: ${url}`)
+      console.log(`Calling endpoint: ${url}`)
       
       const response = await fetch(url)
       const result = await response.json()
       
-      console.log(`📡 Response status: ${response.status}`)
-      console.log(`📡 Response data:`, result)
+      console.log(`Response status: ${response.status}`)
+      console.log(`Response data:`, result)
       
       if (!response.ok) {
         throw new Error(result.error || 'Failed to fetch phone numbers')
@@ -127,14 +123,13 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
       
       setAvailablePhoneNumbers(result.phoneNumbers || [])
       
-      // Auto-select first available number if any exist
       if (result.phoneNumbers && result.phoneNumbers.length > 0) {
         setSelectedPhoneNumberId(result.phoneNumbers[0].id)
       }
       
-      console.log(`📱 Fetched ${result.phoneNumbers?.length || 0} phone numbers for assistant ${vapiAssistantId}:`, result.phoneNumbers)
+      console.log(`Fetched ${result.phoneNumbers?.length || 0} phone numbers for assistant ${vapiAssistantId}:`, result.phoneNumbers)
     } catch (err) {
-      console.error('💥 Error fetching phone numbers:', err)
+      console.error('Error fetching phone numbers:', err)
       setPhoneNumberError(err instanceof Error ? err.message : 'Failed to fetch phone numbers')
     } finally {
       setLoadingPhoneNumbers(false)
@@ -150,7 +145,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
     const country = COUNTRY_CODES.find(c => c.code === countryCode)
     if (country) {
       setSelectedCountry(country)
-      setPhoneNumber('') // Clear phone number when country changes
+      setPhoneNumber('')
     }
   }
 
@@ -164,7 +159,6 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
   }
 
   const formatPhoneNumber = (number: string) => {
-    // Basic formatting for display
     if (number.startsWith('+1')) {
       const digits = number.slice(2)
       if (digits.length === 10) {
@@ -179,8 +173,6 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
     return number
   }
 
-
-
   const initiateCall = async () => {
     if (!validatePhoneNumber(phoneNumber)) {
       setError('Please enter a valid phone number')
@@ -194,7 +186,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
     setIsLoading(true)
     setError(null)
-          setCallStatus('connecting')
+    setCallStatus('connecting')
 
     try {
       const cleanPhoneNumber = phoneNumber.replace(/\D/g, '')
@@ -202,12 +194,11 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
       const callData = {
         type: 'outboundPhoneCall',
-        assistantId: vapiAssistantId, // ✅ FIXED: Use the actual Vapi assistant ID
+        assistantId: vapiAssistantId,
         phoneNumberId: selectedPhoneNumberId,
         customer: {
           number: formattedNumber,
         },
-        // Optional: Add custom first message if provided
         ...(customMessage && {
           assistantOverrides: {
             firstMessage: customMessage
@@ -215,11 +206,10 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
         })
       }
 
-      console.log('🔥 Initiating call with data:', callData)
-      console.log('🎯 Using Vapi assistant ID:', vapiAssistantId)
-      console.log('🎯 Using database agent ID for API:', agentId)
+      console.log('Initiating call with data:', callData)
+      console.log('Using Vapi assistant ID:', vapiAssistantId)
+      console.log('Using database agent ID for API:', agentId)
 
-      // ✅ Still use the database agent ID for our backend API calls
       const response = await fetch(`/api/agents/${agentId}/vapi`, {
         method: 'POST',
         headers: {
@@ -239,10 +229,10 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
       setCallId(result.call?.id || result.data?.id || 'Unknown')
       setCallStatus('success')
-      console.log('✅ Call initiated successfully:', result)
+      console.log('Call initiated successfully:', result)
 
     } catch (err) {
-      console.error('💥 Error initiating call:', err)
+      console.error('Error initiating call:', err)
       setError(err instanceof Error ? err.message : 'Failed to initiate call')
       setCallStatus('error')
     } finally {
@@ -257,12 +247,10 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
     setCallId(null)
     setError(null)
     setSelectedCountry(COUNTRY_CODES[0])
-    // Keep the phone number selection as is, don't reset it
   }
 
   const handleClose = () => {
     setIsOpen(false)
-    // Reset after a short delay to allow dialog to close smoothly
     setTimeout(handleReset, 300)
   }
 
@@ -271,32 +259,32 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="border-gray-300">
+        <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600">
           <Phone className="w-4 h-4 mr-2" />
           Call
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <Phone className="w-5 h-5" />
             Initiate Call
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-gray-600 dark:text-gray-400">
             Start an outbound call using "{assistantName}" assistant
-            <span className="block text-xs text-gray-500 mt-1">
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
               Vapi ID: {vapiAssistantId}
             </span>
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="phone" className="w-full" onValueChange={(value) => setActiveTab(value as 'phone' | 'web')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="phone" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
+            <TabsTrigger value="phone" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900">
               <Phone className="h-4 w-4" />
               Phone Call
             </TabsTrigger>
-            <TabsTrigger value="web" className="flex items-center gap-2">
+            <TabsTrigger value="web" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900">
               <Monitor className="h-4 w-4" />
               Web Call
             </TabsTrigger>
@@ -307,36 +295,36 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           <div className="space-y-4">
             {/* Phone Number Selection */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">
-                Call From (Your Numbers) <span className="text-red-500">*</span>
+              <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Call From (Your Numbers) <span className="text-red-500 dark:text-red-400">*</span>
               </Label>
               
               {loadingPhoneNumbers ? (
-                <div className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm text-gray-600">Loading phone numbers...</span>
+                <div className="flex items-center gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-600 dark:text-gray-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Loading phone numbers...</span>
                 </div>
               ) : phoneNumberError ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{phoneNumberError}</AlertDescription>
+                <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <AlertDescription className="text-red-800 dark:text-red-200">{phoneNumberError}</AlertDescription>
                 </Alert>
               ) : availablePhoneNumbers.length === 0 ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
+                <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <AlertDescription className="text-red-800 dark:text-red-200">
                     <div className="space-y-2">
                       <p className="font-medium">No phone numbers connected to this assistant.</p>
                       <p className="text-sm">
                         To make calls, you need to connect a phone number to assistant "{assistantName}" in your Vapi dashboard.
                       </p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-red-700 dark:text-red-300">
                         Looking for Vapi assistant ID: {vapiAssistantId}
                       </p>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="mt-2"
+                        className="mt-2 border-red-300 dark:border-red-700"
                         onClick={() => window.open('https://dashboard.vapi.ai/phone-numbers', '_blank')}
                       >
                         Configure Phone Numbers
@@ -346,18 +334,18 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                 </Alert>
               ) : (
                 <Select value={selectedPhoneNumberId} onValueChange={setSelectedPhoneNumberId}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                     <SelectValue>
                       {selectedPhoneNum ? (
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-gray-500" />
-                            <span className="font-medium">{formatPhoneNumber(selectedPhoneNum.number)}</span>
+                            <Phone className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{formatPhoneNumber(selectedPhoneNum.number)}</span>
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs border-gray-200 dark:border-gray-700">
                             {selectedPhoneNum.provider}
                           </Badge>
-                          <Badge className="bg-green-100 text-green-700 text-xs">
+                          <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-xs">
                             <User className="w-3 h-3 mr-1" />
                             Connected
                           </Badge>
@@ -367,19 +355,19 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                       )}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="max-h-48">
+                  <SelectContent className="max-h-48 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                     {availablePhoneNumbers.map((phoneNum) => (
                       <SelectItem key={phoneNum.id} value={phoneNum.id}>
                         <div className="flex items-center justify-between w-full min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
-                            <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                            <span className="font-medium truncate">
+                            <Phone className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                            <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
                               {formatPhoneNumber(phoneNum.number)}
                             </span>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs border-gray-200 dark:border-gray-700">
                               {phoneNum.provider}
                             </Badge>
-                            <Badge className="bg-green-100 text-green-700 text-xs">
+                            <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-xs">
                               <User className="w-3 h-3 mr-1" />
                               Connected
                             </Badge>
@@ -394,26 +382,26 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
             {/* Country Selection */}
             <div className="space-y-3">
-              <Label htmlFor="country" className="text-sm font-medium">
-                Country <span className="text-red-500">*</span>
+              <Label htmlFor="country" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Country <span className="text-red-500 dark:text-red-400">*</span>
               </Label>
               <Select value={selectedCountry.code} onValueChange={handleCountryChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                   <SelectValue>
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{selectedCountry.flag}</span>
-                      <span>{selectedCountry.code}</span>
-                      <span className="text-gray-500">({selectedCountry.name})</span>
+                      <span className="text-gray-900 dark:text-gray-100">{selectedCountry.code}</span>
+                      <span className="text-gray-500 dark:text-gray-400">({selectedCountry.name})</span>
                     </div>
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                   {COUNTRY_CODES.map((country) => (
                     <SelectItem key={country.code} value={country.code}>
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{country.flag}</span>
-                        <span>{country.code}</span>
-                        <span className="text-gray-600">({country.name})</span>
+                        <span className="text-gray-900 dark:text-gray-100">{country.code}</span>
+                        <span className="text-gray-600 dark:text-gray-400">({country.name})</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -423,13 +411,13 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
             {/* Phone Number Input */}
             <div>
-              <Label htmlFor="phone" className="text-sm font-medium">
-                Call To (Customer Number) <span className="text-red-500">*</span>
+              <Label htmlFor="phone" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Call To (Customer Number) <span className="text-red-500 dark:text-red-400">*</span>
               </Label>
               <div className="flex items-center gap-2 mt-1">
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md text-sm">
                   <span className="text-lg">{selectedCountry.flag}</span>
-                  <span className="font-medium">{selectedCountry.code}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{selectedCountry.code}</span>
                 </div>
                 <Input
                   id="phone"
@@ -438,18 +426,18 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                   value={phoneNumber}
                   onChange={handlePhoneNumberChange}
                   maxLength={selectedCountry.code === '+91' ? 11 : 14}
-                  className="flex-1"
+                  className="flex-1 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                   disabled={isLoading}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Enter {selectedCountry.name} phone number ({selectedCountry.digits} digits)
               </p>
             </div>
 
             {/* Custom Message */}
             <div>
-              <Label htmlFor="message" className="text-sm font-medium">
+              <Label htmlFor="message" className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 Custom First Message (Optional)
               </Label>
               <Textarea
@@ -457,36 +445,36 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                 placeholder="Override the default greeting message..."
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
-                className="mt-1 min-h-[80px]"
+                className="mt-1 min-h-[80px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                 disabled={isLoading}
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Leave empty to use the assistant's default first message
               </p>
             </div>
 
             {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+              <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
               </Alert>
             )}
           </div>
         ) : callStatus === 'success' ? (
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-green-800">Call Initiated Successfully!</h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <h3 className="font-semibold text-green-800 dark:text-green-200">Call Initiated Successfully!</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Calling {selectedCountry.code} {phoneNumber}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 From: {selectedPhoneNum ? formatPhoneNumber(selectedPhoneNum.number) : 'Unknown'}
               </p>
               {callId && (
-                <p className="text-xs text-gray-500 mt-2 font-mono">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
                   Call ID: {callId}
                 </p>
               )}
@@ -494,12 +482,12 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           </div>
         ) : (
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle className="w-8 h-8 text-red-600" />
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-red-800">Call Failed</h3>
-              <p className="text-sm text-gray-600 mt-1">{error}</p>
+              <h3 className="font-semibold text-red-800 dark:text-red-200">Call Failed</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{error}</p>
             </div>
           </div>
         )}
@@ -508,11 +496,11 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
           <TabsContent value="web" className="space-y-4">
             <div className="text-center mb-4">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Globe className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Globe className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-semibold text-blue-800 mb-2">Web Call</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Web Call</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Start a browser-based voice conversation with {assistantName}
               </p>
             </div>
@@ -523,13 +511,13 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
               agentName={assistantName}
               publicApiKey="64dc1d61-4156-42ea-aa75-fc86ff0f3ceb"
               onCallStart={(callId) => {
-                console.log('🚀 Web call started in modal:', callId)
+                console.log('Web call started in modal:', callId)
               }}
               onCallEnd={(callId, reason) => {
-                console.log('🛑 Web call ended in modal:', callId, 'reason:', reason)
+                console.log('Web call ended in modal:', callId, 'reason:', reason)
               }}
               onTranscript={(transcript, role) => {
-                console.log('💬 Web call transcript:', role, transcript)
+                console.log('Web call transcript:', role, transcript)
               }}
               hideStartButton={false}
             />
@@ -543,10 +531,10 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                 variant="outline"
                 onClick={handleClose}
                 disabled={isLoading}
+                className="border-gray-300 dark:border-gray-600"
               >
                 Cancel
               </Button>
-              {/* Only show Start Call button for phone calls */}
               {activeTab === 'phone' && (
                 <Button
                   onClick={initiateCall}
@@ -579,10 +567,11 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
               <Button
                 variant="outline"
                 onClick={handleReset}
+                className="border-gray-300 dark:border-gray-600"
               >
                 Make Another Call
               </Button>
-              <Button onClick={handleClose}>
+              <Button onClick={handleClose} className="bg-blue-600 hover:bg-blue-700 text-white">
                 Close
               </Button>
             </>
