@@ -364,10 +364,11 @@ export const buildFormValuesFromAgent = (assistant: any) => {
     ttsVoiceConfig:
       assistant.tts?.name === "sarvam" || assistant.tts?.name === "sarvam_tts"
         ? {
-            target_language_code: assistant.tts?.target_language_code ?? "en-IN",
-            loudness: assistant.tts?.loudness ?? 1.0,
-            speed: assistant.tts?.speed ?? 1.0,
-            enable_preprocessing: assistant.tts?.enable_preprocessing ?? true,
+            // Map language back to target_language_code for Sarvam (since we save in ElevenLabs format)
+            target_language_code: assistant.tts?.target_language_code ?? assistant.tts?.language ?? "en-IN",
+            loudness: assistant.tts?.voice_settings?.loudness ?? assistant.tts?.loudness ?? 1.0,
+            speed: assistant.tts?.voice_settings?.speed ?? assistant.tts?.speed ?? 1.0,
+            enable_preprocessing: assistant.tts?.voice_settings?.enable_preprocessing ?? assistant.tts?.enable_preprocessing ?? true,
           }
         : assistant.tts?.name === "elevenlabs"
           ? {
