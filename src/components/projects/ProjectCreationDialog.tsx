@@ -111,7 +111,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
             {/* Header */}
             <DialogHeader className="px-6 pt-6 pb-4 text-center">
               <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                Create New Project
+                Create New Organisation
               </DialogTitle>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-normal">
                 Set up your voice AI project with automatic API token generation
