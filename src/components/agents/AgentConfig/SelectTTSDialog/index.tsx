@@ -98,9 +98,14 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   // Initialize Sarvam configuration with defaults
   const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>(() => {
     if ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
+      // Only use initialModel if provider is Sarvam, otherwise use default
+      const model = (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel 
+        ? initialModel 
+        : 'bulbul:v2'
       return {
-        target_language_code: initialConfig.target_language_code || 'en-IN',
-        model: initialModel || 'bulbul:v2',
+        // Map language back to target_language_code (since we save in ElevenLabs format)
+        target_language_code: initialConfig.target_language_code || initialConfig.language || 'en-IN',
+        model: model,
         speaker: selectedVoice || '',
         loudness: initialConfig.loudness || 1.0,
         speed: initialConfig.speed || 1.0,
@@ -120,10 +125,14 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   // Initialize ElevenLabs configuration with defaults
   const [elevenLabsConfig, setElevenLabsConfig] = useState<ElevenLabsConfig>(() => {
     if (currentProvider === 'elevenlabs' && initialConfig) {
+      // Only use initialModel if provider is ElevenLabs, otherwise use default
+      const model = initialProvider === 'elevenlabs' && initialModel 
+        ? initialModel 
+        : 'eleven_multilingual_v2'
       return {
         voiceId: selectedVoice || '',
         language: initialConfig.language || 'en',
-        model: initialModel || 'eleven_multilingual_v2',
+        model: model,
         similarityBoost: initialConfig.similarityBoost || 0.75,
         stability: initialConfig.stability || 0.5,
         style: initialConfig.style || 0,
@@ -149,8 +158,12 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     voiceId: selectedVoice || '',
     provider: initialProvider === 'sarvam_tts' ? 'sarvam' : (initialProvider || ''),
     sarvamConfig: (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig ? {
-      target_language_code: initialConfig.target_language_code || 'en-IN',
-      model: initialModel || 'bulbul:v2',
+      // Map language back to target_language_code (since we save in ElevenLabs format)
+      target_language_code: initialConfig.target_language_code || initialConfig.language || 'en-IN',
+      // Only use initialModel if provider is Sarvam, otherwise use default
+      model: (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel 
+        ? initialModel 
+        : 'bulbul:v2',
       speaker: selectedVoice || '',
       loudness: initialConfig.loudness || 1.0,
       speed: initialConfig.speed || 1.0,
@@ -166,7 +179,10 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     elevenLabsConfig: (initialProvider === 'elevenlabs' && initialConfig) ? {
       voiceId: selectedVoice || '',
       language: initialConfig.language || 'en',
-      model: initialModel || 'eleven_multilingual_v2',
+      // Only use initialModel if provider is ElevenLabs, otherwise use default
+      model: initialProvider === 'elevenlabs' && initialModel 
+        ? initialModel 
+        : 'eleven_multilingual_v2',
       similarityBoost: initialConfig.similarityBoost || 0.75,
       stability: initialConfig.stability || 0.5,
       style: initialConfig.style || 0,
@@ -208,19 +224,28 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   // Sync configs when provider gets normalized
   useEffect(() => {
     if ((currentProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
+      // Only use initialModel if provider is Sarvam, otherwise use default
+      const model = (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel 
+        ? initialModel 
+        : 'bulbul:v2'
       setSarvamConfig({
-        target_language_code: initialConfig.target_language_code ?? 'en-IN',
-        model: initialModel ?? 'bulbul:v2',
+        // Map language back to target_language_code (since we save in ElevenLabs format)
+        target_language_code: initialConfig.target_language_code ?? initialConfig.language ?? 'en-IN',
+        model: model,
         speaker: selectedVoice ?? '',
         loudness: initialConfig.loudness ?? 1.0,
         speed: initialConfig.speed ?? 1.0,
         enable_preprocessing: initialConfig.enable_preprocessing ?? true
       })
     } else if (initialProvider === 'elevenlabs' && initialConfig) {
+      // Only use initialModel if provider is ElevenLabs, otherwise use default
+      const model = initialProvider === 'elevenlabs' && initialModel 
+        ? initialModel 
+        : 'eleven_multilingual_v2'
       setElevenLabsConfig({
         voiceId: selectedVoice || initialConfig.voiceId || '',
         language: initialConfig.language ?? 'en',
-        model: initialModel ?? 'eleven_multilingual_v2',
+        model: model,
         similarityBoost: initialConfig.similarityBoost ?? 0.75,
         stability: initialConfig.stability ?? 0.5,
         style: initialConfig.style ?? 0,
@@ -303,10 +328,17 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   }
 
   const handleConfirm = () => {
-    if (currentVoiceId && currentProvider && onVoiceSelect) {
-      const config = currentProvider === 'sarvam' ? sarvamConfig : elevenLabsConfig
-      const model = currentProvider === 'sarvam' ? sarvamConfig.model : elevenLabsConfig.model
-      onVoiceSelect(currentVoiceId, currentProvider, model, config)
+    if (currentVoiceId && onVoiceSelect) {
+      // Determine provider: prioritize currentProvider, but use activeTab as definitive fallback
+      // This ensures that if user is on Sarvam tab, we use Sarvam config even if currentProvider is not set
+      let provider = currentProvider
+      if (!provider || (activeTab === 'sarvam' && provider !== 'sarvam')) {
+        provider = activeTab === 'sarvam' ? 'sarvam' : 'elevenlabs'
+      }
+      
+      const config = provider === 'sarvam' ? sarvamConfig : elevenLabsConfig
+      const model = provider === 'sarvam' ? sarvamConfig.model : elevenLabsConfig.model
+      onVoiceSelect(currentVoiceId, provider, model, config)
     }
     setIsOpen(false)
   }

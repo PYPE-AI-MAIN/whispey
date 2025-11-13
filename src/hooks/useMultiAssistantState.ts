@@ -141,19 +141,48 @@ export function useMultiAssistantState({
             api_key_env: 'CEREBRAS_API_KEY'
           })
         },
-        tts: {
-          name: currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name'),
-          voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
-          model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
-          language: currentTtsConfig?.config?.language || formValues.ttsVoiceConfig?.language || getFallback(null, 'tts.language'),
-          voice_settings: {
-            similarity_boost: currentTtsConfig?.config?.similarityBoost ?? formValues.ttsVoiceConfig?.similarityBoost ?? getFallback(null, 'tts.voice_settings.similarity_boost'),
-            stability: currentTtsConfig?.config?.stability ?? formValues.ttsVoiceConfig?.stability ?? getFallback(null, 'tts.voice_settings.stability'),
-            style: currentTtsConfig?.config?.style ?? formValues.ttsVoiceConfig?.style ?? getFallback(null, 'tts.voice_settings.style'),
-            use_speaker_boost: currentTtsConfig?.config?.useSpeakerBoost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
-            speed: currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
+        tts: (() => {
+          const ttsProvider = currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name')
+          const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
+          
+          if (isSarvam) {
+            // Sarvam TTS configuration - using ElevenLabs format
+            const targetLanguageCode = currentTtsConfig?.config?.target_language_code || formValues.ttsVoiceConfig?.target_language_code || 'en-IN'
+            const sarvamSpeed = currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? 1.0
+            const sarvamLoudness = currentTtsConfig?.config?.loudness ?? formValues.ttsVoiceConfig?.loudness ?? 1.0
+            
+            return {
+              name: ttsProvider,
+              voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
+              model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
+              language: targetLanguageCode, // Map target_language_code to language
+              voice_settings: {
+                similarity_boost: 1, // Default for Sarvam
+                stability: 0.8, // Default for Sarvam
+                style: 1, // Default for Sarvam
+                use_speaker_boost: true, // Default for Sarvam
+                speed: sarvamSpeed, // Map speed from Sarvam config
+                loudness: sarvamLoudness, // Include loudness in voice_settings
+                enable_preprocessing: currentTtsConfig?.config?.enable_preprocessing ?? formValues.ttsVoiceConfig?.enable_preprocessing ?? true
+              }
+            }
+          } else {
+            // ElevenLabs or other TTS configuration
+            return {
+              name: ttsProvider,
+              voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
+              model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
+              language: currentTtsConfig?.config?.language || formValues.ttsVoiceConfig?.language || getFallback(null, 'tts.language'),
+              voice_settings: {
+                similarity_boost: currentTtsConfig?.config?.similarityBoost ?? formValues.ttsVoiceConfig?.similarityBoost ?? getFallback(null, 'tts.voice_settings.similarity_boost'),
+                stability: currentTtsConfig?.config?.stability ?? formValues.ttsVoiceConfig?.stability ?? getFallback(null, 'tts.voice_settings.stability'),
+                style: currentTtsConfig?.config?.style ?? formValues.ttsVoiceConfig?.style ?? getFallback(null, 'tts.voice_settings.style'),
+                use_speaker_boost: currentTtsConfig?.config?.useSpeakerBoost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
+                speed: currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
+              }
+            }
           }
-        },
+        })(),
         vad: {
           name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
           min_silence_duration: formValues.advancedSettings?.vad?.minSilenceDuration ?? getFallback(null, 'vad.min_silence_duration')

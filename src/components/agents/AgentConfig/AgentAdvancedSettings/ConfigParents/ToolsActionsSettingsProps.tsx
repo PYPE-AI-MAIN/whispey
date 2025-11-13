@@ -70,6 +70,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
+  const [headersJsonString, setHeadersJsonString] = useState<string>('{}')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -130,6 +131,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
   const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function') => {
     setSelectedToolType(toolType)
     setEditingTool(null)
+    setHeadersJsonString('{}')
     
     if (toolType === 'end_call') {
       setFormData({ 
@@ -276,12 +278,15 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       selectedPhoneId = matchingPhone?.id || ''
     }
     
+    const headers = tool.config.headers || {}
+    setHeadersJsonString(JSON.stringify(headers, null, 2))
+    
     setFormData({
       name: tool.name,
       description: tool.config.description || '',
       endpoint: tool.config.endpoint || '',
       method: tool.config.method || 'POST',
-      headers: tool.config.headers || {},
+      headers: headers,
       body: tool.config.body || '',
       targetAgent: tool.config.targetAgent || '',
       handoffMessage: tool.config.handoffMessage || '',
@@ -305,6 +310,17 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
   }
 
   const handleSaveTool = () => {
+    // Try to parse headersJsonString one more time before saving
+    let finalHeaders = formData.headers
+    try {
+      const parsed = JSON.parse(headersJsonString)
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        finalHeaders = parsed
+      }
+    } catch (err) {
+      // If invalid JSON, use existing formData.headers
+    }
+    
     const newTool: Tool = {
       id: editingTool?.id || `tool_${Date.now()}`,
       type: selectedToolType!,
@@ -313,7 +329,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         description: formData.description,
         endpoint: formData.endpoint,
         method: formData.method,
-        headers: formData.headers,
+        headers: finalHeaders,
         body: formData.body,
         targetAgent: formData.targetAgent,
         handoffMessage: formData.handoffMessage,
@@ -491,7 +507,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       </div>
 
       {/* Tool Configuration Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open)
+        if (!open) {
+          // Reset headers JSON string when dialog closes
+          setHeadersJsonString('{}')
+        }
+      }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <DialogTitle className="text-sm text-gray-900 dark:text-gray-100">
@@ -729,14 +751,18 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                 <div>
                   <Label className="text-xs text-gray-700 dark:text-gray-300">Headers (JSON)</Label>
                   <Textarea
-                    value={JSON.stringify(formData.headers, null, 2)}
+                    value={headersJsonString}
                     onChange={(e) => {
+                      const newValue = e.target.value
+                      setHeadersJsonString(newValue)
+                      // Only update formData.headers if JSON is valid
                       try {
-                        const parsed = JSON.parse(e.target.value)
-                        setFormData(prev => ({ ...prev, headers: parsed }))
+                        const parsed = JSON.parse(newValue)
+                        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+                          setFormData(prev => ({ ...prev, headers: parsed }))
+                        }
                       } catch (err) {
-                        // Allow invalid JSON while typing
-                        setFormData(prev => ({ ...prev, headers: {} }))
+                        // Allow invalid JSON while typing - don't update formData.headers
                       }
                     }}
                     className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
