@@ -35,9 +35,10 @@ import {
   BarChart,
   CreditCard,
   History,
-  ChevronLeft,
   Calendar,
-  X
+  X,
+  PanelRightOpen,
+  PanelRightClose
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -503,55 +504,59 @@ export default function Sidebar({
         )}
 
         {/* Logo & Context Header */}
-        <div className="p-4 border-b border-gray-100 dark:border-gray-800 relative">
-          <Link href="/" className="flex items-center gap-3 group mb-3" onClick={() => {
-            if (isMobile && onMobileClose) {
-              onMobileClose()
-            }
-          }}>
-            <Image 
-              src="/logo.png" 
-              alt="Whispey Logo" 
-              width={32} 
-              height={32} 
-              className="flex-shrink-0 group-hover:scale-105 transition-transform duration-200" 
-            />
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between gap-3">
+            {/* Logo and Name (hidden when collapsed on desktop) */}
             {(!isCollapsed || isMobile) && (
-              <div className="min-w-0">
-                <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                  Whispey
-                </h1>
-              </div>
+              <Link 
+                href={config.context?.projectId ? `/${config.context.projectId}/agents` : '/'} 
+                className="flex items-center gap-3 group flex-1 min-w-0" 
+                onClick={() => {
+                  if (isMobile && onMobileClose) {
+                    onMobileClose()
+                  }
+                }}
+              >
+                <Image 
+                  src="/logo.png" 
+                  alt="Whispey Logo" 
+                  width={32} 
+                  height={32} 
+                  className="flex-shrink-0 group-hover:scale-105 transition-transform duration-200" 
+                />
+                <div className="min-w-0">
+                  <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                    Whispey
+                  </h1>
+                </div>
+              </Link>
             )}
-          </Link>
 
-          {/* Circular Collapse Button - positioned on the right edge */}
-          {!isMobile && onToggleCollapse && (
-            <div className="absolute -right-3 top-1/2 -translate-y-1/2 z-10">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onToggleCollapse}
-                      className="w-6 h-6 p-0 rounded-full border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
-                      aria-label={isCollapsed ? 'Expand sidebar (Cmd+B)' : 'Collapse sidebar (Cmd+B)'}
-                    >
-                      <ChevronLeft 
-                        className={`w-3 h-3 transition-transform duration-300 ease-in-out ${
-                          isCollapsed ? 'rotate-180' : ''
-                        }`} 
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p className="text-xs text-gray-500 mt-1">⌘ + B</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
+            {/* Collapse Button */}
+            {!isMobile && onToggleCollapse && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleCollapse}
+                className={`p-2 hover:bg-gray-100 hover:cursor-pointer dark:hover:bg-gray-800 transition-colors group ${
+                  isCollapsed ? 'w-full flex justify-center' : ''
+                }`}
+                aria-label={isCollapsed ? 'Expand sidebar (Cmd+B)' : 'Collapse sidebar (Cmd+B)'}
+              >
+                {isCollapsed ? (
+                  <>
+                    <PanelRightClose className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
+                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">→</span>
+                  </>
+                ) : (
+                  <>
+                    <PanelRightOpen className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
+                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">←</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
 
           {renderContextHeader()}
         </div>
