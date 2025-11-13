@@ -104,6 +104,7 @@ function NoCallsMessage() {
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const projectId = searchParams.get('projectid')
   const { isMobile } = useMobile(768)
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
@@ -448,7 +449,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                   <Button
                     onClick={() => {
                       if (vapiStatus?.connected) {
-                        router.push(`/agents/${agentId}/vapi`)
+                        router.push(`/${agent.project_id}/agents/${agentId}/vapi`)
                       } else {
                         handleWebhookSetup()
                       }

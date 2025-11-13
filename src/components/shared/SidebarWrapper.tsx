@@ -310,9 +310,7 @@ const sidebarRoutes: SidebarRoute[] = [
         type: 'agent-detail',
         context: { agentId, projectId },
         navigation,
-        showBackButton: true,
-        backPath: `/${projectId}/agents`,
-        backLabel: 'Back to Agents list'
+        showBackButton: false,
       }
     },
     priority: 90
