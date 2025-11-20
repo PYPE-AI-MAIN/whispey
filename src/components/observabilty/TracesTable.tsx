@@ -58,7 +58,10 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
 
 
   const { data: sessionTrace, loading: traceLoading } = useSessionTrace(sessionId || null);
-  const { data: sessionSpans, loading: spansLoading } = useSessionSpans(sessionTrace);
+  const shouldFetchSpans = Boolean(sessionTrace?.trace_key);
+  const { data: sessionSpans, loading: spansLoading } = useSessionSpans(
+    shouldFetchSpans ? sessionTrace : null
+  );
 
 
   // Get call data to access bug report metadata

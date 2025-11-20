@@ -281,9 +281,11 @@ const RawDataView = ({ span }: { span: any }) => {
 const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'technical' | 'raw'>('overview');
 
+  const shouldFetchFull = isOpen && activeTab === 'raw' && span?.id;
+  
   const { data: fullSpanData } = useSupabaseQuery("pype_voice_spans", {
-    select: "*",
-    filters: span?.id ? [{ column: "id", operator: "eq", value: span.id }] : [],
+    select: shouldFetchFull ? "*" : null,
+    filters: shouldFetchFull ? [{ column: "id", operator: "eq", value: span.id }] : [],
   });
 
   const displaySpan = fullSpanData?.[0] || span;
