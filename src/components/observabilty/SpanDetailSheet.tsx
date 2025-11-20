@@ -25,6 +25,7 @@ import {
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { useState } from "react";
+import { useSupabaseQuery } from "@/hooks/useSupabase";
 
 interface SpanDetailSheetProps {
   span: any;
@@ -280,10 +281,19 @@ const RawDataView = ({ span }: { span: any }) => {
 const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'technical' | 'raw'>('overview');
 
+  const shouldFetchFull = isOpen && activeTab === 'raw' && span?.id;
+  
+  const { data: fullSpanData } = useSupabaseQuery("pype_voice_spans", {
+    select: shouldFetchFull ? "*" : null,
+    filters: shouldFetchFull ? [{ column: "id", operator: "eq", value: span.id }] : [],
+  });
+
+  const displaySpan = fullSpanData?.[0] || span;
+
   if (!isOpen || !span) return null;
 
   const getSpanIcon = () => {
-    const operationType = span.operation_type?.toLowerCase() || '';
+    const operationType = displaySpan.operation_type?.toLowerCase() || '';
     
     if (operationType === 'llm') return <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
     if (operationType === 'tts') return <Volume2 className="w-5 h-5 text-green-600 dark:text-green-400" />;
@@ -296,7 +306,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
   };
 
   const getStatusDisplay = () => {
-    if (span.status === 'error' || span.error === true) {
+    if (displaySpan.status === 'error' || displaySpan.error === true) {
       return {
         icon: <XCircle className="w-4 h-4" />,
         text: 'ERROR',
@@ -318,8 +328,8 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
 
   // Get readable description of what this span represents
   const getSpanDescription = () => {
-    const name = span.name?.toLowerCase() || '';
-    const opType = span.operation_type || '';
+    const name = displaySpan.name?.toLowerCase() || '';
+    const opType = displaySpan.operation_type || '';
 
     if (name === 'start_agent_activity') return 'Agent system initialization - starting conversation flow';
     if (name === 'on_enter') return 'System entry point - beginning of operation';
@@ -350,7 +360,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
             {getSpanIcon()}
             <div>
               <h2 className="text-xl font-semibold">
-                {span.name?.replace(/_/g, ' ').toUpperCase() || 'Unknown Operation'}
+                {displaySpan.name?.replace(/_/g, ' ').toUpperCase() || 'Unknown Operation'}
               </h2>
               <p className="text-slate-300 dark:text-slate-400 text-sm">
                 {getSpanDescription()}
@@ -391,7 +401,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               <span className="text-sm opacity-80">Type</span>
             </div>
             <div className="text-sm font-semibold capitalize">
-              {span.operation_type?.replace(/_/g, ' ') || 'Other'}
+              {displaySpan.operation_type?.replace(/_/g, ' ') || 'Other'}
             </div>
           </div>
         </div>
@@ -444,15 +454,15 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                   Request ID
                 </h4>
                 <div className="flex items-center gap-2">
-                  {span.request_id ? (
+                  {displaySpan.request_id ? (
                     <>
                       <code className="bg-white dark:bg-gray-900 px-2 py-1 rounded text-xs font-mono border border-gray-200 dark:border-gray-600">
-                        {span.request_id}
+                        {displaySpan.request_id}
                       </code>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyToClipboard(span.request_id)}
+                        onClick={() => copyToClipboard(displaySpan.request_id)}
                         className="h-6 w-6 p-0"
                       >
                         <Copy className="w-3 h-3" />
@@ -470,7 +480,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                   Source
                 </h4>
                 <span className="text-sm text-gray-900 dark:text-gray-100">
-                  {span.request_id_source || 'Not available'}
+                  {displaySpan.request_id_source || 'Not available'}
                 </span>
               </div>
             </div>
@@ -502,14 +512,14 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Operation Name</h4>
                 <code className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded p-2 text-sm font-mono block text-gray-900 dark:text-gray-100">
-                  {span.name || 'Not available'}
+                  {displaySpan.name || 'Not available'}
                 </code>
               </div>
 
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Operation Type</h4>
                 <Badge variant="outline" className="text-sm border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
-                  {span.operation_type || 'unknown'}
+                  {displaySpan.operation_type || 'unknown'}
                 </Badge>
               </div>
 
@@ -518,9 +528,9 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Request ID:</span>
-                    {span.request_id ? (
+                    {displaySpan.request_id ? (
                       <code className="bg-white dark:bg-gray-900 px-2 py-1 rounded text-xs border border-gray-200 dark:border-gray-600">
-                        {span.request_id}
+                        {displaySpan.request_id}
                       </code>
                     ) : (
                       <span className="text-gray-500 dark:text-gray-400">Not available</span>
@@ -528,7 +538,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Source:</span>
-                    <span className="text-gray-900 dark:text-gray-100">{span.request_id_source || 'Not available'}</span>
+                    <span className="text-gray-900 dark:text-gray-100">{displaySpan.request_id_source || 'Not available'}</span>
                   </div>
                 </div>
               </div>
@@ -538,9 +548,9 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Captured At:</span>
-                    {span.captured_at ? (
+                    {displaySpan.captured_at ? (
                       <code className="bg-white dark:bg-gray-900 px-2 py-1 rounded text-xs border border-gray-200 dark:border-gray-600">
-                        {span.captured_at}
+                        {displaySpan.captured_at}
                       </code>
                     ) : (
                       <span className="text-gray-500 dark:text-gray-400">Not available</span>
