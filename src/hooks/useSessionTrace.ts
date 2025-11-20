@@ -15,16 +15,14 @@ export const useSessionTrace = (sessionId: string | null) => {
 };
 
 export const useSessionSpans = (sessionTrace: any) => {
-  // ALWAYS call useSupabaseQuery - never conditionally
   const result = useSupabaseQuery("pype_voice_spans", {
-    select: "*",
+    select: "id, span_id, trace_key, name, operation_type, start_time_ns, end_time_ns, duration_ms, status, parent_span_id, captured_at",
     filters: sessionTrace?.trace_key 
       ? [{ column: "trace_key", operator: "eq", value: sessionTrace.trace_key }] 
-      : [{ column: "trace_key", operator: "eq", value: "no-trace-key" }], // Use trace_key field instead of id
+      : [{ column: "trace_key", operator: "eq", value: "no-trace-key" }],
     orderBy: { column: "start_time_ns", ascending: true },
   });
 
-  // Return empty data if no trace_key, but still call the hook
   if (!sessionTrace?.trace_key) {
     return {
       ...result,

@@ -1,4 +1,4 @@
-// app/api/call-logs/route.ts
+// app/api/send-logs/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
