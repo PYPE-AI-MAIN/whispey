@@ -139,8 +139,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
       span_id: span.span_id || span.context?.span_id || span.id || 'unknown',
       parent_span_id: span.parent_span_id || null,
       name: span.name || 'Unknown Operation',
-      // FIX: captured_at is already a proper timestamp, don't convert
-      captured_at: new Date(span.captured_at).getTime() / 1000, // Convert to Unix seconds
+      captured_at: new Date(span.captured_at).getTime() / 1000,
       duration_ms: span.duration_ms || 0,
       operation_type: span.operation_type || 'other',
       session_id: span.session_id || '',

@@ -8,7 +8,7 @@ import { OTelSpan } from "@/types/openTelemetry";
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import TraceDetailSheet from "./TraceDetailSheet/TraceDetailSheet"
 import { cn } from "@/lib/utils"
-import { useSessionSpans, useSessionTrace } from "@/hooks/useSessionTrace"
+import { useSessionTrace, useSessionSpansInfinite } from "@/hooks/useSessionTrace" // Changed import
 import SessionTraceView from "./SessionTraceView"
 import WaterfallView from "./WaterFallView";
 import { getAgentPlatform } from "@/utils/agentDetection";
@@ -46,7 +46,6 @@ interface TraceLog {
   call_success?: boolean
   lesson_completed?: boolean
   bug_report?: boolean
-  // Add metadata field for bug reports
   metadata?: any
 }
 
@@ -57,11 +56,17 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   const [activeTab, setActiveTab] = useState("turns");
 
 
-  const { data: sessionTrace, loading: traceLoading } = useSessionTrace(sessionId || null);
-  const shouldFetchSpans = Boolean(sessionTrace?.trace_key);
-  const { data: sessionSpans, loading: spansLoading } = useSessionSpans(
-    shouldFetchSpans ? sessionTrace : null
-  );
+  const { data: sessionTrace, isLoading: traceLoading } = useSessionTrace(sessionId || null);
+  
+  // Use the infinite scroll hook instead of the old hook
+  const { 
+    allSpans: sessionSpans, 
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading: spansLoading,
+    totalCount: totalSpansCount
+  } = useSessionSpansInfinite(sessionTrace);
 
 
   // Get call data to access bug report metadata
@@ -87,7 +92,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   // trace data
   const {
     data: traceData,
-    loading: traceDataLoading,
+    isLoading: traceDataLoading,
     error,
   } = useSupabaseQuery("pype_voice_metrics_logs", {
     select: "*",
@@ -320,7 +325,7 @@ const handleRowClick = (trace: TraceLog) => {
     return (
       <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
         <div className="text-center text-red-600 dark:text-red-400 text-sm">
-          Error loading traces: {error}
+          Error loading traces: {error.message}
         </div>
       </div>
     )
@@ -344,30 +349,31 @@ const handleRowClick = (trace: TraceLog) => {
               Conversation Turns ({processedTraces.length})
             </button>
             {sessionSpans && sessionSpans.length > 0 && (
-              <>
-            <button 
-              onClick={() => setActiveTab("trace")}
-              className={cn(
-                "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                activeTab === "trace" 
-                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              )}
-            >
-              Session Trace ({sessionSpans?.length || 0} spans)
-            </button>
-            <button 
-              onClick={() => setActiveTab("waterfall")}
-              className={cn(
-                "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                activeTab === "waterfall" 
-                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              )}
-            >
-              Timeline View ({sessionSpans?.length || 0} spans)
-            </button>
-            </>)}
+            <>
+              <button 
+                onClick={() => setActiveTab("trace")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  activeTab === "trace" 
+                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                )}
+              >
+                Session Trace ({totalSpansCount} spans)
+              </button>
+              <button 
+                onClick={() => setActiveTab("waterfall")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  activeTab === "waterfall" 
+                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                )}
+              >
+                Timeline View ({totalSpansCount} spans)
+              </button>
+            </>
+          )}
           </nav>
         </div>
   
@@ -553,8 +559,13 @@ const handleRowClick = (trace: TraceLog) => {
         
         {activeTab === "trace" && (
           <SessionTraceView 
-            trace={{...sessionTrace, spans: sessionSpans}} 
-            loading={traceLoading || spansLoading} 
+            trace={sessionTrace} 
+            loading={traceLoading || spansLoading}
+            spans={sessionSpans}
+            hasNextPage={hasNextPage}
+            fetchNextPage={fetchNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            totalCount={totalSpansCount}
           />
         )}
 

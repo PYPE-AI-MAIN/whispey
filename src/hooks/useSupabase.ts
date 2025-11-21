@@ -1,166 +1,148 @@
-// hooks/useSupabase.ts - COMPLETE FIXED VERSION
-'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase'
+// hooks/useSupabase.ts
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { createClient } from '@supabase/supabase-js';
 
-export const useInfiniteScroll = (table: string, options: any = {}) => {
-  const [data, setData] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [initialLoad, setInitialLoad] = useState(true)
-  const offsetRef = useRef(0)
-  const loadingRef = useRef(false) // Prevent concurrent requests
-  
-  // FIXED: Handle null options properly
-  const safeOptions = options || {}
-  const limit = safeOptions.limit || 50
-  const shouldFetch = options !== null && options !== undefined
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-  // Memoize options to prevent unnecessary re-renders
-  const optionsHash = JSON.stringify(safeOptions)
+export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in";
 
-  const fetchData = useCallback(async (reset = false) => {
-    // FIXED: Don't fetch if options is null (not ready)
-    if (!shouldFetch) {
-      setLoading(false)
-      setInitialLoad(false)
-      return
-    }
-
-    // Prevent concurrent requests
-    if (loadingRef.current) return
-    
-    loadingRef.current = true
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const offset = reset ? 0 : offsetRef.current
-      
-      let query = supabase
-        .from(table)
-        .select(safeOptions.select || '*') // FIXED: Use safeOptions
-        .range(offset, offset + limit - 1)
-      
-      // Apply filters if provided
-      if (safeOptions.filters) { // FIXED: Use safeOptions
-        safeOptions.filters.forEach((filter: any) => {
-          query = query.filter(filter.column, filter.operator, filter.value)
-        })
-      }
-      
-      // Apply ordering
-      if (safeOptions.orderBy) { // FIXED: Use safeOptions
-        query = query.order(safeOptions.orderBy.column, { ascending: safeOptions.orderBy.ascending })
-      }
-      
-      const { data: newData, error } = await query
-      
-      if (error) throw error
-      
-      const fetchedData = newData || []
-      
-      if (reset) {
-        setData(fetchedData)
-        offsetRef.current = fetchedData.length
-      } else {
-        // Remove duplicates by checking existing IDs
-        setData(prevData => {
-          const existingIds = new Set(prevData.map(item => item.id))
-          //@ts-ignore
-          const uniqueNewData = fetchedData.filter(item => !existingIds.has(item.id))
-          return [...prevData, ...uniqueNewData]
-        })
-        offsetRef.current += fetchedData.length
-      }
-      
-      setHasMore(fetchedData.length === limit)
-      
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-      loadingRef.current = false
-    }
-  }, [table, optionsHash, limit, shouldFetch]) // FIXED: Add shouldFetch to deps
-
-  const loadMore = useCallback(() => {
-    if (!loadingRef.current && hasMore && !initialLoad && shouldFetch) { // FIXED: Add shouldFetch check
-      fetchData(false)
-    }
-  }, [fetchData, hasMore, initialLoad, shouldFetch]) // FIXED: Add shouldFetch to deps
-
-  const refresh = useCallback(() => {
-    if (!shouldFetch) return // FIXED: Don't refresh if not ready
-    
-    offsetRef.current = 0
-    setInitialLoad(true)
-    fetchData(true).then(() => setInitialLoad(false))
-  }, [fetchData, shouldFetch]) // FIXED: Add shouldFetch to deps
-
-  // FIXED: Initial load only when ready
-  useEffect(() => {
-    if (initialLoad && shouldFetch) {
-      fetchData(true).then(() => setInitialLoad(false))
-    } else if (!shouldFetch) {
-      // Reset state when not ready to fetch
-      setData([])
-      setLoading(false)
-      setError(null)
-      setHasMore(true)
-      setInitialLoad(true)
-      offsetRef.current = 0
-    }
-  }, [fetchData, initialLoad, shouldFetch])
-
-  return { data, loading, hasMore, error, loadMore, refresh }
+export interface Filter {
+  column: string;
+  operator: FilterOperator;
+  value: any;
 }
 
-// Keep the existing useSupabaseQuery unchanged
-export const useSupabaseQuery = (table: string, options: any = {}) => {
-  const [data, setData] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export interface QueryOptions {
+  select?: string | null;
+  filters?: Filter[];
+  orderBy?: { column: string; ascending: boolean };
+  limit?: number;
+}
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      let query = supabase
-        .from(table)
-        .select(options.select || '*')
+// Apply filters to a Supabase query
+const applyFilters = (query: any, filters: Filter[]) => {
+  filters.forEach((filter) => {
+    switch (filter.operator) {
+      case "eq":
+        query = query.eq(filter.column, filter.value);
+        break;
+      case "neq":
+        query = query.neq(filter.column, filter.value);
+        break;
+      case "gt":
+        query = query.gt(filter.column, filter.value);
+        break;
+      case "gte":
+        query = query.gte(filter.column, filter.value);
+        break;
+      case "lt":
+        query = query.lt(filter.column, filter.value);
+        break;
+      case "lte":
+        query = query.lte(filter.column, filter.value);
+        break;
+      case "like":
+        query = query.like(filter.column, filter.value);
+        break;
+      case "ilike":
+        query = query.ilike(filter.column, filter.value);
+        break;
+      case "in":
+        query = query.in(filter.column, filter.value);
+        break;
+    }
+  });
+  return query;
+};
+
+// Original useSupabaseQuery with generic type
+export const useSupabaseQuery = <T = any>(
+  table: string, 
+  options: QueryOptions | null | undefined = {}
+) => {
+  return useQuery<T[]>({
+    queryKey: [table, options],
+    queryFn: async () => {
+      if (!options) return []; // Return empty array if options is null
       
+      let query = supabase.from(table).select(options.select || "*");
+
       if (options.filters) {
-        options.filters.forEach((filter: any) => {
-          query = query.filter(filter.column, filter.operator, filter.value)
-        })
+        query = applyFilters(query, options.filters);
       }
-      
+
       if (options.orderBy) {
-        query = query.order(options.orderBy.column, { ascending: options.orderBy.ascending })
+        query = query.order(options.orderBy.column, {
+          ascending: options.orderBy.ascending,
+        });
       }
-      
+
       if (options.limit) {
-        query = query.limit(options.limit)
+        query = query.limit(options.limit);
       }
-      
-      const { data, error } = await query
-      
-      if (error) throw error
-      
-      setData(data || [])
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [table, JSON.stringify(options)])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+      const { data, error } = await query;
 
-  return { data, loading, error, refetch: fetchData }
+      if (error) throw error;
+      return (data || []) as T[];
+    },
+    enabled: options !== null && options !== undefined, // Only run query if options exist
+  });
+};
+
+// New: Infinite query hook for cursor-based pagination with generic type
+export interface InfiniteQueryOptions extends QueryOptions {
+  pageSize: number;
+  cursorColumn: string;
 }
+
+export const useSupabaseInfiniteQuery = <T = any>(
+  table: string,
+  options: InfiniteQueryOptions
+) => {
+  return useInfiniteQuery<T[]>({
+    queryKey: [table, "infinite", options],
+    queryFn: async ({ pageParam }: { pageParam: any }) => {
+      let query = supabase.from(table).select(options.select || "*");
+
+      // Apply base filters (excluding cursor)
+      if (options.filters) {
+        query = applyFilters(query, options.filters);
+      }
+
+      // Apply cursor for pagination (if pageParam exists)
+      if (pageParam !== undefined && pageParam !== null) {
+        query = query.gt(options.cursorColumn, pageParam);
+      }
+
+      // Apply ordering
+      if (options.orderBy) {
+        query = query.order(options.orderBy.column, {
+          ascending: options.orderBy.ascending,
+        });
+      }
+
+      // Apply page size limit
+      query = query.limit(options.pageSize);
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return (data || []) as T[];
+    },
+    getNextPageParam: (lastPage: T[]) => {
+      // If page is empty or less than pageSize, no more pages
+      if (!lastPage || lastPage.length < options.pageSize) {
+        return undefined;
+      }
+
+      // Return the cursor value from the last item
+      const lastItem = lastPage[lastPage.length - 1] as any;
+      return lastItem ? lastItem[options.cursorColumn] : undefined;
+    },
+    initialPageParam: undefined,
+  });
+};

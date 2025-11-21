@@ -1,38 +1,55 @@
+// src/components/observability/SessionTraceView.tsx
 import { Activity, MessageCircle, ChevronDown, ChevronRight, User, Bot, Settings, ChevronsUpDown } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import SpanDetailSheet from './SpanDetailSheet';
-import { useSessionSpans } from "@/hooks/useSessionTrace";
+import { Span } from "@/hooks/useSessionTrace";
 
 interface SessionTraceViewProps {
   trace: any;
   loading: boolean;
+  spans?: Span[];
+  hasNextPage?: boolean;
+  fetchNextPage?: () => void;
+  isFetchingNextPage?: boolean;
+  totalCount?: number;
 }
+
 
 interface ConversationTurn {
   id: string;
   type: 'session_management' | 'user_turn' | 'assistant_turn';
   title: string;
-  spans: any[];
+  spans: Span[];
   startTime: number;
   duration: number;
-  mainSpan: any;
+  mainSpan: Span;
 }
 
-const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
-  const [selectedSpan, setSelectedSpan] = useState<any>(null);
+const SessionTraceView = ({ 
+  trace, 
+  loading, 
+  spans: providedSpans = [],
+  hasNextPage = false,
+  fetchNextPage = () => {},
+  isFetchingNextPage = false,
+  totalCount = 0
+}: SessionTraceViewProps) => {
+  const [selectedSpan, setSelectedSpan] = useState<Span | null>(null);
   const [expandedTurns, setExpandedTurns] = useState<Set<string>>(new Set());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const { data: spans, loading: spansLoading } = useSessionSpans(trace);
+  // Use the provided spans directly instead of fetching
+  const allSpans = providedSpans;
 
-  // Helper functions defined before useMemo
-  const getTurnType = (span: any): ConversationTurn['type'] => {
+  // Helper functions
+  const getTurnType = (span: Span): ConversationTurn['type'] => {
     const name = span.name?.toLowerCase() || '';
     if (name === 'user_turn') return 'user_turn';
     if (name === 'assistant_turn') return 'assistant_turn';
     return 'session_management';
   };
 
-  const getTurnTitle = (span: any): string => {
+  const getTurnTitle = (span: Span): string => {
     const name = span.name?.toLowerCase() || '';
     switch (name) {
       case 'user_turn': return `user_turn`;
@@ -43,7 +60,7 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
     }
   };
 
-  const createTurn = (spans: any[], type: ConversationTurn['type'], title: string, id: string): ConversationTurn => {
+  const createTurn = (spans: Span[], type: ConversationTurn['type'], title: string, id: string): ConversationTurn => {
     const startTimes = spans.map(s => s.captured_at || 0).filter(t => t > 0);
     const startTime = startTimes.length > 0 ? Math.min(...startTimes) : 0;
     
@@ -62,40 +79,42 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
     };
   };
 
-  // Memoized turns to prevent infinite re-renders
+  // Build turns from allSpans
   const turns = useMemo(() => {
-    if (!spans?.length) return [];
+    if (!allSpans?.length) return [];
 
-    // Use spans instead of trace.spans
-    const sortedSpans = [...spans].sort((a, b) => a.start_time_ns - b.start_time_ns);
+    const sortedSpans = [...allSpans].sort((a, b) => a.start_time_ns - b.start_time_ns);
 
     // Build span hierarchy
-    const spanMap = new Map();
+    const spanMap = new Map<string, Span>();
     sortedSpans.forEach(span => {
       const spanId = span.span_id || span.id;
       spanMap.set(spanId, { ...span, children: [], level: 0, spanId });
     });
 
-    // Create parent-child relationships and calculate levels
+    // Create parent-child relationships
     sortedSpans.forEach(span => {
       const spanId = span.span_id || span.id;
       const parentId = span.parent_span_id;
       const spanData = spanMap.get(spanId);
       
-      if (parentId && spanMap.has(parentId)) {
+      if (spanData && parentId && spanMap.has(parentId)) {
         const parent = spanMap.get(parentId);
-        parent.children.push(spanData);
-        spanData.level = parent.level + 1;
+        if (parent) {
+          if (!parent.children) parent.children = [];
+          parent.children.push(spanData);
+          spanData.level = (parent.level || 0) + 1;
+        }
       }
     });
 
-    // Find root spans and flatten hierarchy while maintaining nesting levels
-    const flattenSpan = (span: any): any[] => {
+    // Flatten hierarchy
+    const flattenSpan = (span: Span): Span[] => {
       const result = [span];
       if (span.children && span.children.length > 0) {
         span.children
-          .sort((a: any, b: any) => (a.captured_at || a.start_time_ns || 0) - (b.captured_at || b.start_time_ns || 0))
-          .forEach((child: any) => {
+          .sort((a, b) => (a.captured_at || a.start_time_ns || 0) - (b.captured_at || b.start_time_ns || 0))
+          .forEach((child) => {
             result.push(...flattenSpan(child));
           });
       }
@@ -107,40 +126,34 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
     );
 
     const orderedSpans = rootSpans
-      .sort((a: any, b: any) => (a.captured_at || a.start_time_ns || 0) - (b.captured_at || b.start_time_ns || 0))
+      .sort((a, b) => (a.captured_at || a.start_time_ns || 0) - (b.captured_at || b.start_time_ns || 0))
       .flatMap(span => flattenSpan(span));
 
     // Create conversation turn groups
     const turnGroups: ConversationTurn[] = [];
-    let currentTurnSpans: any[] = [];
+    let currentTurnSpans: Span[] = [];
 
     orderedSpans.forEach((span) => {
       const spanName = span.name?.toLowerCase() || '';
       
-      // Check if this span starts a new turn
       const isNewTurn = spanName === 'user_turn' || 
                        spanName === 'assistant_turn' || 
                        spanName === 'start_agent_activity' || 
                        spanName === 'drain_agent_activity';
 
       if (isNewTurn) {
-        // Finalize previous turn if exists
         if (currentTurnSpans.length > 0) {
           const turnType = getTurnType(currentTurnSpans[0]);
           const title = getTurnTitle(currentTurnSpans[0]);
           const id = `turn-${turnGroups.length + 1}-${turnType}`;
           turnGroups.push(createTurn(currentTurnSpans, turnType, title, id));
         }
-
-        // Start new turn
         currentTurnSpans = [span];
       } else if (currentTurnSpans.length > 0) {
-        // Add to current turn if we're inside one
         currentTurnSpans.push(span);
       }
     });
 
-    // Handle the final turn
     if (currentTurnSpans.length > 0) {
       const turnType = getTurnType(currentTurnSpans[0]);
       const title = getTurnTitle(currentTurnSpans[0]);
@@ -149,16 +162,34 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
     }
 
     return turnGroups;
-  }, [spans])
+  }, [allSpans]);
 
-  useMemo(() => {
+  // Expand all turns on initial load
+  useEffect(() => {
     if (turns.length > 0) {
       setExpandedTurns(new Set(turns.map(turn => turn.id)));
     }
   }, [turns]);
 
+  // Infinite scroll handler
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-  if (loading || spansLoading) {
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+
+      if (isNearBottom && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -169,7 +200,7 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
     );
   }
 
-  if (!spans?.length) {
+  if (!allSpans?.length && !hasNextPage) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center text-gray-500 dark:text-gray-400">
@@ -186,16 +217,6 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  const formatTime = (timestamp: number) => {
-    if (!timestamp) return '';
-    return new Date(timestamp * 1000).toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
-    });
-  };
-
   const toggleTurn = (turnId: string) => {
     const newExpanded = new Set(expandedTurns);
     if (newExpanded.has(turnId)) {
@@ -208,10 +229,8 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
 
   const toggleAllTurns = () => {
     if (expandedTurns.size === turns.length) {
-      // All are expanded, collapse all
       setExpandedTurns(new Set());
     } else {
-      // Some or none are expanded, expand all
       setExpandedTurns(new Set(turns.map(turn => turn.id)));
     }
   };
@@ -232,44 +251,43 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
       case 'user_interaction': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
       case 'assistant_interaction': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
       case 'tool': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300';
-      case 'other': return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
       default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
     }
   };
 
-  // Check if span has children in next spans
-  const hasChildren = (currentSpan: any, allSpans: any[], currentIndex: number) => {
+  const hasChildren = (currentSpan: Span, allSpans: Span[], currentIndex: number) => {
     for (let i = currentIndex + 1; i < allSpans.length; i++) {
-      if (allSpans[i].level <= currentSpan.level) break;
-      if (allSpans[i].level === currentSpan.level + 1) return true;
+      if ((allSpans[i].level || 0) <= (currentSpan.level || 0)) break;
+      if ((allSpans[i].level || 0) === (currentSpan.level || 0) + 1) return true;
     }
     return false;
   };
 
-  // Check if this is the last child at this level
-  const isLastChildAtLevel = (currentSpan: any, allSpans: any[], currentIndex: number) => {
+  const isLastChildAtLevel = (currentSpan: Span, allSpans: Span[], currentIndex: number) => {
     for (let i = currentIndex + 1; i < allSpans.length; i++) {
       const nextSpan = allSpans[i];
-      if (nextSpan.level < currentSpan.level) return true;
-      if (nextSpan.level === currentSpan.level) return false;
+      if ((nextSpan.level || 0) < (currentSpan.level || 0)) return true;
+      if ((nextSpan.level || 0) === (currentSpan.level || 0)) return false;
     }
     return true;
   };
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-        {/* Compact Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900"
+      >
+        {/* Header */}
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 sticky top-0 z-50">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Session Trace</h2>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 ">Session Trace</h2>
             <div className="flex items-center justify-center gap-2">
               <div className="flex items-center">
                 <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-2"></div>
                 <button
                   onClick={toggleAllTurns}
                   className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                  title={expandedTurns.size === turns.length ? "Collapse all turns" : "Expand all turns"}
                 >
                   <ChevronsUpDown className="w-3 h-3" />
                   <span className="font-medium">
@@ -279,7 +297,15 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
                 <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {turns.length} turns • {spans?.length || 0} spans
+                {hasNextPage ? (
+                  <>
+                    {allSpans.length}/{totalCount} spans loaded
+                  </>
+                ) : (
+                  <>
+                    {totalCount} spans
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -311,7 +337,7 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
                 </div>
               </div>
 
-              {/* Nested Spans with Tree Lines */}
+              {/* Nested Spans */}
               {expandedTurns.has(turn.id) && (
                 <div className="bg-gray-50/30 dark:bg-gray-800/50 relative">
                   {turn.spans.map((span, index) => {
@@ -329,14 +355,12 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
                       >
                         {/* Tree connector lines */}
                         <div className="absolute left-0 top-0 h-full pointer-events-none">
-                          {/* Draw vertical lines for each parent level */}
-                          {Array.from({ length: span.level }, (_, levelIndex) => {
-                            const isCurrentLevel = levelIndex === span.level - 1;
+                          {Array.from({ length: span.level || 0 }, (_, levelIndex) => {
+                            const isCurrentLevel = levelIndex === (span.level || 0) - 1;
                             const xPosition = (levelIndex + 1) * 20 + 4;
                             
                             return (
                               <div key={levelIndex}>
-                                {/* Vertical line */}
                                 {!isCurrentLevel && (
                                   <div
                                     className="absolute bg-gray-300 dark:bg-gray-600"
@@ -349,10 +373,8 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
                                   />
                                 )}
                                 
-                                {/* Current level connectors */}
                                 {isCurrentLevel && (
                                   <>
-                                    {/* Vertical line (top half if not first, bottom half if has children) */}
                                     <div
                                       className="absolute bg-gray-300 dark:bg-gray-600"
                                       style={{
@@ -363,7 +385,6 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
                                       }}
                                     />
                                     
-                                    {/* Horizontal line to span */}
                                     <div
                                       className="absolute bg-gray-300 dark:bg-gray-600"
                                       style={{
@@ -382,10 +403,9 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
                         
                         <div 
                           className="py-1.5 flex items-center justify-between relative z-10"
-                          style={{ paddingLeft: `${span.level * 20 + 20}px`, paddingRight: '12px' }}
+                          style={{ paddingLeft: `${(span.level || 0) * 20 + 20}px`, paddingRight: '12px' }}
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            {/* Expand/collapse indicator for spans with children */}
                             {hasChildSpans ? (
                               <ChevronDown className="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                             ) : (
@@ -416,6 +436,21 @@ const SessionTraceView = ({ trace, loading }: SessionTraceViewProps) => {
               )}
             </div>
           ))}
+
+          {/* Loading indicator for next page */}
+          {isFetchingNextPage && (
+            <div className="py-4 text-center">
+              <Activity className="w-4 h-4 mx-auto mb-2 opacity-50 animate-spin" />
+              <div className="text-xs text-gray-500 dark:text-gray-400">Loading more spans...</div>
+            </div>
+          )}
+
+          {/* End of data indicator */}
+          {!hasNextPage && allSpans.length > 0 && (
+            <div className="py-4 text-center text-xs text-gray-400 dark:text-gray-500">
+              All spans loaded ({allSpans.length} total)
+            </div>
+          )}
         </div>
       </div>
 

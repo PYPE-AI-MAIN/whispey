@@ -8,7 +8,7 @@ import TracesTable from "@/components/observabilty/TracesTable"
 import { useState, use } from "react"
 import { extractS3Key } from "@/utils/s3"
 import AudioPlayer from "@/components/AudioPlayer"
-import { useSupabaseQuery } from "@/hooks/useSupabase"
+import { FilterOperator, useSupabaseQuery } from "@/hooks/useSupabase"
 import ObservabilityStats from "@/components/observabilty/ObservabilityStats"
 
 interface ObservabilityPageProps {
@@ -30,20 +30,19 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     timeRange: "24h"
   })
 
-  // Build query filters based on whether we have sessionId or agentId
-  const queryFilters = sessionId 
+  const queryFilters: Array<{ column: string; operator: FilterOperator; value: string }> = sessionId 
     ? [{ column: "id", operator: "eq", value: sessionId }]
     : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentid }]
 
 
-  const { data: callData, loading: callLoading, error: callError } = useSupabaseQuery("pype_voice_call_logs", {
+  const { data: callData, isLoading: callLoading, error: callError } = useSupabaseQuery("pype_voice_call_logs", {
     select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata",
     filters: queryFilters,
     orderBy: { column: "created_at", ascending: false },
     limit: 1
   })
 
-  const { data: agentData, loading: agentLoading, error: agentError } = useSupabaseQuery("pype_voice_agents", {
+  const { data: agentData, isLoading: agentLoading, error: agentError } = useSupabaseQuery("pype_voice_agents", {
     select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
     filters: [{ column: "id", operator: "eq", value: resolvedParams.agentid }],
     limit: 1
