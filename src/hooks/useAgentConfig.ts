@@ -344,7 +344,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
   return {
     selectedProvider: mappedProvider,
     selectedModel: modelValue,
-    selectedVoice: assistant.tts?.voice_id || assistant.tts?.speaker || getFallback(null, 'tts.voice_id'),
+    selectedVoice: assistant.tts?.voice_id || assistant.tts?.speaker || assistant.tts?.voice_name || getFallback(null, 'tts.voice_id'),
     selectedLanguage: assistant.tts?.language || assistant.stt?.language || getFallback(null, 'stt.language'),
     firstMessageMode: firstMessageModeValue,
     customFirstMessage: customFirstMessageValue,
@@ -380,7 +380,12 @@ export const buildFormValuesFromAgent = (assistant: any) => {
               useSpeakerBoost: assistant.tts?.voice_settings?.use_speaker_boost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
               speed: assistant.tts?.voice_settings?.speed ?? getFallback(null, 'tts.voice_settings.speed'),
             }
-          : {},
+          : assistant.tts?.name === "google"
+            ? {
+                voice_name: assistant.tts?.voice_name ?? getFallback(null, 'tts.voice_name'),
+                gender: assistant.tts?.gender,
+              }
+            : {},
     sttProvider: assistant.stt?.provider || assistant.stt?.name || getFallback(null, 'stt.name'),
     sttModel: assistant.stt?.model || getFallback(null, 'stt.model'),
     sttConfig: {

@@ -43,6 +43,16 @@ interface SarvamConfig {
   enable_preprocessing: boolean;  // Changed from enablePreprocessing
 }
 
+interface GoogleTTSVoice {
+  name: string;
+  languageCodes: string[];
+  ssmlGender: string;
+  naturalSampleRateHertz: number;
+  displayName: string;
+  primaryLanguage: string;
+  gender: string;
+}
+
 interface VoiceSelectionPanelProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -55,6 +65,12 @@ interface VoiceSelectionPanelProps {
   elevenLabsVoices: ElevenLabsVoice[];
   setElevenLabsVoices: React.Dispatch<React.SetStateAction<ElevenLabsVoice[]>>;
   allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[];
+  googleTTSVoices: GoogleTTSVoice[];
+  setGoogleTTSVoices: React.Dispatch<React.SetStateAction<GoogleTTSVoice[]>>;
+  isLoadingGoogleTTS: boolean;
+  googleTTSError: string | null;
+  googleTTSFetched: boolean;
+  onFetchGoogleTTS: () => void;
 }
 
 const CopyButton = ({ text, className = "" }: { text: string, className?: string }) => {
@@ -184,6 +200,49 @@ const ElevenLabsVoiceCard = ({
   )
 }
 
+const GoogleTTSVoiceCard = ({ 
+  voice, 
+  isSelected, 
+  onClick 
+}: { 
+  voice: GoogleTTSVoice, 
+  isSelected: boolean, 
+  onClick: () => void 
+}) => {
+  return (
+    <div
+      onClick={onClick}
+      className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
+        isSelected 
+          ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10' 
+          : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/5'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+          {voice.displayName.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">{voice.displayName}</h3>
+            {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+            <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300">{voice.name}</code>
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
+              {voice.gender}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{voice.primaryLanguage}</span>
+            <span className="text-xs text-gray-400">•</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{voice.naturalSampleRateHertz}Hz</span>
+          </div>
+        </div>
+        <CopyButton text={voice.name} />
+      </div>
+    </div>
+  )
+}
+
 const EmptyState = ({ 
   icon: Icon, 
   title, 
@@ -218,7 +277,13 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   setSarvamConfig,
   elevenLabsVoices,
   setElevenLabsVoices,
-  allSarvamVoices
+  allSarvamVoices,
+  googleTTSVoices,
+  setGoogleTTSVoices,
+  isLoadingGoogleTTS,
+  googleTTSError,
+  googleTTSFetched,
+  onFetchGoogleTTS
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoadingElevenLabs, setIsLoadingElevenLabs] = useState(false)
@@ -319,12 +384,19 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
     (v.description && v.description.toLowerCase().includes(searchTerm.toLowerCase())) || 
     v.voice_id.toLowerCase().includes(searchTerm.toLowerCase()) 
   )
+  
+  const filteredGoogleTTS = googleTTSVoices.filter(v => 
+    v.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.primaryLanguage.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    v.gender.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   return (
     <div className={`${showSettings ? 'w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} flex flex-col`}>
       <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col flex-1 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <TabsList className="grid w-full grid-cols-2 h-10">
+          <TabsList className="grid w-full grid-cols-3 h-10">
             <TabsTrigger value="sarvam" className="text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full"></div>
@@ -337,6 +409,13 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
                 <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full"></div>
                 ElevenLabs
                 <Badge variant="secondary" className="text-xs">{elevenLabsVoices.length}</Badge>
+              </div>
+            </TabsTrigger>
+            <TabsTrigger value="google" className="text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"></div>
+                Google TTS
+                <Badge variant="secondary" className="text-xs">{googleTTSVoices.length}</Badge>
               </div>
             </TabsTrigger>
           </TabsList>
@@ -461,6 +540,77 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
                           isSelected={isSelected}
                           onClick={() => {
                             onVoiceSelect(voice.voice_id, 'elevenlabs')
+                          }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="google" className="h-full p-6 mt-0 flex flex-col overflow-hidden">
+            <div className="flex gap-3 mb-6 flex-shrink-0">
+              <div className="flex-1 relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input 
+                  placeholder="Search voices..." 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                  className="pl-10 h-10" 
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  onFetchGoogleTTS()
+                }} 
+                disabled={isLoadingGoogleTTS} 
+                className="h-10 px-4"
+              >
+                {isLoadingGoogleTTS && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                Refresh
+              </Button>
+            </div>
+
+            <div className="flex-1 min-h-0">
+              {isLoadingGoogleTTS ? (
+                <EmptyState
+                  icon={Loader2}
+                  title="Loading voices..."
+                  description="Fetching voices from Google Cloud TTS."
+                />
+              ) : googleTTSError ? (
+                <EmptyState
+                  icon={AlertCircle}
+                  title="Failed to load voices"
+                  description={googleTTSError}
+                  actions={
+                    <Button variant="outline" onClick={() => {
+                      onFetchGoogleTTS()
+                    }}>
+                      Try Again
+                    </Button>
+                  }
+                />
+              ) : filteredGoogleTTS.length === 0 ? (
+                <EmptyState
+                  icon={Mic}
+                  title="No voices found"
+                  description="No Google TTS voices match your search, or voices haven't been loaded yet."
+                />
+              ) : (
+                <div className="h-full overflow-y-auto space-y-3">
+                  {filteredGoogleTTS.map((voice) => {
+                    const isSelected = selectedVoiceId === voice.name && selectedProvider === 'google'
+                    return (
+                      <div key={voice.name} data-voice-id={voice.name}>
+                        <GoogleTTSVoiceCard
+                          voice={voice}
+                          isSelected={isSelected}
+                          onClick={() => {
+                            onVoiceSelect(voice.name, 'google')
                           }}
                         />
                       </div>
