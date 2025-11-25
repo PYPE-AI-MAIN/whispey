@@ -144,6 +144,7 @@ export function useMultiAssistantState({
         tts: (() => {
           const ttsProvider = currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name')
           const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
+          const isGoogle = ttsProvider === 'google'
           
           if (isSarvam) {
             // Sarvam TTS configuration - using ElevenLabs format
@@ -166,6 +167,20 @@ export function useMultiAssistantState({
                 enable_preprocessing: currentTtsConfig?.config?.enable_preprocessing ?? formValues.ttsVoiceConfig?.enable_preprocessing ?? true
               }
             }
+          } else if (isGoogle) {
+            // Google TTS configuration - only send voice_name and gender (lowercase)
+            const googleConfig = currentTtsConfig?.config || formValues.ttsVoiceConfig || {}
+            const result: any = {
+              name: 'google',
+              voice_name: formValues.selectedVoice || googleConfig.voice_name || getFallback(null, 'tts.voice_name')
+            }
+            
+            // Only add gender if it's specified, and convert to lowercase
+            if (googleConfig.gender && googleConfig.gender !== 'none') {
+              result.gender = googleConfig.gender.toLowerCase()
+            }
+            
+            return result
           } else {
             // ElevenLabs or other TTS configuration
             return {

@@ -28,12 +28,19 @@ interface ElevenLabsConfig {
   speed: number;
 }
 
+interface GoogleTTSConfig {
+  voice_name: string;
+  gender?: string;
+}
+
 interface SettingsPanelProps {
   selectedProvider: string;
   sarvamConfig: SarvamConfig;
   setSarvamConfig: React.Dispatch<React.SetStateAction<SarvamConfig>>;
   elevenLabsConfig: ElevenLabsConfig;
   setElevenLabsConfig: React.Dispatch<React.SetStateAction<ElevenLabsConfig>>;
+  googleTTSConfig: GoogleTTSConfig;
+  setGoogleTTSConfig: React.Dispatch<React.SetStateAction<GoogleTTSConfig>>;
 }
 
 const CopyButton = ({ text, className = "" }: { text: string, className?: string }) => {
@@ -99,7 +106,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   sarvamConfig,
   setSarvamConfig,
   elevenLabsConfig,
-  setElevenLabsConfig
+  setElevenLabsConfig,
+  googleTTSConfig,
+  setGoogleTTSConfig
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false)
 
@@ -115,7 +124,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <div className="flex items-center gap-2">
           <Settings className="w-5 h-5 text-gray-500" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {normalizedProvider === 'sarvam' ? 'Sarvam' : normalizedProvider === 'elevenlabs' ? 'ElevenLabs' : 'TTS'} Settings
+            {normalizedProvider === 'sarvam' ? 'Sarvam' : normalizedProvider === 'elevenlabs' ? 'ElevenLabs' : normalizedProvider === 'google' ? 'Google TTS' : 'TTS'} Settings
           </h3>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -349,6 +358,26 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
               </ConfigSection>
             )}
+          </>
+        ) : normalizedProvider === 'google' ? (
+          <>
+            <ConfigSection title="Basic Settings">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="google-voice-name">Voice Name</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="google-voice-name"
+                      value={googleTTSConfig.voice_name}
+                      onChange={(e) => setGoogleTTSConfig(prev => ({ ...prev, voice_name: e.target.value }))}
+                      placeholder="Enter voice name or select from list"
+                    />
+                    <CopyButton text={googleTTSConfig.voice_name} />
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Select a voice from the list or enter the voice name manually</p>
+                </div>
+              </div>
+            </ConfigSection>
           </>
         ) : (
           <div className="flex items-center justify-center h-full">
