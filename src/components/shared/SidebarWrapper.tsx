@@ -152,6 +152,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
       { pattern: '/:projectId/agents/sip-management' },
+      { pattern: '/:projectId/admin' },
       { pattern: '/:projectId/campaigns' },
       { pattern: '/:projectId/settings' },
       { pattern: '/:projectId/campaigns/:campaignId' },
@@ -167,6 +168,13 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agent List', 
           icon: 'Activity', 
           path: `/${projectId}/agents`, 
+          group: 'Agents' 
+        },
+        {
+          id: 'admin-panel', 
+          name: 'Admin Panel', 
+          icon: 'Shield', 
+          path: `/${projectId}/admin`, 
           group: 'Agents' 
         }
       ]
