@@ -441,6 +441,29 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                 )}
               </div>
 
+              {/* Tab Navigation */}
+              {!isMobile && agent && (
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-6">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                          activeTab === tab.id
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {tab.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               {/* VAPI button - show skeleton or button based on agent data */}
               {agentLoading ? (
                 <div className={`${isMobile ? 'h-8 w-24' : 'h-9 w-32'} bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse ml-4`}></div>
@@ -585,6 +608,35 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
         {isMobile && showMobileMenu && !showQuickStart && !showNoCallsMessage && (
           <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div className="px-4 py-3 space-y-3">
+              {/* Tab Navigation */}
+              {agent && (
+                <div>
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
+                  <div className="space-y-1">
+                    {tabs.map((tab) => {
+                      const Icon = tab.icon
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => {
+                            handleTabChange(tab.id)
+                            setShowMobileMenu(false)
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                            activeTab === tab.id
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {tab.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Period Filters */}
               <div>
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Period</div>
