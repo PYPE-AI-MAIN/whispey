@@ -62,11 +62,11 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
   }, [errors, componentFilter])
 
   const getErrorTypeColor = (errorType: string) => {
-    if (errorType?.includes('400')) return 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-    if (errorType?.includes('408')) return 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-    if (errorType?.includes('480')) return 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400'
-    if (errorType?.includes('500')) return 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-    return 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+    const type = errorType?.toLowerCase() || ''
+    if (type.includes('400') || type.includes('500')) return 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
+    if (type.includes('408') || type.includes('timeout')) return 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800'
+    if (type.includes('480')) return 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800'
+    return 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
   }
 
   const formatTimestamp = (timestamp: string) => {
@@ -84,6 +84,7 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
         <CardContent className="p-6">
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <span className="ml-3 text-gray-500">Loading error logs...</span>
           </div>
         </CardContent>
       </Card>
@@ -94,7 +95,12 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Error Logs & Customer Calls</CardTitle>
+          <div>
+            <CardTitle className="text-lg">Error Logs & Customer Calls</CardTitle>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {filteredErrors.length} error{filteredErrors.length !== 1 ? 's' : ''} found
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -139,11 +145,11 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {componentFilter 
                 ? `No errors found for component "${componentFilter}"`
-                : 'No errors found for the selected agents and time range'}
+                : 'No errors found in the selected time range'}
             </p>
           </div>
         ) : (
-          <div className="space-y-4 max-h-[700px] overflow-y-auto">
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
             {filteredErrors.map((error, index) => {
               const isConnectionError = (error.ErrorType || error.errorType || '').toLowerCase().includes('connection') ||
                                       (error.ErrorType || error.errorType || '').toLowerCase().includes('timeout')
@@ -151,32 +157,32 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
               return (
                 <div
                   key={index}
-                  className={`p-5 rounded-lg border-2 transition-all ${
+                  className={`p-4 rounded-lg border transition-all ${
                     isConnectionError
-                      ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
-                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                   }`}
                 >
                   {/* Header Row */}
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge 
-                        className={`${getErrorTypeColor(error.ErrorType || error.errorType || '')} font-semibold`}
+                        className={`${getErrorTypeColor(error.ErrorType || error.errorType || '')} font-medium border`}
                       >
                         {error.ErrorType || error.errorType || 'Unknown'}
                       </Badge>
                       {error.Component && (
-                        <Badge variant="outline" className="text-xs font-medium uppercase">
+                        <Badge variant="outline" className="text-xs uppercase">
                           {error.Component}
                         </Badge>
                       )}
                       {error.SipStatus && (
-                        <Badge variant="outline" className="text-xs bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700">
+                        <Badge variant="outline" className="text-xs bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300">
                           SIP {error.SipStatus}
                         </Badge>
                       )}
                       {error.HttpStatus && (
-                        <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                        <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
                           HTTP {error.HttpStatus}
                         </Badge>
                       )}
@@ -192,7 +198,7 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
                   {/* Error Message */}
                   {(error.ErrorMessage || error.Message) && (
                     <div className="mb-3">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <p className="text-sm text-gray-900 dark:text-gray-100">
                         {error.ErrorMessage || error.Message}
                       </p>
                     </div>
@@ -214,13 +220,13 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
                     {error.AgentId && agentMap[error.AgentId] && (
                       <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                         <User className="h-3.5 w-3.5" />
-                        <span className="font-medium">{agentMap[error.AgentId]}</span>
+                        <span>{agentMap[error.AgentId]}</span>
                       </div>
                     )}
                     {error.CustomerNumber && (
                       <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                         <User className="h-3.5 w-3.5" />
-                        <span className="font-medium">Customer: {error.CustomerNumber}</span>
+                        <span>Customer: {error.CustomerNumber}</span>
                       </div>
                     )}
                     {error.SessionId && (
@@ -241,4 +247,3 @@ const ErrorLogsDisplay: React.FC<ErrorLogsDisplayProps> = ({
 }
 
 export default ErrorLogsDisplay
-

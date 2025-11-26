@@ -152,7 +152,6 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents' },
       { pattern: '/:projectId/agents/api-keys' },
       { pattern: '/:projectId/agents/sip-management' },
-      { pattern: '/:projectId/admin' },
       { pattern: '/:projectId/campaigns' },
       { pattern: '/:projectId/settings' },
       { pattern: '/:projectId/campaigns/:campaignId' },
@@ -168,13 +167,6 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agent List', 
           icon: 'Activity', 
           path: `/${projectId}/agents`, 
-          group: 'Agents' 
-        },
-        {
-          id: 'admin-panel', 
-          name: 'Admin Panel', 
-          icon: 'Shield', 
-          path: `/${projectId}/admin`, 
           group: 'Agents' 
         }
       ]
@@ -247,6 +239,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
+      { pattern: '/:projectId/agents/:agentId/monitoring' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
@@ -270,6 +263,13 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Call Logs', 
           icon: 'List', 
           path: `/${projectId}/agents/${agentId}?tab=logs`,
+          group: 'LOGS' 
+        },
+        { 
+          id: 'monitoring', 
+          name: 'Error Monitoring', 
+          icon: 'AlertCircle', 
+          path: `/${projectId}/agents/${agentId}/monitoring`,
           group: 'LOGS' 
         }
       ]
