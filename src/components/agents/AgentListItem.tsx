@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { Switch } from '@/components/ui/switch'
 
 interface Agent {
   id: string
@@ -52,6 +53,9 @@ interface AgentListItemProps {
   isStartingAgent?: boolean
   isStoppingAgent?: boolean
   isMobile?: boolean
+  monitoringEnabled?: boolean
+  monitoringToggleLoading?: boolean
+  onToggleMonitoring?: (agent: Agent, nextEnabled: boolean) => void
 }
 
 const getAgentTypeIcon = (type: string) => {
@@ -197,6 +201,71 @@ const getStatusColor = (agent: Agent, runningAgents?: RunningAgent[], isLoading?
     : 'text-red-600 dark:text-red-400'
 }
 
+interface MonitoringToggleMenuItemProps {
+  agent: Agent
+  monitoringEnabled: boolean
+  monitoringToggleLoading: boolean
+  onToggleMonitoring?: (agent: Agent, nextEnabled: boolean) => void
+}
+
+const MonitoringToggleMenuItem: React.FC<MonitoringToggleMenuItemProps> = ({
+  agent,
+  monitoringEnabled,
+  monitoringToggleLoading,
+  onToggleMonitoring
+}) => {
+  if (!onToggleMonitoring) {
+    return null
+  }
+
+  const isDisabled = monitoringToggleLoading || (!agent.is_active && !monitoringEnabled)
+  const helperText = !agent.is_active && !monitoringEnabled
+    ? 'Activate agent to enable'
+    : monitoringEnabled
+      ? 'Monitoring is active'
+      : 'Start collecting telemetry'
+
+  return (
+    <>
+      <DropdownMenuItem
+        className="text-sm py-3 focus:bg-transparent"
+        onSelect={(e) => e.preventDefault()}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+      >
+        <div className="flex items-center justify-between w-full gap-3">
+          <div className="flex flex-col text-left">
+            <span className="font-medium text-gray-900 dark:text-gray-100">
+              Enable monitoring
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {monitoringToggleLoading ? 'Updating...' : helperText}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {monitoringToggleLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-500" />}
+            <Switch
+              aria-label="Enable monitoring"
+              checked={monitoringEnabled}
+              disabled={isDisabled}
+              onCheckedChange={(value) => {
+                if (!onToggleMonitoring) return
+                if (!agent.is_active && value) {
+                  return
+                }
+                onToggleMonitoring(agent, value)
+              }}
+            />
+          </div>
+        </div>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+    </>
+  )
+}
+
 const AgentListItem: React.FC<AgentListItemProps> = ({
   agent,
   viewMode,
@@ -212,7 +281,10 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
   onStopAgent,
   isStartingAgent,
   isStoppingAgent,
-  isMobile = false
+  isMobile = false,
+  monitoringEnabled = false,
+  monitoringToggleLoading = false,
+  onToggleMonitoring
 }) => {
   const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoadingRunningAgents)
 
@@ -376,6 +448,12 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <MonitoringToggleMenuItem
+                    agent={agent}
+                    monitoringEnabled={monitoringEnabled}
+                    monitoringToggleLoading={monitoringToggleLoading}
+                    onToggleMonitoring={onToggleMonitoring}
+                  />
                   <DropdownMenuItem onClick={(e) => {
                     e.stopPropagation()
                   }} className="text-sm py-3">
@@ -527,6 +605,12 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                         <DropdownMenuSeparator />
                       </>
                     )}
+                  <MonitoringToggleMenuItem
+                    agent={agent}
+                    monitoringEnabled={monitoringEnabled}
+                    monitoringToggleLoading={monitoringToggleLoading}
+                    onToggleMonitoring={onToggleMonitoring}
+                  />
                     <DropdownMenuItem onClick={(e) => e.stopPropagation()} className="text-sm">
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
@@ -648,6 +732,12 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                     <DropdownMenuSeparator />
                   </>
                 )}
+                <MonitoringToggleMenuItem
+                  agent={agent}
+                  monitoringEnabled={monitoringEnabled}
+                  monitoringToggleLoading={monitoringToggleLoading}
+                  onToggleMonitoring={onToggleMonitoring}
+                />
                 <DropdownMenuItem onClick={(e) => e.stopPropagation()} className="text-sm">
                   <Eye className="h-4 w-4 mr-2" />
                   View
