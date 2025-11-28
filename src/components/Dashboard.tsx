@@ -147,33 +147,38 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   }, [quickFilter, dateRange, isCustomRange])
 
   // Data fetching - now happens in parallel with UI rendering
-  const { data: agents, loading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
+  const { data: agents, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
     select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id,field_extractor_prompt,field_extractor',
     filters: [{ column: 'id', operator: 'eq', value: agentId }]
   })
 
   const agent = agents?.[0]
 
-  const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', 
-    agent?.project_id ? {
-      select: 'id, name, description, environment, created_at, is_active',
-      filters: [{ column: 'id', operator: 'eq', value: agent.project_id }]
-    } : null
-  )
+const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery(
+  'pype_voice_projects',
+  {
+    select: 'id, name, description, environment, created_at, is_active',
+    filters: agent?.project_id 
+      ? [{ column: 'id', operator: 'eq', value: agent.project_id }]
+      : [{ column: 'id', operator: 'eq', value: 'never-match' }],
+  }
+)
 
-  // Check if agent has any calls
-  const { data: callsCheck, loading: callsCheckLoading } = useSupabaseQuery('pype_voice_call_logs',
-    agent?.id ? {
-      select: 'id',
-      filters: [{ column: 'agent_id', operator: 'eq', value: agent.id }],
-      limit: 1
-    } : null
-  )
+const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
+  
+  'pype_voice_call_logs',
+  {
+    select: 'id',
+    filters: agent?.id 
+      ? [{ column: 'agent_id', operator: 'eq', value: agent.id }]
+      : [{ column: 'agent_id', operator: 'eq', value: 'never-match' }],
+    limit: 1
+  }
+)
 
   const hasCalls = callsCheck && callsCheck.length > 0
 
-  // MODIFIED: Show QuickStart only for non-VAPI agents without calls
-  // For VAPI agents without calls, show simple "No calls yet" message
+
   const isVapiAgent = React.useMemo(() => {
     if (!agent) return false
     
@@ -383,7 +388,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
               <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
             </div>
             <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 mb-2`}>Agent not found</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{agentError}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{agentError.message}</p>
             <Button onClick={handleBack} variant="outline" className="w-full border-gray-200 dark:border-gray-700">
               <ChevronLeft className="h-4 w-4 mr-2" />
               Go Back
