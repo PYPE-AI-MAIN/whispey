@@ -14,13 +14,15 @@ interface ColumnSelectorProps {
   basicColumnLabels: Record<string, string>
   metadataColumns: string[]
   transcriptionColumns: string[]
+  metricsColumns?: string[]
   visibleColumns: {
     basic: string[]
     metadata: string[]
     transcription_metrics: string[]
+    metrics?: string[]
   }
-  onColumnChange: (type: "basic" | "metadata" | "transcription_metrics", column: string, visible: boolean) => void
-  onSelectAll: (type: "basic" | "metadata" | "transcription_metrics", visible: boolean) => void
+  onColumnChange: (type: "basic" | "metadata" | "transcription_metrics" | "metrics", column: string, visible: boolean) => void
+  onSelectAll: (type: "basic" | "metadata" | "transcription_metrics" | "metrics", visible: boolean) => void
 }
 
 const ColumnSelector: React.FC<ColumnSelectorProps> = ({
@@ -28,6 +30,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
   basicColumnLabels,
   metadataColumns,
   transcriptionColumns,
+  metricsColumns = [],
   visibleColumns,
   onColumnChange,
   onSelectAll,
@@ -36,10 +39,13 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
   const scrollPositionRef = useRef<number>(0)
 
   const totalVisible =
-    visibleColumns.basic.length + visibleColumns.metadata.length + visibleColumns.transcription_metrics.length
-  const totalColumns = basicColumns.length + metadataColumns.length + transcriptionColumns.length
+    visibleColumns.basic.length + 
+    visibleColumns.metadata.length + 
+    visibleColumns.transcription_metrics.length +
+    (visibleColumns.metrics?.length || 0)
+  const totalColumns = basicColumns.length + metadataColumns.length + transcriptionColumns.length + metricsColumns.length
 
-  const handleColumnChange = useCallback((type: "basic" | "metadata" | "transcription_metrics", column: string, visible: boolean) => {
+  const handleColumnChange = useCallback((type: "basic" | "metadata" | "transcription_metrics" | "metrics", column: string, visible: boolean) => {
     if (scrollContainerRef.current) {
       scrollPositionRef.current = scrollContainerRef.current.scrollTop
     }
@@ -53,7 +59,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
     }, 0)
   }, [onColumnChange])
 
-  const handleSelectAll = useCallback((type: "basic" | "metadata" | "transcription_metrics", visible: boolean) => {
+  const handleSelectAll = useCallback((type: "basic" | "metadata" | "transcription_metrics" | "metrics", visible: boolean) => {
     if (scrollContainerRef.current) {
       scrollPositionRef.current = scrollContainerRef.current.scrollTop
     }
@@ -76,7 +82,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
   }: {
     title: string
     columns: string[]
-    type: "basic" | "metadata" | "transcription_metrics"
+    type: "basic" | "metadata" | "transcription_metrics" | "metrics"
     visibleCount: number
     getLabel?: (column: string) => string
   }) => {
@@ -117,7 +123,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
 
         <div className="space-y-1">
           {columns.map((column) => {
-            const isVisible = visibleColumns[type].includes(column)
+            const isVisible = (visibleColumns[type] || []).includes(column)
             return (
               <div
                 key={`${type}-${column}`}
@@ -223,7 +229,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
               visibleCount={visibleColumns.metadata.length}
             />
 
-            {metadataColumns.length > 0 && transcriptionColumns.length > 0 && (
+            {metadataColumns.length > 0 && (transcriptionColumns.length > 0 || metricsColumns.length > 0) && (
               <Separator />
             )}
 
@@ -232,6 +238,21 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
               columns={transcriptionColumns}
               type="transcription_metrics"
               visibleCount={visibleColumns.transcription_metrics.length}
+            />
+
+            {transcriptionColumns.length > 0 && metricsColumns.length > 0 && (
+              <Separator />
+            )}
+
+            <ColumnSection
+              title="Metrics"
+              columns={metricsColumns}
+              type="metrics"
+              visibleCount={visibleColumns.metrics?.length || 0}
+              getLabel={(column) => {
+                // Format: deflection_rate_score -> Deflection Rate Score
+                return column.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+              }}
             />
           </div>
         </div>

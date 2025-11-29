@@ -313,6 +313,7 @@ class CorrectedTranscriptCollector:
                 turn_id=f"turn_{self.turn_counter}",
                 timestamp=time.time()
             )
+            logger.info(f"🆕 Created new turn: {self.current_turn.turn_id}")
             self._ensure_trace_id(self.current_turn)
             
             # Inject complete configuration into the turn
@@ -469,6 +470,9 @@ class CorrectedTranscriptCollector:
             self._extract_enhanced_vad_from_state_events()
             
             # Complete the turn
+            logger.info(f"📝 Completing turn {self.current_turn.turn_id}. Tool calls count: {len(self.current_turn.tool_calls) if self.current_turn.tool_calls else 0}")
+            if self.current_turn.tool_calls:
+                logger.info(f"   Tool calls in turn: {[tc.get('name', 'unknown') for tc in self.current_turn.tool_calls]}")
             self.turns.append(self.current_turn)
             self.current_turn = None
 
@@ -1802,8 +1806,11 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
 
     @session.on("function_calls_collected")
     def on_function_calls_collected(event):
+        logger.info(f"🔧 function_calls_collected event fired! current_turn exists: {transcript_collector.current_turn is not None}")
         if transcript_collector.current_turn:
+            logger.info(f"🔧 Processing {len(event.function_calls)} function calls")
             for func_call in event.function_calls:
+                logger.info(f"🔧 Tool call: {func_call.name} with args: {func_call.arguments}")
                 tool_call_data = {
                     'name': func_call.name,
                     'arguments': func_call.arguments,
@@ -1815,10 +1822,14 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
                 if not transcript_collector.current_turn.tool_calls:
                     transcript_collector.current_turn.tool_calls = []
                 transcript_collector.current_turn.tool_calls.append(tool_call_data)
+                logger.info(f"✅ Tool call {func_call.name} added to current turn. Total tool calls: {len(transcript_collector.current_turn.tool_calls)}")
+        else:
+            logger.warning(f"⚠️ function_calls_collected fired but NO current_turn exists! Tool calls will be lost!")
 
     @session.on("function_tools_executed")
     def on_function_tools_executed(event):
         """LiveKit's official event for when function tools are executed"""
+        logger.info(f"🛠️ function_tools_executed event fired! current_turn exists: {transcript_collector.current_turn is not None}")
         
         if transcript_collector.current_turn:
             for func_call, func_output in event.zipped():
@@ -1877,6 +1888,7 @@ def setup_session_event_handlers(session, session_data, usage_collector, userdat
                 if not transcript_collector.current_turn.tool_calls:
                     transcript_collector.current_turn.tool_calls = []
                 transcript_collector.current_turn.tool_calls.append(tool_data)
+                logger.info(f"✅ Tool execution data for {func_call.name} added. Duration: {execution_duration*1000:.0f}ms, Status: {tool_data['status']}, Total tools in turn: {len(transcript_collector.current_turn.tool_calls)}")
                 
                 tool_span = {
                     "span_id": f"span_tool_{func_call.name}_{uuid.uuid4().hex[:8]}",

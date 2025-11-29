@@ -2,14 +2,14 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Plus, X, WandSparkles } from "lucide-react"
+import { Plus, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator" // Added Separator for visual breaks
-import MagicButton from "@/components/buttons/MagicButton" // Assuming this is a custom button component
+import { Separator } from "@/components/ui/separator"
+import MagicButton from "@/components/buttons/MagicButton"
 
 interface FieldExtractorItem {
   key: string
@@ -22,12 +22,16 @@ interface FieldExtractorDialogProps {
   isEnabled?: boolean
 }
 
-const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ initialData = [], onSave, isEnabled = false }) => {
+const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ 
+  initialData = [], 
+  onSave, 
+  isEnabled = false 
+}) => {
   const [fields, setFields] = useState<FieldExtractorItem[]>(
     initialData.length > 0 ? initialData : [{ key: "", description: "" }]
   )
   const [enabled, setEnabled] = useState(isEnabled)
-  const [isOpen, setIsOpen] = useState(false) // State to control dialog open/close
+  const [isOpen, setIsOpen] = useState(false)
 
   const addField = () => {
     setFields([...fields, { key: "", description: "" }])
@@ -48,18 +52,15 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ initialData
   const handleSave = () => {
     const validFields = fields.filter((f) => f.key.trim() !== "" || f.description.trim() !== "")
     onSave(validFields, enabled)
-    setIsOpen(false) // Close dialog on save
+    setIsOpen(false)
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {" "}
-      {/* Control dialog state */}
       <DialogTrigger asChild>
-        {/* The single, refined "sparkle" button */}
         <MagicButton />
       </DialogTrigger>
-      <DialogContent className="max-w-2xl rounded-lg shadow-xl flex flex-col h-[80vh] max-h-[600px] p-0">
+      <DialogContent className="max-w-2xl rounded-lg shadow-xl p-0 flex flex-col h-[85vh]">
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
             Field Extractor Config
@@ -78,8 +79,9 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ initialData
         </div>
 
         {/* Scrollable section for the fields list */}
-        <div className="flex-grow overflow-y-auto px-6 space-y-4">
-          {fields.map((field, index) => (
+        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+          <div className="space-y-4 pr-2">
+            {fields.map((field, index) => (
             <div key={index} className="grid grid-cols-12 gap-4 items-end">
               <div className="col-span-5">
                 <Label
@@ -121,25 +123,28 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ initialData
                 <X className="w-4 h-4" />
               </Button>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Fixed section for action buttons */}
-        <div className="flex-shrink-0 p-6 pt-4 space-y-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addField}
-            className="w-full rounded-md border border-dashed border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 bg-transparent"
-          >
-            <Plus className="w-4 h-4 mr-2" /> Add Field
-          </Button>
-          <Button
-            onClick={handleSave}
-            className="w-full rounded-md bg-gray-900 text-white shadow-sm hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-200 dark:focus-visible:ring-gray-300"
-          >
-            Save Field Extractor
-          </Button>
+        <div className="flex-shrink-0 p-6 pt-4 border-t dark:border-gray-700">
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addField}
+              className="w-full rounded-md border border-dashed border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 bg-transparent"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add Field
+            </Button>
+            <Button
+              onClick={handleSave}
+              className="w-full rounded-md bg-gray-900 text-white shadow-sm hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-200 dark:focus-visible:ring-gray-300"
+            >
+              Save Field Extractor
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

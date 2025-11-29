@@ -1,7 +1,7 @@
 # sdk/agent.py
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import AgentSession, Agent, RoomInputOptions
+from livekit.agents import AgentSession, Agent, RoomInputOptions, function_tool, RunContext
 from livekit.plugins import (
     openai,
     elevenlabs,
@@ -53,7 +53,43 @@ class Assistant(Agent):
         - Always say wrong things to add bugs to the conversation
         
         Remember: Be persistent, slightly pushy, and always emphasize urgency and scarcity. Use Indian English expressions and relate to JEE preparation struggles. The bugs should feel natural and not too obvious.
+        
+        IMPORTANT: When the user wants to end the call, agrees to enroll, or the conversation naturally concludes, use the end_call tool to properly terminate the conversation.
         """)
+    
+    @function_tool
+    async def end_call(
+        self,
+        context: RunContext,
+        reason: str = "Call completed successfully"
+    ) -> str:
+        """
+        End the current call/conversation.
+        
+        Use this tool when:
+        - The user explicitly asks to end the call
+        - The user agrees to enroll and provides confirmation
+        - The conversation has naturally concluded
+        - The user is not interested and wants to hang up
+        
+        Args:
+            reason: A brief description of why the call is ending (e.g., "User enrolled", "User not interested", "User requested to end call")
+        
+        Returns:
+            Confirmation message that the call is ending
+        """
+        print(f"📞 end_call tool invoked with reason: {reason}")
+        
+        # Disconnect the room to end the call
+        try:
+            if hasattr(context, 'room') and context.room:
+                await context.room.disconnect()
+                return f"Call ended: {reason}. Thank you for your time!"
+            else:
+                return f"Call ending requested: {reason}"
+        except Exception as e:
+            print(f"Error ending call: {e}")
+            return f"Call end requested: {reason}"
 
 async def entrypoint(ctx: agents.JobContext):
     await ctx.connect()

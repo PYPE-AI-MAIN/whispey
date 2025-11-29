@@ -53,6 +53,21 @@ interface ElevenLabsConfig {
   speed: number;
 }
 
+interface GoogleTTSVoice {
+  name: string;
+  languageCodes: string[];
+  ssmlGender: string;
+  naturalSampleRateHertz: number;
+  displayName: string;
+  primaryLanguage: string;
+  gender: string;
+}
+
+interface GoogleTTSConfig {
+  voice_name: string;
+  gender?: string;
+}
+
 interface SelectTTSProps {
   selectedVoice: string;
   initialProvider?: string;
@@ -81,6 +96,11 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   const [elevenLabsError, setElevenLabsError] = useState<string | null>(null)
   const [elevenLabsFetched, setElevenLabsFetched] = useState(false)
   
+  const [googleTTSVoices, setGoogleTTSVoices] = useState<GoogleTTSVoice[]>([])
+  const [isLoadingGoogleTTS, setIsLoadingGoogleTTS] = useState(false)
+  const [googleTTSError, setGoogleTTSError] = useState<string | null>(null)
+  const [googleTTSFetched, setGoogleTTSFetched] = useState(false)
+  
   // Single source of truth for current selection (internal state)
   const [currentVoiceId, setCurrentVoiceId] = useState(selectedVoice || '')
   const [currentProvider, setCurrentProvider] = useState(() => {
@@ -92,6 +112,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   const [activeTab, setActiveTab] = useState(() => {
     if (currentProvider === 'sarvam' || currentProvider === 'sarvam_tts') return 'sarvam'
     if (currentProvider === 'elevenlabs') return 'elevenlabs'
+    if (currentProvider === 'google') return 'google'
     return 'sarvam' // Default
   })
   
@@ -152,6 +173,20 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     }
   })
 
+  // Initialize Google TTS configuration with defaults
+  const [googleTTSConfig, setGoogleTTSConfig] = useState<GoogleTTSConfig>(() => {
+    if (currentProvider === 'google' && initialConfig) {
+      return {
+        voice_name: selectedVoice || initialConfig.voice_name || '',
+        gender: initialConfig.gender
+      }
+    }
+    return {
+      voice_name: selectedVoice || '',
+      gender: undefined
+    }
+  })
+
   const [showSettings, setShowSettings] = useState(true)
 
   const originalValues = {
@@ -197,6 +232,13 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
       style: 0,
       useSpeakerBoost: true,
       speed: 1.0
+    },
+    googleTTSConfig: (initialProvider === 'google' && initialConfig) ? {
+      voice_name: selectedVoice || initialConfig.voice_name || '',
+      gender: initialConfig.gender
+    } : {
+      voice_name: selectedVoice || '',
+      gender: undefined
     }
   }
 
@@ -206,12 +248,15 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     setCurrentProvider(originalValues.provider)
     setSarvamConfig(originalValues.sarvamConfig)
     setElevenLabsConfig(originalValues.elevenLabsConfig)
+    setGoogleTTSConfig(originalValues.googleTTSConfig)
     
     // Set correct tab based on original provider
     if (originalValues.provider === 'sarvam') {
       setActiveTab('sarvam')
     } else if (originalValues.provider === 'elevenlabs') {
       setActiveTab('elevenlabs')
+    } else if (originalValues.provider === 'google') {
+      setActiveTab('google')
     }
   }
 
@@ -220,8 +265,34 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     fetchElevenLabsVoices()
   }, [])
 
+  // Pre-load Google TTS voices on component mount
+  useEffect(() => {
+    fetchGoogleTTSVoices()
+  }, [])
 
-  // Sync configs when provider gets normalized
+  const fetchGoogleTTSVoices = async () => {
+    if (googleTTSFetched) return
+    
+    setIsLoadingGoogleTTS(true)
+    setGoogleTTSError(null)
+    try {
+      const response = await fetch('/api/google-tts-voices')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch voices')
+      }
+      const data = await response.json()
+      setGoogleTTSVoices(data.voices || [])
+      setGoogleTTSFetched(true)
+    } catch (error) {
+      setGoogleTTSError(error instanceof Error ? error.message : 'Failed to load voices')
+    } finally {
+      setIsLoadingGoogleTTS(false)
+    }
+  }
+
+
+    // Sync configs when provider gets normalized
   useEffect(() => {
     if ((currentProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
       // Only use initialModel if provider is Sarvam, otherwise use default
@@ -252,6 +323,11 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         useSpeakerBoost: initialConfig.useSpeakerBoost ?? true,
         speed: initialConfig.speed ?? 1.0
       })
+    } else if (initialProvider === 'google' && initialConfig) {
+      setGoogleTTSConfig({
+        voice_name: selectedVoice || initialConfig.voice_name || '',
+        gender: initialConfig.gender
+      })
     }
   }, [currentProvider, initialProvider, initialConfig, initialModel, selectedVoice])
 
@@ -267,6 +343,8 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         setActiveTab('sarvam')
       } else if (initialProvider === 'elevenlabs') {
         setActiveTab('elevenlabs')
+      } else if (initialProvider === 'google') {
+        setActiveTab('google')
       }
     }
   }, [selectedVoice, initialProvider])
@@ -306,12 +384,27 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
       setSarvamConfig(prev => ({ ...prev, speaker: voiceId }))
     } else if (normalizedProvider === 'elevenlabs') {
       setElevenLabsConfig(prev => ({ ...prev, voiceId }))
+    } else if (normalizedProvider === 'google') {
+      // Auto-detect gender from selected voice
+      const selectedVoice = googleTTSVoices.find(v => v.name === voiceId)
+      const gender = selectedVoice?.ssmlGender 
+        ? selectedVoice.ssmlGender.toLowerCase() === 'female' ? 'female'
+        : selectedVoice.ssmlGender.toLowerCase() === 'male' ? 'male'
+        : 'neutral'
+        : undefined
+      
+      setGoogleTTSConfig(prev => ({ 
+        ...prev, 
+        voice_name: voiceId,
+        gender: gender
+      }))
     }
     
     // Switch tab if needed
     if ((normalizedProvider === 'sarvam' && activeTab !== 'sarvam') || 
-        (normalizedProvider === 'elevenlabs' && activeTab !== 'elevenlabs')) {
-      setActiveTab(normalizedProvider === 'sarvam' ? 'sarvam' : 'elevenlabs')
+        (normalizedProvider === 'elevenlabs' && activeTab !== 'elevenlabs') ||
+        (normalizedProvider === 'google' && activeTab !== 'google')) {
+      setActiveTab(normalizedProvider === 'sarvam' ? 'sarvam' : normalizedProvider === 'elevenlabs' ? 'elevenlabs' : 'google')
     }
     
     // Show settings panel when a voice is selected
@@ -336,8 +429,8 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         provider = activeTab === 'sarvam' ? 'sarvam' : 'elevenlabs'
       }
       
-      const config = provider === 'sarvam' ? sarvamConfig : elevenLabsConfig
-      const model = provider === 'sarvam' ? sarvamConfig.model : elevenLabsConfig.model
+      const config = provider === 'sarvam' ? sarvamConfig : provider === 'elevenlabs' ? elevenLabsConfig : googleTTSConfig
+      const model = provider === 'sarvam' ? sarvamConfig.model : provider === 'elevenlabs' ? elevenLabsConfig.model : undefined
       onVoiceSelect(currentVoiceId, provider, model, config)
     }
     setIsOpen(false)
@@ -359,6 +452,8 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     if (sarvamVoice) return sarvamVoice.name
     const elevenLabsVoice = elevenLabsVoices.find(v => v.voice_id === selectedVoice)
     if (elevenLabsVoice) return elevenLabsVoice.name
+    const googleTTSVoice = googleTTSVoices.find(v => v.name === selectedVoice)
+    if (googleTTSVoice) return googleTTSVoice.displayName
     return "Voice Selected"
   }
 
@@ -402,6 +497,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
                 selectedProvider={currentProvider}
                 allSarvamVoices={allSarvamVoices}
                 elevenLabsVoices={elevenLabsVoices}
+                googleTTSVoices={googleTTSVoices}
                 showSettings={true}
                 onToggleSettings={() => {}}
               />
@@ -423,6 +519,12 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
             elevenLabsVoices={elevenLabsVoices}
             setElevenLabsVoices={setElevenLabsVoices}
             allSarvamVoices={allSarvamVoices}
+            googleTTSVoices={googleTTSVoices}
+            setGoogleTTSVoices={setGoogleTTSVoices}
+            isLoadingGoogleTTS={isLoadingGoogleTTS}
+            googleTTSError={googleTTSError}
+            googleTTSFetched={googleTTSFetched}
+            onFetchGoogleTTS={fetchGoogleTTSVoices}
           />
           
           {/* Settings Panel - uses internal state */}
@@ -433,6 +535,8 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
               setSarvamConfig={setSarvamConfig}
               elevenLabsConfig={elevenLabsConfig}
               setElevenLabsConfig={setElevenLabsConfig}
+              googleTTSConfig={googleTTSConfig}
+              setGoogleTTSConfig={setGoogleTTSConfig}
             />
           )}
         </div>
