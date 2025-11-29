@@ -13,8 +13,8 @@ load_dotenv()
 
 # Configuration
 WHISPEY_API_URL = "https://mp1grlhon8.execute-api.ap-south-1.amazonaws.com/dev/send-call-log"
-# WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"  # Direct to your self-hosted instance
 WHISPEY_API_KEY = os.getenv("WHISPEY_API_KEY")
+# WHISPEY_API_URL = "http://localhost:3000/dev/send-call-log"  # Direct to your self-hosted instance
 
 # Compression settings
 COMPRESSION_THRESHOLD = 10 * 1024  # 10KB - compress if larger than this

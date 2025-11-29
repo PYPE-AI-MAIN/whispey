@@ -32,6 +32,7 @@ import CampaignLogs from './campaigns/CampaignLogs'
 import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
+import MetricsDialog from './MetricsDialog'
 import { supabase } from '../lib/supabase'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
 import { 
@@ -148,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   // Data fetching - now happens in parallel with UI rendering
   const { data: agents, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id,field_extractor_prompt,field_extractor',
+    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id, field_extractor_prompt, field_extractor, metrics',
     filters: [{ column: 'id', operator: 'eq', value: agentId }]
   })
 
@@ -359,8 +360,6 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
   // Show tabs immediately - can be calculated without agent data
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'logs', label: 'Call Logs', icon: List },
     // Only add campaign-logs if we know it's enhanced (will show when agent data loads)
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : [])
   ]
@@ -445,6 +444,29 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   </div>
                 )}
               </div>
+
+              {/* Tab Navigation */}
+              {!isMobile && agent && (
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-6">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleTabChange(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                          activeTab === tab.id
+                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {tab.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
               {/* VAPI button - show skeleton or button based on agent data */}
               {agentLoading ? (
@@ -558,27 +580,52 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                       </Popover>
                     </div>
                     
-                    {/* Field Extractor - skeleton while agent loading */}
-                    {agentLoading ? (
-                      <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                    ) : agent ? (
-                      <FieldExtractorDialog
-                        initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
-                        isEnabled={!!agent?.field_extractor}
-                        onSave={async (data, enabled) => {
-                          const { error } = await supabase
-                            .from('pype_voice_agents')
-                            .update({ field_extractor_prompt: JSON.stringify(data), field_extractor: enabled })
-                            .eq('id', agent.id)
-                          if (!error) {
-                            alert('Saved field extractor config.')
-                            refetchAgent()
-                          } else {
-                            alert('Error saving config: ' + error.message)
-                          }
-                        }}
-                      />
-                    ) : null}
+                    {/* Field Extractor & Metrics - skeleton while agent loading */}
+                    <div className="flex gap-2">
+                      {agentLoading ? (
+                        <>
+                          <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                          <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                        </>
+                      ) : agent ? (
+                        <>
+                          <FieldExtractorDialog
+                            initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
+                            isEnabled={!!agent?.field_extractor}
+                            onSave={async (data, enabled) => {
+                              const { error } = await supabase
+                                .from('pype_voice_agents')
+                                .update({ 
+                                  field_extractor_prompt: JSON.stringify(data), 
+                                  field_extractor: enabled 
+                                })
+                                .eq('id', agent.id)
+                              if (!error) {
+                                alert('Saved field extractor config.')
+                                refetchAgent()
+                              } else {
+                                alert('Error saving config: ' + error.message)
+                              }
+                            }}
+                          />
+                          <MetricsDialog
+                            initialMetrics={agent?.metrics ? (typeof agent.metrics === 'string' ? JSON.parse(agent.metrics) : agent.metrics) : {}}
+                            onSave={async (metrics) => {
+                              const { error } = await supabase
+                                .from('pype_voice_agents')
+                                .update({ metrics })
+                                .eq('id', agent.id)
+                              if (!error) {
+                                alert('Saved metrics config.')
+                                refetchAgent()
+                              } else {
+                                alert('Error saving metrics: ' + error.message)
+                              }
+                            }}
+                          />
+                        </>
+                      ) : null}
+                    </div>
                   </>
                 )}
               </div>
@@ -590,6 +637,35 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
         {isMobile && showMobileMenu && !showQuickStart && !showNoCallsMessage && (
           <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div className="px-4 py-3 space-y-3">
+              {/* Tab Navigation */}
+              {agent && (
+                <div>
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
+                  <div className="space-y-1">
+                    {tabs.map((tab) => {
+                      const Icon = tab.icon
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => {
+                            handleTabChange(tab.id)
+                            setShowMobileMenu(false)
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                            activeTab === tab.id
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {tab.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Period Filters */}
               <div>
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Period</div>

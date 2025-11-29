@@ -282,10 +282,12 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
     basic: string[]
     metadata: string[]
     transcription_metrics: string[]
+    metrics: string[]
   }>({
     basic: basicColumns.filter(col => !col.hidden).map(col => col.key),
     metadata: [],
-    transcription_metrics: []
+    transcription_metrics: [],
+    metrics: []
   })
 
   const getFilteredBasicColumns = useMemo(() => {
@@ -490,7 +492,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       'transcript_json',
       'created_at',
       'transcription_metrics',
-      'billing_duration_seconds'
+      'billing_duration_seconds',
+      'metrics'
     ]
   
     if (isColumnVisibleForRole('avg_latency', role)) {
@@ -529,10 +532,11 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
   const refresh = refetch
   const error = queryError?.message
 
-  // Extract all unique keys from metadata and transcription_metrics across all calls
+  // Extract all unique keys from metadata, transcription_metrics, and metrics across all calls
   const dynamicColumns = useMemo(() => {
     const metadataKeys = new Set<string>()
     const transcriptionKeys = new Set<string>()
+    const metricsKeys = new Set<string>()
 
     calls.forEach((call: CallLog) => {
       if (call.metadata && typeof call.metadata === 'object') {
@@ -542,11 +546,18 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       if (call.transcription_metrics && typeof call.transcription_metrics === 'object') {
         Object.keys(call.transcription_metrics).forEach(key => transcriptionKeys.add(key))
       }
+
+      if (call.metrics && typeof call.metrics === 'object') {
+        Object.keys(call.metrics).forEach(metricId => {
+          metricsKeys.add(metricId)
+        })
+      }
     })
 
     return {
       metadata: Array.from(metadataKeys).sort(),
-      transcription_metrics: Array.from(transcriptionKeys).sort()
+      transcription_metrics: Array.from(transcriptionKeys).sort(),
+      metrics: Array.from(metricsKeys).sort()
     }
   }, [calls])
 
@@ -570,24 +581,34 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
         ? dynamicColumnsKey
         : prev.transcription_metrics
       
+      const newMetrics = Array.from(
+        new Set(
+          (!prev.metrics || prev.metrics.length === 0)
+            ? dynamicColumns.metrics 
+            : prev.metrics.filter((col) => dynamicColumns.metrics.includes(col))
+        )
+      )
+      
       // Only update if something actually changed
       if (
         JSON.stringify(prev.basic) === JSON.stringify(newBasic) &&
         JSON.stringify(prev.metadata) === JSON.stringify(newMetadata) &&
-        JSON.stringify(prev.transcription_metrics) === JSON.stringify(newTranscription)
+        JSON.stringify(prev.transcription_metrics) === JSON.stringify(newTranscription) &&
+        JSON.stringify(prev.metrics || []) === JSON.stringify(newMetrics)
       ) {
         return prev // No change, return previous state to prevent re-render
       }
       
-      return {
-        basic: newBasic,
-        metadata: newMetadata,
-        transcription_metrics: newTranscription
-      }
+        return {
+          basic: newBasic,
+          metadata: newMetadata,
+          transcription_metrics: newTranscription,
+          metrics: newMetrics
+        }
     })
   }, [dynamicColumns.metadata, dynamicColumnsKey, basicColumns])
 
-  const handleColumnChange = (type: 'basic' | 'metadata' | 'transcription_metrics', column: string, visible: boolean) => {
+  const handleColumnChange = (type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics', column: string, visible: boolean) => {
     setVisibleColumns(prev => ({
       ...prev,
       [type]: visible 
@@ -596,11 +617,11 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
     }))
   }
     
-  const handleSelectAll = (type: 'basic' | 'metadata' | 'transcription_metrics', visible: boolean) => {
+  const handleSelectAll = (type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics', visible: boolean) => {
     setVisibleColumns(prev => ({
       ...prev,
       [type]: visible
-        ? (type === "basic" ? basicColumns.map(col => col.key) : dynamicColumns[type])
+        ? (type === "basic" ? basicColumns.map(col => col.key) : dynamicColumns[type] || [])
         : []
     }))
   }
@@ -872,6 +893,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
               basicColumnLabels={Object.fromEntries(basicColumns.filter(col => !col.hidden).map((col) => [col.key, col.label]))}
               metadataColumns={dynamicColumns.metadata}
               transcriptionColumns={dynamicColumnsKey}
+              metricsColumns={dynamicColumns.metrics}
               visibleColumns={visibleColumns}
               onColumnChange={handleColumnChange}
               onSelectAll={handleSelectAll}
@@ -930,6 +952,22 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                       >
                         <div className="flex flex-col">
                           <span className="text-sm">{key}</span>
+                        </div>
+                      </TableHead>
+                    ))}
+
+                    {/* Dynamic Metrics Columns */}
+                    {visibleColumns.metrics.map((metricId, index) => (
+                      <TableHead 
+                        key={`metrics-${metricId}`} 
+                        className={cn(
+                          "w-[150px] font-semibold text-foreground dark:text-gray-100 bg-green-50/50 dark:bg-green-950/20",
+                          index === 0 && visibleColumns.metadata.length === 0 && visibleColumns.transcription_metrics.length === 0 && "border-l-2 border-primary/30 dark:border-primary/40",
+                          index < visibleColumns.metrics.length - 1 && "border-r border-green-200/50 dark:border-green-800/50"
+                        )}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm">{metricId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                         </div>
                       </TableHead>
                     ))}
@@ -1047,6 +1085,60 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                           />
                         </TableCell>
                       ))}
+
+                      {/* Dynamic Metrics Columns */}
+                      {visibleColumns.metrics.map((metricId, index) => {
+                        let value: React.ReactNode = "-"
+                        let tooltipContent: string | null = null
+                        
+                        if (call.metrics && typeof call.metrics === 'object') {
+                          const metricData = (call.metrics as any)[metricId]
+                          if (metricData) {
+                            const score = metricData.score
+                            const reason = metricData.reason || "-"
+                            
+                            value = (
+                              <Badge 
+                                variant={score >= 0.7 ? "default" : score >= 0.5 ? "secondary" : "destructive"}
+                                className="text-xs font-medium cursor-help"
+                              >
+                                {typeof score === 'number' ? score.toFixed(2) : score}
+                              </Badge>
+                            )
+                            
+                            tooltipContent = reason
+                          }
+                        }
+                        
+                        return (
+                          <TableCell 
+                            key={`metrics-${call.id}-${metricId}`} 
+                            className={cn(
+                              "py-4 bg-green-50/30 dark:bg-green-950/10",
+                              index === 0 && visibleColumns.metadata.length === 0 && visibleColumns.transcription_metrics.length === 0 && "border-l-2 border-primary/30 dark:border-primary/40",
+                              index < visibleColumns.metrics.length - 1 && "border-r border-green-200/50 dark:border-green-800/50"
+                            )}
+                          >
+                            {tooltipContent ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {value}
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-md bg-gray-900 dark:bg-gray-800 border-gray-700 p-0">
+                                  <div className="text-sm p-4">
+                                    <div className="font-semibold mb-2 text-white dark:text-gray-100">{metricId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                                    <div className="text-xs text-gray-100 dark:text-gray-200 whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+                                      {tooltipContent}
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              value
+                            )}
+                          </TableCell>
+                        )
+                      })}
                     </TableRow>
                   ))}
                 </TableBody>
