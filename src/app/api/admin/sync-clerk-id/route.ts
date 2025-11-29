@@ -1,4 +1,5 @@
 // src/app/api/admin/sync-clerk-id/route.ts
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
@@ -8,8 +9,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+// Parse allowed emails from environment variable
+const ALLOWED_EMAILS = process.env.ALLOWED_SYNC_EMAILS?.split(',').map(email => email.trim()) || []
+
 export async function POST(request: NextRequest) {
   try {
+    // Verify we have allowed emails configured
+    if (ALLOWED_EMAILS.length === 0) {
+      console.error('⚠️ No allowed emails configured in ALLOWED_SYNC_EMAILS')
+      return NextResponse.json({ 
+        error: 'Configuration error: No allowed emails configured' 
+      }, { status: 500 })
+    }
+
+    // Get current user from Clerk
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,86 +30,77 @@ export async function POST(request: NextRequest) {
 
     const clerkUser = await currentUser()
     if (!clerkUser) {
-      return NextResponse.json({ error: 'User not found in Clerk' }, { status: 404 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const email = clerkUser.emailAddresses[0]?.emailAddress
-    if (!email) {
-      return NextResponse.json({ error: 'Email not found' }, { status: 400 })
+    const userEmail = clerkUser.emailAddresses[0]?.emailAddress
+    if (!userEmail) {
+      return NextResponse.json({ error: 'No email found' }, { status: 400 })
     }
 
-    // Check if user already has clerk_id
-    const { data: existingUserWithClerkId } = await supabase
-      .from('pype_voice_users')
-      .select('id, clerk_id')
-      .eq('clerk_id', userId)
-      .maybeSingle()
-
-    if (existingUserWithClerkId) {
-      return NextResponse.json({ 
-        synced: true,
-        message: 'User already has clerk_id',
-        userId: existingUserWithClerkId.id
-      }, { status: 200 })
-    }
-
-    // Find user by email without clerk_id (for migrated users)
-    const { data: userByEmail, error: findError } = await supabase
-      .from('pype_voice_users')
-      .select('id, clerk_id, email')
-      .eq('email', email)
-      .is('clerk_id', null)
-      .maybeSingle()
-
-    if (findError) {
-      console.error('Error finding user by email:', findError)
+    // Check if email is in whitelist
+    if (!ALLOWED_EMAILS.includes(userEmail)) {
+      console.log(`⚠️ Sync attempted by non-whitelisted email: ${userEmail}`)
       return NextResponse.json({ 
         synced: false,
-        error: 'Failed to find user'
-      }, { status: 500 })
-    }
-
-    if (!userByEmail) {
-      // No user found with this email and no clerk_id
-      return NextResponse.json({ 
-        synced: false,
-        message: 'No user found to sync'
-      }, { status: 404 })
-    }
-
-    // Update user with clerk_id
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('pype_voice_users')
-      .update({
-        clerk_id: userId,
-        updated_at: new Date().toISOString()
+        reason: 'Email not in whitelist for migration',
+        email: userEmail 
       })
-      .eq('id', userByEmail.id)
-      .select()
-      .single()
+    }
 
-    if (updateError) {
-      console.error('Error updating user with clerk_id:', updateError)
+    console.log(`🔄 Starting Clerk ID sync for: ${userEmail}`)
+    console.log(`   New Clerk ID: ${userId}`)
+
+    // Call the PostgreSQL function
+    const { data, error } = await supabase.rpc('sync_user_clerk_id', {
+      p_email: userEmail,
+      p_new_clerk_id: userId
+    })
+
+    if (error) {
+      console.error('❌ Database error during sync:', error)
       return NextResponse.json({ 
-        synced: false,
-        error: 'Failed to sync clerk_id'
+        error: 'Sync failed', 
+        details: error.message 
       }, { status: 500 })
     }
 
-    console.log('✅ User synced with clerk_id:', updatedUser.email)
+    if (!data || data.length === 0) {
+      console.error('❌ No response from sync function')
+      return NextResponse.json({ 
+        error: 'No response from sync function' 
+      }, { status: 500 })
+    }
+
+    const result = data[0]
+
+    if (!result.success) {
+      console.log(`ℹ️ Sync skipped for ${userEmail}: ${result.message}`)
+      return NextResponse.json({ 
+        synced: false,
+        reason: result.message,
+        oldClerkId: result.old_clerk_id
+      })
+    }
+
+    console.log(`✅ Sync successful for ${userEmail}`)
+    console.log(`   Old Clerk ID: ${result.old_clerk_id}`)
+    console.log(`   New Clerk ID: ${userId}`)
+    console.log(`   Updates made:`, result.updates_made)
 
     return NextResponse.json({ 
       synced: true,
-      message: 'User synced successfully',
-      user: updatedUser
-    }, { status: 200 })
+      message: result.message,
+      oldClerkId: result.old_clerk_id,
+      newClerkId: userId,
+      updatesMade: result.updates_made
+    })
 
   } catch (error) {
-    console.error('Sync error:', error)
+    console.error('❌ Unexpected error during sync:', error)
     return NextResponse.json({ 
-      synced: false,
-      error: 'Internal server error'
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
     }, { status: 500 })
   }
 }
-
