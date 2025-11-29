@@ -231,7 +231,7 @@ export default function AgentConfig() {
   })
 
   // Get agent data from Supabase
-  const { data: agentDataResponse, loading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
+  const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
     select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
     filters: [{ column: "id", operator: "eq", value: agentid }],
     limit: 1
