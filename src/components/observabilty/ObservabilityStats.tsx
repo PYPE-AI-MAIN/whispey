@@ -32,7 +32,7 @@ interface TranscriptLog {
 const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agentId, callData, agent }) => {
   const {
     data: transcriptLogs,
-    loading: transcriptLoading,
+    isLoading: transcriptLoading,
   } = useSupabaseQuery("pype_voice_metrics_logs", {
     select: "*",
     filters: sessionId 

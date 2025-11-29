@@ -57,7 +57,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   const { isMobile } = useMobile(768)
 
   // Fetch project data
-  const { data: projects, loading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
+  const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active, plans, agent',
     filters: [{ column: 'id', operator: 'eq', value: projectId }]
   })
@@ -74,7 +74,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }, [projectId, project])
 
   // Fetch agents data
-  const { data: agents, loading: agentsLoading, error: agentsError, refetch } = useSupabaseQuery('pype_voice_agents', {
+  const { data: agents, isLoading: agentsLoading, error: agentsError, refetch } = useSupabaseQuery('pype_voice_agents', {
     select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id',
     filters: [
       { column: 'project_id', operator: 'eq', value: projectId }
@@ -181,7 +181,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
             </div>
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Unable to Load Monitoring</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{error}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{error.message}</p>
             </div>
             <Button 
               onClick={() => window.location.reload()} 
