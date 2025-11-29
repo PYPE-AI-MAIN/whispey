@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
       primaryLanguage: voice.languageCodes?.[0] || 'en-US',
       gender: voice.ssmlGender === 'FEMALE' ? 'Female' : voice.ssmlGender === 'MALE' ? 'Male' : 'Neutral'
     }))
-
-
+    
     return NextResponse.json({ voices }, { status: 200 })
+
   } catch (error) {
     return NextResponse.json(
       { 

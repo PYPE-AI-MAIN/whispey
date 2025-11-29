@@ -20,19 +20,29 @@ interface ElevenLabsVoice {
   description?: string;
 }
 
+interface GoogleTTSVoice {
+  name: string;
+  displayName: string;
+  languageCodes: string[];
+  ssmlGender: string;
+  gender: string;
+}
+
 interface HeaderVoiceDisplayProps {
   selectedVoiceId: string;
   selectedProvider: string;
   allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[];
   elevenLabsVoices: ElevenLabsVoice[];
+  googleTTSVoices?: GoogleTTSVoice[];
   showSettings: boolean;
   onToggleSettings: () => void;
 }
 
-const VoiceAvatar = ({ name, variant = 'default' }: { name: string, variant?: 'sarvam' | 'elevenlabs' | 'default' }) => {
+const VoiceAvatar = ({ name, variant = 'default' }: { name: string, variant?: 'sarvam' | 'elevenlabs' | 'google' | 'default' }) => {
   const getGradient = () => {
     if (variant === 'sarvam') return 'bg-gradient-to-br from-orange-400 to-red-500'
     if (variant === 'elevenlabs') return 'bg-gradient-to-br from-purple-400 to-purple-600'
+    if (variant === 'google') return 'bg-gradient-to-br from-blue-400 to-blue-600'
     return 'bg-gradient-to-br from-blue-400 to-blue-600'
   }
 
@@ -48,6 +58,7 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
   selectedProvider,
   allSarvamVoices,
   elevenLabsVoices,
+  googleTTSVoices = [],
   showSettings,
   onToggleSettings
 }) => {
@@ -62,6 +73,8 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
     selectedVoiceName = allSarvamVoices.find(v => v.id === selectedVoiceId)?.name || 'Voice'
   } else if (normalizedProvider === 'elevenlabs') {
     selectedVoiceName = elevenLabsVoices.find(v => v.voice_id === selectedVoiceId)?.name || 'Voice'
+  } else if (normalizedProvider === 'google') {
+    selectedVoiceName = googleTTSVoices.find(v => v.name === selectedVoiceId)?.displayName || 'Voice'
   }
 
   return (
@@ -69,19 +82,21 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
       <div className={`px-3 py-2 rounded-lg border ${
         normalizedProvider === 'sarvam' 
           ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800' 
+          : normalizedProvider === 'google'
+          ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
           : 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800'
       }`}>
         <div className="flex items-center gap-2">
           <VoiceAvatar 
             name={selectedVoiceName} 
-            variant={normalizedProvider === 'sarvam' ? 'sarvam' : 'elevenlabs'} 
+            variant={normalizedProvider === 'sarvam' ? 'sarvam' : normalizedProvider === 'google' ? 'google' : 'elevenlabs'} 
           />
           <div className="text-xs">
             <span className="font-medium text-gray-900 dark:text-gray-100">
               {selectedVoiceName}
             </span>
             <Badge variant="secondary" className="ml-2 text-xs">
-              {normalizedProvider === 'sarvam' ? 'Sarvam' : 'ElevenLabs'}
+              {normalizedProvider === 'sarvam' ? 'Sarvam' : normalizedProvider === 'google' ? 'Google TTS' : 'ElevenLabs'}
             </Badge>
           </div>
         </div>

@@ -32,6 +32,7 @@ import CampaignLogs from './campaigns/CampaignLogs'
 import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
+import MetricsDialog from './MetricsDialog'
 import { supabase } from '../lib/supabase'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
 import { 
@@ -148,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   // Data fetching - now happens in parallel with UI rendering
   const { data: agents, loading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id,field_extractor_prompt,field_extractor',
+    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id, field_extractor_prompt, field_extractor, metrics',
     filters: [{ column: 'id', operator: 'eq', value: agentId }]
   })
 
@@ -354,8 +355,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   // Show tabs immediately - can be calculated without agent data
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'logs', label: 'Call Logs', icon: List },
     // Only add campaign-logs if we know it's enhanced (will show when agent data loads)
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : [])
   ]
@@ -576,27 +575,52 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
                       </Popover>
                     </div>
                     
-                    {/* Field Extractor - skeleton while agent loading */}
-                    {agentLoading ? (
-                      <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                    ) : agent ? (
-                      <FieldExtractorDialog
-                        initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
-                        isEnabled={!!agent?.field_extractor}
-                        onSave={async (data, enabled) => {
-                          const { error } = await supabase
-                            .from('pype_voice_agents')
-                            .update({ field_extractor_prompt: JSON.stringify(data), field_extractor: enabled })
-                            .eq('id', agent.id)
-                          if (!error) {
-                            alert('Saved field extractor config.')
-                            refetchAgent()
-                          } else {
-                            alert('Error saving config: ' + error.message)
-                          }
-                        }}
-                      />
-                    ) : null}
+                    {/* Field Extractor & Metrics - skeleton while agent loading */}
+                    <div className="flex gap-2">
+                      {agentLoading ? (
+                        <>
+                          <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                          <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                        </>
+                      ) : agent ? (
+                        <>
+                          <FieldExtractorDialog
+                            initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
+                            isEnabled={!!agent?.field_extractor}
+                            onSave={async (data, enabled) => {
+                              const { error } = await supabase
+                                .from('pype_voice_agents')
+                                .update({ 
+                                  field_extractor_prompt: JSON.stringify(data), 
+                                  field_extractor: enabled 
+                                })
+                                .eq('id', agent.id)
+                              if (!error) {
+                                alert('Saved field extractor config.')
+                                refetchAgent()
+                              } else {
+                                alert('Error saving config: ' + error.message)
+                              }
+                            }}
+                          />
+                          <MetricsDialog
+                            initialMetrics={agent?.metrics ? (typeof agent.metrics === 'string' ? JSON.parse(agent.metrics) : agent.metrics) : {}}
+                            onSave={async (metrics) => {
+                              const { error } = await supabase
+                                .from('pype_voice_agents')
+                                .update({ metrics })
+                                .eq('id', agent.id)
+                              if (!error) {
+                                alert('Saved metrics config.')
+                                refetchAgent()
+                              } else {
+                                alert('Error saving metrics: ' + error.message)
+                              }
+                            }}
+                          />
+                        </>
+                      ) : null}
+                    </div>
                   </>
                 )}
               </div>
