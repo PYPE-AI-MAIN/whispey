@@ -239,7 +239,6 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
-      { pattern: '/:projectId/agents/:agentId/monitoring' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
@@ -263,13 +262,6 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Call Logs', 
           icon: 'List', 
           path: `/${projectId}/agents/${agentId}?tab=logs`,
-          group: 'LOGS' 
-        },
-        { 
-          id: 'monitoring', 
-          name: 'Error Monitoring', 
-          icon: 'AlertCircle', 
-          path: `/${projectId}/agents/${agentId}/monitoring`,
           group: 'LOGS' 
         }
       ]
