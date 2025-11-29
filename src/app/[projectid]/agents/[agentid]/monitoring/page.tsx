@@ -10,14 +10,14 @@ export default function AgentMonitoringPage() {
   const agentId = Array.isArray(params?.agentid) ? params.agentid[0] : params.agentid
 
   // Fetch agent details
-  const { data: agents, loading } = useSupabaseQuery('pype_voice_agents', {
+  const { data: agents, isLoading } = useSupabaseQuery('pype_voice_agents', {
     select: 'id, name',
     filters: [{ column: 'id', operator: 'eq', value: agentId }]
   })
 
   const agent = agents?.[0]
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
