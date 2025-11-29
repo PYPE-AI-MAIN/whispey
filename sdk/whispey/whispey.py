@@ -455,11 +455,15 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
                 turn['turn_configuration'] = session_data.get('complete_configuration')
             
             # Add trace fields to each turn if they exist
+            tool_calls = turn.get('tool_calls', [])
+            if tool_calls:
+                logger.info(f"🔧 Turn {turn.get('turn_id', 'unknown')} has {len(tool_calls)} tool calls: {[tc.get('name', 'unknown') for tc in tool_calls]}")
+            
             enhanced_turn = {
                 **turn,  # All existing fields
                 'trace_id': turn.get('trace_id'),
                 'otel_spans': turn.get('otel_spans', []),
-                'tool_calls': turn.get('tool_calls', []),
+                'tool_calls': tool_calls,
                 'trace_duration_ms': turn.get('trace_duration_ms'),
                 'trace_cost_usd': turn.get('trace_cost_usd')
             }

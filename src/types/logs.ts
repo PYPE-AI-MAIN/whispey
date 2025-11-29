@@ -20,6 +20,10 @@ export interface CallLog {
   total_tts_cost?: number
   total_stt_cost?: number
   total_cost?:number
+  metrics?: Record<string, {
+    score: number
+    reason: string
+  }>
 }
 
 export interface UsageData {
