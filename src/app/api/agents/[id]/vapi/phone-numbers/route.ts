@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { decryptApiKey } from '@/lib/vapi-encryption'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -11,10 +12,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: agentId } = await params
-  console.log('📱 GET /api/agents/[id]/vapi/phone-numbers called for agent:', agentId)
-  
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id: agentId } = await params
+    console.log('📱 GET /api/agents/[id]/vapi/phone-numbers called for agent:', agentId)
     const { searchParams } = new URL(request.url)
     const assistantId = searchParams.get('assistantId')
     const limit = searchParams.get('limit') || '100'

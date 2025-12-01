@@ -1,5 +1,6 @@
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -14,6 +15,12 @@ export async function GET(
   { params }: { params: Promise<{ agentName: string }> }
 ) {
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Await params in Next.js 15+
     const { agentName } = await params
 

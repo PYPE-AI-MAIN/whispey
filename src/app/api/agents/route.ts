@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { encryptApiKey } from '@/lib/vapi-encryption'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 // Create Supabase client for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -10,6 +11,12 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { name, agent_type, configuration, project_id, environment, platform } = body
 
@@ -152,6 +159,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('project_id')
 

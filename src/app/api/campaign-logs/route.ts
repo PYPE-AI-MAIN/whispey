@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, ScanCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({
@@ -171,6 +172,12 @@ async function getTotalCount(filterConfig: any): Promise<number> {
 
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate using Clerk
+    const { userId, errorResponse } = await requireAuth()
+    if (!userId || errorResponse) {
+      return errorResponse!
+    }
+
     const { searchParams } = new URL(request.url)
     
     // Extract and parse parameters with defaults
@@ -320,6 +327,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     
     // Extract and validate parameters
@@ -441,6 +454,12 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('project_id')
     const confirmToken = searchParams.get('confirm')

@@ -2,11 +2,17 @@
 // /app/api/vapi/assistants/route.ts
 import { decrypt } from '@/lib/crypto'
 import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 export async function GET(request: NextRequest) {
   console.log('🔍 GET /api/vapi/assistants called')
   
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const { searchParams } = new URL(request.url)
     const assistantId = searchParams.get('id')
     

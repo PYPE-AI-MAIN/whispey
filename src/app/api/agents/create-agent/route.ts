@@ -1,7 +1,7 @@
 // src/app/api/agents/create-agent/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { auth } from '@clerk/nextjs/server'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 // Server-side Supabase client (prefer service role for row updates)
 const supabase = createClient(
@@ -117,6 +117,12 @@ async function rollbackSupabaseState(projectId: string, originalState: AgentQuot
 }
 
 export async function POST(request: NextRequest) {
+  // Get authenticated user (middleware already protects this route)
+  const userId = await getCurrentUserId()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let createdAgentId: string | null = null
   let createdAgentName: string | null = null
   let originalState: AgentQuotaState | null = null
@@ -187,14 +193,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Identify current user via Clerk for authorization
-    const { userId: clerkUserId } = await auth()
-    if (!clerkUserId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    // Use userId from authentication check at the top
+    const clerkUserId = userId
 
     // Ensure agent quota state exists for the project, and check limits
     const { projectId: projectIdFromState, state, error: stateError } = await getOrInitProjectAgentState(projectId)

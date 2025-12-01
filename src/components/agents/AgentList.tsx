@@ -199,7 +199,6 @@ const AgentList: React.FC<AgentListProps> = ({
     }
   }
 
-  const monitoringServiceBaseUrl = process.env.NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL
   const monitoringAgentBaseUrl =
     process.env.NEXT_PUBLIC_MONITORING_AGENT_BASE_URL ||
     process.env.NEXT_PUBLIC_PYPEAI_API_URL ||
@@ -228,7 +227,7 @@ const AgentList: React.FC<AgentListProps> = ({
   }, [agents])
 
   useEffect(() => {
-    if (!monitoringServiceBaseUrl || agents.length === 0) {
+    if (agents.length === 0) {
       return
     }
 
@@ -240,7 +239,7 @@ const AgentList: React.FC<AgentListProps> = ({
       await Promise.all(
         agents.map(async (agent) => {
           try {
-            const response = await fetch(`${monitoringServiceBaseUrl}/agents/${agent.id}`)
+            const response = await fetch(`/api/monitoring/agents/${agent.id}`)
             if (!response.ok) {
               if (response.status === 404) {
                 setMonitoringRegistrationStates((prev) => ({ ...prev, [agent.id]: 'missing' }))
@@ -269,17 +268,9 @@ const AgentList: React.FC<AgentListProps> = ({
     return () => {
       isCancelled = true
     }
-  }, [agents, monitoringServiceBaseUrl])
+  }, [agents])
 
   const handleToggleMonitoring = async (agent: Agent, shouldEnable: boolean) => {
-    if (!monitoringServiceBaseUrl) {
-      console.error('NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL is not configured.')
-      if (typeof window !== 'undefined') {
-        alert('Monitoring service URL is not configured. Please set NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL.')
-      }
-      return
-    }
-
     if (shouldEnable && !agent.is_active) {
       return
     }
@@ -289,7 +280,7 @@ const AgentList: React.FC<AgentListProps> = ({
     setMonitoringLoading(prev => ({ ...prev, [agent.id]: true }))
 
     const toggleRequest = async (enabledValue: boolean) => {
-      const response = await fetch(`${monitoringServiceBaseUrl}/agents/${agent.id}/monitoring`, {
+      const response = await fetch(`/api/monitoring/agents/${agent.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: enabledValue })
@@ -329,7 +320,7 @@ const AgentList: React.FC<AgentListProps> = ({
             }
           }
 
-          const registerResponse = await fetch(`${monitoringServiceBaseUrl}/agents`, {
+          const registerResponse = await fetch('/api/monitoring/agents', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
