@@ -213,6 +213,13 @@ export const AGENT_DEFAULT_CONFIG = {
         ambientVolume: AGENT_DEFAULT_CONFIG.background_audio.ambient.volume,
         thinkingType: AGENT_DEFAULT_CONFIG.background_audio.thinking.type,
         thinkingVolume: AGENT_DEFAULT_CONFIG.background_audio.thinking.volume
+      },
+      webhook: {
+        triggerOnCallLog: false,
+        webhookUrl: '',
+        httpMethod: 'POST',
+        headers: {},
+        isActive: false
       }
     }
   })

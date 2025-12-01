@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
+import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 
 // Server-side Supabase client (prefer service role for row updates)
 const supabase = createClient(
@@ -268,13 +269,57 @@ export async function POST(request: NextRequest) {
     try {
       console.log('🌐 STEP 2: Calling PypeAPI to create agent...')
       
+      // Add whispey_api_key to agent configuration if not present
+      let agentPayload = { ...body }
+      if (agentPayload.agent && projectId) {
+        try {
+          // Get API key from pype_voice_api_keys table
+          const { data: apiKey, error: keyError } = await supabase
+            .from('pype_voice_api_keys')
+            .select('id, token_hash, token_hash_master')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          if (!keyError && apiKey) {
+            // Store whispey_key_id
+            if (apiKey.id) {
+              agentPayload.agent.whispey_key_id = apiKey.id
+            }
+
+            // Decrypt and store the API key
+            if (apiKey.token_hash_master) {
+              try {
+                const { decryptWithWhispeyKey } = await import('@/lib/whispey-crypto')
+                const decryptedKey = decryptWithWhispeyKey(apiKey.token_hash_master)
+                agentPayload.agent.whispey_api_key = decryptedKey
+                console.log('✅ Decrypted and added whispey_api_key to agent config')
+              } catch (decryptError) {
+                console.error('❌ Failed to decrypt API key:', decryptError)
+                // Fallback: store token_hash if decryption fails
+                if (apiKey.token_hash) {
+                  agentPayload.agent.token_hash = apiKey.token_hash
+                }
+              }
+            } else if (apiKey.token_hash) {
+              // Fallback: use token_hash if token_hash_master not available
+              agentPayload.agent.token_hash = apiKey.token_hash
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching/decrypting API key during agent creation:', error)
+          // Don't fail the request, just log the error
+        }
+      }
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/create-agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': 'pype-api-v1'
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(agentPayload)
       })
 
       const data = await response.json()

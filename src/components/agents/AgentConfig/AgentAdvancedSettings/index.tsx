@@ -10,10 +10,12 @@ import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettingsProps'
 import FillerWordsSettings from './ConfigParents/FillerWordSettings'
 import BugReportSettings from './ConfigParents/BugReportSettings'
-import { Volume2 } from 'lucide-react'
+import { Volume2, Webhook } from 'lucide-react'
 import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
+import WebhookSettings from './ConfigParents/WebhookSettings'
 
 interface AgentAdvancedSettingsProps {
+    agentId?: string
     advancedSettings: {
       interruption: {
         allowInterruptions: boolean
@@ -62,12 +64,19 @@ interface AgentAdvancedSettingsProps {
         thinkingType: string
         thinkingVolume: number
       }
+      webhook?: {
+        triggerOnCallLog: boolean
+        webhookUrl: string
+        httpMethod: string
+        headers: Record<string, string>
+        isActive: boolean
+      }
     }
     onFieldChange: (field: string, value: any) => void
     projectId?: string
   }
 
-function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId }: AgentAdvancedSettingsProps) {
+function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId }: AgentAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
@@ -75,7 +84,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId }: A
     tools: false,
     fillers: false,
     bugs: false,
-    backgroundAudio: false
+    backgroundAudio: false,
+    webhook: false
   })
   
   const toggleSection = (section: string) => {
@@ -249,6 +259,32 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId }: A
           </CollapsibleContent>
         </Collapsible>
 
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Webhook Configuration */}
+        <Collapsible open={openSections.webhook} onOpenChange={() => toggleSection('webhook')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <Webhook className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Webhook Configuration</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.webhook ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <WebhookSettings
+              triggerOnCallLog={advancedSettings.webhook?.triggerOnCallLog || false}
+              webhookUrl={advancedSettings.webhook?.webhookUrl || ''}
+              httpMethod={advancedSettings.webhook?.httpMethod || 'POST'}
+              headers={advancedSettings.webhook?.headers || {}}
+              isActive={advancedSettings.webhook?.isActive || false}
+              onFieldChange={onFieldChange}
+              agentId={agentId}
+              projectId={projectId}
+            />
+          </CollapsibleContent>
+        </Collapsible>
 
         <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
 
