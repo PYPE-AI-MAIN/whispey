@@ -300,13 +300,45 @@ export default function AgentConfig() {
     setAgentStatus({ status: 'starting' } as AgentStatus)
     
     try {
-      const status = await agentStatusService.startAgent(activeAgentName)
+      // Step 1: Initiate agent start
+      const startStatus = await agentStatusService.startAgent(activeAgentName)
       
-      if (status.status !== 'error') {
-        setAgentStatus({ status: 'running' })
-      } else {
-        setAgentStatus(status)
+      if (startStatus.status === 'error') {
+        setAgentStatus(startStatus)
+        setIsAgentLoading(false)
+        return
       }
+      
+      // Step 2: Poll agent status until it's running or timeout
+      const maxAttempts = 30 // Poll for up to 30 seconds (30 attempts * 1 second)
+      let attempts = 0
+      let isRunning = false
+      
+      while (attempts < maxAttempts && !isRunning) {
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second between checks
+        
+        const status = await agentStatusService.checkAgentStatus(activeAgentName)
+        setAgentStatus(status)
+        
+        if (status.status === 'running') {
+          isRunning = true
+          break
+        } else if (status.status === 'error') {
+          // Agent failed to start
+          break
+        }
+        
+        attempts++
+      }
+      
+      // Final status check
+      if (!isRunning) {
+        const finalStatus = await agentStatusService.checkAgentStatus(activeAgentName)
+        setAgentStatus(finalStatus)
+      }
+    } catch (error) {
+      console.error('Error starting agent:', error)
+      setAgentStatus({ status: 'error' as const, error: 'Failed to start agent' })
     } finally {
       setIsAgentLoading(false)
     }
@@ -1063,6 +1095,7 @@ const unmappedVariablesCount = useMemo(() => {
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
               projectId={projectId}
+              agentId={agentid}
             />
           </div>
           
@@ -1095,6 +1128,7 @@ const unmappedVariablesCount = useMemo(() => {
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
               projectId={projectId}
+              agentId={agentid}
             />
           </div>
         </SheetContent>
