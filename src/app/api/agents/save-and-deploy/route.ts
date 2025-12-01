@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function POST(request: NextRequest) {
   try {
@@ -6,10 +12,13 @@ export async function POST(request: NextRequest) {
     
     let agentConfigBody
     let agentName
+    let agentId: string | null = null
+    let projectId: string | null = null
     
     // Check if it's the NEW structure (with agent object already built)
     if (body.agent && body.agent.assistant && Array.isArray(body.agent.assistant)) {
       agentName = body.agent.name || body.metadata?.agentName
+      agentId = body.agent.agent_id || body.metadata?.agentId
       
       // Just pass through the agent object directly
       agentConfigBody = {
@@ -19,6 +28,7 @@ export async function POST(request: NextRequest) {
     // Check if it's the OLD structure (needs transformation)
     else if (body.formikValues && body.metadata) {
       agentName = body.metadata.agentName
+      agentId = body.metadata.agentId
       agentConfigBody = transformFormDataToAgentConfig(body)
     } 
     else {
@@ -33,6 +43,65 @@ export async function POST(request: NextRequest) {
         { message: 'Agent name is required' },
         { status: 400 }
       )
+    }
+
+    // Fetch and decrypt API key from database
+    if (agentId) {
+      try {
+        // Get agent record to find project_id
+        const { data: agent, error: agentError } = await supabase
+          .from('pype_voice_agents')
+          .select('project_id, configuration')
+          .eq('id', agentId)
+          .single()
+
+        if (!agentError && agent) {
+          projectId = agent.project_id
+
+          // Get API key from pype_voice_api_keys table
+          if (projectId) {
+            // Get the first API key for this project (most recent)
+            const { data: apiKey, error: keyError } = await supabase
+              .from('pype_voice_api_keys')
+              .select('id, token_hash, token_hash_master')
+              .eq('project_id', projectId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            if (!keyError && apiKey) {
+              // Add to agent configuration
+              if (agentConfigBody.agent) {
+                // Store whispey_key_id (the database ID)
+                if (apiKey.id) {
+                  agentConfigBody.agent.whispey_key_id = apiKey.id
+                }
+
+                // Decrypt and store the API key
+                if (apiKey.token_hash_master) {
+                  try {
+                    const decryptedKey = decryptWithWhispeyKey(apiKey.token_hash_master)
+                    agentConfigBody.agent.whispey_api_key = decryptedKey
+                    console.log('✅ Decrypted and stored whispey_api_key in agent config')
+                  } catch (decryptError) {
+                    console.error('❌ Failed to decrypt API key:', decryptError)
+                    // Fallback: store token_hash if decryption fails
+                    if (apiKey.token_hash) {
+                      agentConfigBody.agent.token_hash = apiKey.token_hash
+                    }
+                  }
+                } else if (apiKey.token_hash) {
+                  // Fallback: use token_hash if token_hash_master not available
+                  agentConfigBody.agent.token_hash = apiKey.token_hash
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching/decrypting API key:', error)
+        // Don't fail the request, just log the error
+      }
     }
     
     
