@@ -1,5 +1,6 @@
 // app/api/agents/start-session/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 interface StartSessionRequest {
   user_identity: string
@@ -16,6 +17,12 @@ interface StartSessionResponse {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user (middleware already protects this route)
+    const userId = await getCurrentUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     // Parse request body
     const body: StartSessionRequest = await request.json()
 

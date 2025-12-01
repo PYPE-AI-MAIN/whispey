@@ -8,13 +8,19 @@ const isPublicRoute = createRouteMatcher([
   "/terms-of-service(.*)",
   "/privacy-policy(.*)",
   '/docs(.*)',
-  // '/api/webhooks(.*)', // if you have public API routes
-  '/api(.*)'
-  // Add other public routes here
+  // Public API routes (webhooks and token-based auth routes)
+  '/api/vapi/webhook(.*)',
+  '/api/send-logs(.*)',
+  '/api/logs/call-logs(.*)',
+  '/api/logs/failure-report(.*)',
+  '/api/webhooks/clerk(.*)',
+  '/api/validate-sso-token(.*)',
+  '/api/logs/test-connection(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
-  // If it's not a public route and user is not authenticated, redirect to sign-in
+  // Protect all routes except public ones
+  // This runs at the edge for optimal performance
   if (!isPublicRoute(request)) {
     await auth.protect();
   }
