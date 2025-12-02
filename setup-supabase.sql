@@ -860,3 +860,61 @@ CREATE POLICY "Allow all operations on call logs with context" ON public.pype_vo
 
 -- Refresh the materialized view
 REFRESH MATERIALIZED VIEW CONCURRENTLY call_summary_materialized;
+
+
+-- ========================================
+-- Reprocess Status Tracking Table
+-- ========================================
+-- This table tracks the status of reprocess requests for call logs
+
+CREATE TABLE IF NOT EXISTS pype_voice_reprocess_status (
+  -- Primary Key
+  request_id UUID PRIMARY KEY,
+  
+  -- Status Information
+  status VARCHAR(20) NOT NULL DEFAULT 'queued',
+  -- Possible values: 'queued', 'preparing', 'processing', 'completed', 'failed'
+  
+  -- Request Filters
+  from_date TIMESTAMPTZ NOT NULL,
+  to_date TIMESTAMPTZ NOT NULL,
+  reprocess_type VARCHAR(20) NOT NULL,
+  -- Possible values: 'empty_only', 'all'
+  reprocess_options VARCHAR(20) NOT NULL,
+  -- Possible values: 'transcription', 'metrics', 'both'
+  agent_id UUID,
+  project_id UUID,
+  
+  -- Progress Tracking
+  total_logs INTEGER DEFAULT 0,
+  total_batches INTEGER DEFAULT 0,
+  batches_queued INTEGER DEFAULT 0,
+  batches_completed INTEGER DEFAULT 0,
+  logs_processed INTEGER DEFAULT 0,
+  logs_failed INTEGER DEFAULT 0,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_reprocess_status_request_id ON pype_voice_reprocess_status(request_id);
+CREATE INDEX IF NOT EXISTS idx_reprocess_status_status ON pype_voice_reprocess_status(status);
+CREATE INDEX IF NOT EXISTS idx_reprocess_status_created_at ON pype_voice_reprocess_status(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reprocess_status_agent_id ON pype_voice_reprocess_status(agent_id) WHERE agent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reprocess_status_project_id ON pype_voice_reprocess_status(project_id) WHERE project_id IS NOT NULL;
+
+-- Add comments for documentation
+COMMENT ON TABLE pype_voice_reprocess_status IS 'Tracks the status and progress of reprocess requests for call logs';
+COMMENT ON COLUMN pype_voice_reprocess_status.request_id IS 'Unique identifier for the reprocess request (UUID)';
+COMMENT ON COLUMN pype_voice_reprocess_status.status IS 'Current status: queued, preparing, processing, completed, failed';
+COMMENT ON COLUMN pype_voice_reprocess_status.reprocess_type IS 'Type of reprocessing: empty_only (only empty fields) or all (reprocess everything)';
+COMMENT ON COLUMN pype_voice_reprocess_status.reprocess_options IS 'What to reprocess: transcription, metrics, or both';
+COMMENT ON COLUMN pype_voice_reprocess_status.total_logs IS 'Total number of call logs found matching the criteria';
+COMMENT ON COLUMN pype_voice_reprocess_status.total_batches IS 'Total number of batches created for processing';
+COMMENT ON COLUMN pype_voice_reprocess_status.batches_queued IS 'Number of batches queued to SQS';
+COMMENT ON COLUMN pype_voice_reprocess_status.batches_completed IS 'Number of batches successfully processed';
+COMMENT ON COLUMN pype_voice_reprocess_status.logs_processed IS 'Total number of logs successfully processed';
+COMMENT ON COLUMN pype_voice_reprocess_status.logs_failed IS 'Total number of logs that failed to process';
+

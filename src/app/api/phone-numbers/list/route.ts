@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    console.log("projectData",projectData.agent)
     // Return the agent data directly as it's already in the correct format
     return NextResponse.json(projectData.agent)
 
