@@ -5,14 +5,13 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, Sparkles, CheckCircle, XCircle, AlertCircle, Clock, CalendarDays } from 'lucide-react'
+import { Loader2, Sparkles, AlertCircle, CalendarDays, CheckCircle } from 'lucide-react'
 import { DateRange } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -36,31 +35,6 @@ const formatDate = (date: Date, formatStr: string) => {
     .replace('yyyy', year.toString())
 }
 
-interface ReprocessStatus {
-  request_id: string
-  status: 'queued' | 'preparing' | 'processing' | 'completed' | 'failed'
-  progress_percentage: number
-  total_logs: number
-  total_batches: number
-  batches_queued: number
-  batches_completed: number
-  logs_processed: number
-  logs_failed: number
-  filters: {
-    from_date: string
-    to_date: string
-    reprocess_type: string
-    reprocess_options: string
-    agent_id: string
-    project_id: string
-  }
-  timestamps: {
-    created_at: string
-    updated_at: string
-  }
-  estimated_time_remaining_minutes?: number
-}
-
 interface ReanalyzeCallLogsProps {
   projectId?: string
   agentId?: string
@@ -69,9 +43,8 @@ interface ReanalyzeCallLogsProps {
 
 export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: ReanalyzeCallLogsProps) {
   const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState<ReprocessStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [polling, setPolling] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [logCount, setLogCount] = useState<number | null>(null)
   const [counting, setCounting] = useState(false)
 
@@ -90,20 +63,6 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
   const [availableMetricsFields, setAvailableMetricsFields] = useState<string[]>([])
   const [loadingFields, setLoadingFields] = useState(false)
 
-  // Storage key for persisting analysis state
-  const storageKey = `reanalysis_${projectId}_${agentId}`
-
-  // Check for existing running analysis when dialog opens
-  useEffect(() => {
-    if (isDialogOpen === true && projectId && agentId) {
-      const storedRequestId = localStorage.getItem(storageKey)
-      if (storedRequestId) {
-        // Check if analysis is still running
-        checkExistingAnalysis(storedRequestId)
-      }
-    }
-  }, [isDialogOpen, projectId, agentId, storageKey])
-
   // Fetch available fields from agent config
   useEffect(() => {
     if (agentId) {
@@ -116,12 +75,12 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
   // Fetch log count when filters change
   useEffect(() => {
-    if (dateRange?.from && dateRange?.to && !isAnalysisRunning) {
+    if (dateRange?.from && dateRange?.to && !success) {
       fetchLogCount()
     } else {
       setLogCount(null)
     }
-  }, [dateRange, reprocessType, reprocessOptions, transcriptionFields, metricsFields, agentId, projectId])
+  }, [dateRange, reprocessType, reprocessOptions, transcriptionFields, metricsFields, agentId, projectId, success])
 
   const fetchAvailableFields = async () => {
     if (!agentId) return
@@ -233,38 +192,10 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
     }
   }
 
-  const checkExistingAnalysis = async (requestId: string) => {
-    try {
-      const statusData = await getStatus(requestId)
-      setStatus(statusData)
-      
-      // If still running, resume polling
-      if (statusData.status !== 'completed' && statusData.status !== 'failed') {
-        setPolling(true)
-        pollStatus(requestId)
-      } else {
-        // Analysis completed or failed, clear storage
-        localStorage.removeItem(storageKey)
-      }
-    } catch (err: any) {
-      // Request failed - localStorage already cleared in getStatus, just handle silently
-      // Only log non-404 errors for debugging
-      if (err?.status !== 404) {
-        console.error('Error checking existing analysis:', err)
-      }
-    }
-  }
-
   const triggerReanalysis = async () => {
-    // Prevent starting new analysis if one is already running
-    if (isAnalysisRunning) {
-      setError('An analysis is already in progress. Please wait for it to complete.')
-      return
-    }
-
     setLoading(true)
     setError(null)
-    setStatus(null)
+    setSuccess(false)
 
     try {
       // Validate dates
@@ -324,145 +255,12 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
         throw new Error(data.error || 'Failed to trigger reprocess')
       }
 
-      // Store request_id in localStorage
-      if (projectId && agentId) {
-        localStorage.setItem(storageKey, data.request_id)
-      }
-
-      // Start polling for status
-      setStatus({
-        request_id: data.request_id,
-        status: 'queued',
-        progress_percentage: 0,
-        total_logs: 0,
-        total_batches: 0,
-        batches_queued: 0,
-        batches_completed: 0,
-        logs_processed: 0,
-        logs_failed: 0,
-        filters: data.filters,
-        timestamps: {
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      })
-
-      setPolling(true)
-      pollStatus(data.request_id)
+      // Show success message
+      setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start reanalysis')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const getStatus = async (requestId: string): Promise<ReprocessStatus> => {
-    const url = `/api/reprocess-status/${requestId}${projectId ? `?project_id=${projectId}` : ''}`
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      // Clear localStorage immediately if request fails
-      if (projectId && agentId) {
-        localStorage.removeItem(storageKey)
-      }
-      
-      let errorMessage = 'Failed to get status'
-      try {
-        const error = await response.json()
-        errorMessage = error.error || errorMessage
-      } catch {
-        if (response.status === 404) {
-          errorMessage = 'Reprocess request not found'
-        } else {
-          errorMessage = `Server returned ${response.status}: ${response.statusText}`
-        }
-      }
-      const error = new Error(errorMessage)
-      ;(error as any).status = response.status
-      throw error
-    }
-
-    return await response.json()
-  }
-
-  const pollStatus = async (requestId: string) => {
-    const pollInterval = 5000 // 5 seconds
-    const maxAttempts = 360 // 30 minutes max
-    let attempts = 0
-
-    const poll = async (): Promise<void> => {
-      try {
-        const statusData = await getStatus(requestId)
-        setStatus(statusData)
-
-        // Check if completed
-        if (statusData.status === 'completed' || statusData.status === 'failed') {
-          setPolling(false)
-          // Clear storage when analysis completes or fails
-          if (projectId && agentId) {
-            localStorage.removeItem(storageKey)
-          }
-          return
-        }
-
-        // Continue polling
-        attempts++
-        if (attempts >= maxAttempts) {
-          setError('Status polling timeout. The reprocess may still be running.')
-          setPolling(false)
-          return
-        }
-
-        // Wait before next poll
-        await new Promise(resolve => setTimeout(resolve, pollInterval))
-        return poll()
-      } catch (err: any) {
-        // Request failed - localStorage already cleared in getStatus
-        setPolling(false)
-        setStatus(null)
-        
-        // If 404, handle silently (request doesn't exist anymore)
-        if (err?.status === 404) {
-          return
-        }
-        
-        // For other errors, show error message
-        setError(err instanceof Error ? err.message : 'Failed to poll status')
-      }
-    }
-
-    return poll()
-  }
-
-  const getStatusIcon = () => {
-    if (!status) return null
-    
-    switch (status.status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-600" />
-      case 'failed':
-        return <XCircle className="w-4 h-4 text-red-600" />
-      case 'processing':
-        return <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-      case 'preparing':
-        return <Clock className="w-4 h-4 text-yellow-600" />
-      default:
-        return <Clock className="w-4 h-4 text-gray-600" />
-    }
-  }
-
-  const getStatusColor = () => {
-    if (!status) return 'default'
-    
-    switch (status.status) {
-      case 'completed':
-        return 'default'
-      case 'failed':
-        return 'destructive'
-      case 'processing':
-        return 'default'
-      default:
-        return 'secondary'
     }
   }
 
@@ -479,24 +277,19 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
     return 'Select date range'
   }
 
-  // Check if analysis is running (not completed or failed)
-  const isAnalysisRunning = Boolean(status && status.status !== 'completed' && status.status !== 'failed')
-
   return (
     <div className="space-y-6">
-      {/* Show form only when no active analysis */}
-      {!isAnalysisRunning && (
-        <Card className="border-gray-200 dark:border-gray-800">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              Re-analyze Call Logs
-            </CardTitle>
-            <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-              Update transcription metrics and analytics for historical call logs.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
+      <Card className="border-gray-200 dark:border-gray-800">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            Re-analyze Call Logs
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+            Update transcription metrics and analytics for historical call logs.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
             {/* Date Range Picker */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -510,7 +303,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                       "w-full justify-start text-left font-normal h-11",
                       !dateRange && "text-muted-foreground"
                     )}
-                    disabled={loading || polling}
+                    disabled={loading || success}
                   >
                     <CalendarDays className="mr-2 h-4 w-4" />
                     {formatDateRange()}
@@ -538,7 +331,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
               <Select
                 value={reprocessType}
                 onValueChange={(value: 'empty_only' | 'all') => setReprocessType(value)}
-                disabled={loading || polling}
+                disabled={loading || success}
               >
                 <SelectTrigger className="h-11">
                   <SelectValue />
@@ -566,7 +359,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                     setTranscriptionFields([])
                   }
                 }}
-                disabled={loading || polling}
+                disabled={loading || success}
               >
                 <SelectTrigger className="h-11">
                   <SelectValue />
@@ -607,7 +400,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                               setTranscriptionFields(transcriptionFields.filter(f => f !== field))
                             }
                           }}
-                          disabled={loading || polling}
+                          disabled={loading || success}
                         />
                         <label
                           htmlFor={`transcription-${field}`}
@@ -663,7 +456,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                               setMetricsFields(metricsFields.filter(f => f !== field))
                             }
                           }}
-                          disabled={loading || polling}
+                          disabled={loading || success}
                         />
                         <label
                           htmlFor={`metrics-${field}`}
@@ -722,7 +515,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             {/* Submit Button */}
             <Button
               onClick={triggerReanalysis}
-              disabled={loading || polling || !dateRange?.from || !dateRange?.to || isAnalysisRunning || counting}
+              disabled={loading || success || !dateRange?.from || !dateRange?.to || counting}
               className="w-full h-11 text-base font-medium"
               size="lg"
             >
@@ -739,6 +532,31 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
               )}
             </Button>
 
+            {/* Success Display */}
+            {success && (
+              <Alert className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <AlertDescription className="text-green-800 dark:text-green-200">
+                  <div className="font-medium mb-1">Analysis started successfully!</div>
+                  <div className="text-sm mb-3">
+                    The re-analysis process has been initiated. This may take a few minutes to complete. 
+                    The results will be updated automatically when processing is finished.
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSuccess(false)
+                      setError(null)
+                    }}
+                    className="mt-2"
+                  >
+                    Start New Analysis
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Error Display */}
             {error && (
               <Alert variant="destructive">
@@ -748,82 +566,6 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             )}
           </CardContent>
         </Card>
-      )}
-
-      {/* Status Display - Show when analysis is running or completed/failed */}
-      {status && (
-        <Card className={cn(
-          "border-blue-200 dark:border-blue-800",
-          isAnalysisRunning ? "bg-blue-50/30 dark:bg-blue-950/10" : "bg-gray-50/30 dark:bg-gray-950/10"
-        )}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                {getStatusIcon()}
-                Status: <Badge variant={getStatusColor()} className="ml-1 capitalize">{status.status}</Badge>
-              </CardTitle>
-              {!isAnalysisRunning && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setStatus(null)
-                    setError(null)
-                    setPolling(false)
-                    // Clear storage when starting new analysis
-                    if (projectId && agentId) {
-                      localStorage.removeItem(storageKey)
-                    }
-                  }}
-                  className="h-8 text-xs"
-                >
-                  New Analysis
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Progress</span>
-                    <span>{status.progress_percentage}%</span>
-                  </div>
-                  <Progress value={status.progress_percentage} />
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Logs Processed</div>
-                    <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {status.logs_processed.toLocaleString()} <span className="text-sm font-normal text-gray-500">/ {status.total_logs.toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Batches Completed</div>
-                    <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {status.batches_completed} <span className="text-sm font-normal text-gray-500">/ {status.total_batches}</span>
-                    </div>
-                  </div>
-                  {status.logs_failed > 0 && (
-                    <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
-                      <div className="text-xs text-red-600 dark:text-red-400 mb-1">Logs Failed</div>
-                      <div className="text-lg font-semibold text-red-700 dark:text-red-300">{status.logs_failed}</div>
-                    </div>
-                  )}
-                  {status.estimated_time_remaining_minutes !== undefined && status.estimated_time_remaining_minutes !== null && status.estimated_time_remaining_minutes > 0 && (
-                    <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Est. Time Remaining</div>
-                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {status.estimated_time_remaining_minutes} <span className="text-sm font-normal">min</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }
