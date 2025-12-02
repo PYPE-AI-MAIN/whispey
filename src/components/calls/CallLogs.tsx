@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw, Sparkles } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import ReanalyzeCallLogs from "../reprocess/ReprocessCallLogs"
 import CallFilter, { FilterRule } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
@@ -203,6 +205,36 @@ const DynamicJsonCell: React.FC<{
         )}
       </Tooltip>
     </div>
+  )
+}
+
+// Wrapper component to manage dialog state
+const ReanalyzeDialogWrapper = ({ projectId, agentId }: { projectId?: string; agentId?: string }) => {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          <Sparkles className="w-4 h-4 mr-2" />
+          Re-analyze Logs
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg">Re-analyze Call Logs</DialogTitle>
+        </DialogHeader>
+        <ReanalyzeCallLogs 
+          projectId={projectId} 
+          agentId={agentId}
+          isDialogOpen={isOpen}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -879,6 +911,7 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
           />
           
           <div className="flex items-center gap-2">
+            <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />
             <Button
               variant="outline"
               size="sm"
