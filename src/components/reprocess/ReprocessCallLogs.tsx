@@ -812,7 +812,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                       <div className="text-lg font-semibold text-red-700 dark:text-red-300">{status.logs_failed}</div>
                     </div>
                   )}
-                  {status.estimated_time_remaining_minutes && (
+                  {status.estimated_time_remaining_minutes !== undefined && status.estimated_time_remaining_minutes !== null && status.estimated_time_remaining_minutes > 0 && (
                     <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
                       <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Est. Time Remaining</div>
                       <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
