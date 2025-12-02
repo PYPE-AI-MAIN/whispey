@@ -23,7 +23,7 @@ interface PhoneAgent {
   name: string
   status: string
   created_at: string
-  phone_number: string
+  inbound_phone_number: string
 }
 
 interface Agent {
@@ -65,6 +65,9 @@ export default function SimplifiedSipManagement() {
       // Fetch phone numbers from the API with project ID
       const phoneResponse = await fetch(`/api/phone-numbers/list?project_id=${projectId}`)
 
+
+      console.log("phoneResponse",phoneResponse)
+
       if (!phoneResponse.ok) {
         const errorData = await phoneResponse.json()
         throw new Error(errorData.error || 'Failed to fetch phone numbers')
@@ -72,13 +75,25 @@ export default function SimplifiedSipManagement() {
 
       const phoneData: PhoneNumbersResponse = await phoneResponse.json()
 
-
       console.log('📱 Full API Response:', phoneData)
       console.log('📊 Phone Agents Array:', phoneData.agents)
       console.log('📈 Phone Agents Length:', phoneData.agents?.length || 0)
       console.log('🔢 Usage Count:', phoneData.usage)
       console.log('📋 Limits:', phoneData.limits)
-
+      
+      // Debug: Log each agent's inbound_phone_number field
+      if (phoneData.agents && phoneData.agents.length > 0) {
+        phoneData.agents.forEach((agent, index) => {
+          console.log(`📞 Agent ${index}:`, {
+            id: agent.id,
+            name: agent.name,
+            inbound_phone_number: agent.inbound_phone_number,
+            status: agent.status,
+            has_phone_number: !!agent.inbound_phone_number,
+            phone_number_type: typeof agent.inbound_phone_number
+          })
+        })
+      }
 
       setPhoneAgents(phoneData.agents || [])
 
@@ -129,9 +144,9 @@ export default function SimplifiedSipManagement() {
     setShowPhoneRequest(true)
   }
 
-  const filteredAgents = phoneAgents.filter(phoneAgent => {
+      const filteredAgents = phoneAgents.filter(phoneAgent => {
     const matchesSearch = !searchQuery || 
-      phoneAgent.phone_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (phoneAgent.inbound_phone_number && phoneAgent.inbound_phone_number.toLowerCase().includes(searchQuery.toLowerCase())) ||
       phoneAgent.name.toLowerCase().includes(searchQuery.toLowerCase())
     
     return matchesSearch
@@ -266,9 +281,15 @@ export default function SimplifiedSipManagement() {
                     <div className="grid grid-cols-4 gap-4 items-center">
                       {/* Phone Number */}
                       <div>
-                        <Badge variant="outline" className="text-sm font-mono">
-                          {phoneAgent.phone_number}
-                        </Badge>
+                        {phoneAgent.inbound_phone_number ? (
+                          <Badge variant="outline" className="text-sm font-mono">
+                            {phoneAgent.inbound_phone_number}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-gray-400 dark:text-gray-500 italic">
+                            No number assigned
+                          </span>
+                        )}
                       </div>
                       
                       {/* Assigned Agent */}
@@ -299,7 +320,7 @@ export default function SimplifiedSipManagement() {
 
                       {/* Actions */}
                       <div>
-                        {!phoneAgent.phone_number && phoneAgent.name && (
+                        {!phoneAgent.inbound_phone_number && phoneAgent.name && (
                           <Button
                             size="sm"
                             variant="outline"
