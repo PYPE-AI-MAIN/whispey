@@ -68,9 +68,24 @@ export interface PhoneNumber {
 
 // Retry Configuration
 export interface RetryConfig {
-  errorCodes: string[]
-  delayMinutes: number
-  maxRetries: number
+  type: 'sipCode' | 'metric' | 'fieldExtractor'
+  
+  // For sipCode:
+  errorCodes?: string[]  // e.g., ['408', '480', '486']
+  
+  // For metric:
+  metricName?: string  // e.g., 'sentiment', 'intent', 'customer_satisfaction'
+  operator?: '<' | '>' | '<=' | '>=' | '==' | '!='
+  threshold?: number  // e.g., 0.7, 50, 80
+  
+  // For fieldExtractor:
+  fieldName?: string  // e.g., 'customerName', 'orderId', 'email'
+  operator?: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains'
+  expectedValue?: any  // Optional: value to compare against
+  
+  // Common fields (required for all types):
+  delayMinutes: number  // Minutes to wait before retry (0-1440)
+  maxRetries: number   // Maximum retry attempts (0-10)
 }
 
 // Campaign types
