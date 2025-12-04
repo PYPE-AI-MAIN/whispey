@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users } from 'lucide-react'
+import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users, Pause, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Contact, RetryConfig } from '@/utils/campaigns/constants'
@@ -47,6 +47,7 @@ function ViewCampaign() {
   const [logs, setLogs] = useState<any[]>([])
   const [hasMoreLogs, setHasMoreLogs] = useState(false)
   const [nextKey, setNextKey] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
 
 
@@ -123,6 +124,56 @@ function ViewCampaign() {
   const handleRefresh = () => {
     fetchCampaignDetails()
     fetchContacts()
+  }
+
+  const handlePauseCampaign = async () => {
+    if (!confirm('Are you sure you want to pause this campaign?')) return
+    
+    try {
+      setActionLoading(true)
+      const response = await fetch('/api/campaigns/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to pause campaign')
+      }
+      
+      await fetchCampaignDetails()
+      alert('Campaign paused successfully')
+    } catch (error: any) {
+      alert(error.message || 'Failed to pause campaign')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleResumeCampaign = async () => {
+    if (!confirm('Are you sure you want to resume this campaign?')) return
+    
+    try {
+      setActionLoading(true)
+      const response = await fetch('/api/campaigns/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to resume campaign')
+      }
+      
+      await fetchCampaignDetails()
+      alert('Campaign resumed successfully')
+    } catch (error: any) {
+      alert(error.message || 'Failed to resume campaign')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const handleLoadMore = () => {
@@ -446,15 +497,41 @@ function ViewCampaign() {
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            className="h-7 text-xs gap-1.5"
-          >
-            <RefreshCw className="w-3 h-3" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {(campaignDetails?.status === 'scheduled' || campaignDetails?.status === 'running') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePauseCampaign}
+                disabled={actionLoading}
+                className="h-7 text-xs gap-1.5"
+              >
+                <Pause className="w-3 h-3" />
+                {actionLoading ? 'Pausing...' : 'Pause'}
+              </Button>
+            )}
+            {campaignDetails?.status === 'paused' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResumeCampaign}
+                disabled={actionLoading}
+                className="h-7 text-xs gap-1.5"
+              >
+                <Play className="w-3 h-3" />
+                {actionLoading ? 'Resuming...' : 'Resume'}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="h-7 text-xs gap-1.5"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -534,7 +611,9 @@ function ViewCampaign() {
                   Schedule
                 </p>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {campaignDetails.schedule.days.join(', ')}
+                  {campaignDetails.schedule?.days && Array.isArray(campaignDetails.schedule.days) 
+                    ? campaignDetails.schedule.days.join(', ')
+                    : 'Not scheduled'}
                 </p>
               </div>
               <div>
@@ -543,19 +622,21 @@ function ViewCampaign() {
                   Time Window
                 </p>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {campaignDetails.schedule.startTime} - {campaignDetails.schedule.endTime}
+                  {campaignDetails.schedule?.startTime && campaignDetails.schedule?.endTime
+                    ? `${campaignDetails.schedule.startTime} - ${campaignDetails.schedule.endTime}`
+                    : 'Not set'}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Timezone</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {campaignDetails.schedule.timezone}
+                  {campaignDetails.schedule?.timezone || 'Not set'}
                 </p>
               </div>
             </div>
 
             {/* Retry Configuration */}
-            {campaignDetails.schedule.retryConfig && campaignDetails.schedule.retryConfig.length > 0 && (
+            {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-1.5">
                   <RefreshCw className="w-3 h-3" />
@@ -563,12 +644,27 @@ function ViewCampaign() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {campaignDetails.schedule.retryConfig.map((config, index) => {
-                    const errorCode = config.errorCodes[0]
-                    const errorLabels: { [key: string]: string } = {
-                      '480': 'Temporarily Unavailable',
-                      '486': 'Busy Here',
+                    // Handle different retry types
+                    let displayLabel = ''
+                    if (config.type === 'sipCode' && config.errorCodes && Array.isArray(config.errorCodes) && config.errorCodes.length > 0) {
+                      const errorCode = config.errorCodes[0]
+                      const errorLabels: { [key: string]: string } = {
+                        '408': 'Request Timeout',
+                        '480': 'Temporarily Unavailable',
+                        '486': 'Busy Here',
+                        '504': 'Server Time-out',
+                        '600': 'Busy Everywhere',
+                      }
+                      displayLabel = errorLabels[String(errorCode)] || String(errorCode)
+                    } else if (config.type === 'metric' && config.metricName) {
+                      displayLabel = `Metric: ${config.metricName} ${config.operator || ''} ${config.threshold ?? ''}`
+                    } else if (config.type === 'fieldExtractor' && config.fieldName) {
+                      displayLabel = `Field: ${config.fieldName} ${config.operator || ''}`
+                    } else {
+                      displayLabel = 'Unknown retry type'
                     }
-                    const label = errorLabels[errorCode] || errorCode
+                    
+                    const label = displayLabel
 
                     return (
                       <div 
@@ -576,8 +672,8 @@ function ViewCampaign() {
                         className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="font-mono text-xs font-semibold text-gray-900 dark:text-gray-100">
-                            {errorCode}
+                          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {config.type === 'sipCode' && config.errorCodes?.[0] ? config.errorCodes[0] : config.type || 'Retry'}
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {label}

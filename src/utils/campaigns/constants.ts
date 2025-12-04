@@ -75,13 +75,16 @@ export interface RetryConfig {
   
   // For metric:
   metricName?: string  // e.g., 'sentiment', 'intent', 'customer_satisfaction'
-  operator?: '<' | '>' | '<=' | '>=' | '==' | '!='
   threshold?: number  // e.g., 0.7, 50, 80
   
   // For fieldExtractor:
   fieldName?: string  // e.g., 'customerName', 'orderId', 'email'
-  operator?: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains'
   expectedValue?: any  // Optional: value to compare against
+  
+  // Operator can be either metric operator or fieldExtractor operator
+  // Metric operators: '<' | '>' | '<=' | '>=' | '==' | '!='
+  // FieldExtractor operators: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains'
+  operator?: '<' | '>' | '<=' | '>=' | '==' | '!=' | 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains'
   
   // Common fields (required for all types):
   delayMinutes: number  // Minutes to wait before retry (0-1440)

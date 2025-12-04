@@ -312,7 +312,9 @@ function CreateCampaign() {
             maxRetries: Number(config.maxRetries),
           }
           // Include expectedValue only if operator is not 'missing'
-          if (config.operator && config.operator !== 'missing' && config.expectedValue) {
+          // Type assertion needed because operator can be either metric or fieldExtractor type
+          const fieldOperator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
+          if (fieldOperator && fieldOperator !== 'missing' && config.expectedValue) {
             fieldConfig.expectedValue = config.expectedValue
           }
           // Remove any errorCodes if present
