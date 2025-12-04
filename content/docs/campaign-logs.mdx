@@ -1,0 +1,265 @@
+---
+title: Campaign Creation & Logs Guide
+description: Step-by-step guide to creating campaigns, understanding variables, uploading CSV files, and managing campaign logs
+---
+
+## How to Create a Campaign
+
+Follow these 6 simple steps to create and manage your campaign.
+
+---
+
+## Step 1: Create Campaign Button
+
+Navigate to the Campaigns page and click the **"Create Campaign"** button located in the top right corner of the screen.
+
+<img src="/docs/campaigns/step1.png" alt="Step 1: Create Campaign Button" />
+
+This will open the campaign creation form where you'll configure all campaign settings.
+
+---
+
+## Step 2: Add Campaign Details
+
+Fill in the basic campaign information:
+
+1. **Batch Call Name** - Enter a unique name for your campaign (e.g., "booking-confirmation-campaign")
+2. **Select Agent** - Choose the AI agent that will make the calls from the dropdown
+3. **From Number (Outbound)** - Select the phone number to call from
+
+<img src="/docs/campaigns/step2.png" alt="Step 2: Campaign Details" />
+
+**Important:** Make sure to select an active agent and a valid phone number before proceeding.
+
+---
+
+## Step 3: Set Campaign Concurrency
+
+Configure how many simultaneous calls your campaign will make:
+
+- **Campaign Concurrency** - Set the number of simultaneous calls (1-5)
+- **Recommended:** 5-10 simultaneous calls for better performance
+
+<img src="/docs/campaigns/step3.png" alt="Step 3: Campaign Concurrency" />
+
+Use the `-` and `+` buttons to adjust the concurrency value. Higher concurrency means more calls will be made at the same time, but make sure your account limits allow it.
+
+---
+
+## Step 4: Upload Recipients CSV
+
+Upload your CSV file containing recipient information:
+
+### CSV File Requirements
+
+1. **Required Column:** `phone` - Must contain phone numbers
+2. **Variable Columns:** All other columns become variables that you can use in your agent's prompt
+3. **Column Names:** Must match exactly with the variable names used in your prompt
+
+### CSV Format
+
+```csv
+phone,NAME,SLOT,DOCTOR
++916268181226,deepesh agrawal,2-3 PM,rajesh rao
+```
+
+**Important Points:**
+- The `phone` column is **required** and must contain valid phone numbers
+- Other column names (like `NAME`, `SLOT`, `DOCTOR`) become variables you can use in your prompt
+- Column names must match exactly with the variables in your agent's prompt
+- Use `{{COLUMN_NAME}}` format in your prompt to reference these variables
+
+### Download Template
+
+Click the **"Download template"** button to see an example CSV format with the correct structure.
+
+<img src="/docs/campaigns/step4.png" alt="Step 4: Upload CSV" />
+
+After uploading, you'll see a preview of your recipients in the right panel showing all columns and data.
+
+---
+
+## Step 5: Configure Campaign Settings
+
+Set up the final campaign settings:
+
+### Retry Configuration
+
+Configure automatic retries for failed calls:
+
+- **480 Temporarily Unavailable**
+  - **Delay (minutes):** Wait time before retry (0-1440 minutes)
+  - **Max Retries:** Number of retry attempts (0-10)
+  - Default: 5 minutes delay, 2 retries
+
+- **486 Busy Here**
+  - **Delay (minutes):** Wait time before retry (0-1440 minutes)
+  - **Max Retries:** Number of retry attempts (0-10)
+  - Default: 5 minutes delay, 2 retries
+
+### When to Send
+
+- **Send Now** - Start the campaign immediately
+- **Schedule** - Schedule the campaign for a later time
+
+### Days to Run
+
+Select which days of the week the campaign should run:
+- Weekdays (Mon-Fri)
+- Weekends (Sat-Sun)
+- All days
+- Custom selection
+
+### Call Window
+
+Set the time range when calls should be made:
+- **Start Time** - When to begin making calls (e.g., 12:00 AM)
+- **End Time** - When to stop making calls (e.g., 11:59 PM)
+
+Calls will only run between these hours on the selected days.
+
+<img src="/docs/campaigns/step5.png" alt="Step 5: Campaign Settings" />
+
+Once all settings are configured, click the **"Send"** button to create and start your campaign.
+
+---
+
+## Step 6: View Campaign Logs
+
+After creating the campaign, you'll be automatically redirected to the Campaign Logs page where you can monitor the campaign status.
+
+<img src="/docs/campaigns/step6.png" alt="Step 6: Campaign Logs" />
+
+### Campaign Overview
+
+The page displays:
+
+1. **Campaign Statistics** - Four key metrics:
+   - **Total Contacts** - Total number of recipients
+   - **Processed** - Number of contacts processed
+   - **Success** - Number of successful calls
+   - **Failed** - Number of failed calls
+
+2. **Campaign Information** - Shows:
+   - Campaign status (scheduled, active, completed)
+   - Schedule details (days and time window)
+   - Agent name
+   - Provider information
+   - Timezone
+
+3. **Campaign Logs Table** - Detailed view of each contact:
+   - **Status** - Current call status (pending, in progress, completed, failed)
+   - **Phone** - Contact's phone number
+   - **Retry Count** - Number of retry attempts
+   - **Last Call** - Timestamp of last call attempt
+   - **All CSV columns** - Your variables displayed as columns (NAME, SLOT, DOCTOR, etc.)
+
+### Understanding Status
+
+- **Pending** (Orange) - Waiting to be called
+- **In Progress** (Blue) - Call currently active
+- **Completed** (Green) - Call successful
+- **Failed** (Red) - Call failed after all retries
+
+---
+
+## Understanding Variables
+
+### How Variables Work
+
+Variables allow you to personalize each call using data from your CSV file.
+
+**Example:**
+
+If your CSV has columns: `phone`, `NAME`, `SLOT`, `DOCTOR`
+
+```csv
+phone,NAME,SLOT,DOCTOR
++916268181226,deepesh agrawal,2-3 PM,rajesh rao
+```
+
+In your agent's prompt, use:
+```
+Hello {{NAME}}, your appointment with {{DOCTOR}} is scheduled for {{SLOT}}.
+```
+
+The system will automatically replace:
+- `{{NAME}}` with "deepesh agrawal"
+- `{{DOCTOR}}` with "rajesh rao"
+- `{{SLOT}}` with "2-3 PM"
+
+### Important Rules
+
+1. **Column names = Variable names** - The column name in your CSV must match the variable name in your prompt
+2. **Case sensitive** - `{{NAME}}` and `{{name}}` are different
+3. **Exact match required** - Column name must match variable name exactly
+4. **Use double curly braces** - Format: `{{VARIABLE_NAME}}`
+
+---
+
+## CSV File Format
+
+### Required Format
+
+```csv
+phone,COLUMN1,COLUMN2,COLUMN3
++916268181226,value1,value2,value3
++919876543210,value1,value2,value3
+```
+
+### Phone Number Format
+
+- Must start with country code: `+91` (India) or `+1` (US/Canada)
+- Followed by 10 digits
+- Examples:
+  - ✅ `+916268181226`
+  - ✅ `+919876543210`
+  - ❌ `916268181226` (missing +)
+  - ❌ `+91-626-818-1226` (wrong format)
+
+### Column Naming Rules
+
+- ✅ Use letters, numbers, and underscores: `patient_name`, `appointment_date`
+- ✅ Keep it simple: `NAME`, `SLOT`, `DOCTOR`
+- ❌ No spaces: Use `first_name` not `first name`
+- ❌ No special characters: Only letters, numbers, and underscores
+
+---
+
+## Quick Reference
+
+### Campaign Creation Checklist
+
+- [ ] Unique campaign name entered
+- [ ] Agent selected
+- [ ] Phone number selected
+- [ ] Concurrency set (5-10 recommended)
+- [ ] CSV file uploaded with `phone` column
+- [ ] CSV columns match prompt variables
+- [ ] Retry configuration set
+- [ ] Schedule configured (when to send, days, call window)
+- [ ] Campaign created successfully
+
+### Common Issues
+
+**Issue:** Variables not working in prompt
+- **Solution:** Ensure CSV column names match variable names exactly (case-sensitive)
+
+**Issue:** CSV upload fails
+- **Solution:** Check that `phone` column exists and phone numbers are in correct format
+
+**Issue:** Campaign not starting
+- **Solution:** Verify agent is selected, phone number is valid, and schedule is configured correctly
+
+---
+
+## Next Steps
+
+After creating your campaign:
+
+1. Monitor the Campaign Logs page for real-time updates
+2. Check status of individual contacts
+3. Export logs if needed for analysis
+4. Review failed calls and adjust retry settings if necessary
+
+For more information on managing campaign logs, see the [Campaign Logs documentation](/docs/campaign-logs).
