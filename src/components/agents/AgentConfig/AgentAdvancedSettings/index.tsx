@@ -32,6 +32,8 @@ interface AgentAdvancedSettingsProps {
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
+        user_away_timeout?: number
+        user_away_timeout_message?: string
       }
       tools: {
         tools: Array<{
@@ -159,6 +161,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               unlikely_threshold={advancedSettings.session.unlikely_threshold}
               min_endpointing_delay={advancedSettings.session.min_endpointing_delay}
               max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
+              user_away_timeout={advancedSettings.session.user_away_timeout}
+              user_away_timeout_message={advancedSettings.session.user_away_timeout_message}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

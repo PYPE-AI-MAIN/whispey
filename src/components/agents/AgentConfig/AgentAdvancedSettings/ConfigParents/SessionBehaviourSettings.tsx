@@ -11,6 +11,8 @@ interface SessionBehaviourSettingsProps {
   unlikely_threshold?: number
   min_endpointing_delay?: number
   max_endpointing_delay?: number
+  user_away_timeout?: number
+  user_away_timeout_message?: string
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -20,12 +22,16 @@ export default function SessionBehaviourSettings({
   unlikely_threshold = 0.6,
   min_endpointing_delay = 0.7,
   max_endpointing_delay = 0.7,
+  user_away_timeout,
+  user_away_timeout_message,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
   // Local state for input values to handle intermediate states
   const [thresholdInput, setThresholdInput] = useState(String(unlikely_threshold))
   const [minDelayInput, setMinDelayInput] = useState(String(min_endpointing_delay))
   const [maxDelayInput, setMaxDelayInput] = useState(String(max_endpointing_delay))
+  const [userAwayTimeoutInput, setUserAwayTimeoutInput] = useState(user_away_timeout !== undefined && user_away_timeout !== null ? String(user_away_timeout) : '')
+  const [userAwayTimeoutMessageInput, setUserAwayTimeoutMessageInput] = useState(user_away_timeout_message || '')
 
   // Sync with props when they change externally
   React.useEffect(() => {
@@ -39,6 +45,14 @@ export default function SessionBehaviourSettings({
   React.useEffect(() => {
     setMaxDelayInput(String(max_endpointing_delay))
   }, [max_endpointing_delay])
+
+  React.useEffect(() => {
+    setUserAwayTimeoutInput(user_away_timeout !== undefined && user_away_timeout !== null ? String(user_away_timeout) : '')
+  }, [user_away_timeout])
+
+  React.useEffect(() => {
+    setUserAwayTimeoutMessageInput(user_away_timeout_message || '')
+  }, [user_away_timeout_message])
 
   const handleNumberInput = (
     value: string,
@@ -299,6 +313,91 @@ export default function SessionBehaviourSettings({
             )}
             className="h-8 text-xs"
             placeholder="3"
+          />
+        </div>
+
+        {/* User Away Timeout */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              User Away Timeout (seconds)
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  Time in seconds before detecting user is away. Leave empty to disable, or set to 0 to use config default.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="number"
+            step="0.1"
+            min="0"
+            value={userAwayTimeoutInput}
+            onChange={(e) => {
+              const value = e.target.value
+              setUserAwayTimeoutInput(value)
+              if (value === '') {
+                onFieldChange('advancedSettings.session.user_away_timeout', undefined)
+              } else {
+                const numValue = parseFloat(value)
+                if (!isNaN(numValue) && numValue >= 0) {
+                  onFieldChange('advancedSettings.session.user_away_timeout', numValue)
+                }
+              }
+            }}
+            onBlur={(e) => {
+              const value = e.target.value
+              if (value === '' || isNaN(parseFloat(value))) {
+                setUserAwayTimeoutInput('')
+                onFieldChange('advancedSettings.session.user_away_timeout', undefined)
+              } else {
+                const numValue = parseFloat(value)
+                if (numValue < 0) {
+                  setUserAwayTimeoutInput('0')
+                  onFieldChange('advancedSettings.session.user_away_timeout', 0)
+                } else {
+                  setUserAwayTimeoutInput(String(numValue))
+                  onFieldChange('advancedSettings.session.user_away_timeout', numValue)
+                }
+              }
+            }}
+            className="h-8 text-xs"
+            placeholder="Leave empty to disable"
+          />
+        </div>
+
+        {/* User Away Timeout Message */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              User Away Timeout Message
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  Message to speak when user goes away. Leave empty to use default message.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="text"
+            value={userAwayTimeoutMessageInput}
+            onChange={(e) => {
+              const value = e.target.value
+              setUserAwayTimeoutMessageInput(value)
+              onFieldChange('advancedSettings.session.user_away_timeout_message', value || undefined)
+            }}
+            className="h-8 text-xs"
+            placeholder="Are you still on the line?"
           />
         </div>
       </div>

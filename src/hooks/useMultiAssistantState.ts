@@ -313,7 +313,13 @@ export function useMultiAssistantState({
           turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
           unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
           min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
-          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay')
+          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
+          ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
+            user_away_timeout: formValues.advancedSettings.session.user_away_timeout
+          }),
+          ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
+            user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
+          })
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
@@ -526,7 +532,13 @@ export function useMultiAssistantState({
           turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
           unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
           min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
-          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay')
+          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
+          ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
+            user_away_timeout: formValues.advancedSettings.session.user_away_timeout
+          }),
+          ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
+            user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
+          })
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
