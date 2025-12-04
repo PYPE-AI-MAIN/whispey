@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw, Sparkles } from "lucide-react"
+import { Phone, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RefreshCw, Sparkles, Inbox } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import ReanalyzeCallLogs from "../reprocess/ReprocessCallLogs"
 import CallFilter, { FilterRule } from "../CallFilter"
@@ -1007,7 +1007,46 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                   </TableRow>
                 </TableHeader>
                 <TableBody className="overflow-auto">
-                  {calls.map((call: CallLog) => (
+                  {calls.length === 0 && !loading ? (
+                    <TableRow>
+                      <TableCell 
+                        colSpan={
+                          visibleColumns.basic.length + 
+                          visibleColumns.metadata.length + 
+                          visibleColumns.transcription_metrics.length + 
+                          visibleColumns.metrics.length
+                        }
+                        className="h-[400px] text-center"
+                      >
+                        <div className="flex flex-col items-center justify-center space-y-4 py-12">
+                          <div className="rounded-full bg-muted/50 dark:bg-gray-800/50 p-6">
+                            <Inbox className="w-12 h-12 text-muted-foreground dark:text-gray-400" />
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                              No call logs found
+                            </h3>
+                            {activeFilters.length > 0 && (
+                              <p className="text-sm text-muted-foreground dark:text-gray-400 max-w-md">
+                                No call logs match your current filters. Try adjusting your filter criteria.
+                              </p>
+                            )}
+                          </div>
+                          {activeFilters.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleClearFilters}
+                              className="mt-4"
+                            >
+                              Clear Filters
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    calls.map((call: CallLog) => (
                     <TableRow
                       key={call.id}
                       className={cn(
@@ -1173,7 +1212,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                         )
                       })}
                     </TableRow>
-                  ))}
+                  ))
+                  )}
                 </TableBody>
               </Table>
               

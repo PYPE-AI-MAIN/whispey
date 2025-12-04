@@ -115,6 +115,8 @@ export interface AgentConfigResponse {
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
+        user_away_timeout?: number
+        user_away_timeout_message?: string
       }
     }>
   }
@@ -408,6 +410,8 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         unlikely_threshold: sessionBehavior.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
         min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
+        user_away_timeout: sessionBehavior.user_away_timeout !== undefined && sessionBehavior.user_away_timeout !== null ? sessionBehavior.user_away_timeout : undefined,
+        user_away_timeout_message: sessionBehavior.user_away_timeout_message !== undefined && sessionBehavior.user_away_timeout_message !== null && sessionBehavior.user_away_timeout_message !== '' ? sessionBehavior.user_away_timeout_message : undefined,
       },
       tools: {
         tools: assistant.tools?.map((tool: any) => ({

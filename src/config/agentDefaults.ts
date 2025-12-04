@@ -70,7 +70,9 @@ export const AGENT_DEFAULT_CONFIG = {
       turn_detection: "disabled",
       unlikely_threshold: 0.6,
       min_endpointing_delay: 0.7,
-      max_endpointing_delay: 0.7
+      max_endpointing_delay: 0.7,
+      user_away_timeout: undefined, // None to disable, 0 to use config default, or seconds
+      user_away_timeout_message: undefined // Message to speak when user goes away
     },
   
     // Background Audio Configuration
@@ -179,7 +181,9 @@ export const AGENT_DEFAULT_CONFIG = {
         turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
         unlikely_threshold: AGENT_DEFAULT_CONFIG.session_behavior.unlikely_threshold,
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
-        max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay
+        max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay,
+        user_away_timeout: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout,
+        user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message
       },
       tools: {
         tools: AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({
