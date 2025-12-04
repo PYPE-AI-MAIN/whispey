@@ -8,6 +8,7 @@
     "complete-implementation",
     "observability",
     "examples",
-    "api-reference"
+    "api-reference",
+    "campaign-logs"
   ]
 }
