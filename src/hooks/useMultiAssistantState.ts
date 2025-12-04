@@ -200,7 +200,27 @@ export function useMultiAssistantState({
         })(),
         vad: {
           name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
-          min_silence_duration: formValues.advancedSettings?.vad?.minSilenceDuration ?? getFallback(null, 'vad.min_silence_duration')
+          ...(formValues.advancedSettings?.vad?.minSilenceDuration !== undefined && {
+            min_silence_duration: formValues.advancedSettings.vad.minSilenceDuration
+          }),
+          ...(formValues.advancedSettings?.vad?.minSpeechDuration !== undefined && {
+            min_speech_duration: formValues.advancedSettings.vad.minSpeechDuration
+          }),
+          ...(formValues.advancedSettings?.vad?.prefixPaddingDuration !== undefined && {
+            prefix_padding_duration: formValues.advancedSettings.vad.prefixPaddingDuration
+          }),
+          ...(formValues.advancedSettings?.vad?.maxBufferedSpeech !== undefined && {
+            max_buffered_speech: formValues.advancedSettings.vad.maxBufferedSpeech
+          }),
+          ...(formValues.advancedSettings?.vad?.activationThreshold !== undefined && {
+            activation_threshold: formValues.advancedSettings.vad.activationThreshold
+          }),
+          ...(formValues.advancedSettings?.vad?.sampleRate !== undefined && {
+            sample_rate: formValues.advancedSettings.vad.sampleRate
+          }),
+          ...(formValues.advancedSettings?.vad?.forceCpu !== undefined && {
+            force_cpu: formValues.advancedSettings.vad.forceCpu
+          })
         },
         tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
           const baseToolConfig = {
@@ -419,7 +439,27 @@ export function useMultiAssistantState({
         },
         vad: {
           name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
-          min_silence_duration: formValues.advancedSettings?.vad?.minSilenceDuration ?? getFallback(null, 'vad.min_silence_duration')
+          ...(formValues.advancedSettings?.vad?.minSilenceDuration !== undefined && {
+            min_silence_duration: formValues.advancedSettings.vad.minSilenceDuration
+          }),
+          ...(formValues.advancedSettings?.vad?.minSpeechDuration !== undefined && {
+            min_speech_duration: formValues.advancedSettings.vad.minSpeechDuration
+          }),
+          ...(formValues.advancedSettings?.vad?.prefixPaddingDuration !== undefined && {
+            prefix_padding_duration: formValues.advancedSettings.vad.prefixPaddingDuration
+          }),
+          ...(formValues.advancedSettings?.vad?.maxBufferedSpeech !== undefined && {
+            max_buffered_speech: formValues.advancedSettings.vad.maxBufferedSpeech
+          }),
+          ...(formValues.advancedSettings?.vad?.activationThreshold !== undefined && {
+            activation_threshold: formValues.advancedSettings.vad.activationThreshold
+          }),
+          ...(formValues.advancedSettings?.vad?.sampleRate !== undefined && {
+            sample_rate: formValues.advancedSettings.vad.sampleRate
+          }),
+          ...(formValues.advancedSettings?.vad?.forceCpu !== undefined && {
+            force_cpu: formValues.advancedSettings.vad.forceCpu
+          })
         },
         tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
           const baseToolConfig = {

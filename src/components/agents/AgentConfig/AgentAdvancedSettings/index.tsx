@@ -25,6 +25,12 @@ interface AgentAdvancedSettingsProps {
       vad: {
         vadProvider: string
         minSilenceDuration: number
+        minSpeechDuration?: number
+        prefixPaddingDuration?: number
+        maxBufferedSpeech?: number
+        activationThreshold?: number
+        sampleRate?: 8000 | 16000 | undefined
+        forceCpu?: boolean
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
@@ -137,6 +143,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             <VoiceActivitySettings
               vadProvider={advancedSettings.vad.vadProvider}
               minSilenceDuration={advancedSettings.vad.minSilenceDuration}
+              minSpeechDuration={advancedSettings.vad.minSpeechDuration}
+              prefixPaddingDuration={advancedSettings.vad.prefixPaddingDuration}
+              maxBufferedSpeech={advancedSettings.vad.maxBufferedSpeech}
+              activationThreshold={advancedSettings.vad.activationThreshold}
+              sampleRate={advancedSettings.vad.sampleRate}
+              forceCpu={advancedSettings.vad.forceCpu}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
