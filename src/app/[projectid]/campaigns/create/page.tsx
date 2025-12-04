@@ -131,6 +131,12 @@ function CreateCampaign() {
         delayMinutes: 5,
         maxRetries: 2,
       },
+      {
+        type: 'sipCode' as const,
+        errorCodes: ['486'],
+        delayMinutes: 5,
+        maxRetries: 2,
+      },
     ] as RetryConfig[],
   }
 

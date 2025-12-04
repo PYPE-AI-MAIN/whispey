@@ -194,7 +194,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
   const addRetryConfig = () => {
     const newConfig: RetryConfig = {
       type: 'sipCode',
-      errorCodes: ['480'],
+      errorCodes: ['480', '486'],
       delayMinutes: 5,
       maxRetries: 2,
     }
@@ -308,7 +308,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     if (value === 'sipCode') {
                       updatedConfig[index] = {
                         type: 'sipCode',
-                        errorCodes: config.errorCodes && config.errorCodes.length > 0 ? config.errorCodes : ['480'],
+                        errorCodes: config.errorCodes && config.errorCodes.length > 0 ? config.errorCodes : ['480', '486'],
                         delayMinutes: config.delayMinutes || 5,
                         maxRetries: config.maxRetries || 2,
                       } as unknown as RetryConfig
