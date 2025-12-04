@@ -47,7 +47,13 @@ export const AGENT_DEFAULT_CONFIG = {
     // Voice Activity Detection (VAD) Configuration
     vad: {
       name: "silero",
-      min_silence_duration: 0.6
+      min_silence_duration: 0.55,
+      min_speech_duration: 0.05,
+      prefix_padding_duration: 0.5,
+      max_buffered_speech: 60.0,
+      activation_threshold: 0.5,
+      sample_rate: 16000,
+      force_cpu: true
     },
   
     // Interruption Settings
@@ -70,7 +76,9 @@ export const AGENT_DEFAULT_CONFIG = {
       turn_detection: "disabled",
       unlikely_threshold: 0.6,
       min_endpointing_delay: 0.7,
-      max_endpointing_delay: 0.7
+      max_endpointing_delay: 0.7,
+      user_away_timeout: undefined, // None to disable, 0 to use config default, or seconds
+      user_away_timeout_message: undefined // Message to speak when user goes away
     },
   
     // Background Audio Configuration
@@ -172,14 +180,22 @@ export const AGENT_DEFAULT_CONFIG = {
       },
       vad: {
         vadProvider: AGENT_DEFAULT_CONFIG.vad.name,
-        minSilenceDuration: AGENT_DEFAULT_CONFIG.vad.min_silence_duration
+        minSilenceDuration: AGENT_DEFAULT_CONFIG.vad.min_silence_duration,
+        minSpeechDuration: AGENT_DEFAULT_CONFIG.vad.min_speech_duration,
+        prefixPaddingDuration: AGENT_DEFAULT_CONFIG.vad.prefix_padding_duration,
+        maxBufferedSpeech: AGENT_DEFAULT_CONFIG.vad.max_buffered_speech,
+        activationThreshold: AGENT_DEFAULT_CONFIG.vad.activation_threshold,
+        sampleRate: 16000 as 8000 | 16000,
+        forceCpu: AGENT_DEFAULT_CONFIG.vad.force_cpu
       },
       session: {
         preemptiveGeneration: AGENT_DEFAULT_CONFIG.session_behavior.preemptive_generation as "disabled" | "enabled",
         turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
         unlikely_threshold: AGENT_DEFAULT_CONFIG.session_behavior.unlikely_threshold,
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
-        max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay
+        max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay,
+        user_away_timeout: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout,
+        user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message
       },
       tools: {
         tools: AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({
