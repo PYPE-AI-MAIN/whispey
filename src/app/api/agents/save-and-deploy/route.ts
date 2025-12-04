@@ -247,7 +247,27 @@ function transformFormDataToAgentConfig(formData: any) {
           })(),
           vad: {
             name: formikValues.advancedSettings.vad.vadProvider,
-            min_silence_duration: formikValues.advancedSettings.vad.minSilenceDuration
+            ...(formikValues.advancedSettings.vad.minSilenceDuration !== undefined && {
+              min_silence_duration: formikValues.advancedSettings.vad.minSilenceDuration
+            }),
+            ...(formikValues.advancedSettings.vad.minSpeechDuration !== undefined && {
+              min_speech_duration: formikValues.advancedSettings.vad.minSpeechDuration
+            }),
+            ...(formikValues.advancedSettings.vad.prefixPaddingDuration !== undefined && {
+              prefix_padding_duration: formikValues.advancedSettings.vad.prefixPaddingDuration
+            }),
+            ...(formikValues.advancedSettings.vad.maxBufferedSpeech !== undefined && {
+              max_buffered_speech: formikValues.advancedSettings.vad.maxBufferedSpeech
+            }),
+            ...(formikValues.advancedSettings.vad.activationThreshold !== undefined && {
+              activation_threshold: formikValues.advancedSettings.vad.activationThreshold
+            }),
+            ...(formikValues.advancedSettings.vad.sampleRate !== undefined && {
+              sample_rate: formikValues.advancedSettings.vad.sampleRate
+            }),
+            ...(formikValues.advancedSettings.vad.forceCpu !== undefined && {
+              force_cpu: formikValues.advancedSettings.vad.forceCpu
+            })
           },
           tools: formikValues.advancedSettings.tools.tools.map((tool: any) => ({
             type: tool.type,
@@ -281,6 +301,19 @@ function transformFormDataToAgentConfig(formData: any) {
             collection_prompt: formikValues.advancedSettings.bugs.collectionPrompt
           },
           turn_detection: formikValues.advancedSettings.session.turn_detection,
+          session_behavior: {
+            preemptive_generation: formikValues.advancedSettings.session.preemptiveGeneration || 'disabled',
+            turn_detection: formikValues.advancedSettings.session.turn_detection,
+            unlikely_threshold: formikValues.advancedSettings.session.unlikely_threshold,
+            min_endpointing_delay: formikValues.advancedSettings.session.min_endpointing_delay,
+            max_endpointing_delay: formikValues.advancedSettings.session.max_endpointing_delay,
+            ...(formikValues.advancedSettings.session.user_away_timeout !== undefined && {
+              user_away_timeout: formikValues.advancedSettings.session.user_away_timeout
+            }),
+            ...(formikValues.advancedSettings.session.user_away_timeout_message !== undefined && formikValues.advancedSettings.session.user_away_timeout_message !== null && formikValues.advancedSettings.session.user_away_timeout_message !== '' && {
+              user_away_timeout_message: formikValues.advancedSettings.session.user_away_timeout_message
+            })
+          },
           interruptions: {
             allow_interruptions: formikValues.advancedSettings.interruption.allowInterruptions,
             min_interruption_duration: formikValues.advancedSettings.interruption.minInterruptionDuration,

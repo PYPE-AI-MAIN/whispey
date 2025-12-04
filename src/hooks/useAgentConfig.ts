@@ -49,7 +49,13 @@ export interface AgentConfigResponse {
       }
       vad?: {
         name: string
-        min_silence_duration: number
+        min_silence_duration?: number
+        min_speech_duration?: number
+        prefix_padding_duration?: number
+        max_buffered_speech?: number
+        activation_threshold?: number
+        sample_rate?: 8000 | 16000
+        force_cpu?: boolean
       }
       prompt?: string
       variables?: Record<string, string>
@@ -115,6 +121,8 @@ export interface AgentConfigResponse {
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
+        user_away_timeout?: number
+        user_away_timeout_message?: string
       }
     }>
   }
@@ -401,6 +409,18 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       vad: {
         vadProvider: assistant.vad?.name || getFallback(null, 'vad.name'),
         minSilenceDuration: assistant.vad?.min_silence_duration ?? getFallback(null, 'vad.min_silence_duration'),
+        minSpeechDuration: assistant.vad?.min_speech_duration ?? getFallback(null, 'vad.min_speech_duration'),
+        prefixPaddingDuration: assistant.vad?.prefix_padding_duration ?? getFallback(null, 'vad.prefix_padding_duration'),
+        maxBufferedSpeech: assistant.vad?.max_buffered_speech ?? getFallback(null, 'vad.max_buffered_speech'),
+        activationThreshold: assistant.vad?.activation_threshold ?? getFallback(null, 'vad.activation_threshold'),
+        sampleRate: (() => {
+          const value = assistant.vad?.sample_rate ?? getFallback(null, 'vad.sample_rate')
+          if (value === 8000 || value === 16000) {
+            return value as 8000 | 16000
+          }
+          return undefined
+        })(),
+        forceCpu: assistant.vad?.force_cpu ?? getFallback(null, 'vad.force_cpu'),
       },
       session: {
         preemptiveGeneration: (sessionBehavior.preemptive_generation || getFallback(null, 'session_behavior.preemptive_generation')) as "disabled" | "enabled",
@@ -408,6 +428,8 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         unlikely_threshold: sessionBehavior.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
         min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
+        user_away_timeout: sessionBehavior.user_away_timeout !== undefined && sessionBehavior.user_away_timeout !== null ? sessionBehavior.user_away_timeout : undefined,
+        user_away_timeout_message: sessionBehavior.user_away_timeout_message !== undefined && sessionBehavior.user_away_timeout_message !== null && sessionBehavior.user_away_timeout_message !== '' ? sessionBehavior.user_away_timeout_message : undefined,
       },
       tools: {
         tools: assistant.tools?.map((tool: any) => ({

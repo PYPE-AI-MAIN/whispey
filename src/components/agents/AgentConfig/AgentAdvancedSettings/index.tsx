@@ -25,6 +25,12 @@ interface AgentAdvancedSettingsProps {
       vad: {
         vadProvider: string
         minSilenceDuration: number
+        minSpeechDuration?: number
+        prefixPaddingDuration?: number
+        maxBufferedSpeech?: number
+        activationThreshold?: number
+        sampleRate?: 8000 | 16000 | undefined
+        forceCpu?: boolean
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
@@ -32,6 +38,8 @@ interface AgentAdvancedSettingsProps {
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
+        user_away_timeout?: number
+        user_away_timeout_message?: string
       }
       tools: {
         tools: Array<{
@@ -135,6 +143,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             <VoiceActivitySettings
               vadProvider={advancedSettings.vad.vadProvider}
               minSilenceDuration={advancedSettings.vad.minSilenceDuration}
+              minSpeechDuration={advancedSettings.vad.minSpeechDuration}
+              prefixPaddingDuration={advancedSettings.vad.prefixPaddingDuration}
+              maxBufferedSpeech={advancedSettings.vad.maxBufferedSpeech}
+              activationThreshold={advancedSettings.vad.activationThreshold}
+              sampleRate={advancedSettings.vad.sampleRate}
+              forceCpu={advancedSettings.vad.forceCpu}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
@@ -159,6 +173,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               unlikely_threshold={advancedSettings.session.unlikely_threshold}
               min_endpointing_delay={advancedSettings.session.min_endpointing_delay}
               max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
+              user_away_timeout={advancedSettings.session.user_away_timeout}
+              user_away_timeout_message={advancedSettings.session.user_away_timeout_message}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
