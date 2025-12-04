@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Validate retry configuration if provided
     if (retryConfig && Array.isArray(retryConfig)) {
-      const validCodes = ['408', '480', '486', '504', '600'] // Extended list of valid SIP codes
+      const validCodes = ['480', '486'] // Only allow 480 and 486
       
       for (const config of retryConfig) {
         const retryType = config.type || 'sipCode' // Default to sipCode if type not specified

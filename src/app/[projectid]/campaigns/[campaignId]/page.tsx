@@ -649,11 +649,8 @@ function ViewCampaign() {
                     if (config.type === 'sipCode' && config.errorCodes && Array.isArray(config.errorCodes) && config.errorCodes.length > 0) {
                       const errorCode = config.errorCodes[0]
                       const errorLabels: { [key: string]: string } = {
-                        '408': 'Request Timeout',
                         '480': 'Temporarily Unavailable',
                         '486': 'Busy Here',
-                        '504': 'Server Time-out',
-                        '600': 'Busy Everywhere',
                       }
                       displayLabel = errorLabels[String(errorCode)] || String(errorCode)
                     } else if (config.type === 'metric' && config.metricName) {

@@ -25,11 +25,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
   const [loadingFields, setLoadingFields] = useState(false)
 
   const errorCodeLabels: { [key: string]: string } = {
-    '408': 'Request Timeout',
     '480': 'Temporarily Unavailable',
     '486': 'Busy Here',
-    '500': 'Server Internal Error',
-    '503': 'Service Unavailable',
   }
 
   // Fetch agent metrics and field extractor fields
@@ -228,7 +225,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
             Retry Configuration
           </Label>
           {!values.agentId && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
               (Select an agent first)
             </span>
           )}
@@ -290,7 +287,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                   variant="ghost"
                   size="sm"
                   onClick={() => removeRetryConfig(index)}
-                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                  className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -373,10 +370,10 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                       handleRetryChange(index, 'errorCodes', codes)
                     }}
                     className="h-9 text-sm"
-                    placeholder="408, 480, 486"
+                    placeholder="480, 486"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Common codes: 408 (Timeout), 480 (Unavailable), 486 (Busy), 500 (Server Error), 503 (Service Unavailable)
+                    Valid codes: 480 (Temporarily Unavailable), 486 (Busy Here)
                   </p>
                 </div>
               )}
