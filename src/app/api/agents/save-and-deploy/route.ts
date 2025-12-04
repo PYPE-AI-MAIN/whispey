@@ -247,7 +247,27 @@ function transformFormDataToAgentConfig(formData: any) {
           })(),
           vad: {
             name: formikValues.advancedSettings.vad.vadProvider,
-            min_silence_duration: formikValues.advancedSettings.vad.minSilenceDuration
+            ...(formikValues.advancedSettings.vad.minSilenceDuration !== undefined && {
+              min_silence_duration: formikValues.advancedSettings.vad.minSilenceDuration
+            }),
+            ...(formikValues.advancedSettings.vad.minSpeechDuration !== undefined && {
+              min_speech_duration: formikValues.advancedSettings.vad.minSpeechDuration
+            }),
+            ...(formikValues.advancedSettings.vad.prefixPaddingDuration !== undefined && {
+              prefix_padding_duration: formikValues.advancedSettings.vad.prefixPaddingDuration
+            }),
+            ...(formikValues.advancedSettings.vad.maxBufferedSpeech !== undefined && {
+              max_buffered_speech: formikValues.advancedSettings.vad.maxBufferedSpeech
+            }),
+            ...(formikValues.advancedSettings.vad.activationThreshold !== undefined && {
+              activation_threshold: formikValues.advancedSettings.vad.activationThreshold
+            }),
+            ...(formikValues.advancedSettings.vad.sampleRate !== undefined && {
+              sample_rate: formikValues.advancedSettings.vad.sampleRate
+            }),
+            ...(formikValues.advancedSettings.vad.forceCpu !== undefined && {
+              force_cpu: formikValues.advancedSettings.vad.forceCpu
+            })
           },
           tools: formikValues.advancedSettings.tools.tools.map((tool: any) => ({
             type: tool.type,
