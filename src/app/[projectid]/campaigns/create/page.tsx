@@ -9,7 +9,8 @@ import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { RecipientRow, CsvValidationError, PhoneNumber } from '@/utils/campaigns/constants'
+import { RecipientRow, CsvValidationError, PhoneNumber, RetryConfig } from '@/utils/campaigns/constants'
+import { supabase } from '@/lib/supabase'
 import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
@@ -39,7 +40,18 @@ const validationSchema = Yup.object({
     .max(5, 'Cannot exceed 5'),
   retryConfig: Yup.array().of(
     Yup.object().shape({
-      errorCodes: Yup.array().of(Yup.string()).required(),
+      type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor']).required('Retry type is required'),
+      // SIP Code fields (optional, but required if type is sipCode)
+      errorCodes: Yup.array().of(Yup.string()),
+      // Metric fields (optional, but required if type is metric)
+      metricName: Yup.string(),
+      threshold: Yup.number().min(0, 'Threshold must be at least 0'),
+      // Field Extractor fields (optional, but required if type is fieldExtractor)
+      fieldName: Yup.string(),
+      expectedValue: Yup.mixed(),
+      // Operator can be either metric or fieldExtractor type - validate in test
+      operator: Yup.mixed(),
+      // Common fields
       delayMinutes: Yup.number()
         .required('Delay minutes is required')
         .min(0, 'Must be at least 0')
@@ -48,6 +60,45 @@ const validationSchema = Yup.object({
         .required('Max retries is required')
         .min(0, 'Must be at least 0')
         .max(10, 'Cannot exceed 10'),
+    }).test('validate-retry-config', 'Invalid retry configuration', function(value) {
+      if (!value || !value.type) return true // Let required() handle this
+      
+      if (value.type === 'sipCode') {
+        if (!value.errorCodes || !Array.isArray(value.errorCodes) || value.errorCodes.length === 0) {
+          return this.createError({ message: 'At least one error code is required for SIP code retries' })
+        }
+      } else if (value.type === 'metric') {
+        // Allow undefined metricName if no options available, but require it if it exists
+        if (value.metricName !== undefined && value.metricName !== null && value.metricName.trim() === '') {
+          return this.createError({ message: 'Metric name cannot be empty if provided' })
+        }
+        if (!value.operator || !['<', '>', '<=', '>=', '==', '!='].includes(value.operator)) {
+          return this.createError({ message: 'Operator is required and must be one of: <, >, <=, >=, ==, !=' })
+        }
+        if (value.threshold === undefined || value.threshold === null) {
+          return this.createError({ message: 'Threshold is required' })
+        }
+        // Only require metricName if operator and threshold are set (meaning user is configuring)
+        if (value.operator && value.threshold !== undefined && (!value.metricName || value.metricName.trim() === '')) {
+          return this.createError({ message: 'Metric name is required' })
+        }
+      } else if (value.type === 'fieldExtractor') {
+        // Allow undefined fieldName if no options available, but require it if it exists
+        if (value.fieldName !== undefined && value.fieldName !== null && value.fieldName.trim() === '') {
+          return this.createError({ message: 'Field name cannot be empty if provided' })
+        }
+        if (!value.operator || !['missing', 'equals', 'not_equals', 'contains', 'not_contains'].includes(value.operator)) {
+          return this.createError({ message: 'Operator is required' })
+        }
+        if (value.operator !== 'missing' && (!value.expectedValue || value.expectedValue === '')) {
+          return this.createError({ message: 'Expected value is required when operator is not "missing"' })
+        }
+        // Only require fieldName if operator is set (meaning user is configuring)
+        if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
+          return this.createError({ message: 'Field name is required' })
+        }
+      }
+      return true
     })
   ),
 })
@@ -75,16 +126,18 @@ function CreateCampaign() {
     selectedDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], // Default to weekdays
     retryConfig: [
       {
+        type: 'sipCode' as const,
         errorCodes: ['480'],
         delayMinutes: 5,
         maxRetries: 2,
       },
       {
+        type: 'sipCode' as const,
         errorCodes: ['486'],
         delayMinutes: 5,
         maxRetries: 2,
       },
-    ],
+    ] as RetryConfig[],
   }
 
   // Fetch phone numbers when component mounts
@@ -180,6 +233,29 @@ function CreateCampaign() {
         throw new Error('Selected phone number not found')
       }
 
+      // Get agent name from agent ID and construct name with ID suffix (as expected by backend)
+      let agentName = values.agentId
+      try {
+        const { data: agent } = await supabase
+          .from('pype_voice_agents')
+          .select('name, id')
+          .eq('id', values.agentId)
+          .single()
+        
+        if (agent?.name && agent?.id) {
+          // Construct agent name with ID suffix (matching backend format)
+          // Replace dashes with underscores in the ID, as done in agent creation
+          const sanitizedAgentId = agent.id.replace(/-/g, '_')
+          agentName = `${agent.name}_${sanitizedAgentId}`
+        } else if (agent?.name) {
+          // Fallback to just name if ID is missing
+          agentName = agent.name
+        }
+      } catch (err) {
+        console.error('Error fetching agent name:', err)
+        // Fallback to using agentId as agentName
+      }
+
       // Step 2: Create campaign
       const createResponse = await fetch('/api/campaigns/create', {
         method: 'POST',
@@ -191,7 +267,7 @@ function CreateCampaign() {
           projectId,
           campaignName: values.campaignName,
           s3FileKey,
-          agentName: values.agentId,
+          agentName: agentName,
           sipTrunkId: selectedPhone.trunk_id,
           provider: selectedPhone.provider || 'Unknown',
         }),
@@ -207,6 +283,51 @@ function CreateCampaign() {
         ? new Date(values.scheduleDate).toISOString()
         : new Date().toISOString()
 
+      // Format retryConfig according to backend requirements
+      const formattedRetryConfig = values.retryConfig.map(config => {
+        if (config.type === 'sipCode' || !config.type) {
+          // SIP Code retry: ensure errorCodes is an array of strings
+          return {
+            type: 'sipCode',
+            errorCodes: Array.isArray(config.errorCodes) 
+              ? config.errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
+              : (config.errorCodes ? [String(config.errorCodes).trim()] : ['480']),
+            delayMinutes: Number(config.delayMinutes),
+            maxRetries: Number(config.maxRetries),
+          }
+        } else if (config.type === 'metric') {
+          // Metric retry: NO errorCodes field
+          const metricConfig: any = {
+            type: 'metric',
+            metricName: config.metricName,
+            operator: config.operator,
+            threshold: Number(config.threshold),
+            delayMinutes: Number(config.delayMinutes),
+            maxRetries: Number(config.maxRetries),
+          }
+          // Remove any errorCodes if present
+          return metricConfig
+        } else if (config.type === 'fieldExtractor') {
+          // Field Extractor retry: NO errorCodes field
+          const fieldConfig: any = {
+            type: 'fieldExtractor',
+            fieldName: config.fieldName,
+            operator: config.operator,
+            delayMinutes: Number(config.delayMinutes),
+            maxRetries: Number(config.maxRetries),
+          }
+          // Include expectedValue only if operator is not 'missing'
+          // Type assertion needed because operator can be either metric or fieldExtractor type
+          const fieldOperator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
+          if (fieldOperator && fieldOperator !== 'missing' && config.expectedValue) {
+            fieldConfig.expectedValue = config.expectedValue
+          }
+          // Remove any errorCodes if present
+          return fieldConfig
+        }
+        return config
+      })
+
       const scheduleResponse = await fetch('/api/campaigns/schedule', {
         method: 'POST',
         headers: {
@@ -221,7 +342,7 @@ function CreateCampaign() {
           frequency: values.reservedConcurrency,
           enabled: true,
           days: values.selectedDays.length > 0 ? values.selectedDays : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-          retryConfig: values.retryConfig,
+          retryConfig: formattedRetryConfig,
         }),
       })
 
@@ -295,6 +416,7 @@ function CreateCampaign() {
                   onFieldChange={setFieldValue}
                   values={{
                     retryConfig: values.retryConfig,
+                    agentId: values.agentId,
                   }}
                 />
 
