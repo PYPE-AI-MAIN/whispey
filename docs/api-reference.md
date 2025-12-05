@@ -435,7 +435,7 @@ calls = response.json()["data"]
 | `RATE_LIMIT_EXCEEDED` | Too many requests | Implement exponential backoff |
 | `AGENT_NOT_FOUND` | Agent ID doesn't exist | Check agent ID |
 | `INVALID_DATE_RANGE` | Date range is invalid | Use ISO 8601 format |
-| `EXPORT_IN_PROGRESS` | Export already running | Wait for completion |
+| `EXPORT_IN_PROGRESS` | Export  already running | Wait for completion |
 
 ### Rate Limiting
 
