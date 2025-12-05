@@ -91,8 +91,7 @@ function CreateCampaign() {
   React.useEffect(() => {
     const fetchPhoneNumbers = async () => {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-        const response = await fetch(`${baseUrl}/api/calls/phone-numbers/?limit=50`)
+        const response = await fetch(`/api/calls/phone-numbers/?limit=50`)
         
         if (response.ok) {
           const data: PhoneNumber[] = await response.json()
