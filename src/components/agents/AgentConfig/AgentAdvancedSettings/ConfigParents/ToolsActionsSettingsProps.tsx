@@ -104,8 +104,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhoneNumbers(true)
-        const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-        const response = await fetch(`${baseUrl}/api/calls/phone-numbers/?limit=50`)
+        const response = await fetch(`/api/calls/phone-numbers/?limit=50`)
         
         if (response.ok) {
           const data: PhoneNumber[] = await response.json()

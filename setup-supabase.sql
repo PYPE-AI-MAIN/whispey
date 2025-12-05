@@ -475,10 +475,6 @@ GROUP BY agent_id, DATE(created_at);
 CREATE UNIQUE INDEX call_summary_agent_date_idx
   ON call_summary_materialized (agent_id, call_date);
 
--- ==============================================
--- FUNCTIONS
--- ==============================================
-
 -- Helper function to build individual filter conditions
 CREATE OR REPLACE FUNCTION build_single_filter_condition(filter_obj JSONB)
 RETURNS TEXT AS $$
