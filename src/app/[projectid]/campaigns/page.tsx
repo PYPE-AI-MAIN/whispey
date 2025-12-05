@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Plus, Phone, User, Calendar, Search, Loader2, MoreVertical, RefreshCw } from 'lucide-react'
+import { Plus, Phone, User, Calendar, Search, Loader2, MoreVertical, RefreshCw, Pause, Play, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -30,6 +30,7 @@ function Campaigns() {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   // Fetch campaigns
   const fetchCampaigns = async () => {
@@ -80,10 +81,13 @@ function Campaigns() {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+      running: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
       paused: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
       completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
       scheduled: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800',
       failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+      draft: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 border-gray-200 dark:border-gray-800',
+      ready: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800',
     }
 
     const statusKey = status.toLowerCase() as keyof typeof statusConfig
@@ -108,6 +112,79 @@ function Campaigns() {
 
   const handleCampaignClick = (campaignId: string) => {
     router.push(`/${projectId}/campaigns/${campaignId}`)
+  }
+
+  const handlePauseCampaign = async (campaignId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to pause this campaign?')) return
+    
+    try {
+      setActionLoading(campaignId)
+      const response = await fetch('/api/campaigns/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to pause campaign')
+      }
+      
+      await fetchCampaigns()
+    } catch (error: any) {
+      alert(error.message || 'Failed to pause campaign')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleResumeCampaign = async (campaignId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to resume this campaign?')) return
+    
+    try {
+      setActionLoading(campaignId)
+      const response = await fetch('/api/campaigns/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to resume campaign')
+      }
+      
+      await fetchCampaigns()
+    } catch (error: any) {
+      alert(error.message || 'Failed to resume campaign')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDeleteCampaign = async (campaignId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) return
+    
+    try {
+      setActionLoading(campaignId)
+      const response = await fetch(`/api/campaigns/delete?campaignId=${campaignId}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete campaign')
+      }
+      
+      await fetchCampaigns()
+    } catch (error: any) {
+      alert(error.message || 'Failed to delete campaign')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const EmptyState = () => (
@@ -307,8 +384,36 @@ function Campaigns() {
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewInfo(campaign, e); }} className="text-xs cursor-pointer">
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs cursor-pointer">Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs text-red-600 dark:text-red-400 cursor-pointer">Delete</DropdownMenuItem>
+                        {(campaign.status === 'scheduled' || campaign.status === 'running') && (
+                          <DropdownMenuItem 
+                            onClick={(e) => handlePauseCampaign(campaign.campaignId, e)} 
+                            className="text-xs cursor-pointer"
+                            disabled={actionLoading === campaign.campaignId}
+                          >
+                            <Pause className="w-3 h-3 mr-2" />
+                            {actionLoading === campaign.campaignId ? 'Pausing...' : 'Pause'}
+                          </DropdownMenuItem>
+                        )}
+                        {campaign.status === 'paused' && (
+                          <DropdownMenuItem 
+                            onClick={(e) => handleResumeCampaign(campaign.campaignId, e)} 
+                            className="text-xs cursor-pointer"
+                            disabled={actionLoading === campaign.campaignId}
+                          >
+                            <Play className="w-3 h-3 mr-2" />
+                            {actionLoading === campaign.campaignId ? 'Resuming...' : 'Resume'}
+                          </DropdownMenuItem>
+                        )}
+                        {(campaign.status === 'paused' || campaign.status === 'draft' || campaign.status === 'completed' || campaign.status === 'ready') && (
+                          <DropdownMenuItem 
+                            onClick={(e) => handleDeleteCampaign(campaign.campaignId, e)} 
+                            className="text-xs text-red-600 dark:text-red-400 cursor-pointer"
+                            disabled={actionLoading === campaign.campaignId}
+                          >
+                            <Trash2 className="w-3 h-3 mr-2" />
+                            {actionLoading === campaign.campaignId ? 'Deleting...' : 'Delete'}
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
