@@ -118,7 +118,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
                   </SelectTrigger>
                   <SelectContent>
                     {agents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.name}>
+                      <SelectItem key={agent.id} value={agent.id}>
                         <div className="flex items-center gap-2">
                           <span>{agent.name}</span>
                           <Badge 
