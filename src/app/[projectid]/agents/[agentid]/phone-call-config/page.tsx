@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -277,8 +278,10 @@ export default function PhoneCallConfig() {
       const result = await response.json()
 
       if (response.ok) {
-        setMessage(`Call dispatched successfully to ${formattedNumber}`)
+        const successMessage = `Call dispatched successfully to ${formattedNumber}`
+        setMessage(successMessage)
         setMessageType('success')
+        toast.success(successMessage)
         
         const existingCallIndex = callHistory.findIndex(
           call => call.to_phone_number === cleaned && 
@@ -330,12 +333,40 @@ export default function PhoneCallConfig() {
         setFromPhoneNumberId('')
         setSelectedCallId(null)
       } else {
-        setMessage(result.error || 'Failed to dispatch call')
+        // Handle errors with toast notification
+        let errorMessage = 'Failed to dispatch call'
+        
+        // Extract error message from response
+        if (result.error) {
+          if (typeof result.error === 'string') {
+            errorMessage = result.error
+          } else if (result.error.message) {
+            errorMessage = result.error.message
+          }
+        } else if (result.message) {
+          if (typeof result.message === 'string') {
+            errorMessage = result.message
+          }
+        }
+        
+        // Handle 429 rate limit errors specifically
+        if (response.status === 429) {
+          if (result.current_calls !== undefined && result.max_calls !== undefined) {
+            errorMessage = `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
+          } else {
+            errorMessage = 'Rate limit exceeded. Please try again later.'
+          }
+        }
+        
+        setMessage(errorMessage)
         setMessageType('error')
+        toast.error(errorMessage)
       }
     } catch (error) {
-      setMessage('Failed to dispatch call')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to dispatch call'
+      setMessage(errorMessage)
       setMessageType('error')
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }

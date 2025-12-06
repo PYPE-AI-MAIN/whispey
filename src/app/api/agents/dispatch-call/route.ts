@@ -70,18 +70,45 @@ export async function POST(request: NextRequest) {
       console.error(`Backend API error: ${response.status} ${response.statusText} - ${errorText}`)
       
       // Try to parse error as JSON for better error messages
-      let errorMessage = `Failed to dispatch call: ${response.status} - ${errorText}`
+      let errorMessage = `Failed to dispatch call`
+      let errorDetails: any = {}
+      
       try {
         const errorJson = JSON.parse(errorText)
-        if (errorJson.detail) {
-          errorMessage = errorJson.detail
+        
+        // Handle 429 rate limit errors specifically
+        if (response.status === 429) {
+          errorMessage = errorJson.message || errorJson.detail || 'Rate limit exceeded. Please try again later.'
+          if (errorJson.current_calls !== undefined && errorJson.max_calls !== undefined) {
+            errorDetails = {
+              message: errorMessage,
+              current_calls: errorJson.current_calls,
+              max_calls: errorJson.max_calls
+            }
+            errorMessage = `Rate limit exceeded. Current calls: ${errorJson.current_calls}/${errorJson.max_calls}. Please try again later.`
+          }
+        } else {
+          // Handle other errors
+          errorMessage = errorJson.message || errorJson.detail || errorJson.error || errorMessage
+          if (errorJson.detail) {
+            errorDetails = { detail: errorJson.detail }
+          }
         }
       } catch {
-        // Keep the original error message
+        // If not JSON, use the text as error message
+        if (response.status === 429) {
+          errorMessage = 'Rate limit exceeded. Please try again later.'
+        } else {
+          errorMessage = errorText || errorMessage
+        }
       }
       
       return NextResponse.json(
-        { error: errorMessage },
+        { 
+          error: errorMessage,
+          ...errorDetails,
+          status: response.status
+        },
         { status: response.status }
       )
     }
