@@ -120,8 +120,7 @@ export default function PhoneCallConfig() {
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhoneNumbers(true)
-        const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL || ''
-        const response = await fetch(`${baseUrl}/api/calls/phone-numbers/?limit=100`)
+        const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
         
         if (!response.ok) {
           throw new Error('Failed to fetch phone numbers')

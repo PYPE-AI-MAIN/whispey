@@ -45,8 +45,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhones(true)
-        const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-        const response = await fetch(`${baseUrl}/api/calls/phone-numbers/?limit=100`)
+        const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
         
         if (!response.ok) {
           throw new Error('Failed to fetch phone numbers')
@@ -118,7 +117,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
                   </SelectTrigger>
                   <SelectContent>
                     {agents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.name}>
+                      <SelectItem key={agent.id} value={agent.id}>
                         <div className="flex items-center gap-2">
                           <span>{agent.name}</span>
                           <Badge 
