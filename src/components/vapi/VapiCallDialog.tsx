@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -224,17 +225,44 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || `Failed to initiate call: ${response.status}`)
+        let errorMessage = 'Failed to initiate call'
+        
+        // Extract error message from response
+        if (result.error) {
+          if (typeof result.error === 'string') {
+            errorMessage = result.error
+          } else if (result.error.message) {
+            errorMessage = result.error.message
+          }
+        } else if (result.message) {
+          if (typeof result.message === 'string') {
+            errorMessage = result.message
+          }
+        }
+        
+        // Handle 429 rate limit errors specifically
+        if (response.status === 429) {
+          if (result.current_calls !== undefined && result.max_calls !== undefined) {
+            errorMessage = `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
+          } else {
+            errorMessage = 'Rate limit exceeded. Please try again later.'
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
 
       setCallId(result.call?.id || result.data?.id || 'Unknown')
       setCallStatus('success')
       console.log('Call initiated successfully:', result)
+      toast.success('Call initiated successfully')
 
     } catch (err) {
       console.error('Error initiating call:', err)
-      setError(err instanceof Error ? err.message : 'Failed to initiate call')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to initiate call'
+      setError(errorMessage)
       setCallStatus('error')
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
