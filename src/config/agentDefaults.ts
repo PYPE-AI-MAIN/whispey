@@ -167,6 +167,7 @@ export const AGENT_DEFAULT_CONFIG = {
     // - wcalling_number: The phone number (if provided)
     // - wcurrent_time: Current time (IST)
     // - wcurrent_date: Current date in timezone
+    // - wcontext_dropoff: Context summary for drop-off calls (generated from context drop-off prompt)
     // These variables are populated by the system and don't need to be added to the variables array
     aiStartsAfterSilence: false,
     silenceTime: 10,
