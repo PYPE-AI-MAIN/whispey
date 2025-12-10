@@ -15,7 +15,7 @@ DROP FUNCTION IF EXISTS batch_calculate_custom_totals(uuid, jsonb, date, date) C
 DROP FUNCTION IF EXISTS get_available_json_fields(uuid, text, integer) CASCADE;
 DROP FUNCTION IF EXISTS get_distinct_values(uuid, text, text, integer) CASCADE;
 DROP FUNCTION IF EXISTS calculate_custom_total(uuid, text, text, text, jsonb, text, date, date) CASCADE;
-DROP FUNCTION IF EXISTS build_single_filter_condition(jsonb) CASCADE;
+DROP FUNCTION IF EXISTS build_singl_filter_condition(jsonb) CASCADE;
 
 -- Drop existing tables (in reverse dependency order)
 DROP TABLE IF EXISTS public.pype_voice_call_logs_with_context CASCADE;
@@ -216,6 +216,23 @@ CREATE TABLE public.pype_voice_custom_totals_configs (
     created_by varchar,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE public.pype_voice_agent_dropoff_settings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id uuid NOT NULL,
+    agent_name varchar NOT NULL,
+    enabled boolean DEFAULT false,
+    dropoff_message text,
+    delay_minutes integer NOT NULL DEFAULT 5,
+    max_retries integer NOT NULL DEFAULT 2,
+    context_dropoff_prompt text,
+    sip_trunk_id varchar,
+    phone_number_id uuid,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT fk_dropoff_agent_id FOREIGN KEY (agent_id) REFERENCES public.pype_voice_agents(id) ON DELETE CASCADE
 );
 
 CREATE TABLE public.pype_voice_session_traces (
@@ -913,4 +930,146 @@ COMMENT ON COLUMN pype_voice_reprocess_status.batches_queued IS 'Number of batch
 COMMENT ON COLUMN pype_voice_reprocess_status.batches_completed IS 'Number of batches successfully processed';
 COMMENT ON COLUMN pype_voice_reprocess_status.logs_processed IS 'Total number of logs successfully processed';
 COMMENT ON COLUMN pype_voice_reprocess_status.logs_failed IS 'Total number of logs that failed to process';
+
+
+-- ========================================
+-- Dropoff Settings and Calls Schema
+-- ========================================
+-- This script drops and recreates both dropoff-related tables
+-- Run this to reset or update the schema
+
+-- ========================================
+-- STEP 1: Drop existing objects (in reverse dependency order)
+-- ========================================
+
+-- Drop triggers first
+DROP TRIGGER IF EXISTS trigger_update_dropoff_calls_updated_at ON public.pype_voice_dropoff_calls CASCADE;
+DROP TRIGGER IF EXISTS trigger_update_dropoff_settings_updated_at ON public.pype_voice_agent_dropoff_settings CASCADE;
+
+-- Drop functions
+DROP FUNCTION IF EXISTS update_dropoff_calls_updated_at() CASCADE;
+DROP FUNCTION IF EXISTS update_dropoff_settings_updated_at() CASCADE;
+
+-- Drop indexes
+DROP INDEX IF EXISTS public.idx_dropoff_calls_next_call CASCADE;
+DROP INDEX IF EXISTS public.idx_dropoff_calls_latest_call CASCADE;
+DROP INDEX IF EXISTS public.idx_dropoff_calls_agent CASCADE;
+DROP INDEX IF EXISTS public.idx_dropoff_calls_active CASCADE;
+
+-- Drop tables (drop calls first due to foreign key, then settings)
+DROP TABLE IF EXISTS public.pype_voice_dropoff_calls CASCADE;
+DROP TABLE IF EXISTS public.pype_voice_agent_dropoff_settings CASCADE;
+
+-- ========================================
+-- STEP 2: Create tables
+-- ========================================
+
+-- Agent Dropoff Settings Table
+CREATE TABLE public.pype_voice_agent_dropoff_settings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id uuid NOT NULL,
+    agent_name varchar,
+    enabled boolean DEFAULT false,
+    dropoff_message text,
+    delay_minutes integer NOT NULL DEFAULT 5,
+    max_retries integer NOT NULL DEFAULT 2,
+    context_dropoff_prompt text,
+    sip_trunk_id varchar,
+    phone_number_id uuid,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT fk_dropoff_agent_id FOREIGN KEY (agent_id) REFERENCES public.pype_voice_agents(id) ON DELETE CASCADE
+);
+
+-- Dropoff Calls Table
+-- Standalone table for managing dropoff calls (not integrated with campaigns)
+-- Primary key: phone_number
+CREATE TABLE public.pype_voice_dropoff_calls (
+    phone_number varchar PRIMARY KEY,
+    agent_id uuid,
+    retry_count integer NOT NULL DEFAULT 0,
+    latest_call_at timestamp with time zone,
+    next_call_at timestamp with time zone, -- When to queue the next call (for delays > 15 min)
+    last_call_retry_required numeric, -- 0 or 1
+    is_active boolean DEFAULT true,
+    variables jsonb DEFAULT '{}'::jsonb, -- Store all dispatch variables
+    stopped_at timestamp with time zone,
+    stop_reason varchar,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT fk_dropoff_calls_agent_id FOREIGN KEY (agent_id) REFERENCES public.pype_voice_agents(id) ON DELETE SET NULL
+);
+
+-- ========================================
+-- STEP 3: Create indexes
+-- ========================================
+
+-- Indexes for pype_voice_agent_dropoff_settings
+CREATE INDEX IF NOT EXISTS idx_dropoff_settings_agent ON public.pype_voice_agent_dropoff_settings(agent_id);
+CREATE INDEX IF NOT EXISTS idx_dropoff_settings_active ON public.pype_voice_agent_dropoff_settings(is_active) WHERE is_active = true;
+
+-- Indexes for pype_voice_dropoff_calls
+-- Index for querying active dropoff calls
+CREATE INDEX IF NOT EXISTS idx_dropoff_calls_active ON public.pype_voice_dropoff_calls(is_active) WHERE is_active = true;
+
+-- Index for querying by agent
+CREATE INDEX IF NOT EXISTS idx_dropoff_calls_agent ON public.pype_voice_dropoff_calls(agent_id);
+
+-- Index for querying by latest call time
+CREATE INDEX IF NOT EXISTS idx_dropoff_calls_latest_call ON public.pype_voice_dropoff_calls(latest_call_at);
+
+-- Index for querying ready calls (next_call_at <= now)
+CREATE INDEX IF NOT EXISTS idx_dropoff_calls_next_call ON public.pype_voice_dropoff_calls(next_call_at) WHERE is_active = true AND next_call_at IS NOT NULL;
+
+-- ========================================
+-- STEP 4: Create functions and triggers
+-- ========================================
+
+-- Function to update updated_at timestamp for dropoff_settings
+CREATE OR REPLACE FUNCTION update_dropoff_settings_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update updated_at timestamp for dropoff_calls
+CREATE OR REPLACE FUNCTION update_dropoff_calls_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to auto-update updated_at for dropoff_settings
+CREATE TRIGGER trigger_update_dropoff_settings_updated_at
+    BEFORE UPDATE ON public.pype_voice_agent_dropoff_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION update_dropoff_settings_updated_at();
+
+-- Trigger to auto-update updated_at for dropoff_calls
+CREATE TRIGGER trigger_update_dropoff_calls_updated_at
+    BEFORE UPDATE ON public.pype_voice_dropoff_calls
+    FOR EACH ROW
+    EXECUTE FUNCTION update_dropoff_calls_updated_at();
+
+-- ========================================
+-- STEP 5: Add comments for documentation
+-- ========================================
+
+COMMENT ON TABLE public.pype_voice_agent_dropoff_settings IS 'Configuration for agent dropoff call settings';
+COMMENT ON TABLE public.pype_voice_dropoff_calls IS 'Standalone dropoff calls tracking (not integrated with campaigns). Primary key is phone_number.';
+
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.phone_number IS 'Primary key - phone number to call';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.retry_count IS 'Number of retry attempts made';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.latest_call_at IS 'Timestamp of the most recent call attempt';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.next_call_at IS 'When to queue the next call (for delays > 15 minutes, SQS limit)';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.last_call_retry_required IS 'Last call_retry_required value (0 or 1) - stops retries if 0';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.is_active IS 'Whether dropoff calls are still active for this number';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.variables IS 'All dispatch variables stored as JSONB';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.stopped_at IS 'When retries were stopped';
+COMMENT ON COLUMN public.pype_voice_dropoff_calls.stop_reason IS 'Reason why retries were stopped';
 
