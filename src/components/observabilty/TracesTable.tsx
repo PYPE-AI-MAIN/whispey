@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { useSessionTrace, useSessionSpansInfinite } from "@/hooks/useSessionTrace" // Changed import
 import SessionTraceView from "./SessionTraceView"
 import WaterfallView from "./WaterFallView";
+import ConfigTab from "./ConfigTab";
 import { getAgentPlatform } from "@/utils/agentDetection";
 
 interface TracesTableProps {
@@ -394,46 +395,57 @@ const handleRowClick = (trace: TraceLog) => {
     <>
       <div className="flex flex-col h-full bg-white dark:bg-gray-900">
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-4 py-2">
+        <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-3 py-1.5">
           <div className="flex items-center justify-between">
-            <nav className="flex space-x-4">
+            <nav className="flex space-x-2">
               <button 
                 onClick={() => setActiveTab("turns")}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "turns" 
                     ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 )}
               >
-                Conversation Turns ({processedTraces.length})
+                Turns ({processedTraces.length})
               </button>
             {sessionSpans && sessionSpans.length > 0 && (
             <>
               <button 
                 onClick={() => setActiveTab("trace")}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "trace" 
                     ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 )}
               >
-                Session Trace ({totalSpansCount} spans)
+                Trace ({totalSpansCount})
               </button>
               <button 
                 onClick={() => setActiveTab("waterfall")}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "waterfall" 
                     ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 )}
               >
-                Timeline View ({totalSpansCount} spans)
+                Timeline ({totalSpansCount})
               </button>
             </>
           )}
+          <button 
+            onClick={() => setActiveTab("config")}
+            className={cn(
+              "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
+              activeTab === "config" 
+                ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            )}
+          >
+            Config
+          </button>
           </nav>
           
           {/* Download Transcript Button */}
@@ -649,6 +661,10 @@ const handleRowClick = (trace: TraceLog) => {
             trace={{...sessionTrace, spans: sessionSpans}} 
             loading={traceLoading || spansLoading} 
           />
+        )}
+
+        {activeTab === "config" && (
+          <ConfigTab sessionId={sessionId} />
         )}
       </div>
   

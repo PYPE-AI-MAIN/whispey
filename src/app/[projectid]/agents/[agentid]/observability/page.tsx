@@ -62,17 +62,17 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="px-8 py-3">
-          <div className="flex items-center gap-4">
+        <div className="px-4 py-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => router.back()}
-              className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+              className="w-7 h-7 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </button>
             
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
                 Observability
               </h1>
             </div>
@@ -82,8 +82,8 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
 
       {/* Audio Player - show if we have a recording URL */}
       {recordingUrl && !callLoading && (
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Call Recording</h3>
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+          <h3 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Call Recording</h3>
           <AudioPlayer
             s3Key={extractS3Key(recordingUrl)}
             url={recordingUrl}
@@ -101,8 +101,8 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       /> */}
 
       {agentLoading ? (
-        <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-          <div className="animate-pulse text-gray-600 dark:text-gray-400">Loading agent data...</div>
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+          <div className="animate-pulse text-xs text-gray-600 dark:text-gray-400">Loading agent data...</div>
         </div>
       ) : (
         <ObservabilityStats
@@ -114,7 +114,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       )}
 
       {/* Main Content */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-auto">
         <TracesTable
           agentId={resolvedParams.agentid}
           sessionId={sessionId}
