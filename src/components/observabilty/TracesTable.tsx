@@ -3,7 +3,8 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity, Download } from "lucide-react"
 import { OTelSpan } from "@/types/openTelemetry";
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import TraceDetailSheet from "./TraceDetailSheet/TraceDetailSheet"
@@ -285,6 +286,64 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     return total
   }
 
+  const downloadFullTranscript = () => {
+    if (!processedTraces.length) return
+
+    // Format all conversation turns as JSON
+    const transcriptData = {
+      session_id: sessionId || 'unknown',
+      agent_id: agentId,
+      total_turns: processedTraces.length,
+      exported_at: new Date().toISOString(),
+      turns: processedTraces.map((trace: TraceLog) => {
+        const turnData: any = {
+          turn_id: trace.turn_id,
+        }
+        
+        // Add user transcript if available
+        if (trace.user_transcript && trace.user_transcript.trim()) {
+          turnData.user = trace.user_transcript.trim()
+        }
+        
+        // Add assistant response if available
+        if (trace.agent_response && trace.agent_response.trim()) {
+          turnData.assistant = trace.agent_response.trim()
+        }
+        
+        // Add timestamp if available
+        if (trace.unix_timestamp) {
+          turnData.timestamp = new Date(trace.unix_timestamp * 1000).toISOString()
+        }
+        
+        // Add additional metadata if available
+        if (trace.trace_id) {
+          turnData.trace_id = trace.trace_id
+        }
+        
+        return turnData
+      })
+    }
+
+    // Create JSON string with pretty formatting
+    const transcriptJson = JSON.stringify(transcriptData, null, 2)
+
+    // Create filename with session ID and timestamp
+    const sessionIdShort = sessionId ? sessionId.slice(-8) : 'unknown'
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+    const filename = `transcript-session-${sessionIdShort}-${timestamp}.json`
+
+    // Create blob and download
+    const blob = new Blob([transcriptJson], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
 
 const handleRowClick = (trace: TraceLog) => {
   const hasBugReport = checkBugReportFlags.has(trace.turn_id.toString())
@@ -336,18 +395,19 @@ const handleRowClick = (trace: TraceLog) => {
       <div className="flex flex-col h-full bg-white dark:bg-gray-900">
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-4 py-2">
-          <nav className="flex space-x-4">
-            <button 
-              onClick={() => setActiveTab("turns")}
-              className={cn(
-                "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                activeTab === "turns" 
-                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              )}
-            >
-              Conversation Turns ({processedTraces.length})
-            </button>
+          <div className="flex items-center justify-between">
+            <nav className="flex space-x-4">
+              <button 
+                onClick={() => setActiveTab("turns")}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  activeTab === "turns" 
+                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                )}
+              >
+                Conversation Turns ({processedTraces.length})
+              </button>
             {sessionSpans && sessionSpans.length > 0 && (
             <>
               <button 
@@ -375,6 +435,20 @@ const handleRowClick = (trace: TraceLog) => {
             </>
           )}
           </nav>
+          
+          {/* Download Transcript Button */}
+          {activeTab === "turns" && processedTraces.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadFullTranscript}
+              className="h-8 text-xs flex items-center gap-1.5"
+            >
+              <Download className="w-3 h-3" />
+              Download Transcript
+            </Button>
+          )}
+          </div>
         </div>
   
         {/* Tab Content */}

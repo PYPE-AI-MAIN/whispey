@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon } from 'lucide-react'
+import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon, PhoneOff } from 'lucide-react'
 import InterruptionSettings from './ConfigParents/InterruptionSettings'
 import VoiceActivitySettings from './ConfigParents/VoiceActivitySettings'
 import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
@@ -13,6 +13,7 @@ import BugReportSettings from './ConfigParents/BugReportSettings'
 import { Volume2, Webhook } from 'lucide-react'
 import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 import WebhookSettings from './ConfigParents/WebhookSettings'
+import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -93,7 +94,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     fillers: false,
     bugs: false,
     backgroundAudio: false,
-    webhook: false
+    webhook: false,
+    dropoff: false
   })
   
   const toggleSection = (section: string) => {
@@ -297,6 +299,26 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               isActive={advancedSettings.webhook?.isActive || false}
               onFieldChange={onFieldChange}
               agentId={agentId}
+              projectId={projectId}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Drop-off Call Configuration */}
+        <Collapsible open={openSections.dropoff} onOpenChange={() => toggleSection('dropoff')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <PhoneOff className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Drop-off Call Configuration</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.dropoff ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <DropOffCallSettings
+              agentId={agentId || ''}
               projectId={projectId}
             />
           </CollapsibleContent>

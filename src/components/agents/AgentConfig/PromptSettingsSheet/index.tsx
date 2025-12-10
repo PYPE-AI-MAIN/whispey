@@ -30,6 +30,11 @@ const PREDEFINED_VARIABLES = [
     name: 'wcurrent_date',
     description: 'Current date in timezone',
     isSystem: true
+  },
+  {
+    name: 'wcontext_dropoff',
+    description: 'Context summary for drop-off calls (generated from context drop-off prompt)',
+    isSystem: true
   }
 ] as const
 
@@ -59,7 +64,7 @@ export default function PromptSettingsSheet({
 
   // Filter out predefined variables from custom variables - these should NEVER appear in Custom Variables
   const customVariables = useMemo(() => {
-    const predefinedNames = new Set<string>(['wcalling_number', 'wcurrent_time', 'wcurrent_date'])
+    const predefinedNames = new Set<string>(['wcalling_number', 'wcurrent_time', 'wcurrent_date', 'wcontext_dropoff'])
     return variables.filter(v => !predefinedNames.has(v.name.toLowerCase().trim()))
   }, [variables])
 
@@ -67,7 +72,7 @@ export default function PromptSettingsSheet({
   useEffect(() => {
     if (!open) return // Only clean when sheet is open
     
-    const predefinedNames = new Set<string>(['wcalling_number', 'wcurrent_time', 'wcurrent_date'])
+    const predefinedNames = new Set<string>(['wcalling_number', 'wcurrent_time', 'wcurrent_date', 'wcontext_dropoff'])
     const filteredVariables = variables.filter(v => !predefinedNames.has(v.name.toLowerCase().trim()))
     
     if (filteredVariables.length !== variables.length) {
@@ -97,7 +102,8 @@ export default function PromptSettingsSheet({
       if (predefinedNamesSet.has(normalized) || 
           normalized === 'wcalling_number' || 
           normalized === 'wcurrent_time' || 
-          normalized === 'wcurrent_date') {
+          normalized === 'wcurrent_date' ||
+          normalized === 'wcontext_dropoff') {
         return false
       }
       
