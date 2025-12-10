@@ -2,7 +2,8 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { ArrowDown, Activity, MessageSquare, Wrench } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ArrowDown, Activity, MessageSquare, Wrench, Download } from 'lucide-react'
 import AudioPlayer from '@/components/AudioPlayer'
 
 interface NodeDetailsProps {
@@ -32,6 +33,68 @@ function NodeDetails({
     const formatDuration = (ms: number) => {
         if (ms < 1000) return `${ms.toFixed(1)}ms`
         return `${(ms / 1000).toFixed(2)}s`
+    }
+
+    const downloadTranscript = () => {
+        if (!trace.enhanced_data?.prompt_data?.conversation_history?.length) return
+
+        const conversationHistory = trace.enhanced_data.prompt_data.conversation_history
+        
+        // Format transcript as USER: ... ASSISTANT: ...
+        const transcriptLines = conversationHistory.map((message: any, idx: number) => {
+            // Parse content if it's a string array
+            let content = message.content
+            if (typeof message.content === "string" && message.content.startsWith("[")) {
+                try {
+                    const parsed = JSON.parse(message.content)
+                    content = Array.isArray(parsed) ? parsed[0] : parsed
+                } catch {
+                    content = message.content
+                }
+            }
+
+            // Skip empty content
+            if (!content || (typeof content === "string" && content.trim() === "")) {
+                return null
+            }
+
+            // Format role name
+            let roleName = message.role?.toUpperCase() || "UNKNOWN"
+            if (roleName === "ASSISTANT") {
+                roleName = "ASSISTANT"
+            } else if (roleName === "USER") {
+                roleName = "USER"
+            } else if (roleName === "SYSTEM") {
+                roleName = "SYSTEM"
+            }
+
+            // Format content
+            const formattedContent = typeof content === "string" 
+                ? content 
+                : JSON.stringify(content, null, 2)
+
+            return `${roleName}: ${formattedContent}`
+        }).filter((line: string | null) => line !== null)
+
+        // Create transcript text
+        const transcriptText = transcriptLines.join('\n\n')
+
+        // Create filename with timestamp
+        const timestamp = trace.unix_timestamp 
+            ? new Date(trace.unix_timestamp * 1000).toISOString().replace(/[:.]/g, '-').slice(0, -5)
+            : new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+        const filename = `transcript-turn-${trace.turn_id || 'unknown'}-${timestamp}.txt`
+
+        // Create blob and download
+        const blob = new Blob([transcriptText], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
     }
 
     const formatTimestamp = (timestamp: number) => {
@@ -316,12 +379,23 @@ function NodeDetails({
             {/* Conversation History */}
             {trace.enhanced_data.prompt_data.conversation_history?.length > 0 && (
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Conversation History</span>
-                  <Badge variant="outline" className="text-xs">
-                    {trace.enhanced_data.prompt_data.conversation_history.length} messages
-                  </Badge>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Conversation History</span>
+                    <Badge variant="outline" className="text-xs">
+                      {trace.enhanced_data.prompt_data.conversation_history.length} messages
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadTranscript}
+                    className="h-7 text-xs flex items-center gap-1.5"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download Transcript
+                  </Button>
                 </div>
 
                 <div className="space-y-2 max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
