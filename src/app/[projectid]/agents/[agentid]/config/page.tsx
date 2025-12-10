@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -20,7 +20,8 @@ import {
   Loader2,
   MoreVertical,
   Save,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -190,6 +191,7 @@ interface AgentStatus {
 
 export default function AgentConfig() {
   const params = useParams()
+  const router = useRouter()
   const agentid = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
   const [isCopied, setIsCopied] = useState(false)
@@ -669,10 +671,16 @@ const unmappedVariablesCount = useMemo(() => {
       <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => router.push(`/${projectId}/agents/${agentid}`)}
+              className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 flex-shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAgentStatusColor()}`}></div>
             <div className="min-w-0">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {activeAgentName || 'Loading...'}
+                {agentNameHeader || 'Loading...'}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {getMobileAgentStatusText()}
@@ -778,6 +786,12 @@ const unmappedVariablesCount = useMemo(() => {
       <div className="hidden lg:block bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push(`/${projectId}/agents/${agentid}`)}
+              className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <div className={`w-2 h-2 rounded-full ${getAgentStatusColor()}`}></div>
             <div className="flex flex-col">
               <span className="text-sm text-gray-600 dark:text-gray-400">
