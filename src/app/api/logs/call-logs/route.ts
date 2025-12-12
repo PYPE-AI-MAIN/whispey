@@ -153,17 +153,40 @@ export async function POST(request: NextRequest) {
 
     const { project_id } = tokenVerification;
 
-    // Calculate duration if not provided
-    let calculatedDuration = duration_seconds;
-    if (!calculatedDuration && call_started_at && call_ended_at) {
+    // Calculate duration with fallback priority:
+    // 1. Use provided duration_seconds if valid
+    // 2. Calculate from timestamps if available
+    // 3. Parse from duration_formatted in metadata if present
+    let calculatedDuration = typeof duration_seconds === 'string' 
+      ? parseFloat(duration_seconds) || 0 
+      : (duration_seconds ?? 0);
+    
+    // If duration_seconds is missing or 0, try to calculate from timestamps
+    if ((!calculatedDuration || calculatedDuration === 0) && call_started_at && call_ended_at) {
       const startTime = new Date(call_started_at).getTime();
       const endTime = new Date(call_ended_at).getTime();
-      calculatedDuration = Math.round((endTime - startTime) / 1000);
-      console.log("🕐 Calculated duration from timestamps:", {
-        startTime: new Date(call_started_at).toISOString(),
-        endTime: new Date(call_ended_at).toISOString(),
-        calculatedDuration
-      });
+      
+      if (!isNaN(startTime) && !isNaN(endTime) && endTime > startTime) {
+        calculatedDuration = Math.round((endTime - startTime) / 1000);
+      }
+    }
+    
+    // If still no duration, try to parse from duration_formatted in metadata
+    if ((!calculatedDuration || calculatedDuration === 0) && metadata?.duration_formatted) {
+      const formatted = metadata.duration_formatted;
+      // Parse format like "5m 30s" or "1h 5m 30s"
+      const match = formatted.match(/(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/);
+      if (match) {
+        const hours = parseInt(match[1] || '0', 10);
+        const minutes = parseInt(match[2] || '0', 10);
+        const seconds = parseInt(match[3] || '0', 10);
+        calculatedDuration = hours * 3600 + minutes * 60 + seconds;
+      }
+    }
+    
+    // Ensure valid number
+    if (isNaN(calculatedDuration) || calculatedDuration < 0) {
+      calculatedDuration = 0;
     }
 
     // Calculate average latency
