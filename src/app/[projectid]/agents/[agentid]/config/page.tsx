@@ -258,6 +258,7 @@ export default function AgentConfig() {
     data: agentConfigData, 
     isLoading: isConfigLoading, 
     isError: isConfigError,
+    isFetching: isConfigFetching,
     refetch: refetchConfig 
   } = useAgentConfig(agentNameWithId, agentNameLegacy)
 
@@ -478,7 +479,7 @@ export default function AgentConfig() {
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
 
-  const handleSaveAndDeploy = () => {
+  const handleSaveAndDeploy = async () => {
     if (!promptValidation.isValid) {
       console.error('❌ Cannot save: Variable validation errors exist')
       return
@@ -505,7 +506,17 @@ export default function AgentConfig() {
     }
     
     console.log('💾 Saving with validated variables:', validVariables)
-    saveAndDeploy.mutate(payload)
+    
+    try {
+      // First, perform the update
+      await saveAndDeploy.mutateAsync(payload)
+      
+      // Then, explicitly refetch the config and wait for it to complete
+      // This ensures loading state persists until both update and fetch are done
+      await refetchConfig()
+    } catch (error) {
+      console.error('❌ Error during save and deploy:', error)
+    }
   }
 
   const handleCancel = () => {
@@ -733,9 +744,9 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm" 
                 className="h-8 px-3" 
                 onClick={handleSaveAndDeploy}
-                disabled={saveAndDeploy.isPending || !promptValidation.isValid}
+                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid}
               >
-                {saveAndDeploy.isPending ? (
+                {saveAndDeploy.isPending || isConfigFetching ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Save className="w-4 h-4" />
@@ -883,9 +894,16 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || !isFormDirty || !promptValidation.isValid}
+              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid}
             >
-              {saveAndDeploy.isPending ? 'Updating...' : 'Update Config'}
+              {saveAndDeploy.isPending || isConfigFetching ? (
+                <>
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin inline" />
+                  Updating...
+                </>
+              ) : (
+                'Update Config'
+              )}
             </Button>
           </div>
         </div>
