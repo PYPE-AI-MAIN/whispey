@@ -2,12 +2,18 @@
 
 import type React from "react"
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { Play, Pause, Loader2, AlertCircle, Download } from "lucide-react"
+import { Play, Pause, Loader2, AlertCircle, Download, Gauge } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 interface AudioPlayerProps {
@@ -18,6 +24,8 @@ interface AudioPlayerProps {
   segmentStartTime?: number
   segmentDuration?: number
 }
+
+const PLAYBACK_SPEEDS = [1, 1.5, 2, 2.5, 3, 4]
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration }) => {
 
@@ -34,6 +42,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
   const [downloadFileName, setDownloadFileName] = useState("")
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [segmentStarted, setSegmentStarted] = useState(false)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -133,6 +142,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
     }
   }, [audioUrl, url, s3Key])
 
+  // Handle playback speed change
+  const handleSpeedChange = useCallback((speed: number) => {
+    setPlaybackSpeed(speed)
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed
+    }
+  }, [])
+
   // Handle play/pause
   const togglePlay = useCallback(async () => {
     if (!audioRef.current) return
@@ -145,6 +162,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
       if (url && audioRef.current) {
         if (audioRef.current.src !== url) {
           audioRef.current.src = url
+          // Set playback speed when loading new audio
+          audioRef.current.playbackRate = playbackSpeed
         }
         
         // If we have segment parameters, seek to the start time
@@ -177,7 +196,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
         }
       }
     }
-  }, [isPlaying, getAudioUrl, segmentStartTime, segmentStarted])
+  }, [isPlaying, getAudioUrl, segmentStartTime, segmentStarted, playbackSpeed])
 
   // Generate default filename
   const getDefaultFileName = useCallback(() => {
@@ -408,6 +427,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
     const handleLoadedMetadata = () => {
       setDuration(audio.duration)
       setIsReady(true)
+      // Apply playback speed when metadata is loaded
+      audio.playbackRate = playbackSpeed
     }
     
     const handleEnded = () => setIsPlaying(false)
@@ -432,7 +453,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
       audio.removeEventListener("error", handleError)
       audio.removeEventListener("canplay", handleCanPlay)
     }
-  }, [segmentStartTime, segmentDuration])
+  }, [segmentStartTime, segmentDuration, playbackSpeed])
 
   // Reset segment state when parameters change
   useEffect(() => {
@@ -611,6 +632,35 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Playback Speed Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-2 flex-shrink-0 gap-1"
+              title="Playback speed"
+            >
+              <Gauge className="w-3 h-3" />
+              <span className="text-xs font-medium">{playbackSpeed}x</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            {PLAYBACK_SPEEDS.map((speed) => (
+              <DropdownMenuItem
+                key={speed}
+                onClick={() => handleSpeedChange(speed)}
+                className={cn(
+                  "cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
+                  playbackSpeed === speed && "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                )}
+              >
+                {speed}x {speed === 1 && "(Normal)"}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Waveform */}
         <div className="flex-1 relative">
