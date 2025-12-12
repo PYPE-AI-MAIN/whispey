@@ -407,6 +407,7 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "call_ended_reason": call_ended_reason,
         "call_started_at": start_time,
         "call_ended_at": current_time,
+        "duration_seconds": duration,  # Add duration_seconds field
         "transcript_type": "agent",
         "recording_url": "",  # Will be filled by caller
         "transcript_json": [],
