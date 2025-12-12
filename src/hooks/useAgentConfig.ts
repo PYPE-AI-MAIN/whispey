@@ -260,6 +260,7 @@ export const useAgentMutations = (agentName: string | null) => {
     mutationFn: saveAndDeployAgent,
     onSuccess: () => {
       if (agentName) {
+        // Invalidate queries - the component will handle the refetch
         queryClient.invalidateQueries({ queryKey: ["agent-config", agentName] })
       }
       console.log("✅ Agent deployed successfully")
@@ -280,6 +281,7 @@ export const useAgentMutations = (agentName: string | null) => {
     },
     saveAndDeploy: {
       mutate: saveAndDeployMutation.mutate,
+      mutateAsync: saveAndDeployMutation.mutateAsync,
       isPending: saveAndDeployMutation.isPending,
       error: saveAndDeployMutation.error,
       isSuccess: saveAndDeployMutation.isSuccess,
