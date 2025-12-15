@@ -171,6 +171,8 @@ export const AGENT_DEFAULT_CONFIG = {
     // These variables are populated by the system and don't need to be added to the variables array
     aiStartsAfterSilence: false,
     silenceTime: 10,
+    // Dynamic TTS routing
+    dynamic_tts: [],
   
     // Advanced Settings
     advancedSettings: {
