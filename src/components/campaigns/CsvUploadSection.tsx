@@ -157,9 +157,9 @@ export function CsvUploadSection({
     return false
   }
   
-  // Validate format: +[country code][10 digits for India, 10 digits for US]
-  const phoneRegex = /^\+(?:91[6-9]\d{9}|1[2-9]\d{9})$/
-  
+  // Validate format: +1 followed by exactly 10 digits
+  const phoneRegex = /^\+(1|91)\d{10}$/
+
   return phoneRegex.test(cleaned)
 }
 
