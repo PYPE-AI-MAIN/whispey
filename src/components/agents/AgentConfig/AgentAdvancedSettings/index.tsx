@@ -14,6 +14,8 @@ import { Volume2, Webhook } from 'lucide-react'
 import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 import WebhookSettings from './ConfigParents/WebhookSettings'
 import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
+import RescheduleCallSettings from './ConfigParents/RescheduleCallSettings'
+import { Calendar } from 'lucide-react'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -95,7 +97,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     bugs: false,
     backgroundAudio: false,
     webhook: false,
-    dropoff: false
+    dropoff: false,
+    reschedule: false
   })
   
   const toggleSection = (section: string) => {
@@ -318,6 +321,26 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <DropOffCallSettings
+              agentId={agentId || ''}
+              projectId={projectId}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Reschedule Call Configuration */}
+        <Collapsible open={openSections.reschedule} onOpenChange={() => toggleSection('reschedule')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Reschedule Call Configuration</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.reschedule ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <RescheduleCallSettings
               agentId={agentId || ''}
               projectId={projectId}
             />
