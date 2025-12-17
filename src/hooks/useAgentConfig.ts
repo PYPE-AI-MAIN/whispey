@@ -87,6 +87,10 @@ export interface AgentConfigResponse {
         async?: boolean
         headers?: Record<string, any>
         parameters?: any[]
+        // Nearby location finder
+        max_results?: number
+        hospitals?: any[]
+        areas?: Record<string, any>
       }>
       filler_words?: {
         enabled: boolean
@@ -442,6 +446,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             tool.type === 'handoff' ? 'Handoff Agent' : 
             tool.type === 'transfer_call' ? 'Transfer Call' : 
             tool.type === 'ivr_navigator' ? 'Send DTMF' : 
+            tool.type === 'nearby_location_finder' ? 'Nearby Hospital Finder' :
             'Custom Tool'
           ),
           config: {
@@ -472,7 +477,11 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             publish_data: tool.publish_data ?? true,
             instruction_template: tool.instruction_template || '',
             default_task: tool.default_task || 'Reach a live support representative',
-            task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+            task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
+            // Nearby hospital finder fields (kept as JSON strings for editor)
+            max_results: tool.max_results ?? 3,
+            hospitals_json: JSON.stringify(tool.hospitals ?? [], null, 2),
+            areas_json: JSON.stringify(tool.areas ?? {}, null, 2)
           }
         })) || []
       },
