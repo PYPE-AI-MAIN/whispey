@@ -201,7 +201,7 @@ export const AGENT_DEFAULT_CONFIG = {
       tools: {
         tools: AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({
           id: `tool_${tool.type}_${Date.now()}_${index}`,
-          type: tool.type as "end_call" | "handoff" | "custom_function",
+          type: tool.type as "end_call" | "handoff" | "custom_function" | "transfer_call" | "ivr_navigator" | "nearby_location_finder",
           name: tool.type === "end_call" ? "End Call" : "",
           config: {
             description: tool.type === "end_call" ? "Allow assistant to end the conversation" : ""
