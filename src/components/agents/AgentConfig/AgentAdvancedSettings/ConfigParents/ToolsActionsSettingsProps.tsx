@@ -30,7 +30,7 @@ interface ToolParameter {
 
 interface Tool {
   id: string
-  type: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function'
+  type: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder'
   name: string
   config: {
     description?: string
@@ -55,6 +55,10 @@ interface Tool {
     instruction_template?: string
     default_task?: string
     task_metadata_keys?: string[]
+    // Nearby location finder fields
+    max_results?: number
+    hospitals_json?: string
+    areas_json?: string
   }
 }
 
@@ -66,7 +70,7 @@ interface ToolsActionsSettingsProps {
 
 function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | null>(null)
+  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
@@ -96,7 +100,11 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     publish_data: true,
     instruction_template: '',
     default_task: 'Reach a live support representative',
-    task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
+    task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+    // Nearby location finder fields (stored as JSON strings in UI)
+    max_results: 3,
+    hospitals_json: '[]',
+    areas_json: '{}'
   })
 
   // Fetch phone numbers when component mounts
@@ -127,7 +135,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     }
   }, [projectId])
 
-  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function') => {
+  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder') => {
     setSelectedToolType(toolType)
     setEditingTool(null)
     setHeadersJsonString('{}')
@@ -156,7 +164,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         publish_data: true,
         instruction_template: '',
         default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
       })
     } else if (toolType === 'handoff') {
       setFormData({ 
@@ -182,7 +193,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         publish_data: true,
         instruction_template: '',
         default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
       })
     } else if (toolType === 'transfer_call') {
       setFormData({ 
@@ -208,7 +222,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         publish_data: true,
         instruction_template: '',
         default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
       })
     } else if (toolType === 'ivr_navigator') {
       setFormData({ 
@@ -234,7 +251,39 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         publish_data: true,
         instruction_template: 'Listen carefully and press the most relevant option to accomplish: {task}.',
         default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
+      })
+    } else if (toolType === 'nearby_location_finder') {
+      setFormData({
+        name: 'Nearby Hospital Finder',
+        description: 'Find the nearest hospital locations based on the patient area (supports geocoding fallback in backend)',
+        endpoint: '',
+        method: 'POST',
+        headers: {},
+        body: '',
+        targetAgent: '',
+        handoffMessage: '',
+        selectedPhoneId: '',
+        transferNumber: '',
+        sipTrunkId: '',
+        timeout: 10,
+        asyncExecution: false,
+        parameters: [],
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: '',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: '',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
       })
     } else {
       setFormData({ 
@@ -260,7 +309,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         publish_data: true,
         instruction_template: '',
         default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task']
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
       })
     }
     
@@ -303,7 +355,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       publish_data: tool.config.publish_data ?? true,
       instruction_template: tool.config.instruction_template || '',
       default_task: tool.config.default_task || 'Reach a live support representative',
-      task_metadata_keys: tool.config.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+      task_metadata_keys: tool.config.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
+      max_results: tool.config.max_results ?? 3,
+      hospitals_json: tool.config.hospitals_json ?? '[]',
+      areas_json: tool.config.areas_json ?? '{}'
     })
     setIsDialogOpen(true)
   }
@@ -347,6 +402,11 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
           instruction_template: formData.instruction_template,
           default_task: formData.default_task,
           task_metadata_keys: formData.task_metadata_keys
+        }),
+        ...(selectedToolType === 'nearby_location_finder' && {
+          max_results: formData.max_results,
+          hospitals_json: formData.hospitals_json,
+          areas_json: formData.areas_json
         })
       }
     }
@@ -425,6 +485,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       case 'transfer_call': return <PhoneForwardedIcon className="w-3 h-3" />
       case 'ivr_navigator': return <Hash className="w-3 h-3" />
       case 'custom_function': return <CodeIcon className="w-3 h-3" />
+      case 'nearby_location_finder': return <Phone className="w-3 h-3" />
       default: return <CodeIcon className="w-3 h-3" />
     }
   }
@@ -463,6 +524,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
           <DropdownMenuItem onClick={() => handleAddTool('custom_function')} className="text-xs">
             <CodeIcon className="w-3 h-3 mr-2" />
             Custom Tool
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleAddTool('nearby_location_finder')} className="text-xs">
+            <Phone className="w-3 h-3 mr-2" />
+            Nearby Hospital Finder
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -521,6 +586,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                 selectedToolType === 'handoff' ? 'Handoff Agent' : 
                 selectedToolType === 'transfer_call' ? 'Transfer Call' : 
                 selectedToolType === 'ivr_navigator' ? 'IVR Navigator' :
+                selectedToolType === 'nearby_location_finder' ? 'Nearby Hospital Finder' :
                 'Custom Tool'
               }
             </DialogTitle>
@@ -879,6 +945,52 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Map API response fields to tool response using dot notation (e.g., "data.user.name")
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Nearby location finder fields */}
+            {selectedToolType === 'nearby_location_finder' && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-gray-700 dark:text-gray-300">Max Results</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={formData.max_results}
+                      onChange={(e) => setFormData(prev => ({ ...prev, max_results: parseInt(e.target.value) || 3 }))}
+                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      placeholder="3"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Hospitals (JSON array)</Label>
+                  <Textarea
+                    value={formData.hospitals_json}
+                    onChange={(e) => setFormData(prev => ({ ...prev, hospitals_json: e.target.value }))}
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder='[{"name":"Sparsh Hospital","location":"Koramangala","address":"...","phone":"+91...","latitude":12.93,"longitude":77.62}]'
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Must include latitude/longitude for each hospital.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Areas (JSON object)</Label>
+                  <Textarea
+                    value={formData.areas_json}
+                    onChange={(e) => setFormData(prev => ({ ...prev, areas_json: e.target.value }))}
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder='{"koramangala":[12.9352,77.6245],"jayanagar":[12.9250,77.5937]}'
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Keys should be lowercase area names. Values are [lat, lng].
                   </p>
                 </div>
               </>
