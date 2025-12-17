@@ -45,7 +45,7 @@ interface AgentAdvancedSettingsProps {
       tools: {
         tools: Array<{
           id: string
-          type: 'end_call' | 'handoff' | 'custom_function'
+          type: 'end_call' | 'handoff' | 'custom_function' | 'transfer_call' | 'ivr_navigator' | 'nearby_location_finder'
           name: string
           config: any
         }>

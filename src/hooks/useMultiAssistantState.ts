@@ -305,6 +305,36 @@ export function useMultiAssistantState({
             }
           }
 
+          if (tool.type === 'nearby_location_finder') {
+            // Parse JSON strings from UI into objects for backend payload
+            let hospitals: any[] = []
+            let areas: Record<string, any> = {}
+            try {
+              hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
+            } catch (e) {
+              console.warn('Failed to parse hospitals_json:', e)
+            }
+            try {
+              areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
+            } catch (e) {
+              console.warn('Failed to parse areas_json:', e)
+            }
+
+            const maxResults = (() => {
+              const v = tool.config?.max_results
+              const n = typeof v === 'string' ? parseInt(v, 10) : v
+              return Number.isFinite(n) && n > 0 ? n : 3
+            })()
+
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              max_results: maxResults,
+              hospitals,
+              areas
+            }
+          }
+
           return baseToolConfig
         }) || getFallback(null, 'tools'),
         filler_words: {
@@ -544,6 +574,35 @@ export function useMultiAssistantState({
               instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
               default_task: tool.config?.default_task || 'Reach a live support representative',
               task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+            }
+          }
+
+          if (tool.type === 'nearby_location_finder') {
+            let hospitals: any[] = []
+            let areas: Record<string, any> = {}
+            try {
+              hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
+            } catch (e) {
+              console.warn('Failed to parse hospitals_json:', e)
+            }
+            try {
+              areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
+            } catch (e) {
+              console.warn('Failed to parse areas_json:', e)
+            }
+
+            const maxResults = (() => {
+              const v = tool.config?.max_results
+              const n = typeof v === 'string' ? parseInt(v, 10) : v
+              return Number.isFinite(n) && n > 0 ? n : 3
+            })()
+
+            return {
+              ...baseToolConfig,
+              ...commonFields,
+              max_results: maxResults,
+              hospitals,
+              areas
             }
           }
 
