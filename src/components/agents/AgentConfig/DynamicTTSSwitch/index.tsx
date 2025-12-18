@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CardDescription } from '@/components/ui/card'
 import { Plus, Trash2, Edit2, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -207,30 +207,22 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-500" />
-              Dynamic TTS Switch
-            </CardTitle>
-            <CardDescription className="text-xs mt-1">
-              Add TTS providers that can be switched during conversation
-            </CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddNew}
-            className="h-8 px-3 text-xs"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Add
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
+    <div className="w-full space-y-3">
+      <div className="flex flex-col gap-2">
+        <CardDescription className="text-xs text-gray-600 dark:text-gray-400">
+          Add TTS providers that can be switched during conversation
+        </CardDescription>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAddNew}
+          className="h-8 px-3 w-full text-xs"
+        >
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
+          Add
+        </Button>
+      </div>
+      <div className="space-y-2">
         {dynamicTTSList.length === 0 ? (
           <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
             <Sparkles className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
@@ -279,12 +271,13 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
             ))}
           </div>
         )}
+      </div>
 
-        {/* Add/Edit Dialog */}
+      {/* Add/Edit Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-gray-900 dark:text-gray-100">
                 {editingIndex !== null ? 'Edit Dynamic TTS' : 'Add Dynamic TTS'}
               </DialogTitle>
             </DialogHeader>
@@ -292,7 +285,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
             <div className="space-y-6 py-4">
               {/* Tool Name */}
               <div className="space-y-2">
-                <Label htmlFor="tool-name" className="text-sm font-medium">
+                <Label htmlFor="tool-name" className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Tool Name <span className="text-red-500">*</span>
                 </Label>
                 <input
@@ -301,7 +294,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
                   value={currentConfig.tool_name || ''}
                   onChange={(e) => setCurrentConfig(prev => ({ ...prev, tool_name: e.target.value }))}
                   placeholder="e.g., switch_to_hindi"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Unique identifier for this TTS switch (used as tool name)
@@ -310,7 +303,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 
               {/* When to Switch - Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium">
+                <Label htmlFor="description" className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   When to Switch <span className="text-red-500">*</span>
                 </Label>
                 <Textarea
@@ -318,7 +311,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
                   value={currentConfig.description || ''}
                   onChange={(e) => setCurrentConfig(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="e.g., Switch to Hindi voice when user speaks in Hindi or requests Hindi"
-                  className="min-h-[80px] text-sm resize-none"
+                  className="min-h-[80px] text-sm resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Describe when the agent should switch to this TTS provider. This will be used as the tool description for the LLM.
@@ -327,7 +320,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 
               {/* TTS Configuration */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
+                <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   TTS Configuration <span className="text-red-500">*</span>
                 </Label>
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
@@ -388,8 +381,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
+    </div>
   )
 }
 
