@@ -388,7 +388,10 @@ export function useMultiAssistantState({
               volume: formValues.advancedSettings.backgroundAudio.thinkingVolume ?? getFallback(null, 'background_audio.thinking.volume')
             }
           })
-        }
+        },
+        ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
+          dynamic_tts: formValues.dynamic_tts
+        })
       }
 
       return {
@@ -656,7 +659,10 @@ export function useMultiAssistantState({
               volume: formValues.advancedSettings.backgroundAudio.thinkingVolume
             }
           })
-        }
+        },
+        ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
+          dynamic_tts: formValues.dynamic_tts
+        })
       }
     })
 
