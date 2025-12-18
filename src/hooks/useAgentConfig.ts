@@ -128,6 +128,29 @@ export interface AgentConfigResponse {
         user_away_timeout?: number
         user_away_timeout_message?: string
       }
+      dynamic_tts?: Array<{
+        tool_name: string
+        description: string
+        name: string
+        voice_id?: string
+        speaker?: string
+        language?: string
+        model?: string
+        voice_settings?: {
+          stability?: number
+          similarity_boost?: number
+          style?: number
+          use_speaker_boost?: boolean
+          speed?: number
+          target_language_code?: string
+          pace?: number
+          loudness?: number
+          enable_preprocessing?: boolean
+          pitch?: number
+        }
+        voice_name?: string
+        gender?: string
+      }>
     }>
   }
   _usedAgentName?: string
@@ -406,6 +429,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       language: assistant.stt?.language || getFallback(null, 'stt.language'),
       ...(assistant.stt?.config || {}),
     },
+    dynamic_tts: assistant.dynamic_tts || [],
     advancedSettings: {
       interruption: {
         allowInterruptions: assistant.interruptions?.allow_interruptions ?? assistant.allow_interruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
