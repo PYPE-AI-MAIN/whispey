@@ -55,6 +55,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import CopyConfigDialog from '@/components/agents/AgentConfig/CopyConfigDialog'
+import PasteConfigDialog from '@/components/agents/AgentConfig/PasteConfigDialog'
+import { DeserializedConfig } from '@/utils/agentConfigSerializer'
 
 // Agent status service
 const agentStatusService = {
@@ -200,6 +203,9 @@ export default function AgentConfig() {
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
   const [isTalkToAssistantOpen, setIsTalkToAssistantOpen] = useState(false)
   const [isDynamicTTSDialogOpen, setIsDynamicTTSDialogOpen] = useState(false)
+
+  const [isCopyConfigDialogOpen, setIsCopyConfigDialogOpen] = useState(false)
+  const [isPasteConfigDialogOpen, setIsPasteConfigDialogOpen] = useState(false)
   
   // Agent status state
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
@@ -480,6 +486,24 @@ export default function AgentConfig() {
       formik.setValues(currentValues, false) // false = don't validate
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
+
+  const handleApplyPastedConfig = (config: DeserializedConfig) => {
+    console.log('📋 Applying pasted configuration:', config)
+    
+    // Apply formik values
+    formik.setValues(config.formikValues, false) // false = don't validate immediately
+    
+    // Apply external state
+    setTtsConfig(config.ttsConfig)
+    setSTTConfig(config.sttConfig)
+    setAzureConfig(config.azureConfig)
+    
+    // Mark form as dirty to enable save
+    setHasExternalChanges(true)
+    
+    console.log('✅ Configuration applied successfully')
+  }
+
 
   const handleSaveAndDeploy = async () => {
     if (!promptValidation.isValid) {
@@ -778,6 +802,33 @@ const unmappedVariablesCount = useMemo(() => {
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
 
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onSelect={() => setIsCopyConfigDialogOpen(true)}>
+                    <CopyIcon className="w-4 h-4 mr-2" />
+                    Copy Configuration
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onSelect={() => setIsPasteConfigDialogOpen(true)}
+                    disabled={isFormDirty}
+                  >
+                    <svg 
+                      className="w-4 h-4 mr-2" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" 
+                      />
+                    </svg>
+                    Paste Configuration
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+
                 {isFormDirty && (
                   <>
                     <DropdownMenuSeparator />
@@ -907,6 +958,43 @@ const unmappedVariablesCount = useMemo(() => {
                 'Update Config'
               )}
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onSelect={() => setIsCopyConfigDialogOpen(true)}>
+                    <CopyIcon className="w-4 h-4 mr-2" />
+                    Copy Configuration
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onSelect={() => setIsPasteConfigDialogOpen(true)}
+                    disabled={isFormDirty}
+                  >
+                    <svg 
+                      className="w-4 h-4 mr-2" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" 
+                      />
+                    </svg>
+                    Paste Configuration
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            
           </div>
         </div>
       </div>
@@ -1203,6 +1291,23 @@ const unmappedVariablesCount = useMemo(() => {
           </div>
         </SheetContent>
       </Sheet>
+
+
+      <CopyConfigDialog
+        open={isCopyConfigDialogOpen}
+        onOpenChange={setIsCopyConfigDialogOpen}
+        formikValues={formik.values}
+        ttsConfig={ttsConfig}
+        sttConfig={sttConfig}
+        azureConfig={azureConfig}
+      />
+
+      <PasteConfigDialog
+        open={isPasteConfigDialogOpen}
+        onOpenChange={setIsPasteConfigDialogOpen}
+        onApplyConfig={handleApplyPastedConfig}
+        isFormDirty={isFormDirty}
+      />
     </div>
   )
 }
