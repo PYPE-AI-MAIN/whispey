@@ -10,10 +10,11 @@ import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettingsProps'
 import FillerWordsSettings from './ConfigParents/FillerWordSettings'
 import BugReportSettings from './ConfigParents/BugReportSettings'
-import { Volume2, Webhook } from 'lucide-react'
+import { Volume2, Webhook, ArrowRightLeft } from 'lucide-react'
 import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 import WebhookSettings from './ConfigParents/WebhookSettings'
 import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
+import DynamicTTSSwitch from '../DynamicTTSSwitch'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -83,9 +84,11 @@ interface AgentAdvancedSettingsProps {
     }
     onFieldChange: (field: string, value: any) => void
     projectId?: string
+    dynamicTTSList?: any[]
+    onDynamicTTSChange?: (dynamicTTSList: any[]) => void
   }
 
-function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId }: AgentAdvancedSettingsProps) {
+function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: AgentAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
@@ -95,7 +98,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     bugs: false,
     backgroundAudio: false,
     webhook: false,
-    dropoff: false
+    dropoff: false,
+    ttsSwitcher: false
   })
   
   const toggleSection = (section: string) => {
@@ -320,6 +324,26 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             <DropOffCallSettings
               agentId={agentId || ''}
               projectId={projectId}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* TTS Switcher */}
+        <Collapsible open={openSections.ttsSwitcher} onOpenChange={() => toggleSection('ttsSwitcher')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">TTS Switcher</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.ttsSwitcher ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <DynamicTTSSwitch
+              dynamicTTSList={dynamicTTSList}
+              onDynamicTTSChange={onDynamicTTSChange}
             />
           </CollapsibleContent>
         </Collapsible>
