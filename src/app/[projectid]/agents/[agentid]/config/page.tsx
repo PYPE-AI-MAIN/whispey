@@ -36,7 +36,6 @@ import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
-import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
@@ -58,6 +57,7 @@ import {
 import CopyConfigDialog from '@/components/agents/AgentConfig/CopyConfigDialog'
 import PasteConfigDialog from '@/components/agents/AgentConfig/PasteConfigDialog'
 import { DeserializedConfig } from '@/utils/agentConfigSerializer'
+import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
 
 // Agent status service
 const agentStatusService = {
@@ -1031,24 +1031,14 @@ const unmappedVariablesCount = useMemo(() => {
                 />
               </div>
 
-              <div className="flex-1 min-w-0 flex gap-2">
-                <div className="flex-1 min-w-0">
-                  <SelectTTS 
-                    selectedVoice={formik.values.selectedVoice}
-                    initialProvider={formik.values.ttsProvider}
-                    initialModel={formik.values.ttsModel}
-                    initialConfig={formik.values.ttsVoiceConfig}
-                    onVoiceSelect={handleVoiceSelect}
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-full px-3"
-                  onClick={() => setIsDynamicTTSDialogOpen(true)}
-                >
-                  Router
-                </Button>
+              <div className="flex-1 min-w-0">
+                <SelectTTS 
+                  selectedVoice={formik.values.selectedVoice}
+                  initialProvider={formik.values.ttsProvider}
+                  initialModel={formik.values.ttsModel}
+                  initialConfig={formik.values.ttsVoiceConfig}
+                  onVoiceSelect={handleVoiceSelect}
+                />
               </div>
             </div>
 
@@ -1228,6 +1218,10 @@ const unmappedVariablesCount = useMemo(() => {
               onFieldChange={formik.setFieldValue}
               projectId={projectId}
               agentId={agentid}
+              dynamicTTSList={formik.values.dynamic_tts || []}
+              onDynamicTTSChange={(dynamicTTSList) => {
+                formik.setFieldValue('dynamic_tts', dynamicTTSList)
+              }}
             />
           </div>
           
@@ -1261,6 +1255,10 @@ const unmappedVariablesCount = useMemo(() => {
               onFieldChange={formik.setFieldValue}
               projectId={projectId}
               agentId={agentid}
+              dynamicTTSList={formik.values.dynamic_tts || []}
+              onDynamicTTSChange={(dynamicTTSList) => {
+                formik.setFieldValue('dynamic_tts', dynamicTTSList)
+              }}
             />
           </div>
         </SheetContent>
