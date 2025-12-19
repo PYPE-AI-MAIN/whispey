@@ -1,7 +1,8 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect } from 'react'
 import { CallLog } from "@/types/logs"
 import { toCamelCase, isColumnVisibleForRole } from '@/utils/callLogsUtils'
 import { FilterRule } from '@/components/CallFilter'
+import { useCallLogsStore } from '@/stores/callLogsStore'
 
 
 export const BASIC_COLUMNS = [
@@ -17,6 +18,17 @@ export const BASIC_COLUMNS = [
   { key: "total_tts_cost", label: "TTS Cost (₹)", hidden: true },
   { key: "total_stt_cost", label: "STT Cost (₹)", hidden: true }
 ] as const
+
+// Metadata columns to exclude from default selection
+const EXCLUDED_METADATA_COLUMNS = [
+  'complete_configuration',
+  'usage',
+  'sip_trunk_id',
+  'campaignId',
+  'contactId',
+  'agent_name',
+  'metadata'
+]
 
 interface VisibleColumns {
   basic: string[]
@@ -76,26 +88,56 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
     )
   }, [role])
 
-  // Manage visible columns state
-  const [visibleColumns, setVisibleColumns] = useState<VisibleColumns>({
-    basic: filteredBasicColumns.map(col => col.key),
-    metadata: [],
-    transcription_metrics: [],
-    metrics: []
-  })
+  // Get visible columns from store
+  const { visibleColumns, setVisibleColumns } = useCallLogsStore()
 
-  // Update visible columns when role or dynamic columns change
+  // Initialize visible columns if empty or update when role/dynamic columns change
   useEffect(() => {
     if (role !== null) {
-      const allowedBasicColumns = filteredBasicColumns.map(col => col.key)
-      setVisibleColumns(prev => ({
-        basic: allowedBasicColumns,
-        metadata: prev.metadata.length === 0 ? dynamicColumns.metadata : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col)),
-        transcription_metrics: prev.transcription_metrics.length === 0 ? dynamicColumnsKey : prev.transcription_metrics,
-        metrics: prev.metrics.length === 0 ? dynamicColumns.metrics : prev.metrics.filter((col) => dynamicColumns.metrics.includes(col))
-      }))
+      const allowedBasicColumns = filteredBasicColumns.map(col => col.key) as string[]
+      
+      setVisibleColumns((prev) => {
+        // Initialize if basic columns are empty or don't match current role
+        const needsInitialization = 
+          prev.basic.length === 0 || 
+          !allowedBasicColumns.every(col => prev.basic.includes(col))
+        
+        // Select all metadata, transcription_metrics, and metrics by default if they're empty
+        // Exclude certain metadata columns from default selection
+        const availableMetadata = dynamicColumns.metadata.filter(
+          (col) => !EXCLUDED_METADATA_COLUMNS.includes(col)
+        )
+        const metadata = prev.metadata.length === 0 && availableMetadata.length > 0
+          ? availableMetadata
+          : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col))
+        
+        const transcriptionMetrics = prev.transcription_metrics.length === 0 && dynamicColumnsKey.length > 0
+          ? dynamicColumnsKey
+          : prev.transcription_metrics.filter((col) => dynamicColumnsKey.includes(col))
+        
+        const metrics = prev.metrics.length === 0 && dynamicColumns.metrics.length > 0
+          ? dynamicColumns.metrics
+          : prev.metrics.filter((col) => dynamicColumns.metrics.includes(col))
+        
+        if (needsInitialization) {
+          return {
+            basic: allowedBasicColumns,
+            metadata: metadata,
+            transcription_metrics: transcriptionMetrics,
+            metrics: metrics
+          }
+        } else {
+          // Just filter out invalid columns while preserving user selections
+          return {
+            basic: prev.basic.filter(col => allowedBasicColumns.includes(col)),
+            metadata: metadata,
+            transcription_metrics: transcriptionMetrics,
+            metrics: metrics
+          }
+        }
+      })
     }
-  }, [role, dynamicColumns, dynamicColumnsKey, filteredBasicColumns])
+  }, [role, dynamicColumns, dynamicColumnsKey, filteredBasicColumns, setVisibleColumns])
 
   return {
     visibleColumns,

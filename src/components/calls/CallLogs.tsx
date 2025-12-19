@@ -196,6 +196,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
             onClear={handleClearFilters}
             availableMetadataFields={dynamicColumns.metadata}
             availableTranscriptionFields={dynamicColumnsKey}
+            initialFilters={activeFilters}
           />
           
           <div className="flex items-center gap-2">
@@ -294,14 +295,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
                   <tr
                     key={row.id}
                     className={cn(
-                      "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-12"
+                      "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20"
                     )}
                     onClick={() => handleRowClick(row.original.id, row.original.agent_id)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td 
                         key={cell.id} 
-                        className="px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-12"
+                        className="px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20"
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
