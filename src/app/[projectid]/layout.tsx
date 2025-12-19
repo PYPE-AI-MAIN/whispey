@@ -2,7 +2,7 @@
 'use client'
 
 import { UserPermissionsProvider } from '@/contexts/UserPermissionsContext'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 
 export default function ProjectLayout({
   children,
@@ -10,7 +10,14 @@ export default function ProjectLayout({
   children: React.ReactNode
 }) {
   const params = useParams()
+  const pathname = usePathname()
   const projectId = params.projectid as string
+  const isPlayground = pathname?.includes('/playground')
+
+  // Skip UserPermissionsProvider for playground routes (they're public)
+  if (isPlayground) {
+    return <>{children}</>
+  }
 
   return (
     <UserPermissionsProvider projectId={projectId}>
