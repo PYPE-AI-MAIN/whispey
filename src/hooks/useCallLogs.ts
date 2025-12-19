@@ -11,6 +11,10 @@ interface UseCallLogsOptions {
   select?: string
   orderBy?: { column: string; ascending: boolean }
   enabled?: boolean
+  refetchOnMount?: boolean
+  refetchOnWindowFocus?: boolean
+  staleTime?: number
+  gcTime?: number
 }
 
 export const useCallLogs = ({
@@ -18,7 +22,11 @@ export const useCallLogs = ({
   filters = [],
   select = '*',
   orderBy = { column: 'created_at', ascending: false },
-  enabled = true
+  enabled = true,
+  refetchOnMount = false,
+  refetchOnWindowFocus = false,
+  staleTime = 5 * 60 * 1000, // 5 minutes
+  gcTime = 10 * 60 * 1000 // 10 minutes (formerly cacheTime)
 }: UseCallLogsOptions) => {
   return useInfiniteQuery({
     queryKey: [
@@ -85,9 +93,9 @@ export const useCallLogs = ({
     },
 
     enabled: enabled && !!agentId,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false
+    staleTime,
+    gcTime,
+    refetchOnWindowFocus,
+    refetchOnMount
   })
 }

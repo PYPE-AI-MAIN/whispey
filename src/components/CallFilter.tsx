@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Calendar } from '@/components/ui/calendar'
@@ -32,6 +32,7 @@ interface CallFilterProps {
   onClear: () => void
   availableMetadataFields?: string[]
   availableTranscriptionFields?: string[]
+  initialFilters?: FilterRule[]
 }
 
 const COLUMNS = [
@@ -73,9 +74,10 @@ const CallFilter: React.FC<CallFilterProps> = ({
   onFiltersChange, 
   onClear, 
   availableMetadataFields = [],
-  availableTranscriptionFields = []
+  availableTranscriptionFields = [],
+  initialFilters = []
 }) => {
-  const [filters, setFilters] = useState<FilterRule[]>([])
+  const [filters, setFilters] = useState<FilterRule[]>(initialFilters)
   const [isOpen, setIsOpen] = useState(false)
   const [newFilter, setNewFilter] = useState({
     column: '',
@@ -84,6 +86,11 @@ const CallFilter: React.FC<CallFilterProps> = ({
     jsonField: ''
   })
   const [selectedDate, setSelectedDate] = useState<Date>()
+
+  // Sync local state with initialFilters prop
+  useEffect(() => {
+    setFilters(initialFilters)
+  }, [initialFilters])
 
   const getAvailableJsonFields = () => {
     if (newFilter.column === 'metadata') {

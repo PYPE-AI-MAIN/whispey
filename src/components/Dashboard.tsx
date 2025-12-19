@@ -763,7 +763,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       </div>
 
       {/* Content - Show Quick Start for non-VAPI agents, simple message for VAPI agents */}
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 ${activeTab === 'logs' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         {showQuickStart ? (
           <QuickStartGuide agentId={agentId} />
         ) : showNoCallsMessage ? (
@@ -782,7 +782,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               />
             </div>
             
-            <div className={activeTab === 'logs' ? 'block h-full' : 'hidden'}>
+            <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
               {agent && (
                 <CallLogs 
                   project={project} 
