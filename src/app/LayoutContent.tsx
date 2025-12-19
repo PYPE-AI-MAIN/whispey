@@ -18,14 +18,22 @@ const noSidebarRoutes = [
 ]
 
 function shouldShowSidebar(pathname: string): boolean {
+  // Hide sidebar for playground pages
+  if (pathname.includes('/playground')) {
+    return false
+  }
   return !noSidebarRoutes.includes(pathname)
 }
 
 function useIntelligentClerkSync() {
   const { isLoaded, isSignedIn } = useUser()
+  const pathname = usePathname()
   const syncAttempted = useRef(false)
 
   useEffect(() => {
+    // Skip sync for playground routes (they're public)
+    if (pathname?.includes('/playground')) return
+    
     if (!isLoaded || !isSignedIn || syncAttempted.current) return
 
     const checkAndSync = async () => {
@@ -71,14 +79,27 @@ function useIntelligentClerkSync() {
     }
 
     checkAndSync()
-  }, [isLoaded, isSignedIn])
+  }, [isLoaded, isSignedIn, pathname])
 }
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const showSidebar = shouldShowSidebar(pathname)
+  const isPlayground = pathname.includes('/playground')
 
+  // Always call hook (required by React), but it will skip for playground routes
   useIntelligentClerkSync()
+
+  // Playground routes are completely public - bypass all auth checks
+  if (isPlayground) {
+    return (
+      <main>
+        <div className="min-h-screen">
+          {children}
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main>
