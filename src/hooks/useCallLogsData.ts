@@ -3,6 +3,7 @@ import { getUserProjectRole } from "@/services/getUserRole"
 import { toCamelCase, getSelectColumns, convertToSupabaseFilters } from '@/utils/callLogsUtils'
 import { FilterRule } from '@/components/CallFilter'
 import { useCallLogs } from "@/hooks/useCallLogs"
+import { useCallLogsStore } from '@/stores/callLogsStore'
 
 export const useCallLogsData = (
   agent: any,
@@ -11,7 +12,7 @@ export const useCallLogsData = (
 ) => {
   const [role, setRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
-  const [activeFilters, setActiveFilters] = useState<FilterRule[]>([])
+  const { activeFilters, setActiveFilters } = useCallLogsStore()
 
   // Fetch user role
   useEffect(() => {

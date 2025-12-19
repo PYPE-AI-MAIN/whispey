@@ -96,7 +96,8 @@
     "typescript": "^5.9.2",
     "uuid": "^13.0.0",
     "vaul": "^1.1.2",
-    "yup": "^1.7.1"
+    "yup": "^1.7.1",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -4,6 +4,7 @@ import Papa from 'papaparse'
 import { supabase } from "@/lib/supabase"
 import { CallLog } from "@/types/logs"
 import { FilterRule } from '@/components/CallFilter'
+import { Filter } from '@/hooks/useSupabase'
 
 // Pure utility functions - no React dependencies
 export const toCamelCase = (str: string): string => {
@@ -48,13 +49,13 @@ export const isColumnVisibleForRole = (columnKey: string, role: string | null): 
   if (!role) return false
   const restrictedColumns = ROLE_RESTRICTIONS[role as keyof typeof ROLE_RESTRICTIONS]
   if (!restrictedColumns) return true
-  return !restrictedColumns.includes(columnKey)
+  return !(restrictedColumns as readonly string[]).includes(columnKey)
 }
 
-export const convertToSupabaseFilters = (filters: FilterRule[], agentId?: string) => {
+export const convertToSupabaseFilters = (filters: FilterRule[], agentId?: string): Filter[] => {
   if (!agentId) return []
   
-  const supabaseFilters = [{ column: "agent_id", operator: "eq", value: agentId }]
+  const supabaseFilters: Filter[] = [{ column: "agent_id", operator: "eq", value: agentId }]
   
   filters.forEach(filter => {
     const getColumnName = (forTextOperation = false) => {
