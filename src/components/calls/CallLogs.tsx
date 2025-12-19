@@ -38,6 +38,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
   const loadMoreRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Use custom hooks for data management
   const {
@@ -52,6 +53,45 @@ const CallLogs: React.FC<CallLogsProps> = ({
     fetchNextPage,
     refetch
   } = useCallLogsData(agent, userEmail, project?.id)
+
+  // Scroll restoration hook (must be after calls is defined)
+  useEffect(() => {
+    const scrollKey = `call-logs-scroll-${agent?.id}`
+    const container = scrollContainerRef.current
+    
+    if (!container || !calls.length) return
+
+    // Restore scroll position after data loads
+    const savedPosition = sessionStorage.getItem(scrollKey)
+    if (savedPosition) {
+      // Use double requestAnimationFrame to ensure DOM is fully rendered
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = parseInt(savedPosition, 10)
+          }
+        })
+      })
+    }
+
+    // Save scroll position on scroll (debounced to 100ms)
+    let scrollTimeout: NodeJS.Timeout
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout)
+      scrollTimeout = setTimeout(() => {
+        if (container) {
+          sessionStorage.setItem(scrollKey, container.scrollTop.toString())
+        }
+      }, 100)
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      clearTimeout(scrollTimeout)
+    }
+  }, [agent?.id, calls.length]) // Re-run when agent changes or data loads
 
   // Use custom hook for columns management
   const {
@@ -148,8 +188,13 @@ const CallLogs: React.FC<CallLogsProps> = ({
   }, [setVisibleColumns, dynamicColumns])
 
   const handleRowClick = useCallback((callId: string, agentId: string) => {
+    // Save scroll position before navigation
+    const scrollKey = `call-logs-scroll-${agent?.id}`
+    if (scrollContainerRef.current) {
+      sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString())
+    }
     router.push(`/${project?.id}/agents/${agentId}/observability?session_id=${callId}`)
-  }, [router, project?.id])
+  }, [router, project?.id, agent?.id])
 
   // Loading state
   if (parentLoading || roleLoading || !agent || !project || (isLoading && !calls.length)) {
@@ -239,7 +284,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
       {/* Table */}
       <div className="flex-1 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-auto">
+        <div ref={scrollContainerRef} className="absolute inset-0 overflow-auto">
           <table className="w-full border-collapse">
             <thead className="sticky h-12 top-0 z-20 bg-background dark:bg-gray-900 shadow-sm">
               {table.getHeaderGroups().map((headerGroup) => (

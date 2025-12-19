@@ -45,7 +45,7 @@ export const useCallLogsData = (
     [activeFilters, agent?.id]
   )
 
-  // Fetch call logs
+  // Fetch call logs with cache optimization
   const { 
     data,
     isLoading,
@@ -58,7 +58,11 @@ export const useCallLogsData = (
     agentId: agent?.id,
     filters: supabaseFilters,
     select: selectColumns,
-    enabled: !!agent?.id && !roleLoading
+    enabled: !!agent?.id && !roleLoading,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000 // 10 minutes
   })
 
   const calls = useMemo(() => data?.pages.flat() ?? [], [data])
