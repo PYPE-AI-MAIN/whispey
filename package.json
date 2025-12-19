@@ -46,6 +46,7 @@
     "@tailwindcss/postcss": "^4.1.12",
     "@tanstack/react-query": "^5.89.0",
     "@tanstack/react-query-devtools": "^5.89.0",
+    "@tanstack/react-table": "^8.21.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mdx": "^2.0.13",
     "@types/node": "^24.3.0",
