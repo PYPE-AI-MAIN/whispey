@@ -8,12 +8,22 @@ const isPublicRoute = createRouteMatcher([
   "/terms-of-service(.*)",
   "/privacy-policy(.*)",
   '/docs(.*)',
+  '/playground(.*)', // Explicit playground route pattern
   // '/api/webhooks(.*)', // if you have public API routes
   '/api(.*)'
   // Add other public routes here
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
+  // Check if the pathname includes '/playground' (for nested routes)
+  const pathname = request.nextUrl.pathname
+  const isPlaygroundRoute = pathname.includes('/playground')
+  
+  // If it's a playground route, it's public - don't protect
+  if (isPlaygroundRoute) {
+    return
+  }
+  
   // If it's not a public route and user is not authenticated, redirect to sign-in
   if (!isPublicRoute(request)) {
     await auth.protect();
