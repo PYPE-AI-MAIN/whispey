@@ -945,9 +945,8 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
       </div>
 
       {/* Table Container */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="h-full overflow-x-auto overflow-y-hidden">
-            <div className="h-full overflow-y-auto" style={{ minWidth: `${minTableWidth}px` }}>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="overflow-x-auto" style={{ minWidth: `${minTableWidth}px` }}>
               <Table className="w-full">
                 <TableHeader className="sticky top-0 z-10 bg-background/95 dark:bg-gray-900/95 backdrop-blur-sm border-b-2">
                   <TableRow className="bg-muted/80 dark:bg-gray-800/80 hover:bg-muted/80 dark:hover:bg-gray-800/80">
@@ -1230,7 +1229,6 @@ const CallLogs: React.FC<CallLogsProps> = ({ project, agent, onBack, isLoading: 
                   All calls loaded ({calls.length} total)
                 </div>
               )}
-            </div>
           </div>
       </div>
     </div>
