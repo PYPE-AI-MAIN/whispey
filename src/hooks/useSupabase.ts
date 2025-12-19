@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in";
+export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.is";
 
 export interface Filter {
   column: string;
@@ -52,6 +52,9 @@ const applyFilters = (query: any, filters: Filter[]) => {
         break;
       case "in":
         query = query.in(filter.column, filter.value);
+        break;
+      case "not.is":
+        query = query.not(filter.column, 'is', filter.value);
         break;
     }
   });

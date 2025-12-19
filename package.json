@@ -46,6 +46,7 @@
     "@tailwindcss/postcss": "^4.1.12",
     "@tanstack/react-query": "^5.89.0",
     "@tanstack/react-query-devtools": "^5.89.0",
+    "@tanstack/react-table": "^8.21.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mdx": "^2.0.13",
     "@types/node": "^24.3.0",
@@ -95,7 +96,8 @@
     "typescript": "^5.9.2",
     "uuid": "^13.0.0",
     "vaul": "^1.1.2",
-    "yup": "^1.7.1"
+    "yup": "^1.7.1",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
