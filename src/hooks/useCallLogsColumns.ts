@@ -121,7 +121,7 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
         
         if (needsInitialization) {
           return {
-            basic: allowedBasicColumns,
+        basic: allowedBasicColumns,
             metadata: metadata,
             transcription_metrics: transcriptionMetrics,
             metrics: metrics

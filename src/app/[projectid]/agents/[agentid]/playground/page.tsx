@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
-import { Loader2, Mic, MicOff, Volume2, VolumeX, PhoneOff, MessageSquare } from 'lucide-react'
+import { Loader2, Mic, MicOff, Volume2, VolumeX, PhoneOff, MessageSquare, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { ConversationView } from '@/components/playground/ConversationView'
@@ -16,6 +16,13 @@ interface AgentData {
   agent_type: string
   displayName: string
   connectionName: string
+}
+
+interface AgentStatus {
+  is_active: boolean
+  worker_running: boolean
+  worker_pid?: number
+  inbound_ready?: boolean
 }
 
 // Predefined voices for playground
@@ -36,6 +43,9 @@ export default function PlaygroundPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null)
+  const [currentConfigVoice, setCurrentConfigVoice] = useState<string | null>(null)
+  const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null)
+  const [checkingStatus, setCheckingStatus] = useState(false)
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -62,6 +72,39 @@ export default function PlaygroundPage() {
           displayName: data.name.trim(),
           connectionName: agentNameWithId
         })
+
+        // Fetch current voice from agent config
+        try {
+          const configResponse = await fetch(`/api/agent-config/${encodeURIComponent(agentNameWithId)}`)
+          
+          if (configResponse.ok) {
+            const configData = await configResponse.json()
+            const voiceId = configData?.agent?.assistant?.[0]?.tts?.voice_id
+            if (voiceId) {
+              setCurrentConfigVoice(voiceId)
+              // Auto-select if it matches a predefined voice
+              if (PREDEFINED_VOICES.some(v => v.id === voiceId)) {
+                setSelectedVoice(voiceId)
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch agent config:', err)
+        }
+
+        // Check agent running status
+        try {
+          setCheckingStatus(true)
+          const statusResponse = await fetch(`/api/agents/status/${encodeURIComponent(agentNameWithId)}`)
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json()
+            setAgentStatus(statusData)
+          }
+        } catch (err) {
+          console.warn('Could not check agent status:', err)
+        } finally {
+          setCheckingStatus(false)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load agent')
       } finally {
@@ -110,6 +153,9 @@ export default function PlaygroundPage() {
         agentId={agentId}
         selectedVoice={selectedVoice}
         onVoiceSelect={setSelectedVoice}
+        currentConfigVoice={currentConfigVoice}
+        agentStatus={agentStatus}
+        checkingStatus={checkingStatus}
       />
     </div>
   )
@@ -122,6 +168,9 @@ interface SessionViewProps {
   agentId: string
   selectedVoice: string | null
   onVoiceSelect: (voiceId: string | null) => void
+  currentConfigVoice: string | null
+  agentStatus: AgentStatus | null
+  checkingStatus: boolean
 }
 
 function SessionView({
@@ -130,7 +179,10 @@ function SessionView({
   agentName,
   agentId,
   selectedVoice,
-  onVoiceSelect
+  onVoiceSelect,
+  currentConfigVoice,
+  agentStatus,
+  checkingStatus
 }: SessionViewProps) {
   const {
     isConnected,
@@ -161,21 +213,25 @@ function SessionView({
     try {
       setUpdatingVoice(true)
       
-      const updateResponse = await fetch(`/api/agents/${agentId}/update-voice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          voiceId: selectedVoice,
-          voiceName: PREDEFINED_VOICES.find(v => v.id === selectedVoice)?.name
+      // Only update voice if it's different from current config
+      if (selectedVoice !== currentConfigVoice) {
+        const updateResponse = await fetch(`/api/agents/${agentId}/update-voice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            voiceId: selectedVoice,
+            voiceName: PREDEFINED_VOICES.find(v => v.id === selectedVoice)?.name
+          })
         })
-      })
 
-      if (!updateResponse.ok) {
-        const errorData = await updateResponse.json()
-        throw new Error(errorData.error || 'Failed to update voice')
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.json()
+          throw new Error(errorData.error || 'Failed to update voice')
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
-
-      await new Promise(resolve => setTimeout(resolve, 500))
+      
       await connect()
     } catch (error) {
       console.error('Error updating voice and starting:', error)
@@ -198,6 +254,8 @@ function SessionView({
 
   // Voice selection UI
   if (!isConnected && !isConnecting) {
+    const isAgentRunning = agentStatus?.is_active && agentStatus?.worker_running
+
     return (
       <section className="bg-background relative z-10 h-full w-full overflow-hidden flex items-center justify-center">
         <div className="max-w-2xl mx-auto px-4 space-y-6">
@@ -205,6 +263,34 @@ function SessionView({
             <h2 className="text-xl font-semibold text-foreground mb-2">Select a Voice</h2>
             <p className="text-sm text-muted-foreground">Choose a voice for your conversation</p>
           </div>
+
+          {/* Agent Running Status */}
+          {!checkingStatus && agentStatus && (
+            <div className={cn(
+              "rounded-lg border-2 p-4 flex items-center gap-3",
+              isAgentRunning 
+                ? "border-green-500/50 bg-green-500/10" 
+                : "border-red-500/50 bg-red-500/10"
+            )}>
+              <AlertCircle className={cn(
+                "h-5 w-5 flex-shrink-0",
+                isAgentRunning ? "text-green-500" : "text-red-500"
+              )} />
+              <div className="flex-1">
+                <div className={cn(
+                  "text-sm font-medium",
+                  isAgentRunning ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
+                )}>
+                  {isAgentRunning ? 'Agent is Running' : 'Agent is Not Running'}
+                </div>
+                {!isAgentRunning && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Please start the agent before testing in the playground
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {PREDEFINED_VOICES.map((voice) => (
@@ -239,19 +325,24 @@ function SessionView({
             <Button
               onClick={handleStartWithVoice}
               size="lg"
-              disabled={!selectedVoice || updatingVoice}
+              disabled={!selectedVoice || updatingVoice || !isAgentRunning}
               className="rounded-full"
             >
               {updatingVoice ? (
                 <>
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Updating Voice...
+                  {selectedVoice !== currentConfigVoice ? 'Updating Voice...' : 'Starting...'}
                 </>
               ) : (
                 'Start Conversation'
               )}
             </Button>
           </div>
+          {!isAgentRunning && (
+            <p className="text-xs text-center text-muted-foreground">
+              Agent must be running to start a conversation
+            </p>
+          )}
         </div>
       </section>
     )
