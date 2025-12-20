@@ -57,7 +57,7 @@ export function BarVisualizer({
   return (
     <div className={cn('flex h-full items-center justify-center gap-1', className)}>
       {audioLevels.map((level, index) => {
-        const barHeight=80// Max height of 40px
+        const barHeight = 80 // Fixed height for bars
         return (
           <div
             key={index}
