@@ -27,12 +27,12 @@ interface AgentStatus {
 
 // Predefined voices for playground
 const PREDEFINED_VOICES = [
-  { id: 'v4bksM2yzq2VeH1M3jt9', name: 'test_ashish', category: 'Personal' },
-  { id: 'ulZgFXalzbrnPUGQGs0S', name: 'Vidya - Your Chatty Delhi Friend', category: 'Professional' },
-  { id: '8l89UrPQsmYVJoJRfnAt', name: 'Vikram - Professional Customer Care Agent', category: 'Professional' },
-  { id: 'MmQVkVZnQ0dUbfWzcW6f', name: 'Zara – Premium Customer Care Voice', category: 'Professional' },
-  { id: 'PLFXYRTU74HpuNdj6oDl', name: 'Voice of God - Hindi Narration', category: 'Professional' },
-  { id: 'eA8FmgNe2rjMWPK5PQQZ', name: 'Srikant | Male | Middle Aged | Accent Neutral | Indian', category: 'Professional' },
+  { id: 'uYqzKDmOqxa1GrgoORxz', name: 'Pooja', category: 'Professional' },
+  { id: '8dBqzks5Zzb93VmKJ3Lq', name: 'Roohi', category: 'Professional' },
+  { id: 'XvGB4n0TZ3xj7tfNUc6i', name: 'Ishaan', category: 'Professional' },
+  { id: 'Fkg75AreKsa3NE5Ck1G9', name: 'Sagar', category: 'Professional' },
+  { id: 'broqrJkktxd1CclKTudW', name: 'Anika', category: 'Professional' },
+  { id: 'ulZgFXalzbrnPUGQGs0S', name: 'Vidya', category: 'Professional' },
 ]
 
 export default function PlaygroundPage() {
