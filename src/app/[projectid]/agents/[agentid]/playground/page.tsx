@@ -29,17 +29,17 @@ interface AgentStatus {
 const PREDEFINED_VOICES = [
   // Female voices
   { id: 'H8bdWZHK2OgZwTN7ponr', name: 'Saavi', category: 'Female' },
-  { id: 'UrB5rVw5j9MDZWDZJtOJ', name: 'Reyanshi', category: 'Female' },
-  { id: '2zRM7PkgwBPiau2jvVXc', name: 'Monika', category: 'Female' },
+  // { id: 'UrB5rVw5j9MDZWDZJtOJ', name: 'Reyanshi', category: 'Female' },
+  // { id: '2zRM7PkgwBPiau2jvVXc', name: 'Monika', category: 'Female' },
   { id: 'OUBnvvuqEKdDWtapoJFn', name: 'Tia Mirza', category: 'Female' },
   { id: 'ZeK6O9RfGNGj0cJT2HoJ', name: 'Shanaya', category: 'Female' },
   { id: 'h3vxoHEil3T93VGdTQQu', name: 'Avira', category: 'Female' },
-  { id: 'S3F8rLt9v7twQC170pA5', name: 'Tarini', category: 'Female' },
+  // { id: 'S3F8rLt9v7twQC170pA5', name: 'Tarini', category: 'Female' },
   // Male voices
   { id: 'XopCoWNooN3d7LfWZyX5', name: 'Krishna', category: 'Male' },
-  { id: 'XvGB4n0TZ3xj7tfNUc6i', name: 'Ishaan', category: 'Male' },
+  // { id: 'XvGB4n0TZ3xj7tfNUc6i', name: 'Ishaan', category: 'Male' },
   { id: 'pzxut4zZz4GImZNlqQ3H', name: 'Raju', category: 'Male' },
-  { id: 'WBPquWcRUrtrI78xLufz', name: 'Laksya', category: 'Male' },
+  // { id: 'WBPquWcRUrtrI78xLufz', name: 'Laksya', category: 'Male' },
 ]
 
 export default function PlaygroundPage() {
