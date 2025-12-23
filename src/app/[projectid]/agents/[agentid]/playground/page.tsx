@@ -36,8 +36,8 @@ const PREDEFINED_VOICES = [
   { id: 'h3vxoHEil3T93VGdTQQu', name: 'Avira', category: 'Female' },
   // { id: 'S3F8rLt9v7twQC170pA5', name: 'Tarini', category: 'Female' },
   // Male voices
-  // { id: 'XopCoWNooN3d7LfWZyX5', name: 'Krishna', category: 'Male' },
-  { id: 'XvGB4n0TZ3xj7tfNUc6i', name: 'Ishaan', category: 'Male' },
+  { id: 'XopCoWNooN3d7LfWZyX5', name: 'Krishna', category: 'Male' },
+  // { id: 'XvGB4n0TZ3xj7tfNUc6i', name: 'Ishaan', category: 'Male' },
   { id: 'pzxut4zZz4GImZNlqQ3H', name: 'Raju', category: 'Male' },
   // { id: 'WBPquWcRUrtrI78xLufz', name: 'Laksya', category: 'Male' },
 ]
