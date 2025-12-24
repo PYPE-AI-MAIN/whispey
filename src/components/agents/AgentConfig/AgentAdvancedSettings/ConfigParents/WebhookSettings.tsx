@@ -123,7 +123,7 @@ function WebhookSettings({
         if (data.success && data.data && data.data.length > 0) {
           const config = data.data[0] // Get first active config
           const loadedState = {
-            triggerOnCallLog: config.trigger_events?.includes('call_log') || false,
+            triggerOnCallLog: true, // Always true since toggle is removed
             webhookUrl: config.webhook_url || '',
             httpMethod: config.http_method || 'POST',
             headers: config.headers || {},
@@ -146,7 +146,7 @@ function WebhookSettings({
         } else {
           // No existing config, set initial state to current props
           setInitialState({
-            triggerOnCallLog: triggerOnCallLog || false,
+            triggerOnCallLog: true, // Always true since toggle is removed
             webhookUrl: webhookUrl || '',
             httpMethod: httpMethod || 'POST',
             headers: headers || {},
@@ -159,7 +159,7 @@ function WebhookSettings({
       console.error('Error loading webhook config:', error)
       // On error, set initial state to current props
       setInitialState({
-        triggerOnCallLog: triggerOnCallLog || false,
+        triggerOnCallLog: true, // Always true since toggle is removed
         webhookUrl: webhookUrl || '',
         httpMethod: httpMethod || 'POST',
         headers: headers || {},
@@ -223,8 +223,8 @@ function WebhookSettings({
         webhook_url: effectiveWebhookUrl,
         http_method: effectiveHttpMethod,
         headers: effectiveHeaders || {},
-        trigger_events: effectiveTriggerOnCallLog ? ['call_log'] : [],
-        is_active: effectiveIsActive && effectiveTriggerOnCallLog && effectiveWebhookUrl.trim() !== ''
+        trigger_events: ['call_log'], // Always trigger on call logs since toggle is removed
+        is_active: effectiveIsActive && effectiveWebhookUrl.trim() !== ''
       }
 
       const response = await fetch('/api/webhooks/config', {
@@ -285,29 +285,7 @@ function WebhookSettings({
             Configure webhooks to receive call log data in real-time. When enabled, call logs will be sent to your specified endpoint.
           </div>
 
-              {/* Trigger on Call Log Toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                Trigger API on Call Logs
-              </Label>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Send webhook when a call log is created
-              </div>
-            </div>
-        <Switch
-          checked={effectiveTriggerOnCallLog}
-          onCheckedChange={(checked) => {
-            setDisplayState(prev => prev ? { ...prev, triggerOnCallLog: checked } : { triggerOnCallLog: checked, webhookUrl: '', httpMethod: 'POST', headers: {}, isActive: false })
-            onFieldChange('advancedSettings.webhook.triggerOnCallLog', checked)
-          }}
-          className="scale-75"
-        />
-          </div>
-
-          {effectiveTriggerOnCallLog && (
-            <>
-              {/* Webhook URL */}
+          {/* Webhook URL */}
               <div className="space-y-1.5">
             <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Webhook URL
@@ -320,7 +298,7 @@ function WebhookSettings({
                   placeholder="https://your-api.com/webhook"
                   value={effectiveWebhookUrl}
                   onChange={(e) => {
-                    setDisplayState(prev => prev ? { ...prev, webhookUrl: e.target.value } : { triggerOnCallLog: false, webhookUrl: e.target.value, httpMethod: 'POST', headers: {}, isActive: false })
+                    setDisplayState(prev => prev ? { ...prev, webhookUrl: e.target.value } : { triggerOnCallLog: true, webhookUrl: e.target.value, httpMethod: 'POST', headers: {}, isActive: false })
                     onFieldChange('advancedSettings.webhook.webhookUrl', e.target.value)
                   }}
                   className="h-8 text-xs"
@@ -335,7 +313,7 @@ function WebhookSettings({
                 <Select
                   value={effectiveHttpMethod}
                   onValueChange={(value) => {
-                    setDisplayState(prev => prev ? { ...prev, httpMethod: value } : { triggerOnCallLog: false, webhookUrl: '', httpMethod: value, headers: {}, isActive: false })
+                    setDisplayState(prev => prev ? { ...prev, httpMethod: value } : { triggerOnCallLog: true, webhookUrl: '', httpMethod: value, headers: {}, isActive: false })
                     onFieldChange('advancedSettings.webhook.httpMethod', value)
                   }}
                 >
@@ -414,7 +392,7 @@ function WebhookSettings({
                 <Switch
                   checked={effectiveIsActive}
                   onCheckedChange={(checked) => {
-                    setDisplayState(prev => prev ? { ...prev, isActive: checked } : { triggerOnCallLog: false, webhookUrl: '', httpMethod: 'POST', headers: {}, isActive: checked })
+                    setDisplayState(prev => prev ? { ...prev, isActive: checked } : { triggerOnCallLog: true, webhookUrl: '', httpMethod: 'POST', headers: {}, isActive: checked })
                     onFieldChange('advancedSettings.webhook.isActive', checked)
                   }}
                   className="scale-75"
@@ -444,8 +422,6 @@ function WebhookSettings({
                   )}
                 </Button>
               </div>
-            </>
-          )}
         </>
       )}
     </div>
