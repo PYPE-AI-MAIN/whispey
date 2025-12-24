@@ -10,6 +10,7 @@ import { formatDuration, formatToIndianDateTime } from '@/utils/callLogsUtils'
 import { DynamicJsonCell } from './sub-components'
 import { CostTooltip } from "../tool-tip/costToolTip"
 import { BASIC_COLUMNS } from "@/hooks/useCallLogsColumns"
+import { cn } from "@/lib/utils"
 
 export const createTableColumns = (
   visibleColumns: {
@@ -34,13 +35,32 @@ export const createTableColumns = (
 
         switch (key) {
           case "customer_number":
+            const customerNumber = call.customer_number || ""
+            const isLongNumber = customerNumber.length > 13 // "+916268181226" is 13 chars
             return (
-              <div className="flex w-full items-center gap-2">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary/10">
-                  <Phone className="w-3 h-3 text-primary" />
-                </div>
-                <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{call.customer_number}</span>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex w-full items-center gap-2 min-w-[180px] max-w-[180px]">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary/10 flex-shrink-0">
+                      <Phone className="w-3 h-3 text-primary" />
+                    </div>
+                    <span 
+                      className={cn(
+                        "font-medium text-gray-900 dark:text-gray-100 text-sm",
+                        isLongNumber && "truncate"
+                      )}
+                      style={{ maxWidth: isLongNumber ? '140px' : 'none' }}
+                    >
+                      {customerNumber}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                {isLongNumber && (
+                  <TooltipContent>
+                    <p className="max-w-xs break-all">{customerNumber}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
             )
           case "call_id":
             return (
@@ -86,7 +106,8 @@ export const createTableColumns = (
             return <span>{call[key as keyof CallLog] as any ?? "-"}</span>
         }
       },
-      minSize: 150,
+      minSize: key === "customer_number" ? 180 : 150,
+      size: key === "customer_number" ? 180 : undefined,
     })
   })
 

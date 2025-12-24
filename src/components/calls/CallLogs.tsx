@@ -20,6 +20,7 @@ import {
   TableSkeleton,
   ReanalyzeDialogWrapper
 } from './sub-components'
+import { useVirtualization } from '@/hooks/useVirtualization'
 
 interface CallLogsProps {
   project: any
@@ -64,12 +65,17 @@ const CallLogs: React.FC<CallLogsProps> = ({
     // Restore scroll position after data loads
     const savedPosition = sessionStorage.getItem(scrollKey)
     if (savedPosition) {
-      // Use double requestAnimationFrame to ensure DOM is fully rendered
+      // Use multiple requestAnimationFrame to ensure DOM is fully rendered and virtualization is ready
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (container) {
-            container.scrollTop = parseInt(savedPosition, 10)
-          }
+          requestAnimationFrame(() => {
+            if (container) {
+              const position = parseInt(savedPosition, 10)
+              container.scrollTop = position
+              // Trigger a scroll event to ensure virtualization recalculates
+              container.dispatchEvent(new Event('scroll', { bubbles: false }))
+            }
+          })
         })
       })
     }
@@ -113,6 +119,28 @@ const CallLogs: React.FC<CallLogsProps> = ({
     data: calls,
     columns,
     getCoreRowModel: getCoreRowModel(),
+  })
+
+  // Virtualization configuration
+  const ROW_HEIGHT = 80 // h-20 = 80px
+  const HEADER_HEIGHT = 48 // h-12 = 48px
+  const rows = table.getRowModel().rows
+  const ENABLE_VIRTUALIZATION_THRESHOLD = 30 // Only virtualize if we have more than 30 rows
+  
+  // Use virtualization hook (only when we have enough rows)
+  const shouldVirtualize = rows.length > ENABLE_VIRTUALIZATION_THRESHOLD
+  const {
+    startIndex,
+    endIndex,
+    visibleItems,
+    totalHeight,
+    offsetY,
+  } = useVirtualization({
+    itemHeight: ROW_HEIGHT,
+    containerRef: scrollContainerRef,
+    totalItems: rows.length,
+    overscan: 5,
+    headerHeight: HEADER_HEIGHT,
   })
 
   // Intersection Observer for infinite scroll
@@ -285,8 +313,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
       {/* Table */}
       <div className="flex-1 relative overflow-hidden">
         <div ref={scrollContainerRef} className="absolute inset-0 overflow-auto">
-          <table className="w-full border-collapse">
-            <thead className="sticky h-12 top-0 z-20 bg-background dark:bg-gray-900 shadow-sm">
+          <table className="w-full border-collapse border-spacing-0">
+            <thead className="sticky h-12 -top-1 z-20 bg-background dark:bg-gray-900 shadow-sm">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id} className="bg-muted/80 dark:bg-gray-800/80">
                   {headerGroup.headers.map((header) => (
@@ -296,6 +324,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                       style={{
                         minWidth: header.column.columnDef.minSize || 200,
                         width: header.column.columnDef.size || 'auto',
+                        borderBottomWidth: '2px',
                       }}
                     >
                       {header.isPlaceholder
@@ -306,8 +335,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 </tr>
               ))}
             </thead>
-            <tbody>
-              {table.getRowModel().rows.length === 0 && !isLoading ? (
+            <tbody style={shouldVirtualize ? { height: totalHeight, position: 'relative' } : undefined}>
+              {rows.length === 0 && !isLoading ? (
                 <tr>
                   <td colSpan={columns.length} className="h-[400px] text-center px-6 py-4">
                     <div className="flex flex-col items-center justify-center space-y-4 py-12">
@@ -335,8 +364,83 @@ const CallLogs: React.FC<CallLogsProps> = ({
                     </div>
                   </td>
                 </tr>
+              ) : shouldVirtualize ? (
+                <>
+                  {/* Top spacer to maintain scroll position */}
+                  {offsetY > 0 && (
+                    <tr>
+                      <td colSpan={columns.length} style={{ height: offsetY, padding: 0, border: 'none' }} />
+                    </tr>
+                  )}
+                  
+                  {/* Visible rows */}
+                  {visibleItems.length > 0 ? (
+                    visibleItems.map((index) => {
+                      const row = rows[index]
+                      if (!row) return null
+                      const isFirstRow = index === startIndex
+                    
+                      return (
+                        <tr
+                          key={row.id}
+                          className={cn(
+                            "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20"
+                          )}
+                          onClick={() => handleRowClick(row.original.id, row.original.agent_id)}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <td 
+                              key={cell.id} 
+                              className={cn(
+                                "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
+                                isFirstRow && "border-t-0"
+                              )}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })
+                  ) : (
+                    // Fallback: if visibleItems is empty, show first few rows
+                    rows.slice(0, 20).map((row) => (
+                      <tr
+                        key={row.id}
+                        className={cn(
+                          "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20"
+                        )}
+                        onClick={() => handleRowClick(row.original.id, row.original.agent_id)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td 
+                            key={cell.id} 
+                            className="px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20"
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                  
+                  {/* Bottom spacer to maintain scroll position */}
+                  {endIndex < rows.length - 1 && (
+                    <tr>
+                      <td 
+                        colSpan={columns.length} 
+                        style={{ 
+                          height: (rows.length - endIndex - 1) * ROW_HEIGHT, 
+                          padding: 0, 
+                          border: 'none' 
+                        }} 
+                      />
+                    </tr>
+                  )}
+                </>
               ) : (
-                table.getRowModel().rows.map((row) => (
+                // Render all rows when virtualization is disabled (small datasets)
+                rows.map((row, rowIndex) => (
                   <tr
                     key={row.id}
                     className={cn(
@@ -347,7 +451,10 @@ const CallLogs: React.FC<CallLogsProps> = ({
                     {row.getVisibleCells().map((cell) => (
                       <td 
                         key={cell.id} 
-                        className="px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20"
+                        className={cn(
+                          "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
+                          rowIndex === 0 && "border-t-0"
+                        )}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
