@@ -65,7 +65,8 @@ export async function GET(
       // Include other fields you might have
       field_extractor: agent.field_extractor,
       field_extractor_prompt: agent.field_extractor_prompt,
-      field_extractor_keys: agent.field_extractor_keys
+      field_extractor_keys: agent.field_extractor_keys,
+      metrics: agent.metrics || null // Include metrics field
     }
 
     return NextResponse.json(agentResponse)
