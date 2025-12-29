@@ -12,6 +12,10 @@ export interface SerializedAgentConfig {
         endpoint: string
         apiVersion: string
       }
+      selfHostedLLMConfig?: {
+        url: string
+        maxTokens: number
+      }
     }
     tts: {
       provider: string
@@ -111,6 +115,10 @@ export interface DeserializedConfig {
     endpoint: string
     apiVersion: string
   }
+  selfHostedLLMConfig?: {
+    url: string
+    maxTokens: number
+  }
 }
 
 export interface ValidationResult {
@@ -127,7 +135,8 @@ export function serializeConfig(
   formikValues: any,
   ttsConfig: any,
   sttConfig: any,
-  azureConfig: any
+  azureConfig: any,
+  selfHostedLLMConfig?: any
 ): SerializedAgentConfig {
   return {
     version: CURRENT_VERSION,
@@ -141,6 +150,12 @@ export function serializeConfig(
           azureConfig: {
             endpoint: azureConfig.endpoint || '',
             apiVersion: azureConfig.apiVersion || ''
+          }
+        }),
+        ...(formikValues.selectedProvider === 'self_hosted_llm' && selfHostedLLMConfig && {
+          selfHostedLLMConfig: {
+            url: selfHostedLLMConfig.url || 'http://localhost:8000/generate',
+            maxTokens: selfHostedLLMConfig.maxTokens || 80
           }
         })
       },
@@ -266,7 +281,11 @@ export function deserializeConfig(json: string): DeserializedConfig {
     azureConfig: {
       endpoint: config.llm.azureConfig?.endpoint || '',
       apiVersion: config.llm.azureConfig?.apiVersion || ''
-    }
+    },
+    selfHostedLLMConfig: config.llm.selfHostedLLMConfig ? {
+      url: config.llm.selfHostedLLMConfig.url || 'http://localhost:8000/generate',
+      maxTokens: config.llm.selfHostedLLMConfig.maxTokens || 80
+    } : undefined
   }
 }
 

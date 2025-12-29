@@ -122,7 +122,18 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
 
   const value = data[fieldKey]
   
+  // Handle missing values - show default for numeric metrics
   if (value === undefined || value === null) {
+    // Check if this is a numeric metric field (like ttft, ttfb, duration, etc.)
+    const numericMetricFields = ['ttft', 'ttfb', 'duration', 'end_of_utterance_delay', 'latency', 'total_time']
+    const isNumericMetric = numericMetricFields.some(field => 
+      fieldKey.toLowerCase().includes(field) || fieldKey.toLowerCase().endsWith(field)
+    )
+    
+    if (isNumericMetric) {
+      return <span className="text-muted-foreground text-xs">0</span>
+    }
+    
     return <span className="text-muted-foreground text-xs">-</span>
   }
 
@@ -148,9 +159,30 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
     )
   }
 
-  const stringValue = String(value)
-  const shouldTruncate = stringValue.length > 25
-  const displayValue = shouldTruncate ? stringValue.substring(0, 25) + '...' : stringValue
+  // Format numeric values for time-based metrics
+  const numericMetricFields = ['ttft', 'ttfb', 'duration', 'end_of_utterance_delay', 'latency', 'total_time']
+  const isNumericMetric = numericMetricFields.some(field => 
+    fieldKey.toLowerCase().includes(field) || fieldKey.toLowerCase().endsWith(field)
+  )
+  
+  let displayValue: string
+  if (isNumericMetric && typeof value === 'number') {
+    // Format time-based metrics (assume seconds, show with 's' suffix)
+    if (value === 0) {
+      displayValue = '0'
+    } else if (value < 1) {
+      // Show milliseconds for values less than 1 second
+      displayValue = `${(value * 1000).toFixed(0)}ms`
+    } else {
+      // Show seconds with 2 decimal places
+      displayValue = `${value.toFixed(2)}s`
+    }
+  } else {
+    displayValue = String(value)
+  }
+  
+  const shouldTruncate = displayValue.length > 25
+  const truncatedValue = shouldTruncate ? displayValue.substring(0, 25) + '...' : displayValue
 
   return (
     <div className="text-xs w-full overflow-hidden" style={{ maxWidth }}>
@@ -162,12 +194,12 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap'
           }}>
-            {displayValue}
+            {truncatedValue}
           </span>
         </TooltipTrigger>
         {shouldTruncate && (
           <TooltipContent sideOffset={6} className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words">
-            {stringValue}
+            {displayValue}
           </TooltipContent>
         )}
       </Tooltip>

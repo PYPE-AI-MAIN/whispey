@@ -21,6 +21,7 @@ interface CopyConfigDialogProps {
   ttsConfig: any
   sttConfig: any
   azureConfig: any
+  selfHostedLLMConfig?: any
 }
 
 export default function CopyConfigDialog({
@@ -29,7 +30,8 @@ export default function CopyConfigDialog({
   formikValues,
   ttsConfig,
   sttConfig,
-  azureConfig
+  azureConfig,
+  selfHostedLLMConfig
 }: CopyConfigDialogProps) {
   const [configJson, setConfigJson] = useState<string>('')
   const [isCopied, setIsCopied] = useState(false)
@@ -46,7 +48,8 @@ export default function CopyConfigDialog({
           formikValues,
           ttsConfig,
           sttConfig,
-          azureConfig
+          azureConfig,
+          selfHostedLLMConfig
         )
         const prettyJson = prettyPrintConfig(serialized)
         setConfigJson(prettyJson)
@@ -57,7 +60,7 @@ export default function CopyConfigDialog({
         setIsGenerating(false)
       }
     }
-  }, [open, formikValues, ttsConfig, sttConfig, azureConfig])
+  }, [open, formikValues, ttsConfig, sttConfig, azureConfig, selfHostedLLMConfig])
 
   const handleCopyToClipboard = async () => {
     try {

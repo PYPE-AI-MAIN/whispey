@@ -185,6 +185,11 @@ interface AzureConfig {
   apiVersion: string
 }
 
+interface SelfHostedLLMConfig {
+  url: string
+  maxTokens: number
+}
+
 interface AgentStatus {
   status: 'running' | 'stopped' | 'starting' | 'stopping' | 'error'
   pid?: number
@@ -224,6 +229,12 @@ export default function AgentConfig() {
   const [azureConfig, setAzureConfig] = useState<AzureConfig>({
     endpoint: '',
     apiVersion: ''
+  })
+
+  // Self-hosted LLM config state for ModelSelector
+  const [selfHostedLLMConfig, setSelfHostedLLMConfig] = useState<SelfHostedLLMConfig>({
+    url: 'http://localhost:8000/generate',
+    maxTokens: 80
   })
 
   const [hasExternalChanges, setHasExternalChanges] = useState(false)
@@ -418,7 +429,8 @@ export default function AgentConfig() {
     currentFormik: formik,
     currentTtsConfig: ttsConfig,
     currentSttConfig: sttConfig,
-    currentAzureConfig: azureConfig
+    currentAzureConfig: azureConfig,
+    currentSelfHostedLLMConfig: selfHostedLLMConfig
   })
 
   // useEffect(() => {
@@ -464,6 +476,8 @@ export default function AgentConfig() {
         mappedProvider = 'anthropic'
       } else if (llmConfig.model?.includes('cerebras')) {
         mappedProvider = 'cerebras'
+      } else if (providerValue === 'self_hosted_llm') {
+        mappedProvider = 'self_hosted_llm'
       }
       
       if (mappedProvider === 'azure_openai' && assistant.llm) {
@@ -472,6 +486,14 @@ export default function AgentConfig() {
           apiVersion: assistant.llm.api_version || ''
         }
         setAzureConfig(azureConfigData)
+      }
+      
+      if (mappedProvider === 'self_hosted_llm' && assistant.llm?.custom_option) {
+        const selfHostedConfigData = {
+          url: assistant.llm.custom_option.url || 'http://localhost:8000/generate',
+          maxTokens: assistant.llm.custom_option.max_tokens || 80
+        }
+        setSelfHostedLLMConfig(selfHostedConfigData)
       }
     }
   }, [agentConfigData])
@@ -497,6 +519,9 @@ export default function AgentConfig() {
     setTtsConfig(config.ttsConfig)
     setSTTConfig(config.sttConfig)
     setAzureConfig(config.azureConfig)
+    if (config.selfHostedLLMConfig) {
+      setSelfHostedLLMConfig(config.selfHostedLLMConfig)
+    }
     
     // Mark form as dirty to enable save
     setHasExternalChanges(true)
@@ -586,6 +611,11 @@ export default function AgentConfig() {
 
   const handleAzureConfigChange = (config: AzureConfig) => {
     setAzureConfig(config)
+    setHasExternalChanges(true)
+  }
+
+  const handleSelfHostedLLMConfigChange = (config: SelfHostedLLMConfig) => {
+    setSelfHostedLLMConfig(config)
     setHasExternalChanges(true)
   }
 
@@ -1018,6 +1048,8 @@ const unmappedVariablesCount = useMemo(() => {
                   onTemperatureChange={handleTemperatureChange}
                   azureConfig={azureConfig}
                   onAzureConfigChange={handleAzureConfigChange}
+                  selfHostedLLMConfig={selfHostedLLMConfig}
+                  onSelfHostedLLMConfigChange={handleSelfHostedLLMConfigChange}
                 />
               </div>
 
@@ -1298,6 +1330,7 @@ const unmappedVariablesCount = useMemo(() => {
         ttsConfig={ttsConfig}
         sttConfig={sttConfig}
         azureConfig={azureConfig}
+        selfHostedLLMConfig={selfHostedLLMConfig}
       />
 
       <PasteConfigDialog

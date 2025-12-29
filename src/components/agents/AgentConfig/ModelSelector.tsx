@@ -56,6 +56,11 @@ interface AzureConfig {
   apiVersion: string
 }
 
+interface SelfHostedLLMConfig {
+  url: string
+  maxTokens: number
+}
+
 interface ModelSelectorProps {
   selectedProvider?: string
   selectedModel?: string
@@ -65,6 +70,8 @@ interface ModelSelectorProps {
   onTemperatureChange?: (temperature: number) => void
   azureConfig?: AzureConfig
   onAzureConfigChange?: (config: AzureConfig) => void
+  selfHostedLLMConfig?: SelfHostedLLMConfig
+  onSelfHostedLLMConfigChange?: (config: SelfHostedLLMConfig) => void
 }
 
 const modelProviders: Record<string, Provider> = {
@@ -163,6 +170,13 @@ const modelProviders: Record<string, Provider> = {
         ]
       }
     ]
+  },
+  self_hosted_llm: {
+    label: 'Self-Hosted LLM',
+    icon: 'S',
+    color: 'bg-indigo-500',
+    type: 'config',
+    description: 'Use your own LLM server endpoint'
   }
 }
 
@@ -173,7 +187,8 @@ const getProviderIcon = (providerKey: string) => {
     groq: <Cpu className="h-3 w-3" />,
     google: <Cloud className="h-3 w-3" />,
     azure_openai: <Cloud className="h-3 w-3" />,
-    cerebras: <Cpu className="h-3 w-3" />
+    cerebras: <Cpu className="h-3 w-3" />,
+    self_hosted_llm: <Cpu className="h-3 w-3" />
   }
   return iconMap[providerKey]
 }
@@ -186,7 +201,9 @@ export default function ModelSelector({
   onModelChange = () => {},
   onTemperatureChange = () => {},
   azureConfig = { endpoint: 'https://pype-azure-openai.openai.azure.com/', apiVersion: '2024-10-01-preview' },
-  onAzureConfigChange = () => {}
+  onAzureConfigChange = () => {},
+  selfHostedLLMConfig = { url: 'http://localhost:8000/generate', maxTokens: 80 },
+  onSelfHostedLLMConfigChange = () => {}
 }: ModelSelectorProps) {
   // DISABLE CONTROLS
   const DISABLE_SETTINGS = false
@@ -201,6 +218,12 @@ export default function ModelSelector({
   const [tempAzureConfig, setTempAzureConfig] = useState<AzureConfig>({
     ...DEFAULT_AZURE_CONFIG,
     ...azureConfig
+  })
+  const [isSelfHostedLLMDialogOpen, setIsSelfHostedLLMDialogOpen] = useState(false)
+  const [tempSelfHostedLLMConfig, setTempSelfHostedLLMConfig] = useState<SelfHostedLLMConfig>({
+    url: 'http://localhost:8000/generate',
+    maxTokens: 80,
+    ...selfHostedLLMConfig
   })
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [mobileSelectedProvider, setMobileSelectedProvider] = useState<string | null>(null)
@@ -254,6 +277,10 @@ const getFlattenedMenuItems = () => {
     setTempAzureConfig(azureConfig)
   }, [azureConfig])
 
+  useEffect(() => {
+    setTempSelfHostedLLMConfig(selfHostedLLMConfig)
+  }, [selfHostedLLMConfig])
+
   const currentProvider = modelProviders[selectedProvider]
   const currentModel = currentProvider?.type === 'grouped'
     ? currentProvider.groups?.flatMap(g => g.models).find(m => m.value === selectedModel)
@@ -275,6 +302,11 @@ const getFlattenedMenuItems = () => {
         const defaultAzureModel = provider.models?.[0]?.value || 'gpt-4o'
         onModelChange(defaultAzureModel)
         setIsAzureDialogOpen(true)
+      } else if (provider.type === 'config' && providerKey === 'self_hosted_llm') {
+        onProviderChange(providerKey)
+        // Set a default model name for self-hosted
+        onModelChange('self-hosted')
+        setIsSelfHostedLLMDialogOpen(true)
       } else if (provider.type === 'direct' && provider.models && provider.models.length > 0) {
         const firstModel = provider.models[0].value
         onProviderChange(providerKey)
@@ -302,10 +334,20 @@ const getFlattenedMenuItems = () => {
     setIsAzureDialogOpen(false)
   }
 
+  const handleSelfHostedLLMConfigSave = () => {
+    if (DISABLE_SETTINGS) return
+    
+    onSelfHostedLLMConfigChange(tempSelfHostedLLMConfig)
+    setIsSelfHostedLLMDialogOpen(false)
+  }
+
   const getDisplayText = (): string => {
     if (selectedProvider === 'azure_openai' && azureConfig.endpoint) {
       const model = currentModel?.label || 'Select Model'
       return `${model}`
+    }
+    if (selectedProvider === 'self_hosted_llm' && selfHostedLLMConfig.url) {
+      return 'Self-Hosted LLM'
     }
     return currentModel?.label || currentProvider?.label || 'Select Provider'
   }
@@ -631,6 +673,63 @@ const getFlattenedMenuItems = () => {
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Self-Hosted LLM Configuration Dialog */}
+      <Dialog open={isSelfHostedLLMDialogOpen && !DISABLE_SETTINGS} onOpenChange={DISABLE_SETTINGS ? () => {} : setIsSelfHostedLLMDialogOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 mx-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-slate-100">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white flex-shrink-0">
+                <Cpu className="h-3 w-3" />
+              </div>
+              <span className="truncate">Configure Self-Hosted LLM</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="selfHostedUrl" className="text-gray-700 dark:text-slate-300">LLM Server URL</Label>
+              <Input
+                id="selfHostedUrl"
+                placeholder="http://localhost:8000/generate"
+                value={tempSelfHostedLLMConfig.url || "http://localhost:8000/generate"}
+                onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempSelfHostedLLMConfig(prev => ({ ...prev, url: e.target.value }))}
+                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
+                disabled={DISABLE_SETTINGS}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maxTokens" className="text-gray-700 dark:text-slate-300">Max Tokens</Label>
+              <Input
+                id="maxTokens"
+                type="number"
+                placeholder="80"
+                value={tempSelfHostedLLMConfig.maxTokens || 80}
+                onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempSelfHostedLLMConfig(prev => ({ ...prev, maxTokens: parseInt(e.target.value) || 80 }))}
+                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
+                disabled={DISABLE_SETTINGS}
+                min="1"
+                max="4096"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsSelfHostedLLMDialogOpen(false)}
+              className="border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSelfHostedLLMConfigSave} 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+              disabled={DISABLE_SETTINGS}
+            >
+              Save Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Azure Configuration Dialog */}
       <Dialog open={isAzureDialogOpen && !DISABLE_SETTINGS} onOpenChange={DISABLE_SETTINGS ? () => {} : setIsAzureDialogOpen}>

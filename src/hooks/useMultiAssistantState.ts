@@ -22,6 +22,7 @@ interface UseMultiAssistantStateProps {
   currentTtsConfig?: any
   currentSttConfig?: any
   currentAzureConfig?: any
+  currentSelfHostedLLMConfig?: any
 }
 
 export function useMultiAssistantState({ 
@@ -32,7 +33,8 @@ export function useMultiAssistantState({
   currentFormik,
   currentTtsConfig,
   currentSttConfig,
-  currentAzureConfig
+  currentAzureConfig,
+  currentSelfHostedLLMConfig
 }: UseMultiAssistantStateProps) {
   
   const [assistantNames, setAssistantNames] = useState<string[]>(() => {
@@ -122,7 +124,7 @@ export function useMultiAssistantState({
         },
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
-          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
+          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : (formValues.selectedProvider === 'self_hosted_llm' ? 'self_hosted_llm' : formValues.selectedProvider) || getFallback(null, 'llm.provider'),
           model: formValues.selectedModel || getFallback(null, 'llm.model'),
           temperature: formValues.temperature ?? getFallback(null, 'llm.temperature'),
           ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
@@ -139,6 +141,12 @@ export function useMultiAssistantState({
           }),
           ...(formValues.selectedProvider === 'cerebras' && {
             api_key_env: 'CEREBRAS_API_KEY'
+          }),
+          ...(formValues.selectedProvider === 'self_hosted_llm' && currentSelfHostedLLMConfig && {
+            custom_option: {
+              url: currentSelfHostedLLMConfig.url || 'http://localhost:8000/generate',
+              max_tokens: currentSelfHostedLLMConfig.maxTokens || 80
+            }
           })
         },
         tts: (() => {
@@ -438,7 +446,7 @@ export function useMultiAssistantState({
         },
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
-          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
+          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : (formValues.selectedProvider === 'self_hosted_llm' ? 'self_hosted_llm' : formValues.selectedProvider) || getFallback(null, 'llm.provider'),
           model: formValues.selectedModel || getFallback(null, 'llm.model'),
           temperature: formValues.temperature ?? getFallback(null, 'llm.temperature'),
           ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
@@ -455,6 +463,12 @@ export function useMultiAssistantState({
           }),
           ...(formValues.selectedProvider === 'cerebras' && {
             api_key_env: 'CEREBRAS_API_KEY'
+          }),
+          ...(formValues.selectedProvider === 'self_hosted_llm' && currentSelfHostedLLMConfig && {
+            custom_option: {
+              url: currentSelfHostedLLMConfig.url || 'http://localhost:8000/generate',
+              max_tokens: currentSelfHostedLLMConfig.maxTokens || 80
+            }
           })
         },
         tts: {
@@ -682,7 +696,8 @@ export function useMultiAssistantState({
     currentFormik,
     currentTtsConfig,
     currentSttConfig,
-    currentAzureConfig
+    currentAzureConfig,
+    currentSelfHostedLLMConfig
   ])
 
   const registerFormikRef = useCallback((assistantName: string, formikRef: FormikProps<any>) => {
