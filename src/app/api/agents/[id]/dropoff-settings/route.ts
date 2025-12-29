@@ -66,7 +66,7 @@ export async function POST(
       )
     }
 
-    const { enabled, dropoff_message, delay_minutes, max_retries, context_dropoff_prompt, sip_trunk_id, phone_number_id } = body
+    const { enabled, dropoff_message, delay_minutes, max_retries, context_dropoff_prompt, call_retry_required_criteria, sip_trunk_id, phone_number_id } = body
 
     // Validate required fields
     if (delay_minutes === undefined || delay_minutes === null) {
@@ -93,10 +93,10 @@ export async function POST(
       }
     }
 
-    // Fetch agent name from pype_voice_agents table
+    // Fetch agent from pype_voice_agents table
     const { data: agent, error: agentError } = await supabase
       .from('pype_voice_agents')
-      .select('name')
+      .select('name, metrics')
       .eq('id', agentId)
       .single()
 
@@ -172,6 +172,86 @@ export async function POST(
       }
 
       result = data
+    }
+
+    // Always update agent metrics to ensure call_retry_required is enabled
+    try {
+      // Parse existing metrics or initialize empty object
+      let currentMetrics: Record<string, any> = {}
+      if (agent.metrics) {
+        try {
+          currentMetrics = typeof agent.metrics === 'string' 
+            ? JSON.parse(agent.metrics) 
+            : agent.metrics
+        } catch (parseError) {
+          console.warn('Error parsing existing metrics, starting fresh:', parseError)
+          currentMetrics = {}
+        }
+      }
+
+      // Store criteria as a string (not parsed as object)
+      // Criteria should be a JSON string, not a parsed object
+      let criteriaString: string | null = null
+      
+      // Check if new criteria was provided in the request
+      if (call_retry_required_criteria !== undefined && call_retry_required_criteria !== null) {
+        // If it's already a string (including empty string), use it directly
+        if (typeof call_retry_required_criteria === 'string') {
+          criteriaString = call_retry_required_criteria
+        } else {
+          // If it's an object, stringify it
+          try {
+            criteriaString = JSON.stringify(call_retry_required_criteria, null, 2)
+          } catch (stringifyError) {
+            // If stringify fails, convert to string
+            criteriaString = String(call_retry_required_criteria)
+          }
+        }
+      } else if (currentMetrics?.call_retry_required?.criteria !== undefined && currentMetrics?.call_retry_required?.criteria !== null) {
+        // If no new criteria provided, preserve existing criteria if it exists
+        const existingCriteria = currentMetrics.call_retry_required.criteria
+        // Ensure existing criteria is stored as string
+        if (typeof existingCriteria === 'string') {
+          criteriaString = existingCriteria
+        } else {
+          // If existing is an object, stringify it
+          try {
+            criteriaString = JSON.stringify(existingCriteria, null, 2)
+          } catch (stringifyError) {
+            criteriaString = String(existingCriteria)
+          }
+        }
+      }
+      
+      // If still null (no criteria provided and no existing), use null (don't set default here)
+      // The component will handle defaults on the frontend
+
+      // Update or add call_retry_required metric (always enable it)
+      // Store criteria as a string, not as a parsed object
+      currentMetrics.call_retry_required = {
+        metric_id: 'call_retry_required',
+        enabled: true,
+        criteria: criteriaString,
+        scoring_mode: 'binary',
+        threshold: 1,
+      }
+
+      // Update agent metrics in database
+      const { error: metricsUpdateError } = await supabase
+        .from('pype_voice_agents')
+        .update({ metrics: currentMetrics })
+        .eq('id', agentId)
+
+      if (metricsUpdateError) {
+        console.error('Error updating agent metrics:', metricsUpdateError)
+        // Don't fail the entire request, just log the error
+        // The drop-off settings are saved, metrics update is a bonus
+      } else {
+        console.log('Successfully updated call_retry_required metric')
+      }
+    } catch (metricsError) {
+      console.error('Error processing metrics update:', metricsError)
+      // Don't fail the entire request
     }
 
     return NextResponse.json({ 

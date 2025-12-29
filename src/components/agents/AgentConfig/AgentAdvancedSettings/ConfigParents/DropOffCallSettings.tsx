@@ -13,6 +13,30 @@ import { Switch } from '@/components/ui/switch'
 import { PhoneNumber } from '@/utils/campaigns/constants'
 import toast from 'react-hot-toast'
 
+// Default criteria for call_retry_required metric
+const DEFAULT_CALL_RETRY_CRITERIA = JSON.stringify({
+  task: "Determine whether a phone call requires a retry.",
+  instructions: {
+    score_1_retry_required: [
+      "The user never spoke AND the call lasted under 10 seconds (possible connection or network failure).",
+      "The call went directly to voicemail (e.g., iPhone voicemail greeting).",
+      "The call audio was completely blank with no user speech.",
+      "The user was engaged but the call ended abruptly without a natural closing phrase and the task was not completed (possible mid-call drop)."
+    ],
+    score_0_no_retry: [
+      "The user spoke at least once AND used a closing phrase such as 'goodbye', 'thanks', or 'done'.",
+      "The user indicated disinterest (e.g., 'wrong number', 'not interested', refusal to continue).",
+      "The task was successfully completed.",
+      "The user was frustrated and explicitly wanted to stop.",
+      "The user never spoke BUT the call lasted 10 seconds or longer, indicating intentional silence rather than a technical failure."
+    ]
+  },
+  output_format: {
+    score: "0 or 1",
+    reason: "Short explanation referencing the rules above."
+  }
+}, null, 2)
+
 interface DropOffCallSettingsProps {
   agentId: string
   projectId?: string
@@ -25,6 +49,7 @@ interface DropOffSettings {
   delay_minutes: number
   max_retries: number
   context_dropoff_prompt: string
+  call_retry_required_criteria: string
   sip_trunk_id: string | null
   phone_number_id: string | null
 }
@@ -41,35 +66,110 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
     delay_minutes: 5,
     max_retries: 2,
     context_dropoff_prompt: '',
+    call_retry_required_criteria: '',
     sip_trunk_id: null,
     phone_number_id: null,
   })
 
-  // Fetch existing settings
+  // Fetch existing settings and agent metrics
   useEffect(() => {
     const fetchSettings = async () => {
       if (!agentId) return
 
       try {
         setLoading(true)
-        const response = await fetch(`/api/agents/${agentId}/dropoff-settings`)
         
-        if (!response.ok) {
+        // Fetch drop-off settings
+        const settingsResponse = await fetch(`/api/agents/${agentId}/dropoff-settings`)
+        
+        if (!settingsResponse.ok) {
           throw new Error('Failed to fetch drop-off settings')
         }
 
-        const result = await response.json()
+        const settingsResult = await settingsResponse.json()
         
-        if (result.data) {
+        // Fetch agent to get metrics - prioritize saved criteria over default
+        let callRetryCriteria: string | null = null
+        
+        try {
+          const agentResponse = await fetch(`/api/agents/${agentId}`)
+          
+          if (agentResponse.ok) {
+            const agentData = await agentResponse.json()
+            
+            console.log('Agent data fetched:', { 
+              hasMetrics: !!agentData.metrics,
+              metricsType: typeof agentData.metrics 
+            })
+            
+            if (agentData.metrics) {
+              try {
+                const metrics = typeof agentData.metrics === 'string' 
+                  ? JSON.parse(agentData.metrics) 
+                  : agentData.metrics
+                
+                console.log('Parsed metrics:', {
+                  hasCallRetryRequired: !!metrics?.call_retry_required,
+                  hasCriteria: metrics?.call_retry_required?.criteria !== undefined,
+                  criteriaType: typeof metrics?.call_retry_required?.criteria
+                })
+                
+                // Check if call_retry_required metric exists and has criteria
+                if (metrics?.call_retry_required?.criteria !== undefined && metrics?.call_retry_required?.criteria !== null) {
+                  const criteria = metrics.call_retry_required.criteria
+                  
+                  // If criteria exists (even if empty string), use it
+                  // Convert to string if it's an object
+                  if (typeof criteria === 'string') {
+                    callRetryCriteria = criteria
+                    console.log('Using criteria as string, length:', criteria.length)
+                  } else {
+                    // If it's an object, stringify it
+                    callRetryCriteria = JSON.stringify(criteria, null, 2)
+                    console.log('Stringified criteria object')
+                  }
+                } else {
+                  console.log('No criteria found in call_retry_required metric')
+                }
+              } catch (e) {
+                console.error('Error parsing metrics:', e)
+                // If parsing fails, criteria remains null and will use default
+              }
+            } else {
+              console.log('No metrics field in agent data')
+            }
+          } else {
+            console.error('Agent response not OK:', agentResponse.status)
+          }
+        } catch (agentError) {
+          console.error('Error fetching agent metrics:', agentError)
+          // If fetch fails, criteria remains null and will use default
+        }
+        
+        console.log('Final callRetryCriteria:', callRetryCriteria ? `Found (${callRetryCriteria.length} chars)` : 'Using default')
+        
+        // Only use default if no criteria was found in agent metrics
+        if (callRetryCriteria === null) {
+          callRetryCriteria = DEFAULT_CALL_RETRY_CRITERIA
+        }
+        
+        if (settingsResult.data) {
           setSettings({
-            enabled: result.data.enabled !== undefined ? result.data.enabled : false,
-            dropoff_message: result.data.dropoff_message || '',
-            delay_minutes: result.data.delay_minutes || 5,
-            max_retries: result.data.max_retries !== undefined && result.data.max_retries !== null ? result.data.max_retries : 2,
-            context_dropoff_prompt: result.data.context_dropoff_prompt || '',
-            sip_trunk_id: result.data.sip_trunk_id || null,
-            phone_number_id: result.data.phone_number_id || null,
+            enabled: settingsResult.data.enabled !== undefined ? settingsResult.data.enabled : false,
+            dropoff_message: settingsResult.data.dropoff_message || '',
+            delay_minutes: settingsResult.data.delay_minutes || 5,
+            max_retries: settingsResult.data.max_retries !== undefined && settingsResult.data.max_retries !== null ? settingsResult.data.max_retries : 2,
+            context_dropoff_prompt: settingsResult.data.context_dropoff_prompt || '',
+            call_retry_required_criteria: callRetryCriteria,
+            sip_trunk_id: settingsResult.data.sip_trunk_id || null,
+            phone_number_id: settingsResult.data.phone_number_id || null,
           })
+        } else {
+          // If no settings exist, still set the criteria from agent metrics
+          setSettings(prev => ({
+            ...prev,
+            call_retry_required_criteria: callRetryCriteria,
+          }))
         }
       } catch (error) {
         console.error('Error fetching drop-off settings:', error)
@@ -146,6 +246,7 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
           delay_minutes: settings.delay_minutes,
           max_retries: settings.max_retries,
           context_dropoff_prompt: settings.context_dropoff_prompt || null,
+          call_retry_required_criteria: settings.call_retry_required_criteria || null,
           sip_trunk_id: settings.sip_trunk_id || null,
           phone_number_id: settings.phone_number_id || null,
         }),
@@ -184,69 +285,65 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
   }
 
   return (
-    <div className="space-y-4">
-      {/* Enable/Disable Toggle */}
-      <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
-        <div className="flex flex-col">
-          <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            Enable Drop-off Call Configuration
-          </Label>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Turn on drop-off call functionality for this agent
+    <div className="space-y-6">
+      {/* Call Configuration Section */}
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Call Configuration</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Configure the message and timing for drop-off calls
           </p>
         </div>
-        <Switch
-          checked={settings.enabled}
-          onCheckedChange={(checked) => setSettings({ ...settings, enabled: checked })}
-        />
+
+        {/* Drop-off Message */}
+        <div className="space-y-2">
+          <Label htmlFor="dropoff-message" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            Drop-off Call Message
+          </Label>
+          <Textarea
+            id="dropoff-message"
+            value={settings.dropoff_message}
+            onChange={(e) => setSettings({ ...settings, dropoff_message: e.target.value })}
+            placeholder="Enter the message that will be spoken during the drop-off call..."
+            className="min-h-[80px] text-sm resize-none"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            This message will be spoken when initiating a drop-off call. Use the {'{{wcontext_dropoff}}'} variable to include a conversation summary.
+          </p>
+        </div>
+
+        {/* Context Summary Prompt */}
+        <div className="space-y-2">
+          <Label htmlFor="context-dropoff-prompt" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            Context Summary Prompt
+          </Label>
+          <Textarea
+            id="context-dropoff-prompt"
+            value={settings.context_dropoff_prompt}
+            onChange={(e) => setSettings({ ...settings, context_dropoff_prompt: e.target.value })}
+            placeholder="Enter the prompt that will generate a context summary for the drop-off call..."
+            className="min-h-[100px] text-sm resize-none"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            This prompt generates a summary of the previous conversation. The summary will be available as the {'{{wcontext_dropoff}}'} variable in your drop-off message.
+          </p>
+        </div>
       </div>
 
-      {settings.enabled && (
-        <>
-          {/* Drop-off Message */}
-          <div className="space-y-2">
-            <Label htmlFor="dropoff-message" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Drop-off Message
-            </Label>
-            <Textarea
-              id="dropoff-message"
-              value={settings.dropoff_message}
-              onChange={(e) => setSettings({ ...settings, dropoff_message: e.target.value })}
-              placeholder="Enter the message to say when making the drop-off call..."
-              className="min-h-[80px] text-sm resize-none"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              This message will be spoken when the drop-off call is made. You can use {'{{wcontext_dropoff}}'} variable to include the summary.
-            </p>
-          </div>
+      {/* Retry Settings Section */}
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Retry Settings</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Configure retry behavior and criteria for drop-off calls
+          </p>
+        </div>
 
-          {/* Context Drop-off Prompt */}
-          <div className="space-y-2">
-            <Label htmlFor="context-dropoff-prompt" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Context Drop-off Prompt
-            </Label>
-            <Textarea
-              id="context-dropoff-prompt"
-              value={settings.context_dropoff_prompt}
-              onChange={(e) => setSettings({ ...settings, context_dropoff_prompt: e.target.value })}
-              placeholder="Enter the prompt for generating the context summary..."
-              className="min-h-[100px] text-sm resize-none"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              This prompt will be used to generate a summary that will be available as the {'{{wcontext_dropoff}}'} variable in your drop-off message.
-            </p>
-            <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 mt-2">
-              <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
-                <strong>Important:</strong> Make sure the <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900/50 rounded text-xs">call_retry_required</code> metric is enabled in your agent configuration for drop-off calls to work properly.
-              </AlertDescription>
-            </Alert>
-          </div>
-
-          {/* Delay Minutes */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Call Delay */}
           <div className="space-y-2">
             <Label htmlFor="delay-minutes" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Minutes After Which to Call
+              Call Delay (Minutes)
             </Label>
             <Input
               id="delay-minutes"
@@ -257,14 +354,14 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
               className="text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Number of minutes to wait after a call drops before making the drop-off call.
+              Time to wait after a call ends before initiating the drop-off call.
             </p>
           </div>
 
           {/* Max Retries */}
           <div className="space-y-2">
             <Label htmlFor="max-retries" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Max Retries
+              Maximum Retry Attempts
             </Label>
             <Input
               id="max-retries"
@@ -276,127 +373,149 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
               className="text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Maximum number of retry attempts if the drop-off call fails (0-10). If a drop-off call fails, it will be retried up to this many times.
+              Maximum number of retry attempts if a drop-off call fails (0-10).
             </p>
           </div>
-
-          {/* Outbound Phone Number Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="phone-number" className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Outbound Phone Number
-            </Label>
-            {loadingPhones ? (
-              <div className="flex items-center gap-2 py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                <span className="text-xs text-gray-500">Loading phone numbers...</span>
-              </div>
-            ) : phoneNumbers.length === 0 ? (
-              <div className="text-xs text-gray-500 dark:text-gray-400 py-2">
-                No outbound phone numbers available. Please configure phone numbers in SIP Management.
-              </div>
-            ) : (
-              <Select
-                value={settings.phone_number_id || undefined}
-                onValueChange={(value) => {
-                  if (value === 'none') {
-                    setSettings({
-                      ...settings,
-                      phone_number_id: null,
-                      sip_trunk_id: null,
-                    })
-                  } else {
-                    const selectedPhone = phoneNumbers.find(p => p.id === value)
-                    setSettings({
-                      ...settings,
-                      phone_number_id: value || null,
-                      sip_trunk_id: selectedPhone?.trunk_id || null,
-                    })
-                  }
-                }}
-              >
-                <SelectTrigger id="phone-number" className="text-sm">
-                  <SelectValue placeholder="Select outbound phone number" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {phoneNumbers.map((phone) => (
-                    <SelectItem key={phone.id} value={phone.id}>
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="font-mono text-xs">{phone.phone_number}</span>
-                        {phone.provider && (
-                          <span className="text-gray-500 text-xs">({phone.provider})</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {selectedPhone && (
-              <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                <p>
-                  Selected: <span className="font-mono">{selectedPhone.phone_number}</span>
-                </p>
-                {selectedPhone.trunk_id && (
-                  <p>
-                    SIP Trunk ID: <span className="font-mono">{selectedPhone.trunk_id}</span>
-                  </p>
-                )}
-              </div>
-            )}
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Select the phone number (and its associated SIP trunk) to use for drop-off calls.
-            </p>
-          </div>
-
-          {/* Save Button */}
-          <div className="pt-2">
-            <Button
-              onClick={handleSave}
-              disabled={saving || !projectId}
-              size="sm"
-              className="w-full"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Drop-off Settings
-                </>
-              )}
-            </Button>
-          </div>
-        </>
-      )}
-
-      {/* Save Button - Always visible to save enabled state */}
-      {!settings.enabled && (
-        <div className="pt-2">
-          <Button
-            onClick={handleSave}
-            disabled={saving || !projectId}
-            size="sm"
-            className="w-full"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save Settings
-              </>
-            )}
-          </Button>
         </div>
-      )}
+
+        {/* Call Retry Required Prompt */}
+        <div className="space-y-2">
+          <Label htmlFor="call-retry-criteria" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            Retry Metric Prompt
+          </Label>
+          <div className="relative">
+            <Textarea
+              id="call-retry-criteria"
+              value={settings.call_retry_required_criteria}
+              onChange={(e) => setSettings({ ...settings, call_retry_required_criteria: e.target.value })}
+              placeholder="Enter the prompt for the call_retry_required metric (JSON format)..."
+              className="min-h-[150px] max-h-[300px] text-xs resize-none font-mono overflow-y-auto"
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Define the prompt for the <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">call_retry_required</code> metric. This prompt will be used to evaluate whether a call requires a retry. The metric will be automatically enabled when you save this configuration.
+          </p>
+          <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+            <AlertCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
+              The <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/50 rounded text-xs">call_retry_required</code> metric will be automatically enabled when you save this configuration.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+
+      {/* Phone Number Configuration Section */}
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phone Number Configuration</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Select the outbound phone number to use for drop-off calls
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="phone-number" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            Outbound Phone Number
+          </Label>
+          {loadingPhones ? (
+            <div className="flex items-center gap-2 py-2">
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              <span className="text-xs text-gray-500">Loading phone numbers...</span>
+            </div>
+          ) : phoneNumbers.length === 0 ? (
+            <div className="text-xs text-gray-500 dark:text-gray-400 py-2 px-3 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700">
+              No outbound phone numbers available. Please configure phone numbers in SIP Management.
+            </div>
+          ) : (
+            <Select
+              value={settings.phone_number_id || undefined}
+              onValueChange={(value) => {
+                if (value === 'none') {
+                  setSettings({
+                    ...settings,
+                    phone_number_id: null,
+                    sip_trunk_id: null,
+                  })
+                } else {
+                  const selectedPhone = phoneNumbers.find(p => p.id === value)
+                  setSettings({
+                    ...settings,
+                    phone_number_id: value || null,
+                    sip_trunk_id: selectedPhone?.trunk_id || null,
+                  })
+                }
+              }}
+            >
+              <SelectTrigger id="phone-number" className="text-sm">
+                <SelectValue placeholder="Select outbound phone number" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {phoneNumbers.map((phone) => (
+                  <SelectItem key={phone.id} value={phone.id}>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-mono text-xs">{phone.phone_number}</span>
+                      {phone.provider && (
+                        <span className="text-gray-500 text-xs">({phone.provider})</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {selectedPhone && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 px-2 py-1.5 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700">
+              <p>
+                <span className="font-medium">Selected:</span> <span className="font-mono">{selectedPhone.phone_number}</span>
+              </p>
+              {selectedPhone.trunk_id && (
+                <p>
+                  <span className="font-medium">SIP Trunk ID:</span> <span className="font-mono">{selectedPhone.trunk_id}</span>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Enable/Disable Toggle and Save Button */}
+      <div className="pt-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col">
+            <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Enable Drop-off Calls
+            </Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Activate drop-off call functionality for this agent
+            </p>
+          </div>
+          <Switch
+            checked={settings.enabled}
+            onCheckedChange={(checked) => setSettings({ ...settings, enabled: checked })}
+          />
+        </div>
+        
+        <Button
+          onClick={handleSave}
+          disabled={saving || !projectId}
+          size="sm"
+          className="w-full"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving Configuration...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Save Configuration
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   )
 }
