@@ -471,6 +471,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             tool.type === 'transfer_call' ? 'Transfer Call' : 
             tool.type === 'ivr_navigator' ? 'Send DTMF' : 
             tool.type === 'nearby_location_finder' ? 'Nearby Hospital Finder' :
+            tool.type === 'update_vad_options' ? 'Update VAD Options' :
             'Custom Tool'
           ),
           config: {

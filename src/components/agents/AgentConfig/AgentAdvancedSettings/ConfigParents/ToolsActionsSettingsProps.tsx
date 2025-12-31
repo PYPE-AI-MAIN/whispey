@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon } from 'lucide-react'
 
 interface PhoneNumber {
   id: string
@@ -30,7 +30,7 @@ interface ToolParameter {
 
 interface Tool {
   id: string
-  type: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder'
+  type: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options'
   name: string
   config: {
     description?: string
@@ -70,7 +70,7 @@ interface ToolsActionsSettingsProps {
 
 function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | null>(null)
+  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
@@ -135,7 +135,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     }
   }, [projectId])
 
-  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder') => {
+  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options') => {
     setSelectedToolType(toolType)
     setEditingTool(null)
     setHeadersJsonString('{}')
@@ -263,6 +263,35 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '',
         method: 'POST',
         headers: {},
+        body: '',
+        targetAgent: '',
+        handoffMessage: '',
+        selectedPhoneId: '',
+        transferNumber: '',
+        sipTrunkId: '',
+        timeout: 10,
+        asyncExecution: false,
+        parameters: [],
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: '',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: '',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
+      })
+    } else if (toolType === 'update_vad_options') {
+      setFormData({ 
+        name: 'Update VAD Options', 
+        description: 'Update Voice Activity Detection (VAD) options dynamically during the conversation',
+        endpoint: '', 
+        method: 'POST', 
+        headers: {}, 
         body: '',
         targetAgent: '',
         handoffMessage: '',
@@ -486,6 +515,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       case 'ivr_navigator': return <Hash className="w-3 h-3" />
       case 'custom_function': return <CodeIcon className="w-3 h-3" />
       case 'nearby_location_finder': return <Phone className="w-3 h-3" />
+      case 'update_vad_options': return <MicIcon className="w-3 h-3" />
       default: return <CodeIcon className="w-3 h-3" />
     }
   }
@@ -528,6 +558,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
           <DropdownMenuItem onClick={() => handleAddTool('nearby_location_finder')} className="text-xs">
             <Phone className="w-3 h-3 mr-2" />
             Nearby Hospital Finder
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleAddTool('update_vad_options')} className="text-xs">
+            <MicIcon className="w-3 h-3 mr-2" />
+            Update VAD Options
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -586,6 +620,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                 selectedToolType === 'handoff' ? 'Handoff Agent' : 
                 selectedToolType === 'transfer_call' ? 'Transfer Call' : 
                 selectedToolType === 'ivr_navigator' ? 'IVR Navigator' :
+                selectedToolType === 'update_vad_options' ? 'Update VAD Options' :
                 selectedToolType === 'nearby_location_finder' ? 'Nearby Hospital Finder' :
                 'Custom Tool'
               }
