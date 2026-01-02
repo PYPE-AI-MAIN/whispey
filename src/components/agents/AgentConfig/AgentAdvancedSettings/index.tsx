@@ -209,8 +209,6 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
 
         <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
 
-        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
-
         {/* Fillers Words & Natural Speech */}
         <Collapsible open={openSections.fillers} onOpenChange={() => toggleSection('fillers')}>
           <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
