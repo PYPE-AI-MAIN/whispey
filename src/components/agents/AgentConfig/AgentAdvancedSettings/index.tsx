@@ -46,7 +46,7 @@ interface AgentAdvancedSettingsProps {
       tools: {
         tools: Array<{
           id: string
-          type: 'end_call' | 'handoff' | 'custom_function' | 'transfer_call' | 'ivr_navigator' | 'nearby_location_finder'
+          type: 'end_call' | 'handoff' | 'custom_function' | 'transfer_call' | 'ivr_navigator' | 'nearby_location_finder' | 'update_vad_options'
           name: string
           config: any
         }>
@@ -206,6 +206,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             />
           </CollapsibleContent>
         </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
 
         <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
 
