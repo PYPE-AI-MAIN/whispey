@@ -11,6 +11,24 @@ class ModelPricingCalculator:
         # Updated pricing as of January 2025 (per 1M tokens unless specified)
         self.pricing_database = {
             # OpenAI Models
+            'gpt-5': {
+                'provider': 'openai',
+                'input_cost_per_1m': 1.25,   # $1.25 per 1M input tokens
+                'output_cost_per_1m': 10.00,  # $10.00 per 1M output tokens
+                'type': 'llm'
+            },
+            'gpt-5-mini': {
+                'provider': 'openai',
+                'input_cost_per_1m': 0.25,   # $0.25 per 1M input tokens
+                'output_cost_per_1m': 2.00,   # $2.00 per 1M output tokens
+                'type': 'llm'
+            },
+            'gpt-5-nano': {
+                'provider': 'openai',
+                'input_cost_per_1m': 0.05,   # $0.05 per 1M input tokens
+                'output_cost_per_1m': 0.40,   # $0.40 per 1M output tokens
+                'type': 'llm'
+            },
             'gpt-4o': {
                 'provider': 'openai',
                 'input_cost_per_1m': 2.50,   # $2.50 per 1M input tokens

@@ -74,6 +74,9 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-emerald-500',
     type: 'direct',
     models: [
+      { value: 'gpt-5', label: 'GPT 5' },
+      { value: 'gpt-5-mini', label: 'GPT 5 Mini' },
+      { value: 'gpt-5-nano', label: 'GPT 5 Nano' },
       { value: 'gpt-4.1', label: 'GPT 4.1' },
       { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini' },
       { value: 'gpt-4.1-nano', label: 'GPT 4.1 Nano' },
@@ -101,6 +104,9 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-blue-500',
     type: 'config',
     models: [
+      { value: 'gpt-5', label: 'GPT 5' },
+      { value: 'gpt-5-mini', label: 'GPT 5 Mini' },
+      { value: 'gpt-5-nano', label: 'GPT 5 Nano' },
       { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini' },
       { value: 'gpt-4o', label: 'GPT 4o' },
       { value: 'gpt-4o-mini', label: 'GPT 4o Mini' },
@@ -250,16 +256,28 @@ const getFlattenedMenuItems = () => {
   // Mobile detection
   const { isMobile } = useMobile(768)
 
+  const isGPT5Model = (modelValue: string): boolean => {
+    return modelValue === 'gpt-5' || modelValue === 'gpt-5-mini' || modelValue === 'gpt-5-nano'
+  }
+
   useEffect(() => {
     setTempAzureConfig(azureConfig)
   }, [azureConfig])
+
+  // Set temperature to 1 for GPT-5 models when they're selected
+  useEffect(() => {
+    if (isGPT5Model(selectedModel) && temperature !== 1) {
+      onTemperatureChange(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModel, temperature])
 
   const currentProvider = modelProviders[selectedProvider]
   const currentModel = currentProvider?.type === 'grouped'
     ? currentProvider.groups?.flatMap(g => g.models).find(m => m.value === selectedModel)
     : currentProvider?.models?.find(m => m.value === selectedModel)
 
-    const handleProviderSelect = (providerKey: string) => {
+  const handleProviderSelect = (providerKey: string) => {
       if (DISABLE_SETTINGS) return
       
       const provider = modelProviders[providerKey]
@@ -274,11 +292,19 @@ const getFlattenedMenuItems = () => {
         // Set a default Azure model when switching to Azure
         const defaultAzureModel = provider.models?.[0]?.value || 'gpt-4o'
         onModelChange(defaultAzureModel)
+        // GPT-5 models only support temperature of 1
+        if (isGPT5Model(defaultAzureModel)) {
+          onTemperatureChange(1)
+        }
         setIsAzureDialogOpen(true)
       } else if (provider.type === 'direct' && provider.models && provider.models.length > 0) {
         const firstModel = provider.models[0].value
         onProviderChange(providerKey)
         onModelChange(firstModel)
+        // GPT-5 models only support temperature of 1
+        if (isGPT5Model(firstModel)) {
+          onTemperatureChange(1)
+        }
       }
       setIsOpen(false)
     }
@@ -292,6 +318,12 @@ const getFlattenedMenuItems = () => {
     
     onProviderChange(providerKey)
     onModelChange(modelValue)
+    
+    // GPT-5 models only support temperature of 1
+    if (isGPT5Model(modelValue)) {
+      onTemperatureChange(1)
+    }
+    
     setIsOpen(false)
   }
 
@@ -583,25 +615,31 @@ const getFlattenedMenuItems = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Temperature</h4>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">Controls response creativity</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    {isGPT5Model(selectedModel) 
+                      ? 'GPT-5 models only support temperature of 1' 
+                      : 'Controls response creativity'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2">
                   <Badge variant="outline" className="font-mono text-xs border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300">
                     {temperature.toFixed(2)}
                   </Badge>
-                  <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hidden sm:inline-flex">
-                    {getTemperatureLabel(temperature)}
-                  </Badge>
+                  {!isGPT5Model(selectedModel) && (
+                    <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hidden sm:inline-flex">
+                      {getTemperatureLabel(temperature)}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <Slider
-                value={[temperature]}
-                onValueChange={DISABLE_SETTINGS ? () => {} : (value) => onTemperatureChange(value[0])}
+                value={[isGPT5Model(selectedModel) ? 1 : temperature]}
+                onValueChange={DISABLE_SETTINGS || isGPT5Model(selectedModel) ? () => {} : (value) => onTemperatureChange(value[0])}
                 max={1}
                 min={0}
                 step={0.01}
-                className={`w-full ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={DISABLE_SETTINGS}
+                className={`w-full ${DISABLE_SETTINGS || isGPT5Model(selectedModel) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={DISABLE_SETTINGS || isGPT5Model(selectedModel)}
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
                 <span>Focused</span>
