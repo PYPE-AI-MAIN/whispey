@@ -56,6 +56,10 @@ import { supabase } from '@/lib/supabase'
 import Papa from 'papaparse'
 import { useTheme } from 'next-themes'
 import { useMobile } from '@/hooks/use-mobile'
+import { MetricGroupTabs } from './MetricGroupTabs'
+import { MetricGroupManager } from './MetricGroupManager'
+import { MetricGroupService } from '@/services/metricGroupService'
+import { MetricGroup, METRIC_IDS, CHART_IDS } from '@/types/metricGroups'
 
 interface OverviewProps {
   project: any
@@ -66,7 +70,7 @@ interface OverviewProps {
   }
   quickFilter?: string
   isCustomRange?: boolean
-  isLoading?: boolean // New prop from parent
+  isLoading?: boolean
 }
 
 const ICON_COMPONENTS = {
@@ -104,8 +108,8 @@ const AVAILABLE_COLUMNS = [
 // Mobile-responsive skeleton components
 function MetricsGridSkeleton({ role, isMobile }: { role: string | null; isMobile: boolean }) {
   const getVisibleCardCount = () => {
-    if (role === 'user') return 3 // Hide cost and billing duration cards for users
-    return 6 // Show all cards for other roles
+    if (role === 'user') return 3
+    return 6
   }
 
   return (
@@ -177,10 +181,16 @@ const Overview: React.FC<OverviewProps> = ({
   const [loadingCustomTotals, setLoadingCustomTotals] = useState(false)
   const [roleLoading, setRoleLoading] = useState(true)
 
+  // Metric Groups State
+  const [metricGroups, setMetricGroups] = useState<MetricGroup[]>([])
+  const [activeGroupId, setActiveGroupId] = useState<string | 'all'>('all')
+  const [showGroupManager, setShowGroupManager] = useState(false)
+  const [loadingGroups, setLoadingGroups] = useState(false)
+
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
-  // Data fetching - only run when we have agent data
+  // Data fetching
   const { data: analytics, loading: analyticsLoading, error } = useOverviewQuery({
     agentId: agent?.id,
     dateFrom: dateRange.from,
@@ -211,12 +221,32 @@ const Overview: React.FC<OverviewProps> = ({
       }
       getUserRole()
     } else if (parentLoading) {
-      setRoleLoading(true) // Keep role loading while parent loads
+      setRoleLoading(true)
     } else {
       setRoleLoading(false)
       setRole('user')
     }
   }, [userEmail, project?.id, parentLoading])
+
+  // Load metric groups
+  const loadMetricGroups = async () => {
+    if (!project?.id || !agent?.id || !userEmail) return
+    setLoadingGroups(true)
+    try {
+      const groups = await MetricGroupService.getMetricGroups(project.id, agent.id, userEmail)
+      setMetricGroups(groups)
+    } catch (error) {
+      console.error('Failed to load metric groups:', error)
+    } finally {
+      setLoadingGroups(false)
+    }
+  }
+
+  useEffect(() => {
+    if (role !== null && !roleLoading && !parentLoading) {
+      loadMetricGroups()
+    }
+  }, [role, roleLoading, parentLoading, project?.id, agent?.id, userEmail])
 
   const loadCustomTotals = async () => {
     if (!project?.id || !agent?.id) return
@@ -255,7 +285,73 @@ const Overview: React.FC<OverviewProps> = ({
     run()
   }, [customTotals, dateRange.from, dateRange.to, roleLoading, parentLoading, agent?.id])
 
-  // Build PostgREST-friendly filters and OR string to mirror SQL logic
+  // Metric Group Handlers
+  const handleSaveMetricGroup = async (group: Omit<MetricGroup, 'id' | 'created_at' | 'updated_at'>) => {
+    const result = await MetricGroupService.createMetricGroup(group)
+    
+    if (result.success) {
+      await loadMetricGroups()
+    } else {
+      alert(`Failed to create group: ${result.error}`)
+    }
+  }
+
+  const handleUpdateMetricGroup = async (id: string, updates: Partial<MetricGroup>) => {
+    const result = await MetricGroupService.updateMetricGroup(id, updates)
+    if (result.success) {
+      await loadMetricGroups()
+    } else {
+      alert(`Failed to update group: ${result.error}`)
+    }
+  }
+
+  const handleDeleteMetricGroup = async (id: string) => {
+    if (!project?.id || !agent?.id || !userEmail) return
+    const result = await MetricGroupService.deleteMetricGroup(id, project.id, agent.id, userEmail)
+    if (result.success) {
+      await loadMetricGroups()
+      if (activeGroupId === id) {
+        setActiveGroupId('all')
+      }
+    } else {
+      alert(`Failed to delete group: ${result.error}`)
+    }
+  }
+
+  // Filter metrics based on active group
+  const visibleMetricIds = useMemo(() => {
+    if (activeGroupId === 'all') {
+      // Show all metrics
+      const baseMetrics = Object.values(METRIC_IDS)
+      const customMetricIds = customTotals.map(ct => `custom_${ct.id}`)
+      return [...baseMetrics, ...customMetricIds]
+    }
+
+    const activeGroup = metricGroups.find(g => g.id === activeGroupId)
+    return activeGroup?.metric_ids || []
+  }, [activeGroupId, metricGroups, customTotals])
+
+  const visibleChartIds = useMemo(() => {
+      if (activeGroupId === 'all') {
+        // Show all charts
+        return Object.values(CHART_IDS)
+      }
+
+      const activeGroup = metricGroups.find(g => g.id === activeGroupId)
+      return activeGroup?.chart_ids || []
+    }, [activeGroupId, metricGroups])
+
+    // Check if a chart should be visible
+    const isChartVisible = (chartId: string) => {
+      return visibleChartIds.includes(chartId)
+    }
+
+  // Check if a metric should be visible
+  const isMetricVisible = (metricId: string) => {
+    return visibleMetricIds.includes(metricId)
+  }
+
+  // Build filters for download (same as before)
   const buildFiltersForDownload = (
     config: CustomTotalConfig,
     agentId: string,
@@ -264,7 +360,6 @@ const Overview: React.FC<OverviewProps> = ({
   ) => {
     const andFilters: { column: string; operator: string; value: any }[] = []
 
-    // Always constrain by agent and date range (ANDed)
     andFilters.push({ column: 'agent_id', operator: 'eq', value: agentId })
     if (dateFrom) andFilters.push({ column: 'call_started_at', operator: 'gte', value: `${dateFrom} 00:00:00` })
     if (dateTo) andFilters.push({ column: 'call_started_at', operator: 'lte', value: `${dateTo} 23:59:59.999` })
@@ -274,14 +369,12 @@ const Overview: React.FC<OverviewProps> = ({
       return `${col}${forText ? '->>' : '->'}${jsonField}`
     }
 
-    // COUNT/COUNT_DISTINCT existence checks when targeting JSON field, to match SQL
     if ((config.aggregation === 'COUNT' || (config.aggregation === 'COUNT_DISTINCT' && !!config.jsonField)) && config.jsonField) {
       const existsCol = getColumnName(config.column, config.jsonField, true)
       andFilters.push({ column: existsCol, operator: 'not.is', value: null })
       andFilters.push({ column: existsCol, operator: 'neq', value: '' })
     }
 
-    // Build filter group based on filterLogic
     const isTextOp = (op: string) => ['contains', 'json_contains', 'equals', 'json_equals', 'starts_with'].includes(op)
 
     const toSimpleCond = (f: CustomTotalConfig['filters'][number]) => {
@@ -325,7 +418,6 @@ const Overview: React.FC<OverviewProps> = ({
       }).filter(Boolean)
       orString = parts.join(',') || null
     } else {
-      // AND logic: merge into andFilters, expanding json_exists into two filters
       for (const f of filters) {
         if (f.operator === 'json_exists') {
           andFilters.push({ column: f.column, operator: 'not.is', value: null })
@@ -509,7 +601,6 @@ const Overview: React.FC<OverviewProps> = ({
     }
   }
 
-  // Get theme-aware colors
   const getChartColors = () => {
     const isDark = theme === 'dark'
     return {
@@ -525,7 +616,6 @@ const Overview: React.FC<OverviewProps> = ({
 
   const colors = getChartColors()
 
-  // Prepare chart data
   const successFailureData = (analytics?.successfulCalls !== undefined && analytics?.totalCalls !== undefined) ? [
     { name: 'Success', value: analytics.successfulCalls, color: colors.success },
     { name: 'Failed', value: analytics.totalCalls - analytics.successfulCalls, color: colors.danger }
@@ -535,7 +625,6 @@ const Overview: React.FC<OverviewProps> = ({
     ? (analytics.successfulCalls / analytics.totalCalls) * 100 
     : 0
 
-  // Show skeleton while parent is loading, role is loading, or analytics is loading
   if (parentLoading || roleLoading || analyticsLoading) {
     return (
       <div className="h-full bg-gray-50 dark:bg-gray-900">
@@ -567,7 +656,6 @@ const Overview: React.FC<OverviewProps> = ({
     )
   }
 
-  // No analytics data available
   if (!analytics) {
     return (
       <div className="h-full bg-gray-50 dark:bg-gray-900">
@@ -592,106 +680,121 @@ const Overview: React.FC<OverviewProps> = ({
 
   return (
     <div className="h-full bg-gray-50 dark:bg-gray-900">
+      {/* Metric Group Tabs */}
+      <MetricGroupTabs
+        groups={metricGroups}
+        activeGroupId={activeGroupId}
+        onGroupChange={setActiveGroupId}
+        onManageGroups={() => setShowGroupManager(true)}
+        customTotalsCount={customTotals.length}
+      />
+
       <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-8 space-y-8'}`}>
-        {/* Metrics Grid - Responsive layout */}
+        {/* Metrics Grid - Filtered by active group */}
         <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-6 gap-4'}`}>
           {/* Total Calls */}
-          <div className="group">
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className={isMobile ? 'p-3' : 'p-5'}>
-                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                  <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
-                    <Phone weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
+          {isMetricVisible(METRIC_IDS.TOTAL_CALLS) && (
+            <div className="group">
+              <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
+                      <Phone weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Total Calls</h3>
-                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalCalls?.toLocaleString() || '0'}</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>All time</p>
+                  <div className="space-y-1">
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Total Calls</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalCalls?.toLocaleString() || '0'}</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>All time</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Total Minutes */}
-          <div className="group">
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className={isMobile ? 'p-3' : 'p-5'}>
-                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                  <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
-                    <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
-                  </div>
-                  {!isMobile && (
-                    <div className="text-right">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                        {analytics?.totalCalls && analytics?.totalMinutes ? Math.round(analytics.totalMinutes / analytics.totalCalls) : 0}m avg
-                      </span>
+          {isMetricVisible(METRIC_IDS.TOTAL_MINUTES) && (
+            <div className="group">
+              <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
+                      <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
                     </div>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Total Minutes</h3>
-                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalMinutes?.toLocaleString() || '0'}</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
-                    {isMobile && analytics?.totalCalls && analytics?.totalMinutes 
-                      ? `${Math.round(analytics.totalMinutes / analytics.totalCalls)}m avg`
-                      : 'Duration'
-                    }
-                  </p>
+                    {!isMobile && (
+                      <div className="text-right">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                          {analytics?.totalCalls && analytics?.totalMinutes ? Math.round(analytics.totalMinutes / analytics.totalCalls) : 0}m avg
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Total Minutes</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>{analytics?.totalMinutes?.toLocaleString() || '0'}</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
+                      {isMobile && analytics?.totalCalls && analytics?.totalMinutes 
+                        ? `${Math.round(analytics.totalMinutes / analytics.totalCalls)}m avg`
+                        : 'Duration'
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
           
           {/* Total Billing Minutes */}
-          <div className="group">
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className={isMobile ? 'p-3' : 'p-5'}>
-                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                  <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
-                    <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
-                  </div>
-                  {!isMobile && (
-                    <div className="text-right">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                        {analytics?.totalCalls && analytics?.totalBillingSeconds ? (() => {
-                          const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
-                          const minutes = Math.floor(avgSeconds / 60);
-                          const seconds = avgSeconds % 60;
-                          return `${minutes}m ${seconds}s avg`;
-                        })() : '0m 0s avg'}
-                      </span>
+          {isMetricVisible(METRIC_IDS.TOTAL_BILLING_MINUTES) && (
+            <div className="group">
+              <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800`}>
+                      <Clock weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-emerald-600 dark:text-emerald-400`} />
                     </div>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}> Billing Minutes</h3>
-                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>
-                    {analytics?.totalBillingSeconds ? (() => {
-                      const totalSeconds = analytics.totalBillingSeconds;
-                      const minutes = Math.floor(totalSeconds / 60);
-                      const seconds = totalSeconds % 60;
-                      return `${minutes}m ${seconds}s`;
-                    })() : '0m 0s'}
-                  </p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
-                    {isMobile && analytics?.totalCalls && analytics?.totalBillingSeconds 
-                      ? (() => {
-                          const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
-                          const minutes = Math.floor(avgSeconds / 60);
-                          const seconds = avgSeconds % 60;
-                          return `${minutes}m ${seconds}s avg`;
-                        })()
-                      : 'Duration'
-                    }
-                  </p>
+                    {!isMobile && (
+                      <div className="text-right">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
+                          {analytics?.totalCalls && analytics?.totalBillingSeconds ? (() => {
+                            const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
+                            const minutes = Math.floor(avgSeconds / 60);
+                            const seconds = avgSeconds % 60;
+                            return `${minutes}m ${seconds}s avg`;
+                          })() : '0m 0s avg'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Billing Minutes</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>
+                      {analytics?.totalBillingSeconds ? (() => {
+                        const totalSeconds = analytics.totalBillingSeconds;
+                        const minutes = Math.floor(totalSeconds / 60);
+                        const seconds = totalSeconds % 60;
+                        return `${minutes}m ${seconds}s`;
+                      })() : '0m 0s'}
+                    </p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
+                      {isMobile && analytics?.totalCalls && analytics?.totalBillingSeconds 
+                        ? (() => {
+                            const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
+                            const minutes = Math.floor(avgSeconds / 60);
+                            const seconds = avgSeconds % 60;
+                            return `${minutes}m ${seconds}s avg`;
+                          })()
+                        : 'Duration'
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Total Cost - Only show if user has permission */}
-          {role !== 'user' && (
+          {/* Total Cost */}
+          {isMetricVisible(METRIC_IDS.TOTAL_COST) && role !== 'user' && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
@@ -715,8 +818,8 @@ const Overview: React.FC<OverviewProps> = ({
             </div>
           )}
 
-          {/* Average Latency - Only show if user has permission */}
-          {role !== 'user' && (
+          {/* Average Latency */}
+          {isMetricVisible(METRIC_IDS.AVG_LATENCY) && role !== 'user' && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
@@ -744,59 +847,65 @@ const Overview: React.FC<OverviewProps> = ({
           )}
 
           {/* Successful Calls */}
-          <div className="group">
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className={isMobile ? 'p-3' : 'p-5'}>
-                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                  <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
-                    <CheckCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
-                  </div>
-                  <div className="text-right">
-                    <div className={`flex items-center gap-1 bg-green-50 dark:bg-green-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-green-100 dark:border-green-800`}>
-                      <ArrowUp weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-green-600 dark:text-green-400`} />
-                      <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-green-600 dark:text-green-400`}>
-                        {analytics ? successRate.toFixed(1) : '0.0'}%
-                      </span>
+          {isMetricVisible(METRIC_IDS.SUCCESSFUL_CALLS) && (
+            <div className="group">
+              <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
+                      <CheckCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
+                    </div>
+                    <div className="text-right">
+                      <div className={`flex items-center gap-1 bg-green-50 dark:bg-green-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-green-100 dark:border-green-800`}>
+                        <ArrowUp weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-green-600 dark:text-green-400`} />
+                        <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-green-600 dark:text-green-400`}>
+                          {analytics ? successRate.toFixed(1) : '0.0'}%
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Successful</h3>
-                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-green-600 dark:text-green-400 tracking-tight`}>{analytics?.successfulCalls?.toLocaleString() || '0'}</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Completed calls</p>
+                  <div className="space-y-1">
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Successful</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-green-600 dark:text-green-400 tracking-tight`}>{analytics?.successfulCalls?.toLocaleString() || '0'}</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Completed calls</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Failed Calls */}
-          <div className="group">
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
-              <div className={isMobile ? 'p-3' : 'p-5'}>
-                <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                  <div className={`p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800`}>
-                    <XCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-red-600 dark:text-red-400`} />
-                  </div>
-                  <div className="text-right">
-                    <div className={`flex items-center gap-1 bg-red-50 dark:bg-red-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-red-100 dark:border-red-800`}>
-                      <ArrowDown weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-red-600 dark:text-red-400`} />
-                      <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-red-600 dark:text-red-400`}>
-                        {analytics ? (100 - successRate).toFixed(1) : '0.0'}%
-                      </span>
+          {isMetricVisible(METRIC_IDS.FAILED_CALLS) && (
+            <div className="group">
+              <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
+                <div className={isMobile ? 'p-3' : 'p-5'}>
+                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800`}>
+                      <XCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-red-600 dark:text-red-400`} />
+                    </div>
+                    <div className="text-right">
+                      <div className={`flex items-center gap-1 bg-red-50 dark:bg-red-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-red-100 dark:border-red-800`}>
+                        <ArrowDown weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-red-600 dark:text-red-400`} />
+                        <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-red-600 dark:text-red-400`}>
+                          {analytics ? (100 - successRate).toFixed(1) : '0.0'}%
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Failed</h3>
-                  <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-red-600 dark:text-red-400 tracking-tight`}>{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls).toLocaleString() : '0'}</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Incomplete calls</p>
+                  <div className="space-y-1">
+                    <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Retry</h3>
+                    <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-red-600 dark:text-red-400 tracking-tight`}>{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls).toLocaleString() : '0'}</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>Incomplete calls</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Custom Totals - show loading state per card */}
+          {/* Custom Totals - filtered */}
           {customTotals.map((config) => {
+            if (!isMetricVisible(`custom_${config.id}`)) return null
+            
             const result = customTotalResults.find(r => r.configId === config.id)
             const IconComponent = ICON_COMPONENTS[config.icon as keyof typeof ICON_COMPONENTS] || Users
             const colorClass = COLOR_CLASSES[config.color as keyof typeof COLOR_CLASSES] || COLOR_CLASSES.blue
@@ -870,377 +979,391 @@ const Overview: React.FC<OverviewProps> = ({
           })}
         </div>
 
-        {process.env.NODE_ENV === 'development' && (
-          <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
-            <CardContent className={isMobile ? 'p-3' : 'p-4'}>
-              <div className="text-sm">
-                <strong>Debug - Dynamic Fields:</strong>
-                <div>Metadata: {metadataFields.join(', ') || 'None'}</div>
-                <div>Transcription: {transcriptionFields.join(', ') || 'None'}</div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Show message when no metrics visible */}
+        {activeGroupId !== 'all' && visibleMetricIds.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No metrics in this group. Click "Manage" to add metrics.
+            </p>
+          </div>
         )}
 
-        {/* Chart Grid - Single column on mobile */}
+        {/* Charts - Filtered by active group */}
         <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
           {/* Daily Calls Chart */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
-                    <TrendUp weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
-                  </div>
-                  <div>
-                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Daily Call Volume</h3>
-                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
-                      {isMobile ? 'Trend analysis' : 'Trend analysis over selected period'}
-                    </p>
-                  </div>
-                </div>
-                {!isMobile && (
+          {isChartVisible(CHART_IDS.DAILY_CALLS) && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Peak</div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {analytics?.dailyData && analytics.dailyData.length > 0 
-                          ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
-                          : 0
-                        }
-                      </div>
+                    <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
+                      <TrendUp weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
                     </div>
-                    <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
-                    <div className="text-right">
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg</div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {analytics?.dailyData && analytics.dailyData.length > 0 
-                          ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
-                          : 0
-                        }
-                      </div>
+                    <div>
+                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Daily Call Volume</h3>
+                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
+                        {isMobile ? 'Trend analysis' : 'Trend analysis over selected period'}
+                      </p>
                     </div>
                   </div>
-                )}
+                  {!isMobile && (
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Peak</div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {analytics?.dailyData && analytics.dailyData.length > 0 
+                            ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
+                            : 0
+                          }
+                        </div>
+                      </div>
+                      <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
+                      <div className="text-right">
+                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg</div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {analytics?.dailyData && analytics.dailyData.length > 0 
+                            ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
+                            : 0
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className={isMobile ? 'p-4' : 'p-7'}>
+                <div className={isMobile ? 'h-48' : 'h-80'}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+                      <defs>
+                        <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#007aff" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#007aff" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                        height={40}
+                        tickFormatter={(value) => {
+                          const date = new Date(value)
+                          return `${date.getMonth() + 1}/${date.getDate()}`
+                        }}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                        width={isMobile ? 35 : 45}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: colors.background,
+                          border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                          borderRadius: '12px',
+                          fontSize: isMobile ? '12px' : '13px',
+                          fontWeight: '500',
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                          backdropFilter: 'blur(20px)',
+                          color: theme === 'dark' ? '#f3f4f6' : '#374151'
+                        }}
+                        labelStyle={{ color: theme === 'dark' ? '#f3f4f6' : '#374151', fontWeight: '600' }}
+                        labelFormatter={(value) => {
+                          const date = new Date(value)
+                          return date.toLocaleDateString('en-US', { 
+                            weekday: 'short',
+                            month: 'short', 
+                            day: 'numeric' 
+                          })
+                        }}
+                        formatter={(value) => [`${value}`, 'Calls']}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="calls" 
+                        stroke={colors.primary} 
+                        strokeWidth={isMobile ? 2 : 3}
+                        fill="url(#callsGradient)"
+                        dot={false}
+                        activeDot={{ 
+                          r: isMobile ? 4 : 6, 
+                          fill: colors.primary, 
+                          strokeWidth: 3, 
+                          stroke: colors.background,
+                          filter: 'drop-shadow(0 2px 4px rgba(0, 122, 255, 0.3))'
+                        }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
-            <div className={isMobile ? 'p-4' : 'p-7'}>
-              <div className={isMobile ? 'h-48' : 'h-80'}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                    <defs>
-                      <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#007aff" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#007aff" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                      height={40}
-                      tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return `${date.getMonth() + 1}/${date.getDate()}`
-                      }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                      width={isMobile ? 35 : 45}
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: colors.background,
-                        border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '12px',
-                        fontSize: isMobile ? '12px' : '13px',
-                        fontWeight: '500',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                        backdropFilter: 'blur(20px)',
-                        color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                      }}
-                      labelStyle={{ color: theme === 'dark' ? '#f3f4f6' : '#374151', fontWeight: '600' }}
-                      labelFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString('en-US', { 
-                          weekday: 'short',
-                          month: 'short', 
-                          day: 'numeric' 
-                        })
-                      }}
-                      formatter={(value) => [`${value}`, 'Calls']}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="calls" 
-                      stroke={colors.primary} 
-                      strokeWidth={isMobile ? 2 : 3}
-                      fill="url(#callsGradient)"
-                      dot={false}
-                      activeDot={{ 
-                        r: isMobile ? 4 : 6, 
-                        fill: colors.primary, 
-                        strokeWidth: 3, 
-                        stroke: colors.background,
-                        filter: 'drop-shadow(0 2px 4px rgba(0, 122, 255, 0.3))'
-                      }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Success Analysis Chart - Mobile optimized */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
-                    <Target weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
+          {/* Success Analysis Chart */}
+          {isChartVisible(CHART_IDS.SUCCESS_ANALYSIS) && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
+                      <Target weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
+                    </div>
+                    <div>
+                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Success Analysis</h3>
+                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>Call completion metrics</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Success Analysis</h3>
-                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>Call completion metrics</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400`}>Success Rate</div>
-                  <div className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-green-600 dark:text-green-400`}>{analytics ? successRate.toFixed(1) : '0.0'}%</div>
-                </div>
-              </div>
-            </div>
-            <div className={isMobile ? 'p-4' : 'p-7'}>
-              <div className={`${isMobile ? 'h-48' : 'h-80'} flex items-center justify-center`}>
-                <div className="relative">
-                  <div className={isMobile ? 'w-32 h-32' : 'w-48 h-48'}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={successFailureData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={isMobile ? 35 : 55}
-                          outerRadius={isMobile ? 55 : 85}
-                          paddingAngle={2}
-                          dataKey="value"
-                          strokeWidth={0}
-                          startAngle={90}
-                          endAngle={450}
-                        >
-                          {successFailureData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: colors.background,
-                            border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                            borderRadius: '12px',
-                            fontSize: isMobile ? '12px' : '13px',
-                            fontWeight: '500',
-                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                            backdropFilter: 'blur(20px)',
-                            color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                          }}
-                          formatter={(value, name) => [`${value} calls`, name]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className={`${isMobile ? 'text-xl' : 'text-3xl'} font-light text-gray-900 dark:text-gray-100 mb-1`}>{analytics?.totalCalls || 0}</div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide`}>Total</div>
-                  </div>
-                </div>
-                <div className={`${isMobile ? 'ml-4 space-y-2' : 'ml-8 space-y-3'}`}>
-                  <div className="flex items-center gap-2">
-                    <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.success }}></div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Success</div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.successfulCalls || 0}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.danger }}></div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Failed</div>
-                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
+                  <div className="text-right">
+                    <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400`}>Success Rate</div>
+                    <div className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-green-600 dark:text-green-400`}>{analytics ? successRate.toFixed(1) : '0.0'}%</div>
                   </div>
                 </div>
               </div>
+              <div className={isMobile ? 'p-4' : 'p-7'}>
+                <div className={`${isMobile ? 'h-48' : 'h-80'} flex items-center justify-center`}>
+                  <div className="relative">
+                    <div className={isMobile ? 'w-32 h-32' : 'w-48 h-48'}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={successFailureData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={isMobile ? 35 : 55}
+                            outerRadius={isMobile ? 55 : 85}
+                            paddingAngle={2}
+                            dataKey="value"
+                            strokeWidth={0}
+                            startAngle={90}
+                            endAngle={450}
+                          >
+                            {successFailureData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{
+                              backgroundColor: colors.background,
+                              border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                              borderRadius: '12px',
+                              fontSize: isMobile ? '12px' : '13px',
+                              fontWeight: '500',
+                              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                              backdropFilter: 'blur(20px)',
+                              color: theme === 'dark' ? '#f3f4f6' : '#374151'
+                            }}
+                            formatter={(value, name) => [`${value} calls`, name]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className={`${isMobile ? 'text-xl' : 'text-3xl'} font-light text-gray-900 dark:text-gray-100 mb-1`}>{analytics?.totalCalls || 0}</div>
+                      <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide`}>Total</div>
+                    </div>
+                  </div>
+                  <div className={`${isMobile ? 'ml-4 space-y-2' : 'ml-8 space-y-3'}`}>
+                    <div className="flex items-center gap-2">
+                      <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.success }}></div>
+                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Success</div>
+                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.successfulCalls || 0}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.danger }}></div>
+                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Failed</div>
+                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Daily Minutes Chart */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
-                    <ChartBar weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
-                  </div>
-                  <div>
-                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Usage Minutes</h3>
-                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
-                      {isMobile ? 'Daily duration' : 'Daily conversation duration'}
-                    </p>
+          {isChartVisible(CHART_IDS.DAILY_MINUTES) && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
+              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
+                      <ChartBar weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
+                    </div>
+                    <div>
+                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Usage Minutes</h3>
+                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
+                        {isMobile ? 'Daily duration' : 'Daily conversation duration'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className={isMobile ? 'p-4' : 'p-7'}>
-              <div className={isMobile ? 'h-48' : 'h-80'}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
-                    <defs>
-                      <linearGradient id="minutesGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor={colors.primary} stopOpacity={0.4}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                      height={40}
-                      tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return `${date.getMonth() + 1}/${date.getDate()}`
-                      }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                      width={isMobile ? 35 : 40}
-                      tickFormatter={(value) => `${value}m`}
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: colors.background,
-                        border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '12px',
-                        fontSize: isMobile ? '12px' : '13px',
-                        fontWeight: '500',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                        backdropFilter: 'blur(20px)',
-                        color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                      }}
-                      formatter={(value) => [`${value} min`, 'Duration']}
-                      labelFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString('en-US', { 
-                          weekday: 'short',
-                          month: 'short', 
-                          day: 'numeric' 
-                        })
-                      }}
-                    />
-                    <Bar 
-                      dataKey="minutes" 
-                      fill="url(#minutesGradient)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className={isMobile ? 'p-4' : 'p-7'}>
+                <div className={isMobile ? 'h-48' : 'h-80'}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
+                      <defs>
+                        <linearGradient id="minutesGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor={colors.primary} stopOpacity={0.4}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                        height={40}
+                        tickFormatter={(value) => {
+                          const date = new Date(value)
+                          return `${date.getMonth() + 1}/${date.getDate()}`
+                        }}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                        width={isMobile ? 35 : 40}
+                        tickFormatter={(value) => `${value}m`}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: colors.background,
+                          border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                          borderRadius: '12px',
+                          fontSize: isMobile ? '12px' : '13px',
+                          fontWeight: '500',
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                          backdropFilter: 'blur(20px)',
+                          color: theme === 'dark' ? '#f3f4f6' : '#374151'
+                        }}
+                        formatter={(value) => [`${value} min`, 'Duration']}
+                        labelFormatter={(value) => {
+                          const date = new Date(value)
+                          return date.toLocaleDateString('en-US', { 
+                            weekday: 'short',
+                            month: 'short', 
+                            day: 'numeric' 
+                          })
+                        }}
+                      />
+                      <Bar 
+                        dataKey="minutes" 
+                        fill="url(#minutesGradient)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Average Latency Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800`}>
-                    <Activity weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-orange-600 dark:text-orange-400`} />
-                  </div>
-                  <div>
-                    <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Response Performance</h3>
-                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
-                      {isMobile ? 'Latency metrics' : 'Average latency metrics'}
-                    </p>
+          {isChartVisible(CHART_IDS.AVG_LATENCY) && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800`}>
+                      <Activity weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-orange-600 dark:text-orange-400`} />
+                    </div>
+                    <div>
+                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Response Performance</h3>
+                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
+                        {isMobile ? 'Latency metrics' : 'Average latency metrics'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className={isMobile ? 'p-4' : 'p-7'}>
-              <div className={isMobile ? 'h-48' : 'h-80'}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
-                    <defs>
-                      <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ff9500" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#ff9500" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                      height={40}
-                      tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return `${date.getMonth() + 1}/${date.getDate()}`
-                      }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                      width={isMobile ? 35 : 40}
-                      tickFormatter={(value) => `${value}s`}
-                    />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: colors.background,
-                        border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '12px',
-                        fontSize: isMobile ? '12px' : '13px',
-                        fontWeight: '500',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                        backdropFilter: 'blur(20px)',
-                        color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                      }}
-                      formatter={(value) => [`${value}s`, 'Latency']}
-                      labelFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString('en-US', { 
-                          weekday: 'short',
-                          month: 'short', 
-                          day: 'numeric' 
-                        })
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="avg_latency" 
-                      stroke="#ff9500" 
-                      strokeWidth={isMobile ? 2 : 3}
-                      fill="url(#latencyGradient)"
-                      dot={false}
-                      activeDot={{ 
-                        r: isMobile ? 4 : 6, 
-                        fill: '#ff9500', 
-                        strokeWidth: 3, 
-                        stroke: colors.background,
-                        filter: 'drop-shadow(0 2px 4px rgba(255, 149, 0, 0.3))'
-                      }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className={isMobile ? 'p-4' : 'p-7'}>
+                <div className={isMobile ? 'h-48' : 'h-80'}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
+                      <defs>
+                        <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ff9500" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#ff9500" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                        height={40}
+                        tickFormatter={(value) => {
+                          const date = new Date(value)
+                          return `${date.getMonth() + 1}/${date.getDate()}`
+                        }}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
+                        width={isMobile ? 35 : 40}
+                        tickFormatter={(value) => `${value}s`}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: colors.background,
+                          border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+                          borderRadius: '12px',
+                          fontSize: isMobile ? '12px' : '13px',
+                          fontWeight: '500',
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                          backdropFilter: 'blur(20px)',
+                          color: theme === 'dark' ? '#f3f4f6' : '#374151'
+                        }}
+                        formatter={(value) => [`${value}s`, 'Latency']}
+                        labelFormatter={(value) => {
+                          const date = new Date(value)
+                          return date.toLocaleDateString('en-US', { 
+                            weekday: 'short',
+                            month: 'short', 
+                            day: 'numeric' 
+                          })
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="avg_latency" 
+                        stroke="#ff9500" 
+                        strokeWidth={isMobile ? 2 : 3}
+                        fill="url(#latencyGradient)"
+                        dot={false}
+                        activeDot={{ 
+                          r: isMobile ? 4 : 6, 
+                          fill: '#ff9500', 
+                          strokeWidth: 3, 
+                          stroke: colors.background,
+                          filter: 'drop-shadow(0 2px 4px rgba(255, 149, 0, 0.3))'
+                        }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Chart Analytics Section - Hidden on mobile for better performance */}
+        {/* Show message when no charts or metrics visible */}
+        {activeGroupId !== 'all' && visibleChartIds.length === 0 && visibleMetricIds.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No metrics or charts in this group. Click "Manage" to add them.
+            </p>
+          </div>
+        )}
+
+        {/* Chart Analytics Section */}
         {!isMobile && (
           <ChartProvider>
             <div className="space-y-6">
@@ -1253,7 +1376,6 @@ const Overview: React.FC<OverviewProps> = ({
                 fieldsLoading={fieldsLoading}
               />
 
-              {/* Floating Action Menu - only show when we have required data */}
               {userEmail && !fieldsLoading && agent?.id && project?.id && (
                 <FloatingActionMenu
                   metadataFields={metadataFields}
@@ -1272,6 +1394,23 @@ const Overview: React.FC<OverviewProps> = ({
           </ChartProvider>
         )}
       </div>
+
+      {/* Metric Group Manager Modal */}
+      {userEmail && project?.id && agent?.id && (
+        <MetricGroupManager
+          open={showGroupManager}
+          onOpenChange={setShowGroupManager}
+          groups={metricGroups}
+          customTotals={customTotals}
+          projectId={project.id}
+          agentId={agent.id}
+          userEmail={userEmail}
+          role={role}
+          onSave={handleSaveMetricGroup}
+          onUpdate={handleUpdateMetricGroup}
+          onDelete={handleDeleteMetricGroup}
+        />
+      )}
     </div>
   )
 }
