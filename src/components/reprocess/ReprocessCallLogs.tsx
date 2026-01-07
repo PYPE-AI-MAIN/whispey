@@ -398,10 +398,8 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                           onCheckedChange={(checked) => {
                             if (checked) {
                               setTranscriptionFields([...transcriptionFields, field])
-                              console.log("transcriptionFields",transcriptionFields)
                             } else {
                               setTranscriptionFields(transcriptionFields.filter(f => f !== field))
-                              console.log("transcriptionFields",transcriptionFields)
                             }
                           }}
                           disabled={loading || success}
@@ -456,10 +454,8 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                           onCheckedChange={(checked) => {
                             if (checked) {
                               setMetricsFields([...metricsFields, field])
-                              console.log("metricsFields",metricsFields)
                             } else {
                               setMetricsFields(metricsFields.filter(f => f !== field))
-                              console.log("metricsFields",metricsFields)
                             }
                           }}
                           disabled={loading || success}
