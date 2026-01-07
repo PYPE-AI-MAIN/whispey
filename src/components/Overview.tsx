@@ -14,11 +14,8 @@ import {
   XCircle,
   ChartBar,
   Activity,
-  Target,
   Users,
   Percent,
-  ArrowUp,
-  ArrowDown,
 } from 'phosphor-react'
 
 import { 
@@ -616,11 +613,6 @@ const Overview: React.FC<OverviewProps> = ({
 
   const colors = getChartColors()
 
-  const successFailureData = (analytics?.successfulCalls !== undefined && analytics?.totalCalls !== undefined) ? [
-    { name: 'Success', value: analytics.successfulCalls, color: colors.success },
-    { name: 'Failed', value: analytics.totalCalls - analytics.successfulCalls, color: colors.danger }
-  ] : []
-
   const successRate = (analytics?.totalCalls && analytics?.successfulCalls !== undefined && analytics.totalCalls > 0) 
     ? (analytics.successfulCalls / analytics.totalCalls) * 100 
     : 0
@@ -851,17 +843,9 @@ const Overview: React.FC<OverviewProps> = ({
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
-                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                  <div className={`flex items-start ${isMobile ? 'mb-2' : 'mb-4'}`}>
                     <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
                       <CheckCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
-                    </div>
-                    <div className="text-right">
-                      <div className={`flex items-center gap-1 bg-green-50 dark:bg-green-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-green-100 dark:border-green-800`}>
-                        <ArrowUp weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-green-600 dark:text-green-400`} />
-                        <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-green-600 dark:text-green-400`}>
-                          {analytics ? successRate.toFixed(1) : '0.0'}%
-                        </span>
-                      </div>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -879,17 +863,9 @@ const Overview: React.FC<OverviewProps> = ({
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
-                  <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
+                  <div className={`flex items-start ${isMobile ? 'mb-2' : 'mb-4'}`}>
                     <div className={`p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800`}>
                       <XCircle weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-red-600 dark:text-red-400`} />
-                    </div>
-                    <div className="text-right">
-                      <div className={`flex items-center gap-1 bg-red-50 dark:bg-red-900/20 ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-1'} rounded-md border border-red-100 dark:border-red-800`}>
-                        <ArrowDown weight="bold" className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-red-600 dark:text-red-400`} />
-                        <span className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-red-600 dark:text-red-400`}>
-                          {analytics ? (100 - successRate).toFixed(1) : '0.0'}%
-                        </span>
-                      </div>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -1098,86 +1074,6 @@ const Overview: React.FC<OverviewProps> = ({
                       />
                     </LineChart>
                   </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Success Analysis Chart */}
-          {isChartVisible(CHART_IDS.SUCCESS_ANALYSIS) && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-800`}>
-                      <Target weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-green-600 dark:text-green-400`} />
-                    </div>
-                    <div>
-                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Success Analysis</h3>
-                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>Call completion metrics</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400`}>Success Rate</div>
-                    <div className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-green-600 dark:text-green-400`}>{analytics ? successRate.toFixed(1) : '0.0'}%</div>
-                  </div>
-                </div>
-              </div>
-              <div className={isMobile ? 'p-4' : 'p-7'}>
-                <div className={`${isMobile ? 'h-48' : 'h-80'} flex items-center justify-center`}>
-                  <div className="relative">
-                    <div className={isMobile ? 'w-32 h-32' : 'w-48 h-48'}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={successFailureData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={isMobile ? 35 : 55}
-                            outerRadius={isMobile ? 55 : 85}
-                            paddingAngle={2}
-                            dataKey="value"
-                            strokeWidth={0}
-                            startAngle={90}
-                            endAngle={450}
-                          >
-                            {successFailureData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{
-                              backgroundColor: colors.background,
-                              border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                              borderRadius: '12px',
-                              fontSize: isMobile ? '12px' : '13px',
-                              fontWeight: '500',
-                              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                              backdropFilter: 'blur(20px)',
-                              color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                            }}
-                            formatter={(value, name) => [`${value} calls`, name]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className={`${isMobile ? 'text-xl' : 'text-3xl'} font-light text-gray-900 dark:text-gray-100 mb-1`}>{analytics?.totalCalls || 0}</div>
-                      <div className={`${isMobile ? 'text-xs' : 'text-xs'} font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide`}>Total</div>
-                    </div>
-                  </div>
-                  <div className={`${isMobile ? 'ml-4 space-y-2' : 'ml-8 space-y-3'}`}>
-                    <div className="flex items-center gap-2">
-                      <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.success }}></div>
-                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Success</div>
-                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.successfulCalls || 0}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className={`${isMobile ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full`} style={{ backgroundColor: colors.danger }}></div>
-                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-gray-700 dark:text-gray-300`}>Failed</div>
-                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-light text-gray-500 dark:text-gray-400`}>{analytics?.totalCalls && analytics?.successfulCalls !== undefined ? (analytics.totalCalls - analytics.successfulCalls) : 0}</div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
