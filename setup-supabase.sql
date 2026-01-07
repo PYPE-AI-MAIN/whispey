@@ -1,3 +1,4 @@
+-- setup-supabase.sql
 -- Whispey Database Schema
 -- Copy and paste this entire file into Supabase SQL Editor
 -- This script is idempotent - can be run multiple times safely
@@ -35,6 +36,7 @@ DROP TABLE IF EXISTS public.usd_to_inr_rate CASCADE;
 DROP TABLE IF EXISTS public.gpt_api_pricing_inr CASCADE;
 DROP TABLE IF EXISTS public.gpt_api_pricing CASCADE;
 DROP TABLE IF EXISTS public.audio_api_pricing CASCADE;
+DROP TABLE IF EXISTS public.pype_voice_metric_groups CASCADE;
 
 -- ==============================================
 -- TABLES
@@ -214,6 +216,19 @@ CREATE TABLE public.pype_voice_custom_totals_configs (
     icon varchar,
     color varchar,
     created_by varchar,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE public.pype_voice_metric_groups (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    name varchar(100) NOT NULL,
+    project_id uuid NOT NULL,
+    agent_id uuid NOT NULL,
+    user_email varchar(255) NOT NULL,
+    metric_ids text[] NOT NULL DEFAULT '{}',
+    chart_ids text[] NOT NULL DEFAULT '{}',
+    "order" integer NOT NULL DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -402,7 +417,41 @@ BEGIN
             ADD CONSTRAINT fk_custom_totals_agent_id 
             FOREIGN KEY (agent_id) REFERENCES public.pype_voice_agents(id) ON DELETE CASCADE;
     END IF;
+
+    -- Add foreign key for metric_groups -> projects
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_metric_groups_project_id' 
+        AND table_name = 'pype_voice_metric_groups'
+    ) THEN
+        ALTER TABLE public.pype_voice_metric_groups 
+            ADD CONSTRAINT fk_metric_groups_project_id 
+            FOREIGN KEY (project_id) REFERENCES public.pype_voice_projects(id) ON DELETE CASCADE;
+    END IF;
+
+    -- Add foreign key for metric_groups -> agents
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_metric_groups_agent_id' 
+        AND table_name = 'pype_voice_metric_groups'
+    ) THEN
+        ALTER TABLE public.pype_voice_metric_groups 
+            ADD CONSTRAINT fk_metric_groups_agent_id 
+            FOREIGN KEY (agent_id) REFERENCES public.pype_voice_agents(id) ON DELETE CASCADE;
+    END IF;
+
+    -- Add unique constraint for metric groups
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'unique_metric_group_name_per_agent_user' 
+        AND table_name = 'pype_voice_metric_groups'
+    ) THEN
+        ALTER TABLE public.pype_voice_metric_groups 
+            ADD CONSTRAINT unique_metric_group_name_per_agent_user 
+            UNIQUE (agent_id, user_email, name);
+    END IF;
 END $$;
+
 
 -- ==============================================
 -- ROW LEVEL SECURITY
@@ -454,6 +503,15 @@ BEGIN
         AND relrowsecurity = true
     ) THEN
         ALTER TABLE public.pype_voice_call_logs_with_context ENABLE ROW LEVEL SECURITY;
+    END IF;
+
+    -- Enable RLS on metric_groups
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class 
+        WHERE relname = 'pype_voice_metric_groups' 
+        AND relrowsecurity = true
+    ) THEN
+        ALTER TABLE public.pype_voice_metric_groups ENABLE ROW LEVEL SECURITY;
     END IF;
 END $$;
 
