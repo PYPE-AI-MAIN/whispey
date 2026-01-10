@@ -111,9 +111,17 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
           ? availableMetadata
           : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col))
         
-        const transcriptionMetrics = prev.transcription_metrics.length === 0 && dynamicColumnsKey.length > 0
-          ? dynamicColumnsKey
-          : prev.transcription_metrics.filter((col) => dynamicColumnsKey.includes(col))
+        // Merge both data from calls AND agent config for backward compatibility
+        // This ensures:
+        // 1. Fields like final_disposition from actual data appear
+        // 2. Fields from agent config are still available (backward compatible)
+        const allAvailableTranscriptionMetrics = Array.from(
+          new Set([...dynamicColumns.transcription_metrics, ...dynamicColumnsKey])
+        ).sort()
+        
+        const transcriptionMetrics = prev.transcription_metrics.length === 0 && allAvailableTranscriptionMetrics.length > 0
+          ? allAvailableTranscriptionMetrics
+          : prev.transcription_metrics.filter((col) => allAvailableTranscriptionMetrics.includes(col))
         
         const metrics = prev.metrics.length === 0 && dynamicColumns.metrics.length > 0
           ? dynamicColumns.metrics
@@ -139,10 +147,20 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
     }
   }, [role, dynamicColumns, dynamicColumnsKey, filteredBasicColumns, setVisibleColumns])
 
+  // Merge transcription_metrics from both data and agent config for backward compatibility
+  const mergedTranscriptionMetrics = useMemo(() => {
+    return Array.from(
+      new Set([...dynamicColumns.transcription_metrics, ...dynamicColumnsKey])
+    ).sort()
+  }, [dynamicColumns.transcription_metrics, dynamicColumnsKey])
+
   return {
     visibleColumns,
     setVisibleColumns,
-    dynamicColumns,
+    dynamicColumns: {
+      ...dynamicColumns,
+      transcription_metrics: mergedTranscriptionMetrics
+    },
     dynamicColumnsKey,
     filteredBasicColumns
   }
