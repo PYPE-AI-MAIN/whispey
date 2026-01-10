@@ -20,6 +20,7 @@ import {
   TableSkeleton,
   ReanalyzeDialogWrapper
 } from './sub-components'
+import BackfillDispositionDialog from '@/components/disposition/BackfillDispositionDialog'
 import { useVirtualization } from '@/hooks/useVirtualization'
 
 interface CallLogsProps {
@@ -268,12 +269,19 @@ const CallLogs: React.FC<CallLogsProps> = ({
             onFiltersChange={handleFiltersChange}
             onClear={handleClearFilters}
             availableMetadataFields={dynamicColumns.metadata}
-            availableTranscriptionFields={dynamicColumnsKey}
+            availableTranscriptionFields={dynamicColumns.transcription_metrics}
             initialFilters={activeFilters}
           />
           
           <div className="flex items-center gap-2">
             <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />
+            
+            <BackfillDispositionDialog 
+              projectId={project?.id} 
+              agentId={agent?.id}
+              agentName={agent?.name}
+              projectName={project?.name}
+            />
             
             <Button
               variant="outline"
@@ -290,7 +298,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 BASIC_COLUMNS.filter(col => !('hidden' in col && col.hidden)).map((col) => [col.key, col.label])
               )}
               metadataColumns={dynamicColumns.metadata}
-              transcriptionColumns={dynamicColumnsKey}
+              transcriptionColumns={dynamicColumns.transcription_metrics}
               metricsColumns={dynamicColumns.metrics}
               visibleColumns={visibleColumns}
               onColumnChange={handleColumnChange}
