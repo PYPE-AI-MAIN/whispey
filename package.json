@@ -7,7 +7,9 @@
     "build": "echo 'Node version:' && node --version && echo 'NPM version:' && npm --version && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "fumadocs-mdx"
+    "postinstall": "fumadocs-mdx",
+    "export-logs": "tsx scripts/export-agent-logs.ts",
+    "fetch-failed-contacts": "tsx scripts/fetch-failed-contacts.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.848.0",
