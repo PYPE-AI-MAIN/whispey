@@ -225,6 +225,32 @@ const CallLogs: React.FC<CallLogsProps> = ({
     router.push(`/${project?.id}/agents/${agentId}/observability?session_id=${callId}`)
   }, [router, project?.id, agent?.id])
 
+  // Track selected call for highlighting
+  const [selectedCallId, setSelectedCallId] = React.useState<string | null>(null)
+
+  const handleRowSelect = useCallback((callId: string, agentId: string) => {
+    setSelectedCallId(callId)
+    handleRowClick(callId, agentId)
+  }, [handleRowClick])
+
+  // Persist selected call ID across navigation
+  useEffect(() => {
+    const selectedKey = `selected-call-${agent?.id}`
+    const savedCallId = sessionStorage.getItem(selectedKey)
+    if (savedCallId) {
+      setSelectedCallId(savedCallId)
+    }
+  }, [agent?.id])
+
+  useEffect(() => {
+    const selectedKey = `selected-call-${agent?.id}`
+    if (selectedCallId) {
+      sessionStorage.setItem(selectedKey, selectedCallId)
+    } else {
+      sessionStorage.removeItem(selectedKey)
+    }
+  }, [selectedCallId, agent?.id])
+
   // Loading state
   if (parentLoading || roleLoading || !agent || !project || (isLoading && !calls.length)) {
     return (
@@ -392,9 +418,10 @@ const CallLogs: React.FC<CallLogsProps> = ({
                         <tr
                           key={row.id}
                           className={cn(
-                            "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20"
+                            "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20",
+                            selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
                           )}
-                          onClick={() => handleRowClick(row.original.id, row.original.agent_id)}
+                          onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
                         >
                           {row.getVisibleCells().map((cell) => (
                             <td 
@@ -416,9 +443,10 @@ const CallLogs: React.FC<CallLogsProps> = ({
                       <tr
                         key={row.id}
                         className={cn(
-                          "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20"
+                          "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20",
+                          selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
                         )}
-                        onClick={() => handleRowClick(row.original.id, row.original.agent_id)}
+                        onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <td 
@@ -452,9 +480,10 @@ const CallLogs: React.FC<CallLogsProps> = ({
                   <tr
                     key={row.id}
                     className={cn(
-                      "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20"
+                      "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20",
+                      selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
                     )}
-                    onClick={() => handleRowClick(row.original.id, row.original.agent_id)}
+                    onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td 
