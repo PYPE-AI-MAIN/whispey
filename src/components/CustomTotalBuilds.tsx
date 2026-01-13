@@ -141,10 +141,16 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
     aggregation: 'COUNT',
     column: '',
     jsonField: '',
+    distinct: undefined,
     filters: [],
     filterLogic: 'AND',
     icon: 'calculator',
     color: 'blue'
+  })
+  const [enableDistinct, setEnableDistinct] = useState(false)
+  const [distinctConfig, setDistinctConfig] = useState<{ column: string; jsonField: string }>({
+    column: '',
+    jsonField: ''
   })
   const [newFilter, setNewFilter] = useState<Partial<CustomFilter>>({
     column: '',
@@ -241,6 +247,18 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
       alert('Please select a field for the JSONB column')
       return
     }
+    
+    // Validate distinct config if enabled
+    if (enableDistinct && config.aggregation === 'COUNT') {
+      if (!distinctConfig.column) {
+        alert('Please select a column for distinct count')
+        return
+      }
+      if (isJsonbColumn(distinctConfig.column) && !distinctConfig.jsonField) {
+        alert('Please select a JSON field for distinct count')
+        return
+      }
+    }
 
     const fullConfig: CustomTotalConfig = {
       id: Date.now().toString(),
@@ -249,6 +267,10 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
       aggregation: config.aggregation as any,
       column: config.column!,
       jsonField: config.jsonField || undefined,
+      distinct: enableDistinct && config.aggregation === 'COUNT' && distinctConfig.column ? {
+        column: distinctConfig.column,
+        jsonField: distinctConfig.jsonField || undefined
+      } : undefined,
       filters: config.filters || [],
       filterLogic: config.filterLogic || 'AND',
       icon: config.icon || 'calculator',
@@ -267,11 +289,14 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
         aggregation: 'COUNT',
         column: '',
         jsonField: '',
+        distinct: undefined,
         filters: [],
         filterLogic: 'AND',
         icon: 'calculator',
         color: 'blue'
       })
+      setEnableDistinct(false)
+      setDistinctConfig({ column: '', jsonField: '' })
     } catch (error) {
       console.error('Failed to save custom total:', error)
       alert('Failed to save custom total')
@@ -287,8 +312,29 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
   const selectedIcon = ICON_OPTIONS.find(opt => opt.value === config.icon)
   const selectedColor = COLOR_OPTIONS.find(opt => opt.value === config.color)
 
+  // Reset state when dialog closes
+  const handleDialogChange = (open: boolean) => {
+    setIsOpen(open)
+    if (!open) {
+      setConfig({
+        name: '',
+        description: '',
+        aggregation: 'COUNT',
+        column: '',
+        jsonField: '',
+        distinct: undefined,
+        filters: [],
+        filterLogic: 'AND',
+        icon: 'calculator',
+        color: 'blue'
+      })
+      setEnableDistinct(false)
+      setDistinctConfig({ column: '', jsonField: '' })
+    }
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleDialogChange}>
     <DialogTrigger asChild>
       <div className="p-5 h-full flex flex-col justify-center items-center text-center cursor-pointer">
         <div className="flex items-start justify-center mb-4 w-full">
@@ -464,6 +510,94 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Distinct Count Configuration */}
+            {config.aggregation === 'COUNT' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Distinct Count Configuration</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Count unique values of a different field while applying filters
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="enableDistinct"
+                      checked={enableDistinct}
+                      onChange={(e) => {
+                        setEnableDistinct(e.target.checked)
+                        if (!e.target.checked) {
+                          setDistinctConfig({ column: '', jsonField: '' })
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="enableDistinct" className="cursor-pointer">
+                      Enable distinct count
+                    </Label>
+                  </div>
+                  
+                  {enableDistinct && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
+                      <div>
+                        <Label>Distinct Column *</Label>
+                        <Select 
+                          value={distinctConfig.column} 
+                          onValueChange={(value) => setDistinctConfig(prev => ({...prev, column: value, jsonField: ''}))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select column" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableColumns.map((col) => (
+                              <SelectItem key={col.key} value={col.key}>
+                                <div>
+                                  <div className="font-medium">{col.label}</div>
+                                  <div className="text-xs text-muted-foreground">{col.type === 'jsonb' ? 'Dynamic JSON field' : col.type}</div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {distinctConfig.column && isJsonbColumn(distinctConfig.column) && (
+                        <div>
+                          <Label>Distinct JSON Field *</Label>
+                          <Select 
+                            value={distinctConfig.jsonField || ''} 
+                            onValueChange={(value) => setDistinctConfig(prev => ({...prev, jsonField: value}))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select field" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-48">
+                              {getAvailableJsonFields(distinctConfig.column).length === 0 ? (
+                                <div className="px-2 py-3 text-sm text-muted-foreground">
+                                  <AlertCircle className="h-4 w-4 inline mr-2" />
+                                  No fields found. Make sure you have data with {distinctConfig.column} fields.
+                                </div>
+                              ) : (
+                                getAvailableJsonFields(distinctConfig.column).map((field) => (
+                                  <SelectItem key={field} value={field}>{field}</SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-muted-foreground">
+                          This will count unique values of <strong>{distinctConfig.column}{distinctConfig.jsonField ? '.' + distinctConfig.jsonField : ''}</strong> 
+                          {config.column && ` where filters apply to ${config.column}${config.jsonField ? '.' + config.jsonField : ''}`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Filters */}
             <Card>
