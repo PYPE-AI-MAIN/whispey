@@ -788,6 +788,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   project={project} 
                   agent={agent}
                   onBack={handleBack}
+                  dateRange={apiDateRange}
                   isLoading={agentLoading || projectLoading || callsCheckLoading}
                 />
               )}
