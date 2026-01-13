@@ -7,6 +7,11 @@ export interface CustomFilter {
     logicalOperator?: 'AND' | 'OR' // For connecting to next filter
   }
   
+  export interface DistinctConfig {
+    column: string // Base column (e.g., "metadata", "transcription_metrics")
+    jsonField?: string // JSON field name (e.g., "patient_number")
+  }
+
   export interface CustomTotalConfig {
     id: string
     name: string
@@ -14,6 +19,7 @@ export interface CustomFilter {
     aggregation: 'SUM' | 'COUNT' | 'AVG' | 'MIN' | 'MAX' | 'COUNT_DISTINCT'
     column: string
     jsonField?: string // For JSONB fields
+    distinct?: DistinctConfig // Configuration for counting distinct values of a different field
     filters: CustomFilter[]
     filterLogic: 'AND' | 'OR' // Overall logic between filter groups
     icon?: string
