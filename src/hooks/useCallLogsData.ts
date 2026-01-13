@@ -8,11 +8,37 @@ import { useCallLogsStore } from '@/stores/callLogsStore'
 export const useCallLogsData = (
   agent: any,
   userEmail?: string,
-  projectId?: string
+  projectId?: string,
+  dateRange?: { from: string; to: string }
 ) => {
   const [role, setRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
-  const { activeFilters, setActiveFilters } = useCallLogsStore()
+  const { activeFilters, setActiveFilters, distinctConfig } = useCallLogsStore()
+
+  // Backward compatibility: Clean invalid filters on mount
+  useEffect(() => {
+    const jsonbColumns = ['metadata', 'transcription_metrics']
+    const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+    
+    const invalidFilters = activeFilters.filter(filter => {
+      if (jsonbColumns.includes(filter.column) && jsonbOperations.includes(filter.operation)) {
+        return !filter.jsonField
+      }
+      return false
+    })
+    
+    if (invalidFilters.length > 0) {
+      // Remove invalid filters
+      const validFilters = activeFilters.filter(filter => {
+        if (jsonbColumns.includes(filter.column) && jsonbOperations.includes(filter.operation)) {
+          return !!filter.jsonField
+        }
+        return true
+      })
+      setActiveFilters(validFilters)
+      console.warn(`Removed ${invalidFilters.length} invalid filter(s) missing jsonField`)
+    }
+  }, []) // Only run once on mount
 
   // Fetch user role
   useEffect(() => {
@@ -58,6 +84,8 @@ export const useCallLogsData = (
     agentId: agent?.id,
     filters: supabaseFilters,
     select: selectColumns,
+    distinctConfig: distinctConfig,
+    dateRange: dateRange,
     enabled: !!agent?.id && !roleLoading,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
