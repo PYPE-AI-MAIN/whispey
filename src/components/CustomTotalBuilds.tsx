@@ -52,6 +52,7 @@ interface CustomTotalConfig {
   aggregation: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX' | 'COUNT_DISTINCT'
   column: string
   jsonField?: string
+  distinct: { column: string; jsonField: string | undefined; } | undefined
   filters: CustomFilter[]
   filterLogic: 'AND' | 'OR'
   icon: string
