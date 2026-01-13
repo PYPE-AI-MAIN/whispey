@@ -14,6 +14,7 @@ import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-tabl
 import { downloadCSV } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
 import { useCallLogsColumns, BASIC_COLUMNS } from '@/hooks/useCallLogsColumns'
+import { useCallLogsStore } from '@/stores/callLogsStore'
 import { createTableColumns } from './tableColumns'
 import {
   FilterHeaderSkeleton,
@@ -28,13 +29,15 @@ interface CallLogsProps {
   agent: any
   onBack: () => void
   isLoading?: boolean
+  dateRange?: { from: string; to: string }
 }
 
 const CallLogs: React.FC<CallLogsProps> = ({ 
   project, 
   agent, 
   onBack, 
-  isLoading: parentLoading 
+  isLoading: parentLoading,
+  dateRange
 }) => {
   const router = useRouter()
   const { user } = useUser()
@@ -54,7 +57,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
     setActiveFilters,
     fetchNextPage,
     refetch
-  } = useCallLogsData(agent, userEmail, project?.id)
+  } = useCallLogsData(agent, userEmail, project?.id, dateRange)
 
   // Scroll restoration hook (must be after calls is defined)
   useEffect(() => {
@@ -162,6 +165,9 @@ const CallLogs: React.FC<CallLogsProps> = ({
     return () => observer.disconnect()
   }, [hasNextPage, isLoading, fetchNextPage])
 
+  // Get distinct config from store
+  const { distinctConfig, setDistinctConfig } = useCallLogsStore()
+
   // Event handlers - wrapped in useCallback
   const handleFiltersChange = useCallback((filters: FilterRule[]) => {
     setActiveFilters(filters)
@@ -170,6 +176,10 @@ const CallLogs: React.FC<CallLogsProps> = ({
   const handleClearFilters = useCallback(() => {
     setActiveFilters([])
   }, [setActiveFilters])
+
+  const handleDistinctConfigChange = useCallback((config: typeof distinctConfig) => {
+    setDistinctConfig(config)
+  }, [setDistinctConfig])
 
   const handleRefresh = useCallback(() => {
     refetch()
@@ -297,6 +307,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
             availableMetadataFields={dynamicColumns.metadata}
             availableTranscriptionFields={dynamicColumns.transcription_metrics}
             initialFilters={activeFilters}
+            distinctConfig={distinctConfig}
+            onDistinctConfigChange={handleDistinctConfigChange}
           />
           
           <div className="flex items-center gap-2">

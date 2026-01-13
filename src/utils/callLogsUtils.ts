@@ -57,14 +57,33 @@ export const convertToSupabaseFilters = (filters: FilterRule[], agentId?: string
   
   const supabaseFilters: Filter[] = [{ column: "agent_id", operator: "eq", value: agentId }]
   
+  console.log('🔄 Converting filters:', JSON.stringify(filters, null, 2))
+  
   filters.forEach(filter => {
     const getColumnName = (forTextOperation = false) => {
+      // Backward compatibility: If JSONB column but no jsonField, skip this filter
+      if ((filter.column === 'metadata' || filter.column === 'transcription_metrics') && !filter.jsonField) {
+        const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+        if (jsonbOperations.includes(filter.operation)) {
+          console.warn(`Skipping invalid filter: ${filter.column} with operation ${filter.operation} missing jsonField`)
+          return null // Signal to skip this filter
+        }
+      }
+      
       if (!filter.jsonField) return filter.column
       if (forTextOperation) {
-        return `${filter.column}->>${filter.jsonField}`
+        return `${filter.column}->>'${filter.jsonField}'`
       } else {
-        return `${filter.column}->${filter.jsonField}`
+        return `${filter.column}->'${filter.jsonField}'`
       }
+    }
+    
+    const columnName = getColumnName(false)
+    const columnNameText = getColumnName(true)
+    
+    // Skip if column name is null (invalid filter)
+    if (columnName === null || columnNameText === null) {
+      return
     }
     
     switch (filter.operation) {
@@ -75,14 +94,14 @@ export const convertToSupabaseFilters = (filters: FilterRule[], agentId?: string
           supabaseFilters.push({ column: filter.column, operator: 'gte', value: startOfDay })
           supabaseFilters.push({ column: filter.column, operator: 'lte', value: endOfDay })
         } else {
-          supabaseFilters.push({ column: getColumnName(false), operator: 'eq', value: filter.value })
+          supabaseFilters.push({ column: columnName, operator: 'eq', value: filter.value })
         }
         break
       case 'contains':
-        supabaseFilters.push({ column: getColumnName(true), operator: 'ilike', value: `%${filter.value}%` })
+        supabaseFilters.push({ column: columnNameText, operator: 'ilike', value: `%${filter.value}%` })
         break
       case 'starts_with':
-        supabaseFilters.push({ column: getColumnName(true), operator: 'ilike', value: `${filter.value}%` })
+        supabaseFilters.push({ column: columnNameText, operator: 'ilike', value: `${filter.value}%` })
         break
       case 'greater_than':
         if (filter.column === 'call_started_at') {
@@ -91,30 +110,31 @@ export const convertToSupabaseFilters = (filters: FilterRule[], agentId?: string
           const nextDayStr = nextDay.toISOString().split('T')[0]
           supabaseFilters.push({ column: filter.column, operator: 'gte', value: `${nextDayStr} 00:00:00` })
         } else {
-          supabaseFilters.push({ column: getColumnName(false), operator: 'gt', value: filter.value })
+          supabaseFilters.push({ column: columnName, operator: 'gt', value: filter.value })
         }
         break
       case 'less_than':
         if (filter.column === 'call_started_at') {
           supabaseFilters.push({ column: filter.column, operator: 'lt', value: `${filter.value} 00:00:00` })
         } else {
-          supabaseFilters.push({ column: getColumnName(false), operator: 'lt', value: filter.value })
+          supabaseFilters.push({ column: columnName, operator: 'lt', value: filter.value })
         }
         break
       case 'json_equals':
-        supabaseFilters.push({ column: getColumnName(true), operator: 'eq', value: filter.value })
+        supabaseFilters.push({ column: columnNameText, operator: 'eq', value: filter.value })
         break
       case 'json_contains':
-        supabaseFilters.push({ column: getColumnName(true), operator: 'ilike', value: `%${filter.value}%` })
+        supabaseFilters.push({ column: columnNameText, operator: 'ilike', value: `%${filter.value}%` })
         break
       case 'json_greater_than':
-        supabaseFilters.push({ column: `${getColumnName(false)}::numeric`, operator: 'gt', value: parseFloat(filter.value) })
+        supabaseFilters.push({ column: `${columnName}::numeric`, operator: 'gt', value: parseFloat(filter.value) })
         break
       case 'json_less_than':
-        supabaseFilters.push({ column: `${getColumnName(false)}::numeric`, operator: 'lt', value: parseFloat(filter.value) })
+        supabaseFilters.push({ column: `${columnName}::numeric`, operator: 'lt', value: parseFloat(filter.value) })
         break
       case 'json_exists':
-        supabaseFilters.push({ column: getColumnName(false), operator: 'not.is', value: null })
+        // Use ->> (text extraction) for json_exists, same as build_single_filter_condition
+        supabaseFilters.push({ column: columnNameText, operator: 'not.is', value: null })
         break
       default:
         console.warn(`Unknown filter operation: ${filter.operation}`)
@@ -122,6 +142,7 @@ export const convertToSupabaseFilters = (filters: FilterRule[], agentId?: string
     }
   })
   
+  console.log('✅ Converted filters:', JSON.stringify(supabaseFilters, null, 2))
   return supabaseFilters
 }
 
