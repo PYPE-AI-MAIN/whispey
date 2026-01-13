@@ -251,7 +251,7 @@ const Overview: React.FC<OverviewProps> = ({
       const configs = await CustomTotalsService.getCustomTotals(project.id, agent.id)
       setCustomTotals(configs)
     } catch (error) {
-      console.error('Failed to load custom totals:', error)
+      console.error('❌ [Overview] Failed to load custom totals:', error)
     }
   }
 
@@ -263,7 +263,15 @@ const Overview: React.FC<OverviewProps> = ({
 
   useEffect(() => {
     const run = async () => {
-      if (customTotals.length === 0 || roleLoading || parentLoading || !agent?.id) return
+      if (customTotals.length === 0 || roleLoading || parentLoading || !agent?.id) {
+        console.log('⏸️ [Overview] Skipping calculation - conditions not met:', {
+          customTotalsLength: customTotals.length,
+          roleLoading,
+          parentLoading,
+          agentId: agent?.id
+        })
+        return
+      }
       setLoadingCustomTotals(true)
       try {
         const results = await CustomTotalsService.batchCalculateCustomTotals(
@@ -274,7 +282,7 @@ const Overview: React.FC<OverviewProps> = ({
         )
         setCustomTotalResults(results)
       } catch (e) {
-        console.error('Batch calc failed', e)
+        console.error('❌ [Overview] Batch calc failed', e)
       } finally {
         setLoadingCustomTotals(false)
       }

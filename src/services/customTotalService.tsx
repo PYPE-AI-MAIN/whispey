@@ -19,6 +19,7 @@ export class CustomTotalsService {
           aggregation: config.aggregation,
           column_name: config.column,
           json_field: config.jsonField,
+          distinct_config: config.distinct || null,
           filters: config.filters,
           filter_logic: config.filterLogic,
           icon: config.icon,
@@ -56,13 +57,14 @@ export class CustomTotalsService {
         return []
       }
 
-      return data.map(row => ({
+      const mappedConfigs = data.map(row => ({
         id: row.id,
         name: row.name,
         description: row.description || '',
         aggregation: row.aggregation,
         column: row.column_name,
         jsonField: row.json_field,
+        distinct: row.distinct_config || undefined,
         filters: typeof row.filters === 'string' ? (JSON.parse(row.filters) || []) : (row.filters || []),
         filterLogic: row.filter_logic,
         icon: row.icon || 'calculator',
@@ -71,6 +73,8 @@ export class CustomTotalsService {
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }))
+      
+      return mappedConfigs
     } catch (error) {
       console.error('Error fetching custom totals:', error)
       return []
@@ -94,20 +98,23 @@ static async calculateCustomTotal(
       : null;
 
 
+
+    const rpcParams = {
+      p_agent_id: agentId,
+      p_aggregation: config.aggregation,
+      p_column_name: config.column,
+      p_json_field: jsonField, // Pass null instead of empty string
+      p_filters: config.filters,
+      p_filter_logic: config.filterLogic,
+      p_date_from: dateFrom || null,
+      p_date_to: dateTo || null,
+      p_distinct_config: config.distinct || null
+    }
+
     const { data, error } = await supabase
-      .rpc('calculate_custom_total', {
-        p_agent_id: agentId,
-        p_aggregation: config.aggregation,
-        p_column_name: config.column,
-        p_json_field: jsonField, // Pass null instead of empty string
-        p_filters: config.filters,
-        p_filter_logic: config.filterLogic,
-        p_date_from: dateFrom || null,
-        p_date_to: dateTo || null
-      })
+      .rpc('calculate_custom_total', rpcParams)
 
     if (error) {
-      console.error('Error calculating custom total:', error)
       return {
         configId: config.id,
         value: 0,
@@ -116,9 +123,8 @@ static async calculateCustomTotal(
       }
     }
 
-
     // RPC returns array with one result
-    const result = data?.[0]
+    const result = data?.[0]  
     if (result?.error_message) {
       return {
         configId: config.id,
@@ -160,6 +166,7 @@ static async calculateCustomTotal(
         aggregation: config.aggregation,
         column: config.column,
         jsonField: config.jsonField || null,
+        distinct: config.distinct || null,
         filters: config.filters,
         filterLogic: config.filterLogic
       }))
@@ -184,7 +191,7 @@ static async calculateCustomTotal(
       }
 
       // Map results back to CustomTotalResult format
-      return data.map((result: any) => {
+      const mappedResults = data.map((result: any) => {
         const config = configs.find(c => c.id === result.config_id)
         return {
           configId: result.config_id,
@@ -193,6 +200,7 @@ static async calculateCustomTotal(
           error: result.error_message || undefined
         }
       })
+      return mappedResults
     } catch (error) {
       console.error('Error batch calculating custom totals:', error)
       return configs.map(config => ({
@@ -299,6 +307,7 @@ static async calculateCustomTotal(
           aggregation: updates.aggregation,
           column_name: updates.column,
           json_field: updates.jsonField,
+          distinct_config: updates.distinct || null,
           filters: updates.filters,
           filter_logic: updates.filterLogic,
           icon: updates.icon,
