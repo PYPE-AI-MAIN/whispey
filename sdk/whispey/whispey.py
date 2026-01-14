@@ -407,7 +407,6 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "call_ended_reason": call_ended_reason,
         "call_started_at": start_time,
         "call_ended_at": current_time,
-        "duration_seconds": duration,  # Add duration_seconds field
         "transcript_type": "agent",
         "recording_url": "",  # Will be filled by caller
         "transcript_json": [],
@@ -419,6 +418,10 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
             **sanitized_dynamic_params  # Include dynamic parameters without phone identifiers
         }
     }
+    
+    # Do NOT include duration_seconds in the payload
+    # The database has a DEFAULT constraint that calculates it from call_started_at and call_ended_at
+    # Including it explicitly causes: "cannot insert a non-DEFAULT value into column \"duration_seconds\""
     
     # Add transcript data if available
     if session_data:
