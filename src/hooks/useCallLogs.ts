@@ -13,7 +13,8 @@ interface DistinctConfig {
 
 interface UseCallLogsOptions {
   agentId: string | undefined
-  filters: any[]
+  preDistinctFilters: any[]
+  postDistinctFilters: any[]
   select?: string
   orderBy?: { column: string; ascending: boolean }
   distinctConfig?: DistinctConfig
@@ -27,7 +28,8 @@ interface UseCallLogsOptions {
 
 export const useCallLogs = ({
   agentId,
-  filters = [],
+  preDistinctFilters = [],
+  postDistinctFilters = [],
   select = '*',
   orderBy = { column: 'created_at', ascending: false },
   distinctConfig,
@@ -41,8 +43,9 @@ export const useCallLogs = ({
   return useInfiniteQuery({
     queryKey: [
       'call-logs', 
-      agentId ?? '', 
-      JSON.stringify(filters), 
+      agentId ?? '',
+      JSON.stringify(preDistinctFilters), 
+      JSON.stringify(postDistinctFilters),
       select, 
       `${orderBy.column}-${orderBy.ascending}`,
       distinctConfig ? JSON.stringify(distinctConfig) : 'no-distinct',
@@ -62,7 +65,8 @@ export const useCallLogs = ({
       if (true) {
         const rpcParams = {
           p_agent_id: agentId,
-          p_filters: filters,
+          p_pre_distinct_filters: preDistinctFilters,
+          p_post_distinct_filters: postDistinctFilters,
           p_select: select,
           p_order_by_column: orderBy.column,
           p_order_ascending: orderBy.ascending,
@@ -76,7 +80,8 @@ export const useCallLogs = ({
         }
         
         console.log('🔍 RPC Call - Parameters:', JSON.stringify(rpcParams, null, 2))
-        console.log('🔍 Filters being sent:', JSON.stringify(filters, null, 2))
+        console.log('🔍 Pre-distinct filters:', JSON.stringify(preDistinctFilters, null, 2))
+        console.log('🔍 Post-distinct filters:', JSON.stringify(postDistinctFilters, null, 2))
         console.log('🔍 OrderBy column:', orderBy.column)
         console.log('🔍 Distinct config:', JSON.stringify(distinctConfig, null, 2))
         

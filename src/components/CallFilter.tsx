@@ -15,17 +15,41 @@ import {
   Filter,
   X,
   ChevronDown,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 
+// Unified filter operation type that can be either a filter or a distinct operation
+export type FilterOperation = 
+  | {
+      id: string
+      type: 'filter'
+      column: string
+      operation: string
+      value: string
+      jsonField?: string  // For JSONB field names
+      order: number  // Execution order
+    }
+  | {
+      id: string
+      type: 'distinct'
+      column: string
+      jsonField?: string  // For JSONB field names
+      sortOrder?: 'asc' | 'desc'  // Sort order for distinct
+      order: number  // Execution order
+    }
+
+// Legacy types for backward compatibility
 export interface FilterRule {
   id: string
   column: string
   operation: string
   value: string
-  jsonField?: string  // Add this for JSONB field names
+  jsonField?: string
+  order: number
 }
 
 export interface DistinctConfig {
@@ -35,13 +59,13 @@ export interface DistinctConfig {
 }
 
 interface CallFilterProps {
-  onFiltersChange: (filters: FilterRule[]) => void
+  onFiltersChange: (operations: FilterOperation[]) => void
   onClear: () => void
   availableMetadataFields?: string[]
   availableTranscriptionFields?: string[]
-  initialFilters?: FilterRule[]
-  distinctConfig?: DistinctConfig
-  onDistinctConfigChange?: (config: DistinctConfig | undefined) => void
+  initialFilters?: FilterOperation[]
+  distinctConfig?: DistinctConfig  // Keep for backward compatibility
+  onDistinctConfigChange?: (config: DistinctConfig | undefined) => void  // Keep for backward compatibility
 }
 
 const COLUMNS = [
@@ -88,170 +112,192 @@ const CallFilter: React.FC<CallFilterProps> = ({
   distinctConfig,
   onDistinctConfigChange
 }) => {
-  const [filters, setFilters] = useState<FilterRule[]>(initialFilters)
+  const [operations, setOperations] = useState<FilterOperation[]>(initialFilters)
   const [isOpen, setIsOpen] = useState(false)
+  
+  // New operation form state
+  const [operationType, setOperationType] = useState<'filter' | 'distinct'>('filter')
   const [newFilter, setNewFilter] = useState({
     column: '',
     operation: '',
     value: '',
     jsonField: ''
   })
+  const [newDistinct, setNewDistinct] = useState({
+    column: '',
+    jsonField: '',
+    sortOrder: 'asc' as 'asc' | 'desc'
+  })
   const [selectedDate, setSelectedDate] = useState<Date>()
-  const [enableDistinct, setEnableDistinct] = useState(!!distinctConfig)
-  const [distinctColumn, setDistinctColumn] = useState(distinctConfig?.column || '')
-  const [distinctJsonField, setDistinctJsonField] = useState(distinctConfig?.jsonField || '')
-  const [distinctOrder, setDistinctOrder] = useState<'asc' | 'desc'>(distinctConfig?.order || 'asc')
 
-  // Sync local state with initialFilters prop
+  // Migrate legacy data to operations on mount
   useEffect(() => {
-    setFilters(initialFilters)
-  }, [initialFilters])
-
-  // Sync distinct config state
-  useEffect(() => {
-    if (distinctConfig) {
-      setEnableDistinct(true)
-      setDistinctColumn(distinctConfig.column)
-      setDistinctJsonField(distinctConfig.jsonField || '')
-      setDistinctOrder(distinctConfig.order)
-    } else {
-      setEnableDistinct(false)
-      setDistinctColumn('')
-      setDistinctJsonField('')
-      setDistinctOrder('asc')
+    let migratedOperations: FilterOperation[] = []
+    
+    // Migrate legacy FilterRule[] to FilterOperation[]
+    initialFilters.forEach((op: any) => {
+      // If it's already a FilterOperation, use it
+      if (op.type === 'filter' || op.type === 'distinct') {
+        migratedOperations.push(op)
+      } 
+      // If it's a legacy FilterRule (has 'operation' field but no 'type'), convert it
+      else if (op.operation) {
+        migratedOperations.push({
+          id: op.id || `filter-${Date.now()}-${Math.random()}`,
+          type: 'filter',
+          column: op.column,
+          operation: op.operation,
+          value: op.value,
+          jsonField: op.jsonField,
+          order: op.order ?? 0
+        })
+      }
+    })
+    
+    // If we have legacy distinctConfig, convert it to a distinct operation
+    if (distinctConfig && !migratedOperations.some(op => op.type === 'distinct')) {
+      const maxOrder = migratedOperations.length > 0 
+        ? Math.max(...migratedOperations.map(op => op.order)) 
+        : -1
+      
+      const distinctOperation: FilterOperation = {
+        id: `distinct-${Date.now()}`,
+        type: 'distinct',
+        column: distinctConfig.column,
+        jsonField: distinctConfig.jsonField,
+        sortOrder: distinctConfig.order,
+        order: maxOrder + 1
+      }
+      migratedOperations.push(distinctOperation)
     }
-  }, [distinctConfig])
+    
+    // Ensure all operations have order
+    const operationsWithOrder = migratedOperations.map((op, index) => ({
+      ...op,
+      order: op.order !== undefined ? op.order : index
+    }))
+    
+    // Sort by order
+    const sortedOperations = [...operationsWithOrder].sort((a, b) => a.order - b.order)
+    setOperations(sortedOperations)
+  }, [initialFilters, distinctConfig])
 
   // Reset local state when popover closes without saving
   const handleCancel = () => {
-    // Reset to saved state
-    setFilters(initialFilters)
-    if (distinctConfig) {
-      setEnableDistinct(true)
-      setDistinctColumn(distinctConfig.column)
-      setDistinctJsonField(distinctConfig.jsonField || '')
-      setDistinctOrder(distinctConfig.order)
-    } else {
-      setEnableDistinct(false)
-      setDistinctColumn('')
-      setDistinctJsonField('')
-      setDistinctOrder('asc')
-    }
+    setOperations(initialFilters)
+    setOperationType('filter')
+    setNewFilter({ column: '', operation: '', value: '', jsonField: '' })
+    setNewDistinct({ column: '', jsonField: '', sortOrder: 'asc' })
+    setSelectedDate(undefined)
     setIsOpen(false)
   }
 
-  const getDistinctJsonFields = () => {
-    if (distinctColumn === 'metadata') {
+  const getDistinctJsonFields = (column: string) => {
+    if (column === 'metadata') {
       return availableMetadataFields
     }
-    if (distinctColumn === 'transcription_metrics') {
+    if (column === 'transcription_metrics') {
       return availableTranscriptionFields
     }
     return []
   }
 
-  const isDistinctJsonbColumn = () => {
-    return distinctColumn === 'metadata' || distinctColumn === 'transcription_metrics'
-  }
-
-  const handleDistinctToggle = (enabled: boolean) => {
-    setEnableDistinct(enabled)
-    if (!enabled) {
-      setDistinctColumn('')
-      setDistinctJsonField('')
-    }
-  }
-
-  const handleDistinctColumnChange = (column: string) => {
-    setDistinctColumn(column)
-    setDistinctJsonField('')
-  }
-
-  const handleDistinctJsonFieldChange = (jsonField: string) => {
-    setDistinctJsonField(jsonField)
-  }
-
-  const handleDistinctOrderChange = (order: 'asc' | 'desc') => {
-    setDistinctOrder(order)
-  }
-
-  // Save both filters and distinct config
-  const handleSave = () => {
-    // Save filters
-    onFiltersChange(filters)
-    
-    // Save distinct config if enabled and valid
-    if (enableDistinct && distinctColumn) {
-      onDistinctConfigChange?.({
-        column: distinctColumn,
-        jsonField: isDistinctJsonbColumn() && distinctJsonField ? distinctJsonField : undefined,
-        order: distinctOrder
-      })
-    } else {
-      onDistinctConfigChange?.(undefined)
-    }
-    
-    // Close popover
-    setIsOpen(false)
+  const isJsonbColumn = (column: string) => {
+    return column === 'metadata' || column === 'transcription_metrics'
   }
 
   const getAvailableJsonFields = () => {
-    if (newFilter.column === 'metadata') {
-      return availableMetadataFields
-    }
-    if (newFilter.column === 'transcription_metrics') {
-      return availableTranscriptionFields
-    }
-    return []
-  }
-
-  const isJsonbColumn = () => {
-    return newFilter.column === 'metadata' || newFilter.column === 'transcription_metrics'
+    const column = operationType === 'filter' ? newFilter.column : newDistinct.column
+    return getDistinctJsonFields(column)
   }
 
   const isValidFilter = () => {
     const hasBasicFields = newFilter.column && newFilter.operation
     const hasValue = newFilter.operation !== 'json_exists' ? newFilter.value : true
-    const hasJsonField = isJsonbColumn() ? newFilter.jsonField : true
+    const hasJsonField = isJsonbColumn(newFilter.column) ? newFilter.jsonField : true
     
     return hasBasicFields && hasValue && hasJsonField
   }
 
-  const addFilter = () => {
-    if (isValidFilter()) {
-      const filter: FilterRule = {
-        id: Date.now().toString(),
+  const isValidDistinct = () => {
+    return !!newDistinct.column && (!isJsonbColumn(newDistinct.column) || !!newDistinct.jsonField)
+  }
+
+  const addOperation = () => {
+    if (operationType === 'filter' && isValidFilter()) {
+      const maxOrder = operations.length > 0 
+        ? Math.max(...operations.map(op => op.order)) 
+        : -1
+      
+      const filterOperation: FilterOperation = {
+        id: `filter-${Date.now()}`,
+        type: 'filter',
         column: newFilter.column,
         operation: newFilter.operation,
         value: newFilter.value,
+        order: maxOrder + 1,
         ...(newFilter.jsonField && { jsonField: newFilter.jsonField })
       }
       
-      // Add to local state only (don't save yet)
-      setFilters([...filters, filter])
-      
-      // Reset form
+      setOperations([...operations, filterOperation])
       setNewFilter({ column: '', operation: '', value: '', jsonField: '' })
       setSelectedDate(undefined)
+    } else if (operationType === 'distinct' && isValidDistinct()) {
+      const maxOrder = operations.length > 0 
+        ? Math.max(...operations.map(op => op.order)) 
+        : -1
+      
+      const distinctOperation: FilterOperation = {
+        id: `distinct-${Date.now()}`,
+        type: 'distinct',
+        column: newDistinct.column,
+        sortOrder: newDistinct.sortOrder,
+        order: maxOrder + 1,
+        ...(newDistinct.jsonField && { jsonField: newDistinct.jsonField })
+      }
+      
+      setOperations([...operations, distinctOperation])
+      setNewDistinct({ column: '', jsonField: '', sortOrder: 'asc' })
     }
   }
 
-  const removeFilter = (filterId: string) => {
-    const updatedFilters = filters.filter(f => f.id !== filterId)
-    setFilters(updatedFilters)
-    onFiltersChange(updatedFilters)
+  const removeOperation = (operationId: string) => {
+    const updatedOperations = operations.filter(op => op.id !== operationId)
+    // Reorder remaining operations
+    const reorderedOperations = updatedOperations.map((op, index) => ({
+      ...op,
+      order: index
+    }))
+    setOperations(reorderedOperations)
   }
 
-  const clearAllFilters = () => {
-    setFilters([])
+  const moveOperation = (operationId: string, direction: 'up' | 'down') => {
+    const sortedOperations = [...operations].sort((a, b) => a.order - b.order)
+    const currentIndex = sortedOperations.findIndex(op => op.id === operationId)
+    
+    if (currentIndex === -1) return
+    if (direction === 'up' && currentIndex === 0) return
+    if (direction === 'down' && currentIndex === sortedOperations.length - 1) return
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    const targetOperation = sortedOperations[newIndex]
+    const currentOperation = sortedOperations[currentIndex]
+    
+    // Swap orders
+    const newOrder = targetOperation.order
+    targetOperation.order = currentOperation.order
+    currentOperation.order = newOrder
+    
+    setOperations([...sortedOperations])
+  }
+
+  const clearAllOperations = () => {
+    setOperations([])
     setNewFilter({ column: '', operation: '', value: '', jsonField: '' })
+    setNewDistinct({ column: '', jsonField: '', sortOrder: 'asc' })
     setSelectedDate(undefined)
-    setEnableDistinct(false)
-    setDistinctColumn('')
-    setDistinctJsonField('')
-    setDistinctOrder('asc')
+    setOperationType('filter')
     onClear()
-    onDistinctConfigChange?.(undefined)
   }
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -278,18 +324,28 @@ const CallFilter: React.FC<CallFilterProps> = ({
     return OPERATIONS[selectedColumn.type as keyof typeof OPERATIONS] || []
   }
 
+  const getOperationDisplayText = (operation: FilterOperation) => {
+    if (operation.type === 'filter') {
+      const columnLabel = getColumnLabel(operation.column)
+      const operationLabel = getOperationLabel(operation.operation)
+      const jsonFieldText = operation.jsonField ? `.${operation.jsonField}` : ''
+      const valueText = operation.operation !== 'json_exists' ? ` "${operation.value}"` : ''
+      
+      return `${columnLabel}${jsonFieldText} ${operationLabel}${valueText}`
+    } else {
+      // Distinct operation
+      const columnLabel = getColumnLabel(operation.column)
+      const jsonFieldText = operation.jsonField ? `.${operation.jsonField}` : ''
+      const sortText = operation.sortOrder === 'desc' ? ' (Desc)' : ' (Asc)'
+      
+      return `Show Unique: ${columnLabel}${jsonFieldText}${sortText}`
+    }
+  }
+
   const isDateField = newFilter.column === 'call_started_at'
   const needsValue = newFilter.operation !== 'json_exists'
-  const gridCols = isJsonbColumn() ? 'grid-cols-5' : 'grid-cols-4'
-
-  const getFilterDisplayText = (filter: FilterRule) => {
-    const columnLabel = getColumnLabel(filter.column)
-    const operationLabel = getOperationLabel(filter.operation)
-    const jsonFieldText = filter.jsonField ? `.${filter.jsonField}` : ''
-    const valueText = filter.operation !== 'json_exists' ? ` "${filter.value}"` : ''
-    
-    return `${columnLabel}${jsonFieldText} ${operationLabel}${valueText}`
-  }
+  const currentColumn = operationType === 'filter' ? newFilter.column : newDistinct.column
+  const isCurrentJsonbColumn = isJsonbColumn(currentColumn)
 
   return (
     <div className="w-fit">
@@ -298,206 +354,136 @@ const CallFilter: React.FC<CallFilterProps> = ({
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
-              variant={filters.length > 0 ? "default" : "outline"}
+              variant={operations.length > 0 ? "default" : "outline"}
               size="sm"
               className="gap-2 h-8 hover:shadow-md transition-all"
             >
               <Filter className="h-3 w-3" />
               Filter
-              {filters.length > 0 && (
+              {operations.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-4 w-4 rounded-full p-0 text-xs">
-                  {filters.length}
+                  {operations.length}
                 </Badge>
               )}
               <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </Button>
           </PopoverTrigger>
           
-          <PopoverContent className="w-[600px] p-4" align="start">
+          <PopoverContent className="w-[700px] p-4 max-h-[80vh] overflow-y-auto" align="start">
             <div className="space-y-4">
-              {/* Filter Form Section */}
+              {/* Active Operations List */}
+              {operations.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-foreground">
+                    Active Operations ({operations.length})
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {[...operations].sort((a, b) => a.order - b.order).map((operation, index) => {
+                      const sortedOperations = [...operations].sort((a, b) => a.order - b.order)
+                      const currentIndex = sortedOperations.findIndex(op => op.id === operation.id)
+                      const isFirst = currentIndex === 0
+                      const isLast = currentIndex === sortedOperations.length - 1
+                      
+                      return (
+                        <div
+                          key={operation.id}
+                          className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => moveOperation(operation.id, 'up')}
+                              disabled={isFirst}
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => moveOperation(operation.id, 'down')}
+                              disabled={isLast}
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex-1 text-xs">
+                            <span className="font-medium text-gray-500 dark:text-gray-400">
+                              {currentIndex + 1}.
+                            </span>{' '}
+                            <span className={operation.type === 'distinct' ? 'text-blue-600 dark:text-blue-400' : ''}>
+                              {getOperationDisplayText(operation)}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                            onClick={() => removeOperation(operation.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Operation Type Selector */}
               <div className="space-y-3">
-                <div className="text-sm font-semibold text-foreground">Add Filter</div>
-                {/* Compact Form */}
-              <div className={`grid gap-2 ${gridCols}`}>
-                {/* Column */}
-                <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-0">
-                    <span className="truncate">
-                      {newFilter.column ? getColumnLabel(newFilter.column) : 'Column'}
-                    </span>
-                    <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    {COLUMNS.map((column) => (
-                      <DropdownMenuItem
-                        key={column.value}
-                        onClick={() => {
-                          setNewFilter({ 
-                            column: column.value,
-                            operation: '',
-                            value: '',
-                            jsonField: ''
-                          })
-                          setSelectedDate(undefined)
-                        }}
-                        className="text-xs"
-                      >
-                        {column.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* JSON Field (only for JSONB columns) */}
-                {isJsonbColumn() && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-xs justify-between min-w-0"
-                        disabled={!newFilter.column}
-                      >
-                        <span className="truncate">
-                          {newFilter.jsonField || 'Field'}
-                        </span>
-                        <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40 max-h-48 overflow-y-auto">
-                      {getAvailableJsonFields().map((field) => (
-                        <DropdownMenuItem
-                          key={field}
-                          onClick={() => setNewFilter({ ...newFilter, jsonField: field })}
-                          className="text-xs"
-                        >
-                          {field}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-
-                {/* Operation */}
-                <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 text-xs justify-between min-w-0"
-                      disabled={!newFilter.column || (isJsonbColumn() && !newFilter.jsonField)}
-                    >
-                      <span className="truncate">
-                        {newFilter.operation ? getOperationLabel(newFilter.operation) : 'Operation'}
-                      </span>
-                      <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40">
-                    {getAvailableOperations().map((operation) => (
-                      <DropdownMenuItem
-                        key={operation.value}
-                        onClick={() => setNewFilter({ ...newFilter, operation: operation.value })}
-                        className="text-xs"
-                      >
-                        {operation.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Value - Only show if operation needs a value */}
-                {needsValue && (
-                  <>
-                    {isDateField ? (
-                      <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs justify-between min-w-0"
-                          disabled={!newFilter.operation}
-                        >
-                          <span className="truncate">
-                            {selectedDate ? format(selectedDate, 'MMM dd') : 'Date'}
-                          </span>
-                          <CalendarIcon className="h-3 w-3 flex-shrink-0 ml-1" />
-                        </Button>
-                      </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start" side="bottom">
-                          <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={handleDateSelect}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <Input
-                        placeholder="Value"
-                        value={newFilter.value}
-                        onChange={(e) => setNewFilter({ ...newFilter, value: e.target.value })}
-                        disabled={!newFilter.operation}
-                        className="h-8 text-xs"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            addFilter()
-                          }
-                        }}
-                      />
-                    )}
-                  </>
-                )}
-
-                {/* Add Button */}
-                <Button
-                  onClick={addFilter}
-                  disabled={!isValidFilter()}
-                  size="sm"
-                  className="h-8 text-xs"
-                >
-                  Add
-                </Button>
-              </div>
-              </div>
-
-              {/* Distinct Configuration Section */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
-                <div className="text-sm font-semibold text-foreground">Show Distinct Rows</div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="enableDistinct"
-                    checked={enableDistinct}
-                    onChange={(e) => handleDistinctToggle(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
-                  />
-                  <Label htmlFor="enableDistinct" className="text-sm font-medium cursor-pointer">
-                    Enable distinct rows
-                  </Label>
+                <div className="text-sm font-semibold text-foreground">
+                  {operations.length > 0 ? 'Add Another Operation' : 'Add Operation'}
                 </div>
                 
-                {enableDistinct && (
-                  <div className="flex flex-wrap gap-2 ml-6 space-y-2">
-                    {/* Column Dropdown */}
+                {/* Operation Type Selection */}
+                <div className="flex gap-2">
+                  <Button
+                    variant={operationType === 'filter' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setOperationType('filter')}
+                  >
+                    Filter
+                  </Button>
+                  <Button
+                    variant={operationType === 'distinct' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setOperationType('distinct')}
+                  >
+                    Show Unique
+                  </Button>
+                </div>
+
+                {/* Filter Form */}
+                {operationType === 'filter' && (
+                  <div className="grid gap-2 grid-cols-4">
+                    {/* Column */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[140px]">
+                        <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-0">
                           <span className="truncate">
-                            {distinctColumn ? COLUMNS.find(c => c.value === distinctColumn)?.label || distinctColumn : 'Select Column'}
+                            {newFilter.column ? getColumnLabel(newFilter.column) : 'Column'}
                           </span>
-                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                          <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
                         {COLUMNS.map((column) => (
                           <DropdownMenuItem
                             key={column.value}
-                            onClick={() => handleDistinctColumnChange(column.value)}
+                            onClick={() => {
+                              setNewFilter({ 
+                                column: column.value,
+                                operation: '',
+                                value: '',
+                                jsonField: ''
+                              })
+                              setSelectedDate(undefined)
+                            }}
                             className="text-xs"
                           >
                             {column.label}
@@ -506,58 +492,213 @@ const CallFilter: React.FC<CallFilterProps> = ({
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* JSON Field Dropdown (only for JSONB columns) */}
-                    {isDistinctJsonbColumn() && (
+                    {/* JSON Field (only for JSONB columns) */}
+                    {isJsonbColumn(newFilter.column) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[120px]" disabled={!distinctColumn}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs justify-between min-w-0"
+                            disabled={!newFilter.column}
+                          >
                             <span className="truncate">
-                              {distinctJsonField || 'Select Field'}
+                              {newFilter.jsonField || 'Field'}
                             </span>
-                            <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                            <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-40 max-h-48 overflow-y-auto">
-                          {getDistinctJsonFields().length > 0 ? (
-                            getDistinctJsonFields().map((field) => (
-                              <DropdownMenuItem
-                                key={field}
-                                onClick={() => handleDistinctJsonFieldChange(field)}
-                                className="text-xs"
-                              >
-                                {field}
-                              </DropdownMenuItem>
-                            ))
-                          ) : (
-                            <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-                              No fields available
+                          {getAvailableJsonFields().map((field) => (
+                            <DropdownMenuItem
+                              key={field}
+                              onClick={() => setNewFilter({ ...newFilter, jsonField: field })}
+                              className="text-xs"
+                            >
+                              {field}
                             </DropdownMenuItem>
-                          )}
+                          ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
 
-                    {/* Sort Order Buttons */}
+                    {/* Operation */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-xs justify-between min-w-0"
+                          disabled={!newFilter.column || (isJsonbColumn(newFilter.column) && !newFilter.jsonField)}
+                        >
+                          <span className="truncate">
+                            {newFilter.operation ? getOperationLabel(newFilter.operation) : 'Operation'}
+                          </span>
+                          <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-40">
+                        {getAvailableOperations().map((operation) => (
+                          <DropdownMenuItem
+                            key={operation.value}
+                            onClick={() => setNewFilter({ ...newFilter, operation: operation.value })}
+                            className="text-xs"
+                          >
+                            {operation.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Value - Only show if operation needs a value */}
+                    {needsValue && (
+                      <>
+                        {isDateField ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs justify-between min-w-0"
+                                disabled={!newFilter.operation}
+                              >
+                                <span className="truncate">
+                                  {selectedDate ? format(selectedDate, 'MMM dd') : 'Date'}
+                                </span>
+                                <CalendarIcon className="h-3 w-3 flex-shrink-0 ml-1" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                              <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={handleDateSelect}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <Input
+                            placeholder="Value"
+                            value={newFilter.value}
+                            onChange={(e) => setNewFilter({ ...newFilter, value: e.target.value })}
+                            disabled={!newFilter.operation}
+                            className="h-8 text-xs"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                addOperation()
+                              }
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {/* Add Button */}
+                    <Button
+                      onClick={addOperation}
+                      disabled={!isValidFilter()}
+                      size="sm"
+                      className="h-8 text-xs"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                )}
+
+                {/* Distinct Form */}
+                {operationType === 'distinct' && (
+                  <div className="grid gap-2 grid-cols-4">
+                    {/* Column */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-0">
+                          <span className="truncate">
+                            {newDistinct.column ? getColumnLabel(newDistinct.column) : 'Column'}
+                          </span>
+                          <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        {COLUMNS.map((column) => (
+                          <DropdownMenuItem
+                            key={column.value}
+                            onClick={() => {
+                              setNewDistinct({ 
+                                column: column.value,
+                                jsonField: '',
+                                sortOrder: newDistinct.sortOrder
+                              })
+                            }}
+                            className="text-xs"
+                          >
+                            {column.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* JSON Field (only for JSONB columns) */}
+                    {isJsonbColumn(newDistinct.column) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-xs justify-between min-w-0"
+                            disabled={!newDistinct.column}
+                          >
+                            <span className="truncate">
+                              {newDistinct.jsonField || 'Field'}
+                            </span>
+                            <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-40 max-h-48 overflow-y-auto">
+                          {getAvailableJsonFields().map((field) => (
+                            <DropdownMenuItem
+                              key={field}
+                              onClick={() => setNewDistinct({ ...newDistinct, jsonField: field })}
+                              className="text-xs"
+                            >
+                              {field}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+
+                    {/* Sort Order */}
                     <div className="flex gap-1">
                       <Button
-                        variant={distinctOrder === 'asc' ? 'default' : 'outline'}
+                        variant={newDistinct.sortOrder === 'asc' ? 'default' : 'outline'}
                         size="sm"
                         className="h-8 text-xs px-3"
-                        onClick={() => handleDistinctOrderChange('asc')}
-                        disabled={!distinctColumn || (isDistinctJsonbColumn() && !distinctJsonField)}
+                        onClick={() => setNewDistinct({ ...newDistinct, sortOrder: 'asc' })}
+                        disabled={!newDistinct.column || (isJsonbColumn(newDistinct.column) && !newDistinct.jsonField)}
                       >
                         ↑ Asc
                       </Button>
                       <Button
-                        variant={distinctOrder === 'desc' ? 'default' : 'outline'}
+                        variant={newDistinct.sortOrder === 'desc' ? 'default' : 'outline'}
                         size="sm"
                         className="h-8 text-xs px-3"
-                        onClick={() => handleDistinctOrderChange('desc')}
-                        disabled={!distinctColumn || (isDistinctJsonbColumn() && !distinctJsonField)}
+                        onClick={() => setNewDistinct({ ...newDistinct, sortOrder: 'desc' })}
+                        disabled={!newDistinct.column || (isJsonbColumn(newDistinct.column) && !newDistinct.jsonField)}
                       >
                         ↓ Desc
                       </Button>
                     </div>
+
+                    {/* Add Button */}
+                    <Button
+                      onClick={addOperation}
+                      disabled={!isValidDistinct()}
+                      size="sm"
+                      className="h-8 text-xs"
+                    >
+                      Add
+                    </Button>
                   </div>
                 )}
               </div>
@@ -575,9 +716,13 @@ const CallFilter: React.FC<CallFilterProps> = ({
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={handleSave}
+                  onClick={() => {
+                    const sortedOperations = [...operations].sort((a, b) => a.order - b.order)
+                    onFiltersChange(sortedOperations)
+                    setIsOpen(false)
+                  }}
                   className="h-8 text-xs"
-                  disabled={filters.length === 0 && (!enableDistinct || !distinctColumn)}
+                  disabled={operations.length === 0}
                 >
                   Apply Filters
                 </Button>
@@ -586,11 +731,11 @@ const CallFilter: React.FC<CallFilterProps> = ({
           </PopoverContent>
         </Popover>
 
-        {filters.length > 0 && (
+        {operations.length > 0 && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={clearAllFilters}
+            onClick={clearAllOperations}
             className="gap-1 h-8 text-xs text-muted-foreground hover:text-foreground"
           >
             <X className="h-3 w-3" />
@@ -599,22 +744,19 @@ const CallFilter: React.FC<CallFilterProps> = ({
         )}
       </div>
 
-      {/* Active Filters */}
-      {filters.length > 0 && (
+      {/* Active Operations Summary (outside popup) */}
+      {operations.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
-          {filters.map((filter) => (
+          {[...operations].sort((a, b) => a.order - b.order).map((operation, index) => (
             <Badge
-              key={filter.id}
+              key={operation.id}
               variant="secondary"
-              className="gap-1 py-1 px-2 text-xs"
+              className={`gap-1 py-1 px-2 text-xs ${operation.type === 'distinct' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : ''}`}
             >
-              <span>{getFilterDisplayText(filter)}</span>
-              <button
-                onClick={() => removeFilter(filter.id)}
-                className="hover:bg-muted rounded-full p-0.5"
-              >
-                <X className="h-2 w-2" />
-              </button>
+              <span className="font-medium text-gray-500 dark:text-gray-400">
+                {index + 1}.
+              </span>
+              <span>{getOperationDisplayText(operation)}</span>
             </Badge>
           ))}
         </div>

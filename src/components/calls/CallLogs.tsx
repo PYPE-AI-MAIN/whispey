@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, RefreshCw, Inbox } from "lucide-react"
-import CallFilter, { FilterRule } from "../CallFilter"
+import CallFilter, { FilterOperation } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
@@ -169,8 +169,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
   const { distinctConfig, setDistinctConfig } = useCallLogsStore()
 
   // Event handlers - wrapped in useCallback
-  const handleFiltersChange = useCallback((filters: FilterRule[]) => {
-    setActiveFilters(filters)
+  const handleFiltersChange = useCallback((operations: FilterOperation[]) => {
+    setActiveFilters(operations)
   }, [setActiveFilters])
 
   const handleClearFilters = useCallback(() => {
