@@ -5,6 +5,7 @@ import asyncio
 import aiohttp
 import gzip
 import base64
+import uuid
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -18,6 +19,10 @@ WHISPEY_API_KEY = os.getenv("WHISPEY_API_KEY")
 
 # Compression settings
 COMPRESSION_THRESHOLD = 10 * 1024  # 10KB - compress if larger than this
+
+# Two-phase send threshold
+# If payload > 4MB after compression, split into core + detailed
+TWO_PHASE_THRESHOLD = 4 * 1024 * 1024  # 4MB
 
 def convert_timestamp(timestamp_value):
     """
@@ -90,9 +95,136 @@ def should_compress(data):
     """
     return get_payload_size(data) > COMPRESSION_THRESHOLD
 
+def split_data_for_two_phase(data):
+    """
+    Split data into core (essential) and detailed (large) payloads
+    
+    Args:
+        data (dict): Full data payload
+        
+    Returns:
+        tuple: (core_data, detailed_data)
+    """
+    # Core data - essential fields only (should be <500KB)
+    core_data = {
+        "call_id": data.get("call_id"),
+        "agent_id": data.get("agent_id"),
+        "customer_number": data.get("customer_number"),
+        "call_ended_reason": data.get("call_ended_reason"),
+        "call_started_at": data.get("call_started_at"),
+        "call_ended_at": data.get("call_ended_at"),
+        "duration_seconds": data.get("duration_seconds"),
+        "billing_duration_seconds": data.get("billing_duration_seconds"),
+        "recording_url": data.get("recording_url"),
+        "voice_recording_url": data.get("voice_recording_url"),
+        "transcript_type": data.get("transcript_type"),
+        "environment": data.get("environment", "dev"),
+        
+        # Simplified transcript - just text, no detailed metrics
+        "transcript_json": data.get("transcript_json", []),
+        
+        # Summary metrics only - aggregated from transcript_with_metrics
+        "summary_metrics": _create_summary_metrics(data),
+        
+        # Telemetry summary only - NOT full spans
+        "telemetry_summary": _create_telemetry_summary(data.get("telemetry_data")),
+        
+        # Essential metadata only
+        "metadata": {
+            "usage": data.get("metadata", {}).get("usage", {}),
+            "duration_formatted": data.get("metadata", {}).get("duration_formatted", ""),
+            # Don't include complete_configuration here - it's large
+        },
+        
+        # Dynamic variables
+        "dynamic_variables": data.get("dynamic_variables"),
+    }
+    
+    # Detailed data - large fields that can be sent later
+    detailed_data = {
+        "call_id": data.get("call_id"),
+        "update_type": "detailed_telemetry",  # Flag for Lambda to know this is phase 2
+        
+        # Full transcript with all metrics
+        "transcript_with_metrics": data.get("transcript_with_metrics", []),
+        
+        # Full telemetry data with all spans
+        "telemetry_data": data.get("telemetry_data", {}),
+        
+        # Complete metadata
+        "metadata": data.get("metadata", {}),
+    }
+    
+    return core_data, detailed_data
+
+def _create_summary_metrics(data):
+    """Create aggregated summary from transcript_with_metrics"""
+    transcript_with_metrics = data.get("transcript_with_metrics", [])
+    
+    if not transcript_with_metrics:
+        return {
+            "total_turns": 0,
+            "avg_latency": None,
+            "total_llm_tokens": 0,
+            "total_tts_characters": 0,
+            "total_stt_duration": 0
+        }
+    
+    # Aggregate metrics
+    total_turns = len(transcript_with_metrics)
+    latencies = []
+    llm_tokens = 0
+    tts_chars = 0
+    stt_duration = 0
+    
+    for turn in transcript_with_metrics:
+        # Calculate latency for this turn
+        llm_ttft = turn.get("llm_metrics", {}).get("ttft", 0) or 0
+        tts_ttfb = turn.get("tts_metrics", {}).get("ttfb", 0) or 0
+        eou_delay = turn.get("eou_metrics", {}).get("end_of_utterance_delay", 0) or 0
+        
+        total_latency = eou_delay + llm_ttft + tts_ttfb
+        if total_latency > 0:
+            latencies.append(total_latency)
+        
+        # Aggregate usage
+        llm_tokens += turn.get("llm_metrics", {}).get("prompt_tokens", 0) or 0
+        llm_tokens += turn.get("llm_metrics", {}).get("completion_tokens", 0) or 0
+        tts_chars += turn.get("tts_metrics", {}).get("characters_count", 0) or 0
+        stt_duration += turn.get("stt_metrics", {}).get("audio_duration", 0) or 0
+    
+    return {
+        "total_turns": total_turns,
+        "avg_latency": sum(latencies) / len(latencies) if latencies else None,
+        "total_llm_tokens": llm_tokens,
+        "total_tts_characters": tts_chars,
+        "total_stt_duration": stt_duration
+    }
+
+def _create_telemetry_summary(telemetry_data):
+    """Create summary from full telemetry data (don't send all spans)"""
+    if not telemetry_data:
+        return {
+            "total_spans": 0,
+            "performance_metrics": {}
+        }
+    
+    return {
+        "total_spans": len(telemetry_data.get("session_traces", [])),
+        "performance_metrics": telemetry_data.get("performance_metrics", {}),
+        "operation_breakdown": telemetry_data.get("span_summary", {}).get("by_operation", {}),
+        # Don't include session_traces here - too large
+    }
+
 async def send_to_whispey(data, apikey=None, api_url=None):
     """
-    Send data to Whispey API with automatic compression for large payloads
+    Send data to Whispey API with automatic two-phase send for large payloads
+    
+    Strategy:
+    - Small payloads (<4MB after compression): Send directly
+    - Large payloads (>=4MB after compression): 
+        1. Send core data first (fast acknowledgment)
+        2. Send detailed data async (doesn't block)
     
     Args:
         data (dict): The data to send to the API
@@ -125,9 +257,16 @@ async def send_to_whispey(data, apikey=None, api_url=None):
             "error": error_msg
         }
     
-    # Check if data should be compressed
+    # Determine target URL (overrideable)
+    url_to_use = api_url if api_url else WHISPEY_API_URL
+    
+    # Check payload size
     original_size = get_payload_size(data)
     print(f"📊 Original payload size: {original_size:,} bytes ({original_size/1024/1024:.2f} MB)")
+    
+    # Try compression first
+    compressed_data = None
+    compressed_size = original_size
     
     if should_compress(data):
         print(f"🗜️  Compressing data (threshold: {COMPRESSION_THRESHOLD/1024:.1f}KB)...")
@@ -139,43 +278,108 @@ async def send_to_whispey(data, apikey=None, api_url=None):
             print(f"✅ Compression successful: {compressed_size:,} bytes ({compressed_size/1024/1024:.2f} MB)")
             print(f"📈 Compression ratio: {compression_ratio:.1f}% reduction")
             
-            # Create compressed payload
-            payload = {
-                "compressed": True,
-                "data": compressed_data,
-                "original_size": original_size,
-                "compressed_size": compressed_size,
-                "compression_ratio": compression_ratio
-            }
-            
         except Exception as e:
-            print(f"⚠️  Compression failed: {e}, sending uncompressed data")
-            payload = data
-    else:
-        print(f"📤 Data size under threshold, sending uncompressed")
-        payload = data
+            print(f"⚠️  Compression failed: {e}, will send uncompressed")
+            compressed_data = None
     
-    # Headers - ensure no None values
+    # Decision point: Single send or two-phase send?
+    if compressed_size >= TWO_PHASE_THRESHOLD:
+        print(f"📦 Payload large ({compressed_size/1024/1024:.2f} MB >= {TWO_PHASE_THRESHOLD/1024/1024:.0f} MB)")
+        print(f"🔄 Using two-phase send strategy...")
+        
+        # Split data
+        core_data, detailed_data = split_data_for_two_phase(data)
+        
+        # Phase 1: Send core data (IMMEDIATE - blocks until done)
+        print(f"📤 Phase 1: Sending core data...")
+        core_result = await _send_payload(core_data, api_key_to_use, url_to_use)
+        
+        if not core_result.get("success"):
+            print(f"❌ Phase 1 failed: {core_result.get('error')}")
+            return core_result
+        
+        print(f"✅ Phase 1 complete - Call logged successfully")
+        
+        # Phase 2: Send detailed data (ASYNC - doesn't block)
+        print(f"📤 Phase 2: Sending detailed data in background...")
+        asyncio.create_task(
+            _send_detailed_data_async(detailed_data, api_key_to_use, url_to_use)
+        )
+        
+        return {
+            "success": True,
+            "status": 200,
+            "data": core_result.get("data"),
+            "upload_method": "two_phase",
+            "phase_1_complete": True,
+            "phase_2_started": True
+        }
+    
+    # Small payload - single send (existing logic)
+    print(f"📤 Payload size OK ({compressed_size/1024/1024:.2f} MB < {TWO_PHASE_THRESHOLD/1024/1024:.0f} MB)")
+    print(f"📤 Sending in single request...")
+    
+    result = await _send_payload(data, api_key_to_use, url_to_use, compressed_data)
+    
+    if result.get("success"):
+        result["upload_method"] = "single"
+    
+    return result
+
+async def _send_payload(data, api_key, url, compressed_data=None):
+    """
+    Internal function to send a payload to the API
+    
+    Args:
+        data (dict): Data to send
+        api_key (str): API key
+        url (str): Target URL
+        compressed_data (str, optional): Pre-compressed data
+        
+    Returns:
+        dict: Response from API
+    """
+    # Prepare payload
+    if compressed_data:
+        payload = {
+            "compressed": True,
+            "data": compressed_data,
+            "original_size": get_payload_size(data),
+            "compressed_size": len(compressed_data.encode('utf-8')),
+            "compression_ratio": (1 - len(compressed_data.encode('utf-8')) / get_payload_size(data)) * 100
+        }
+    else:
+        # Try to compress this specific payload
+        if should_compress(data):
+            try:
+                compressed = compress_data(data)
+                payload = {
+                    "compressed": True,
+                    "data": compressed,
+                    "original_size": get_payload_size(data),
+                    "compressed_size": len(compressed.encode('utf-8')),
+                }
+            except Exception:
+                payload = data
+        else:
+            payload = data
+    
+    # Headers
     headers = {
         "Content-Type": "application/json",
-        "x-pype-token": api_key_to_use
+        "x-pype-token": api_key
     }
     
-    # Validate headers
     headers = {k: v for k, v in headers.items() if k is not None and v is not None}
     
-    
     try:
-        # Determine target URL (overrideable)
-        url_to_use = api_url if api_url else WHISPEY_API_URL
-        
         # Test JSON serialization first
         json_str = json.dumps(payload)
         print(f"✅ JSON serialization OK ({len(json_str):,} chars)")
         
         # Send the request
         async with aiohttp.ClientSession() as session:
-            async with session.post(url_to_use, json=payload, headers=headers) as response:
+            async with session.post(url, json=payload, headers=headers) as response:
                 print(f"📡 Response status: {response.status}")
                 
                 if response.status >= 400:
@@ -196,7 +400,6 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     }
                     
     except (TypeError, ValueError) as e:
-        # These are the actual exceptions json.dumps() raises
         error_msg = f"JSON serialization failed: {e}"
         print(f"❌ {error_msg}")
         return {
@@ -210,3 +413,26 @@ async def send_to_whispey(data, apikey=None, api_url=None):
             "success": False,
             "error": error_msg
         }
+
+async def _send_detailed_data_async(detailed_data, api_key, url):
+    """
+    Background task to send detailed data (Phase 2)
+    
+    Args:
+        detailed_data (dict): Detailed telemetry data
+        api_key (str): API key
+        url (str): Target URL
+    """
+    try:
+        print(f"🔄 Background: Starting Phase 2 send...")
+        result = await _send_payload(detailed_data, api_key, url)
+        
+        if result.get("success"):
+            print(f"✅ Background: Phase 2 complete - Detailed data sent")
+        else:
+            print(f"⚠️ Background: Phase 2 failed - {result.get('error')}")
+            print(f"   This is non-critical - core data was already saved")
+            
+    except Exception as e:
+        print(f"⚠️ Background: Phase 2 exception - {e}")
+        print(f"   This is non-critical - core data was already saved")
