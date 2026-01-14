@@ -36,33 +36,6 @@ import {
 } from 'lucide-react'
 import { CustomTotalConfig, DistinctConfig, CustomFilter } from '@/types/customTotals'
 
-// Types (assuming these are imported from elsewhere)
-interface CustomFilter {
-  id: string
-  column: string
-  operation: string
-  value: string
-  jsonField?: string
-  logicalOperator: 'AND' | 'OR'
-}
-
-interface CustomTotalConfig {
-  id: string
-  name: string
-  description: string
-  aggregation: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX' | 'COUNT_DISTINCT'
-  column: string
-  jsonField?: string
-  distinct: { column: string; jsonField: string | undefined; } | undefined
-  filters: CustomFilter[]
-  filterLogic: 'AND' | 'OR'
-  icon: string
-  color: string
-  createdBy: string
-  createdAt: string
-  updatedAt: string
-}
-
 interface CustomTotalsBuilderProps {
   agentId: string
   projectId: string
