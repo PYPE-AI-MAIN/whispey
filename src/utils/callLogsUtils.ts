@@ -3,7 +3,7 @@
 import Papa from 'papaparse'
 import { supabase } from "@/lib/supabase"
 import { CallLog } from "@/types/logs"
-import { FilterRule } from '@/components/CallFilter'
+import { FilterOperation } from '@/components/CallFilter'
 import { Filter } from '@/hooks/useSupabase'
 
 // Pure utility functions - no React dependencies
@@ -52,98 +52,164 @@ export const isColumnVisibleForRole = (columnKey: string, role: string | null): 
   return !(restrictedColumns as readonly string[]).includes(columnKey)
 }
 
-export const convertToSupabaseFilters = (filters: FilterRule[], agentId?: string): Filter[] => {
-  if (!agentId) return []
-  
-  const supabaseFilters: Filter[] = [{ column: "agent_id", operator: "eq", value: agentId }]
-  
-  console.log('🔄 Converting filters:', JSON.stringify(filters, null, 2))
-  
-  filters.forEach(filter => {
-    const getColumnName = (forTextOperation = false) => {
-      // Backward compatibility: If JSONB column but no jsonField, skip this filter
-      if ((filter.column === 'metadata' || filter.column === 'transcription_metrics') && !filter.jsonField) {
-        const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
-        if (jsonbOperations.includes(filter.operation)) {
-          console.warn(`Skipping invalid filter: ${filter.column} with operation ${filter.operation} missing jsonField`)
-          return null // Signal to skip this filter
-        }
+// Helper function to convert a filter operation to Supabase Filter
+const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type: 'filter' }>): Filter | null => {
+  const getColumnName = (forTextOperation = false) => {
+    // Backward compatibility: If JSONB column but no jsonField, skip this filter
+    if ((filter.column === 'metadata' || filter.column === 'transcription_metrics') && !filter.jsonField) {
+      const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+      if (jsonbOperations.includes(filter.operation)) {
+        console.warn(`Skipping invalid filter: ${filter.column} with operation ${filter.operation} missing jsonField`)
+        return null // Signal to skip this filter
       }
-      
-      if (!filter.jsonField) return filter.column
-      if (forTextOperation) {
-        return `${filter.column}->>'${filter.jsonField}'`
+    }
+    
+    if (!filter.jsonField) return filter.column
+    if (forTextOperation) {
+      return `${filter.column}->>'${filter.jsonField}'`
+    } else {
+      return `${filter.column}->'${filter.jsonField}'`
+    }
+  }
+  
+  const columnName = getColumnName(false)
+  const columnNameText = getColumnName(true)
+  
+  // Skip if column name is null (invalid filter)
+  if (columnName === null || columnNameText === null) {
+    return null
+  }
+  
+  switch (filter.operation) {
+    case 'equals':
+      if (filter.column === 'call_started_at') {
+        // This will be handled as two filters
+        return null // Special case, handled separately
       } else {
-        return `${filter.column}->'${filter.jsonField}'`
+        return { column: columnName, operator: 'eq', value: filter.value }
+      }
+    case 'contains':
+      return { column: columnNameText, operator: 'ilike', value: `%${filter.value}%` }
+    case 'starts_with':
+      return { column: columnNameText, operator: 'ilike', value: `${filter.value}%` }
+    case 'greater_than':
+      if (filter.column === 'call_started_at') {
+        const nextDay = new Date(filter.value)
+        nextDay.setDate(nextDay.getDate() + 1)
+        const nextDayStr = nextDay.toISOString().split('T')[0]
+        return { column: filter.column, operator: 'gte', value: `${nextDayStr} 00:00:00` }
+      } else {
+        return { column: columnName, operator: 'gt', value: filter.value }
+      }
+    case 'less_than':
+      if (filter.column === 'call_started_at') {
+        return { column: filter.column, operator: 'lt', value: `${filter.value} 00:00:00` }
+      } else {
+        return { column: columnName, operator: 'lt', value: filter.value }
+      }
+    case 'json_equals':
+      return { column: columnNameText, operator: 'eq', value: filter.value }
+    case 'json_contains':
+      return { column: columnNameText, operator: 'ilike', value: `%${filter.value}%` }
+    case 'json_greater_than':
+      return { column: `${columnName}::numeric`, operator: 'gt', value: parseFloat(filter.value) }
+    case 'json_less_than':
+      return { column: `${columnName}::numeric`, operator: 'lt', value: parseFloat(filter.value) }
+    case 'json_exists':
+      return { column: columnNameText, operator: 'not.is', value: null }
+    default:
+      console.warn(`Unknown filter operation: ${filter.operation}`)
+      return null
+  }
+}
+
+// Extract filter operations and distinct config from FilterOperation array
+// Supports nested queries: filters before distinct go in inner query, filters after go in outer query
+export const extractFiltersAndDistinct = (operations: FilterOperation[], agentId?: string): {
+  preDistinctFilters: Filter[]
+  postDistinctFilters: Filter[]
+  distinctConfig?: { column: string; jsonField?: string; order: 'asc' | 'desc' }
+} => {
+  if (!agentId) return { preDistinctFilters: [], postDistinctFilters: [] }
+  
+  // Sort operations by order
+  const sortedOperations = [...operations].map((op, index) => ({
+    ...op,
+    order: op.order !== undefined ? op.order : index
+  })).sort((a, b) => a.order - b.order)
+  
+  console.log('🔄 Converting operations (ordered):', JSON.stringify(sortedOperations, null, 2))
+  
+  // Find the first distinct operation to split filters
+  const firstDistinctIndex = sortedOperations.findIndex(op => op.type === 'distinct')
+  
+  // Split operations into pre-distinct and post-distinct
+  const preDistinctOperations = firstDistinctIndex >= 0 
+    ? sortedOperations.slice(0, firstDistinctIndex)
+    : sortedOperations
+  
+  const postDistinctOperations = firstDistinctIndex >= 0
+    ? sortedOperations.slice(firstDistinctIndex + 1)
+    : []
+  
+  // Extract distinct config from first distinct operation
+  let distinctConfig: { column: string; jsonField?: string; order: 'asc' | 'desc' } | undefined
+  if (firstDistinctIndex >= 0) {
+    const distinctOp = sortedOperations[firstDistinctIndex]
+    if (distinctOp.type === 'distinct') {
+      distinctConfig = {
+        column: distinctOp.column,
+        jsonField: distinctOp.jsonField,
+        order: distinctOp.sortOrder || 'asc'
       }
     }
-    
-    const columnName = getColumnName(false)
-    const columnNameText = getColumnName(true)
-    
-    // Skip if column name is null (invalid filter)
-    if (columnName === null || columnNameText === null) {
-      return
-    }
-    
-    switch (filter.operation) {
-      case 'equals':
-        if (filter.column === 'call_started_at') {
-          const startOfDay = `${filter.value} 00:00:00`
-          const endOfDay = `${filter.value} 23:59:59.999`
-          supabaseFilters.push({ column: filter.column, operator: 'gte', value: startOfDay })
-          supabaseFilters.push({ column: filter.column, operator: 'lte', value: endOfDay })
-        } else {
-          supabaseFilters.push({ column: columnName, operator: 'eq', value: filter.value })
-        }
-        break
-      case 'contains':
-        supabaseFilters.push({ column: columnNameText, operator: 'ilike', value: `%${filter.value}%` })
-        break
-      case 'starts_with':
-        supabaseFilters.push({ column: columnNameText, operator: 'ilike', value: `${filter.value}%` })
-        break
-      case 'greater_than':
-        if (filter.column === 'call_started_at') {
-          const nextDay = new Date(filter.value)
-          nextDay.setDate(nextDay.getDate() + 1)
-          const nextDayStr = nextDay.toISOString().split('T')[0]
-          supabaseFilters.push({ column: filter.column, operator: 'gte', value: `${nextDayStr} 00:00:00` })
-        } else {
-          supabaseFilters.push({ column: columnName, operator: 'gt', value: filter.value })
-        }
-        break
-      case 'less_than':
-        if (filter.column === 'call_started_at') {
-          supabaseFilters.push({ column: filter.column, operator: 'lt', value: `${filter.value} 00:00:00` })
-        } else {
-          supabaseFilters.push({ column: columnName, operator: 'lt', value: filter.value })
-        }
-        break
-      case 'json_equals':
-        supabaseFilters.push({ column: columnNameText, operator: 'eq', value: filter.value })
-        break
-      case 'json_contains':
-        supabaseFilters.push({ column: columnNameText, operator: 'ilike', value: `%${filter.value}%` })
-        break
-      case 'json_greater_than':
-        supabaseFilters.push({ column: `${columnName}::numeric`, operator: 'gt', value: parseFloat(filter.value) })
-        break
-      case 'json_less_than':
-        supabaseFilters.push({ column: `${columnName}::numeric`, operator: 'lt', value: parseFloat(filter.value) })
-        break
-      case 'json_exists':
-        // Use ->> (text extraction) for json_exists, same as build_single_filter_condition
-        supabaseFilters.push({ column: columnNameText, operator: 'not.is', value: null })
-        break
-      default:
-        console.warn(`Unknown filter operation: ${filter.operation}`)
-        break
+  }
+  
+  // Process pre-distinct filter operations
+  const preDistinctFilters: Filter[] = [{ column: "agent_id", operator: "eq", value: agentId }]
+  preDistinctOperations.filter((op): op is Extract<FilterOperation, { type: 'filter' }> => op.type === 'filter').forEach(filter => {
+    // Handle special case for date equals
+    if (filter.operation === 'equals' && filter.column === 'call_started_at') {
+      const startOfDay = `${filter.value} 00:00:00`
+      const endOfDay = `${filter.value} 23:59:59.999`
+      preDistinctFilters.push({ column: filter.column, operator: 'gte', value: startOfDay })
+      preDistinctFilters.push({ column: filter.column, operator: 'lte', value: endOfDay })
+    } else {
+      const convertedFilter = convertFilterOperationToFilter(filter)
+      if (convertedFilter) {
+        preDistinctFilters.push(convertedFilter)
+      }
     }
   })
   
-  console.log('✅ Converted filters:', JSON.stringify(supabaseFilters, null, 2))
-  return supabaseFilters
+  // Process post-distinct filter operations
+  const postDistinctFilters: Filter[] = []
+  postDistinctOperations.filter((op): op is Extract<FilterOperation, { type: 'filter' }> => op.type === 'filter').forEach(filter => {
+    // Handle special case for date equals
+    if (filter.operation === 'equals' && filter.column === 'call_started_at') {
+      const startOfDay = `${filter.value} 00:00:00`
+      const endOfDay = `${filter.value} 23:59:59.999`
+      postDistinctFilters.push({ column: filter.column, operator: 'gte', value: startOfDay })
+      postDistinctFilters.push({ column: filter.column, operator: 'lte', value: endOfDay })
+    } else {
+      const convertedFilter = convertFilterOperationToFilter(filter)
+      if (convertedFilter) {
+        postDistinctFilters.push(convertedFilter)
+      }
+    }
+  })
+  
+  console.log('✅ Pre-distinct filters:', JSON.stringify(preDistinctFilters, null, 2))
+  console.log('✅ Post-distinct filters:', JSON.stringify(postDistinctFilters, null, 2))
+  console.log('✅ Distinct config:', JSON.stringify(distinctConfig, null, 2))
+  
+  return { preDistinctFilters, postDistinctFilters, distinctConfig }
+}
+
+// Legacy function for backward compatibility
+export const convertToSupabaseFilters = (operations: FilterOperation[], agentId?: string): Filter[] => {
+  const { preDistinctFilters } = extractFiltersAndDistinct(operations, agentId)
+  return preDistinctFilters
 }
 
 export const getSelectColumns = (role: string | null): string => {
@@ -217,7 +283,7 @@ export const flattenCallLogForCSV = (
 
 export const downloadCSV = async (
   agentId: string,
-  activeFilters: FilterRule[],
+  activeFilters: FilterOperation[],
   visibleColumns: {
     basic: string[]
     metadata: string[]
@@ -235,9 +301,9 @@ export const downloadCSV = async (
 
   try {
     let query = supabase.from("pype_voice_call_logs").select(selectColumns.join(','))
-    const filters = convertToSupabaseFilters(activeFilters, agentId)
+    const { preDistinctFilters } = extractFiltersAndDistinct(activeFilters, agentId)
     
-    for (const filter of filters) {
+    for (const filter of preDistinctFilters) {
       switch (filter.operator) {
         case 'eq': query = query.eq(filter.column, filter.value); break
         case 'ilike': query = query.ilike(filter.column, filter.value); break

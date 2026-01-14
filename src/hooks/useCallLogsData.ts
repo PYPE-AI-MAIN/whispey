@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getUserProjectRole } from "@/services/getUserRole"
-import { toCamelCase, getSelectColumns, convertToSupabaseFilters } from '@/utils/callLogsUtils'
-import { FilterRule } from '@/components/CallFilter'
+import { toCamelCase, getSelectColumns, extractFiltersAndDistinct } from '@/utils/callLogsUtils'
+import { FilterOperation } from '@/components/CallFilter'
 import { useCallLogs } from "@/hooks/useCallLogs"
 import { useCallLogsStore } from '@/stores/callLogsStore'
 
@@ -13,32 +13,16 @@ export const useCallLogsData = (
 ) => {
   const [role, setRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
-  const { activeFilters, setActiveFilters, distinctConfig } = useCallLogsStore()
+  const { activeFilters, setActiveFilters, distinctConfig: legacyDistinctConfig } = useCallLogsStore()
 
-  // Backward compatibility: Clean invalid filters on mount
-  useEffect(() => {
-    const jsonbColumns = ['metadata', 'transcription_metrics']
-    const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
-    
-    const invalidFilters = activeFilters.filter(filter => {
-      if (jsonbColumns.includes(filter.column) && jsonbOperations.includes(filter.operation)) {
-        return !filter.jsonField
-      }
-      return false
-    })
-    
-    if (invalidFilters.length > 0) {
-      // Remove invalid filters
-      const validFilters = activeFilters.filter(filter => {
-        if (jsonbColumns.includes(filter.column) && jsonbOperations.includes(filter.operation)) {
-          return !!filter.jsonField
-        }
-        return true
-      })
-      setActiveFilters(validFilters)
-      console.warn(`Removed ${invalidFilters.length} invalid filter(s) missing jsonField`)
-    }
-  }, []) // Only run once on mount
+  // Extract filters and distinct config from operations
+  const { preDistinctFilters, postDistinctFilters, distinctConfig: extractedDistinctConfig } = useMemo(
+    () => extractFiltersAndDistinct(activeFilters, agent?.id),
+    [activeFilters, agent?.id]
+  )
+  
+  // Use extracted distinct config, fallback to legacy if not found
+  const distinctConfig = extractedDistinctConfig || legacyDistinctConfig
 
   // Fetch user role
   useEffect(() => {
@@ -65,12 +49,6 @@ export const useCallLogsData = (
   // Memoize select columns
   const selectColumns = useMemo(() => getSelectColumns(role), [role])
 
-  // Memoize supabase filters
-  const supabaseFilters = useMemo(
-    () => convertToSupabaseFilters(activeFilters, agent?.id),
-    [activeFilters, agent?.id]
-  )
-
   // Fetch call logs with cache optimization
   const { 
     data,
@@ -82,7 +60,8 @@ export const useCallLogsData = (
     refetch 
   } = useCallLogs({
     agentId: agent?.id,
-    filters: supabaseFilters,
+    preDistinctFilters: preDistinctFilters,
+    postDistinctFilters: postDistinctFilters,
     select: selectColumns,
     distinctConfig: distinctConfig,
     dateRange: dateRange,

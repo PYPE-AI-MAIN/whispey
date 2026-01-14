@@ -34,32 +34,7 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react'
-
-// Types (assuming these are imported from elsewhere)
-interface CustomFilter {
-  id: string
-  column: string
-  operation: string
-  value: string
-  jsonField?: string
-  logicalOperator: 'AND' | 'OR'
-}
-
-interface CustomTotalConfig {
-  id: string
-  name: string
-  description: string
-  aggregation: 'COUNT' | 'SUM' | 'AVG' | 'MIN' | 'MAX' | 'COUNT_DISTINCT'
-  column: string
-  jsonField?: string
-  filters: CustomFilter[]
-  filterLogic: 'AND' | 'OR'
-  icon: string
-  color: string
-  createdBy: string
-  createdAt: string
-  updatedAt: string
-}
+import { CustomTotalConfig, DistinctConfig, CustomFilter } from '@/types/customTotals'
 
 interface CustomTotalsBuilderProps {
   agentId: string
@@ -260,6 +235,25 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
       }
     }
 
+    // Build distinct config if enabled and valid
+    let distinctConfigToSave: DistinctConfig | undefined = undefined
+    if (enableDistinct && config.aggregation === 'COUNT' && distinctConfig.column) {
+      // For JSONB columns, jsonField is required
+      if (isJsonbColumn(distinctConfig.column)) {
+        if (distinctConfig.jsonField) {
+          distinctConfigToSave = {
+            column: distinctConfig.column,
+            jsonField: distinctConfig.jsonField
+          }
+        }
+      } else {
+        // For non-JSONB columns, jsonField is not needed
+        distinctConfigToSave = {
+          column: distinctConfig.column
+        }
+      }
+    }
+
     const fullConfig: CustomTotalConfig = {
       id: Date.now().toString(),
       name: config.name!,
@@ -267,10 +261,7 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
       aggregation: config.aggregation as any,
       column: config.column!,
       jsonField: config.jsonField || undefined,
-      distinct: enableDistinct && config.aggregation === 'COUNT' && distinctConfig.column ? {
-        column: distinctConfig.column,
-        jsonField: distinctConfig.jsonField || undefined
-      } : undefined,
+      distinct: distinctConfigToSave,
       filters: config.filters || [],
       filterLogic: config.filterLogic || 'AND',
       icon: config.icon || 'calculator',
@@ -279,6 +270,17 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
+
+    // Debug: Log what's being saved
+    console.log('🔍 [CustomTotalsBuilder] Saving config with distinct:', {
+      name: fullConfig.name,
+      aggregation: fullConfig.aggregation,
+      enableDistinct,
+      distinctConfig,
+      distinctConfigToSave,
+      distinctInConfig: fullConfig.distinct,
+      distinctStringified: JSON.stringify(fullConfig.distinct)
+    })
 
     try {
       await onSave(fullConfig)
