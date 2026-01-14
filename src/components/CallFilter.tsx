@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Calendar as CalendarIcon,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Pencil
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
@@ -269,6 +270,38 @@ const CallFilter: React.FC<CallFilterProps> = ({
       order: index
     }))
     setOperations(reorderedOperations)
+  }
+
+  const editOperation = (operation: FilterOperation) => {
+    if (operation.type === 'filter') {
+      setOperationType('filter')
+      setNewFilter({
+        column: operation.column,
+        operation: operation.operation,
+        value: operation.value,
+        jsonField: operation.jsonField || ''
+      })
+      if (operation.column === 'call_started_at' && operation.value) {
+        try {
+          setSelectedDate(new Date(operation.value))
+        } catch (e) {
+          // Invalid date, ignore
+        }
+      }
+      // Remove the operation from the list (will be re-added when saved)
+      removeOperation(operation.id)
+    } else {
+      setOperationType('distinct')
+      setNewDistinct({
+        column: operation.column,
+        jsonField: operation.jsonField || '',
+        sortOrder: operation.sortOrder || 'asc'
+      })
+      // Remove the operation from the list (will be re-added when saved)
+      removeOperation(operation.id)
+    }
+    // Open the popover
+    setIsOpen(true)
   }
 
   const moveOperation = (operationId: string, direction: 'up' | 'down') => {
@@ -751,12 +784,42 @@ const CallFilter: React.FC<CallFilterProps> = ({
             <Badge
               key={operation.id}
               variant="secondary"
-              className={`gap-1 py-1 px-2 text-xs ${operation.type === 'distinct' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : ''}`}
+              className={`gap-1 py-1 px-2 text-xs flex items-center ${operation.type === 'distinct' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : ''}`}
             >
               <span className="font-medium text-gray-500 dark:text-gray-400">
                 {index + 1}.
               </span>
               <span>{getOperationDisplayText(operation)}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 ml-1 hover:bg-gray-300 dark:hover:bg-gray-600"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  editOperation(operation)
+                }}
+                title="Edit filter"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 ml-0.5 hover:bg-red-200 dark:hover:bg-red-900 text-red-500 hover:text-red-700"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const updatedOperations = operations.filter(op => op.id !== operation.id)
+                  const reorderedOperations = updatedOperations.map((op, idx) => ({
+                    ...op,
+                    order: idx
+                  }))
+                  setOperations(reorderedOperations)
+                  onFiltersChange(reorderedOperations)
+                }}
+                title="Remove filter"
+              >
+                <X className="h-3 w-3" />
+              </Button>
             </Badge>
           ))}
         </div>
