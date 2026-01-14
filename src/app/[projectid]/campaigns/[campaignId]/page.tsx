@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users, Pause, Play } from 'lucide-react'
+import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users, Pause, Play, Download, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Contact, RetryConfig } from '@/utils/campaigns/constants'
@@ -48,6 +48,8 @@ function ViewCampaign() {
   const [hasMoreLogs, setHasMoreLogs] = useState(false)
   const [nextKey, setNextKey] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [downloadStatusFilter, setDownloadStatusFilter] = useState('all')
+  const [isDownloading, setIsDownloading] = useState(false)
 
 
 
@@ -179,6 +181,197 @@ function ViewCampaign() {
   const handleLoadMore = () => {
     if (nextKey && !loadingLogs) {
       fetchContacts(nextKey)
+    }
+  }
+
+  // Download contacts as CSV based on status filter
+  const handleDownloadContacts = async () => {
+    try {
+      setIsDownloading(true)
+      let allContacts: any[] = []
+      let currentKey: string | null = null
+      let hasMore = true
+
+      // Fetch contacts with server-side filtering (paginate through all filtered pages)
+      while (hasMore) {
+        let url = `/api/campaigns/contacts?campaignId=${campaignId}&limit=100`
+        
+        // Add status filter to API call for server-side filtering
+        if (downloadStatusFilter !== 'all') {
+          url += `&status=${encodeURIComponent(downloadStatusFilter)}`
+        }
+        
+        if (currentKey) {
+          url += `&lastKey=${encodeURIComponent(currentKey)}`
+        }
+
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error('Failed to fetch contacts')
+        }
+
+        const data = await response.json()
+        allContacts = [...allContacts, ...(data.contacts || [])]
+        
+        hasMore = data.pagination?.hasMore || false
+        currentKey = data.pagination?.nextKey || null
+      }
+
+      // No need for client-side filtering anymore - already filtered by backend
+      const filteredContacts = allContacts
+
+      if (filteredContacts.length === 0) {
+        alert('No contacts found with the selected status filter')
+        return
+      }
+
+      // Get all unique keys from contacts to create CSV headers
+      const directKeys = new Set<string>()
+      const additionalDataKeys = new Set<string>()
+      
+      filteredContacts.forEach(contact => {
+        // Add direct properties
+        Object.keys(contact).forEach(key => {
+          if (!['contactId', 'campaignId', 'id', 'additionalData'].includes(key)) {
+            directKeys.add(key)
+          }
+        })
+        
+        // Parse and collect additionalData keys separately
+        if (contact.additionalData) {
+          try {
+            let additionalData: any = {}
+            if (typeof contact.additionalData === 'string') {
+              try {
+                const parsed = JSON.parse(contact.additionalData)
+                additionalData = parseDynamoDBValue(parsed)
+              } catch {
+                additionalData = JSON.parse(contact.additionalData)
+              }
+            } else if (typeof contact.additionalData === 'object') {
+              additionalData = parseDynamoDBValue(contact.additionalData)
+            }
+            
+            if (additionalData && typeof additionalData === 'object') {
+              Object.keys(additionalData).forEach(key => additionalDataKeys.add(key))
+            }
+          } catch (e) {
+            console.warn('Failed to parse additionalData:', e)
+          }
+        }
+      })
+
+      // Create ordered column list with priorities
+      // Priority order: status fields, then important additionalData fields, then other direct fields, then remaining additionalData
+      const statusColumns = ['status', 'retryCount', 'lastCallAt']
+      const priorityAdditionalColumns = ['phone', 'phoneNumber', 'patient_name', 'doctor_name', 'appointment_date', 'appointment_time', 'name', 'email']
+      
+      const columns: string[] = []
+      
+      // 1. Add status columns first
+      statusColumns.forEach(col => {
+        if (directKeys.has(col)) {
+          columns.push(col)
+          directKeys.delete(col)
+        }
+      })
+      
+      // 2. Add priority additionalData columns
+      priorityAdditionalColumns.forEach(col => {
+        if (additionalDataKeys.has(col)) {
+          columns.push(col)
+          additionalDataKeys.delete(col)
+        }
+      })
+      
+      // 3. Add remaining direct columns (sorted)
+      Array.from(directKeys).sort().forEach(col => columns.push(col))
+      
+      // 4. Add remaining additionalData columns (sorted)
+      Array.from(additionalDataKeys).sort().forEach(col => columns.push(col))
+
+      // Log the columns being exported for debugging
+      console.log('Exporting columns:', columns)
+      console.log('Total columns:', columns.length)
+      console.log('From additionalData:', Array.from(priorityAdditionalColumns.filter(c => columns.includes(c))).concat(Array.from(additionalDataKeys)))
+
+      // Helper function to get value (same as getValue in render)
+      const getValueForExport = (contact: any, column: string) => {
+        if (contact[column] !== undefined) {
+          return contact[column]
+        }
+        
+        if (contact.additionalData) {
+          try {
+            let additionalData: any = {}
+            if (typeof contact.additionalData === 'string') {
+              try {
+                const parsed = JSON.parse(contact.additionalData)
+                additionalData = parseDynamoDBValue(parsed)
+              } catch {
+                additionalData = JSON.parse(contact.additionalData)
+              }
+            } else if (typeof contact.additionalData === 'object') {
+              additionalData = parseDynamoDBValue(contact.additionalData)
+            }
+            return additionalData?.[column]
+          } catch {
+            return null
+          }
+        }
+        return null
+      }
+
+      // Create CSV content
+      const csvRows = [
+        columns.join(','),
+        ...filteredContacts.map(contact => 
+          columns.map(col => {
+            const value = getValueForExport(contact, col)
+            if (value === null || value === undefined) return ''
+            
+            // Handle objects and arrays
+            if (typeof value === 'object') {
+              return `"${JSON.stringify(value).replace(/"/g, '""')}"`
+            }
+            
+            // Escape quotes and wrap in quotes if contains comma or quotes
+            const stringValue = String(value)
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+              return `"${stringValue.replace(/"/g, '""')}"`
+            }
+            return stringValue
+          }).join(',')
+        )
+      ]
+
+      const csvContent = csvRows.join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      
+      link.setAttribute('href', url)
+      const filterSuffix = downloadStatusFilter === 'all' ? 'all' : downloadStatusFilter
+      link.setAttribute('download', `campaign-${campaignDetails?.campaignName || campaignId}-${filterSuffix}-${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      // Count additionalData columns
+      const additionalDataCount = Array.from(additionalDataKeys).length + priorityAdditionalColumns.filter(c => columns.includes(c)).length
+      
+      const filterInfo = downloadStatusFilter === 'all' 
+        ? 'All contacts' 
+        : `Filtered by: ${downloadStatusFilter}`
+      
+      alert(`✅ Downloaded ${filteredContacts.length} contacts\n🔍 ${filterInfo} (server-side filtered)\n📊 Total columns: ${columns.length}\n📋 Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
+    } catch (error: any) {
+      console.error('Error downloading contacts:', error)
+      alert('Failed to download contacts: ' + error.message)
+    } finally {
+      setIsDownloading(false)
     }
   }
 
@@ -522,6 +715,40 @@ function ViewCampaign() {
                 {actionLoading ? 'Resuming...' : 'Resume'}
               </Button>
             )}
+            {/* Download Section with Status Filter */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+              <Filter className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+              <select
+                value={downloadStatusFilter}
+                onChange={(e) => setDownloadStatusFilter(e.target.value)}
+                disabled={isDownloading}
+                className="h-6 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="in_progress">In Progress</option>
+              </select>
+              <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+              <button
+                onClick={handleDownloadContacts}
+                disabled={isDownloading || logs.length === 0}
+                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Downloading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download CSV</span>
+                  </>
+                )}
+              </button>
+            </div>
             <Button
               variant="outline"
               size="sm"

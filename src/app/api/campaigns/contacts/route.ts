@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const campaignId = searchParams.get('campaignId')
     const limit = searchParams.get('limit') || '50'
     const lastKey = searchParams.get('lastKey')
+    const status = searchParams.get('status') // Add status filter support
 
     if (!campaignId) {
       return NextResponse.json(
@@ -20,6 +21,11 @@ export async function GET(request: NextRequest) {
     
     if (lastKey) {
       apiUrl += `&lastKey=${encodeURIComponent(lastKey)}`
+    }
+    
+    // Add status filter if provided
+    if (status && status !== 'all') {
+      apiUrl += `&status=${encodeURIComponent(status)}`
     }
 
     const response = await fetch(apiUrl, {
