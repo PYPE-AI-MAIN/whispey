@@ -106,6 +106,24 @@ def split_data_for_two_phase(data):
         tuple: (core_data, detailed_data)
     """
     # Core data - essential fields only (should be <500KB)
+    # Ensure duration_seconds is an integer or None
+    duration_seconds = data.get("duration_seconds")
+    if duration_seconds is not None:
+        try:
+            duration_seconds = int(duration_seconds)
+        except (ValueError, TypeError):
+            duration_seconds = None
+    
+    billing_duration_seconds = data.get("billing_duration_seconds")
+    if billing_duration_seconds is not None:
+        try:
+            billing_duration_seconds = int(billing_duration_seconds)
+        except (ValueError, TypeError):
+            billing_duration_seconds = None
+    
+    # Debug logging
+    print(f"📊 Duration validation - duration_seconds: {duration_seconds} (type: {type(duration_seconds)}), billing: {billing_duration_seconds} (type: {type(billing_duration_seconds)})")
+    
     core_data = {
         "call_id": data.get("call_id"),
         "agent_id": data.get("agent_id"),
@@ -113,8 +131,8 @@ def split_data_for_two_phase(data):
         "call_ended_reason": data.get("call_ended_reason"),
         "call_started_at": data.get("call_started_at"),
         "call_ended_at": data.get("call_ended_at"),
-        "duration_seconds": data.get("duration_seconds"),
-        "billing_duration_seconds": data.get("billing_duration_seconds"),
+        "duration_seconds": duration_seconds,
+        "billing_duration_seconds": billing_duration_seconds,
         "recording_url": data.get("recording_url"),
         "voice_recording_url": data.get("voice_recording_url"),
         "transcript_type": data.get("transcript_type"),
@@ -178,6 +196,10 @@ def _create_summary_metrics(data):
     stt_duration = 0
     
     for turn in transcript_with_metrics:
+        # Skip None or invalid turns
+        if not turn or not isinstance(turn, dict):
+            continue
+        
         # Calculate latency for this turn
         llm_ttft = turn.get("llm_metrics", {}).get("ttft", 0) or 0
         tts_ttfb = turn.get("tts_metrics", {}).get("ttfb", 0) or 0
