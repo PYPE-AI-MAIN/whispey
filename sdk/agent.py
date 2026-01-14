@@ -15,9 +15,8 @@ load_dotenv()
 
 # Initialize Whispey with optimized bug reporting
 pype = LivekitObserve(
-    agent_id="5551677a-567b-41ec-8bdb-289408612968", 
-    apikey="pype_d8a47a4043bb61a1e81b718c3196aea1dc8bfe07d0b68ec87415a43e964191b5",
-    host_url="https://z01kz2txle.execute-api.ap-south-1.amazonaws.com/test/send-call-log"
+    agent_id="87dce6c4-2178-44ae-9c06-8940dfba2282", 
+    apikey="pype_6ff2f5c9c1d19fb71ea3cfbc5cab15e2b7786344ebfee699d0c628343d07c0af",
 )
 
 
