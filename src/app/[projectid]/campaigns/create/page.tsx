@@ -1,7 +1,7 @@
 // app/[projectid]/campaigns/create/page.tsx
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Formik } from 'formik'
 import * as Yup from 'yup'
@@ -17,7 +17,8 @@ import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
 import { RecipientsPreview } from '@/components/campaigns/RecipientsPreview'
 import { RetryConfiguration } from '@/components/campaigns/RetryConfiguration'
 
-const validationSchema = Yup.object({
+// Create validation schema with dynamic max concurrency
+const createValidationSchema = (maxConcurrency: number) => Yup.object({
   campaignName: Yup.string()
     .required('Campaign name is required')
     .min(3, 'Must be at least 3 characters'),
@@ -37,7 +38,8 @@ const validationSchema = Yup.object({
   reservedConcurrency: Yup.number()
     .required('Campaign concurrency is required')
     .min(1, 'Must be at least 1')
-    .max(20, 'Cannot exceed 20'),
+    .max(maxConcurrency, `Cannot exceed ${maxConcurrency}`),
+    
   retryConfig: Yup.array().of(
     Yup.object().shape({
       type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor']).required('Retry type is required'),
@@ -112,6 +114,8 @@ function CreateCampaign() {
   const [csvData, setCsvData] = useState<RecipientRow[]>([])
   const [validationErrors, setValidationErrors] = useState<CsvValidationError[]>([])
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
+  const [maxConcurrency, setMaxConcurrency] = useState<number>(5) // Default to 5
+  const [loadingConfig, setLoadingConfig] = useState<boolean>(true)
 
   const initialValues = {
     campaignName: '',
@@ -140,8 +144,36 @@ function CreateCampaign() {
     ] as RetryConfig[],
   }
 
+  // Fetch project configuration to get max_concurrency
+  useEffect(() => {
+    const fetchProjectConfig = async () => {
+      try {
+        const { data: project, error } = await supabase
+          .from('pype_voice_projects')
+          .select('campaign_config')
+          .eq('id', projectId)
+          .single()
+
+        if (!error && project?.campaign_config) {
+          const maxConcurrencyFromConfig = project.campaign_config.max_concurrency || 5
+          setMaxConcurrency(maxConcurrencyFromConfig)
+          console.log('📊 Max concurrency from config:', maxConcurrencyFromConfig)
+        } else {
+          setMaxConcurrency(5) // Default
+        }
+      } catch (error) {
+        console.error('Error fetching project config:', error)
+        setMaxConcurrency(5) // Default on error
+      } finally {
+        setLoadingConfig(false)
+      }
+    }
+
+    fetchProjectConfig()
+  }, [projectId])
+
   // Fetch phone numbers when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchPhoneNumbers = async () => {
       try {
         const response = await fetch(`/api/calls/phone-numbers/?limit=50`)
@@ -388,7 +420,7 @@ function CreateCampaign() {
 
       <Formik
         initialValues={initialValues}
-        validationSchema={validationSchema}
+        validationSchema={createValidationSchema(maxConcurrency)}
         onSubmit={handleSubmit}
       >
         {({ values, setFieldValue, isSubmitting, dirty, isValid, handleSubmit: formikHandleSubmit }) => (
@@ -396,12 +428,20 @@ function CreateCampaign() {
             {/* Left Panel - Form */}
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-2xl mx-auto p-4 space-y-4">
-                {/* Form Fields */}
-                <CampaignFormFields 
-                  onFieldChange={setFieldValue}
-                  values={values}
-                  projectId={projectId}
-                />
+                {loadingConfig ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-500">Loading configuration...</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Form Fields */}
+                    <CampaignFormFields 
+                      onFieldChange={setFieldValue}
+                      values={values}
+                      projectId={projectId}
+                      maxConcurrency={maxConcurrency}
+                    />
 
                 {/* CSV Upload */}
                 <CsvUploadSection
@@ -460,6 +500,8 @@ function CreateCampaign() {
                     )}
                   </Button>
                 </div>
+                  </>
+                )}
               </div>
             </div>
 
