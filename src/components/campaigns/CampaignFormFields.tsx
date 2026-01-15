@@ -195,7 +195,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
           Campaign Concurrency
         </Label>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          Number of simultaneous calls for this campaign (1-5).
+          Number of simultaneous calls for this campaign (1-20).
         </p>
         <div className="flex items-center gap-2">
           <Button
@@ -213,13 +213,13 @@ export function CampaignFormFields({ onFieldChange, values, projectId }: Campaig
             name="reservedConcurrency"
             className="flex-1 text-center h-7 text-xs"
             min="1"
-            max="5"
+            max="20"
           />
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onFieldChange('reservedConcurrency', Math.min(5, values.reservedConcurrency + 1))}
+            onClick={() => onFieldChange('reservedConcurrency', Math.min(20, values.reservedConcurrency + 1))}
             className="h-7 w-7 p-0"
           >
             +
