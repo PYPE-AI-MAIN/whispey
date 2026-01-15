@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { FilterRule } from '@/components/CallFilter'
+import { FilterOperation } from '@/components/CallFilter'
 
 interface VisibleColumns {
   basic: string[]
@@ -16,11 +16,11 @@ export interface DistinctConfig {
 }
 
 interface CallLogsState {
-  // Filter state
-  activeFilters: FilterRule[]
-  setActiveFilters: (filters: FilterRule[]) => void
+  // Filter operations (unified filters and distinct)
+  activeFilters: FilterOperation[]
+  setActiveFilters: (operations: FilterOperation[]) => void
   
-  // Distinct configuration
+  // Legacy distinct configuration (for backward compatibility)
   distinctConfig?: DistinctConfig
   setDistinctConfig: (config?: DistinctConfig) => void
   
@@ -39,34 +39,50 @@ const defaultVisibleColumns: VisibleColumns = {
   metrics: []
 }
 
-// Helper function to validate and clean filters (backward compatibility)
-const validateAndCleanFilters = (filters: FilterRule[]): FilterRule[] => {
-  return filters.filter(filter => {
-    // If it's a JSONB column (metadata or transcription_metrics)
-    if (filter.column === 'metadata' || filter.column === 'transcription_metrics') {
-      // For JSONB operations, jsonField is required
-      const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
-      if (jsonbOperations.includes(filter.operation)) {
-        // If jsonField is missing, this is an invalid filter - remove it
-        if (!filter.jsonField) {
-          console.warn(`Removing invalid filter: ${filter.column} with operation ${filter.operation} missing jsonField`)
+// Helper function to validate and clean filter operations
+const validateAndCleanOperations = (operations: FilterOperation[]): FilterOperation[] => {
+  const validOperations = operations.filter(op => {
+    if (op.type === 'filter') {
+      // If it's a JSONB column (metadata or transcription_metrics)
+      if (op.column === 'metadata' || op.column === 'transcription_metrics') {
+        // For JSONB operations, jsonField is required
+        const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+        if (jsonbOperations.includes(op.operation)) {
+          // If jsonField is missing, this is an invalid filter - remove it
+          if (!op.jsonField) {
+            console.warn(`Removing invalid filter: ${op.column} with operation ${op.operation} missing jsonField`)
+            return false
+          }
+        }
+      }
+    } else if (op.type === 'distinct') {
+      // Validate distinct operations
+      if (op.column === 'metadata' || op.column === 'transcription_metrics') {
+        if (!op.jsonField) {
+          console.warn(`Removing invalid distinct operation: ${op.column} missing jsonField`)
           return false
         }
       }
     }
     return true
   })
+  
+  // Ensure all operations have order
+  return validOperations.map((op, index) => ({
+    ...op,
+    order: op.order !== undefined ? op.order : index
+  }))
 }
 
 export const useCallLogsStore = create<CallLogsState>()(
   persist(
     (set, get) => ({
-      // Filter state
+      // Filter operations state
       activeFilters: [],
-      setActiveFilters: (filters) => {
-        // Clean invalid filters before setting
-        const cleanedFilters = validateAndCleanFilters(filters)
-        set({ activeFilters: cleanedFilters })
+      setActiveFilters: (operations) => {
+        // Clean invalid operations before setting
+        const cleanedOperations = validateAndCleanOperations(operations)
+        set({ activeFilters: cleanedOperations })
       },
       
       // Distinct configuration
@@ -89,13 +105,30 @@ export const useCallLogsStore = create<CallLogsState>()(
     }),
     {
       name: 'call-logs-storage', // localStorage key
-      // Clean filters when loading from localStorage
+      // Clean operations when loading from localStorage
       onRehydrateStorage: (state) => {
         if (state) {
-          const cleanedFilters = validateAndCleanFilters(state.activeFilters)
-          if (cleanedFilters.length !== state.activeFilters.length) {
-            // Some filters were removed, update the store
-            state.setActiveFilters(cleanedFilters)
+          // Migrate legacy FilterRule[] to FilterOperation[] if needed
+          const operations = state.activeFilters.map((op: any) => {
+            // If it's a legacy FilterRule (has 'operation' field but no 'type'), convert it
+            if (op.operation && !op.type) {
+              return {
+                id: op.id,
+                type: 'filter' as const,
+                column: op.column,
+                operation: op.operation,
+                value: op.value,
+                jsonField: op.jsonField,
+                order: op.order ?? 0
+              }
+            }
+            return op
+          })
+          
+          const cleanedOperations = validateAndCleanOperations(operations)
+          if (cleanedOperations.length !== operations.length) {
+            // Some operations were removed, update the store
+            state.setActiveFilters(cleanedOperations)
           }
         }
       }
