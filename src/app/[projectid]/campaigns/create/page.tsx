@@ -39,6 +39,7 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     .required('Campaign concurrency is required')
     .min(1, 'Must be at least 1')
     .max(maxConcurrency, `Cannot exceed ${maxConcurrency}`),
+    
   retryConfig: Yup.array().of(
     Yup.object().shape({
       type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor']).required('Retry type is required'),
