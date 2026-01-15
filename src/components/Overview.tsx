@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react'
+import '../utils/verifyDistinctConfig' // Load verification utility for console debugging
 import { Tooltip } from 'recharts'
 import {
   Phone,

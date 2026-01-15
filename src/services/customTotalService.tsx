@@ -9,6 +9,14 @@ export class CustomTotalsService {
     agentId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // Debug: Log distinct config being saved
+      console.log('💾 [CustomTotalsService] Saving custom total:', {
+        name: config.name,
+        aggregation: config.aggregation,
+        distinct: config.distinct,
+        distinctStringified: JSON.stringify(config.distinct)
+      })
+
       const { error } = await supabase
         .from('pype_voice_custom_totals_configs')
         .insert({
@@ -32,6 +40,7 @@ export class CustomTotalsService {
         return { success: false, error: error.message }
       }
 
+      console.log('✅ [CustomTotalsService] Custom total saved successfully')
       return { success: true }
     } catch (error) {
       console.error('Error saving custom total:', error)
@@ -57,22 +66,44 @@ export class CustomTotalsService {
         return []
       }
 
-      const mappedConfigs = data.map(row => ({
+      console.log('📋 [CustomTotalsService] Raw data from DB:', data.map(row => ({
         id: row.id,
         name: row.name,
-        description: row.description || '',
-        aggregation: row.aggregation,
-        column: row.column_name,
-        jsonField: row.json_field,
-        distinct: row.distinct_config || undefined,
-        filters: typeof row.filters === 'string' ? (JSON.parse(row.filters) || []) : (row.filters || []),
-        filterLogic: row.filter_logic,
-        icon: row.icon || 'calculator',
-        color: row.color || 'blue',
-        createdBy: row.created_by,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      }))
+        distinct_config: row.distinct_config,
+        distinct_config_type: typeof row.distinct_config,
+        distinct_config_stringified: JSON.stringify(row.distinct_config)
+      })))
+
+      const mappedConfigs = data.map(row => {
+        const mapped = {
+          id: row.id,
+          name: row.name,
+          description: row.description || '',
+          aggregation: row.aggregation,
+          column: row.column_name,
+          jsonField: row.json_field,
+          distinct: row.distinct_config || undefined,
+          filters: typeof row.filters === 'string' ? (JSON.parse(row.filters) || []) : (row.filters || []),
+          filterLogic: row.filter_logic,
+          icon: row.icon || 'calculator',
+          color: row.color || 'blue',
+          createdBy: row.created_by,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        }
+        
+        // Debug: Log distinct config being loaded
+        console.log('📥 [CustomTotalsService] Mapped config:', {
+          name: mapped.name,
+          aggregation: mapped.aggregation,
+          hasDistinct: !!mapped.distinct,
+          distinct: mapped.distinct,
+          distinctRaw: row.distinct_config,
+          distinctRawType: typeof row.distinct_config
+        })
+        
+        return mapped
+      })
       
       return mappedConfigs
     } catch (error) {
@@ -99,6 +130,14 @@ static async calculateCustomTotal(
 
 
 
+    // Debug: Log distinct config being passed to RPC
+    console.log('🔢 [CustomTotalsService] Calculating custom total:', {
+      name: config.name,
+      aggregation: config.aggregation,
+      distinct: config.distinct,
+      distinctStringified: JSON.stringify(config.distinct)
+    })
+
     const rpcParams = {
       p_agent_id: agentId,
       p_aggregation: config.aggregation,
@@ -110,6 +149,8 @@ static async calculateCustomTotal(
       p_date_to: dateTo || null,
       p_distinct_config: config.distinct || null
     }
+
+    console.log('📤 [CustomTotalsService] RPC params:', rpcParams)
 
     const { data, error } = await supabase
       .rpc('calculate_custom_total', rpcParams)
