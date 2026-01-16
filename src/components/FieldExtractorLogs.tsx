@@ -2,13 +2,19 @@
 
 import type React from "react"
 import { useState, useMemo } from "react"
-import { Plus, X, AlertCircle } from "lucide-react"
+import { Plus, X, AlertCircle, Maximize2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import MagicButton from "@/components/buttons/MagicButton"
 
 interface FieldExtractorItem {
@@ -45,6 +51,8 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
   )
   const [enabled, setEnabled] = useState(isEnabled)
   const [isOpen, setIsOpen] = useState(false)
+  const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null)
+  const [tempDescription, setTempDescription] = useState("")
   
   // Extract variable names from all field descriptions
   const detectedVariables = useMemo(() => {
@@ -119,6 +127,18 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
     setVariables([...variables, ...newVariables])
   }
 
+  const openDescriptionEditor = (index: number) => {
+    setEditingFieldIndex(index)
+    setTempDescription(fields[index].description)
+  }
+
+  const saveDescription = () => {
+    if (editingFieldIndex !== null) {
+      updateField(editingFieldIndex, { description: tempDescription })
+      setEditingFieldIndex(null)
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -150,7 +170,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Extraction Fields</h3>
               <div className="space-y-4">
                 {fields.map((field, index) => (
-                  <div key={`field-${index}`} className="grid grid-cols-12 gap-4 items-end">
+                  <div key={`field-${index}`} className="grid grid-cols-12 gap-2 items-end">
                     <div className="col-span-5">
                       <Label
                         htmlFor={`field-key-${index}`}
@@ -163,7 +183,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                         placeholder="e.g. Respondent Name"
                         value={field.key}
                         onChange={(e) => updateField(index, { key: e.target.value })}
-                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300"
+                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 h-8"
                       />
                     </div>
                     <div className="col-span-6">
@@ -173,23 +193,73 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                       >
                         Description
                       </Label>
-                      <Input
-                        id={`field-description-${index}`}
-                        placeholder="Describe what to extract"
-                        value={field.description}
-                        onChange={(e) => updateField(index, { description: e.target.value })}
-                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300"
-                      />
+                      <div className="flex gap-1">
+                        <Input
+                          id={`field-description-${index}`}
+                          placeholder="Describe what to extract"
+                          value={field.description}
+                          onChange={(e) => updateField(index, { description: e.target.value })}
+                          className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 flex-1 h-8"
+                        />
+                        <Popover open={editingFieldIndex === index} onOpenChange={(open) => {
+                          if (!open) setEditingFieldIndex(null)
+                        }}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDescriptionEditor(index)}
+                              className="h-8 w-8 p-0 flex-shrink-0"
+                              title="Expand editor"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent 
+                            className="w-[600px] p-4" 
+                            align="end"
+                            side="top"
+                          >
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                                  Edit Description
+                                </Label>
+                                <Button
+                                  size="sm"
+                                  onClick={saveDescription}
+                                  className="h-7 text-xs"
+                                >
+                                  Done
+                                </Button>
+                              </div>
+                              <Textarea
+                                value={tempDescription}
+                                onChange={(e) => setTempDescription(e.target.value)}
+                                placeholder="Describe what to extract in detail..."
+                                className="min-h-[200px] resize-y text-sm"
+                                autoFocus
+                              />
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Use {`{{variable_name}}`} for dynamic values
+                              </p>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeField(index)}
-                      aria-label={`Remove field ${index + 1}`}
-                      className="rounded-full w-8 h-8 text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                    <div className="col-span-1 flex items-center justify-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeField(index)}
+                        aria-label={`Remove field ${index + 1}`}
+                        className="h-8 w-8 p-0 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -226,7 +296,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
               )}
               <div className="space-y-4">
                 {variables.map((variable, index) => (
-                  <div key={`var-${index}`} className="grid grid-cols-12 gap-4 items-end">
+                  <div key={`var-${index}`} className="grid grid-cols-12 gap-2 items-end">
                     <div className="col-span-5">
                       <Label
                         htmlFor={`var-name-${index}`}
@@ -239,7 +309,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                         placeholder="e.g. customer_name"
                         value={variable.variableName}
                         onChange={(e) => updateVariable(index, { variableName: e.target.value })}
-                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300"
+                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 h-8"
                       />
                     </div>
                     <div className="col-span-6">
@@ -254,18 +324,20 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                         placeholder="e.g. metadata.name, dynamic_variables.order_id"
                         value={variable.columnPath}
                         onChange={(e) => updateVariable(index, { columnPath: e.target.value })}
-                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300"
+                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 h-8"
                       />
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeVariable(index)}
-                      aria-label={`Remove variable ${index + 1}`}
-                      className="rounded-full w-8 h-8 text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                    <div className="col-span-1 flex items-center justify-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeVariable(index)}
+                        aria-label={`Remove variable ${index + 1}`}
+                        className="h-8 w-8 p-0 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
