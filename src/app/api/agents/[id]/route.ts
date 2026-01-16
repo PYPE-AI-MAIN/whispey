@@ -66,6 +66,7 @@ export async function GET(
       field_extractor: agent.field_extractor,
       field_extractor_prompt: agent.field_extractor_prompt,
       field_extractor_keys: agent.field_extractor_keys,
+      field_extractor_variables: agent.field_extractor_variables || {},
       metrics: agent.metrics || null // Include metrics field
     }
 
