@@ -109,7 +109,8 @@ CREATE TABLE public.pype_voice_agents (
     user_id uuid,
     field_extractor boolean,
     field_extractor_prompt text,
-    field_extractor_keys jsonb
+    field_extractor_keys jsonb,
+    field_extractor_variables jsonb DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE public.pype_voice_projects (

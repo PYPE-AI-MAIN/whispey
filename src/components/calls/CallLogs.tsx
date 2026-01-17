@@ -182,6 +182,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
   }, [setDistinctConfig])
 
   const handleRefresh = useCallback(() => {
+    // Scroll to top smoothly
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
+    }
+    // Refetch data
     refetch()
   }, [refetch])
 

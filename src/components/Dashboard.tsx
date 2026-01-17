@@ -149,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
 
   // Data fetching - now happens in parallel with UI rendering
   const { data: agents, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id, field_extractor_prompt, field_extractor, metrics',
+    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id, field_extractor_prompt, field_extractor, field_extractor_variables, metrics',
     filters: [{ column: 'id', operator: 'eq', value: agentId }]
   })
 
@@ -591,13 +591,15 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                         <>
                           <FieldExtractorDialog
                             initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
+                            initialVariables={(agent as any)?.field_extractor_variables || {}}
                             isEnabled={!!agent?.field_extractor}
-                            onSave={async (data, enabled) => {
+                            onSave={async (data, enabled, variables) => {
                               const { error } = await supabase
                                 .from('pype_voice_agents')
                                 .update({ 
                                   field_extractor_prompt: JSON.stringify(data), 
-                                  field_extractor: enabled 
+                                  field_extractor: enabled,
+                                  field_extractor_variables: variables
                                 })
                                 .eq('id', agent.id)
                               if (!error) {
@@ -741,11 +743,16 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Tools</div>
                   <FieldExtractorDialog
                     initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
+                    initialVariables={(agent as any)?.field_extractor_variables || {}}
                     isEnabled={!!agent?.field_extractor}
-                    onSave={async (data, enabled) => {
+                    onSave={async (data, enabled, variables) => {
                       const { error } = await supabase
                         .from('pype_voice_agents')
-                        .update({ field_extractor_prompt: JSON.stringify(data), field_extractor: enabled })
+                        .update({ 
+                          field_extractor_prompt: JSON.stringify(data), 
+                          field_extractor: enabled,
+                          field_extractor_variables: variables
+                        })
                         .eq('id', agent.id)
                       if (!error) {
                         alert('Saved field extractor config.')

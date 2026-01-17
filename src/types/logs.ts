@@ -169,11 +169,17 @@ export interface FieldExtractorConfig {
   description: string;
 }
 
+export interface FieldExtractorVariables {
+  [variableName: string]: string; // variableName -> columnPath (e.g., "customer_name" -> "metadata.name")
+}
+
 export interface ProcessTranscriptParams {
   log_id: string;
   transcript_json: TranscriptItem[];
   agent_id: string;
   field_extractor_prompt: string;
+  field_extractor_variables?: FieldExtractorVariables;
+  call_log_data?: any;
 }
 
 export interface ProcessTranscriptResult {
