@@ -399,6 +399,9 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     # Check for call_ended_reason, default to "completed" if not provided
     call_ended_reason = dynamic_params.get('call_ended_reason', 'completed')
 
+    # Get any custom metadata saved by tools (e.g., save_metadata tool)
+    tool_saved_metadata = session_data.get('metadata', {}) if session_data else {}
+    
     # FIXED: Define whispey_data at function level, not inside if block
     whispey_data = {
         "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -407,7 +410,6 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "call_ended_reason": call_ended_reason,
         "call_started_at": start_time,
         "call_ended_at": current_time,
-        "duration_seconds": duration,  # Add duration_seconds field
         "transcript_type": "agent",
         "recording_url": "",  # Will be filled by caller
         "transcript_json": [],
@@ -416,9 +418,14 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
             "usage": usage_summary,
             "duration_formatted": f"{duration // 60}m {duration % 60}s",
             "complete_configuration": session_data.get('complete_configuration') if session_data else None,
-            **sanitized_dynamic_params  # Include dynamic parameters without phone identifiers
+            **sanitized_dynamic_params,  # Include dynamic parameters without phone identifiers
+            **tool_saved_metadata  # Include any metadata saved by tools (e.g., save_metadata tool)
         }
     }
+    
+    # Do NOT include duration_seconds in the payload
+    # The database has a DEFAULT constraint that calculates it from call_started_at and call_ended_at
+    # Including it explicitly causes: "cannot insert a non-DEFAULT value into column \"duration_seconds\""
     
     # Add transcript data if available
     if session_data:

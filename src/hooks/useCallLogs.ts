@@ -97,65 +97,6 @@ export const useCallLogs = ({
         return (data || []) as unknown as CallLog[]
       }
 
-      // Otherwise use regular query builder (existing flow)
-      let query: any = supabase
-        .from('pype_voice_call_logs')
-        .select(select)
-        .eq('agent_id', agentId)
-        .range(pageParam, pageParam + limit - 1)
-
-      filters.forEach((filter: any) => {
-        switch (filter.operator) {
-          case 'eq':
-            query = query.eq(filter.column, filter.value)
-            break
-          case 'ilike':
-            query = query.ilike(filter.column, filter.value)
-            break
-          case 'gte':
-            query = query.gte(filter.column, filter.value)
-            break
-          case 'lte':
-            query = query.lte(filter.column, filter.value)
-            break
-          case 'gt':
-            query = query.gt(filter.column, filter.value)
-            break
-          case 'lt':
-            query = query.lt(filter.column, filter.value)
-            break
-          case 'not.is':
-            // For JSONB paths with ->>, Supabase PostgREST needs path without quotes
-            // We receive: "transcription_metrics->>'final_disposition'"
-            // PostgREST needs: transcription_metrics->>final_disposition
-            if (filter.column.includes("->>'")) {
-              // Remove quotes from JSONB path for PostgREST
-              // "transcription_metrics->>'final_disposition'" -> "transcription_metrics->>final_disposition"
-              const unquotedPath = filter.column.replace(/->>'/g, '->>').replace(/'/g, '')
-              // For json_exists, check both IS NOT NULL AND != '' (both must be true)
-              // Apply both filters separately (PostgREST combines with AND)
-              query = query.filter(unquotedPath, 'not.is', null)
-              query = query.filter(unquotedPath, 'neq', '')
-            } else if (filter.column.includes('->')) {
-              // JSONB path with -> (not ->>)
-              query = query.filter(filter.column, 'not.is', filter.value)
-            } else {
-              query = query.not(filter.column, 'is', filter.value)
-            }
-            break
-          default:
-            query = query.filter(filter.column, filter.operator, filter.value)
-        }
-      })
-
-      query = query.order(orderBy.column, { ascending: orderBy.ascending })
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      // Let TypeScript infer the type naturally from Supabase
-      return data as unknown as CallLog[]
     },
 
     getNextPageParam: (lastPage: any, allPages: any[]) => {
