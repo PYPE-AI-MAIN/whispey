@@ -58,6 +58,8 @@ import CopyConfigDialog from '@/components/agents/AgentConfig/CopyConfigDialog'
 import PasteConfigDialog from '@/components/agents/AgentConfig/PasteConfigDialog'
 import { DeserializedConfig } from '@/utils/agentConfigSerializer'
 import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
+import { useUser } from '@clerk/nextjs'
+import { getUserProjectRole, canAccessAgentConfig } from '@/services/getUserRole'
 
 // Agent status service
 const agentStatusService = {
@@ -196,9 +198,11 @@ interface AgentStatus {
 export default function AgentConfig() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useUser()
   const agentid = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
   const [isCopied, setIsCopied] = useState(false)
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null)
   const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false)
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
   const [isTalkToAssistantOpen, setIsTalkToAssistantOpen] = useState(false)
@@ -239,6 +243,34 @@ export default function AgentConfig() {
     model: '',
     config: {}
   })
+  
+  // Check user permissions for accessing agent config
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user?.emailAddresses?.[0]?.emailAddress || !projectId) {
+        setHasAccess(false)
+        return
+      }
+      
+      try {
+        const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId)
+        const canAccess = canAccessAgentConfig(role)
+        setHasAccess(canAccess)
+        
+        // Redirect if no access
+        if (!canAccess) {
+          console.warn('⚠️ User does not have permission to access agent config')
+          router.push(`/${projectId}/agents/${agentid}?tab=overview`)
+        }
+      } catch (error) {
+        console.error('Error checking access:', error)
+        setHasAccess(false)
+        router.push(`/${projectId}/agents/${agentid}?tab=overview`)
+      }
+    }
+    
+    checkAccess()
+  }, [user, projectId, agentid, router])
 
   // Get agent data from Supabase
   const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
@@ -630,6 +662,23 @@ const unmappedVariablesCount = useMemo(() => {
 }, [promptValidation.validVariables, formik.values.variables])
 
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
+
+  // Show loading state while checking permissions
+  if (hasAccess === null) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  // Don't render the page if user doesn't have access
+  if (hasAccess === false) {
+    return null
+  }
 
   // Loading state
   if (agentLoading || isConfigLoading) {

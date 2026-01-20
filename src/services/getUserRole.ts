@@ -43,3 +43,10 @@ export function canManageApiKeys(role: string): boolean {
   const canManage = allowedRoles.includes(role)
   return canManage
 }
+
+export function canAccessAgentConfig(role: string): boolean {
+  // Members cannot access agent config, only owner and admin can
+  const allowedRoles = ['owner', 'admin']
+  const canAccess = allowedRoles.includes(role)
+  return canAccess
+}
