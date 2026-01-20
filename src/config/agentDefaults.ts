@@ -173,9 +173,6 @@ export const AGENT_DEFAULT_CONFIG = {
     silenceTime: 10,
     // Dynamic TTS routing
     dynamic_tts: [],
-    
-    // Dynamic STT routing
-    dynamic_stt: [],
   
     // Advanced Settings
     advancedSettings: {
