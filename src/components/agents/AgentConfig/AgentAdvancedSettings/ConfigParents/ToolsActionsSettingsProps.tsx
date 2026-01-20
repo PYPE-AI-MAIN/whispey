@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail } from 'lucide-react'
 
 interface PhoneNumber {
   id: string
@@ -30,7 +30,7 @@ interface ToolParameter {
 
 interface Tool {
   id: string
-  type: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options'
+  type: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection'
   name: string
   config: {
     description?: string
@@ -70,7 +70,7 @@ interface ToolsActionsSettingsProps {
 
 function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | null>(null)
+  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
@@ -135,7 +135,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     }
   }, [projectId])
 
-  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options') => {
+  const handleAddTool = (toolType: 'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection') => {
     setSelectedToolType(toolType)
     setEditingTool(null)
     setHeadersJsonString('{}')
@@ -289,6 +289,35 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       setFormData({ 
         name: 'Update VAD Options', 
         description: 'Update Voice Activity Detection (VAD) options dynamically during the conversation',
+        endpoint: '', 
+        method: 'POST', 
+        headers: {}, 
+        body: '',
+        targetAgent: '',
+        handoffMessage: '',
+        selectedPhoneId: '',
+        transferNumber: '',
+        sipTrunkId: '',
+        timeout: 10,
+        asyncExecution: false,
+        parameters: [],
+        responseMapping: '{}',
+        function_name: 'send_dtmf_code',
+        docstring: '',
+        cooldown_seconds: 3,
+        publish_topic: 'dtmf_code',
+        publish_data: true,
+        instruction_template: '',
+        default_task: 'Reach a live support representative',
+        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
+        max_results: 3,
+        hospitals_json: '[]',
+        areas_json: '{}'
+      })
+    } else if (toolType === 'voicemail_detection') {
+      setFormData({ 
+        name: 'Voicemail Detection', 
+        description: 'Detect voicemail systems and leave a message',
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
