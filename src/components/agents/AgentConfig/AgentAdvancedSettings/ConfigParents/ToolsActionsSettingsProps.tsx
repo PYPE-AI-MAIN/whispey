@@ -545,6 +545,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       case 'custom_function': return <CodeIcon className="w-3 h-3" />
       case 'nearby_location_finder': return <Phone className="w-3 h-3" />
       case 'update_vad_options': return <MicIcon className="w-3 h-3" />
+      case 'voicemail_detection': return <Voicemail className="w-3 h-3" />
       default: return <CodeIcon className="w-3 h-3" />
     }
   }
@@ -591,6 +592,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
           <DropdownMenuItem onClick={() => handleAddTool('update_vad_options')} className="text-xs">
             <MicIcon className="w-3 h-3 mr-2" />
             Update VAD Options
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleAddTool('voicemail_detection')} className="text-xs">
+            <Voicemail className="w-3 h-3 mr-2" />
+            Voicemail Detection
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -651,6 +656,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                 selectedToolType === 'ivr_navigator' ? 'IVR Navigator' :
                 selectedToolType === 'update_vad_options' ? 'Update VAD Options' :
                 selectedToolType === 'nearby_location_finder' ? 'Nearby Hospital Finder' :
+                selectedToolType === 'voicemail_detection' ? 'Voicemail Detection' :
                 'Custom Tool'
               }
             </DialogTitle>
