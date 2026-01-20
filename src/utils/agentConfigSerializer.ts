@@ -167,6 +167,7 @@ export function serializeConfig(
         silenceTime: formikValues.silenceTime || 10
       },
       dynamicTTS: formikValues.dynamic_tts || [],
+      dynamicSTT: formikValues.dynamic_stt || [],
       advancedSettings: formikValues.advancedSettings || {
         interruption: {
           allowInterruptions: true,
@@ -249,6 +250,9 @@ export function deserializeConfig(json: string): DeserializedConfig {
       
       // Dynamic TTS
       dynamic_tts: config.dynamicTTS,
+      
+      // Dynamic STT
+      dynamic_stt: config.dynamicSTT,
       
       // Advanced Settings
       advancedSettings: config.advancedSettings

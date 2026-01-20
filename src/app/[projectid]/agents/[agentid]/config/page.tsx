@@ -1222,6 +1222,10 @@ const unmappedVariablesCount = useMemo(() => {
               onDynamicTTSChange={(dynamicTTSList) => {
                 formik.setFieldValue('dynamic_tts', dynamicTTSList)
               }}
+              dynamicSTTList={formik.values.dynamic_stt || []}
+              onDynamicSTTChange={(dynamicSTTList) => {
+                formik.setFieldValue('dynamic_stt', dynamicSTTList)
+              }}
             />
           </div>
           
@@ -1258,6 +1262,10 @@ const unmappedVariablesCount = useMemo(() => {
               dynamicTTSList={formik.values.dynamic_tts || []}
               onDynamicTTSChange={(dynamicTTSList) => {
                 formik.setFieldValue('dynamic_tts', dynamicTTSList)
+              }}
+              dynamicSTTList={formik.values.dynamic_stt || []}
+              onDynamicSTTChange={(dynamicSTTList) => {
+                formik.setFieldValue('dynamic_stt', dynamicSTTList)
               }}
             />
           </div>

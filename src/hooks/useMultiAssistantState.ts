@@ -412,6 +412,9 @@ export function useMultiAssistantState({
         },
         ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
           dynamic_tts: formValues.dynamic_tts
+        }),
+        ...(formValues.dynamic_stt && formValues.dynamic_stt.length > 0 && {
+          dynamic_stt: formValues.dynamic_stt
         })
       }
 
@@ -704,6 +707,9 @@ export function useMultiAssistantState({
         },
         ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
           dynamic_tts: formValues.dynamic_tts
+        }),
+        ...(formValues.dynamic_stt && formValues.dynamic_stt.length > 0 && {
+          dynamic_stt: formValues.dynamic_stt
         })
       }
     })

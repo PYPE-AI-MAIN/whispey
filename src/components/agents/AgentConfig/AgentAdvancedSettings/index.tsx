@@ -15,6 +15,7 @@ import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 import WebhookSettings from './ConfigParents/WebhookSettings'
 import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
 import DynamicTTSSwitch from '../DynamicTTSSwitch'
+import DynamicSTTSwitch from '../DynamicSTTSwitch'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -86,9 +87,11 @@ interface AgentAdvancedSettingsProps {
     projectId?: string
     dynamicTTSList?: any[]
     onDynamicTTSChange?: (dynamicTTSList: any[]) => void
+    dynamicSTTList?: any[]
+    onDynamicSTTChange?: (dynamicSTTList: any[]) => void
   }
 
-function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: AgentAdvancedSettingsProps) {
+function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange, dynamicSTTList = [], onDynamicSTTChange }: AgentAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
@@ -97,6 +100,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     fillers: false,
     bugs: false,
     backgroundAudio: false,
+    ttsSwitcher: false,
+    sttSwitcher: false,
     webhook: false,
     dropoff: false,
     ttsSwitcher: false
@@ -344,6 +349,29 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             <DynamicTTSSwitch
               dynamicTTSList={dynamicTTSList}
               onDynamicTTSChange={onDynamicTTSChange}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* STT Switcher Section */}
+        <Collapsible
+          open={openSections.sttSwitcher}
+          onOpenChange={(open) => setOpenSections(prev => ({ ...prev, sttSwitcher: open }))}
+        >
+          <CollapsibleTrigger className="flex items-center justify-between w-full py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 transition-colors">
+            <div className="flex items-center gap-2">
+              <ArrowRightLeft className="w-3.5 h-3.5 text-blue-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">STT Switcher</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.sttSwitcher ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <DynamicSTTSwitch
+              dynamicSTTList={dynamicSTTList}
+              onDynamicSTTChange={onDynamicSTTChange}
             />
           </CollapsibleContent>
         </Collapsible>

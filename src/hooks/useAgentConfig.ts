@@ -151,6 +151,13 @@ export interface AgentConfigResponse {
         voice_name?: string
         gender?: string
       }>
+      dynamic_stt?: Array<{
+        tool_name: string
+        description: string
+        name: string
+        language: string
+        model: string
+      }>
     }>
   }
   _usedAgentName?: string
@@ -430,6 +437,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       ...(assistant.stt?.config || {}),
     },
     dynamic_tts: assistant.dynamic_tts || [],
+    dynamic_stt: assistant.dynamic_stt || [],
     advancedSettings: {
       interruption: {
         allowInterruptions: assistant.interruptions?.allow_interruptions ?? assistant.allow_interruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
