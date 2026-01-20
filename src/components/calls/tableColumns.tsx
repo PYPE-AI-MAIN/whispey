@@ -117,13 +117,26 @@ export const createTableColumns = (
       id: `metadata-${key}`,
       accessorFn: (row) => row.metadata?.[key],
       header: key,
-      cell: ({ row }) => (
-        <DynamicJsonCell 
-          data={row.original.metadata} 
-          fieldKey={key}
-          maxWidth="500px"
-        />
-      ),
+      cell: ({ row }) => {
+        const call = row.original
+        
+        // Special rendering for voicemail-detection
+        if (key === 'voicemail-detection' && call.metadata?.['voicemail-detection'] === 'true') {
+          return (
+            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+              Voicemail
+            </Badge>
+          )
+        }
+        
+        return (
+          <DynamicJsonCell 
+            data={call.metadata} 
+            fieldKey={key}
+            maxWidth="500px"
+          />
+        )
+      },
       size: 150,
     })
   })
