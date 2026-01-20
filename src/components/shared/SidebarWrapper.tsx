@@ -5,7 +5,7 @@ import { ReactNode, useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useQuery } from '@tanstack/react-query'
 import { useMobile } from '@/hooks/use-mobile'
-import { canViewApiKeys, getUserProjectRole } from '@/services/getUserRole'
+import { canViewApiKeys, canAccessAgentConfig, getUserProjectRole } from '@/services/getUserRole'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Menu } from 'lucide-react'
@@ -40,6 +40,7 @@ interface RouteParams {
 interface SidebarContext {
   isEnhancedProject: boolean
   userCanViewApiKeys: boolean
+  userCanAccessAgentConfig: boolean
   projectId?: string
   agentType?: string
   canAccessPhoneCalls: boolean
@@ -242,7 +243,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, canAccessPhoneCalls } = context
+      const { isEnhancedProject, agentType, canAccessPhoneCalls, userCanAccessAgentConfig } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -267,7 +268,8 @@ const sidebarRoutes: SidebarRoute[] = [
       ]
 
       const configItems = []
-      if (agentType === 'pype_agent') {
+      // Only show Agent Config tab for pype_agent type AND if user has permission (not a member)
+      if (agentType === 'pype_agent' && userCanAccessAgentConfig) {
         configItems.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
@@ -425,6 +427,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const { isMobile, mounted } = useMobile(768)
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false)
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
+  const [userCanAccessAgentConfig, setUserCanAccessAgentConfig] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
 
   const { canAccessPhoneCalls, canAccessPhoneSettings } = useFeatureAccess()
@@ -488,8 +491,10 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
       try {
         const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId!)
         setUserCanViewApiKeys(canViewApiKeys(role))
+        setUserCanAccessAgentConfig(canAccessAgentConfig(role))
       } catch (error) {
         setUserCanViewApiKeys(false)
+        setUserCanAccessAgentConfig(false)
       } finally {
         setPermissionsLoading(false)
       }
@@ -503,6 +508,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const sidebarContext: SidebarContext = {
     isEnhancedProject,
     userCanViewApiKeys,
+    userCanAccessAgentConfig,
     projectId,
     agentType: agent?.agent_type,
     canAccessPhoneCalls,
