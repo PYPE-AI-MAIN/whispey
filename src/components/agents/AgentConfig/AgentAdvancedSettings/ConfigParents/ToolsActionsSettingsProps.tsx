@@ -37,15 +37,14 @@ interface Tool {
     endpoint?: string
     method?: string
     headers?: Record<string, string>
-    body?: string | ToolParameter[] // Can be JSON string (legacy) or array of body fields
+    body?: string
     targetAgent?: string
     handoffMessage?: string
     transferNumber?: string
     sipTrunkId?: string
     timeout?: number
     asyncExecution?: boolean
-    parameters?: ToolParameter[] // Legacy: kept for backward compatibility
-    params?: ToolParameter[] // URL parameters
+    parameters?: ToolParameter[]
     responseMapping?: string
     // IVR Navigator specific fields
     function_name?: string
@@ -83,8 +82,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     endpoint: '',
     method: 'POST',
     headers: {},
-    body: [] as ToolParameter[],
-    bodyJsonString: '',
+    body: '',
     targetAgent: '',
     handoffMessage: '',
     selectedPhoneId: '',
@@ -92,8 +90,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     sipTrunkId: '',
     timeout: 10,
     asyncExecution: false,
-    parameters: [] as ToolParameter[], // Legacy: kept for backward compatibility
-    params: [] as ToolParameter[], // URL parameters
+    parameters: [] as ToolParameter[],
     responseMapping: '{}',
     // IVR Navigator fields
     function_name: 'send_dtmf_code',
@@ -150,8 +147,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
-        body: [],
-        bodyJsonString: '',
+        body: '',
         targetAgent: '',
         handoffMessage: '',
         selectedPhoneId: '',
@@ -160,7 +156,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        params: [],
         responseMapping: '{}',
         function_name: 'send_dtmf_code',
         docstring: '',
@@ -181,8 +176,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
-        body: [],
-        bodyJsonString: '',
+        body: '',
         targetAgent: '',
         handoffMessage: 'Transferring you to another agent...',
         selectedPhoneId: '',
@@ -191,7 +185,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        params: [],
         responseMapping: '{}',
         function_name: 'send_dtmf_code',
         docstring: '',
@@ -212,8 +205,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
-        body: [],
-        bodyJsonString: '',
+        body: '',
         targetAgent: '',
         handoffMessage: '',
         selectedPhoneId: '',
@@ -222,7 +214,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        params: [],
         responseMapping: '{}',
         function_name: 'send_dtmf_code',
         docstring: '',
@@ -243,8 +234,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
-        body: [],
-        bodyJsonString: '',
+        body: '',
         targetAgent: '',
         handoffMessage: '',
         selectedPhoneId: '',
@@ -253,7 +243,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        params: [],
         responseMapping: '{}',
         function_name: 'send_dtmf_code',
         docstring: 'Emit a DTMF digit when the IVR menu requests an input.',
@@ -274,8 +263,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '',
         method: 'POST',
         headers: {},
-        body: [],
-        bodyJsonString: '',
+        body: '',
         targetAgent: '',
         handoffMessage: '',
         selectedPhoneId: '',
@@ -284,7 +272,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        params: [],
         responseMapping: '{}',
         function_name: 'send_dtmf_code',
         docstring: '',
@@ -305,8 +292,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '', 
         method: 'POST', 
         headers: {}, 
-        body: [],
-        bodyJsonString: '',
+        body: '',
         targetAgent: '',
         handoffMessage: '',
         selectedPhoneId: '',
@@ -315,7 +301,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        params: [],
         responseMapping: '{}',
         function_name: 'send_dtmf_code',
         docstring: '',
@@ -336,8 +321,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: '', 
         method: 'GET', 
         headers: {}, 
-        body: [],
-        bodyJsonString: '',
+        body: '',
         targetAgent: '',
         handoffMessage: '',
         selectedPhoneId: '',
@@ -346,7 +330,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         timeout: 10,
         asyncExecution: false,
         parameters: [],
-        params: [],
         responseMapping: '{}',
         function_name: 'send_dtmf_code',
         docstring: '',
@@ -378,26 +361,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     const headers = tool.config.headers || {}
     setHeadersJsonString(JSON.stringify(headers, null, 2))
     
-    // Handle body: can be array (new format) or string (legacy)
-    let bodyArray: ToolParameter[] = []
-    let bodyJsonString = ''
-    if (Array.isArray(tool.config.body)) {
-      bodyArray = tool.config.body
-    } else if (typeof tool.config.body === 'string') {
-      bodyJsonString = tool.config.body
-    }
-    
-    // Handle params: use params if available, otherwise fall back to parameters (legacy)
-    const paramsArray = tool.config.params || tool.config.parameters || []
-    
     setFormData({
       name: tool.name,
       description: tool.config.description || '',
       endpoint: tool.config.endpoint || '',
       method: tool.config.method || 'POST',
       headers: headers,
-      body: bodyArray,
-      bodyJsonString: bodyJsonString,
+      body: tool.config.body || '',
       targetAgent: tool.config.targetAgent || '',
       handoffMessage: tool.config.handoffMessage || '',
       selectedPhoneId: selectedPhoneId,
@@ -405,8 +375,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       sipTrunkId: tool.config.sipTrunkId || '',
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
-      parameters: tool.config.parameters || [], // Keep for backward compatibility
-      params: paramsArray,
+      parameters: tool.config.parameters || [],
       responseMapping: tool.config.responseMapping || '{}',
       function_name: tool.config.function_name || 'send_dtmf_code',
       docstring: tool.config.docstring || '',
@@ -435,11 +404,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       // If invalid JSON, use existing formData.headers
     }
     
-    // For custom_function, save body as array; for others, keep body as string if needed
-    const bodyValue = selectedToolType === 'custom_function' 
-      ? formData.body // Always use the body array for custom_function
-      : formData.bodyJsonString || ''
-    
     const newTool: Tool = {
       id: editingTool?.id || `tool_${Date.now()}`,
       type: selectedToolType!,
@@ -449,15 +413,14 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         endpoint: formData.endpoint,
         method: formData.method,
         headers: finalHeaders,
-        body: bodyValue,
+        body: formData.body,
         targetAgent: formData.targetAgent,
         handoffMessage: formData.handoffMessage,
         transferNumber: formData.transferNumber,
         sipTrunkId: formData.sipTrunkId,
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
-        parameters: formData.parameters, // Keep for backward compatibility
-        params: formData.params, // URL parameters
+        parameters: formData.parameters,
         responseMapping: formData.responseMapping,
         ...(selectedToolType === 'ivr_navigator' && {
           function_name: formData.function_name,
@@ -493,69 +456,6 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     onFieldChange('advancedSettings.tools.tools', updatedTools)
   }
 
-  // Handlers for URL parameters (params)
-  const handleAddParam = () => {
-    const newParameter: ToolParameter = {
-      id: `param_${Date.now()}`,
-      name: '',
-      type: 'string',
-      description: '',
-      required: false
-    }
-    setFormData(prev => ({
-      ...prev,
-      params: [...prev.params, newParameter]
-    }))
-  }
-
-  const handleUpdateParam = (id: string, field: keyof ToolParameter, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      params: prev.params.map(param =>
-        param.id === id ? { ...param, [field]: value } : param
-      )
-    }))
-  }
-
-  const handleRemoveParam = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      params: prev.params.filter(param => param.id !== id)
-    }))
-  }
-
-  // Handlers for body fields
-  const handleAddBodyField = () => {
-    const newParameter: ToolParameter = {
-      id: `body_${Date.now()}`,
-      name: '',
-      type: 'string',
-      description: '',
-      required: false
-    }
-    setFormData(prev => ({
-      ...prev,
-      body: [...prev.body, newParameter]
-    }))
-  }
-
-  const handleUpdateBodyField = (id: string, field: keyof ToolParameter, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      body: prev.body.map(param =>
-        param.id === id ? { ...param, [field]: value } : param
-      )
-    }))
-  }
-
-  const handleRemoveBodyField = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      body: prev.body.filter(param => param.id !== id)
-    }))
-  }
-
-  // Legacy handlers for backward compatibility
   const handleAddParameter = () => {
     const newParameter: ToolParameter = {
       id: `param_${Date.now()}`,
@@ -933,6 +833,20 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   />
                 </div>
 
+                {/* Custom Payload */}
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Custom Payload (JSON Template)</Label>
+                  <Textarea
+                    value={formData.body}
+                    onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder='e.g., {"order": {"customer_id": customer_id, "items": items, "timestamp": "{{timestamp}}"}}'
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Use parameter names as variables and {`{{timestamp}}`} for current timestamp
+                  </p>
+                </div>
+
                 {/* Headers Configuration */}
                 <div>
                   <Label className="text-xs text-gray-700 dark:text-gray-300">Headers (JSON)</Label>
@@ -963,14 +877,14 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   </p>
                 </div>
 
-                {/* URL Parameters Section */}
+                {/* Parameters Section */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">URL Parameters (Query String)</Label>
+                    <Label className="text-xs text-gray-700 dark:text-gray-300">Parameters</Label>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleAddParam}
+                      onClick={handleAddParameter}
                       className="h-6 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                       <PlusIcon className="w-3 h-3 mr-1" />
@@ -978,22 +892,22 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                     </Button>
                   </div>
 
-                  {formData.params.length === 0 ? (
+                  {formData.parameters.length === 0 ? (
                     <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-3 bg-gray-50 dark:bg-gray-900 rounded border border-dashed border-gray-300 dark:border-gray-700">
-                      No URL parameters defined. Click "Add Parameter" to add one.
+                      No parameters defined. Click "Add Parameter" to add one.
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {formData.params.map((param, index) => (
+                      {formData.parameters.map((param, index) => (
                         <div key={param.id} className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 space-y-2">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              URL Parameter #{index + 1}
+                              Parameter #{index + 1}
                             </span>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleRemoveParam(param.id)}
+                              onClick={() => handleRemoveParameter(param.id)}
                               className="h-5 w-5 p-0 text-red-500 hover:text-red-700"
                             >
                               <TrashIcon className="w-3 h-3" />
@@ -1005,9 +919,9 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                               <Label className="text-xs text-gray-700 dark:text-gray-300">Name</Label>
                               <Input
                                 value={param.name}
-                                onChange={(e) => handleUpdateParam(param.id, 'name', e.target.value)}
+                                onChange={(e) => handleUpdateParameter(param.id, 'name', e.target.value)}
                                 className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                                placeholder="e.g., source"
+                                placeholder="e.g., location"
                               />
                             </div>
 
@@ -1015,7 +929,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                               <Label className="text-xs text-gray-700 dark:text-gray-300">Type</Label>
                               <Select
                                 value={param.type}
-                                onValueChange={(value) => handleUpdateParam(param.id, 'type', value)}
+                                onValueChange={(value) => handleUpdateParameter(param.id, 'type', value)}
                               >
                                 <SelectTrigger className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                                   <SelectValue />
@@ -1035,7 +949,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                             <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
                             <Input
                               value={param.description}
-                              onChange={(e) => handleUpdateParam(param.id, 'description', e.target.value)}
+                              onChange={(e) => handleUpdateParameter(param.id, 'description', e.target.value)}
                               className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                               placeholder="Describe this parameter"
                             />
@@ -1045,99 +959,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                             <Label className="text-xs text-gray-700 dark:text-gray-300">Required</Label>
                             <Switch
                               checked={param.required}
-                              onCheckedChange={(checked) => handleUpdateParam(param.id, 'required', checked)}
-                              className="scale-75"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Request Body Fields Section */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Request Body Fields</Label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddBodyField}
-                      className="h-6 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      <PlusIcon className="w-3 h-3 mr-1" />
-                      Add Body Field
-                    </Button>
-                  </div>
-
-                  {formData.body.length === 0 ? (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-3 bg-gray-50 dark:bg-gray-900 rounded border border-dashed border-gray-300 dark:border-gray-700">
-                      No body fields defined. Click "Add Body Field" to add one.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {formData.body.map((param, index) => (
-                        <div key={param.id} className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 space-y-2">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              Body Field #{index + 1}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveBodyField(param.id)}
-                              className="h-5 w-5 p-0 text-red-500 hover:text-red-700"
-                            >
-                              <TrashIcon className="w-3 h-3" />
-                            </Button>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs text-gray-700 dark:text-gray-300">Name</Label>
-                              <Input
-                                value={param.name}
-                                onChange={(e) => handleUpdateBodyField(param.id, 'name', e.target.value)}
-                                className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                                placeholder="e.g., data"
-                              />
-                            </div>
-
-                            <div>
-                              <Label className="text-xs text-gray-700 dark:text-gray-300">Type</Label>
-                              <Select
-                                value={param.type}
-                                onValueChange={(value) => handleUpdateBodyField(param.id, 'type', value)}
-                              >
-                                <SelectTrigger className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                  <SelectItem value="string">string</SelectItem>
-                                  <SelectItem value="number">number</SelectItem>
-                                  <SelectItem value="boolean">boolean</SelectItem>
-                                  <SelectItem value="array">array</SelectItem>
-                                  <SelectItem value="object">object</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
-                            <Input
-                              value={param.description}
-                              onChange={(e) => handleUpdateBodyField(param.id, 'description', e.target.value)}
-                              className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                              placeholder="Describe this field"
-                            />
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs text-gray-700 dark:text-gray-300">Required</Label>
-                            <Switch
-                              checked={param.required}
-                              onCheckedChange={(checked) => handleUpdateBodyField(param.id, 'required', checked)}
+                              onCheckedChange={(checked) => handleUpdateParameter(param.id, 'required', checked)}
                               className="scale-75"
                             />
                           </div>
