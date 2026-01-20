@@ -479,7 +479,14 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             endpoint: tool.api_url || '',
             method: tool.http_method || 'GET',
             headers: tool.headers || {},
-            body: tool.custom_payload || '',
+            body: Array.isArray(tool.body) ? tool.body.map((param: any) => ({
+              id: `body_${param.name}_${Date.now()}_${Math.random()}`,
+              name: param.name,
+              type: param.type,
+              description: param.description,
+              required: param.required
+            })) : [],
+            bodyJsonString: typeof tool.custom_payload === 'string' ? tool.custom_payload : '', // Keep legacy JSON string support
             targetAgent: tool.target_agent || '',
             handoffMessage: tool.handoff_message || '',
             transferNumber: tool.transfer_number || '',
@@ -493,6 +500,13 @@ export const buildFormValuesFromAgent = (assistant: any) => {
               description: param.description,
               required: param.required
             })) || [],
+            params: (tool.params || tool.parameters || []).map((param: any) => ({
+              id: `param_${param.name}_${Date.now()}_${Math.random()}`,
+              name: param.name,
+              type: param.type,
+              description: param.description,
+              required: param.required
+            })),
             responseMapping: tool.response_mapping_raw || '{}',
             // IVR Navigator fields
             function_name: tool.function_name || 'send_dtmf_code',
