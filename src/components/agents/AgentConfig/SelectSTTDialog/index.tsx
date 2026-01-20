@@ -194,11 +194,9 @@ const STT_PROVIDERS: STTProviders = {
   sarvam: {
     name: 'Sarvam AI',
     models: [
-      { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Same-language transcription with code-mixing support' },
-      { id: 'saaras:v2.5', name: 'Saaras v2.5', description: 'Speech→English translation (auto-detects input language)' }
+      { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Latest multilingual model' }
     ],
     languages: [
-      { code: 'auto', name: '🌐 Auto-detect (Saaras only)' },
       { code: 'hi-IN', name: 'Hindi' },
       { code: 'en-IN', name: 'English' },
       { code: 'bn-IN', name: 'Bengali' },
@@ -449,12 +447,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   } else if (activeProvider === 'deepgram') {
                     setDeepgramConfig(prev => ({ ...prev, model: value, language: 'en' }))
                   } else if (activeProvider === 'sarvam') {
-                    setSarvamConfig(prev => ({ 
-                      ...prev, 
-                      model: value,
-                      // Auto-set language to 'auto' for Saaras model (auto-detects)
-                      language: value === 'saaras:v2.5' ? 'auto' : prev.language
-                    }))
+                    setSarvamConfig(prev => ({ ...prev, model: value }))
                   }
                 }
               }}
@@ -468,9 +461,6 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   <SelectItem key={model.id} value={model.id}>
                     <div>
                       <div className="font-medium text-sm">{model.name}</div>
-                      {model.description && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{model.description}</div>
-                      )}
                     </div>
                   </SelectItem>
                 ))}
@@ -479,59 +469,41 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           </div>
         </div>
 
-        {/* Language selector - Hide for Saaras (auto-detects language) */}
-        {!(activeProvider === 'sarvam' && currentModel === 'saaras:v2.5') && (
+        <div className="space-y-2">
+          <Label className="text-sm sm:text-base">Language</Label>
           <div className="space-y-2">
-            <Label className="text-sm sm:text-base">Language</Label>
-            <div className="space-y-2">
-              <Select 
-                value={showCustomLanguage ? 'custom' : currentLanguage} 
-                onValueChange={(value) => {
-                  if (DISABLE_SETTINGS) return
-                  if (value === 'custom') {
-                    setShowCustomLanguage(true)
-                  } else {
-                    setShowCustomLanguage(false)
-                    if (activeProvider === 'openai') {
-                      setOpenAIConfig(prev => ({ ...prev, language: value }))
-                    } else if (activeProvider === 'deepgram') {
-                      setDeepgramConfig(prev => ({ ...prev, language: value }))
-                    } else if (activeProvider === 'sarvam') {
-                      setSarvamConfig(prev => ({ ...prev, language: value }))
-                    }
+            <Select 
+              value={showCustomLanguage ? 'custom' : currentLanguage} 
+              onValueChange={(value) => {
+                if (DISABLE_SETTINGS) return
+                if (value === 'custom') {
+                  setShowCustomLanguage(true)
+                } else {
+                  setShowCustomLanguage(false)
+                  if (activeProvider === 'openai') {
+                    setOpenAIConfig(prev => ({ ...prev, language: value }))
+                  } else if (activeProvider === 'deepgram') {
+                    setDeepgramConfig(prev => ({ ...prev, language: value }))
+                  } else if (activeProvider === 'sarvam') {
+                    setSarvamConfig(prev => ({ ...prev, language: value }))
                   }
-                }}
-                disabled={DISABLE_SETTINGS}
-              >
-                <SelectTrigger className="h-10 sm:h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableLanguages.map((lang: any) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                }
+              }}
+              disabled={DISABLE_SETTINGS}
+            >
+              <SelectTrigger className="h-10 sm:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableLanguages.map((lang: any) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
-
-        {/* Show auto-detect message for Saaras */}
-        {activeProvider === 'sarvam' && currentModel === 'saaras:v2.5' && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-start gap-2">
-              <span className="text-lg">🌐</span>
-              <div>
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Auto-detects Language</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                  Saaras automatically detects the input language and translates speech to English. No language configuration needed.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     )
   }

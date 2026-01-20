@@ -250,14 +250,6 @@ export function useMultiAssistantState({
               console.warn('Failed to parse response mapping:', e)
             }
 
-            // Handle params: use params if available, otherwise fall back to parameters (legacy)
-            const paramsArray = tool.config?.params || tool.config?.parameters || []
-            
-            // Handle body: can be array (new format) or string (legacy)
-            const bodyValue = Array.isArray(tool.config?.body) 
-              ? tool.config.body 
-              : (tool.config?.body || [])
-
             return {
               ...baseToolConfig,
               ...commonFields,
@@ -266,26 +258,13 @@ export function useMultiAssistantState({
               timeout: tool.config?.timeout || 10,
               async: tool.config?.asyncExecution || false,
               headers: tool.config?.headers || {},
-              params: paramsArray.map((param: any) => ({
+              parameters: tool.config?.parameters?.map((param: any) => ({
                 name: param.name,
                 type: param.type,
                 description: param.description,
                 required: param.required
-              })),
-              body: Array.isArray(bodyValue) ? bodyValue.map((param: any) => ({
-                name: param.name,
-                type: param.type,
-                description: param.description,
-                required: param.required
-              })) : [],
-              // Keep legacy fields for backward compatibility
-              parameters: paramsArray.map((param: any) => ({
-                name: param.name,
-                type: param.type,
-                description: param.description,
-                required: param.required
-              })),
-              custom_payload: typeof tool.config?.body === 'string' ? tool.config.body : '',
+              })) || [],
+              custom_payload: tool.config?.body || '',
               response_mapping: responseMappingObject,
               response_mapping_raw: tool.config?.responseMapping || '{}'
             }
@@ -543,14 +522,6 @@ export function useMultiAssistantState({
               console.warn('Failed to parse response mapping:', e)
             }
 
-            // Handle params: use params if available, otherwise fall back to parameters (legacy)
-            const paramsArray = tool.config?.params || tool.config?.parameters || []
-            
-            // Handle body: can be array (new format) or string (legacy)
-            const bodyValue = Array.isArray(tool.config?.body) 
-              ? tool.config.body 
-              : (tool.config?.body || [])
-
             return {
               ...baseToolConfig,
               ...commonFields,
@@ -559,26 +530,13 @@ export function useMultiAssistantState({
               timeout: tool.config?.timeout || 10,
               async: tool.config?.asyncExecution || false,
               headers: tool.config?.headers || {},
-              params: paramsArray.map((param: any) => ({
+              parameters: tool.config?.parameters?.map((param: any) => ({
                 name: param.name,
                 type: param.type,
                 description: param.description,
                 required: param.required
-              })),
-              body: Array.isArray(bodyValue) ? bodyValue.map((param: any) => ({
-                name: param.name,
-                type: param.type,
-                description: param.description,
-                required: param.required
-              })) : [],
-              // Keep legacy fields for backward compatibility
-              parameters: paramsArray.map((param: any) => ({
-                name: param.name,
-                type: param.type,
-                description: param.description,
-                required: param.required
-              })),
-              custom_payload: typeof tool.config?.body === 'string' ? tool.config.body : '',
+              })) || [],
+              custom_payload: tool.config?.body || '',
               response_mapping: responseMappingObject,
               response_mapping_raw: tool.config?.responseMapping || '{}'
             }
