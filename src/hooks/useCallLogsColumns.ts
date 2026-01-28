@@ -27,7 +27,8 @@ const EXCLUDED_METADATA_COLUMNS = [
   'campaignId',
   'contactId',
   'agent_name',
-  'metadata'
+  'metadata',
+  'retry_config'
 ]
 
 interface VisibleColumns {
