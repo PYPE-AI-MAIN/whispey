@@ -97,7 +97,8 @@ const STT_PROVIDERS: STTProviders = {
       { code: 'ru', name: 'Russian' },
       { code: 'ja', name: 'Japanese' },
       { code: 'ko', name: 'Korean' },
-      { code: 'zh', name: 'Chinese' }
+      { code: 'zh', name: 'Chinese' },
+      {code:'sw' ,name:'Swahili'}
     ]
   },
   deepgram: {
