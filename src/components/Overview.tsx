@@ -757,12 +757,9 @@ const Overview: React.FC<OverviewProps> = ({
                     {!isMobile && (
                       <div className="text-right">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md">
-                          {analytics?.totalCalls && analytics?.totalBillingSeconds ? (() => {
-                            const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
-                            const minutes = Math.floor(avgSeconds / 60);
-                            const seconds = avgSeconds % 60;
-                            return `${minutes}m ${seconds}s avg`;
-                          })() : '0m 0s avg'}
+                          {analytics?.totalCalls && analytics?.totalBillingMinutes 
+                            ? `${Math.round(analytics.totalBillingMinutes / analytics.totalCalls)}m avg`
+                            : '0m avg'}
                         </span>
                       </div>
                     )}
@@ -770,21 +767,11 @@ const Overview: React.FC<OverviewProps> = ({
                   <div className="space-y-1">
                     <h3 className={`${isMobile ? 'text-xs' : 'text-xs'} font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Billing Minutes</h3>
                     <p className={`${isMobile ? 'text-lg' : 'text-2xl'} font-light text-gray-900 dark:text-gray-100 tracking-tight`}>
-                      {analytics?.totalBillingSeconds ? (() => {
-                        const totalSeconds = analytics.totalBillingSeconds;
-                        const minutes = Math.floor(totalSeconds / 60);
-                        const seconds = totalSeconds % 60;
-                        return `${minutes}m ${seconds}s`;
-                      })() : '0m 0s'}
+                      {analytics?.totalBillingMinutes ? `${Math.round(analytics.totalBillingMinutes)}m` : '0m'}
                     </p>
                     <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-400 dark:text-gray-500 font-medium`}>
-                      {isMobile && analytics?.totalCalls && analytics?.totalBillingSeconds 
-                        ? (() => {
-                            const avgSeconds = Math.round(analytics.totalBillingSeconds / analytics.totalCalls);
-                            const minutes = Math.floor(avgSeconds / 60);
-                            const seconds = avgSeconds % 60;
-                            return `${minutes}m ${seconds}s avg`;
-                          })()
+                      {isMobile && analytics?.totalCalls && analytics?.totalBillingMinutes 
+                        ? `${Math.round(analytics.totalBillingMinutes / analytics.totalCalls)}m avg`
                         : 'Duration'
                       }
                     </p>
