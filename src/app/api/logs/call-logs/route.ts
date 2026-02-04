@@ -5,7 +5,7 @@ import { verifyToken } from '../../../../lib/auth';
 import { totalCostsINR } from '../../../../lib/calculateCost';
 import { processFPOTranscript } from '../../../../lib/transcriptProcessor';
 import { CallLogRequest, TranscriptWithMetrics, UsageData, TelemetryAnalytics, TelemetryData } from '../../../../types/logs';
-import { gunzipSync } from 'zlib';
+import { gunzipSync } from 'zlib'
 
 // Create server-side Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

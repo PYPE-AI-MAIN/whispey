@@ -48,95 +48,111 @@ CREATE TABLE public.pype_voice_metrics_logs (
     turn_id text,
     user_transcript text,
     agent_response text,
-    stt_metrics jsonb,
-    llm_metrics jsonb,
-    tts_metrics jsonb,
-    eou_metrics jsonb,
-    lesson_day int4,
-    created_at timestamp with time zone DEFAULT now(),
+    stt_metrics jsonb DEFAULT '{}'::jsonb,
+    llm_metrics jsonb DEFAULT '{}'::jsonb,
+    tts_metrics jsonb DEFAULT '{}'::jsonb,
+    eou_metrics jsonb DEFAULT '{}'::jsonb,
+    lesson_day int4 DEFAULT 1,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     unix_timestamp numeric,
     phone_number text,
     call_duration numeric,
-    call_success boolean,
-    lesson_completed boolean,
+    call_success boolean DEFAULT true,
+    lesson_completed boolean DEFAULT false,
     trace_id text,
+    otel_spans jsonb DEFAULT '[]'::jsonb,
+    tool_calls jsonb DEFAULT '[]'::jsonb,
     trace_duration_ms int4,
-    trace_cost_usd float8,
-    turn_configuration jsonb,
-    bug_report boolean,
-    bug_details text,
+    trace_cost_usd numeric,
     enhanced_data jsonb,
-    tool_calls jsonb
+    turn_configuration jsonb,
+    turn_telemetry jsonb,
+    bug_details jsonb,
+    bug_report boolean DEFAULT false
 );
 
 CREATE TABLE public.pype_voice_call_logs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    call_id varchar,
-    agent_id uuid,
-    customer_number varchar,
+    call_id varchar NOT NULL,
+    agent_id uuid NOT NULL,
+    customer_number text,
     call_ended_reason varchar,
     transcript_type varchar,
     transcript_json jsonb,
     metadata jsonb,
     dynamic_variables jsonb,
-    environment varchar,
-    created_at timestamp with time zone DEFAULT now(),
-    call_started_at timestamp with time zone,
-    call_ended_at timestamp with time zone,
-    duration_seconds int4,
+    environment varchar NOT NULL DEFAULT ''::character varying,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    call_started_at timestamp without time zone,
+    call_ended_at timestamp without time zone,
+    duration_seconds int4 DEFAULT 
+CASE
+    WHEN ((call_ended_at IS NOT NULL) AND (call_started_at IS NOT NULL)) THEN (EXTRACT(epoch FROM (call_ended_at - call_started_at)))::integer
+    ELSE NULL::integer
+END,
     recording_url text,
-    voice_recording_url text,
     avg_latency float8,
     transcription_metrics jsonb,
     total_stt_cost float8,
     total_tts_cost float8,
     total_llm_cost float8,
+    p50_latency float8,
     complete_configuration jsonb,
+    telemetry_spans jsonb,
+    telemetry_analytics jsonb,
     telemetry_data jsonb,
-    telemetry_analytics jsonb
+    billing_duration_seconds float8,
+    metrics jsonb,
+    updated_at timestamp with time zone
 );
 
 CREATE TABLE public.pype_voice_agents (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id uuid,
-    name varchar,
+    project_id uuid NOT NULL,
+    name varchar NOT NULL,
     agent_type varchar,
     configuration jsonb,
-    environment varchar,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone,
+    environment varchar NOT NULL DEFAULT 'dev'::character varying,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     is_active boolean DEFAULT true,
     user_id uuid,
     field_extractor boolean,
     field_extractor_prompt text,
     field_extractor_keys jsonb,
+    vapi_api_key_encrypted text,
+    vapi_project_key_encrypted text,
+    metrics jsonb,
     field_extractor_variables jsonb DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE public.pype_voice_projects (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name varchar,
+    name varchar NOT NULL,
     description text,
-    environment varchar,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone,
+    environment varchar NOT NULL DEFAULT 'dev'::character varying,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     is_active boolean DEFAULT true,
     retry_configuration jsonb,
     token_hash text,
     owner_clerk_id text,
-    campaign_config jsonb
+    campaign_config jsonb,
+    plans jsonb DEFAULT '{"type": "FREE", "level": 1, "metadata": {}, "permissions": []}'::jsonb,
+    agent jsonb DEFAULT '{"usage": {"active_count": 0}, "agents": [], "limits": {"max_agents": 2}, "last_updated": "now"}'::jsonb,
+    api_keys jsonb DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE public.pype_voice_email_project_mapping (
     id serial PRIMARY KEY,
-    email text,
-    project_id uuid,
-    role text,
-    permissions jsonb,
+    email text NOT NULL,
+    project_id uuid NOT NULL,
+    role text NOT NULL DEFAULT 'member'::text,
+    permissions jsonb DEFAULT '{"read": true, "admin": false, "write": true, "delete": false}'::jsonb,
     added_by_clerk_id text,
     created_at timestamp with time zone DEFAULT now(),
     clerk_id text,
-    is_active boolean DEFAULT true
+    is_active boolean
 );
 
 CREATE TABLE public.pype_voice_api_keys (
@@ -151,13 +167,13 @@ CREATE TABLE public.pype_voice_api_keys (
 );
 
 CREATE TABLE public.pype_voice_agent_call_log_views (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    agent_id uuid,
-    name text,
-    filters jsonb,
-    visible_columns jsonb,
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id uuid NOT NULL,
+    name text NOT NULL,
+    filters jsonb NOT NULL,
+    visible_columns jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 CREATE TABLE public.audio_api_pricing (
@@ -187,14 +203,16 @@ CREATE TABLE public.gpt_api_pricing_inr (
 
 CREATE TABLE public.pype_voice_users (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    email text,
+    email text NOT NULL UNIQUE,
     first_name text,
     last_name text,
     profile_image_url text,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone,
-    clerk_id text,
-    is_active boolean DEFAULT true
+    updated_at timestamp with time zone DEFAULT now(),
+    clerk_id text UNIQUE,
+    is_active boolean,
+    agent jsonb,
+    roles jsonb DEFAULT '{"type": "USER", "level": 1, "metadata": {}, "permissions": []}'::jsonb
 );
 
 CREATE TABLE public.usd_to_inr_rate (
@@ -207,18 +225,21 @@ CREATE TABLE public.pype_voice_custom_totals_configs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id uuid,
     agent_id uuid,
-    name varchar,
+    name varchar NOT NULL,
     description text,
-    aggregation varchar,
-    column_name varchar,
+    aggregation varchar NOT NULL CHECK (aggregation::text = ANY (ARRAY['SUM'::character varying, 'COUNT'::character varying, 'AVG'::character varying, 'MIN'::character varying, 'MAX'::character varying, 'COUNT_DISTINCT'::character varying]::text[])),
+    column_name varchar NOT NULL,
     json_field varchar,
-    filters jsonb DEFAULT '[]'::jsonb,
-    filter_logic varchar DEFAULT 'AND',
+    filters jsonb NOT NULL DEFAULT '[]'::jsonb,
+    filter_logic varchar NOT NULL DEFAULT 'AND'::character varying CHECK (filter_logic::text = ANY (ARRAY['AND'::character varying, 'OR'::character varying]::text[])),
     icon varchar,
     color varchar,
-    created_by varchar,
+    created_by varchar NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    source_type varchar DEFAULT 'call_log'::character varying CHECK (source_type::text = ANY (ARRAY['call_log'::character varying, 'campaign'::character varying]::text[])),
+    metric_source varchar DEFAULT 'campaign'::character varying CHECK (metric_source::text = ANY (ARRAY['campaign'::character varying, 'contact'::character varying]::text[])),
+    distinct_config jsonb
 );
 
 CREATE TABLE public.pype_voice_metric_groups (
@@ -967,7 +988,11 @@ CREATE TABLE IF NOT EXISTS pype_voice_reprocess_status (
   
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Field tracking
+  transcription_fields jsonb,
+  metrics_fields jsonb
 );
 
 -- Indexes for faster queries
@@ -1049,14 +1074,16 @@ CREATE TABLE public.pype_voice_dropoff_calls (
     agent_id uuid,
     retry_count integer NOT NULL DEFAULT 0,
     latest_call_at timestamp with time zone,
-    next_call_at timestamp with time zone, -- When to queue the next call (for delays > 15 min)
-    last_call_retry_required numeric, -- 0 or 1
+    next_call_at timestamp with time zone,
+    last_call_retry_required numeric,
     is_active boolean DEFAULT true,
-    variables jsonb DEFAULT '{}'::jsonb, -- Store all dispatch variables
+    variables jsonb DEFAULT '{}'::jsonb,
     stopped_at timestamp with time zone,
     stop_reason varchar,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
+    is_reschedule boolean,
+    reschedule_timing varchar,
     CONSTRAINT fk_dropoff_calls_agent_id FOREIGN KEY (agent_id) REFERENCES public.pype_voice_agents(id) ON DELETE SET NULL
 );
 
@@ -1131,4 +1158,65 @@ COMMENT ON COLUMN public.pype_voice_dropoff_calls.is_active IS 'Whether dropoff 
 COMMENT ON COLUMN public.pype_voice_dropoff_calls.variables IS 'All dispatch variables stored as JSONB';
 COMMENT ON COLUMN public.pype_voice_dropoff_calls.stopped_at IS 'When retries were stopped';
 COMMENT ON COLUMN public.pype_voice_dropoff_calls.stop_reason IS 'Reason why retries were stopped';
+
+-- ========================================
+-- Additional Tables
+-- ========================================
+
+CREATE TABLE public.pype_voice_metrics_templates (
+    metric_id varchar PRIMARY KEY,
+    name varchar NOT NULL,
+    description text,
+    default_criteria text NOT NULL,
+    default_scoring_mode varchar NOT NULL,
+    default_threshold float8 NOT NULL,
+    category varchar,
+    priority varchar,
+    tags jsonb,
+    use_cases text[],
+    icon varchar,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+CREATE TABLE public.pype_voice_phone_numbers (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone_number text NOT NULL,
+    country_code text,
+    formatted_number text,
+    assigned_to text,
+    project_name text,
+    project_id text,
+    number_type text DEFAULT 'sip'::text CHECK (number_type = ANY (ARRAY['sip'::text, 'pstn'::text, 'toll_free'::text, 'mobile'::text])),
+    status text DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'inactive'::text, 'suspended'::text, 'reserved'::text])),
+    provider text,
+    trunk_id text,
+    total_calls integer DEFAULT 0,
+    last_used_at timestamp with time zone,
+    recording_enabled boolean DEFAULT true,
+    custom_headers jsonb,
+    notes text,
+    tags text[],
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    assigned_at timestamp with time zone,
+    trunk_direction varchar NOT NULL DEFAULT 'outbound'::character varying
+);
+
+CREATE TABLE public.pype_voice_webhook_configs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id uuid NOT NULL,
+    agent_id uuid,
+    webhook_name varchar NOT NULL,
+    webhook_url text NOT NULL,
+    http_method varchar DEFAULT 'POST'::character varying,
+    headers jsonb DEFAULT '{}'::jsonb,
+    trigger_events text[] DEFAULT ARRAY['call_log'::text],
+    is_active boolean DEFAULT true,
+    retry_count integer DEFAULT 3,
+    timeout_seconds integer DEFAULT 30,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
 
