@@ -85,11 +85,13 @@ CREATE TABLE public.pype_voice_call_logs (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     call_started_at timestamp without time zone,
     call_ended_at timestamp without time zone,
-    duration_seconds int4 DEFAULT 
-CASE
-    WHEN ((call_ended_at IS NOT NULL) AND (call_started_at IS NOT NULL)) THEN (EXTRACT(epoch FROM (call_ended_at - call_started_at)))::integer
-    ELSE NULL::integer
-END,
+    duration_seconds int4 GENERATED ALWAYS AS (
+  CASE
+    WHEN call_ended_at IS NOT NULL AND call_started_at IS NOT NULL
+    THEN EXTRACT(epoch FROM (call_ended_at - call_started_at))::int
+    ELSE NULL
+  END
+) STORED,
     recording_url text,
     avg_latency float8,
     transcription_metrics jsonb,
