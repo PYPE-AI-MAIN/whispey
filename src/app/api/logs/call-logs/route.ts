@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
       call_started_at,
       call_ended_at,
       recording_url,
-      duration_seconds: calculatedDuration, // Use calculated duration
+      // duration_seconds: calculatedDuration, // Use calculated duration
       voice_recording_url,
       complete_configuration: (metadata as any)?.complete_configuration || null,
       telemetry_data: telemetry_data as TelemetryData | undefined,
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
 
     // Insert log into database
     console.log("💾 Inserting log data:", {
-      duration_seconds: logData.duration_seconds,
+      // duration_seconds: logData.duration_seconds,
       call_started_at: logData.call_started_at,
       call_ended_at: logData.call_ended_at
     });
