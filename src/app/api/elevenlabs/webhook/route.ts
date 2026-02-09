@@ -13,14 +13,11 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION || 'ap-south-1',
 });
 
-async function forwardToSendLogs(pypeBody: Record<string, unknown>, request: NextRequest) {
-  const token = process.env.ELEVENLABS_PYPE_TOKEN;
-  if (!token) return { ok: false, error: 'ELEVENLABS_PYPE_TOKEN not set' };
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (request.nextUrl?.origin ?? new URL(request.url).origin);
-  const url = `${base}/api/send-logs`;
-  const res = await fetch(url, {
+async function forwardToHost(pypeBody: Record<string, unknown>) {
+  const hostUrl = process.env.HOST_URL;
+  const token = process.env.WHISPEY_API_KEY;
+  if (!hostUrl || !token) return { ok: false, error: 'HOST_URL or WHISPEY_API_KEY not set' };
+  const res = await fetch(hostUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-pype-token': token },
     body: JSON.stringify(pypeBody),
@@ -90,9 +87,9 @@ export async function POST(request: NextRequest) {
 
     if (eventType === 'post_call_transcription' && data.data) {
       const pypeBody = mapToPypePayload(data);
-      const result = await forwardToSendLogs(pypeBody, request);
+      const result = await forwardToHost(pypeBody);
       if (!result.ok) {
-        console.error('[ElevenLabs webhook] forwardToSendLogs failed:', result.status, result.body);
+        console.error('[ElevenLabs webhook] forwardToHost failed:', result.status, result.body);
       }
     }
 
@@ -124,12 +121,12 @@ export async function POST(request: NextRequest) {
             callStartedAt,
             callEndedAt
           );
-          const result = await forwardToSendLogs(pypeBody, request);
+          const result = await forwardToHost(pypeBody);
           if (!result.ok) {
-            console.error('[ElevenLabs webhook] forwardToSendLogs (recording) failed:', result.status, result.body);
+            console.error('[ElevenLabs webhook] forwardToHost (recording) failed:', result.status, result.body);
           }
         } catch (err) {
-          console.error('[ElevenLabs webhook] S3 or send-logs failed:', err);
+          console.error('[ElevenLabs webhook] S3 or forward failed:', err);
         }
       }
     }
