@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import AWS from 'aws-sdk';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
   verifySignature,
   mapToPypePayload,
@@ -7,10 +7,16 @@ import {
   type ElevenLabsWebhookData,
 } from '@/lib/elevenlabs-webhook';
 
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+const s3 = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
+  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+    ? {
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        },
+      }
+    : {}),
 });
 
 async function forwardToHost(pypeBody: Record<string, unknown>) {
@@ -38,14 +44,14 @@ async function uploadToS3(
   body: Buffer,
   contentType: string
 ): Promise<string> {
-  await s3
-    .putObject({
+  await s3.send(
+    new PutObjectCommand({
       Bucket: bucket,
       Key: key,
       Body: body,
       ContentType: contentType,
     })
-    .promise();
+  );
   const region = process.env.AWS_REGION || 'ap-south-1';
   return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
 }
@@ -53,7 +59,9 @@ async function uploadToS3(
 export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text();
-    const signature = request.headers.get('elevenlabs-signature');
+    const signature =
+      request.headers.get('elevenlabs-signature') ??
+      request.headers.get('ElevenLabs-Signature');
     const secret = process.env.ELEVENLABS_WEBHOOK_SECRET ?? '';
 
     if (!secret) {
