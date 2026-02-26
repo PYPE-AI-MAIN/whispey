@@ -188,14 +188,14 @@ export default function ModelSelector({
   onProviderChange = () => {},
   onModelChange = () => {},
   onTemperatureChange = () => {},
-  azureConfig = { endpoint: 'https://pype-azure-openai.openai.azure.com/', apiVersion: '2024-12-01-preview' },
+  azureConfig = { endpoint: 'https://pype-azure-openai.cognitiveservices.azure.com/', apiVersion: '2024-12-01-preview' },
   onAzureConfigChange = () => {}
 }: ModelSelectorProps) {
   // DISABLE CONTROLS
   const DISABLE_SETTINGS = false
 
   const DEFAULT_AZURE_CONFIG = {
-    endpoint: 'https://pype-azure-openai.openai.azure.com/',
+    endpoint: 'https://pype-azure-openai.cognitiveservices.azure.com/',
     apiVersion: '2024-12-01-preview'
   }
 
@@ -683,8 +683,8 @@ const getFlattenedMenuItems = () => {
               <Label htmlFor="endpoint" className="text-gray-700 dark:text-slate-300">Azure Endpoint</Label>
               <Input
                 id="endpoint"
-                placeholder="https://your-resource.openai.azure.com/"
-                value={tempAzureConfig.endpoint || "https://pype-azure-openai.openai.azure.com/"}
+                placeholder="https://your-resource.cognitiveservices.azure.com/"
+                value={tempAzureConfig.endpoint || "https://pype-azure-openai.cognitiveservices.azure.com/"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}
