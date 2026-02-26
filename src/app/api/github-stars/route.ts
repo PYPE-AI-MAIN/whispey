@@ -23,11 +23,10 @@ export async function GET() {
       cached_at: new Date().toISOString()
     });
   } catch (error) {
-    // Fail gracefully so the app works offline or when GitHub is unreachable
-    console.warn('GitHub stars unavailable:', error instanceof Error ? error.message : error);
+    console.error('Failed to fetch GitHub stars:', error);
     return NextResponse.json(
-      { stars: 0, cached_at: new Date().toISOString() },
-      { status: 200 }
+      { error: 'Failed to fetch stars' }, 
+      { status: 500 }
     );
   }
 }
