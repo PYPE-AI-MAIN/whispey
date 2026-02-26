@@ -188,7 +188,7 @@ export default function ModelSelector({
   onProviderChange = () => {},
   onModelChange = () => {},
   onTemperatureChange = () => {},
-  azureConfig = { endpoint: 'https://pype-azure-openai.openai.azure.com/', apiVersion: '2024-10-01-preview' },
+  azureConfig = { endpoint: 'https://pype-azure-openai.openai.azure.com/', apiVersion: '2024-12-01-preview' },
   onAzureConfigChange = () => {}
 }: ModelSelectorProps) {
   // DISABLE CONTROLS
@@ -196,7 +196,7 @@ export default function ModelSelector({
 
   const DEFAULT_AZURE_CONFIG = {
     endpoint: 'https://pype-azure-openai.openai.azure.com/',
-    apiVersion: '2024-10-01-preview'
+    apiVersion: '2024-12-01-preview'
   }
 
   const [isOpen, setIsOpen] = useState(false)
@@ -694,8 +694,8 @@ const getFlattenedMenuItems = () => {
               <Label htmlFor="apiVersion" className="text-gray-700 dark:text-slate-300">API Version</Label>
               <Input
                 id="apiVersion"
-                placeholder="2024-10-01-preview"
-                value={tempAzureConfig.apiVersion || "2024-10-01-preview"}
+                placeholder="2024-12-01-preview"
+                value={tempAzureConfig.apiVersion || "2024-12-01-preview"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
                 className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
                 disabled={DISABLE_SETTINGS}

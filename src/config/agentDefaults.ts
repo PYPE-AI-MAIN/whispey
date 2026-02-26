@@ -24,7 +24,7 @@ export const AGENT_DEFAULT_CONFIG = {
       temperature: 0.3,
       azure_deployment: "gpt-4.1-mini",
       azure_endpoint: "https://pype-azure-openai.openai.azure.com/",
-      api_version: "2024-10-01-preview",
+      api_version: "2024-12-01-preview",
       api_key_env: "AZURE_OPENAI_API_KEY"
     },
   
