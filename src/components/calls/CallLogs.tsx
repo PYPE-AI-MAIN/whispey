@@ -309,15 +309,27 @@ const CallLogs: React.FC<CallLogsProps> = ({
       {/* Header */}
       <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
         <div className="flex items-center justify-between">
-          <CallFilter 
-            onFiltersChange={handleFiltersChange}
-            onClear={handleClearFilters}
-            availableMetadataFields={dynamicColumns.metadata}
-            availableTranscriptionFields={dynamicColumns.transcription_metrics}
-            initialFilters={activeFilters}
-            distinctConfig={distinctConfig}
-            onDistinctConfigChange={handleDistinctConfigChange}
-          />
+          <div className="flex items-center gap-2">
+            <CallFilter 
+              onFiltersChange={handleFiltersChange}
+              onClear={handleClearFilters}
+              availableMetadataFields={dynamicColumns.metadata}
+              availableTranscriptionFields={dynamicColumns.transcription_metrics}
+              initialFilters={activeFilters}
+              distinctConfig={distinctConfig}
+              onDistinctConfigChange={handleDistinctConfigChange}
+            />
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="h-8 w-8 p-0"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
           
           <div className="flex items-center gap-2">
             <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />
@@ -350,16 +362,6 @@ const CallLogs: React.FC<CallLogsProps> = ({
               onColumnChange={handleColumnChange}
               onSelectAll={handleSelectAll}
             />
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="gap-2 h-8 w-8 p-0"
-            >
-              <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
           </div>
         </div>
       </div>

@@ -53,6 +53,7 @@ export const useCallLogsData = (
   const { 
     data,
     isLoading,
+    isRefetching,
     isFetchingNextPage,
     hasNextPage,
     error: queryError,
@@ -78,7 +79,7 @@ export const useCallLogsData = (
     calls,
     role,
     roleLoading,
-    isLoading: isLoading || isFetchingNextPage,
+    isLoading: isLoading || isRefetching || isFetchingNextPage,
     hasNextPage: hasNextPage ?? false,
     error: queryError?.message,
     activeFilters,
