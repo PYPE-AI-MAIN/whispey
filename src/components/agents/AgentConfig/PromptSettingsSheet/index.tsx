@@ -164,21 +164,27 @@ export default function PromptSettingsSheet({
     onVariablesChange(updatedVariables)
   }
 
+  /**
+   * Removes a variable from the Custom Variables list (Prompt Settings) only.
+   * Previously: deleting here also stripped all {{variableName}} from the prompt text, so the
+   * placeholder disappeared everywhere. That was wrong because the prompt and the settings list
+   * are separate concerns: the list is "which variables I want to configure", not "what exists
+   * in the prompt". Now we only update variables state; the prompt stays unchanged so placeholders
+   * remain until the user edits the prompt itself. Aligns with React single responsibility and
+   * controlled components: parent owns prompt; we only mutate what we own (variables).
+   */
   const removeVariable = (index: number) => {
     const predefinedNames = new Set(PREDEFINED_VARIABLES.map(v => v.name.toLowerCase()) as string[])
     const variableToRemove = customVariables[index]
-    
-    // Don't allow removing predefined variables
+
     if (predefinedNames.has(variableToRemove.name.toLowerCase())) {
       return
     }
-    
+
     const updatedVariables = variables.filter(v => v.name !== variableToRemove.name)
     onVariablesChange(updatedVariables)
-    
-    // Remove variable references from prompt
-    const updatedPrompt = prompt.replace(new RegExp(`\\{\\{${variableToRemove.name}\\}\\}`, 'g'), '')
-    onPromptChange(updatedPrompt)
+    // Intentional: do NOT call onPromptChange to remove {{var}} from prompt. Un-mapping in
+    // settings should not alter the prompt text; placeholders stay until user edits the prompt.
   }
 
   const replaceVariablesInPrompt = () => {
