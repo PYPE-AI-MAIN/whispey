@@ -118,7 +118,10 @@ export function useMultiAssistantState({
         stt: {
           name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
           language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-          model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model')
+          model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
+          ...(( currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
+            mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
+          })
         },
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
@@ -434,7 +437,10 @@ export function useMultiAssistantState({
         stt: {
           name: data.sttConfig?.name || formValues.sttProvider || getFallback(null, 'stt.name'),
           language: data.sttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-          model: data.sttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model')
+          model: data.sttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
+          ...((data.sttConfig?.mode || formValues.sttConfig?.mode) && {
+            mode: data.sttConfig?.mode || formValues.sttConfig?.mode
+          }),
         },
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
