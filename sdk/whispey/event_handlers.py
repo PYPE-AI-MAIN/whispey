@@ -81,8 +81,13 @@ class ConversationTurn:
         return base_dict
 
 class CorrectedTranscriptCollector:
-    """Enhanced collector - extracts data from metrics and conversation events"""
-    
+    """
+    Enhanced collector - extracts data from metrics and conversation events.
+    Fixes for voice AI "only last turn" issue:
+    1. User segments: accumulate multiple user messages in a turn (don't overwrite) so pauses don't drop text.
+    2. Full history: at export time, optionally build turns from session.history so all turns are stored, not just the last.
+    """
+
     def __init__(self, bug_detector=None):
         # Core fields - DO NOT CHANGE
         self.turns: List[ConversationTurn] = []
@@ -104,6 +109,36 @@ class CorrectedTranscriptCollector:
 
         self._stored_telemetry_instance = None
 
+    def _get_item_text(self, item) -> str:
+        """
+        Safely get text from a conversation item. Always returns a str (never None).
+        Tries text_content first, then content (string or list of parts).
+        """
+        try:
+            if item is None:
+                return ""
+            text = getattr(item, "text_content", None)
+            if text is not None and isinstance(text, str) and text.strip():
+                return str(text).strip()
+            content = getattr(item, "content", None)
+            if content is None:
+                return ""
+            if isinstance(content, str) and content.strip():
+                return str(content).strip()
+            if isinstance(content, list):
+                parts = []
+                for p in content:
+                    if isinstance(p, str) and p.strip():
+                        parts.append(str(p).strip())
+                    elif isinstance(p, dict):
+                        parts.append(str(p.get("text", p.get("content", "")) or "").strip())
+                    elif hasattr(p, "text"):
+                        parts.append(str(getattr(p, "text", "") or "").strip())
+                if parts:
+                    return " ".join(p for p in parts if p)
+        except Exception:
+            pass
+        return ""
 
     def _extract_enhanced_vad_from_metrics(self, metrics_obj):
         """Extract enhanced VAD data from metrics object with complete configuration"""
@@ -323,7 +358,10 @@ class CorrectedTranscriptCollector:
                     self.current_turn.turn_configuration = config
 
         if event.item.role == "user":
-            original_text = event.item.text_content
+            # Use helper so we get text from text_content or content (sometimes one is empty)
+            original_text = self._get_item_text(event.item)
+            if not original_text and getattr(event.item, "text_content", None) is not None:
+                logger.debug("user message had no extractable text (text_content=%r)", getattr(event.item, "text_content", None))
             
             # Determine if this message should be intercepted
             should_intercept = False
@@ -406,7 +444,23 @@ class CorrectedTranscriptCollector:
                 
             # NORMAL PROCESSING: Only if message wasn't intercepted
             if not should_intercept:
-                self.current_turn.user_transcript = original_text
+                # --- FIX: Accumulate user segments instead of overwriting ---
+                # Previously: self.current_turn.user_transcript = original_text (overwrote each time).
+                # In voice, pauses cause multiple user conversation_item_added events (e.g. "Hello" then "Hello I want to book").
+                # Overwriting meant only the last segment was stored → Supabase/LLM judge saw incomplete user input.
+                # Now: merge segments so the full user utterance is kept for the turn.
+                existing = (self.current_turn.user_transcript or "").strip()
+                new_text = (original_text or "").strip()
+                if not new_text:
+                    pass
+                elif not existing:
+                    self.current_turn.user_transcript = new_text
+                elif new_text.startswith(existing) or existing in new_text:
+                    # STT sent full transcript so far (extension) – use the longer one
+                    self.current_turn.user_transcript = new_text if len(new_text) >= len(existing) else existing
+                else:
+                    # New segment after a pause – append so full utterance is stored for LLM judge
+                    self.current_turn.user_transcript = f"{existing} {new_text}".strip()
                 self.current_turn.user_turn_complete = True
                 
                 # Apply pending metrics
@@ -447,7 +501,11 @@ class CorrectedTranscriptCollector:
                             self.turn_counter
                         )
             
-            self.current_turn.agent_response = event.item.text_content
+            # Use helper so we get text from text_content or content (sometimes one is empty)
+            agent_text = self._get_item_text(event.item)
+            self.current_turn.agent_response = agent_text
+            if not agent_text and getattr(event.item, "text_content", None) is not None:
+                logger.debug("assistant message had no extractable text (text_content=%r)", getattr(event.item, "text_content", None))
             self.current_turn.agent_turn_complete = True
             
             # Associate prompt data
@@ -1667,10 +1725,190 @@ class CorrectedTranscriptCollector:
         turn.trace_cost_usd = round(total_cost, 6)
 
 
+    def _get_turns_from_session_history(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        Build full list of turns from the session's conversation history (LiveKit ChatContext / history).
+        Used when event-driven collection misses turns. Caller (get_turns_array) catches exceptions.
+        """
+        session = getattr(self, '_session', None)
+        if not session:
+            return None
+        items = []
+        # Try session.history, chat_ctx, chat_context (LiveKit agents expose conversation here)
+        for attr in ('history', 'chat_ctx', 'chat_context'):
+            ctx = getattr(session, attr, None)
+            if ctx is None:
+                continue
+            try:
+                if hasattr(ctx, 'to_dict'):
+                    d = ctx.to_dict()
+                    items = d.get('items', d.get('messages', []))
+                    if items:
+                        break
+                if hasattr(ctx, 'items'):
+                    items = list(ctx.items) if ctx.items else []
+                    if items:
+                        break
+                if hasattr(ctx, 'messages'):
+                    items = list(ctx.messages) if ctx.messages else []
+                    if items:
+                        break
+            except Exception as e:
+                logger.debug(f"Could not read session.{attr}: {e}")
+                continue
+        # Fallback: try session.agent (e.g. agent.chat_ctx or agent.ctx)
+        if not items and hasattr(session, 'agent') and session.agent is not None:
+            agent = session.agent
+            for attr in ('chat_ctx', 'chat_context', 'ctx', 'history'):
+                ctx = getattr(agent, attr, None)
+                if ctx is None:
+                    continue
+                try:
+                    if hasattr(ctx, 'to_dict'):
+                        d = ctx.to_dict()
+                        items = d.get('items', d.get('messages', []))
+                        if items:
+                            break
+                    if hasattr(ctx, 'items') and ctx.items:
+                        items = list(ctx.items)
+                        if items:
+                            break
+                    if hasattr(ctx, 'messages') and ctx.messages:
+                        items = list(ctx.messages)
+                        if items:
+                            break
+                except Exception as e:
+                    logger.debug(f"Could not read session.agent.{attr}: {e}")
+                if items:
+                    break
+        if not items:
+            return None
+        # Normalize raw items to {role, content} (handle object or dict, and content as string/list/dict)
+        def _text_from_content(val):
+            if isinstance(val, str):
+                return val
+            if isinstance(val, list):
+                return ' '.join(_text_from_content(p) for p in val)
+            if isinstance(val, dict):
+                return val.get('text', val.get('content', ''))
+            return ''
+        normalized = []
+        for it in items:
+            if hasattr(it, 'role') and (hasattr(it, 'text_content') or hasattr(it, 'content')):
+                text = getattr(it, 'text_content', None) or getattr(it, 'content', None)
+                role = str(getattr(it, 'role', '')).lower()
+                normalized.append({'role': role, 'content': _text_from_content(text) if text else ''})
+            elif isinstance(it, dict):
+                role = (it.get('role') or '').lower()
+                content = it.get('content') or it.get('text_content') or it.get('text', '')
+                normalized.append({'role': role, 'content': _text_from_content(content)})
+            else:
+                continue
+        # Build turns: one turn = one user message + the next assistant message (same format as event-collected turns)
+        turns_from_history = []
+        i = 0
+        turn_idx = 1
+        while i < len(normalized):
+            item = normalized[i]
+            role = (item.get('role') or '').lower()
+            content = (item.get('content') or '').strip()
+            if role in ('user', 'human'):
+                user_text = content
+                agent_text = ''
+                j = i + 1
+                while j < len(normalized):
+                    next_item = normalized[j]
+                    next_role = (next_item.get('role') or '').lower()
+                    next_content = (next_item.get('content') or '').strip()
+                    if next_role in ('assistant', 'agent', 'bot'):
+                        agent_text = next_content
+                        i = j
+                        break
+                    if next_role in ('user', 'human'):
+                        i = j - 1  # will be incremented to j
+                        break
+                    j += 1
+                else:
+                    i = j - 1 if j > i else i  # advance past user if no assistant found
+                turns_from_history.append({
+                    'turn_id': f'turn_{turn_idx}',
+                    'user_transcript': user_text,
+                    'agent_response': agent_text,
+                    'stt_metrics': None,
+                    'llm_metrics': None,
+                    'tts_metrics': None,
+                    'eou_metrics': None,
+                    'timestamp': time.time(),
+                    'bug_report': False,
+                    'trace_id': None,
+                    'otel_spans': [],
+                    'tool_calls': [],
+                    'trace_duration_ms': None,
+                    'trace_cost_usd': None,
+                    'turn_configuration': None,
+                })
+                turn_idx += 1
+            elif role in ('assistant', 'agent', 'bot') and not turns_from_history:
+                # Leading assistant message (e.g. greeting) – emit as turn with empty user
+                turns_from_history.append({
+                    'turn_id': f'turn_{turn_idx}',
+                    'user_transcript': '',
+                    'agent_response': content,
+                    'stt_metrics': None,
+                    'llm_metrics': None,
+                    'tts_metrics': None,
+                    'eou_metrics': None,
+                    'timestamp': time.time(),
+                    'bug_report': False,
+                    'trace_id': None,
+                    'otel_spans': [],
+                    'tool_calls': [],
+                    'trace_duration_ms': None,
+                    'trace_cost_usd': None,
+                    'turn_configuration': None,
+                })
+                turn_idx += 1
+            i += 1
+        return turns_from_history if turns_from_history else None
+
     def get_turns_array(self) -> List[Dict[str, Any]]:
-        """Get the array of conversation turns with transcripts and metrics"""
+        """
+        Return all conversation turns (transcript + metrics) for Supabase and LLM judge.
+        If session.history has more turns than events, we use it and merge metrics by index.
+        All logic is wrapped in try/except so failures fall back to event-collected turns only.
+        """
         self.finalize_session()
-        return [turn.to_dict() for turn in self.turns]
+        event_turns = [turn.to_dict() for turn in self.turns]
+        try:
+            history_turns = self._get_turns_from_session_history()
+            # Only use history when it has strictly more turns (avoid wrong merge when counts match)
+            if history_turns and len(history_turns) > len(event_turns):
+                logger.info(f"📜 Using session history for transcript: {len(history_turns)} turns (events had {len(event_turns)})")
+                merged = []
+                for idx, ht in enumerate(history_turns):
+                    if idx < len(event_turns):
+                        et = event_turns[idx]
+                        merged.append({
+                            **ht,
+                            'user_transcript': str(ht.get('user_transcript') or et.get('user_transcript') or '').strip(),
+                            'agent_response': str(ht.get('agent_response') or et.get('agent_response') or '').strip(),
+                            'stt_metrics': et.get('stt_metrics'),
+                            'llm_metrics': et.get('llm_metrics'),
+                            'tts_metrics': et.get('tts_metrics'),
+                            'eou_metrics': et.get('eou_metrics'),
+                            'trace_id': et.get('trace_id'),
+                            'otel_spans': et.get('otel_spans') or [],
+                            'tool_calls': et.get('tool_calls') or [],
+                            'trace_duration_ms': et.get('trace_duration_ms'),
+                            'trace_cost_usd': et.get('trace_cost_usd'),
+                            'turn_configuration': et.get('turn_configuration'),
+                        })
+                    else:
+                        merged.append(dict(ht))
+                return merged
+        except Exception as e:
+            logger.debug("Session history fallback skipped or failed: %s", e)
+        return event_turns
     
     def get_formatted_transcript(self) -> str:
         """Get formatted transcript with enhanced data"""

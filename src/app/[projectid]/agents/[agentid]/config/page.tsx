@@ -622,8 +622,9 @@ export default function AgentConfig() {
     }
   }
 
-// Predefined system variables (same as PromptSettingsSheet). These are always "mapped" by the
-// system, so we must never count them as unmapped—otherwise the Settings indicator stays red.
+// Predefined system variables (same as PromptSettingsSheet). They are provided by the system,
+// so we never count them as "unmapped"—otherwise the Settings button would stay red even when
+// everything is configured.
 const PREDEFINED_VARIABLE_NAMES = new Set(['wcalling_number', 'wcurrent_time', 'wcurrent_date', 'wcontext_dropoff'])
 
 /**
@@ -635,6 +636,7 @@ const PREDEFINED_VARIABLE_NAMES = new Set(['wcalling_number', 'wcurrent_time', '
  * exclude predefined names. useMemo ensures we only recompute when deps change (React best practice).
  */
 const unmappedVariablesCount = useMemo(() => {
+  // Compare case-insensitively (prompt may have "Patient_Name", list has "patient_name").
   const validVars = Array.from(promptValidation?.validVariables ?? [])
   const variablesList = Array.isArray(formik.values.variables) ? formik.values.variables : []
   const mappedVars = new Set(
