@@ -33,7 +33,7 @@ interface Agent {
 
 interface RunningAgent {
   agent_name: string
-  pid: number
+  pid: number | null
   status: string
 }
 
@@ -134,7 +134,7 @@ const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isL
   }
   
   return runningAgent ? {
-    isRunning: true,
+    isRunning: runningAgent.pid != null && runningAgent.pid > 0 && runningAgent.status !== 'stopped',
     pid: runningAgent.pid,
     status: runningAgent.status,
     actualAgentName: runningAgent.agent_name
