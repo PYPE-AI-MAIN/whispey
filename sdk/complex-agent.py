@@ -1,5 +1,6 @@
 # sdk/simple_tool_agent.py
 import asyncio
+import contextlib
 import random
 from dotenv import load_dotenv
 from livekit import agents
@@ -10,7 +11,10 @@ from livekit.agents import (
     RunContext,
     WorkerOptions,
     function_tool,
-    RoomInputOptions
+    RoomInputOptions,
+    BackgroundAudioPlayer,
+    AudioConfig,
+    BuiltinAudioClip,
 )
 from livekit.plugins import (
     openai,
@@ -25,7 +29,8 @@ load_dotenv()
 
 # Configuration
 GREETING_INTERRUPTION = True
-SESSION_INTERRUPTION = False
+# SESSION_INTERRUPTION = False
+SESSION_INTERRUPTION = True
 
 # Initialize Whispey
 pype = LivekitObserve(
@@ -46,17 +51,44 @@ pype = LivekitObserve(
 )
 
 class SimpleToolAgent(Agent):
-    def __init__(self) -> None:
+    def __init__(self, background_audio=None) -> None:
+        self._background_audio = background_audio
         super().__init__(
             instructions="""
-            You are a helpful assistant that can look up weather information and get current time.
+            You are a helpful assistant that can look up weather information, get current time, tell jokes, and flip a coin.
             
             When users ask about weather, use the get_weather tool.
             When users ask about time, use the get_current_time tool.
+            When users ask for a joke, use the tell_joke tool.
+            When users ask to flip a coin or make a decision, use the flip_coin tool.
             
             Be friendly and conversational. If users ask for both weather and time, call both tools.
             """,
         )
+
+    @contextlib.asynccontextmanager
+    async def _tool_sound(self):
+        """Plays typing sound during tool calls.
+        
+        Uses a deferred stop so the mixer has time to push audible audio
+        even for instant tools (the mixer blocksize is 100ms, so stopping
+        immediately would produce no sound at all).
+        """
+        handle = None
+        if self._background_audio:
+            handle = self._background_audio.play(
+                AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING, volume=0.8),
+                loop=True,
+            )
+            await asyncio.sleep(0)  # let _play_task start and add stream to mixer
+        try:
+            yield
+        finally:
+            if handle:
+                async def _deferred_stop(h: object) -> None:
+                    await asyncio.sleep(0.8)  # let mixer produce audible audio
+                    h.stop()  # type: ignore[attr-defined]
+                asyncio.create_task(_deferred_stop(handle))
 
     @function_tool
     async def get_weather(
@@ -70,15 +102,12 @@ class SimpleToolAgent(Agent):
         Args:
             location: The city or location to get weather for
         """
-        
-        # Simulate weather data
-        temperatures = [22, 25, 28, 18, 30, 15, 35]
-        conditions = ["sunny", "cloudy", "rainy", "partly cloudy", "stormy"]
-        
-        temp = random.choice(temperatures)
-        condition = random.choice(conditions)
-        
-        return f"The weather in {location} is currently {condition} with a temperature of {temp}°C."
+        async with self._tool_sound():
+            temperatures = [22, 25, 28, 18, 30, 15, 35]
+            conditions = ["sunny", "cloudy", "rainy", "partly cloudy", "stormy"]
+            temp = random.choice(temperatures)
+            condition = random.choice(conditions)
+            return f"The weather in {location} is currently {condition} with a temperature of {temp}°C."
 
     @function_tool
     async def get_current_time(
@@ -92,15 +121,39 @@ class SimpleToolAgent(Agent):
         Args:
             timezone: The timezone to get time for (local, UTC, etc.)
         """
-        
-        from datetime import datetime
-        
-        if timezone.lower() == "utc":
-            current_time = datetime.utcnow().strftime("%H:%M:%S UTC")
-        else:
-            current_time = datetime.now().strftime("%H:%M:%S")
-        
-        return f"The current time is {current_time}."
+        async with self._tool_sound():
+            from datetime import datetime
+            if timezone.lower() == "utc":
+                current_time = datetime.utcnow().strftime("%H:%M:%S UTC")
+            else:
+                current_time = datetime.now().strftime("%H:%M:%S")
+            return f"The current time is {current_time}."
+
+    @function_tool
+    async def tell_joke(
+        self,
+        context: RunContext,
+    ) -> str:
+        """Tell the user a random joke."""
+        async with self._tool_sound():
+            jokes = [
+                "Why don't scientists trust atoms? Because they make up everything!",
+                "Why did the scarecrow win an award? Because he was outstanding in his field!",
+                "I told my computer I needed a break. Now it won't stop sending me Kit-Kat ads.",
+                "Why do programmers prefer dark mode? Because light attracts bugs!",
+                "What do you call a fake noodle? An impasta!",
+            ]
+            return random.choice(jokes)
+
+    @function_tool
+    async def flip_coin(
+        self,
+        context: RunContext,
+    ) -> str:
+        """Flip a coin and return heads or tails."""
+        async with self._tool_sound():
+            result = random.choice(["Heads", "Tails"])
+            return f"The coin landed on {result}!"
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
@@ -141,12 +194,29 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(whispey_observe_shutdown)
 
+    # Create background audio first so agent can reference it
+    # thinking_sound handles normal LLM replies at 50% probability
+    # tool calls are handled separately via _tool_sound() at 100%
+    background_audio = BackgroundAudioPlayer(
+        thinking_sound=[AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING, volume=0.5, probability=0)],
+    )
+
+    # Pass background_audio to agent so tool calls can play at 100%
+    agent = SimpleToolAgent(background_audio=background_audio)
+
     await session.start(
         room=ctx.room,
-        agent=SimpleToolAgent(),
+        agent=agent,
         room_input_options=RoomInputOptions(),
     )
 
+    # Must start AFTER session.start()
+    await background_audio.start(room=ctx.room, agent_session=session)
+
+    async def background_audio_shutdown():
+        await background_audio.aclose()
+
+    ctx.add_shutdown_callback(background_audio_shutdown)
 
     await session.say(
         "H this is a test of a very long text to see if I can interrupt you and also if I can continue the conversation after the interruption.",
