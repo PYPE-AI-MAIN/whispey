@@ -373,6 +373,11 @@ export function useMultiAssistantState({
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
+          thinking_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 1.0,
+          tool_call_typing_config: {
+            enabled: formValues.advancedSettings?.backgroundAudio?.toolCallTyping ?? false,
+            volume: formValues.advancedSettings?.backgroundAudio?.toolCallVolume ?? 0.8
+          },
           ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
             type: formValues.advancedSettings.backgroundAudio.singleType || 'keyboard',
             volume: formValues.advancedSettings.backgroundAudio.singleVolume ?? 0.5,
@@ -644,6 +649,11 @@ export function useMultiAssistantState({
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
+          thinking_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 1.0,
+          tool_call_typing_config: {
+            enabled: formValues.advancedSettings?.backgroundAudio?.toolCallTyping ?? false,
+            volume: formValues.advancedSettings?.backgroundAudio?.toolCallVolume ?? 0.8
+          },
           ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
             type: formValues.advancedSettings.backgroundAudio.singleType,
             volume: formValues.advancedSettings.backgroundAudio.singleVolume,

@@ -532,6 +532,9 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         ambientVolume: backgroundAudio.ambient?.volume ?? getFallback(null, 'background_audio.ambient.volume'),
         thinkingType: backgroundAudio.thinking?.type || getFallback(null, 'background_audio.thinking.type'),
         thinkingVolume: backgroundAudio.thinking?.volume ?? getFallback(null, 'background_audio.thinking.volume'),
+        thinkingProbability: backgroundAudio.thinking_probability ?? 1.0,
+        toolCallTyping: backgroundAudio.tool_call_typing_config?.enabled ?? false,
+        toolCallVolume: backgroundAudio.tool_call_typing_config?.volume ?? 0.8,
       },
     },
   }

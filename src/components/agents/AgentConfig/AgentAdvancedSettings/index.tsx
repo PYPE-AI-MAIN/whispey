@@ -276,6 +276,9 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               ambientVolume={advancedSettings.backgroundAudio?.ambientVolume || 30}
               thinkingType={advancedSettings.backgroundAudio?.thinkingType || 'keyboard'}
               thinkingVolume={advancedSettings.backgroundAudio?.thinkingVolume || 0.5}
+              thinkingProbability={advancedSettings.backgroundAudio?.thinkingProbability ?? 1.0}
+              toolCallTyping={advancedSettings.backgroundAudio?.toolCallTyping ?? false}
+              toolCallVolume={advancedSettings.backgroundAudio?.toolCallVolume ?? 0.8}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

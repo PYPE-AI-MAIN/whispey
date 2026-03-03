@@ -91,6 +91,11 @@ export const AGENT_DEFAULT_CONFIG = {
       thinking: {
         type: "keyboard",
         volume: 0.5
+      },
+      thinking_probability: 1.0,
+      tool_call_typing_config: {
+        enabled: false,
+        volume: 0.8
       }
     },
   
@@ -231,7 +236,10 @@ export const AGENT_DEFAULT_CONFIG = {
         ambientType: AGENT_DEFAULT_CONFIG.background_audio.ambient.type,
         ambientVolume: AGENT_DEFAULT_CONFIG.background_audio.ambient.volume,
         thinkingType: AGENT_DEFAULT_CONFIG.background_audio.thinking.type,
-        thinkingVolume: AGENT_DEFAULT_CONFIG.background_audio.thinking.volume
+        thinkingVolume: AGENT_DEFAULT_CONFIG.background_audio.thinking.volume,
+        thinkingProbability: AGENT_DEFAULT_CONFIG.background_audio.thinking_probability,
+        toolCallTyping: AGENT_DEFAULT_CONFIG.background_audio.tool_call_typing_config.enabled,
+        toolCallVolume: AGENT_DEFAULT_CONFIG.background_audio.tool_call_typing_config.volume
       },
       webhook: {
         triggerOnCallLog: false,
