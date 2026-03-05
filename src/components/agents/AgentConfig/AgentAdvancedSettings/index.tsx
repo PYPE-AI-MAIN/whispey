@@ -42,6 +42,7 @@ interface AgentAdvancedSettingsProps {
         max_endpointing_delay?: number
         user_away_timeout?: number
         user_away_timeout_message?: string
+        data_collection_enabled?: boolean
       }
       tools: {
         tools: Array<{
@@ -181,6 +182,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
               user_away_timeout={advancedSettings.session.user_away_timeout}
               user_away_timeout_message={advancedSettings.session.user_away_timeout_message}
+              data_collection_enabled={advancedSettings.session.data_collection_enabled ?? true}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

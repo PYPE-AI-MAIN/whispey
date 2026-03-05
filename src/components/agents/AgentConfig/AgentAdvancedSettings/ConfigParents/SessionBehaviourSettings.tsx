@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Info } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -13,6 +14,7 @@ interface SessionBehaviourSettingsProps {
   max_endpointing_delay?: number
   user_away_timeout?: number
   user_away_timeout_message?: string
+  data_collection_enabled?: boolean
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -24,6 +26,7 @@ export default function SessionBehaviourSettings({
   max_endpointing_delay = 0.7,
   user_away_timeout,
   user_away_timeout_message,
+  data_collection_enabled = true,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
   // Local state for input values to handle intermediate states
@@ -398,6 +401,30 @@ export default function SessionBehaviourSettings({
             }}
             className="h-8 text-xs"
             placeholder="Are you still on the line?"
+          />
+        </div>
+        {/* Data Collection */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              Data Collection
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  When enabled, the agent automatically stores information provided by the user (names, phone numbers, dates, etc.) and keeps it in context throughout the session.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Switch
+            checked={data_collection_enabled}
+            onCheckedChange={(checked) =>
+              onFieldChange('advancedSettings.session.data_collection_enabled', checked)
+            }
           />
         </div>
       </div>

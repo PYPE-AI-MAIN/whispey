@@ -307,6 +307,7 @@ function transformFormDataToAgentConfig(formData: any) {
             unlikely_threshold: formikValues.advancedSettings.session.unlikely_threshold,
             min_endpointing_delay: formikValues.advancedSettings.session.min_endpointing_delay,
             max_endpointing_delay: formikValues.advancedSettings.session.max_endpointing_delay,
+            data_collection: formikValues.advancedSettings.session.data_collection_enabled ?? true,
             ...(formikValues.advancedSettings.session.user_away_timeout !== undefined && {
               user_away_timeout: formikValues.advancedSettings.session.user_away_timeout
             }),
