@@ -90,9 +90,6 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-blue-500',
     type: 'direct',
     models: [
-      { value: 'gemini-3.1-flash', label: 'Gemini 3.1 Flash' },
-      { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite' },
-      { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash' },
       { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
       { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
       { value: 'gemini-2.5-flash-preview-09-2025', label: 'Gemini 2.5 Flash Preview' },
