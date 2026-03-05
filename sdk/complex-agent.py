@@ -60,7 +60,7 @@ FILLER_LATENCY_ALPHA = 0.3
 # is scheduled, guaranteeing fillers always play BEFORE the LLM response.
 #
 # Three sets based on turn classification:
-#   QUESTION  — user clearly asked something (starts with what/who/where/why/how or ends with ?)
+#   QUESTION  — user clearly asked something (starts with how or ends with ?)
 #   AMBIGUOUS — could be a question or not (starts with is/are/can/could/do/does/did/would/should)
 #   GENERAL   — statement, command, or request
 FILLER_WORDS_QUESTION = [
@@ -68,7 +68,7 @@ FILLER_WORDS_QUESTION = [
     "Of course.",
     "Let me think.",
     "One moment.",
-    "Let me see.",
+    "Hmm.",
 ]
 
 FILLER_WORDS_AMBIGUOUS = [
@@ -153,6 +153,9 @@ class SimpleToolAgent(Agent):
         # True only on typing-sound turns — gates latency measurement in the
         # state handler so filler-turn timings don't corrupt the EMA.
         self._measure_latency_this_turn: bool = False
+        # Index of the last joke told — used to avoid repeating the same joke
+        # back-to-back when the user asks again immediately.
+        self._last_joke_idx: int = -1
         super().__init__(
             instructions="""
             You are a helpful assistant that can look up weather information, get current time, tell jokes, and flip a coin.
@@ -209,7 +212,6 @@ class SimpleToolAgent(Agent):
                 # the LLM handle is scheduled (this is the only window where
                 # session.say() reliably plays before the LLM response).
                 self._use_typing_sound = False
-                self._last_filler_time = now
                 raw = getattr(new_message, "content", None)
                 if isinstance(raw, str):
                     user_text = raw
@@ -222,17 +224,22 @@ class SimpleToolAgent(Agent):
                     )
                 else:
                     user_text = ""
-                turn_type = _classify_turn(user_text)
-                if turn_type == "question":
-                    pool = FILLER_WORDS_QUESTION
-                elif turn_type == "ambiguous":
-                    pool = FILLER_WORDS_AMBIGUOUS
-                else:
-                    pool = FILLER_WORDS_GENERAL
-                self._filler_handle = self.session.say(
-                    random.choice(pool),
-                    add_to_chat_ctx=False,  # don't pollute conversation history
-                )
+
+                # Skip filler for very short messages (≤2 words: "Hello", "Okay",
+                # "Yeah", etc.). Fillers on one-word acknowledgments sound out of place.
+                if len(user_text.split()) > 2:
+                    self._last_filler_time = now
+                    turn_type = _classify_turn(user_text)
+                    if turn_type == "question":
+                        pool = FILLER_WORDS_QUESTION
+                    elif turn_type == "ambiguous":
+                        pool = FILLER_WORDS_AMBIGUOUS
+                    else:
+                        pool = FILLER_WORDS_GENERAL
+                    self._filler_handle = self.session.say(
+                        random.choice(pool),
+                        add_to_chat_ctx=False,  # don't pollute conversation history
+                    )
 
             else:
                 # SILENT PATH — LLM estimated fast enough (≤ FILLER_LATENCY_THRESHOLD).
@@ -259,6 +266,15 @@ class SimpleToolAgent(Agent):
         even for instant tools (the mixer blocksize is 100ms, so stopping
         immediately would produce no sound at all).
         """
+        # Interrupt any filler that is still queued or playing.
+        # Without this, a filler queued in on_user_turn_completed plays through,
+        # then typing sound starts from this tool call — two audio events back-to-back.
+        if self._filler_handle is not None:
+            handle = self._filler_handle
+            self._filler_handle = None
+            if not handle.done:  # type: ignore[union-attr]
+                handle.interrupt()  # type: ignore[union-attr]
+
         # Stop whatever the state handler started on the initial THINKING event.
         # Must happen BEFORE setting _in_tool_call so _cleanup() isn't a no-op
         # (the state handler guards its own output on _in_tool_call, but _cleanup
@@ -338,7 +354,11 @@ class SimpleToolAgent(Agent):
                 "Why do programmers prefer dark mode? Because light attracts bugs!",
                 "What do you call a fake noodle? An impasta!",
             ]
-            return random.choice(jokes)
+            # Pick any index except the last one used — prevents back-to-back repeats.
+            available = [i for i in range(len(jokes)) if i != self._last_joke_idx]
+            idx = random.choice(available)
+            self._last_joke_idx = idx
+            return jokes[idx]
 
     @function_tool
     async def flip_coin(
