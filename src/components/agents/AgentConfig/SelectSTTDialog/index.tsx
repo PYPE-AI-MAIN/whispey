@@ -67,6 +67,7 @@ interface DeepgramConfig {
 interface SarvamConfig {
   model: string;
   language: string;
+  mode: string;
   domain: string;
   with_timestamps: boolean;
   enable_formatting: boolean;
@@ -196,10 +197,11 @@ const STT_PROVIDERS: STTProviders = {
     name: 'Sarvam AI',
     models: [
       { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Same-language transcription with code-mixing support' },
-      { id: 'saaras:v2.5', name: 'Saaras v2.5', description: 'Speech→English translation (auto-detects input language)' }
+      { id: 'saaras:v2.5', name: 'Saaras v2.5', description: 'Speech→English translation (auto-detects input language)' },
+      { id: 'saaras:v3', name: 'Saaras v3', description: 'Latest model — supports transcribe, translate, verbatim, translit, codemix' }
     ],
     languages: [
-      { code: 'auto', name: '🌐 Auto-detect (Saaras only)' },
+      { code: 'unknown', name: '🌐 Auto-detect (Saaras only)' },
       { code: 'hi-IN', name: 'Hindi' },
       { code: 'en-IN', name: 'English' },
       { code: 'bn-IN', name: 'Bengali' },
@@ -211,7 +213,6 @@ const STT_PROVIDERS: STTProviders = {
       { code: 'pa-IN', name: 'Punjabi' },
       { code: 'ta-IN', name: 'Tamil' },
       { code: 'te-IN', name: 'Telugu' },
-      { code: 'unknown', name: 'Unknown/Auto-detect' }
     ]
   }
 }
@@ -328,6 +329,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>({
     model: selectedProvider === 'sarvam' ? selectedModel : 'saarika:v2.5',
     language: selectedProvider === 'sarvam' ? selectedLanguage : 'hi-IN',
+    mode: initialConfig?.mode || 'transcribe',
     domain: initialConfig?.domain || 'general',
     with_timestamps: initialConfig?.with_timestamps ?? true,
     enable_formatting: initialConfig?.enable_formatting ?? true
@@ -355,14 +357,15 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           language: selectedLanguage || prev.language,
           ...initialConfig
         }))
-      } else if (selectedProvider === 'sarvam') {
-        setSarvamConfig(prev => ({
-          ...prev,
-          model: selectedModel || prev.model,
-          language: selectedLanguage || prev.language,
-          ...initialConfig
-        }))
-      }
+        } else if (selectedProvider === 'sarvam') {
+          setSarvamConfig(prev => ({
+            ...prev,
+            model: selectedModel || prev.model,
+            language: selectedLanguage || prev.language,
+            mode: initialConfig?.mode || prev.mode || 'transcribe',
+            ...initialConfig
+          }))
+        }
     }
   }, [selectedProvider, selectedModel, selectedLanguage, initialConfig])
 
@@ -453,8 +456,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                     setSarvamConfig(prev => ({ 
                       ...prev, 
                       model: value,
-                      // Auto-set language to 'auto' for Saaras model (auto-detects)
-                      language: value === 'saaras:v2.5' ? 'auto' : prev.language
+                      language: value === 'saaras:v2.5' ? 'unknown' : prev.language,
+                      mode: 'transcribe' // reset to default when switching models
                     }))
                   }
                 }
@@ -516,6 +519,53 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        )}
+
+        {activeProvider === 'sarvam' && currentModel === 'saaras:v3' && (
+          <div className="space-y-2">
+            <Label className="text-sm sm:text-base">Mode</Label>
+            <Select
+              value={sarvamConfig.mode || 'transcribe'}
+              onValueChange={(value) => setSarvamConfig(prev => ({ ...prev, mode: value }))}
+              disabled={DISABLE_SETTINGS}
+            >
+              <SelectTrigger className="h-10 sm:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="transcribe">
+                  <div>
+                    <div className="font-medium text-sm">Transcribe</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Standard transcription in original language</div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="translate">
+                  <div>
+                    <div className="font-medium text-sm">Translate</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Translate speech from any Indian language to English</div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="verbatim">
+                  <div>
+                    <div className="font-medium text-sm">Verbatim</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Word-for-word, preserving filler words and spoken numbers</div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="translit">
+                  <div>
+                    <div className="font-medium text-sm">Transliterate</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Romanization — speech to Latin/Roman script</div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="codemix">
+                  <div>
+                    <div className="font-medium text-sm">Codemix</div>
+                    <div className="text-xs text-gray-500 mt-0.5">English words in English, Indic words in native script</div>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
 
