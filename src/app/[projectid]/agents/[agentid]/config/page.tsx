@@ -622,10 +622,29 @@ export default function AgentConfig() {
     }
   }
 
+// Predefined system variables (same as PromptSettingsSheet). These are always "mapped" by the
+// system, so we must never count them as unmapped—otherwise the Settings indicator stays red.
+const PREDEFINED_VARIABLE_NAMES = new Set(['wcalling_number', 'wcurrent_time', 'wcurrent_date', 'wcontext_dropoff'])
+
+/**
+ * Count of prompt variables that are not yet in the variables list (used for Settings red badge).
+ * Previous bug: (1) Comparison was case-sensitive. validVariables keeps prompt case (e.g. "A"),
+ * while variable names in the sheet are stored lowercased—so "A" was never considered mapped.
+ * (2) Predefined vars like wcurrent_time are not in formik.values.variables, so they were
+ * counted as unmapped and the indicator stayed red. Fix: normalize both sides to lowercase and
+ * exclude predefined names. useMemo ensures we only recompute when deps change (React best practice).
+ */
 const unmappedVariablesCount = useMemo(() => {
-  const validVars = Array.from(promptValidation.validVariables)
-  const mappedVars = new Set(formik.values.variables?.map((v: any) => v.name) || [])
-  const unmapped = validVars.filter(name => !mappedVars.has(name))
+  const validVars = Array.from(promptValidation?.validVariables ?? [])
+  const variablesList = Array.isArray(formik.values.variables) ? formik.values.variables : []
+  const mappedVars = new Set(
+    variablesList.map((v: any) => String(v?.name ?? '').toLowerCase().trim())
+  )
+  const unmapped = validVars.filter(name => {
+    const normalized = String(name ?? '').toLowerCase().trim()
+    if (!normalized || PREDEFINED_VARIABLE_NAMES.has(normalized)) return false
+    return !mappedVars.has(normalized)
+  })
   return unmapped.length
 }, [promptValidation.validVariables, formik.values.variables])
 

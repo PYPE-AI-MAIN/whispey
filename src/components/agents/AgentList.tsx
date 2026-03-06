@@ -87,7 +87,7 @@ const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isL
     runningAgent = runningAgents.find(ra => ra.agent_name === agent.name)
   }
   return runningAgent ? {
-    isRunning: true,
+    isRunning: !!(runningAgent.pid),
     pid: runningAgent.pid,
     status: runningAgent.status,
     actualAgentName: runningAgent.agent_name

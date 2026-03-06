@@ -51,6 +51,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
     role,
     roleLoading,
     isLoading,
+    isRefetching,
     hasNextPage,
     error,
     activeFilters,
@@ -181,17 +182,13 @@ const CallLogs: React.FC<CallLogsProps> = ({
     setDistinctConfig(config)
   }, [setDistinctConfig])
 
-  const handleRefresh = useCallback(() => {
-    // Scroll to top smoothly
+  const handleRefresh = useCallback(async () => {
+    if (isRefetching) return
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      })
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     }
-    // Refetch data
-    refetch()
-  }, [refetch])
+    await refetch()
+  }, [refetch, isRefetching])
 
   const handleDownloadCSV = useCallback(async () => {
     if (!agent?.id) return
@@ -309,26 +306,36 @@ const CallLogs: React.FC<CallLogsProps> = ({
       {/* Header */}
       <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
         <div className="flex items-center justify-between">
-          <CallFilter 
-            onFiltersChange={handleFiltersChange}
-            onClear={handleClearFilters}
-            availableMetadataFields={dynamicColumns.metadata}
-            availableTranscriptionFields={dynamicColumns.transcription_metrics}
-            initialFilters={activeFilters}
-            distinctConfig={distinctConfig}
-            onDistinctConfigChange={handleDistinctConfigChange}
-          />
-          
+          <div className="flex items-center gap-2">
+            <CallFilter 
+              onFiltersChange={handleFiltersChange}
+              onClear={handleClearFilters}
+              availableMetadataFields={dynamicColumns.metadata}
+              availableTranscriptionFields={dynamicColumns.transcription_metrics}
+              initialFilters={activeFilters}
+              distinctConfig={distinctConfig}
+              onDistinctConfigChange={handleDistinctConfigChange}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading || isRefetching}
+              className="h-8 w-8 p-0 shrink-0"
+              aria-label="Refresh call logs"
+            >
+              <RefreshCw className={cn('h-3 w-3', (isLoading || isRefetching) && 'animate-spin')} />
+            </Button>
+          </div>
+
           <div className="flex items-center gap-2">
             <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />
-            
             <BackfillDispositionDialog 
               projectId={project?.id} 
               agentId={agent?.id}
               agentName={agent?.name}
               projectName={project?.name}
             />
-            
             <Button
               variant="outline"
               size="sm"
@@ -337,7 +344,6 @@ const CallLogs: React.FC<CallLogsProps> = ({
             >
               Download CSV
             </Button>
-            
             <ColumnSelector
               basicColumns={BASIC_COLUMNS.map((col) => col.key)}
               basicColumnLabels={Object.fromEntries(
@@ -350,16 +356,6 @@ const CallLogs: React.FC<CallLogsProps> = ({
               onColumnChange={handleColumnChange}
               onSelectAll={handleSelectAll}
             />
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="gap-2 h-8 w-8 p-0"
-            >
-              <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
           </div>
         </div>
       </div>
