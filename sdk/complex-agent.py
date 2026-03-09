@@ -2,6 +2,7 @@
 import asyncio
 import contextlib
 import random
+import re
 import time
 from dotenv import load_dotenv
 from livekit import agents
@@ -21,8 +22,9 @@ from livekit.plugins import (
     openai,
     elevenlabs,
     silero,
-    sarvam
+    sarvam,
 )
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from whispey import LivekitObserve
 
 
@@ -37,7 +39,7 @@ SESSION_INTERRUPTION = True
 # Probability (0.0–1.0) that typing sound plays for a normal LLM turn.
 # Typing-sound turns are also used to measure real LLM latency for the EMA.
 # Lower = more filler/silent turns; higher = more typing sound turns.
-TYPING_PROBABILITY = 0.3
+TYPING_PROBABILITY = 0.1
 
 # Minimum seconds that must pass between two fillers being queued.
 # Prevents rapid-fire fillers when:
@@ -60,31 +62,53 @@ FILLER_LATENCY_ALPHA = 0.3
 # is scheduled, guaranteeing fillers always play BEFORE the LLM response.
 #
 # Three sets based on turn classification:
-#   QUESTION  — user clearly asked something (starts with how or ends with ?)
+#   QUESTION  — user clearly asked something (starts with what/who/where/why/how or ends with ?)
 #   AMBIGUOUS — could be a question or not (starts with is/are/can/could/do/does/did/would/should)
 #   GENERAL   — statement, command, or request
 FILLER_WORDS_QUESTION = [
-    "Sure.",
-    "Of course.",
-    "Let me think.",
+    "Let me check.",
     "One moment.",
-    "Hmm.",
+    "Let me think.",
+    "Right.",
 ]
 
 FILLER_WORDS_AMBIGUOUS = [
-    "Of course.",
-    "Sure.",
     "One moment.",
-    "Right.",
     "Let me check.",
+    "Right.",
+    "I see.",
 ]
 
 FILLER_WORDS_GENERAL = [
-    "Sure.",
-    "Of course.",
     "Got it.",
-    "Absolutely.",
     "Right.",
+    "I see.",
+    "One moment.",
+]
+
+# Hindi filler word pools (Devanagari script — used when user speaks Hindi).
+# Avoid acknowledgment words (ज़रूर, बिल्कुल) — those are banned from LLM
+# responses by the system prompt, and users can't tell fillers from LLM output.
+# Use neutral processing/thinking fillers instead.
+FILLER_WORDS_QUESTION_HI = [
+    "देखते हैं।",
+    "एक moment।",
+    "जी, बताती हूँ।",
+    "हाँ।",
+]
+
+FILLER_WORDS_AMBIGUOUS_HI = [
+    "जी।",
+    "हाँ।",
+    "एक moment।",
+    "ठीक है।",
+]
+
+FILLER_WORDS_GENERAL_HI = [
+    "ठीक है।",
+    "समझ गया।",
+    "हाँ।",
+    "जी।",
 ]
 
 # Question words that clearly signal the user is asking something.
@@ -92,21 +116,107 @@ _STRONG_QUESTION_STARTERS = {"what", "who", "where", "when", "why", "how"}
 # Soft starters — grammatically questions but often ambiguous in voice context.
 _SOFT_QUESTION_STARTERS = {"is", "are", "can", "could", "do", "does", "did", "would", "should", "will"}
 
+# Hindi Wh-question words in Devanagari.
+_HINDI_QUESTION_STARTERS = {"क्या", "कौन", "कहाँ", "कब", "क्यों", "कैसे", "किसने", "किसको"}
+
+# Matches any Devanagari Unicode character.
+_DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]")
+
+
+def _detect_language(text: str) -> str:
+    """Return 'hi' if text contains meaningful Devanagari characters, else 'en'."""
+    return "hi" if len(_DEVANAGARI_RE.findall(text)) > 2 else "en"
+
 
 def _classify_turn(text: str) -> str:
     """Classify user turn as 'question', 'ambiguous', or 'general'.
 
     Returns one of three string literals used to select the filler word pool.
     Uses lightweight heuristics only — no LLM call, zero added latency.
+    Works for both English and Hindi (Devanagari) input.
     """
     stripped = text.strip().rstrip(".,!").lower()
-    first_word = stripped.split()[0] if stripped.split() else ""
+    words = stripped.split()
+    first_word = words[0] if words else ""
+    first_word_orig = text.strip().split()[0] if text.strip().split() else ""
 
+    # Hindi path — check Devanagari question starters and "?" marker.
+    if _DEVANAGARI_RE.search(text):
+        if text.strip().endswith("?") or first_word_orig in _HINDI_QUESTION_STARTERS:
+            return "question"
+        return "general"
+
+    # English path.
     if text.strip().endswith("?") or first_word in _STRONG_QUESTION_STARTERS:
         return "question"
     if first_word in _SOFT_QUESTION_STARTERS:
         return "ambiguous"
     return "general"
+
+
+# Words that can only appear mid-sentence — if the transcript ends with one
+# of these, the user almost certainly paused mid-thought rather than finishing.
+# Filler and typing sound are both suppressed on such turns to avoid
+# interrupting the user with audio they'll talk over anyway.
+_HANGING_WORDS = {
+    # Articles
+    "a", "an", "the",
+    # Common prepositions
+    "in", "at", "on", "to", "for", "with", "about", "from", "of", "by",
+    "into", "through", "between", "during", "over", "under",
+    # Coordinating / subordinating conjunctions
+    "and", "but", "or", "so", "because", "although", "while", "if",
+    "that", "which", "when",
+    # Filler / trailing words common in speech pauses
+    "like", "just", "also", "very", "really",
+    # Hindi mid-sentence words (Devanagari) — common trail-off connectors.
+    # If the user's last word is one of these, they almost certainly haven't
+    # finished the thought (e.g. "तो ऐसा करिए आप एक" → user paused mid-request).
+    "और",    # and
+    "या",    # or
+    "तो",    # so / then
+    "लेकिन", # but
+    "क्योंकि", # because
+    "कि",    # that / so that
+    "जो",    # who / which
+    "जब",    # when
+    "अगर",   # if
+    "एक",    # a / one
+    "का",    # of (masculine)
+    "की",    # of (feminine)
+    "के",    # of (oblique)
+    "को",    # to / for (dative)
+    "से",    # from / with
+    "में",   # in
+    "पर",    # on / at
+    "भी",    # also / even
+    "तक",    # until / up to
+    "वो",    # that / he / she (pronoun trail-off)
+    "यह",    # this (pronoun trail-off)
+    "मैं",   # I (incomplete self-referential start)
+}
+
+
+def _is_complete_turn(text: str) -> bool:
+    """Return True if the transcript looks like a finished thought.
+
+    False means the user likely paused mid-sentence — suppress all bridging
+    audio (filler words and typing sound) for this turn.
+    """
+    if not text or not text.strip():
+        return False
+
+    # Terminal punctuation is a strong completion signal from the STT model.
+    if text.strip()[-1] in ".?!":
+        return True
+
+    # If the last word is a hanging connector, the sentence is unfinished.
+    words = text.strip().lower().split()
+    last_word = words[-1].rstrip(".,!?") if words else ""
+    if last_word in _HANGING_WORDS:
+        return False
+
+    return True
 
 # Initialize Whispey
 pype = LivekitObserve(
@@ -158,14 +268,26 @@ class SimpleToolAgent(Agent):
         self._last_joke_idx: int = -1
         super().__init__(
             instructions="""
-            You are a helpful assistant that can look up weather information, get current time, tell jokes, and flip a coin.
-            
-            When users ask about weather, use the get_weather tool.
-            When users ask about time, use the get_current_time tool.
-            When users ask for a joke, use the tell_joke tool.
-            When users ask to flip a coin or make a decision, use the flip_coin tool.
-            
-            Be friendly and conversational. If users ask for both weather and time, call both tools.
+            You are a professional female voice assistant for booking and reminders. You are calm, clear, and direct.
+
+            LANGUAGE:
+            - Detect the language the user is speaking — Hindi, English, or a mix (Hinglish).
+            - Always reply in the same language the user used. If they speak Hindi, reply in Hindi. If they speak English, reply in English.
+            - If the user mixes both naturally (Hinglish), you may also mix naturally — do not force pure Hindi or pure English.
+            - When speaking Hindi, always use feminine verb forms and self-references (e.g. "बताती हूँ", "कर सकती हूँ", "समझ गई", not masculine forms).
+
+            RESPONSE STYLE — follow these strictly:
+            - Never start a response with filler acknowledgments like "Sure!", "Got it!", "Absolutely!", "Of course!", "Certainly!", "Great!", "No problem!", or similar in English or Hindi (e.g. "बिल्कुल!", "ज़रूर!").
+            - Never confirm that you heard the user before answering. Just answer directly.
+            - Keep responses concise and natural — as if speaking on a phone call, not writing an email.
+            - Do not end every response with "Is there anything else I can help you with?" or similar. Only ask follow-up questions when genuinely needed.
+
+            TOOLS:
+            - When users ask about weather, use the get_weather tool.
+            - When users ask about time, use the get_current_time tool.
+            - When users ask for a joke, use the tell_joke tool.
+            - When users ask to flip a coin or make a decision, use the flip_coin tool.
+            - If users ask for both weather and time, call both tools.
             """,
         )
 
@@ -188,6 +310,31 @@ class SimpleToolAgent(Agent):
         if not self._in_tool_call:
             now = time.monotonic()
             within_cooldown = (now - self._last_filler_time) < FILLER_COOLDOWN_SEC
+
+            # Extract transcript text once — used for completeness check,
+            # word-count guard, and turn classification below.
+            raw = getattr(new_message, "content", None)
+            if isinstance(raw, str):
+                user_text = raw
+            elif isinstance(raw, list):
+                # Multimodal content — extract text parts only.
+                user_text = " ".join(
+                    item if isinstance(item, str) else getattr(item, "text", "")
+                    for item in raw
+                    if isinstance(item, str) or getattr(item, "text", "")
+                )
+            else:
+                user_text = ""
+
+            # INCOMPLETE TURN GUARD — if the transcript ends on a hanging word
+            # (article, preposition, conjunction, etc.) the user almost certainly
+            # paused mid-sentence. Suppress all bridging audio so we don't play
+            # a filler or typing sound over their next words.
+            # The LLM still processes normally — only the audio bridge is skipped.
+            if not _is_complete_turn(user_text):
+                self._use_typing_sound = False
+                await super().on_user_turn_completed(turn_ctx, new_message)
+                return
 
             # Record turn start so the state handler can measure real LLM latency.
             self._turn_start_time = now
@@ -212,25 +359,21 @@ class SimpleToolAgent(Agent):
                 # the LLM handle is scheduled (this is the only window where
                 # session.say() reliably plays before the LLM response).
                 self._use_typing_sound = False
-                raw = getattr(new_message, "content", None)
-                if isinstance(raw, str):
-                    user_text = raw
-                elif isinstance(raw, list):
-                    # Multimodal content — extract text parts only.
-                    user_text = " ".join(
-                        item if isinstance(item, str) else getattr(item, "text", "")
-                        for item in raw
-                        if isinstance(item, str) or getattr(item, "text", "")
-                    )
-                else:
-                    user_text = ""
 
                 # Skip filler for very short messages (≤2 words: "Hello", "Okay",
                 # "Yeah", etc.). Fillers on one-word acknowledgments sound out of place.
                 if len(user_text.split()) > 2:
                     self._last_filler_time = now
                     turn_type = _classify_turn(user_text)
-                    if turn_type == "question":
+                    lang = _detect_language(user_text)
+                    if lang == "hi":
+                        if turn_type == "question":
+                            pool = FILLER_WORDS_QUESTION_HI
+                        elif turn_type == "ambiguous":
+                            pool = FILLER_WORDS_AMBIGUOUS_HI
+                        else:
+                            pool = FILLER_WORDS_GENERAL_HI
+                    elif turn_type == "question":
                         pool = FILLER_WORDS_QUESTION
                     elif turn_type == "ambiguous":
                         pool = FILLER_WORDS_AMBIGUOUS
@@ -266,9 +409,13 @@ class SimpleToolAgent(Agent):
         even for instant tools (the mixer blocksize is 100ms, so stopping
         immediately would produce no sound at all).
         """
-        # Interrupt any filler that is still queued or playing.
-        # Without this, a filler queued in on_user_turn_completed plays through,
-        # then typing sound starts from this tool call — two audio events back-to-back.
+        # Interrupt the pre-turn filler if it hasn't finished yet.
+        # In practice the filler (~500ms) usually finishes before _tool_sound()
+        # is entered (~600ms for LLM tool decision), so this is a safety net
+        # for the rare case where both timings coincide.
+        # NOTE: we intentionally do NOT queue a second filler here. The pre-turn
+        # filler already bridges the initial gap. Adding another filler would
+        # cause the user to hear two filler words back-to-back, which sounds worse.
         if self._filler_handle is not None:
             handle = self._filler_handle
             self._filler_handle = None
@@ -276,11 +423,10 @@ class SimpleToolAgent(Agent):
                 handle.interrupt()  # type: ignore[union-attr]
 
         # Stop whatever the state handler started on the initial THINKING event.
-        # Must happen BEFORE setting _in_tool_call so _cleanup() isn't a no-op
-        # (the state handler guards its own output on _in_tool_call, but _cleanup
-        # operates on handles/tasks directly with no such guard).
+        # Must happen BEFORE setting _in_tool_call so _cleanup() isn't a no-op.
         self._cleanup_ref[0]()
         self._in_tool_call = True
+
         handle = None
         if self._background_audio:
             handle = self._background_audio.play(
@@ -354,11 +500,7 @@ class SimpleToolAgent(Agent):
                 "Why do programmers prefer dark mode? Because light attracts bugs!",
                 "What do you call a fake noodle? An impasta!",
             ]
-            # Pick any index except the last one used — prevents back-to-back repeats.
-            available = [i for i in range(len(jokes)) if i != self._last_joke_idx]
-            idx = random.choice(available)
-            self._last_joke_idx = idx
-            return jokes[idx]
+            return random.choice(jokes)
 
     @function_tool
     async def flip_coin(
@@ -375,7 +517,7 @@ async def entrypoint(ctx: JobContext):
     
     session = AgentSession(
         stt=sarvam.STT(
-            language="en-IN", 
+            language="hi-IN",
             model="saarika:v2.5"
         ),                  
         llm=openai.LLM(
@@ -385,7 +527,6 @@ async def entrypoint(ctx: JobContext):
         tts=elevenlabs.TTS(
             voice_id="H8bdWZHK2OgZwTN7ponr",
             model="eleven_flash_v2_5",
-            language="en", 
             voice_settings=elevenlabs.VoiceSettings(
                 similarity_boost=1,
                 stability=0.8,
@@ -395,6 +536,9 @@ async def entrypoint(ctx: JobContext):
             )
         ),  
         vad=silero.VAD.load(),
+        turn_detection=MultilingualModel(),
+        min_endpointing_delay=0.5,
+        max_endpointing_delay=3.0,
         allow_interruptions=SESSION_INTERRUPTION,
         # min_interruption_duration=1,
         # preemptive_generation=True,
@@ -514,7 +658,7 @@ async def entrypoint(ctx: JobContext):
     session.on("agent_state_changed", on_agent_state_changed)
 
     await session.say(
-        "This is the dynamic typing test in this you have to check like filler words and typing sound mixing and typing in tool call always.",
+        "नमस्ते! बताइए, क्या मदद चाहिए?",
         allow_interruptions=GREETING_INTERRUPTION
     )
  

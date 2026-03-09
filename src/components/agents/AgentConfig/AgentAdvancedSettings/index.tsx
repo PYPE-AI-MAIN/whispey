@@ -53,7 +53,14 @@ interface AgentAdvancedSettingsProps {
       }
       fillers: {
         enableFillerWords: boolean
+        language: 'auto' | 'en' | 'hi'
+        questionKeywords: string[]
+        questionFillers: string[]
+        ambiguousKeywords: string[]
+        ambiguousFillers: string[]
         generalFillers: string[]
+        fillerCooldownSec: number
+        latencyThreshold: number
         conversationFillers: string[]
         conversationKeywords: string[]
       }
@@ -221,10 +228,14 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <FillerWordsSettings
-              enableFillerWords={advancedSettings.fillers.enableFillerWords}
-              generalFillers={advancedSettings.fillers.generalFillers}
-              conversationFillers={advancedSettings.fillers.conversationFillers}
-              conversationKeywords={advancedSettings.fillers.conversationKeywords}
+              enableFillerWords={advancedSettings.fillers.enableFillerWords ?? true}
+              questionKeywords={advancedSettings.fillers.questionKeywords ?? []}
+              questionFillers={advancedSettings.fillers.questionFillers ?? []}
+              ambiguousKeywords={advancedSettings.fillers.ambiguousKeywords ?? []}
+              ambiguousFillers={advancedSettings.fillers.ambiguousFillers ?? []}
+              generalFillers={advancedSettings.fillers.generalFillers ?? []}
+              fillerCooldownSec={advancedSettings.fillers.fillerCooldownSec ?? 4.0}
+              latencyThreshold={advancedSettings.fillers.latencyThreshold ?? 1.2}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

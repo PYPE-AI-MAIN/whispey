@@ -83,7 +83,7 @@ export const AGENT_DEFAULT_CONFIG = {
   
     // Background Audio Configuration
     background_audio: {
-      enabled: false,
+      enabled: true,
       ambient: {
         type: "office",
         volume: 5
@@ -92,10 +92,10 @@ export const AGENT_DEFAULT_CONFIG = {
         type: "keyboard",
         volume: 0.5
       },
-      thinking_probability: 1.0,
+      thinking_probability: 0.10,
       tool_call_typing_config: {
-        enabled: false,
-        volume: 0.8
+        enabled: true,
+        volume: 0.80
       }
     },
   
@@ -108,7 +108,11 @@ export const AGENT_DEFAULT_CONFIG = {
   
     // Filler Words Configuration
     filler_words: {
-      enabled: false,
+      enabled: true,
+      question_keywords: [],
+      question_fillers: [],
+      ambiguous_keywords: [],
+      ambiguous_fillers: [],
       general_fillers: [],
       conversation_fillers: [],
       conversation_keywords: []
@@ -217,7 +221,16 @@ export const AGENT_DEFAULT_CONFIG = {
       },
       fillers: {
         enableFillerWords: AGENT_DEFAULT_CONFIG.filler_words.enabled,
+        language: 'auto' as 'auto' | 'en' | 'hi',
+        questionKeywords: [...AGENT_DEFAULT_CONFIG.filler_words.question_keywords],
+        questionFillers: [...AGENT_DEFAULT_CONFIG.filler_words.question_fillers],
+        ambiguousKeywords: [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_keywords],
+        ambiguousFillers: [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_fillers],
         generalFillers: [...AGENT_DEFAULT_CONFIG.filler_words.general_fillers],
+        // Bridge behavior
+        fillerCooldownSec: 4.0,
+        latencyThreshold: 1.2,
+        // Legacy
         conversationFillers: [...AGENT_DEFAULT_CONFIG.filler_words.conversation_fillers],
         conversationKeywords: [...AGENT_DEFAULT_CONFIG.filler_words.conversation_keywords]
       },
@@ -229,7 +242,7 @@ export const AGENT_DEFAULT_CONFIG = {
         collectionPrompt: AGENT_DEFAULT_CONFIG.bug_reports.collection_prompt
       },
       backgroundAudio: {
-        mode: 'disabled' as 'disabled' | 'single' | 'dual',
+        mode: 'dual' as 'disabled' | 'single' | 'dual',
         singleType: 'keyboard',
         singleVolume: 50,
         singleTiming: 'thinking' as 'thinking' | 'always',
