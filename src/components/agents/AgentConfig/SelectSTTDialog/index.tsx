@@ -197,7 +197,6 @@ const STT_PROVIDERS: STTProviders = {
     name: 'Sarvam AI',
     models: [
       { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Same-language transcription with code-mixing support' },
-      { id: 'saaras:v2.5', name: 'Saaras v2.5', description: 'Speech→English translation (auto-detects input language)' },
       { id: 'saaras:v3', name: 'Saaras v3', description: 'Latest model — supports transcribe, translate, verbatim, translit, codemix' }
     ],
     languages: [
