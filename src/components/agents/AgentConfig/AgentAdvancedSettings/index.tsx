@@ -80,6 +80,9 @@ interface AgentAdvancedSettingsProps {
         ambientVolume: number
         thinkingType: string
         thinkingVolume: number
+        thinkingProbability?: number
+        toolCallTyping?: boolean
+        toolCallVolume?: number
       }
       webhook?: {
         triggerOnCallLog: boolean
