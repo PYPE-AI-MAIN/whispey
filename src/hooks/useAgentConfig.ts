@@ -94,7 +94,14 @@ export interface AgentConfigResponse {
       }>
       filler_words?: {
         enabled: boolean
+        language?: 'auto' | 'en' | 'hi'
+        question_keywords?: string[]
+        question_fillers?: string[]
+        ambiguous_keywords?: string[]
+        ambiguous_fillers?: string[]
         general_fillers: string[]
+        filler_cooldown_sec?: number
+        latency_threshold?: number
         conversation_fillers: string[]
         conversation_keywords: string[]
       }
@@ -510,12 +517,37 @@ export const buildFormValuesFromAgent = (assistant: any) => {
           }
         })) || []
       },
-      fillers: {
-        enableFillerWords: assistant.filler_words?.enabled ?? getFallback(null, 'filler_words.enabled'),
-        generalFillers: assistant.filler_words?.general_fillers?.filter((f: string) => f !== "") || [],
-        conversationFillers: assistant.filler_words?.conversation_fillers?.filter((f: string) => f !== "") || [],
-        conversationKeywords: assistant.filler_words?.conversation_keywords?.filter((f: string) => f !== "") || [],
-      },
+      fillers: (() => {
+        // When the backend has never stored filler config (new agent), filler_words is
+        // absent — fall back to AGENT_DEFAULT_CONFIG so the UI shows correct defaults.
+        // When filler_words IS present (even with empty arrays), the user's saved values
+        // are used as-is so intentionally cleared fields are respected.
+        const fw = assistant.filler_words
+        const hasFillerConfig = fw != null
+        return {
+          enableFillerWords: fw?.enabled ?? AGENT_DEFAULT_CONFIG.filler_words.enabled,
+          language: (fw?.language as 'auto' | 'en' | 'hi') ?? 'auto',
+          questionKeywords: hasFillerConfig
+            ? (fw?.question_keywords?.filter((f: string) => f !== "") || [])
+            : [...AGENT_DEFAULT_CONFIG.filler_words.question_keywords],
+          questionFillers: hasFillerConfig
+            ? (fw?.question_fillers?.filter((f: string) => f !== "") || [])
+            : [...AGENT_DEFAULT_CONFIG.filler_words.question_fillers],
+          ambiguousKeywords: hasFillerConfig
+            ? (fw?.ambiguous_keywords?.filter((f: string) => f !== "") || [])
+            : [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_keywords],
+          ambiguousFillers: hasFillerConfig
+            ? (fw?.ambiguous_fillers?.filter((f: string) => f !== "") || [])
+            : [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_fillers],
+          generalFillers: hasFillerConfig
+            ? (fw?.general_fillers?.filter((f: string) => f !== "") || [])
+            : [...AGENT_DEFAULT_CONFIG.filler_words.general_fillers],
+          fillerCooldownSec: fw?.filler_cooldown_sec ?? 4.0,
+          latencyThreshold: fw?.latency_threshold ?? 1.2,
+          conversationFillers: fw?.conversation_fillers?.filter((f: string) => f !== "") || [],
+          conversationKeywords: fw?.conversation_keywords?.filter((f: string) => f !== "") || [],
+        }
+      })(),
       bugs: {
         enableBugReport: assistant.bug_reports?.enable ?? getFallback(null, 'bug_reports.enable'),
         bugStartCommands: assistant.bug_reports?.bug_start_command || [],
@@ -532,6 +564,9 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         ambientVolume: backgroundAudio.ambient?.volume ?? getFallback(null, 'background_audio.ambient.volume'),
         thinkingType: backgroundAudio.thinking?.type || getFallback(null, 'background_audio.thinking.type'),
         thinkingVolume: backgroundAudio.thinking?.volume ?? getFallback(null, 'background_audio.thinking.volume'),
+        thinkingProbability: backgroundAudio.thinking_probability ?? 1.0,
+        toolCallTyping: backgroundAudio.tool_call_typing_config?.enabled ?? false,
+        toolCallVolume: backgroundAudio.tool_call_typing_config?.volume ?? 0.8,
       },
     },
   }
