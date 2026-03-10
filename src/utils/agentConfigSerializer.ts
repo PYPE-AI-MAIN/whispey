@@ -70,7 +70,14 @@ export interface SerializedAgentConfig {
       }
       fillers: {
         enableFillerWords: boolean
+        language: 'auto' | 'en' | 'hi'
+        questionKeywords: string[]
+        questionFillers: string[]
+        ambiguousKeywords: string[]
+        ambiguousFillers: string[]
         generalFillers: string[]
+        fillerCooldownSec: number
+        latencyThreshold: number
         conversationFillers: string[]
         conversationKeywords: string[]
       }
@@ -90,6 +97,9 @@ export interface SerializedAgentConfig {
         ambientVolume?: number
         thinkingType?: string
         thinkingVolume?: number
+        thinkingProbability?: number
+        toolCallTyping?: boolean
+        toolCallVolume?: number
       }
     }
   }
@@ -190,8 +200,15 @@ export function serializeConfig(
           tools: []
         },
         fillers: {
-          enableFillerWords: false,
+          enableFillerWords: true,
+          language: 'auto' as 'auto' | 'en' | 'hi',
+          questionKeywords: [],
+          questionFillers: [],
+          ambiguousKeywords: [],
+          ambiguousFillers: [],
           generalFillers: [],
+          fillerCooldownSec: 4.0,
+          latencyThreshold: 1.2,
           conversationFillers: [],
           conversationKeywords: []
         },
@@ -203,7 +220,17 @@ export function serializeConfig(
           collectionPrompt: ''
         },
         backgroundAudio: {
-          mode: 'disabled'
+          mode: 'dual' as 'disabled' | 'single' | 'dual',
+          singleType: 'keyboard',
+          singleVolume: 50,
+          singleTiming: 'thinking' as 'thinking' | 'always',
+          ambientType: 'office',
+          ambientVolume: 5,
+          thinkingType: 'keyboard',
+          thinkingVolume: 0.5,
+          thinkingProbability: 0.10,
+          toolCallTyping: true,
+          toolCallVolume: 0.80
         }
       }
     }
