@@ -449,6 +449,7 @@ export default function AgentConfig() {
         model: assistant.stt?.model || 'whisper-1',
         config: {
           language: assistant.stt?.language || 'en',
+          ...(assistant.stt?.config?.mode ? { mode: assistant.stt.config.mode } : {}),
           ...assistant.stt?.config || {}
         }
       })

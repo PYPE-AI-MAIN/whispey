@@ -434,6 +434,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
     sttModel: assistant.stt?.model || getFallback(null, 'stt.model'),
     sttConfig: {
       language: assistant.stt?.language || getFallback(null, 'stt.language'),
+      ...(assistant.stt?.mode ? { mode: assistant.stt.mode } : {}), 
       ...(assistant.stt?.config || {}),
     },
     dynamic_tts: assistant.dynamic_tts || [],
