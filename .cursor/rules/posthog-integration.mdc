@@ -1,29 +1,289 @@
 ---
-description: apply when interacting with PostHog/analytics tasks
-globs: 
-alwaysApply: true
+
+## ⚙️ NEXT.JS RULES
+
+### App Router (mandatory)
+- Always use the **App Router** (`/app` directory). Never use Pages Router.
+- Use **Server Components** by default. Add `"use client"` only when required (event handlers, hooks, browser APIs).
+- Keep `"use client"` components as **leaf nodes** — push them as deep as possible.
+- Never fetch data in Client Components. Fetch in Server Components and pass as props.
+
+### Data Fetching
+- Use `async/await` in Server Components for data fetching.
+- Always add `loading.tsx` and `error.tsx` siblings to any page with async data.
+- Use `React.Suspense` with meaningful skeleton fallbacks, never blank spinners.
+- Cache strategy must be explicit:
+```ts
+  // Always declare cache behavior
+  fetch(url, { cache: 'force-cache' })        // static
+  fetch(url, { next: { revalidate: 60 } })    // ISR
+  fetch(url, { cache: 'no-store' })           // dynamic
+```
+
+### Route Handlers (API routes)
+- Always validate request body with **Zod** before processing.
+- Always return typed responses using a standard envelope:
+```ts
+  // Success
+  return NextResponse.json({ success: true, data: result }, { status: 200 })
+  // Error
+  return NextResponse.json({ success: false, error: 'message' }, { status: 400 })
+```
+- Never expose raw error objects to the client.
+
+### Metadata
+- Every page must export a `generateMetadata` function or static `metadata` object.
+
 ---
 
-Never hallucinate an API key. Instead, always use the API key populated in the .env file.
+## 🔷 TYPESCRIPT RULES
 
-# Feature flags
+- **Strict mode** is always on. Never use `any`. Use `unknown` and narrow with type guards.
+- Always define return types for functions explicitly.
+- Use `interface` for object shapes, `type` for unions/intersections/computed types.
+- Never use non-null assertion (`!`) unless you add a comment explaining why it's safe.
+- Prefer `readonly` arrays and properties where mutation is not needed.
+```ts
+// ✅ Good
+interface CallRecord {
+  readonly id: string
+  status: 'pending' | 'completed' | 'failed'
+  durationMs: number
+}
 
-A given feature flag should be used in as few places as possible. Do not increase the risk of undefined behavior by scattering the same feature flag across multiple areas of code. If the same feature flag needs to be introduced at multiple callsites, flag this for the developer to inspect carefully.
+// ❌ Bad
+const process = (data: any) => { ... }
+```
 
-If a job requires creating new feature flag names, make them as clear and descriptive as possible.
+---
 
-If using TypeScript, use an enum to store flag names. If using JavaScript, store flag names as strings to an object declared as a constant, to simulate an enum. Use a consistent naming convention for this storage. enum/const object members should be written UPPERCASE_WITH_UNDERSCORE.
+## 🎨 COMPONENT RULES
 
-Gate flag-dependent code on a check that verifies the flag's values are valid and expected.
+### Structure (always in this order inside a file)
+1. Imports
+2. Types/Interfaces
+3. Constants (if local)
+4. Component function
+5. Subcomponents (if colocated)
+6. Exports
 
-# Custom properties
+### Naming
+- Components: `PascalCase`
+- Files: `kebab-case.tsx`
+- Hooks: `useFeatureName.ts`
+- Utilities: `camelCase.ts`
+- Constants: `UPPER_SNAKE_CASE`
 
-If a custom property for a person or event is at any point referenced in two or more files or two or more callsites in the same file, use an enum or const object, as above in feature flags.
+### Props
+- Always define a `Props` interface for every component.
+- Destructure props in the function signature.
+- Never use `React.FC` — use plain function declarations with explicit return type.
+```tsx
+// ✅ Good
+interface CallCardProps {
+  callId: string
+  status: CallStatus
+  onRetry?: () => void
+}
 
-# Naming
+export function CallCard({ callId, status, onRetry }: CallCardProps): JSX.Element {
+  // ...
+}
 
-Before creating any new event or property names, consult with the developer for any existing naming convention. Consistency in naming is essential, and additional context may exist outside this project. Similarly, be careful about any changes to existing event and property names, as this may break reporting and distort data for the project.
+// ❌ Bad
+const CallCard: React.FC<any> = (props) => { ... }
+```
 
+---
 
+## 🪝 HOOKS RULES
 
+- Custom hooks live in `/lib/hooks/`.
+- Every hook must have a JSDoc comment explaining purpose, params, and return.
+- Memoize expensive computations with `useMemo`. Stabilize callbacks with `useCallback`.
+- Never put business logic inside components — extract to hooks.
+- Always handle loading, error, and empty states in data-fetching hooks.
+```ts
+/**
+ * Fetches call analytics for a given date range.
+ * @param dateRange - { from: Date, to: Date }
+ * @returns { data, isLoading, error, refetch }
+ */
+export function useCallAnalytics(dateRange: DateRange) { ... }
+```
 
+---
+
+## 🔌 API & SERVICES LAYER
+
+- All external API calls go in `/services/`, never inline in components or hooks.
+- Every service function must:
+  - Be fully typed (input and output)
+  - Handle errors and throw meaningful typed errors
+  - Have a JSDoc block
+```ts
+// services/voice-analytics.ts
+
+/**
+ * Fetches call transcript by session ID.
+ * @throws {ApiError} if session not found or server error
+ */
+export async function getCallTranscript(sessionId: string): Promise<Transcript> {
+  const res = await fetch(`/api/transcripts/${sessionId}`)
+  if (!res.ok) throw new ApiError(res.status, await res.text())
+  return res.json()
+}
+```
+
+---
+
+## ✅ VALIDATION RULES
+
+- Use **Zod** for ALL validation (forms, API inputs, env vars).
+- Define schemas in `/lib/validations/`.
+- Validate environment variables at startup with a Zod schema in `/config/env.ts`.
+```ts
+// config/env.ts
+import { z } from 'zod'
+
+const envSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  NEXT_PUBLIC_API_URL: z.string().url(),
+})
+
+export const env = envSchema.parse(process.env)
+```
+
+---
+
+## 🎯 STATE MANAGEMENT
+
+- Prefer **URL state** (searchParams) for filters, pagination, and tabs.
+- Use **React Context** only for truly global UI state (theme, auth).
+- For server state, use **TanStack Query** (React Query) if installed.
+- Avoid prop drilling beyond 2 levels — use composition or context.
+- Never store derived data in state — compute it.
+
+---
+
+## 🚨 ERROR HANDLING
+
+- All async functions must be wrapped in try/catch.
+- Create a typed `AppError` class:
+```ts
+  class AppError extends Error {
+    constructor(public code: string, message: string, public status = 500) {
+      super(message)
+    }
+  }
+```
+- Use `error.tsx` boundary files at the route level.
+- Log errors server-side with context; never expose stack traces to client.
+- Show user-friendly error messages, not technical details.
+
+---
+
+## 🚀 PERFORMANCE
+
+- Dynamic import heavy components: `const Chart = dynamic(() => import('./Chart'), { ssr: false })`
+- Always add `width` and `height` to `<Image />` components (Next.js Image).
+- Use `next/font` for fonts — never import from Google Fonts directly.
+- Avoid `useEffect` for data fetching. Use Server Components or React Query.
+- Add `key` props on all list items using stable IDs, never array index.
+
+---
+
+## 📝 DOCUMENTATION RULES
+
+Create a doc file in `/docs/` whenever:
+- A feature has non-obvious business logic
+- An API integration is complex
+- A data flow spans 3+ files
+- A component has complex state transitions
+
+Doc format:
+```md
+# Feature Name
+
+## What it does
+One paragraph summary.
+
+## Data Flow
+Step-by-step description with file references.
+
+## Key Decisions
+Why certain approaches were chosen over alternatives.
+
+## Edge Cases
+Known edge cases and how they're handled.
+
+## TODOs / Known Limitations
+```
+
+---
+
+## 🧪 TESTING
+
+- Test files colocate with source: `component.test.tsx` next to `component.tsx`, OR in `/tests/`.
+- Every utility function in `/lib/` must have unit tests.
+- Every API route must have integration tests.
+- Use **descriptive test names**: `it('returns 404 when session ID does not exist')`
+- Test the **behavior**, not the implementation.
+
+---
+
+## 🔐 SECURITY
+
+- Never hardcode secrets. Always use environment variables.
+- Sanitize all user inputs before rendering (XSS prevention).
+- Use `httpOnly` cookies for auth tokens — never localStorage.
+- Add CSRF protection on all mutating API routes.
+- Always check auth in Server Components / middleware, not just client-side.
+
+---
+
+## 💅 CODE STYLE
+
+- Max line length: **100 characters**.
+- Max function length: **50 lines** — extract if longer.
+- Max file length: **300 lines** — split if longer.
+- One component per file (except small colocated subcomponents).
+- No commented-out code in commits. Use TODOs with context instead:
+```ts
+  // TODO(ashish): Handle retry logic for failed payer API calls — #issue-42
+```
+- Prefer **early returns** over nested if/else.
+- Use **named exports** everywhere. Avoid default exports except for Next.js pages/layouts.
+
+---
+
+## 🔄 GIT & PR HYGIENE
+
+When suggesting commits or changes:
+- Use conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`
+- Each PR should do **one thing**
+- Breaking changes must be flagged with `BREAKING CHANGE:` in commit body
+
+---
+
+## 🩺 SELF-CHECK BEFORE RESPONDING
+
+Before submitting any code response, verify:
+- [ ] Did I think step by step before coding?
+- [ ] Are all types explicit (no `any`)?
+- [ ] Is error handling present on all async paths?
+- [ ] Does this need a doc file in `/docs/`?
+- [ ] Are Server/Client component boundaries correct?
+- [ ] Are there loading and error states?
+- [ ] Is the code under 300 lines per file?
+- [ ] Would a new dev understand this without asking me?
+
+---
+
+## 🏥 PROJECT CONTEXT (Pype AI)
+
+This is a **healthcare voice AI analytics dashboard**. Keep in mind:
+- Data may be PHI/HIPAA-sensitive — never log patient data, call content, or PII.
+- All API responses containing call data must be access-controlled.
+- Voice call data is high-volume — always paginate, never fetch all records.
+- Latency metrics and transcript analysis are core features — optimize rendering for large datasets.
