@@ -94,21 +94,22 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
     }
 
     if (normalizedProvider === 'sarvam') {
-      // Sarvam format - uses speaker field
+      // FIX: `temperature` removed — not a valid livekit-plugins-sarvam 1.4.2 param.
+      // All params (pace, loudness, enable_preprocessing) passed for ALL models.
+      // Plugin __init__ accepts them; drops pitch/loudness from API payload for non-v2 internally.
+      const vs = currentConfig.voice_settings || {}
       configToSave = {
         ...configToSave,
-        voice_id: currentConfig.voice_id || currentConfig.speaker || '', // Backend accepts both
-        speaker: currentConfig.speaker || currentConfig.voice_id || '', // Set speaker for Sarvam
+        voice_id: currentConfig.voice_id || currentConfig.speaker || '',
+        speaker: currentConfig.speaker || currentConfig.voice_id || '',
         model: currentConfig.model || 'bulbul:v2',
         language: currentConfig.language || 'en-IN',
         ...(currentConfig.voice_settings && {
           voice_settings: {
-            target_language_code: currentConfig.voice_settings.target_language_code || currentConfig.language || 'en-IN',
-            pace: currentConfig.voice_settings.pace || currentConfig.voice_settings.speed || 1.0,
-            loudness: currentConfig.voice_settings.loudness || 1.0,
-            enable_preprocessing: currentConfig.voice_settings.enable_preprocessing !== undefined 
-              ? currentConfig.voice_settings.enable_preprocessing 
-              : true
+            target_language_code: vs.target_language_code || currentConfig.language || 'en-IN',
+            pace: Math.min(2.0, Math.max(0.5, vs.pace || vs.speed || 1.0)),
+            loudness: Math.min(2.0, Math.max(0.5, vs.loudness || 1.0)),
+            enable_preprocessing: vs.enable_preprocessing !== undefined ? vs.enable_preprocessing : false,
           }
         })
       }
@@ -189,12 +190,17 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
         style: config?.style || 0,
         use_speaker_boost: config?.useSpeakerBoost !== undefined ? config.useSpeakerBoost : true,
         speed: config?.speed || 1.0
-      } : normalizedProvider === 'sarvam' ? {
-        target_language_code: config?.target_language_code || config?.language || 'en-IN',
-        pace: config?.speed || 1.0,
-        loudness: config?.loudness || 1.0,
-        enable_preprocessing: config?.enable_preprocessing !== undefined ? config.enable_preprocessing : true
-      } : prev.voice_settings,
+      } : normalizedProvider === 'sarvam' ? (() => {
+        // FIX: read `pace` from config (SelectTTS now sends pace not speed).
+        // FIX: `temperature` removed — not a valid plugin param.
+        // All params valid for __init__ on both models; plugin handles API exclusion internally.
+        return {
+          target_language_code: config?.target_language_code || config?.language || 'en-IN',
+          pace: Math.min(2.0, Math.max(0.5, config?.pace || config?.speed || 1.0)),
+          loudness: Math.min(2.0, Math.max(0.5, config?.loudness || 1.0)),
+          enable_preprocessing: config?.enable_preprocessing !== undefined ? config.enable_preprocessing : false,
+        }
+      })() : prev.voice_settings,
       gender: normalizedProvider === 'google' ? config?.gender : prev.gender
     }))
   }
@@ -333,11 +339,14 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
                       if (currentConfig.name === 'sarvam' || currentConfig.name === 'sarvam_tts') {
                         return {
                           target_language_code: currentConfig.voice_settings?.target_language_code || currentConfig.language || 'en-IN',
+                          // FIX: pass `pace` (not `speed`) — SelectTTS/SettingsPanel reads `pace`
+                          // FIX: `temperature` removed — not a valid livekit-plugins-sarvam 1.4.2 param
+                          pace: currentConfig.voice_settings?.pace || currentConfig.voice_settings?.speed || 1.0,
                           loudness: currentConfig.voice_settings?.loudness || 1.0,
-                          speed: currentConfig.voice_settings?.pace || currentConfig.voice_settings?.speed || 1.0,
-                          enable_preprocessing: currentConfig.voice_settings?.enable_preprocessing !== undefined 
-                            ? currentConfig.voice_settings.enable_preprocessing 
-                            : true
+                          enable_preprocessing: currentConfig.voice_settings?.enable_preprocessing !== undefined
+                            ? currentConfig.voice_settings.enable_preprocessing
+                            : false,
+                          pitch: currentConfig.voice_settings?.pitch || 0.0,
                         }
                       } else if (currentConfig.name === 'elevenlabs') {
                         return {
@@ -386,4 +395,3 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 }
 
 export default DynamicTTSSwitch
-
