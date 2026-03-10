@@ -1,11 +1,6 @@
 // hooks/useSupabase.ts
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabase } from '@/lib/supabase';
 
 export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.is";
 
@@ -70,7 +65,7 @@ export const useSupabaseQuery = <T = any>(
     queryKey: [table, options],
     queryFn: async () => {
       if (!options) return []; // Return empty array if options is null
-      
+      const supabase = await getSupabase();
       let query = supabase.from(table).select(options.select || "*");
 
       if (options.filters) {
@@ -109,6 +104,7 @@ export const useSupabaseInfiniteQuery = <T = any>(
   return useInfiniteQuery<T[]>({
     queryKey: [table, "infinite", options],
     queryFn: async ({ pageParam }: { pageParam: any }) => {
+      const supabase = await getSupabase();
       let query = supabase.from(table).select(options.select || "*");
 
       // Apply base filters (excluding cursor)

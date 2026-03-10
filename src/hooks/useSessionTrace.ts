@@ -2,12 +2,7 @@
 import { useSupabaseQuery, useSupabaseInfiniteQuery } from "./useSupabase";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabase } from "@/lib/supabase";
 
 // Define Span interface here so it can be exported
 export interface Span {
@@ -86,7 +81,7 @@ export const useSessionSpansInfinite = (sessionTrace: any) => {
     queryKey: ["pype_voice_spans_count", sessionTrace?.trace_key],
     queryFn: async () => {
       if (!sessionTrace?.trace_key) return 0;
-      
+      const supabase = await getSupabase();
       const { count, error } = await supabase
         .from("pype_voice_spans")
         .select("*", { count: 'exact', head: true })

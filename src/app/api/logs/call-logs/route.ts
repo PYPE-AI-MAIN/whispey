@@ -8,8 +8,8 @@ import { CallLogRequest, TranscriptWithMetrics, UsageData, TelemetryAnalytics, T
 import { gunzipSync } from 'zlib'
 
 // Create server-side Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Decompression function for compressed data
