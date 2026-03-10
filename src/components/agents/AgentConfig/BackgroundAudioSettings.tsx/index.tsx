@@ -16,6 +16,9 @@ interface BackgroundAudioSettingsProps {
   ambientVolume: number
   thinkingType: string
   thinkingVolume: number
+  thinkingProbability: number
+  toolCallTyping: boolean
+  toolCallVolume: number
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -33,11 +36,16 @@ export default function BackgroundAudioSettings({
   ambientVolume,
   thinkingType,
   thinkingVolume,
+  thinkingProbability,
+  toolCallTyping,
+  toolCallVolume,
   onFieldChange
 }: BackgroundAudioSettingsProps) {
   const [localSingleVolume, setLocalSingleVolume] = React.useState(singleVolume.toString())
   const [localAmbientVolume, setLocalAmbientVolume] = React.useState(ambientVolume.toString())
   const [localThinkingVolume, setLocalThinkingVolume] = React.useState(thinkingVolume.toString())
+  const [localThinkingProbability, setLocalThinkingProbability] = React.useState(Math.round(thinkingProbability * 100).toString())
+  const [localToolCallVolume, setLocalToolCallVolume] = React.useState(Math.round(toolCallVolume * 100).toString())
 
   const handleVolumeChange = (field: string, value: string, setter: (v: string) => void) => {
     setter(value)
@@ -240,7 +248,88 @@ export default function BackgroundAudioSettings({
                 className="h-8"
               />
             </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                Play Probability (0–100%)
+              </Label>
+              <Input
+                type="number"
+                value={localThinkingProbability}
+                onChange={(e) => {
+                  setLocalThinkingProbability(e.target.value)
+                  const num = parseFloat(e.target.value)
+                  if (!isNaN(num) && num >= 0 && num <= 100) {
+                    onFieldChange('advancedSettings.backgroundAudio.thinkingProbability', num / 100)
+                  }
+                }}
+                onBlur={(e) => {
+                  const num = parseFloat(e.target.value)
+                  if (isNaN(num) || num < 0) {
+                    onFieldChange('advancedSettings.backgroundAudio.thinkingProbability', 0)
+                    setLocalThinkingProbability('0')
+                  } else if (num > 100) {
+                    onFieldChange('advancedSettings.backgroundAudio.thinkingProbability', 1)
+                    setLocalThinkingProbability('100')
+                  }
+                }}
+                min={0}
+                max={100}
+                step={1}
+                className="h-8"
+              />
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                How often the thinking sound plays on normal LLM replies (100% = always)
+              </p>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Tool Call Typing Sound — shown whenever audio is not fully disabled */}
+      {mode !== 'disabled' && (
+        <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300">Tool Call Typing Sound</h4>
+            <Switch
+              checked={toolCallTyping}
+              onCheckedChange={(checked) => onFieldChange('advancedSettings.backgroundAudio.toolCallTyping', checked)}
+            />
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            Plays keyboard typing sound whenever the agent runs a tool call (100% always)
+          </p>
+
+          {toolCallTyping && (
+            <div className="space-y-2">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">Volume (0–100)</Label>
+              <Input
+                type="number"
+                value={localToolCallVolume}
+                onChange={(e) => {
+                  setLocalToolCallVolume(e.target.value)
+                  const num = parseFloat(e.target.value)
+                  if (!isNaN(num) && num >= 0 && num <= 100) {
+                    onFieldChange('advancedSettings.backgroundAudio.toolCallVolume', num / 100)
+                  }
+                }}
+                onBlur={(e) => {
+                  const num = parseFloat(e.target.value)
+                  if (isNaN(num) || num < 0) {
+                    onFieldChange('advancedSettings.backgroundAudio.toolCallVolume', 0)
+                    setLocalToolCallVolume('0')
+                  } else if (num > 100) {
+                    onFieldChange('advancedSettings.backgroundAudio.toolCallVolume', 1)
+                    setLocalToolCallVolume('100')
+                  }
+                }}
+                min={0}
+                max={100}
+                step={1}
+                className="h-8"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

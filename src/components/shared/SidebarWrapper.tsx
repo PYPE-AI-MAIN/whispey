@@ -44,6 +44,7 @@ interface SidebarContext {
   agentType?: string
   canAccessPhoneCalls: boolean
   canAccessPhoneSettings: boolean
+  canCreatePypeAgent: boolean
 }
 
 interface NavigationItem {
@@ -267,7 +268,7 @@ const sidebarRoutes: SidebarRoute[] = [
       ]
 
       const configItems = []
-      if (agentType === 'pype_agent') {
+      if (agentType === 'pype_agent' && context.canCreatePypeAgent) {
         configItems.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
@@ -427,7 +428,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
 
-  const { canAccessPhoneCalls, canAccessPhoneSettings } = useFeatureAccess()
+  const { canAccessPhoneCalls, canAccessPhoneSettings, canCreatePypeAgent } = useFeatureAccess()
   
   const projectId = pathname.match(/^\/([^/]+)/)?.[1]
   const agentId = pathname.match(/^\/[^/]+\/agents\/([^/?]+)/)?.[1]
@@ -506,7 +507,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     projectId,
     agentType: agent?.agent_type,
     canAccessPhoneCalls,
-    canAccessPhoneSettings
+    canAccessPhoneSettings,
+    canCreatePypeAgent
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)
