@@ -46,17 +46,21 @@ export default function KnowledgeBasePage() {
   const fetchDocuments = useCallback(async () => {
     if (!backendAgentName) return
     setLoading(true)
+    const url = `/api/knowledge/documents?agent_id=${encodeURIComponent(backendAgentName)}`
     try {
-      const res = await fetch(
-        `/api/knowledge/documents?agent_id=${encodeURIComponent(backendAgentName)}`
-      )
+      console.log('[Knowledge Page] Fetching documents with agent_id (backend name):', backendAgentName)
+      const res = await fetch(url)
       const data = await res.json().catch(() => ({}))
+      console.log('[Knowledge Page] List API response ok=', res.ok, 'status=', res.status, 'data=', data)
       if (res.ok && Array.isArray(data.documents)) {
         setDocuments(data.documents)
+        console.log('[Knowledge Page] Set documents count:', data.documents.length)
       } else {
+        if (!res.ok) console.warn('[Knowledge Page] List failed or unexpected shape:', data?.error ?? data)
         setDocuments([])
       }
-    } catch {
+    } catch (err) {
+      console.error('[Knowledge Page] Fetch documents error:', err)
       setDocuments([])
     } finally {
       setLoading(false)
