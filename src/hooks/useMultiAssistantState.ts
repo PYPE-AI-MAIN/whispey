@@ -118,7 +118,10 @@ export function useMultiAssistantState({
         stt: {
           name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
           language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-          model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model')
+          model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
+          ...(( currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
+            mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
+          })
         },
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
@@ -355,10 +358,22 @@ export function useMultiAssistantState({
           return toolsArray.length > 0 ? toolsArray : getFallback(null, 'tools')
         })(),
         filler_words: {
-          enabled: formValues.advancedSettings?.fillers?.enableFillerWords ?? getFallback(null, 'filler_words.enabled'),
-          general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.general_fillers'),
-          conversation_fillers: formValues.advancedSettings?.fillers?.conversationFillers?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.conversation_fillers'),
-          conversation_keywords: formValues.advancedSettings?.fillers?.conversationKeywords?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.conversation_keywords')
+          enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
+            ...(formValues.advancedSettings?.fillers?.generalFillers ?? []),
+            ...(formValues.advancedSettings?.fillers?.questionFillers ?? []),
+            ...(formValues.advancedSettings?.fillers?.ambiguousFillers ?? []),
+          ].some((w: string) => w !== ''),
+          language: formValues.advancedSettings?.fillers?.language ?? 'auto',
+          question_keywords: formValues.advancedSettings?.fillers?.questionKeywords?.filter((f: string) => f !== '') ?? [],
+          question_fillers: formValues.advancedSettings?.fillers?.questionFillers?.filter((f: string) => f !== '') ?? [],
+          ambiguous_keywords: formValues.advancedSettings?.fillers?.ambiguousKeywords?.filter((f: string) => f !== '') ?? [],
+          ambiguous_fillers: formValues.advancedSettings?.fillers?.ambiguousFillers?.filter((f: string) => f !== '') ?? [],
+          general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') ?? [],
+          typing_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 0.10,
+          filler_cooldown_sec: formValues.advancedSettings?.fillers?.fillerCooldownSec ?? 4.0,
+          latency_threshold: formValues.advancedSettings?.fillers?.latencyThreshold ?? 1.2,
+          conversation_fillers: formValues.advancedSettings?.fillers?.conversationFillers?.filter((f: string) => f !== '') ?? [],
+          conversation_keywords: formValues.advancedSettings?.fillers?.conversationKeywords?.filter((f: string) => f !== '') ?? [],
         },
         bug_reports: {
           enable: formValues.advancedSettings?.bugs?.enableBugReport ?? getFallback(null, 'bug_reports.enable'),
@@ -390,6 +405,11 @@ export function useMultiAssistantState({
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
+          thinking_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 1.0,
+          tool_call_typing_config: {
+            enabled: formValues.advancedSettings?.backgroundAudio?.toolCallTyping ?? false,
+            volume: formValues.advancedSettings?.backgroundAudio?.toolCallVolume ?? 0.8
+          },
           ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
             type: formValues.advancedSettings.backgroundAudio.singleType || 'keyboard',
             volume: formValues.advancedSettings.backgroundAudio.singleVolume ?? 0.5,
@@ -451,7 +471,10 @@ export function useMultiAssistantState({
         stt: {
           name: data.sttConfig?.name || formValues.sttProvider || getFallback(null, 'stt.name'),
           language: data.sttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-          model: data.sttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model')
+          model: data.sttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
+          ...((data.sttConfig?.mode || formValues.sttConfig?.mode) && {
+            mode: data.sttConfig?.mode || formValues.sttConfig?.mode
+          }),
         },
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
@@ -626,10 +649,22 @@ export function useMultiAssistantState({
           return baseToolConfig
         }) || getFallback(null, 'tools'),
         filler_words: {
-          enabled: formValues.advancedSettings?.fillers?.enableFillerWords ?? getFallback(null, 'filler_words.enabled'),
-          general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.general_fillers'),
-          conversation_fillers: formValues.advancedSettings?.fillers?.conversationFillers?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.conversation_fillers'),
-          conversation_keywords: formValues.advancedSettings?.fillers?.conversationKeywords?.filter((f: string) => f !== '') || getFallback(null, 'filler_words.conversation_keywords')
+          enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
+            ...(formValues.advancedSettings?.fillers?.generalFillers ?? []),
+            ...(formValues.advancedSettings?.fillers?.questionFillers ?? []),
+            ...(formValues.advancedSettings?.fillers?.ambiguousFillers ?? []),
+          ].some((w: string) => w !== ''),
+          language: formValues.advancedSettings?.fillers?.language ?? 'auto',
+          question_keywords: formValues.advancedSettings?.fillers?.questionKeywords?.filter((f: string) => f !== '') ?? [],
+          question_fillers: formValues.advancedSettings?.fillers?.questionFillers?.filter((f: string) => f !== '') ?? [],
+          ambiguous_keywords: formValues.advancedSettings?.fillers?.ambiguousKeywords?.filter((f: string) => f !== '') ?? [],
+          ambiguous_fillers: formValues.advancedSettings?.fillers?.ambiguousFillers?.filter((f: string) => f !== '') ?? [],
+          general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') ?? [],
+          typing_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 0.10,
+          filler_cooldown_sec: formValues.advancedSettings?.fillers?.fillerCooldownSec ?? 4.0,
+          latency_threshold: formValues.advancedSettings?.fillers?.latencyThreshold ?? 1.2,
+          conversation_fillers: formValues.advancedSettings?.fillers?.conversationFillers?.filter((f: string) => f !== '') ?? [],
+          conversation_keywords: formValues.advancedSettings?.fillers?.conversationKeywords?.filter((f: string) => f !== '') ?? [],
         },
         bug_reports: {
           enable: formValues.advancedSettings?.bugs?.enableBugReport ?? getFallback(null, 'bug_reports.enable'),
@@ -661,6 +696,11 @@ export function useMultiAssistantState({
         },
         background_audio: {
           enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
+          thinking_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 1.0,
+          tool_call_typing_config: {
+            enabled: formValues.advancedSettings?.backgroundAudio?.toolCallTyping ?? false,
+            volume: formValues.advancedSettings?.backgroundAudio?.toolCallVolume ?? 0.8
+          },
           ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
             type: formValues.advancedSettings.backgroundAudio.singleType,
             volume: formValues.advancedSettings.backgroundAudio.singleVolume,

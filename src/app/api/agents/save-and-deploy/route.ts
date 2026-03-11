@@ -288,8 +288,20 @@ function transformFormDataToAgentConfig(formData: any) {
             } : {})
           })),
           filler_words: {
-            enabled: formikValues.advancedSettings.fillers.enableFillerWords,
+            enabled: (formikValues.advancedSettings.fillers.enableFillerWords ?? false) && [
+              ...(formikValues.advancedSettings.fillers.generalFillers ?? []),
+              ...(formikValues.advancedSettings.fillers.questionFillers ?? []),
+              ...(formikValues.advancedSettings.fillers.ambiguousFillers ?? []),
+            ].some((w: string) => w !== ''),
+            language: formikValues.advancedSettings.fillers.language ?? 'auto',
+            question_keywords: formikValues.advancedSettings.fillers.questionKeywords?.filter((f: string) => f !== '') ?? [],
+            question_fillers: formikValues.advancedSettings.fillers.questionFillers?.filter((f: string) => f !== '') ?? [],
+            ambiguous_keywords: formikValues.advancedSettings.fillers.ambiguousKeywords?.filter((f: string) => f !== '') ?? [],
+            ambiguous_fillers: formikValues.advancedSettings.fillers.ambiguousFillers?.filter((f: string) => f !== '') ?? [],
             general_fillers: formikValues.advancedSettings.fillers.generalFillers.filter((f: string) => f !== ''),
+            typing_probability: formikValues.advancedSettings.backgroundAudio?.thinkingProbability ?? 0.10,
+            filler_cooldown_sec: formikValues.advancedSettings.fillers.fillerCooldownSec ?? 4.0,
+            latency_threshold: formikValues.advancedSettings.fillers.latencyThreshold ?? 1.2,
             conversation_fillers: formikValues.advancedSettings.fillers.conversationFillers.filter((f: string) => f !== ''),
             conversation_keywords: formikValues.advancedSettings.fillers.conversationKeywords.filter((f: string) => f !== '')
           },

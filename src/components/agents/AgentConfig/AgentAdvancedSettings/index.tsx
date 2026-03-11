@@ -54,7 +54,14 @@ interface AgentAdvancedSettingsProps {
       }
       fillers: {
         enableFillerWords: boolean
+        language: 'auto' | 'en' | 'hi'
+        questionKeywords: string[]
+        questionFillers: string[]
+        ambiguousKeywords: string[]
+        ambiguousFillers: string[]
         generalFillers: string[]
+        fillerCooldownSec: number
+        latencyThreshold: number
         conversationFillers: string[]
         conversationKeywords: string[]
       }
@@ -74,6 +81,9 @@ interface AgentAdvancedSettingsProps {
         ambientVolume: number
         thinkingType: string
         thinkingVolume: number
+        thinkingProbability?: number
+        toolCallTyping?: boolean
+        toolCallVolume?: number
       }
       webhook?: {
         triggerOnCallLog: boolean
@@ -227,10 +237,14 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <FillerWordsSettings
-              enableFillerWords={advancedSettings.fillers.enableFillerWords}
-              generalFillers={advancedSettings.fillers.generalFillers}
-              conversationFillers={advancedSettings.fillers.conversationFillers}
-              conversationKeywords={advancedSettings.fillers.conversationKeywords}
+              enableFillerWords={advancedSettings.fillers.enableFillerWords ?? true}
+              questionKeywords={advancedSettings.fillers.questionKeywords ?? []}
+              questionFillers={advancedSettings.fillers.questionFillers ?? []}
+              ambiguousKeywords={advancedSettings.fillers.ambiguousKeywords ?? []}
+              ambiguousFillers={advancedSettings.fillers.ambiguousFillers ?? []}
+              generalFillers={advancedSettings.fillers.generalFillers ?? []}
+              fillerCooldownSec={advancedSettings.fillers.fillerCooldownSec ?? 4.0}
+              latencyThreshold={advancedSettings.fillers.latencyThreshold ?? 1.2}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
@@ -282,6 +296,9 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               ambientVolume={advancedSettings.backgroundAudio?.ambientVolume || 30}
               thinkingType={advancedSettings.backgroundAudio?.thinkingType || 'keyboard'}
               thinkingVolume={advancedSettings.backgroundAudio?.thinkingVolume || 0.5}
+              thinkingProbability={advancedSettings.backgroundAudio?.thinkingProbability ?? 1.0}
+              toolCallTyping={advancedSettings.backgroundAudio?.toolCallTyping ?? false}
+              toolCallVolume={advancedSettings.backgroundAudio?.toolCallVolume ?? 0.8}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
