@@ -533,6 +533,15 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         thinkingType: backgroundAudio.thinking?.type || getFallback(null, 'background_audio.thinking.type'),
         thinkingVolume: backgroundAudio.thinking?.volume ?? getFallback(null, 'background_audio.thinking.volume'),
       },
+      knowledgeBase: (() => {
+        const tools = assistant.tools ?? []
+        const kbTool = tools.find((t: any) => t?.type === 'knowledge_search')
+        const topK = kbTool?.top_k ?? kbTool?.knowledge_search_options?.top_k ?? 5
+        return {
+          enabled: !!kbTool,
+          topK: typeof topK === 'number' && topK >= 1 ? topK : 5,
+        }
+      })(),
     },
   }
 }

@@ -10,11 +10,12 @@ import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettingsProps'
 import FillerWordsSettings from './ConfigParents/FillerWordSettings'
 import BugReportSettings from './ConfigParents/BugReportSettings'
-import { Volume2, Webhook, ArrowRightLeft } from 'lucide-react'
+import { Volume2, Webhook, ArrowRightLeft, BookOpen } from 'lucide-react'
 import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 import WebhookSettings from './ConfigParents/WebhookSettings'
 import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
 import DynamicTTSSwitch from '../DynamicTTSSwitch'
+import KnowledgeBaseRAGSettings from './ConfigParents/KnowledgeBaseRAGSettings'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -81,6 +82,10 @@ interface AgentAdvancedSettingsProps {
         headers: Record<string, string>
         isActive: boolean
       }
+      knowledgeBase?: {
+        enabled: boolean
+        topK: number
+      }
     }
     onFieldChange: (field: string, value: any) => void
     projectId?: string
@@ -99,7 +104,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     backgroundAudio: false,
     webhook: false,
     dropoff: false,
-    ttsSwitcher: false
+    ttsSwitcher: false,
+    knowledgeBase: false
   })
   
   const toggleSection = (section: string) => {
@@ -344,6 +350,27 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             <DynamicTTSSwitch
               dynamicTTSList={dynamicTTSList}
               onDynamicTTSChange={onDynamicTTSChange}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Knowledge Base (RAG) */}
+        <Collapsible open={openSections.knowledgeBase} onOpenChange={() => toggleSection('knowledgeBase')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">RAG Settings</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.knowledgeBase ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <KnowledgeBaseRAGSettings
+              enabled={advancedSettings.knowledgeBase?.enabled ?? false}
+              topK={advancedSettings.knowledgeBase?.topK ?? 5}
+              onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
         </Collapsible>
