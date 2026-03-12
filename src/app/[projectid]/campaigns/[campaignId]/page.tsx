@@ -8,6 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Contact, RetryConfig } from '@/utils/campaigns/constants'
 
+interface CampaignStats {
+  totalContacts: number
+  successCount: number
+  failedCount: number
+}
+
 interface CampaignDetails {
   campaignId: string
   projectId: string
@@ -44,6 +50,7 @@ function ViewCampaign() {
   const [loading, setLoading] = useState(true)
   const [loadingLogs, setLoadingLogs] = useState(true)
   const [campaignDetails, setCampaignDetails] = useState<CampaignDetails | null>(null)
+  const [campaignStats, setCampaignStats] = useState<CampaignStats | null>(null)
   const [logs, setLogs] = useState<any[]>([])
   const [hasMoreLogs, setHasMoreLogs] = useState(false)
   const [nextKey, setNextKey] = useState<string | null>(null)
@@ -79,6 +86,30 @@ function ViewCampaign() {
       alert('Failed to load campaign details')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Fetch live stats (unique contact counts by final status) from the dedicated stats endpoint.
+  // These override successCalls and failedCalls from the campaign record, which count
+  // call attempts (including retries) rather than unique contacts.
+  const fetchCampaignStats = async () => {
+    try {
+      const response = await fetch(`/api/campaigns/stats?campaignId=${campaignId}`)
+      if (!response.ok) return
+      const data = await response.json()
+      // Validate shape before setting — guards against backend returning a different field name
+      // or a non-numeric value, which would cause NaN in the UI
+      if (
+        typeof data.totalContacts === 'number' &&
+        typeof data.successCount === 'number' &&
+        typeof data.failedCount === 'number'
+      ) {
+        setCampaignStats(data)
+      } else {
+        console.warn('Campaign stats response has unexpected shape:', data)
+      }
+    } catch (error) {
+      console.error('Error fetching campaign stats:', error)
     }
   }
 
@@ -119,12 +150,12 @@ function ViewCampaign() {
   }
 
   useEffect(() => {
-    fetchCampaignDetails()
+    Promise.all([fetchCampaignDetails(), fetchCampaignStats()])
     fetchContacts()
   }, [campaignId, projectId])
 
   const handleRefresh = () => {
-    fetchCampaignDetails()
+    Promise.all([fetchCampaignDetails(), fetchCampaignStats()])
     fetchContacts()
   }
 
@@ -773,7 +804,7 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Contacts</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {campaignDetails.totalContacts}
+                {campaignStats?.totalContacts ?? campaignDetails.totalContacts}
               </p>
             </div>
 
@@ -793,7 +824,7 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Success</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {campaignDetails.successCalls}
+                {campaignStats?.successCount ?? campaignDetails.successCalls}
               </p>
             </div>
 
@@ -803,7 +834,7 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Failed</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {campaignDetails.failedCalls}
+                {campaignStats?.failedCount ?? campaignDetails.failedCalls}
               </p>
             </div>
           </div>
