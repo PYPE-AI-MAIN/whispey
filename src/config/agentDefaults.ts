@@ -260,6 +260,10 @@ export const AGENT_DEFAULT_CONFIG = {
         httpMethod: 'POST',
         headers: {},
         isActive: false
+      },
+      knowledgeBase: {
+        enabled: false,
+        topK: 5
       }
     }
   })

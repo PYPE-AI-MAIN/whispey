@@ -44,29 +44,49 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Call your backend API
-    const response = await fetch(`${apiBaseUrl}/start_web_session`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': 'pype-api-v1'
-      },
-      body: JSON.stringify({
-        user_identity: body.user_identity,
-        user_name: body.user_name,
-        agent_name: body.agent_name
+    const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
+
+    const doFetch = () =>
+      fetch(`${apiBaseUrl}/start_web_session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          user_identity: body.user_identity,
+          user_name: body.user_name,
+          agent_name: body.agent_name,
+        }),
       })
-    })
+
+    let response = await doFetch()
+
+    // Retry once on 503 (transient unavailability)
+    if (response.status === 503) {
+      await new Promise((r) => setTimeout(r, 2000))
+      response = await doFetch()
+    }
 
     // Handle non-OK responses
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
       console.error(`Backend API error: ${response.status} - ${errorText}`)
-      
+
+      let errorMessage = 'Failed to start web session'
+      try {
+        const errJson = JSON.parse(errorText)
+        const msg = errJson?.detail?.message ?? errJson?.detail ?? errJson?.message
+        if (msg && typeof msg === 'string') errorMessage = msg
+        else if (msg && typeof msg === 'object' && msg.message) errorMessage = msg.message
+      } catch {
+        if (errorText && errorText !== 'Unknown error') errorMessage = errorText
+      }
+
       return NextResponse.json(
-        { 
-          error: 'Failed to start web session',
-          details: errorText
+        {
+          error: errorMessage,
+          details: errorText,
         },
         { status: response.status }
       )
