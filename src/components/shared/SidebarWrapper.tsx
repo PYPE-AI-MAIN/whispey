@@ -240,6 +240,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
+      { pattern: '/:projectId/agents/:agentId/knowledge' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
@@ -274,6 +275,13 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agent Config', 
           icon: 'Settings', 
           path: `/${projectId}/agents/${agentId}/config`, 
+          group: 'configuration' 
+        })
+        configItems.push({ 
+          id: 'knowledge', 
+          name: 'Knowledge Base', 
+          icon: 'BookOpen', 
+          path: `/${projectId}/agents/${agentId}/knowledge`, 
           group: 'configuration' 
         })
       }

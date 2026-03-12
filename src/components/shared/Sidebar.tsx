@@ -38,7 +38,8 @@ import {
   Calendar,
   X,
   PanelRightOpen,
-  PanelRightClose
+  PanelRightClose,
+  BookOpen
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -71,7 +72,8 @@ const ICONS = {
   CreditCard,
   History,
   Calendar,
-  X
+  X,
+  BookOpen
 } as const
 
 interface NavigationItem {
@@ -287,6 +289,7 @@ export default function Sidebar({
         '/config',
         '/observability',
         '/phone-call-config',
+        '/knowledge',
         '/settings'
       ]
       
