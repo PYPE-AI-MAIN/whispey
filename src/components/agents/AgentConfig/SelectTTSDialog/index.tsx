@@ -33,13 +33,17 @@ interface ElevenLabsVoice {
   };
 }
 
+// FIX 1: SarvamConfig — `pace` replaces `speed`, `temperature` removed,
+// `loudness`/`enable_preprocessing`/`pitch` always present (valid for all models;
+// plugin drops them from API payload for v3-beta internally).
 interface SarvamConfig {
-  target_language_code: string;  // was: targetLanguage
+  target_language_code: string;
   model: string;
   speaker: string;
+  pace: number;
   loudness: number;
-  speed: number;
-  enable_preprocessing: boolean;  // was: enablePreprocessing
+  enable_preprocessing: boolean;
+  pitch: number;
 }
 
 interface ElevenLabsConfig {
@@ -79,6 +83,7 @@ interface SelectTTSProps {
 // Voice data
 const allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[] = [
   { id: 'meera', name: 'Meera', language: 'Hindi', gender: 'Female', style: 'Natural', accent: 'Indian', description: 'Warm Hindi voice for storytelling', compatibleModels: ['bulbul:v1'] },
+  // bulbul:v2
   { id: 'anushka', name: 'Anushka', language: 'Multi-lingual', gender: 'Female', style: 'Professional', accent: 'Indian', description: 'Professional business voice', compatibleModels: ['bulbul:v2'] },
   { id: 'vidya', name: 'Vidya', language: 'Multi-lingual', gender: 'Female', style: 'Conversational', accent: 'Indian', description: 'Natural conversational tone', compatibleModels: ['bulbul:v2'] },
   { id: 'manisha', name: 'Manisha', language: 'Multi-lingual', gender: 'Female', style: 'Narrative', accent: 'Indian', description: 'Perfect for narration', compatibleModels: ['bulbul:v2'] },
@@ -86,6 +91,46 @@ const allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[] = [
   { id: 'abhilash', name: 'Abhilash', language: 'Multi-lingual', gender: 'Male', style: 'Deep', accent: 'Indian', description: 'Deep authoritative voice', compatibleModels: ['bulbul:v2'] },
   { id: 'karun', name: 'Karun', language: 'Multi-lingual', gender: 'Male', style: 'Professional', accent: 'Indian', description: 'Clear professional male voice', compatibleModels: ['bulbul:v2'] },
   { id: 'hitesh', name: 'Hitesh', language: 'Multi-lingual', gender: 'Male', style: 'Conversational', accent: 'Indian', description: 'Natural conversational male voice', compatibleModels: ['bulbul:v2'] },
+  // bulbul:v3 — 39 voices from live docs
+  { id: 'shubh', name: 'Shubh', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: 'Default v3 voice', compatibleModels: ['bulbul:v3'] },
+  { id: 'aditya', name: 'Aditya', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'ritu', name: 'Ritu', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'priya', name: 'Priya', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'neha', name: 'Neha', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'rahul', name: 'Rahul', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'pooja', name: 'Pooja', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'rohan', name: 'Rohan', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'simran', name: 'Simran', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'kavya', name: 'Kavya', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'amit', name: 'Amit', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'dev', name: 'Dev', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'ishita', name: 'Ishita', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'shreya', name: 'Shreya', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'ratan', name: 'Ratan', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'varun', name: 'Varun', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'manan', name: 'Manan', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'sumit', name: 'Sumit', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'roopa', name: 'Roopa', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'kabir', name: 'Kabir', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'aayan', name: 'Aayan', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'ashutosh', name: 'Ashutosh', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'advait', name: 'Advait', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'amelia', name: 'Amelia', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'sophia', name: 'Sophia', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'anand', name: 'Anand', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'tanya', name: 'Tanya', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'tarun', name: 'Tarun', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'sunny', name: 'Sunny', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'mani', name: 'Mani', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'gokul', name: 'Gokul', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'vijay', name: 'Vijay', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'shruti', name: 'Shruti', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'suhani', name: 'Suhani', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'mohit', name: 'Mohit', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'kavitha', name: 'Kavitha', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'rehan', name: 'Rehan', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'soham', name: 'Soham', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  { id: 'rupali', name: 'Rupali', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
 ]
 
 // Main Component
@@ -116,30 +161,23 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     return 'sarvam' // Default
   })
   
-  // Initialize Sarvam configuration with defaults
+  // FIX 2: sarvamConfig initial state — no v3/v2 branching, no temperature,
+  // pace replaces speed, all fields always present.
   const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>(() => {
-    if ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
-      // Only use initialModel if provider is Sarvam, otherwise use default
-      const model = (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel 
-        ? initialModel 
-        : 'bulbul:v2'
-      return {
-        // Map language back to target_language_code (since we save in ElevenLabs format)
-        target_language_code: initialConfig.target_language_code || initialConfig.language || 'en-IN',
-        model: model,
-        speaker: selectedVoice || '',
-        loudness: initialConfig.loudness || 1.0,
-        speed: initialConfig.speed || 1.0,
-        enable_preprocessing: initialConfig.enable_preprocessing !== undefined ? initialConfig.enable_preprocessing : true
-      }
-    }
+    const model = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel)
+      ? (initialModel === 'bulbul:v3' ? 'bulbul:v3-beta' : initialModel)
+      : 'bulbul:v3-beta'
+    const cfg = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig)
+      ? initialConfig
+      : {}
     return {
-      target_language_code: 'en-IN',
-      model: 'bulbul:v2',
+      target_language_code: cfg.target_language_code || cfg.language || 'en-IN',
+      model,
       speaker: selectedVoice || '',
-      loudness: 1.0,
-      speed: 1.0,
-      enable_preprocessing: true
+      pace: Math.max(0.5, Math.min(2.0, Number(cfg.pace ?? cfg.speed ?? 1.0))),
+      loudness: Math.max(0.5, Math.min(2.0, Number(cfg.loudness ?? 1.0))),
+      enable_preprocessing: cfg.enable_preprocessing ?? false,
+      pitch: Math.max(-20.0, Math.min(20.0, Number(cfg.pitch ?? 0.0))),
     }
   })
 
@@ -189,28 +227,28 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
 
   const [showSettings, setShowSettings] = useState(true)
 
+  // FIX 3: originalValues sarvamConfig — same logic as initial state above,
+  // no hardcoded bulbul:v2, no temperature, pace not speed.
   const originalValues = {
     voiceId: selectedVoice || '',
     provider: initialProvider === 'sarvam_tts' ? 'sarvam' : (initialProvider || ''),
-    sarvamConfig: (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig ? {
-      // Map language back to target_language_code (since we save in ElevenLabs format)
-      target_language_code: initialConfig.target_language_code || initialConfig.language || 'en-IN',
-      // Only use initialModel if provider is Sarvam, otherwise use default
-      model: (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel 
-        ? initialModel 
-        : 'bulbul:v2',
-      speaker: selectedVoice || '',
-      loudness: initialConfig.loudness || 1.0,
-      speed: initialConfig.speed || 1.0,
-      enable_preprocessing: initialConfig.enable_preprocessing !== undefined ? initialConfig.enable_preprocessing : true
-    } : {
-      target_language_code: 'en-IN',
-      model: 'bulbul:v2',
-      speaker: selectedVoice || '',
-      loudness: 1.0,
-      speed: 1.0,
-      enable_preprocessing: true
-    },
+    sarvamConfig: (() => {
+      const model = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel)
+        ? (initialModel === 'bulbul:v3' ? 'bulbul:v3-beta' : initialModel)
+        : 'bulbul:v3-beta'
+      const cfg = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig)
+        ? initialConfig
+        : {}
+      return {
+        target_language_code: cfg.target_language_code || cfg.language || 'en-IN',
+        model,
+        speaker: selectedVoice || '',
+        pace: Math.max(0.5, Math.min(2.0, Number(cfg.pace ?? cfg.speed ?? 1.0))),
+        loudness: Math.max(0.5, Math.min(2.0, Number(cfg.loudness ?? 1.0))),
+        enable_preprocessing: cfg.enable_preprocessing ?? false,
+        pitch: Math.max(-20.0, Math.min(20.0, Number(cfg.pitch ?? 0.0))),
+      }
+    })(),
     elevenLabsConfig: (initialProvider === 'elevenlabs' && initialConfig) ? {
       voiceId: selectedVoice || '',
       language: initialConfig.language || 'en',
@@ -291,22 +329,20 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     }
   }
 
-
-    // Sync configs when provider gets normalized
+  // FIX 4: useEffect sync — no v3/v2 branching, pace not speed, no temperature
   useEffect(() => {
     if ((currentProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
-      // Only use initialModel if provider is Sarvam, otherwise use default
-      const model = (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel 
-        ? initialModel 
-        : 'bulbul:v2'
+      const model = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel)
+        ? (initialModel === 'bulbul:v3' ? 'bulbul:v3-beta' : initialModel)
+        : 'bulbul:v3-beta'
       setSarvamConfig({
-        // Map language back to target_language_code (since we save in ElevenLabs format)
         target_language_code: initialConfig.target_language_code ?? initialConfig.language ?? 'en-IN',
-        model: model,
+        model,
         speaker: selectedVoice ?? '',
-        loudness: initialConfig.loudness ?? 1.0,
-        speed: initialConfig.speed ?? 1.0,
-        enable_preprocessing: initialConfig.enable_preprocessing ?? true
+        pace: Math.max(0.5, Math.min(2.0, Number(initialConfig.pace ?? initialConfig.speed ?? 1.0))),
+        loudness: Math.max(0.5, Math.min(2.0, Number(initialConfig.loudness ?? 1.0))),
+        enable_preprocessing: initialConfig.enable_preprocessing ?? false,
+        pitch: Math.max(-20.0, Math.min(20.0, Number(initialConfig.pitch ?? 0.0))),
       })
     } else if (initialProvider === 'elevenlabs' && initialConfig) {
       // Only use initialModel if provider is ElevenLabs, otherwise use default
