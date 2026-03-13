@@ -340,31 +340,17 @@ function Campaigns() {
                     <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500 dark:text-gray-500">Total:</span>
-                        <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{campaign.totalContacts}</span>
+                        <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{campaign.callStats?.total ?? campaign.totalContacts}</span>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 dark:text-gray-500">Processed:</span>
-                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{campaign.processedContacts}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 flex-1">
                         <span className="text-xs text-gray-500 dark:text-gray-500">Success:</span>
-                        <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 max-w-[100px]">
-                          <div 
-                            className="bg-green-500 dark:bg-green-600 h-1.5 rounded-full transition-all"
-                            style={{ 
-                              width: campaign.processedContacts > 0 
-                                ? `${Math.min(100, Math.max(0, (campaign.successCalls / campaign.processedContacts) * 100))}%`
-                                : '0%'
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {campaign.processedContacts > 0 
-                            ? Math.min(100, Math.max(0, Math.round((campaign.successCalls / campaign.processedContacts) * 100)))
-                            : 0}%
-                        </span>
+                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">{campaign.callStats?.completed ?? campaign.successCalls}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-500">Pending:</span>
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{campaign.callStats?.pending ?? 0}</span>
                       </div>
                     </div>
                   </div>
@@ -501,38 +487,44 @@ function Campaigns() {
                 <div className="space-y-5">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Contacts</span>
-                    <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">{selectedCampaign.totalContacts}</span>
+                    <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">{selectedCampaign.callStats?.total ?? selectedCampaign.totalContacts}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Successful Calls</span>
-                    <span className="text-3xl font-bold text-green-600 dark:text-green-400">{selectedCampaign.successCalls}</span>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Success Calls</span>
+                    <span className="text-3xl font-bold text-green-600 dark:text-green-400">{selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Failed Calls</span>
-                    <span className="text-3xl font-bold text-red-600 dark:text-red-400">{selectedCampaign.failedCalls}</span>
+                    <span className="text-3xl font-bold text-red-600 dark:text-red-400">{selectedCampaign.callStats?.failed ?? selectedCampaign.failedCalls}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Calls</span>
+                    <span className="text-3xl font-bold text-gray-600 dark:text-gray-400">{selectedCampaign.callStats?.pending ?? 0}</span>
                   </div>
                   
                   <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Success Rate</span>
-                      <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {selectedCampaign.processedContacts > 0 
-                          ? Math.min(100, Math.max(0, Math.round((selectedCampaign.successCalls / selectedCampaign.processedContacts) * 100)))
-                          : 0}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                      <div 
-                        className="bg-green-500 dark:bg-green-600 h-3 rounded-full transition-all"
-                        style={{ 
-                          width: selectedCampaign.processedContacts > 0 
-                            ? `${Math.min(100, Math.max(0, (selectedCampaign.successCalls / selectedCampaign.processedContacts) * 100))}%`
-                            : '0%'
-                        }}
-                      />
-                    </div>
+                    {(() => {
+                      const total = selectedCampaign.callStats?.total ?? selectedCampaign.processedContacts
+                      const completed = selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls
+                      const rate = total > 0 ? Math.min(100, Math.max(0, Math.round((completed / total) * 100))) : 0
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Completion Rate</span>
+                            <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">{rate}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                              className="bg-green-500 dark:bg-green-600 h-3 rounded-full transition-all"
+                              style={{ width: `${rate}%` }}
+                            />
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>
