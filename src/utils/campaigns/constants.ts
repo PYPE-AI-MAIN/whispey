@@ -87,6 +87,13 @@ export interface RetryConfig {
 }
 
 // Campaign types
+export interface CallStats {
+  pending: number
+  completed: number
+  failed: number
+  total: number
+}
+
 export interface Campaign {
   campaignId: string
   projectId: string
@@ -96,6 +103,7 @@ export interface Campaign {
   processedContacts: number
   successCalls: number
   failedCalls: number
+  callStats?: CallStats
   schedule: {
     days: string[]
     startTime: string
