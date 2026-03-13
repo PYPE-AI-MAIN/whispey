@@ -779,11 +779,7 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Contacts</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-<<<<<<< HEAD
-                {campaignDetails.totalContacts}
-=======
                 {campaignDetails.callStats?.total ?? campaignDetails.totalContacts}
->>>>>>> 1a3ce17 (camp)
               </p>
             </div>
 
@@ -803,11 +799,7 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Success</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-<<<<<<< HEAD
-                {campaignDetails.successCalls}
-=======
                 {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
->>>>>>> 1a3ce17 (camp)
               </p>
             </div>
 
@@ -817,9 +809,6 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Failed</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-<<<<<<< HEAD
-                {campaignDetails.failedCalls}
-=======
                 {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
               </p>
             </div>
@@ -831,7 +820,6 @@ function ViewCampaign() {
               </div>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {campaignDetails.callStats?.pending ?? 0}
->>>>>>> 1a3ce17 (camp)
               </p>
             </div>
           </div>
