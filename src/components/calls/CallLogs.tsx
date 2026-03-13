@@ -60,6 +60,16 @@ const CallLogs: React.FC<CallLogsProps> = ({
     refetch
   } = useCallLogsData(agent, userEmail, project?.id, dateRange)
 
+  // Read this agent's distinctConfig and its setter from the per-agent store slot
+  const { distinctConfigByAgent, setDistinctConfigForAgent } = useCallLogsStore()
+  const distinctConfig = agent?.id ? distinctConfigByAgent[agent.id] : undefined
+  const setDistinctConfig = useCallback(
+    (config: typeof distinctConfig) => {
+      if (agent?.id) setDistinctConfigForAgent(agent.id, config)
+    },
+    [agent?.id, setDistinctConfigForAgent]
+  )
+
   // Scroll restoration hook (must be after calls is defined)
   useEffect(() => {
     const scrollKey = `call-logs-scroll-${agent?.id}`
@@ -165,9 +175,6 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
     return () => observer.disconnect()
   }, [hasNextPage, isLoading, fetchNextPage])
-
-  // Get distinct config from store
-  const { distinctConfig, setDistinctConfig } = useCallLogsStore()
 
   // Event handlers - wrapped in useCallback
   const handleFiltersChange = useCallback((operations: FilterOperation[]) => {
@@ -295,6 +302,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
               Unable to load calls
             </h3>
             <p className="text-gray-600 dark:text-gray-400">{error}</p>
+            {activeFilters.length > 0 && (
+              <button
+                onClick={handleClearFilters}
+                className="mt-2 px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Clear filters and retry
+              </button>
+            )}
           </div>
         </div>
       </div>
