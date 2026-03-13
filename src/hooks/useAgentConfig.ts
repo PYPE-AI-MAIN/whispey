@@ -569,6 +569,15 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         toolCallTyping: backgroundAudio.tool_call_typing_config?.enabled ?? false,
         toolCallVolume: backgroundAudio.tool_call_typing_config?.volume ?? 0.8,
       },
+      knowledgeBase: (() => {
+        const tools = assistant.tools ?? []
+        const kbTool = tools.find((t: any) => t?.type === 'knowledge_search')
+        const topK = kbTool?.top_k ?? kbTool?.knowledge_search_options?.top_k ?? 5
+        return {
+          enabled: !!kbTool,
+          topK: typeof topK === 'number' && topK >= 1 ? topK : 5,
+        }
+      })(),
     },
   }
 }

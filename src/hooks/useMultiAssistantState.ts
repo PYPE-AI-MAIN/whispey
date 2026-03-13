@@ -225,121 +225,138 @@ export function useMultiAssistantState({
             force_cpu: formValues.advancedSettings.vad.forceCpu
           })
         },
-        tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
-          const baseToolConfig = {
-            type: tool.type
-          }
+        tools: (() => {
+          const mappedTools = formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
+            const baseToolConfig = {
+              type: tool.type
+            }
 
-          // end_call has no additional fields
-          if (tool.type === 'end_call') {
-            return baseToolConfig
-          }
+            // end_call has no additional fields
+            if (tool.type === 'end_call') {
+              return baseToolConfig
+            }
 
-          // handoff and custom_function have these common fields
-          const commonFields = {
-            name: tool.name,
-            description: tool.config?.description || ''
-          }
+            // handoff and custom_function have these common fields
+            const commonFields = {
+              name: tool.name,
+              description: tool.config?.description || ''
+            }
 
-          // custom_function has additional fields
-          if (tool.type === 'custom_function') {
-            // Parse response_mapping_raw to create response_mapping object
-            let responseMappingObject = {}
-            try {
-              if (tool.config?.responseMapping) {
-                responseMappingObject = JSON.parse(tool.config.responseMapping)
+            // custom_function has additional fields
+            if (tool.type === 'custom_function') {
+              // Parse response_mapping_raw to create response_mapping object
+              let responseMappingObject = {}
+              try {
+                if (tool.config?.responseMapping) {
+                  responseMappingObject = JSON.parse(tool.config.responseMapping)
+                }
+              } catch (e) {
+                console.warn('Failed to parse response mapping:', e)
               }
-            } catch (e) {
-              console.warn('Failed to parse response mapping:', e)
+
+              return {
+                ...baseToolConfig,
+                ...commonFields,
+                api_url: tool.config?.endpoint || '',
+                http_method: tool.config?.method || 'GET',
+                timeout: tool.config?.timeout || 10,
+                async: tool.config?.asyncExecution || false,
+                headers: tool.config?.headers || {},
+                parameters: tool.config?.parameters?.map((param: any) => ({
+                  name: param.name,
+                  type: param.type,
+                  description: param.description,
+                  required: param.required
+                })) || [],
+                custom_payload: tool.config?.body || '',
+                response_mapping: responseMappingObject,
+                response_mapping_raw: tool.config?.responseMapping || '{}'
+              }
             }
 
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              api_url: tool.config?.endpoint || '',
-              http_method: tool.config?.method || 'GET',
-              timeout: tool.config?.timeout || 10,
-              async: tool.config?.asyncExecution || false,
-              headers: tool.config?.headers || {},
-              parameters: tool.config?.parameters?.map((param: any) => ({
-                name: param.name,
-                type: param.type,
-                description: param.description,
-                required: param.required
-              })) || [],
-              custom_payload: tool.config?.body || '',
-              response_mapping: responseMappingObject,
-              response_mapping_raw: tool.config?.responseMapping || '{}'
+            // handoff specific fields (if needed in future)
+            if (tool.type === 'handoff') {
+              return {
+                ...baseToolConfig,
+                ...commonFields,
+                target_agent: tool.config?.targetAgent || '',
+                handoff_message: tool.config?.handoffMessage || ''
+              }
+            }
+
+            // transfer_call specific fields
+            if (tool.type === 'transfer_call') {
+              return {
+                ...baseToolConfig,
+                ...commonFields,
+                transfer_number: tool.config?.transferNumber || '',
+                sip_outbound_trunk: tool.config?.sipTrunkId || ''
+              }
+            }
+
+            if (tool.type === 'ivr_navigator') {
+              return {
+                ...baseToolConfig,
+                ...commonFields,
+                function_name: tool.config?.function_name || 'send_dtmf_code',
+                docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
+                cooldown_seconds: tool.config?.cooldown_seconds || 3,
+                publish_topic: tool.config?.publish_topic || 'dtmf_code',
+                publish_data: tool.config?.publish_data ?? true,
+                instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
+                default_task: tool.config?.default_task || 'Reach a live support representative',
+                task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+              }
+            }
+
+            if (tool.type === 'nearby_location_finder') {
+              // Parse JSON strings from UI into objects for backend payload
+              let hospitals: any[] = []
+              let areas: Record<string, any> = {}
+              try {
+                hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
+              } catch (e) {
+                console.warn('Failed to parse hospitals_json:', e)
+              }
+              try {
+                areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
+              } catch (e) {
+                console.warn('Failed to parse areas_json:', e)
+              }
+
+              const maxResults = (() => {
+                const v = tool.config?.max_results
+                const n = typeof v === 'string' ? parseInt(v, 10) : v
+                return Number.isFinite(n) && n > 0 ? n : 3
+              })()
+
+              return {
+                ...baseToolConfig,
+                ...commonFields,
+                max_results: maxResults,
+                hospitals,
+                areas
+              }
+            }
+
+            return baseToolConfig
+          }) || getFallback(null, 'tools') || []
+
+          // Merge Knowledge Base (RAG) tool when enabled
+          const kb = formValues.advancedSettings?.knowledgeBase
+          const toolsArray = Array.isArray(mappedTools) ? [...mappedTools] : []
+          if (kb?.enabled) {
+            const topK = typeof kb.topK === 'number' && kb.topK >= 1 ? Math.min(50, kb.topK) : 5
+            const existingIdx = toolsArray.findIndex((t: any) => t?.type === 'knowledge_search')
+            const kbEntry = { type: 'knowledge_search' as const, top_k: topK }
+            if (existingIdx >= 0) {
+              toolsArray[existingIdx] = { ...toolsArray[existingIdx], ...kbEntry }
+            } else {
+              toolsArray.push(kbEntry)
             }
           }
-
-          // handoff specific fields (if needed in future)
-          if (tool.type === 'handoff') {
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              target_agent: tool.config?.targetAgent || '',
-              handoff_message: tool.config?.handoffMessage || ''
-            }
-          }
-
-          // transfer_call specific fields
-          if (tool.type === 'transfer_call') {
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              transfer_number: tool.config?.transferNumber || '',
-              sip_outbound_trunk: tool.config?.sipTrunkId || ''
-            }
-          }
-
-          if (tool.type === 'ivr_navigator') {
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              function_name: tool.config?.function_name || 'send_dtmf_code',
-              docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
-              cooldown_seconds: tool.config?.cooldown_seconds || 3,
-              publish_topic: tool.config?.publish_topic || 'dtmf_code',
-              publish_data: tool.config?.publish_data ?? true,
-              instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
-              default_task: tool.config?.default_task || 'Reach a live support representative',
-              task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
-            }
-          }
-
-          if (tool.type === 'nearby_location_finder') {
-            // Parse JSON strings from UI into objects for backend payload
-            let hospitals: any[] = []
-            let areas: Record<string, any> = {}
-            try {
-              hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
-            } catch (e) {
-              console.warn('Failed to parse hospitals_json:', e)
-            }
-            try {
-              areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
-            } catch (e) {
-              console.warn('Failed to parse areas_json:', e)
-            }
-
-            const maxResults = (() => {
-              const v = tool.config?.max_results
-              const n = typeof v === 'string' ? parseInt(v, 10) : v
-              return Number.isFinite(n) && n > 0 ? n : 3
-            })()
-
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              max_results: maxResults,
-              hospitals,
-              areas
-            }
-          }
-
-          return baseToolConfig
-        }) || getFallback(null, 'tools'),
+          return toolsArray.length > 0 ? toolsArray : getFallback(null, 'tools')
+        })(),
         filler_words: {
           enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
             ...(formValues.advancedSettings?.fillers?.generalFillers ?? []),
