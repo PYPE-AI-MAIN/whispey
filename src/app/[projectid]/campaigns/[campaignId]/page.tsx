@@ -17,6 +17,12 @@ interface CampaignDetails {
   processedContacts: number
   successCalls: number
   failedCalls: number
+  callStats?: {
+    pending: number
+    completed: number
+    failed: number
+    total: number
+  }
   schedule: {
     days: string[]
     startTime: string
@@ -766,23 +772,27 @@ function ViewCampaign() {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-4 space-y-4">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-gray-400" />
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Contacts</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+<<<<<<< HEAD
                 {campaignDetails.totalContacts}
+=======
+                {campaignDetails.callStats?.total ?? campaignDetails.totalContacts}
+>>>>>>> 1a3ce17 (camp)
               </p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Phone className="w-4 h-4 text-blue-400" />
+                <Phone className="w-4 h-4 text-purple-400" />
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Processed</span>
               </div>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {campaignDetails.processedContacts}
               </p>
             </div>
@@ -793,7 +803,11 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Success</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+<<<<<<< HEAD
                 {campaignDetails.successCalls}
+=======
+                {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
+>>>>>>> 1a3ce17 (camp)
               </p>
             </div>
 
@@ -803,7 +817,21 @@ function ViewCampaign() {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Failed</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+<<<<<<< HEAD
                 {campaignDetails.failedCalls}
+=======
+                {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Phone className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Pending</span>
+              </div>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {campaignDetails.callStats?.pending ?? 0}
+>>>>>>> 1a3ce17 (camp)
               </p>
             </div>
           </div>
