@@ -149,19 +149,47 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
 
   // Filter and process data
   const processedTraces = useMemo(() => {
-    if (!traceData?.length) return []
+    if (traceData?.length) {
+      let filtered = traceData.filter((item: TraceLog) => 
+        item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
+      )
     
-    let filtered = traceData.filter((item: TraceLog) => 
-      item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
-    )
-  
-    filtered.sort((a, b) => {
-      const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
-      const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
-      return aTurnNum - bTurnNum
-    })
-  
-    return filtered
+      filtered.sort((a, b) => {
+        const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
+        const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
+        return aTurnNum - bTurnNum
+      })
+    
+      return filtered
+    }
+
+    // Fallback: build traces from transcript_json in call_logs
+    if (callData?.length) {
+      const call = callData[0]
+      let transcriptJson = call?.transcript_json
+      if (!transcriptJson) return []
+
+      if (typeof transcriptJson === 'string') {
+        try { transcriptJson = JSON.parse(transcriptJson) } catch { return [] }
+      }
+      if (!Array.isArray(transcriptJson) || transcriptJson.length === 0) return []
+
+      return transcriptJson.map((msg: any, idx: number) => {
+        const role = msg.role?.toLowerCase()
+        const content = Array.isArray(msg.content) ? msg.content.join(' ') : (msg.content || '')
+        return {
+          id: `transcript_${idx}`,
+          session_id: call.id,
+          turn_id: `turn_${idx + 1}`,
+          user_transcript: role === 'user' ? content.trim() : '',
+          agent_response: role === 'assistant' ? content.trim() : '',
+          created_at: call.created_at,
+          unix_timestamp: idx,
+        } as TraceLog
+      }).filter((t: TraceLog) => t.user_transcript || t.agent_response)
+    }
+
+    return []
   }, [traceData, filters])
 
 
