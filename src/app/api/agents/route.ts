@@ -45,6 +45,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Additional validation for Retell agents
+    if (platform === 'retell') {
+      if (!configuration?.retell?.apiKey || !configuration?.retell?.agentId) {
+        return NextResponse.json(
+          { error: 'Retell configuration is incomplete. Required: apiKey, agentId' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Verify project exists
     const { data: project, error: projectError } = await supabase
       .from('pype_voice_projects')
@@ -95,7 +105,6 @@ export async function POST(request: NextRequest) {
 
     // If it's a Vapi agent, encrypt and store the API keys
     if (platform === 'vapi' && configuration?.vapi) {
-      // Encrypt the API keys with project-specific encryption
       agentData.vapi_api_key_encrypted = encryptApiKey(
         configuration.vapi.apiKey, 
         project_id
@@ -116,10 +125,38 @@ export async function POST(request: NextRequest) {
       console.log('🔐 Vapi API keys encrypted and stored securely')
     }
 
+    // If it's a Retell agent, encrypt the API key and store it
+    if (platform === 'retell' && configuration?.retell) {
+      // Encrypt Retell API key — reuses the same encryption utility as Vapi
+      agentData.retell_api_key_encrypted = encryptApiKey(
+        configuration.retell.apiKey,
+        project_id
+      )
+
+      // Strip plaintext apiKey from configuration before storing.
+      // Also rename projectApiKey → xPypeToken so the webhook handler
+      // (src/app/api/retell/webhook/route.ts) can find it directly.
+      const cleanConfiguration = {
+        ...configuration,
+        retell: {
+          agentId:      configuration.retell.agentId,
+          agentName:    configuration.retell.agentName,
+          voiceId:      configuration.retell.voiceId,
+          language:     configuration.retell.language,
+          xPypeToken:   configuration.retell.projectApiKey, // used by webhook handler
+          // apiKey and projectApiKey intentionally omitted (encrypted above)
+        },
+      }
+      agentData.configuration = cleanConfiguration
+
+      console.log('🔐 Retell API key encrypted and stored securely')
+    }
+
     console.log('💾 Inserting agent data:', {
       ...agentData,
       vapi_api_key_encrypted: agentData.vapi_api_key_encrypted ? '[ENCRYPTED]' : undefined,
-      vapi_project_key_encrypted: agentData.vapi_project_key_encrypted ? '[ENCRYPTED]' : undefined
+      vapi_project_key_encrypted: agentData.vapi_project_key_encrypted ? '[ENCRYPTED]' : undefined,
+      retell_api_key_encrypted: agentData.retell_api_key_encrypted ? '[ENCRYPTED]' : undefined,
     })
 
     // Insert agent into pype_voice_agents
