@@ -261,11 +261,6 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     return `${Math.floor(diff / (24 * 60 * 60 * 1000))}d`
   }
 
-  const truncateText = (text: string, maxLength: number = 50) => {
-    if (!text) return ""
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength) + "..."
-  }
 
   const getToolCallsInfo = (toolCalls: any[] = []) => {
     const total = toolCalls.length
@@ -573,7 +568,7 @@ const handleRowClick = (trace: TraceLog) => {
                           {trace.user_transcript && (
                             <div className="text-xs">
                               <span className="text-blue-600 dark:text-blue-400 font-medium">→</span>
-                              <span className="ml-1 text-gray-800 dark:text-gray-200">{truncateText(trace.user_transcript, 60)}</span>
+                              <span className="ml-1 text-gray-800 dark:text-gray-200">{trace.user_transcript}</span>
                             </div>
                           )}
                           {trace.agent_response && (
@@ -588,7 +583,7 @@ const handleRowClick = (trace: TraceLog) => {
                               <span className={cn(
                                 "ml-1",
                                 hasBugReport ? "text-red-800 dark:text-red-300" : "text-gray-600 dark:text-gray-300"
-                              )}>{truncateText(trace.agent_response, 60)}</span>
+                              )}>{trace.agent_response}</span>
                               {hasBugReport && (
                                 <span className="ml-2 text-red-600 dark:text-red-400 font-medium">[REPORTED]</span>
                               )}
