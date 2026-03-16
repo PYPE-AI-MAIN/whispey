@@ -13,15 +13,16 @@ export async function POST(request: NextRequest) {
       agentName,
       sipTrunkId,
       provider,
+      agentRuntime,
     } = body
 
     // Validation
-    if (!campaignId || !projectId || !campaignName || !s3FileKey || !agentName || !sipTrunkId || !provider) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
+    // if (!campaignId || !projectId || !campaignName || !s3FileKey || !agentName || !sipTrunkId || !provider) {
+    //   return NextResponse.json(
+    //     { error: 'Missing required fields' },
+    //     { status: 400 }
+    //   )
+    // }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
     const apiUrl = `${baseUrl}/api/v1/campaigns/upload-v2`
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
         agentName,
         sipTrunkId,
         provider,
+        agentRuntime: agentRuntime || 'livekit', 
       }),
     })
 

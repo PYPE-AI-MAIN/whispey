@@ -23,7 +23,14 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     .required('Campaign name is required')
     .min(3, 'Must be at least 3 characters'),
   agentId: Yup.string().required('Please select an agent'),
-  fromNumber: Yup.string().required('Please select a phone number'),
+  agentRuntime: Yup.string()
+    .oneOf(['livekit', 'pipecat'])
+    .required('Agent runtime is required'),
+  fromNumber: Yup.string().when('agentRuntime', {
+    is: 'livekit',
+    then: (schema) => schema.required('Please select a phone number'),
+    otherwise: (schema) => schema.optional(),
+  }),
   sendType: Yup.string().oneOf(['now', 'schedule']).required(),
   scheduleDate: Yup.date().when('sendType', {
     is: 'schedule',
@@ -120,6 +127,7 @@ function CreateCampaign() {
   const initialValues = {
     campaignName: '',
     agentId: '',
+    agentRuntime: 'livekit' as 'livekit' | 'pipecat',
     fromNumber: '',
     sendType: 'now' as 'now' | 'schedule',
     scheduleDate: '',
@@ -261,9 +269,9 @@ function CreateCampaign() {
       // Get phone number details for trunk_id and provider
       const selectedPhone = phoneNumbers.find(phone => phone.id === values.fromNumber)
       
-      if (!selectedPhone) {
-        throw new Error('Selected phone number not found')
-      }
+      // if (!selectedPhone) {
+      //   throw new Error('Selected phone number not found')
+      // }
 
       // Get agent name from agent ID and construct name with ID suffix (as expected by backend)
       let agentName = values.agentId
@@ -300,8 +308,9 @@ function CreateCampaign() {
           campaignName: values.campaignName,
           s3FileKey,
           agentName: agentName,
-          sipTrunkId: selectedPhone.trunk_id,
-          provider: selectedPhone.provider || 'Unknown',
+          sipTrunkId: selectedPhone?.trunk_id || '',
+          provider: selectedPhone?.provider || 'Unknown',
+          agentRuntime: values.agentRuntime,
         }),
       })
 

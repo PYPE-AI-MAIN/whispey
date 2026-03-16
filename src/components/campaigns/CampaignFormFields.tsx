@@ -28,6 +28,7 @@ interface CampaignFormFieldsProps {
     callWindowStart: string
     callWindowEnd: string
     reservedConcurrency: number
+    agentRuntime: 'livekit' | 'pipecat'
   }
   projectId: string
   maxConcurrency?: number
@@ -143,7 +144,36 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
         <ErrorMessage name="agentId" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
       </div>
 
+      {/* Agent Runtime */}
+      <div>
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+          <User className="w-3 h-3" />
+          Agent Runtime
+        </Label>
+        <Select
+          value={values.agentRuntime}
+          onValueChange={(value) => onFieldChange('agentRuntime', value)}
+        >
+          <SelectTrigger className="w-full h-8 text-sm">
+            <SelectValue placeholder="Select runtime" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="livekit">
+              <div className="flex items-center gap-2">
+                <span>LiveKit</span>
+                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  Default
+                </Badge>
+              </div>
+            </SelectItem>
+            <SelectItem value="pipecat">Pipecat</SelectItem>
+          </SelectContent>
+        </Select>
+        <ErrorMessage name="agentRuntime" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+      </div>
+
       {/* From Number - Now filtered for outbound only */}
+      {values.agentRuntime === 'livekit' && (
       <div>
         <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
           <Phone className="w-3 h-3" />
@@ -189,6 +219,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
         </Field>
         <ErrorMessage name="fromNumber" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
       </div>
+      )}
 
       {/* Campaign Concurrency */}
       <div>
