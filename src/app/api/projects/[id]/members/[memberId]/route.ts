@@ -36,11 +36,14 @@ export async function PATCH(
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
     const body = await request.json()
-    const { role } = body
+    const { role, visibility } = body
 
-    // Validate role
+    // Allow updating either role or visibility (or both)
+    if (!role && visibility === undefined) {
+      return NextResponse.json({ error: 'Provide role and/or visibility' }, { status: 400 })
+    }
     const validRoles = ['viewer', 'user', 'member', 'admin', 'owner']
-    if (!role || !validRoles.includes(role)) {
+    if (role && !validRoles.includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
@@ -90,20 +93,27 @@ export async function PATCH(
       return NextResponse.json({ error: 'Only owners can assign owner role' }, { status: 403 })
     }
 
-    // Don't allow changing your own role
-    if (memberToUpdate.clerk_id === userId || memberToUpdate.email?.toLowerCase() === userEmail?.toLowerCase()) {
+    // Don't allow changing your own role (but allow changing own visibility for future use)
+    const isSelf = memberToUpdate.clerk_id === userId || memberToUpdate.email?.toLowerCase() === userEmail?.toLowerCase()
+    if (role && isSelf) {
       return NextResponse.json({ error: 'You cannot change your own role' }, { status: 400 })
     }
 
-    // Update the member's role
-    const permissions = getPermissionsByRole(role)
-    
+    const newRole = role || memberToUpdate.role
+    const basePermissions = role ? getPermissionsByRole(newRole) : (memberToUpdate.permissions || getPermissionsByRole(newRole)) as Record<string, unknown>
+    const permissions = { ...basePermissions } as Record<string, unknown>
+    if (visibility && typeof visibility === 'object') {
+      permissions.visibility = visibility
+    } else if (memberToUpdate.permissions && typeof memberToUpdate.permissions === 'object' && (memberToUpdate.permissions as Record<string, unknown>).visibility) {
+      permissions.visibility = (memberToUpdate.permissions as Record<string, unknown>).visibility
+    }
+
+    const updatePayload: { role?: string; permissions: Record<string, unknown> } = { permissions }
+    if (role) updatePayload.role = newRole
+
     const { data: updatedMember, error: updateError } = await supabase
       .from('pype_voice_email_project_mapping')
-      .update({ 
-        role,
-        permissions 
-      })
+      .update(updatePayload)
       .eq('id', memberId)
       .eq('project_id', projectId)
       .select()

@@ -6,6 +6,8 @@ import { useUser } from '@clerk/nextjs'
 import { useQuery } from '@tanstack/react-query'
 import { useMobile } from '@/hooks/use-mobile'
 import { canViewApiKeys, getUserProjectRole } from '@/services/getUserRole'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import type { MemberVisibility } from '@/types/visibility'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Menu } from 'lucide-react'
@@ -45,6 +47,9 @@ interface SidebarContext {
   canAccessPhoneCalls: boolean
   canAccessPhoneSettings: boolean
   canCreatePypeAgent: boolean
+  /** When false (user/viewer), sidebar items are filtered by visibility */
+  isOwnerOrAdmin: boolean
+  visibility: MemberVisibility | null
 }
 
 interface NavigationItem {
@@ -160,21 +165,22 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys, canAccessPhoneSettings } = context
+      const { userCanViewApiKeys, canAccessPhoneSettings, isOwnerOrAdmin, visibility } = context
+      const v = visibility?.org
 
-      const baseNavigation = [
-        {
-          id: 'agent-list', 
-          name: 'Agent List', 
-          icon: 'Activity', 
-          path: `/${projectId}/agents`, 
-          group: 'Agents' 
-        }
-      ]
+      const baseNavigation = []
+      if (isOwnerOrAdmin || v?.agentList !== false) {
+        baseNavigation.push({
+          id: 'agent-list',
+          name: 'Agent List',
+          icon: 'Activity',
+          path: `/${projectId}/agents`,
+          group: 'Agents'
+        })
+      }
 
-    
       const campaignsItems = []
-      if (canAccessPhoneSettings) {
+      if (canAccessPhoneSettings && (isOwnerOrAdmin || v?.campaign !== false)) {
         campaignsItems.push({
           id: 'campaigns',
           name: 'Campaigns',
@@ -185,8 +191,7 @@ const sidebarRoutes: SidebarRoute[] = [
       }
 
       const configurationItems = []
-      
-      if (canAccessPhoneSettings) {
+      if (canAccessPhoneSettings && (isOwnerOrAdmin || v?.phoneSetting !== false)) {
         configurationItems.push({
           id: 'sip-management',
           name: 'Phone Settings',
@@ -197,8 +202,7 @@ const sidebarRoutes: SidebarRoute[] = [
       }
 
       const projectSettingItems = []
-
-      if (userCanViewApiKeys) {
+      if (userCanViewApiKeys && (isOwnerOrAdmin || v?.projectApi !== false)) {
         projectSettingItems.push({
           id: 'api-keys',
           name: 'Project API Key',
@@ -207,22 +211,23 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'Project Settings'
         })
       }
-      
-      projectSettingItems.push({
-        id: 'settings',
-        name: 'Settings',
-        icon: 'Settings',
-        path: `/${projectId}/settings`,
-        group: 'Project Settings'
-      })
+      if (isOwnerOrAdmin || v?.settings !== false) {
+        projectSettingItems.push({
+          id: 'settings',
+          name: 'Settings',
+          icon: 'Settings',
+          path: `/${projectId}/settings`,
+          group: 'Project Settings'
+        })
+      }
 
       return {
         type: 'project-agents',
         context: { projectId },
         navigation: [
-          ...baseNavigation, 
+          ...baseNavigation,
           ...campaignsItems,
-          ...configurationItems, 
+          ...configurationItems,
           ...projectSettingItems
         ],
         showBackButton: false,
@@ -244,7 +249,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, canAccessPhoneCalls } = context
+      const { isEnhancedProject, agentType, canAccessPhoneCalls, isOwnerOrAdmin, visibility } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -277,13 +282,15 @@ const sidebarRoutes: SidebarRoute[] = [
           path: `/${projectId}/agents/${agentId}/config`, 
           group: 'configuration' 
         })
-        configItems.push({ 
-          id: 'knowledge', 
-          name: 'Knowledge Base', 
-          icon: 'BookOpen', 
-          path: `/${projectId}/agents/${agentId}/knowledge`, 
-          group: 'configuration' 
-        })
+        if (isOwnerOrAdmin || visibility?.agent?.knowledgeBase !== false) {
+          configItems.push({ 
+            id: 'knowledge', 
+            name: 'Knowledge Base', 
+            icon: 'BookOpen', 
+            path: `/${projectId}/agents/${agentId}/knowledge`, 
+            group: 'configuration' 
+          })
+        }
       }
 
       const callItems = []
@@ -443,6 +450,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   
   // Check if projectId is valid (not a reserved path)
   const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
+
+  const { isOwnerOrAdmin, visibility } = useMemberVisibility(isValidProjectId ? projectId : undefined)
   
   // Check if agentId is valid (not a reserved path)
   const agentReservedPaths = ['api-keys', 'sip-management']
@@ -516,7 +525,9 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     agentType: agent?.agent_type,
     canAccessPhoneCalls,
     canAccessPhoneSettings,
-    canCreatePypeAgent
+    canCreatePypeAgent,
+    isOwnerOrAdmin: visibility ? isOwnerOrAdmin : true,
+    visibility: visibility ?? null,
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)

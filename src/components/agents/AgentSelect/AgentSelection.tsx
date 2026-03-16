@@ -17,6 +17,7 @@ import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useMobile } from '@/hooks/use-mobile'
 import { UserPermissionsProvider, useInvalidateUserPermissions } from '@/contexts/UserPermissionsContext'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 
 interface Agent {
   id: string
@@ -150,8 +151,20 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
     }
   }
 
+  const { isOwnerOrAdmin, visibility } = useMemberVisibility(projectId)
+
+  // Restrict to visible agents when user/member/viewer (owner/admin see all)
+  const visibilityFilteredAgents = (() => {
+    const list = agents || []
+    if (isOwnerOrAdmin) return list
+    const allowed = visibility?.org?.visibleAgentIds
+    if (allowed === null || allowed === undefined) return list
+    if (Array.isArray(allowed) && allowed.length === 0) return []
+    return list.filter((a) => allowed.includes(a.id))
+  })()
+
   // Filter agents based on search and status
-  const filteredAgents = (agents || []).filter(agent => {
+  const filteredAgents = visibilityFilteredAgents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.agent_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.id.toLowerCase().includes(searchQuery.toLowerCase())

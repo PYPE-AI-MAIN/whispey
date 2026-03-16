@@ -2,13 +2,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
+import { DEFAULT_MEMBER_VISIBILITY } from '@/types/visibility'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-function getPermissionsByRole(role: string): Record<string, boolean> {
+function getPermissionsByRole(role: string): Record<string, unknown> {
   const rolePermissions: Record<string, Record<string, boolean>> = {
     viewer: { read: true, write: false, delete: false, admin: false },
     user: { read: true, write: false, delete: false, admin: false },
@@ -16,8 +17,11 @@ function getPermissionsByRole(role: string): Record<string, boolean> {
     admin: { read: true, write: true, delete: true, admin: false },
     owner: { read: true, write: true, delete: true, admin: true },
   }
-
-  return rolePermissions[role] || rolePermissions['member']
+  const perms = rolePermissions[role] || rolePermissions['member'] as Record<string, unknown>
+  if (role === 'user' || role === 'viewer' || role === 'member') {
+    return { ...perms, visibility: DEFAULT_MEMBER_VISIBILITY }
+  }
+  return perms
 }
 
 export async function POST(

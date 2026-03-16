@@ -49,13 +49,20 @@ import {
   Alert,
   AlertDescription,
 } from '@/components/ui/alert'
+import {
+  type MemberVisibility,
+  mergeWithDefaults,
+  DEFAULT_MEMBER_VISIBILITY,
+} from '@/types/visibility'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface TeamMember {
   id: string
   email: string
   role: 'owner' | 'admin' | 'member' | 'user' | 'viewer'
-  status: 'active' | 'pending' | 'inactive' // ✅ ADDED 'inactive'
+  status: 'active' | 'pending' | 'inactive'
   joinedAt: string
+  permissions?: Record<string, unknown>
 }
 
 interface Organization {
@@ -119,8 +126,9 @@ export default function OrganizationSettings({
         id: m.id.toString(),
         email: m.user?.email || m.email,
         role: m.role,
-        status: m.is_active === false ? 'inactive' : 'active', // ✅ FIXED
-        joinedAt: m.joined_at || m.created_at
+        status: m.is_active === false ? 'inactive' : 'active',
+        joinedAt: m.joined_at || m.created_at,
+        permissions: m.permissions,
       }))
       setTeamMembers(activeMembers)
     }
@@ -131,7 +139,8 @@ export default function OrganizationSettings({
         email: m.email,
         role: m.role,
         status: 'pending' as const,
-        joinedAt: m.created_at
+        joinedAt: m.created_at,
+        permissions: m.permissions,
       }))
       setPendingMembers(pending)
     }
@@ -151,7 +160,25 @@ export default function OrganizationSettings({
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null)
   const [isRemoving, setIsRemoving] = useState(false)
   const [changingRole, setChangingRole] = useState<string | null>(null)
-  const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft') // ✅ ADDED
+  const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft')
+
+  // Visibility edit state (for user/member/viewer members)
+  const [memberToEditVisibility, setMemberToEditVisibility] = useState<TeamMember | null>(null)
+  const [visibilityForm, setVisibilityForm] = useState<MemberVisibility>(DEFAULT_MEMBER_VISIBILITY)
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false)
+
+  // Fetch org agents when visibility dialog is open (for "which agents" selector)
+  const { data: orgAgents = [] } = useQuery({
+    queryKey: ['org-agents', organizationId],
+    queryFn: async () => {
+      const res = await fetch(`/api/agents?project_id=${organizationId}`)
+      if (!res.ok) return []
+      const data = await res.json()
+      return Array.isArray(data?.agents) ? data.agents : []
+    },
+    enabled: !!memberToEditVisibility && !!organizationId,
+    staleTime: 60000,
+  })
 
   const currentUserRole = membersData?.currentUserRole || teamMembers.find(
     m => m.email === user?.emailAddresses?.[0]?.emailAddress
@@ -401,6 +428,35 @@ export default function OrganizationSettings({
     }
   }
 
+  const openVisibilityDialog = (member: TeamMember) => {
+    const current = (member.permissions as Record<string, unknown>)?.visibility
+    setVisibilityForm(mergeWithDefaults(current as MemberVisibility | undefined))
+    setMemberToEditVisibility(member)
+  }
+
+  const handleSaveVisibility = async () => {
+    if (!memberToEditVisibility) return
+    setIsSavingVisibility(true)
+    try {
+      const response = await fetch(`/api/projects/${organizationId}/members/${memberToEditVisibility.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: visibilityForm }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to update visibility')
+      }
+      refetchMembers()
+      toast.success('Visibility updated')
+      setMemberToEditVisibility(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update visibility')
+    } finally {
+      setIsSavingVisibility(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -638,9 +694,21 @@ export default function OrganizationSettings({
                           </div>
                         </div>
 
-                        {/* ✅ UPDATED ACTION BUTTONS */}
+                        {/* Action buttons */}
                         {canManageMembers && member.role !== 'owner' && !isCurrentUser && (
                           <div className="flex items-center gap-1">
+                            {(member.role === 'user' || member.role === 'viewer' || member.role === 'member') && !isInactive && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openVisibilityDialog(member)}
+                                className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 h-7 px-2 text-xs"
+                                title="Edit what this user can see"
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-1" />
+                                Visibility
+                              </Button>
+                            )}
                             {isInactive ? (
                               // Inactive member actions
                               <>
@@ -792,7 +860,159 @@ export default function OrganizationSettings({
         )}
       </div>
 
-      {/* ✅ UPDATED Remove Member Confirmation Dialog */}
+      {/* Edit visibility dialog (user/viewer only) */}
+      <Dialog open={!!memberToEditVisibility} onOpenChange={(open) => !open && setMemberToEditVisibility(null)}>
+        <DialogContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 max-h-[90vh] overflow-y-auto max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-gray-100">
+              What can {memberToEditVisibility?.email} see?
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              Only owner and admin can edit these. Uncheck items to hide them from this user.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-2">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Organization</h4>
+              <div className="space-y-2">
+                {[
+                  { key: 'agentList' as const, label: 'Agent list' },
+                  { key: 'phoneSetting' as const, label: 'Phone setting' },
+                  { key: 'campaign' as const, label: 'Campaign' },
+                  { key: 'projectApi' as const, label: 'Project API' },
+                  { key: 'settings' as const, label: 'Settings' },
+                  { key: 'fieldExtractor' as const, label: 'Field Extractor' },
+                  { key: 'metrics' as const, label: 'Metrics' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`org-${key}`}
+                      checked={visibilityForm.org[key] as boolean}
+                      onCheckedChange={(c) => setVisibilityForm((v) => ({
+                        ...v,
+                        org: { ...v.org, [key]: !!c },
+                      }))}
+                    />
+                    <label htmlFor={`org-${key}`} className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                      {label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Which agents can this user see?</h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                All agents = they see every agent in the list. Or select specific agents below.
+              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <Checkbox
+                  id="visible-agents-all"
+                  checked={visibilityForm.org.visibleAgentIds === null}
+                  onCheckedChange={(c) => setVisibilityForm((v) => ({
+                    ...v,
+                    org: { ...v.org, visibleAgentIds: c ? null : (v.org.visibleAgentIds || []) },
+                  }))}
+                />
+                <label htmlFor="visible-agents-all" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  All agents
+                </label>
+              </div>
+              {visibilityForm.org.visibleAgentIds !== null && (
+                <div className="max-h-40 overflow-y-auto space-y-1.5 rounded-md border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50">
+                  {orgAgents.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Loading agents…</p>
+                  ) : (
+                    orgAgents.map((ag: { id: string; name: string }) => {
+                      const selected = (visibilityForm.org.visibleAgentIds || []).includes(ag.id)
+                      return (
+                        <div key={ag.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`agent-${ag.id}`}
+                            checked={selected}
+                            onCheckedChange={(c) => {
+                              const current = visibilityForm.org.visibleAgentIds || []
+                              const next = c
+                                ? [...current, ag.id]
+                                : current.filter((id) => id !== ag.id)
+                              setVisibilityForm((v) => ({
+                                ...v,
+                                org: { ...v.org, visibleAgentIds: next.length === 0 ? [] : next },
+                              }))
+                            }}
+                          />
+                          <label htmlFor={`agent-${ag.id}`} className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer truncate">
+                            {ag.name || ag.id}
+                          </label>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+            <Separator />
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Agent — Overview</h4>
+              <div className="space-y-2">
+                {[
+                  { key: 'totalCalls' as const, label: 'Total calls' },
+                  { key: 'totalMinutes' as const, label: 'Total minutes' },
+                  { key: 'billing' as const, label: 'Billing' },
+                  { key: 'totalCost' as const, label: 'Total cost' },
+                  { key: 'responseTime' as const, label: 'Response time' },
+                  { key: 'success' as const, label: 'Success' },
+                  { key: 'retry' as const, label: 'Retry' },
+                  { key: 'charts' as const, label: 'All charts' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`overview-${key}`}
+                      checked={visibilityForm.agent.overview[key]}
+                      onCheckedChange={(c) => setVisibilityForm((v) => ({
+                        ...v,
+                        agent: {
+                          ...v.agent,
+                          overview: { ...v.agent.overview, [key]: !!c },
+                        },
+                      }))}
+                    />
+                    <label htmlFor={`overview-${key}`} className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                      {label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Agent</h4>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="agent-knowledgeBase"
+                  checked={visibilityForm.agent.knowledgeBase}
+                  onCheckedChange={(c) => setVisibilityForm((v) => ({
+                    ...v,
+                    agent: { ...v.agent, knowledgeBase: !!c },
+                  }))}
+                />
+                <label htmlFor="agent-knowledgeBase" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  Knowledge base
+                </label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMemberToEditVisibility(null)} disabled={isSavingVisibility}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveVisibility} disabled={isSavingVisibility}>
+              {isSavingVisibility ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save visibility'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Confirmation Dialog */}
       <Dialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
         <DialogContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>

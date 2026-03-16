@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/tooltip'
 import QuickStartGuide from './QuickStartGuide'
 import { useMobile } from '@/hooks/use-mobile'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 
 interface DashboardProps {
   agentId: string
@@ -194,6 +195,9 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
+  const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
+  const canSeeFieldExtractor = isOwnerOrAdmin || visibility?.org?.fieldExtractor !== false
+  const canSeeMetrics = isOwnerOrAdmin || visibility?.org?.metrics !== false
 
   const breadcrumb = React.useMemo(() => {
     if (agentLoading || projectLoading) {
@@ -580,15 +584,16 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                       </Popover>
                     </div>
                     
-                    {/* Field Extractor & Metrics - skeleton while agent loading */}
+                    {/* Field Extractor & Metrics - skeleton while agent loading; visibility-controlled */}
                     <div className="flex gap-2">
                       {agentLoading ? (
                         <>
                           <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
                           <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
                         </>
-                      ) : agent ? (
+                      ) : agent && (canSeeFieldExtractor || canSeeMetrics) ? (
                         <>
+                          {canSeeFieldExtractor && (
                           <FieldExtractorDialog
                             initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                             initialVariables={(agent as any)?.field_extractor_variables || {}}
@@ -610,6 +615,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                               }
                             }}
                           />
+                          )}
+                          {canSeeMetrics && (
                           <MetricsDialog
                             initialMetrics={agent?.metrics ? (typeof agent.metrics === 'string' ? JSON.parse(agent.metrics) : agent.metrics) : {}}
                             onSave={async (metrics) => {
@@ -625,6 +632,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                               }
                             }}
                           />
+                          )}
                         </>
                       ) : null}
                     </div>
@@ -737,8 +745,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 </div>
               </div> */}
 
-              {/* Field Extractor for mobile */}
-              {agent && (
+              {/* Field Extractor for mobile (visibility-controlled) */}
+              {agent && canSeeFieldExtractor && (
                 <div>
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Tools</div>
                   <FieldExtractorDialog

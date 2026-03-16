@@ -58,6 +58,7 @@ import { MetricGroupTabs } from './MetricGroupTabs'
 import { MetricGroupManager } from './MetricGroupManager'
 import { MetricGroupService } from '@/services/metricGroupService'
 import { MetricGroup, METRIC_IDS, CHART_IDS } from '@/types/metricGroups'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 
 interface OverviewProps {
   project: any
@@ -187,6 +188,8 @@ const Overview: React.FC<OverviewProps> = ({
 
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
+
+  const { isOwnerOrAdmin, visibility: memberVisibility } = useMemberVisibility(project?.id)
 
   // Data fetching
   const { data: analytics, loading: analyticsLoading, error } = useOverviewQuery({
@@ -324,37 +327,49 @@ const Overview: React.FC<OverviewProps> = ({
     }
   }
 
+  // Map metric IDs to member visibility keys (for user/viewer)
+  const overviewVisibilityMap: Record<string, keyof typeof memberVisibility.agent.overview> = {
+    [METRIC_IDS.TOTAL_CALLS]: 'totalCalls',
+    [METRIC_IDS.TOTAL_MINUTES]: 'totalMinutes',
+    [METRIC_IDS.TOTAL_BILLING_MINUTES]: 'billing',
+    [METRIC_IDS.TOTAL_COST]: 'totalCost',
+    [METRIC_IDS.AVG_LATENCY]: 'responseTime',
+    [METRIC_IDS.SUCCESSFUL_CALLS]: 'success',
+    [METRIC_IDS.FAILED_CALLS]: 'retry',
+  }
+
   // Filter metrics based on active group
   const visibleMetricIds = useMemo(() => {
     if (activeGroupId === 'all') {
-      // Show all metrics
       const baseMetrics = Object.values(METRIC_IDS)
       const customMetricIds = customTotals.map(ct => `custom_${ct.id}`)
       return [...baseMetrics, ...customMetricIds]
     }
-
     const activeGroup = metricGroups.find(g => g.id === activeGroupId)
     return activeGroup?.metric_ids || []
   }, [activeGroupId, metricGroups, customTotals])
 
   const visibleChartIds = useMemo(() => {
-      if (activeGroupId === 'all') {
-        // Show all charts
-        return Object.values(CHART_IDS)
-      }
-
-      const activeGroup = metricGroups.find(g => g.id === activeGroupId)
-      return activeGroup?.chart_ids || []
-    }, [activeGroupId, metricGroups])
-
-    // Check if a chart should be visible
-    const isChartVisible = (chartId: string) => {
-      return visibleChartIds.includes(chartId)
+    if (activeGroupId === 'all') {
+      return Object.values(CHART_IDS)
     }
+    const activeGroup = metricGroups.find(g => g.id === activeGroupId)
+    return activeGroup?.chart_ids || []
+  }, [activeGroupId, metricGroups])
 
-  // Check if a metric should be visible
+  // Check if a chart should be visible (group + member visibility for user/viewer)
+  const isChartVisible = (chartId: string) => {
+    const fromGroup = visibleChartIds.includes(chartId)
+    const fromVisibility = isOwnerOrAdmin || memberVisibility.agent.overview.charts
+    return fromGroup && fromVisibility
+  }
+
+  // Check if a metric should be visible (group + member visibility for user/viewer)
   const isMetricVisible = (metricId: string) => {
-    return visibleMetricIds.includes(metricId)
+    const fromGroup = visibleMetricIds.includes(metricId)
+    const key = overviewVisibilityMap[metricId]
+    const fromVisibility = isOwnerOrAdmin || (key ? memberVisibility.agent.overview[key] : true)
+    return fromGroup && fromVisibility
   }
 
   // Build filters for download (same as before)
@@ -782,7 +797,7 @@ const Overview: React.FC<OverviewProps> = ({
           )}
 
           {/* Total Cost */}
-          {isMetricVisible(METRIC_IDS.TOTAL_COST) && role !== 'user' && (
+          {isMetricVisible(METRIC_IDS.TOTAL_COST) && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
@@ -807,7 +822,7 @@ const Overview: React.FC<OverviewProps> = ({
           )}
 
           {/* Average Latency */}
-          {isMetricVisible(METRIC_IDS.AVG_LATENCY) && role !== 'user' && (
+          {isMetricVisible(METRIC_IDS.AVG_LATENCY) && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
