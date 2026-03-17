@@ -71,6 +71,8 @@ export async function POST(
         .from('pype_voice_api_keys')
         .select('token_hash_master')
         .eq('project_id', agent.project_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single()
 
       if (apiKeyRow?.token_hash_master) {
