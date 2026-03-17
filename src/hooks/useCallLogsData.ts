@@ -1,9 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { getUserProjectRole } from "@/services/getUserRole"
 import { toCamelCase, getSelectColumns, extractFiltersAndDistinct } from '@/utils/callLogsUtils'
 import { FilterOperation } from '@/components/CallFilter'
 import { useCallLogs } from "@/hooks/useCallLogs"
 import { useCallLogsStore } from '@/stores/callLogsStore'
+
+// Stable reference so CallFilter's useEffect([initialFilters]) doesn't
+// fire on every render when this agent has no stored filters yet.
+const EMPTY_FILTERS: FilterOperation[] = []
 
 export const useCallLogsData = (
   agent: any,
@@ -13,16 +17,26 @@ export const useCallLogsData = (
 ) => {
   const [role, setRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
-  const { activeFilters, setActiveFilters, distinctConfig: legacyDistinctConfig } = useCallLogsStore()
 
-  // Extract filters and distinct config from operations
-  const { preDistinctFilters, postDistinctFilters, distinctConfig: extractedDistinctConfig } = useMemo(
-    () => extractFiltersAndDistinct(activeFilters, agent?.id),
-    [activeFilters, agent?.id]
+  const agentId = agent?.id as string | undefined
+
+  // Read this agent's filters from the per-agent store slot
+  const { filtersByAgent, setFiltersForAgent } = useCallLogsStore()
+  const activeFilters: FilterOperation[] = (agentId ? filtersByAgent[agentId] : undefined) ?? EMPTY_FILTERS
+
+  // Agent-scoped setter — writes only to this agent's slot
+  const setActiveFilters = useCallback(
+    (operations: FilterOperation[]) => {
+      if (agentId) setFiltersForAgent(agentId, operations)
+    },
+    [agentId, setFiltersForAgent]
   )
-  
-  // Use extracted distinct config, fallback to legacy if not found
-  const distinctConfig = extractedDistinctConfig || legacyDistinctConfig
+
+  // Extract filters and distinct config from the unified operations array
+  const { preDistinctFilters, postDistinctFilters, distinctConfig } = useMemo(
+    () => extractFiltersAndDistinct(activeFilters, agentId),
+    [activeFilters, agentId]
+  )
 
   // Fetch user role
   useEffect(() => {
@@ -46,11 +60,9 @@ export const useCallLogsData = (
     }
   }, [userEmail, projectId])
 
-  // Memoize select columns
   const selectColumns = useMemo(() => getSelectColumns(role), [role])
 
-  // Fetch call logs with cache optimization
-  const { 
+  const {
     data,
     isLoading,
     isFetchingNextPage,
@@ -58,19 +70,19 @@ export const useCallLogsData = (
     hasNextPage,
     error: queryError,
     fetchNextPage,
-    refetch 
+    refetch
   } = useCallLogs({
-    agentId: agent?.id,
-    preDistinctFilters: preDistinctFilters,
-    postDistinctFilters: postDistinctFilters,
+    agentId,
+    preDistinctFilters,
+    postDistinctFilters,
     select: selectColumns,
-    distinctConfig: distinctConfig,
-    dateRange: dateRange,
-    enabled: !!agent?.id && !roleLoading,
+    distinctConfig,
+    dateRange,
+    enabled: !!agentId && !roleLoading,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000 // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000
   })
 
   const calls = useMemo(() => data?.pages.flat() ?? [], [data])
