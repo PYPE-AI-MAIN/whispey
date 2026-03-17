@@ -75,7 +75,8 @@ export async function GET(
 
     const expectedWebhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.whispey.xyz'}/api/retell/webhook`
     const hasWebhook = Boolean(retellAgent.webhook_url)
-    const webhookMatches = retellAgent.webhook_url === expectedWebhookUrl
+    const webhookBase = retellAgent.webhook_url?.split('?')[0]
+    const webhookMatches = webhookBase === expectedWebhookUrl
     const hasToken = Boolean(agent.configuration?.retell?.xPypeToken)
 
     const isConnected = hasWebhook && webhookMatches
