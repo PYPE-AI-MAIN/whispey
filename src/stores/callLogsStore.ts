@@ -16,19 +16,19 @@ export interface DistinctConfig {
 }
 
 interface CallLogsState {
-  // Filter operations (unified filters and distinct)
-  activeFilters: FilterOperation[]
-  setActiveFilters: (operations: FilterOperation[]) => void
-  
-  // Legacy distinct configuration (for backward compatibility)
-  distinctConfig?: DistinctConfig
-  setDistinctConfig: (config?: DistinctConfig) => void
-  
-  // Column visibility state
+  // Per-agent filter state — each agent has its own independent slot
+  filtersByAgent: Record<string, FilterOperation[]>
+  setFiltersForAgent: (agentId: string, operations: FilterOperation[]) => void
+
+  // Per-agent distinct config (legacy compat — kept so CallFilter prop still works)
+  distinctConfigByAgent: Record<string, DistinctConfig | undefined>
+  setDistinctConfigForAgent: (agentId: string, config: DistinctConfig | undefined) => void
+
+  // Column visibility — intentionally global (shared across agents, user preference)
   visibleColumns: VisibleColumns
   setVisibleColumns: (columns: VisibleColumns | ((prev: VisibleColumns) => VisibleColumns)) => void
-  
-  // Reset all state
+
+  // Clears all filter state (column prefs preserved)
   resetState: () => void
 }
 
@@ -39,36 +39,25 @@ const defaultVisibleColumns: VisibleColumns = {
   metrics: []
 }
 
-// Helper function to validate and clean filter operations
 const validateAndCleanOperations = (operations: FilterOperation[]): FilterOperation[] => {
-  const validOperations = operations.filter(op => {
+  const valid = operations.filter(op => {
     if (op.type === 'filter') {
-      // If it's a JSONB column (metadata or transcription_metrics)
       if (op.column === 'metadata' || op.column === 'transcription_metrics') {
-        // For JSONB operations, jsonField is required
-        const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
-        if (jsonbOperations.includes(op.operation)) {
-          // If jsonField is missing, this is an invalid filter - remove it
-          if (!op.jsonField) {
-            console.warn(`Removing invalid filter: ${op.column} with operation ${op.operation} missing jsonField`)
-            return false
-          }
+        const jsonbOps = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+        if (jsonbOps.includes(op.operation) && !op.jsonField) {
+          console.warn(`Removing invalid filter: ${op.column}.${op.operation} missing jsonField`)
+          return false
         }
       }
     } else if (op.type === 'distinct') {
-      // Validate distinct operations
-      if (op.column === 'metadata' || op.column === 'transcription_metrics') {
-        if (!op.jsonField) {
-          console.warn(`Removing invalid distinct operation: ${op.column} missing jsonField`)
-          return false
-        }
+      if ((op.column === 'metadata' || op.column === 'transcription_metrics') && !op.jsonField) {
+        console.warn(`Removing invalid distinct: ${op.column} missing jsonField`)
+        return false
       }
     }
     return true
   })
-  
-  // Ensure all operations have order
-  return validOperations.map((op, index) => ({
+  return valid.map((op, index) => ({
     ...op,
     order: op.order !== undefined ? op.order : index
   }))
@@ -76,59 +65,49 @@ const validateAndCleanOperations = (operations: FilterOperation[]): FilterOperat
 
 export const useCallLogsStore = create<CallLogsState>()(
   persist(
-    (set, get) => ({
-      // Filter operations state
-      activeFilters: [],
-      setActiveFilters: (operations) => {
-        // Clean invalid operations before setting
-        const cleanedOperations = validateAndCleanOperations(operations)
-        set({ activeFilters: cleanedOperations })
-      },
-      
-      // Distinct configuration
-      distinctConfig: undefined,
-      setDistinctConfig: (config) => set({ distinctConfig: config }),
-      
-      // Column visibility state
+    (set) => ({
+      filtersByAgent: {},
+      setFiltersForAgent: (agentId, operations) =>
+        set((state) => ({
+          filtersByAgent: {
+            ...state.filtersByAgent,
+            [agentId]: validateAndCleanOperations(operations)
+          }
+        })),
+
+      distinctConfigByAgent: {},
+      setDistinctConfigForAgent: (agentId, config) =>
+        set((state) => ({
+          distinctConfigByAgent: { ...state.distinctConfigByAgent, [agentId]: config }
+        })),
+
       visibleColumns: defaultVisibleColumns,
       setVisibleColumns: (columns) =>
         set((state) => ({
           visibleColumns: typeof columns === 'function' ? columns(state.visibleColumns) : columns
         })),
-      
-      // Reset state
-      resetState: () => set({
-        activeFilters: [],
-        distinctConfig: undefined,
-        visibleColumns: defaultVisibleColumns
-      })
+
+      resetState: () =>
+        set({ filtersByAgent: {}, distinctConfigByAgent: {} })
     }),
     {
-      name: 'call-logs-storage', // localStorage key
-      // Clean operations when loading from localStorage
-      onRehydrateStorage: (state) => {
-        if (state) {
-          // Migrate legacy FilterRule[] to FilterOperation[] if needed
-          const operations = state.activeFilters.map((op: any) => {
-            // If it's a legacy FilterRule (has 'operation' field but no 'type'), convert it
-            if (op.operation && !op.type) {
-              return {
-                id: op.id,
-                type: 'filter' as const,
-                column: op.column,
-                operation: op.operation,
-                value: op.value,
-                jsonField: op.jsonField,
-                order: op.order ?? 0
-              }
-            }
-            return op
-          })
-          
-          const cleanedOperations = validateAndCleanOperations(operations)
-          if (cleanedOperations.length !== operations.length) {
-            // Some operations were removed, update the store
-            state.setActiveFilters(cleanedOperations)
+      name: 'call-logs-storage',
+      version: 1,
+      // Runs when stored version < current version.
+      // v0 had flat activeFilters/distinctConfig — impossible to map to an agent,
+      // so we discard them. visibleColumns (column prefs) are preserved.
+      migrate: (old: any) => ({
+        filtersByAgent: {},
+        distinctConfigByAgent: {},
+        visibleColumns: old?.visibleColumns ?? defaultVisibleColumns
+      }),
+      // Runs after rehydration — clean any invalid filters that slipped through.
+      onRehydrateStorage: () => (state) => {
+        if (!state?.filtersByAgent) return
+        for (const [agentId, filters] of Object.entries(state.filtersByAgent)) {
+          const cleaned = validateAndCleanOperations(filters as FilterOperation[])
+          if (cleaned.length !== (filters as FilterOperation[]).length) {
+            state.setFiltersForAgent(agentId, cleaned)
           }
         }
       }

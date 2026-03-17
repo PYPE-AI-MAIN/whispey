@@ -71,8 +71,8 @@ interface CallFilterProps {
 
 const COLUMNS = [
   { value: 'customer_number', label: 'Customer Number', type: 'text' },
-  { value: 'duration_seconds', label: 'Duration (seconds)', type: 'number' },
-  { value: 'avg_latency', label: 'Avg Latency (ms)', type: 'number' },
+  { value: 'duration_seconds', label: 'Duration (seconds)', type: 'number', numericType: 'integer' as const },
+  { value: 'avg_latency', label: 'Avg Latency (ms)', type: 'number', numericType: 'float' as const },
   { value: 'call_started_at', label: 'Date', type: 'date' },
   { value: 'call_ended_reason', label: 'Status', type: 'text' },
   { value: 'metadata', label: 'Metadata', type: 'jsonb' },
@@ -212,12 +212,31 @@ const CallFilter: React.FC<CallFilterProps> = ({
     return getDistinctJsonFields(column)
   }
 
+  const getValueError = (): string | null => {
+    if (!newFilter.column || !newFilter.operation || newFilter.operation === 'json_exists') return null
+    const value = newFilter.value.trim()
+    if (!value) return null
+
+    const columnDef = COLUMNS.find(col => col.value === newFilter.column)
+    const isNumericOp = newFilter.operation === 'json_greater_than' || newFilter.operation === 'json_less_than'
+
+    if (columnDef?.type === 'number' || isNumericOp) {
+      const num = Number(value)
+      if (isNaN(num) || !Number.isFinite(num)) return 'Must be a valid number'
+      if (columnDef?.numericType === 'integer' && !Number.isInteger(num)) {
+        return 'Must be a whole number (no decimals)'
+      }
+    }
+
+    return null
+  }
+
   const isValidFilter = () => {
     const hasBasicFields = newFilter.column && newFilter.operation
-    const hasValue = newFilter.operation !== 'json_exists' ? newFilter.value : true
+    const hasValue = newFilter.operation !== 'json_exists' ? newFilter.value.trim() : true
     const hasJsonField = isJsonbColumn(newFilter.column) ? newFilter.jsonField : true
-    
-    return hasBasicFields && hasValue && hasJsonField
+
+    return !!(hasBasicFields && hasValue && hasJsonField) && !getValueError()
   }
 
   const isValidDistinct = () => {
@@ -235,7 +254,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
         type: 'filter',
         column: newFilter.column,
         operation: newFilter.operation,
-        value: newFilter.value,
+        value: newFilter.value.trim(),
         order: maxOrder + 1,
         ...(newFilter.jsonField && { jsonField: newFilter.jsonField })
       }
@@ -616,7 +635,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
                             value={newFilter.value}
                             onChange={(e) => setNewFilter({ ...newFilter, value: e.target.value })}
                             disabled={!newFilter.operation}
-                            className="h-8 text-xs"
+                            className={`h-8 text-xs${getValueError() ? ' border-red-500 focus-visible:ring-red-500' : ''}`}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 addOperation()
@@ -636,6 +655,11 @@ const CallFilter: React.FC<CallFilterProps> = ({
                     >
                       Add
                     </Button>
+
+                    {/* Inline validation error */}
+                    {getValueError() && (
+                      <p className="col-span-full text-xs text-red-500 -mt-1">{getValueError()}</p>
+                    )}
                   </div>
                 )}
 
