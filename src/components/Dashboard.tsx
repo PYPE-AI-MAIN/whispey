@@ -113,6 +113,14 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const [vapiStatusLoading, setVapiStatusLoading] = useState(false)
   const [connectingWebhook, setConnectingWebhook] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+
+  const [retellStatus, setRetellStatus] = useState<{
+    connected: boolean
+    status: string
+    message: string
+  } | null>(null)
+  const [retellStatusLoading, setRetellStatusLoading] = useState(false)
+  const [connectingRetellWebhook, setConnectingRetellWebhook] = useState(false)
   
   // Date filter state - these work immediately, no loading needed
   const [quickFilter, setQuickFilter] = useState('7d')
@@ -235,6 +243,14 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     }
   }, [agentLoading, projectLoading, agent, project])
 
+
+  const isRetellAgent = React.useMemo(() => {
+    if (!agent) return false
+    return agent.agent_type === 'retell' || Boolean(agent.configuration?.retell?.agentId)
+  }, [agent])
+
+
+
   // Date filter handlers - work immediately
   const handleQuickFilter = (filterId: string) => {
     setQuickFilter(filterId)
@@ -329,6 +345,45 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       setVapiStatusLoading(false)
     }
   }, [isVapiAgent, agent?.id])
+
+  const checkRetellStatus = useCallback(async () => {
+    if (!isRetellAgent || !agent?.id) return
+    setRetellStatusLoading(true)
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/retell/status`)
+      const data = await response.json()
+      setRetellStatus(data)
+    } catch {
+      setRetellStatus({ connected: false, status: 'error', message: 'Failed to check status' })
+    } finally {
+      setRetellStatusLoading(false)
+    }
+  }, [isRetellAgent, agent?.id])
+  
+  const handleRetellWebhookSetup = async () => {
+    if (!agent?.id) return
+    setConnectingRetellWebhook(true)
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/retell/setup-webhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to setup webhook')
+      await checkRetellStatus()
+      alert('Retell webhook configured successfully!')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to setup webhook')
+    } finally {
+      setConnectingRetellWebhook(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isRetellAgent && agent?.id) {
+      checkRetellStatus()
+    }
+  }, [checkRetellStatus, isRetellAgent, agent?.id])
 
   const handleWebhookSetup = async () => {
     if (!agent?.id) return
@@ -474,7 +529,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               )}
 
               {/* VAPI button - show skeleton or button based on agent data */}
-              {agentLoading ? (
+             {agentLoading ? (
                 <div className={`${isMobile ? 'h-8 w-24' : 'h-9 w-32'} bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse ml-4`}></div>
               ) : isVapiAgent ? (
                 <div className="relative">
@@ -491,30 +546,70 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     variant="outline"
                     disabled={vapiStatusLoading || connectingWebhook}
                   >
-                    {vapiStatusLoading ? (
-                      <Loader2 className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'} animate-spin`} />
-                    ) : connectingWebhook ? (
+                    {vapiStatusLoading || connectingWebhook ? (
                       <Loader2 className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'} animate-spin`} />
                     ) : vapiStatus?.connected ? (
                       <Bot className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
                     ) : (
                       <LinkIcon className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
                     )}
-                    
                     <span className={isMobile ? 'text-xs' : 'text-sm'}>
                       {vapiStatusLoading ? 'Checking...' :
                       connectingWebhook ? 'Connecting...' :
-                      vapiStatus?.connected ? (isMobile ? 'Settings' : 'Agent Settings') : (isMobile ? 'Connect' : 'Connect VAPI')}
+                      vapiStatus?.connected ? (isMobile ? 'Settings' : 'Agent Settings') :
+                      (isMobile ? 'Connect' : 'Connect VAPI')}
                     </span>
                   </Button>
-                  
+
                   {!vapiStatusLoading && vapiStatus && (
                     <div className="absolute -top-1 -right-1">
                       {vapiStatus.connected ? (
-                        <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800" 
+                        <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"
                             title="Webhook connected" />
                       ) : (
-                        <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-gray-800" 
+                        <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-gray-800"
+                            title="Setup required" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : isRetellAgent ? (
+                <div className="relative">
+                  <Button
+                    onClick={() => {
+                      if (retellStatus?.connected) {
+                        router.push(`/${agent.project_id}/agents/${agentId}/retell`)
+                      } else {
+                        handleRetellWebhookSetup()
+                      }
+                    }}
+                    className="ml-4"
+                    size={isMobile ? "sm" : "default"}
+                    variant="outline"
+                    disabled={retellStatusLoading || connectingRetellWebhook}
+                  >
+                    {retellStatusLoading || connectingRetellWebhook ? (
+                      <Loader2 className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'} animate-spin`} />
+                    ) : retellStatus?.connected ? (
+                      <Bot className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
+                    ) : (
+                      <LinkIcon className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
+                    )}
+                    <span className={isMobile ? 'text-xs' : 'text-sm'}>
+                      {retellStatusLoading ? 'Checking...' :
+                      connectingRetellWebhook ? 'Connecting...' :
+                      retellStatus?.connected ? (isMobile ? 'Settings' : 'Agent Settings') :
+                      (isMobile ? 'Connect' : 'Connect Retell')}
+                    </span>
+                  </Button>
+
+                  {!retellStatusLoading && retellStatus && (
+                    <div className="absolute -top-1 -right-1">
+                      {retellStatus.connected ? (
+                        <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"
+                            title="Webhook connected" />
+                      ) : (
+                        <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-gray-800"
                             title="Setup required" />
                       )}
                     </div>

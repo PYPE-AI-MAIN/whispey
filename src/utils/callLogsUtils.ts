@@ -97,13 +97,15 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
         const nextDay = new Date(filter.value)
         nextDay.setDate(nextDay.getDate() + 1)
         const nextDayStr = nextDay.toISOString().split('T')[0]
-        return { column: filter.column, operator: 'gte', value: `${nextDayStr} 00:00:00` }
+        // Pass plain date — RPC appends ' 00:00:00' itself; adding it here causes double suffix
+        return { column: filter.column, operator: 'gte', value: nextDayStr }
       } else {
         return { column: columnName, operator: 'gt', value: filter.value }
       }
     case 'less_than':
       if (filter.column === 'call_started_at') {
-        return { column: filter.column, operator: 'lt', value: `${filter.value} 00:00:00` }
+        // Pass plain date — RPC appends ' 00:00:00' itself
+        return { column: filter.column, operator: 'lt', value: filter.value }
       } else {
         return { column: columnName, operator: 'lt', value: filter.value }
       }
@@ -170,10 +172,13 @@ export const extractFiltersAndDistinct = (operations: FilterOperation[], agentId
   preDistinctOperations.filter((op): op is Extract<FilterOperation, { type: 'filter' }> => op.type === 'filter').forEach(filter => {
     // Handle special case for date equals
     if (filter.operation === 'equals' && filter.column === 'call_started_at') {
-      const startOfDay = `${filter.value} 00:00:00`
-      const endOfDay = `${filter.value} 23:59:59.999`
-      preDistinctFilters.push({ column: filter.column, operator: 'gte', value: startOfDay })
-      preDistinctFilters.push({ column: filter.column, operator: 'lte', value: endOfDay })
+      // Pass plain date strings — RPC appends ' 00:00:00' itself.
+      // Use lt nextDay instead of lte endOfDay so the boundary stays correct after RPC adds time.
+      const nextDay = new Date(filter.value)
+      nextDay.setDate(nextDay.getDate() + 1)
+      const nextDayStr = nextDay.toISOString().split('T')[0]
+      preDistinctFilters.push({ column: filter.column, operator: 'gte', value: filter.value })
+      preDistinctFilters.push({ column: filter.column, operator: 'lt', value: nextDayStr })
     } else {
       const convertedFilter = convertFilterOperationToFilter(filter)
       if (convertedFilter) {
@@ -187,10 +192,12 @@ export const extractFiltersAndDistinct = (operations: FilterOperation[], agentId
   postDistinctOperations.filter((op): op is Extract<FilterOperation, { type: 'filter' }> => op.type === 'filter').forEach(filter => {
     // Handle special case for date equals
     if (filter.operation === 'equals' && filter.column === 'call_started_at') {
-      const startOfDay = `${filter.value} 00:00:00`
-      const endOfDay = `${filter.value} 23:59:59.999`
-      postDistinctFilters.push({ column: filter.column, operator: 'gte', value: startOfDay })
-      postDistinctFilters.push({ column: filter.column, operator: 'lte', value: endOfDay })
+      // Pass plain date strings — RPC appends ' 00:00:00' itself.
+      const nextDay = new Date(filter.value)
+      nextDay.setDate(nextDay.getDate() + 1)
+      const nextDayStr = nextDay.toISOString().split('T')[0]
+      postDistinctFilters.push({ column: filter.column, operator: 'gte', value: filter.value })
+      postDistinctFilters.push({ column: filter.column, operator: 'lt', value: nextDayStr })
     } else {
       const convertedFilter = convertFilterOperationToFilter(filter)
       if (convertedFilter) {

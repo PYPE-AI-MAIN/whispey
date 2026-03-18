@@ -149,19 +149,47 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
 
   // Filter and process data
   const processedTraces = useMemo(() => {
-    if (!traceData?.length) return []
+    if (traceData?.length) {
+      let filtered = traceData.filter((item: TraceLog) => 
+        item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
+      )
     
-    let filtered = traceData.filter((item: TraceLog) => 
-      item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
-    )
-  
-    filtered.sort((a, b) => {
-      const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
-      const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
-      return aTurnNum - bTurnNum
-    })
-  
-    return filtered
+      filtered.sort((a, b) => {
+        const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
+        const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
+        return aTurnNum - bTurnNum
+      })
+    
+      return filtered
+    }
+
+    // Fallback: build traces from transcript_json in call_logs
+    if (callData?.length) {
+      const call = callData[0]
+      let transcriptJson = call?.transcript_json
+      if (!transcriptJson) return []
+
+      if (typeof transcriptJson === 'string') {
+        try { transcriptJson = JSON.parse(transcriptJson) } catch { return [] }
+      }
+      if (!Array.isArray(transcriptJson) || transcriptJson.length === 0) return []
+
+      return transcriptJson.map((msg: any, idx: number) => {
+        const role = msg.role?.toLowerCase()
+        const content = Array.isArray(msg.content) ? msg.content.join(' ') : (msg.content || '')
+        return {
+          id: `transcript_${idx}`,
+          session_id: call.id,
+          turn_id: `turn_${idx + 1}`,
+          user_transcript: role === 'user' ? content.trim() : '',
+          agent_response: role === 'assistant' ? content.trim() : '',
+          created_at: call.created_at,
+          unix_timestamp: idx,
+        } as TraceLog
+      }).filter((t: TraceLog) => t.user_transcript || t.agent_response)
+    }
+
+    return []
   }, [traceData, filters])
 
 
@@ -233,11 +261,6 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     return `${Math.floor(diff / (24 * 60 * 60 * 1000))}d`
   }
 
-  const truncateText = (text: string, maxLength: number = 50) => {
-    if (!text) return ""
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength) + "..."
-  }
 
   const getToolCallsInfo = (toolCalls: any[] = []) => {
     const total = toolCalls.length
@@ -545,7 +568,7 @@ const handleRowClick = (trace: TraceLog) => {
                           {trace.user_transcript && (
                             <div className="text-xs">
                               <span className="text-blue-600 dark:text-blue-400 font-medium">→</span>
-                              <span className="ml-1 text-gray-800 dark:text-gray-200">{truncateText(trace.user_transcript, 60)}</span>
+                              <span className="ml-1 text-gray-800 dark:text-gray-200">{trace.user_transcript}</span>
                             </div>
                           )}
                           {trace.agent_response && (
@@ -560,7 +583,7 @@ const handleRowClick = (trace: TraceLog) => {
                               <span className={cn(
                                 "ml-1",
                                 hasBugReport ? "text-red-800 dark:text-red-300" : "text-gray-600 dark:text-gray-300"
-                              )}>{truncateText(trace.agent_response, 60)}</span>
+                              )}>{trace.agent_response}</span>
                               {hasBugReport && (
                                 <span className="ml-2 text-red-600 dark:text-red-400 font-medium">[REPORTED]</span>
                               )}
