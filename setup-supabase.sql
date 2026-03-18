@@ -103,7 +103,8 @@ END,
     telemetry_data jsonb,
     billing_duration_seconds float8,
     metrics jsonb,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone,
+    wcall_event varchar DEFAULT 'call_ended'::character varying
 );
 
 CREATE TABLE public.pype_voice_agents (
@@ -355,6 +356,17 @@ CREATE TABLE public.pype_voice_call_logs_with_context (
     project_name varchar,
     project_id uuid
 );
+
+-- Add wcall_event if missing (e.g. DB created before column was added)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'pype_voice_call_logs' AND column_name = 'wcall_event'
+    ) THEN
+        ALTER TABLE public.pype_voice_call_logs ADD COLUMN wcall_event varchar DEFAULT 'call_ended';
+    END IF;
+END $$;
 
 -- ==============================================
 -- FOREIGN KEY CONSTRAINTS

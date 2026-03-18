@@ -7,7 +7,7 @@ __author__ = "Whispey AI Voice Analytics"
 import re
 import logging
 from typing import List, Optional, AsyncIterable, Any, Union, Dict
-from .whispey import observe_session, send_session_to_whispey
+from .whispey import observe_session, send_session_to_whispey, send_call_started_to_whispey
 import time
 
 logger = logging.getLogger("whispey-sdk")
@@ -307,6 +307,10 @@ class LivekitObserve:
         # Add call_ended_reason to kwargs if not already provided (default to "completed")
         if 'call_ended_reason' not in kwargs:
             kwargs['call_ended_reason'] = 'completed'
+        
+        # Ensure apikey and api_url are passed for Lambda (call_started/call_ended); not sent as metadata
+        kwargs.setdefault('apikey', self.apikey)
+        kwargs.setdefault('api_url', getattr(self, 'api_url', None) or self.host_url)
         
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(
@@ -819,4 +823,4 @@ class LivekitObserve:
             api_url=self.host_url,
         )
 
-__all__ = ['LivekitObserve', 'observe_session', 'send_session_to_whispey']
+__all__ = ['LivekitObserve', 'observe_session', 'send_session_to_whispey', 'send_call_started_to_whispey']
