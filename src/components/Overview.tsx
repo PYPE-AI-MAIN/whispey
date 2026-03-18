@@ -346,20 +346,11 @@ const Overview: React.FC<OverviewProps> = ({
     return activeGroup?.chart_ids || []
   }, [activeGroupId, metricGroups])
 
-  // Only owners/admins can see detailed overview metrics
   const isOwnerOrAdminRole = isOwnerOrAdmin
 
-  // Check if a chart should be visible (only for admin/owner)
-  const isChartVisible = (chartId: string) => {
-    const fromGroup = visibleChartIds.includes(chartId)
-    return isOwnerOrAdminRole && fromGroup
-  }
-
-  // Check if a metric should be visible (only for admin/owner)
-  const isMetricVisible = (metricId: string) => {
-    const fromGroup = visibleMetricIds.includes(metricId)
-    return isOwnerOrAdminRole && fromGroup
-  }
+  // Charts and metrics visible to all roles (viewer, admin, owner) when in the active group; use visibility to hide sensitive fields per role in the UI
+  const isChartVisible = (chartId: string) => visibleChartIds.includes(chartId)
+  const isMetricVisible = (metricId: string) => visibleMetricIds.includes(metricId)
 
   // Build filters for download (same as before)
   const buildFiltersForDownload = (

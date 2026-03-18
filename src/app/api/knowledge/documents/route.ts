@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
 
 /**
  * List RAG knowledge base documents for an agent.
  * Backend contract: GET {base}/knowledge/documents?agent_id=xxx
+ * Viewers get 403 so frontend never receives knowledge base data.
  */
 const LOG_PREFIX = '[Knowledge Documents List]'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log(`${LOG_PREFIX} Step 1: Request received`)
+    const { searchParams } = new URL(request.url)
+    const agentId = searchParams.get('agent_id')
+    if (!agentId?.trim()) {
+      return NextResponse.json({ error: 'agent_id is required' }, { status: 400 })
+    }
+
+    const projectId = await getProjectIdFromAgentBackendName(agentId.trim())
+    if (projectId && (await isViewerForProject(projectId))) {
+      return NextResponse.json({ error: 'Forbidden: viewers cannot access knowledge base' }, { status: 403 })
+    }
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
     if (!apiBaseUrl) {
@@ -20,15 +31,6 @@ export async function GET(request: NextRequest) {
     }
     console.log(`${LOG_PREFIX} Step 2: API base URL configured -> ${apiBaseUrl}`)
 
-    const { searchParams } = new URL(request.url)
-    const agentId = searchParams.get('agent_id')
-    if (!agentId?.trim()) {
-      console.error(`${LOG_PREFIX} Step 3 FAILED: agent_id missing in query`)
-      return NextResponse.json(
-        { error: 'agent_id is required' },
-        { status: 400 }
-      )
-    }
     console.log(`${LOG_PREFIX} Step 3: agent_id present -> ${agentId.trim()}`)
 
     const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'

@@ -58,6 +58,7 @@ import CopyConfigDialog from '@/components/agents/AgentConfig/CopyConfigDialog'
 import PasteConfigDialog from '@/components/agents/AgentConfig/PasteConfigDialog'
 import { DeserializedConfig } from '@/utils/agentConfigSerializer'
 import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 
 // Agent status service
 const agentStatusService = {
@@ -198,6 +199,15 @@ export default function AgentConfig() {
   const router = useRouter()
   const agentid = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
+  const { role, isLoading: roleLoading } = useMemberVisibility(projectId || undefined)
+
+  useEffect(() => {
+    if (roleLoading || !projectId || !agentid) return
+    if (role === 'viewer') {
+      router.replace(`/${projectId}/agents/${agentid}`)
+    }
+  }, [role, roleLoading, projectId, agentid, router])
+
   const [isCopied, setIsCopied] = useState(false)
   const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false)
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)

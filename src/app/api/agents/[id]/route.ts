@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
+import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 
 // Helper function to create Supabase client (lazy initialization)
 function getSupabaseClient() {
@@ -46,8 +47,11 @@ export async function GET(
       )
     }
 
-    // Return agent data (without exposing encrypted keys)
-    const agentResponse = {
+    const projectId = agent.project_id
+    const roleResult = projectId ? await getProjectRoleForApi(projectId) : null
+    const isViewer = roleResult?.role === 'viewer'
+
+    const agentResponse: Record<string, unknown> = {
       id: agent.id,
       name: agent.name,
       agent_type: agent.agent_type,
@@ -58,16 +62,16 @@ export async function GET(
       created_at: agent.created_at,
       updated_at: agent.updated_at,
       user_id: agent.user_id,
-      // Include boolean flags but not the actual encrypted keys
       has_vapi_keys: Boolean(agent.vapi_api_key_encrypted && agent.vapi_project_key_encrypted),
-      vapi_api_key_encrypted: agent.vapi_api_key_encrypted, // Keep for the check
-      vapi_project_key_encrypted: agent.vapi_project_key_encrypted, // Keep for the check
-      // Include other fields you might have
-      field_extractor: agent.field_extractor,
-      field_extractor_prompt: agent.field_extractor_prompt,
-      field_extractor_keys: agent.field_extractor_keys,
-      field_extractor_variables: agent.field_extractor_variables || {},
-      metrics: agent.metrics || null // Include metrics field
+      vapi_api_key_encrypted: agent.vapi_api_key_encrypted,
+      vapi_project_key_encrypted: agent.vapi_project_key_encrypted,
+    }
+    if (!isViewer) {
+      agentResponse.field_extractor = agent.field_extractor
+      agentResponse.field_extractor_prompt = agent.field_extractor_prompt
+      agentResponse.field_extractor_keys = agent.field_extractor_keys
+      agentResponse.field_extractor_variables = agent.field_extractor_variables || {}
+      agentResponse.metrics = agent.metrics ?? null
     }
 
     return NextResponse.json(agentResponse)

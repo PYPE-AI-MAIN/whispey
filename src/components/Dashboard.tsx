@@ -44,6 +44,7 @@ import {
 import QuickStartGuide from './QuickStartGuide'
 import { useMobile } from '@/hooks/use-mobile'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { useAgentById } from '@/hooks/useAgentById'
 
 interface DashboardProps {
   agentId: string
@@ -156,13 +157,9 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     }
   }, [quickFilter, dateRange, isCustomRange])
 
-  // Data fetching - now happens in parallel with UI rendering
-  const { data: agents, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id, field_extractor_prompt, field_extractor, field_extractor_variables, metrics',
-    filters: [{ column: 'id', operator: 'eq', value: agentId }]
-  })
-
-  const agent = agents?.[0]
+  // Fetch agent via API so viewers get role-based response (no field_extractor/metrics data)
+  const { data: agentData, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useAgentById(agentId)
+  const agent = agentData ?? null
 
 const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery(
   'pype_voice_projects',
