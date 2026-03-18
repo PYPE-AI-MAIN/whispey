@@ -71,9 +71,7 @@ export const useCallLogsData = (
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    userId: userId,
-    userEmail: userEmail
+    gcTime: 10 * 60 * 1000 // 10 minutes
   })
 
   const calls = useMemo(() => data?.pages.flat() ?? [], [data])
