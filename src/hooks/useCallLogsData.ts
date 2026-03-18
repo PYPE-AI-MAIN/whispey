@@ -9,7 +9,8 @@ export const useCallLogsData = (
   agent: any,
   userEmail?: string,
   projectId?: string,
-  dateRange?: { from: string; to: string }
+  dateRange?: { from: string; to: string },
+  userId?: string
 ) => {
   const [role, setRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
@@ -24,13 +25,13 @@ export const useCallLogsData = (
   // Use extracted distinct config, fallback to legacy if not found
   const distinctConfig = extractedDistinctConfig || legacyDistinctConfig
 
-  // Fetch user role
+  // Fetch user role (use clerk_id when available so owners/members added by clerk_id are found)
   useEffect(() => {
-    if (userEmail && projectId) {
+    if ((userEmail || userId) && projectId) {
       const getUserRole = async () => {
         setRoleLoading(true)
         try {
-          const userRole = await getUserProjectRole(userEmail, projectId)
+          const userRole = await getUserProjectRole(userEmail ?? '', projectId, userId)
           setRole(userRole.role)
         } catch (error) {
           console.error('Failed to load user role:', error)
@@ -44,7 +45,7 @@ export const useCallLogsData = (
       setRoleLoading(false)
       setRole('user')
     }
-  }, [userEmail, projectId])
+  }, [userEmail, projectId, userId])
 
   // Memoize select columns
   const selectColumns = useMemo(() => getSelectColumns(role), [role])
@@ -70,7 +71,9 @@ export const useCallLogsData = (
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000 // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    userId: userId,
+    userEmail: userEmail
   })
 
   const calls = useMemo(() => data?.pages.flat() ?? [], [data])

@@ -2,26 +2,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { DEFAULT_MEMBER_VISIBILITY } from '@/types/visibility'
+import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+function normalizeRole(role: string): string {
+  if (role === 'user' || role === 'member' || role === 'viewer') return 'viewer'
+  return role
+}
+
 function getPermissionsByRole(role: string): Record<string, unknown> {
+  const normalizedRole = normalizeRole(role)
+
   const rolePermissions: Record<string, Record<string, boolean>> = {
     viewer: { read: true, write: false, delete: false, admin: false },
-    user: { read: true, write: false, delete: false, admin: false },
-    member: { read: true, write: true, delete: false, admin: false },
     admin: { read: true, write: true, delete: true, admin: false },
     owner: { read: true, write: true, delete: true, admin: true },
   }
-  const perms = rolePermissions[role] || rolePermissions['member'] as Record<string, unknown>
-  if (role === 'user' || role === 'viewer' || role === 'member') {
-    return { ...perms, visibility: DEFAULT_MEMBER_VISIBILITY }
+  const perms = rolePermissions[normalizedRole] || rolePermissions['viewer']
+
+  return {
+    ...perms,
+    visibility: normalizedRole === 'viewer' ? VIEWER_RESTRICTED_VISIBILITY : DEFAULT_MEMBER_VISIBILITY,
   }
-  return perms
 }
 
 export async function POST(
@@ -39,7 +45,8 @@ export async function POST(
     const { id: projectId } = await params
 
     const body = await request.json()
-    const { email, role = 'member' } = body
+    const { email, role = 'viewer' } = body
+    const normalizedRole = normalizeRole(role)
 
     if (!email || !email.trim()) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -90,13 +97,13 @@ export async function POST(
 
     // ✅ NEW: If mapping exists but is inactive, reactivate it
     if (existingMapping && existingMapping.is_active === false) {
-      const permissions = getPermissionsByRole(role)
+      const permissions = getPermissionsByRole(normalizedRole)
       
       const { data: reactivatedMapping, error: reactivateError } = await supabase
         .from('pype_voice_email_project_mapping')
         .update({
           is_active: true,
-          role,
+          role: normalizedRole,
           permissions,
           added_by_clerk_id: userId
         })
@@ -129,7 +136,7 @@ export async function POST(
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 
-    const permissions = getPermissionsByRole(role)
+    const permissions = getPermissionsByRole(normalizedRole)
 
     if (existingUser?.clerk_id) {
       // User exists - add them directly
@@ -158,7 +165,7 @@ export async function POST(
           clerk_id: existingUser.clerk_id,
           email: email.trim(),
           project_id: projectId,
-          role,
+          role: normalizedRole,
           permissions,
           added_by_clerk_id: userId,
           is_active: true,
@@ -183,7 +190,7 @@ export async function POST(
         .insert({
           email: email.trim(),
           project_id: projectId,
-          role,
+          role: normalizedRole,
           permissions,
           added_by_clerk_id: userId,
           is_active: true,
@@ -282,7 +289,7 @@ export async function GET(
         return {
           id: mapping.id,
           clerk_id: mapping.clerk_id,
-          role: mapping.role,
+          role: normalizeRole(mapping.role),
           permissions: mapping.permissions,
           is_active: mapping.is_active,
           joined_at: mapping.created_at,
@@ -300,7 +307,7 @@ export async function GET(
     const formattedPending = pendingMappings.map((mapping: any) => ({
       id: mapping.id,
       email: mapping.email,
-      role: mapping.role,
+      role: normalizeRole(mapping.role),
       permissions: mapping.permissions,
       is_active: mapping.is_active,
       created_at: mapping.created_at,
@@ -309,7 +316,7 @@ export async function GET(
     return NextResponse.json({ 
       members: membersWithDetails,
       pending_mappings: formattedPending,
-      currentUserRole: userAccessMapping.role
+      currentUserRole: normalizeRole(userAccessMapping.role)
     }, { status: 200 })
   } catch (error) {
     console.error('Unexpected error:', error)

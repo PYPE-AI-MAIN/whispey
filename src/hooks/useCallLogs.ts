@@ -24,6 +24,8 @@ interface UseCallLogsOptions {
   refetchOnWindowFocus?: boolean
   staleTime?: number
   gcTime?: number
+  userId?: string
+  userEmail?: string
 }
 
 export const useCallLogs = ({
@@ -38,7 +40,9 @@ export const useCallLogs = ({
   refetchOnMount = false,
   refetchOnWindowFocus = false,
   staleTime = 5 * 60 * 1000, // 5 minutes
-  gcTime = 10 * 60 * 1000 // 10 minutes (formerly cacheTime)
+  gcTime = 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+  userId,
+  userEmail
 }: UseCallLogsOptions) => {
   return useInfiniteQuery({
     queryKey: [
@@ -49,7 +53,8 @@ export const useCallLogs = ({
       select, 
       `${orderBy.column}-${orderBy.ascending}`,
       distinctConfig ? JSON.stringify(distinctConfig) : 'no-distinct',
-      dateRange ? `${dateRange.from}-${dateRange.to}` : 'no-date-range'
+      dateRange ? `${dateRange.from}-${dateRange.to}` : 'no-date-range',
+      userId ?? 'no-user'
     ],
     
     initialPageParam: 0,
@@ -76,7 +81,9 @@ export const useCallLogs = ({
           p_distinct_json_field: distinctConfig?.jsonField || null,
           p_distinct_order: distinctConfig?.order || 'asc',
           p_date_from: dateRange?.from || null,
-          p_date_to: dateRange?.to || null
+          p_date_to: dateRange?.to || null,
+          p_user_clerk_id: userId || null,
+          p_user_email: userEmail || null
         }
         
         console.log('🔍 RPC Call - Parameters:', JSON.stringify(rpcParams, null, 2))

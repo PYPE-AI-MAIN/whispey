@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { mergeWithDefaults } from '@/types/visibility'
+import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,12 +40,12 @@ export async function GET(
       return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
     }
 
-    const permissions = (mapping.permissions || {}) as Record<string, unknown>
-    const visibility = mergeWithDefaults(permissions.visibility as object | undefined)
+    const role = ['user', 'member', 'viewer'].includes(mapping.role) ? 'viewer' : mapping.role
+    const visibility = role === 'viewer' ? VIEWER_RESTRICTED_VISIBILITY : DEFAULT_MEMBER_VISIBILITY
 
     return NextResponse.json({
-      role: mapping.role,
-      permissions: mapping.permissions,
+      role,
+      permissions: { ...mapping.permissions, visibility },
       visibility,
     }, { status: 200 })
   } catch (err) {

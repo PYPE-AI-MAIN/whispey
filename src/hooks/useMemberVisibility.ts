@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import type { MemberVisibility } from '@/types/visibility'
-import { DEFAULT_MEMBER_VISIBILITY, mergeWithDefaults } from '@/types/visibility'
+import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 
 interface ProjectMeResponse {
   role: string
@@ -21,7 +21,7 @@ async function fetchProjectMe(projectId: string): Promise<ProjectMeResponse> {
 
 /**
  * Returns current user's role and visibility for the project.
- * Owner/Admin: returns full visibility (all true). User/Viewer: returns their saved visibility or defaults.
+ * Owner/Admin: returns full visibility (all true). Viewer: returns restricted visibility.
  */
 export function useMemberVisibility(projectId: string | undefined) {
   const { data, isLoading, error } = useQuery({
@@ -32,14 +32,19 @@ export function useMemberVisibility(projectId: string | undefined) {
   })
 
   const role = data?.role ?? null
-  const visibility: MemberVisibility = data?.visibility
-    ? mergeWithDefaults(data.visibility)
-    : DEFAULT_MEMBER_VISIBILITY
 
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
-  const effectiveVisibility: MemberVisibility = isOwnerOrAdmin
-    ? DEFAULT_MEMBER_VISIBILITY
-    : visibility
+  const isViewer = role === 'viewer'
+
+  let effectiveVisibility: MemberVisibility
+  if (isOwnerOrAdmin) {
+    effectiveVisibility = DEFAULT_MEMBER_VISIBILITY
+  } else if (isViewer) {
+    // Viewers always get the fixed restricted visibility (no frontend overrides)
+    effectiveVisibility = VIEWER_RESTRICTED_VISIBILITY
+  } else {
+    effectiveVisibility = DEFAULT_MEMBER_VISIBILITY
+  }
 
   return {
     role,

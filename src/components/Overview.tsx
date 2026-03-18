@@ -107,7 +107,7 @@ const AVAILABLE_COLUMNS = [
 // Mobile-responsive skeleton components
 function MetricsGridSkeleton({ role, isMobile }: { role: string | null; isMobile: boolean }) {
   const getVisibleCardCount = () => {
-    if (role === 'user') return 3
+    if (role !== 'admin' && role !== 'owner') return 3
     return 6
   }
 
@@ -189,7 +189,7 @@ const Overview: React.FC<OverviewProps> = ({
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
-  const { isOwnerOrAdmin, visibility: memberVisibility } = useMemberVisibility(project?.id)
+  const { isOwnerOrAdmin } = useMemberVisibility(project?.id)
 
   // Data fetching
   const { data: analytics, loading: analyticsLoading, error } = useOverviewQuery({
@@ -327,17 +327,6 @@ const Overview: React.FC<OverviewProps> = ({
     }
   }
 
-  // Map metric IDs to member visibility keys (for user/viewer)
-  const overviewVisibilityMap: Record<string, keyof typeof memberVisibility.agent.overview> = {
-    [METRIC_IDS.TOTAL_CALLS]: 'totalCalls',
-    [METRIC_IDS.TOTAL_MINUTES]: 'totalMinutes',
-    [METRIC_IDS.TOTAL_BILLING_MINUTES]: 'billing',
-    [METRIC_IDS.TOTAL_COST]: 'totalCost',
-    [METRIC_IDS.AVG_LATENCY]: 'responseTime',
-    [METRIC_IDS.SUCCESSFUL_CALLS]: 'success',
-    [METRIC_IDS.FAILED_CALLS]: 'retry',
-  }
-
   // Filter metrics based on active group
   const visibleMetricIds = useMemo(() => {
     if (activeGroupId === 'all') {
@@ -357,19 +346,19 @@ const Overview: React.FC<OverviewProps> = ({
     return activeGroup?.chart_ids || []
   }, [activeGroupId, metricGroups])
 
-  // Check if a chart should be visible (group + member visibility for user/viewer)
+  // Only owners/admins can see detailed overview metrics
+  const isOwnerOrAdminRole = isOwnerOrAdmin
+
+  // Check if a chart should be visible (only for admin/owner)
   const isChartVisible = (chartId: string) => {
     const fromGroup = visibleChartIds.includes(chartId)
-    const fromVisibility = isOwnerOrAdmin || memberVisibility.agent.overview.charts
-    return fromGroup && fromVisibility
+    return isOwnerOrAdminRole && fromGroup
   }
 
-  // Check if a metric should be visible (group + member visibility for user/viewer)
+  // Check if a metric should be visible (only for admin/owner)
   const isMetricVisible = (metricId: string) => {
     const fromGroup = visibleMetricIds.includes(metricId)
-    const key = overviewVisibilityMap[metricId]
-    const fromVisibility = isOwnerOrAdmin || (key ? memberVisibility.agent.overview[key] : true)
-    return fromGroup && fromVisibility
+    return isOwnerOrAdminRole && fromGroup
   }
 
   // Build filters for download (same as before)
@@ -1290,7 +1279,7 @@ const Overview: React.FC<OverviewProps> = ({
                   agentId={agent.id}
                   projectId={project.id}
                   userEmail={userEmail}
-                  availableColumns={role === 'user' 
+                  availableColumns={role !== 'admin' && role !== 'owner'
                     ? AVAILABLE_COLUMNS.filter(col => col.key !== 'billing_duration_seconds')
                     : AVAILABLE_COLUMNS
                   }

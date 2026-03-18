@@ -58,7 +58,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
     setActiveFilters,
     fetchNextPage,
     refetch
-  } = useCallLogsData(agent, userEmail, project?.id, dateRange)
+  } = useCallLogsData(agent, userEmail, project?.id, dateRange, user?.id)
 
   // Scroll restoration hook (must be after calls is defined)
   useEffect(() => {

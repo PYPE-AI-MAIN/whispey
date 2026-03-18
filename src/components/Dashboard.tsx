@@ -195,9 +195,10 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
-  const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
-  const canSeeFieldExtractor = isOwnerOrAdmin || visibility?.org?.fieldExtractor !== false
-  const canSeeMetrics = isOwnerOrAdmin || visibility?.org?.metrics !== false
+  const { isOwnerOrAdmin } = useMemberVisibility(project?.id)
+  // Field Extractor and Metrics are only visible to owners/admins
+  const canSeeFieldExtractor = isOwnerOrAdmin
+  const canSeeMetrics = isOwnerOrAdmin
 
   const breadcrumb = React.useMemo(() => {
     if (agentLoading || projectLoading) {

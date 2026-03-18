@@ -70,6 +70,22 @@ export const DEFAULT_MEMBER_VISIBILITY: MemberVisibility = {
   agent: DEFAULT_AGENT_VISIBILITY,
 }
 
+// Restricted visibility for viewers - they cannot see certain sections
+export const VIEWER_RESTRICTED_VISIBILITY: MemberVisibility = {
+  org: {
+    ...DEFAULT_ORG_VISIBILITY,
+    settings: false,        // Cannot see Settings
+    campaign: false,        // Cannot see Campaign
+    phoneSetting: false,    // Cannot see Phone Setting
+    fieldExtractor: false,  // Cannot see Field Extractor in Overview/Call logs
+    metrics: false,         // Cannot see Metrics in Overview/Call logs
+  },
+  agent: {
+    overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
+    knowledgeBase: false,   // Cannot see Knowledge Base in agent list
+  },
+}
+
 export function mergeWithDefaults(partial: Partial<MemberVisibility> | null | undefined): MemberVisibility {
   if (!partial) return DEFAULT_MEMBER_VISIBILITY
   const org = { ...DEFAULT_ORG_VISIBILITY, ...partial.org }
