@@ -71,6 +71,8 @@ export async function POST(
         .from('pype_voice_api_keys')
         .select('token_hash_master')
         .eq('project_id', agent.project_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single()
 
       if (apiKeyRow?.token_hash_master) {
@@ -89,7 +91,12 @@ export async function POST(
     }
 
     // 3. Build webhook URL
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.whispey.xyz'}/api/retell/webhook`
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.whispey.xyz'
+    const bypassToken = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    const webhookUrl = bypassToken
+      ? `${baseUrl}/api/retell/webhook?x-vercel-protection-bypass=${bypassToken}`
+      : `${baseUrl}/api/retell/webhook`
+    
 
     // 4. PATCH Retell agent with webhook_url
     const patchRes = await fetch(`${RETELL_API_BASE}/update-agent/${retellAgentId}`, {
