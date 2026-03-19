@@ -2,17 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
 
 /**
- * Proxy URL ingestion for RAG knowledge base. Viewers get 403.
+ * Proxy URL ingestion for RAG knowledge base.
+ * Viewers get 403.
+ * Backend contract: POST {base}/knowledge/url with JSON { url, agent_id }.
  */
 const LOG_PREFIX = '[Knowledge URL]'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log(`${LOG_PREFIX} Step 1: Request received`)
+
     const body = await request.json().catch(() => ({}))
     const { url, agent_id: agentId } = body
     if (!url?.trim() || !agentId?.trim()) {
-      return NextResponse.json({ error: 'url and agent_id are required' }, { status: 400 })
+      console.error(`${LOG_PREFIX} Step 3 FAILED: url or agent_id missing -> url=${!!url?.trim()}, agent_id=${!!agentId?.trim()}`)
+      return NextResponse.json(
+        { error: 'url and agent_id are required' },
+        { status: 400 }
+      )
     }
+
     const projectId = await getProjectIdFromAgentBackendName(agentId.trim())
     if (projectId && (await isViewerForProject(projectId))) {
       return NextResponse.json({ error: 'Forbidden: viewers cannot add URLs to knowledge base' }, { status: 403 })

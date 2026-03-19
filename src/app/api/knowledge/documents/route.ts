@@ -10,10 +10,16 @@ const LOG_PREFIX = '[Knowledge Documents List]'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log(`${LOG_PREFIX} Step 1: Request received`)
+
     const { searchParams } = new URL(request.url)
     const agentId = searchParams.get('agent_id')
     if (!agentId?.trim()) {
-      return NextResponse.json({ error: 'agent_id is required' }, { status: 400 })
+      console.error(`${LOG_PREFIX} Step 3 FAILED: agent_id missing in query`)
+      return NextResponse.json(
+        { error: 'agent_id is required' },
+        { status: 400 }
+      )
     }
 
     const projectId = await getProjectIdFromAgentBackendName(agentId.trim())

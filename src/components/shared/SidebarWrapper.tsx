@@ -290,6 +290,13 @@ const sidebarRoutes: SidebarRoute[] = [
           path: `/${projectId}/agents/${agentId}/config`, 
           group: 'configuration' 
         })
+        configItems.push({ 
+          id: 'knowledge', 
+          name: 'Knowledge Base', 
+          icon: 'BookOpen', 
+          path: `/${projectId}/agents/${agentId}/knowledge`, 
+          group: 'configuration' 
+        })
       }
       if (showKnowledgeBase) {
         configItems.push({ 
