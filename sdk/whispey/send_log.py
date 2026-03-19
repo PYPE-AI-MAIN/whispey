@@ -9,6 +9,15 @@ import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
+# Shared connector settings: force_close prevents connections from being reused
+# across calls, which eliminates "Unclosed client session/connector" warnings
+# when tasks are cancelled during worker shutdown or call teardown.
+_CONNECTOR_KWARGS = {
+    "force_close": True,
+    "enable_cleanup_closed": True,
+}
+_REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30, connect=10)
+
 logger = logging.getLogger("whispey.send_log")
 
 load_dotenv()
@@ -122,7 +131,8 @@ async def get_s3_upload_url(call_id, apikey, api_url):
         "content_type": "application/json"
     }
     
-    async with aiohttp.ClientSession() as session:
+    connector = aiohttp.TCPConnector(**_CONNECTOR_KWARGS)
+    async with aiohttp.ClientSession(connector=connector, timeout=_REQUEST_TIMEOUT) as session:
         async with session.post(url, json=payload, headers=headers) as response:
             if response.status == 200:
                 result = await response.json()
@@ -145,7 +155,8 @@ async def upload_to_s3_presigned(data, upload_url):
     """
     json_data = json.dumps(data)
     
-    async with aiohttp.ClientSession() as session:
+    connector = aiohttp.TCPConnector(**_CONNECTOR_KWARGS)
+    async with aiohttp.ClientSession(connector=connector, timeout=_REQUEST_TIMEOUT) as session:
         async with session.put(
             upload_url,
             data=json_data.encode('utf-8'),
@@ -303,8 +314,9 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     try:
         json_str = json.dumps(payload)
         logger.info("[WHISPEY] send_to_whispey: sending %d chars event=%s", len(json_str), wcall_event)
-        
-        async with aiohttp.ClientSession() as session:
+
+        connector = aiohttp.TCPConnector(**_CONNECTOR_KWARGS)
+        async with aiohttp.ClientSession(connector=connector, timeout=_REQUEST_TIMEOUT) as session:
             async with session.post(url_to_use, json=payload, headers=headers) as response:
                 logger.info("[WHISPEY] send_to_whispey: response status=%d event=%s", response.status, wcall_event)
                 
