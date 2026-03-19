@@ -5,9 +5,11 @@ import asyncio
 import aiohttp
 import gzip
 import base64
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
+logger = logging.getLogger("whispey.send_log")
 
 load_dotenv()
 
@@ -167,26 +169,25 @@ async def send_to_whispey(data, apikey=None, api_url=None):
         dict: Response from the API or error information
     """
     
-    # Handle call_ended_reason - set default to "completed" if not provided
-    if "call_ended_reason" not in data:
+    if data.get("wcall_event") != "call_started" and "call_ended_reason" not in data:
         data["call_ended_reason"] = "completed"
-    
+
+    wcall_event = data.get("wcall_event", "unknown")
     # Convert timestamp fields to proper ISO format
     if "call_started_at" in data:
         data["call_started_at"] = convert_timestamp(data["call_started_at"])
     if "call_ended_at" in data:
         data["call_ended_at"] = convert_timestamp(data["call_ended_at"])
     
-    # Use custom API key if provided, otherwise fall back to environment variable
-    api_key_to_use = apikey if apikey is not None else WHISPEY_API_KEY
-    
-    # Determine target URL (needs to be defined before S3 upload)
-    url_to_use = api_url if api_url else WHISPEY_API_URL
-    
-    # Validate API key
+    api_key_to_use = apikey if apikey is not None else os.getenv("WHISPEY_API_KEY") or WHISPEY_API_KEY
+    url_to_use = api_url if api_url else (os.getenv("WHISPEY_API_URL") or WHISPEY_API_URL)
+
+    logger.info("[WHISPEY] send_to_whispey: event=%s url=%s apikey=%s",
+                wcall_event, url_to_use, "set" if api_key_to_use else "MISSING")
+
     if not api_key_to_use:
         error_msg = "API key not provided and WHISPEY_API_KEY environment variable not set"
-        print(f"❌ {error_msg}")
+        logger.error("[WHISPEY] send_to_whispey: %s", error_msg)
         return {
             "success": False,
             "error": error_msg
@@ -194,7 +195,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     
     # Check payload size and route accordingly
     original_size = get_payload_size(data)
-    print(f"📊 Original payload size: {original_size:,} bytes ({original_size/1024/1024:.2f} MB)")
+    logger.info("[WHISPEY] send_to_whispey: payload_size=%d bytes event=%s", original_size, wcall_event)
     
     # NEW: Use S3 for very large payloads (> 5MB)
     if USE_S3_FOR_LARGE and original_size > S3_UPLOAD_THRESHOLD:
@@ -300,18 +301,16 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     
     
     try:
-        # Test JSON serialization first
         json_str = json.dumps(payload)
-        print(f"✅ JSON serialization OK ({len(json_str):,} chars)")
+        logger.info("[WHISPEY] send_to_whispey: sending %d chars event=%s", len(json_str), wcall_event)
         
-        # Send the request
         async with aiohttp.ClientSession() as session:
             async with session.post(url_to_use, json=payload, headers=headers) as response:
-                print(f"📡 Response status: {response.status}")
+                logger.info("[WHISPEY] send_to_whispey: response status=%d event=%s", response.status, wcall_event)
                 
                 if response.status >= 400:
                     error_text = await response.text()
-                    print(f"❌ Error response: {error_text}")
+                    logger.error("[WHISPEY] send_to_whispey: HTTP %d error=%s event=%s", response.status, error_text[:200], wcall_event)
                     return {
                         "success": False,
                         "status": response.status,
@@ -319,7 +318,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     }
                 else:
                     result = await response.json()
-                    print(f"✅ Successfully sent data")
+                    logger.info("[WHISPEY] send_to_whispey: success event=%s", wcall_event)
                     return {
                         "success": True,
                         "status": response.status,
@@ -327,16 +326,15 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     }
                     
     except (TypeError, ValueError) as e:
-        # These are the actual exceptions json.dumps() raises
         error_msg = f"JSON serialization failed: {e}"
-        print(f"❌ {error_msg}")
+        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, wcall_event)
         return {
             "success": False,
             "error": error_msg
         }
     except Exception as e:
         error_msg = f"Request failed: {e}"
-        print(f"❌ {error_msg}")
+        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, wcall_event)
         return {
             "success": False,
             "error": error_msg

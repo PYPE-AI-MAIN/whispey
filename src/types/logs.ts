@@ -24,6 +24,7 @@ export interface CallLog {
     score: number
     reason: string
   }>
+  wcall_event?: 'call_started' | 'call_ended'
 }
 
 export interface UsageData {
@@ -138,6 +139,7 @@ export interface CallLogRequest {
   voice_recording_url?: string;
   telemetry_data?: TelemetryData;
   environment?: string;
+  wcall_event?: 'call_started' | 'call_ended';
 }
 
 export interface FailureReportRequest {

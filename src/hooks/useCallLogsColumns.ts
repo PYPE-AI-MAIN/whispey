@@ -13,13 +13,14 @@ export const BASIC_COLUMNS = [
   { key: "billing_duration_seconds", label: "Billing Duration" },
   { key: "total_cost", label: "Total Cost (₹)" },
   { key: "call_started_at", label: "Start Time" },
+  { key: "wcall_event", label: "Call Event" },
   { key: "avg_latency", label: "Avg Latency (ms)", hidden: true },
   { key: "total_llm_cost", label: "LLM Cost (₹)", hidden: true },
   { key: "total_tts_cost", label: "TTS Cost (₹)", hidden: true },
   { key: "total_stt_cost", label: "STT Cost (₹)", hidden: true }
 ] as const
 
-// Metadata columns to exclude from default selection
+// Metadata columns to exclude from Dynamic Columns (never show apikey/api_url; they are for API auth only)
 const EXCLUDED_METADATA_COLUMNS = [
   'complete_configuration',
   'usage',
@@ -28,7 +29,9 @@ const EXCLUDED_METADATA_COLUMNS = [
   'contactId',
   'agent_name',
   'metadata',
-  'retry_config'
+  'retry_config',
+  'apikey',
+  'api_url'
 ]
 
 interface VisibleColumns {
@@ -75,8 +78,12 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
       }
     })
 
+    // Never expose apikey/api_url as metadata columns (auth-only, must not appear in UI)
+    const metadataFiltered = Array.from(metadataKeys).filter(
+      (key) => !EXCLUDED_METADATA_COLUMNS.includes(key)
+    )
     return {
-      metadata: Array.from(metadataKeys).sort(),
+      metadata: metadataFiltered.sort(),
       transcription_metrics: Array.from(transcriptionKeys).sort(),
       metrics: Array.from(metricsKeys).sort()
     }

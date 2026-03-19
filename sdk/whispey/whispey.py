@@ -179,15 +179,19 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
         if telemetry_instance:
             session_data['telemetry_instance'] = telemetry_instance
         
-        # Update session data with all dynamic parameters
+        # Keep apikey/api_url for sending to Lambda only; do not put them in metadata or session_data
+        apikey = kwargs.pop('apikey', None)
+        api_url = kwargs.pop('api_url', None)
+        dynamic_params = dict(kwargs)
+
+        # Update session data with dynamic parameters (no apikey/api_url)
         session_data.update(kwargs)
         
-        # Store session info in global storage (data only, not class instances)
         _session_data_store[session_id] = {
             'start_time': time.time(),
             'session_data': session_data,
             'usage_collector': usage_collector,
-            'dynamic_params': kwargs,
+            'dynamic_params': dynamic_params,
             'agent_id': agent_id,
             'call_active': True,
             'whispey_data': None,
@@ -196,7 +200,9 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
             'participant_join_time': None,
             'participant_leave_time': None,
             'user_connected': False,
-            'room_billing_enabled': room is not None  # CHANGE 2: Add this flag
+            'room_billing_enabled': room is not None,
+            'apikey': apikey,
+            'api_url': api_url,
         }
         
         # Setup telemetry if enabled
@@ -254,7 +260,27 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
             def on_session_close(event):
                 error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
                 end_session_manually(session_id, "completed", error_msg)
-        
+        try:
+            import asyncio
+            def _on_done(task):
+                try:
+                    result = task.result()
+                    if not result.get("success"):
+                        logger.error("[WHISPEY] call_started task failed: %s", result)
+                    else:
+                        logger.info("[WHISPEY] call_started task succeeded: %s", result)
+                except BaseException as e:  # catches CancelledError too
+                    logger.error("[WHISPEY] call_started task exception (%s): %s", type(e).__name__, e)
+            try:
+                loop = asyncio.get_running_loop()
+                logger.info("[WHISPEY] call_started: scheduling task for session=%s", session_id)
+                t = loop.create_task(send_call_started_to_whispey(session_id))
+                t.add_done_callback(_on_done)
+            except RuntimeError:
+                logger.info("[WHISPEY] call_started: no running loop, using asyncio.run session=%s", session_id)
+                asyncio.run(send_call_started_to_whispey(session_id))
+        except Exception as e:
+            logger.error("[WHISPEY] call_started send skipped: %s", e)
         return session_id
         
     except Exception as e:
@@ -389,11 +415,12 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     duration = int(current_time - start_time)
     
     # Prepare Whispey format data
-    # Exclude phone identifiers from metadata
+    # Exclude phone identifiers and credentials from metadata (never send apikey/api_url to API)
     dynamic_params: Dict[str, Any] = session_info['dynamic_params'] or {}
+    _METADATA_EXCLUDED_KEYS = {"phone_number", "customer_number", "phone", "apikey", "api_url"}
     sanitized_dynamic_params = {
         k: v for k, v in dynamic_params.items()
-        if k not in {"phone_number", "customer_number", "phone"}
+        if k not in _METADATA_EXCLUDED_KEYS
     }
 
     # Check for call_ended_reason, default to "completed" if not provided
@@ -402,10 +429,10 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
     # Get any custom metadata saved by tools (e.g., save_metadata tool)
     tool_saved_metadata = session_data.get('metadata', {}) if session_data else {}
     
-    # FIXED: Define whispey_data at function level, not inside if block
     whispey_data = {
-        "call_id": f"{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+        "call_id": session_id,
         "agent_id": session_info['agent_id'],
+        "wcall_event": "call_ended",
         "customer_number": session_info['dynamic_params'].get('phone_number', 'unknown'),
         "call_ended_reason": call_ended_reason,
         "call_started_at": start_time,
@@ -908,7 +935,10 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         return {"success": False, "error": "Session not found"}
     
     session_info = _session_data_store[session_id]
-    
+    # Use session-stored apikey/api_url if not passed (same as call_started)
+    apikey = apikey if apikey is not None else session_info.get("apikey")
+    api_url = api_url if api_url is not None else session_info.get("api_url")
+
     # Force end session if requested and still active
     if force_end and session_info['call_active']:
         logger.info(f"🔚 Force ending session {session_id}")
@@ -966,6 +996,48 @@ def get_latest_session():
         latest_id = max(_session_data_store.keys(), key=lambda x: _session_data_store[x]['start_time'])
         return latest_id, _session_data_store[latest_id]
     return None, None
+
+
+async def send_call_started_to_whispey(session_id: str, apikey: str = None, api_url: str = None) -> dict:
+    """Send call_started log so a row is created; call_ended will overwrite it later."""
+    logger.info("[WHISPEY] send_call_started_to_whispey: session=%s", session_id)
+    if session_id not in _session_data_store:
+        logger.error("[WHISPEY] call_started: session %s NOT in store. Store has: %s", session_id, list(_session_data_store.keys()))
+        return {"success": False, "error": "Session not found"}
+    info = _session_data_store[session_id]
+    key = apikey if apikey is not None else info.get("apikey")
+    url = api_url if api_url is not None else info.get("api_url")
+    # Treat empty string as unset so send_to_whispey can fall back to env
+    if not key:
+        key = None
+    if not url:
+        url = None
+    logger.info("[WHISPEY] call_started: apikey=%s url=%s agent_id=%s",
+                "set" if key else "MISSING", url or "default-Lambda", info.get("agent_id"))
+    if not key:
+        logger.warning("[WHISPEY] call_started: no apikey — will try WHISPEY_API_KEY env")
+    started_at = datetime.fromtimestamp(info["start_time"]).isoformat()
+    payload = {
+        "call_id": session_id,
+        "agent_id": info["agent_id"],
+        "customer_number": (info.get("dynamic_params") or {}).get("phone_number") or "",
+        "call_started_at": started_at,
+        "duration_seconds": 0,
+        "wcall_event": "call_started",
+        "environment": (info.get("dynamic_params") or {}).get("environment", "dev"),
+    }
+    logger.info("[WHISPEY] call_started payload keys: %s", list(payload.keys()))
+    try:
+        out = await send_to_whispey(payload, apikey=key, api_url=url)
+        if not out.get("success"):
+            logger.error("[WHISPEY] call_started failed: %s", out)
+        else:
+            logger.info("[WHISPEY] call_started sent OK: status=%s", out.get("status"))
+        return out
+    except Exception as e:
+        logger.exception("[WHISPEY] call_started exception: %s", e)
+        return {"success": False, "error": str(e)}
+
 
 def get_all_active_sessions():
     """Get all active session IDs"""
