@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowAgentSection } from '@/types/visibility'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -62,13 +63,13 @@ export default function PhoneCallConfig() {
   const router = useRouter()
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid
   const agentId = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid
-  const { role, isLoading: roleLoading } = useMemberVisibility(projectId || undefined)
+  const { visibility, isLoading: roleLoading } = useMemberVisibility(projectId || undefined)
   useEffect(() => {
     if (roleLoading || !projectId || !agentId) return
-    if (role === 'viewer') {
+    if (!canShowAgentSection(visibility, 'phoneCalls')) {
       router.replace(`/${projectId}/agents/${agentId}`)
     }
-  }, [role, roleLoading, projectId, agentId, router])
+  }, [visibility, roleLoading, projectId, agentId, router])
 
   const [agent, setAgent] = useState<Agent | null>(null)
   const [runningAgents, setRunningAgents] = useState<RunningAgent[]>([])

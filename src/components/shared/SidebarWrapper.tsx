@@ -278,23 +278,18 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Agent nav: Config/Calls = owner/admin only; Knowledge Base = when permissions.visibility allows (Supabase).
+      // Agent nav: Agent Config = owner/admin; Knowledge Base & Phone Calls = permissions.visibility.agent (Supabase).
       const configItems = []
       const showAgentConfig = agentType === 'pype_agent' && isOwnerOrAdmin
       const showKnowledgeBase = agentType === 'pype_agent' && canShowAgentSection(visibility, 'knowledgeBase')
+      const showPhoneCalls = agentType === 'pype_agent' && canShowAgentSection(visibility, 'phoneCalls')
+
       if (showAgentConfig) {
         configItems.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
           icon: 'Settings', 
           path: `/${projectId}/agents/${agentId}/config`, 
-          group: 'configuration' 
-        })
-        configItems.push({ 
-          id: 'knowledge', 
-          name: 'Knowledge Base', 
-          icon: 'BookOpen', 
-          path: `/${projectId}/agents/${agentId}/knowledge`, 
           group: 'configuration' 
         })
       }
@@ -309,7 +304,7 @@ const sidebarRoutes: SidebarRoute[] = [
       }
 
       const callItems = []
-      if (agentType === 'pype_agent' && isOwnerOrAdmin) {
+      if (showPhoneCalls) {
         callItems.push({
           id: 'phone-call',
           name: 'Phone Calls',

@@ -197,7 +197,8 @@ BEGIN
           'retry', true,
           'charts', true
         ),
-        'knowledgeBase', false
+        'knowledgeBase', false,
+        'phoneCalls', false
       )
     );
   ELSE
@@ -224,7 +225,8 @@ BEGIN
           'retry', true,
           'charts', true
         ),
-        'knowledgeBase', true
+        'knowledgeBase', true,
+        'phoneCalls', true
       )
     );
   END IF;

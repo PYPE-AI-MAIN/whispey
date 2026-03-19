@@ -42,6 +42,8 @@ export interface AgentOverviewVisibility {
 export interface AgentVisibility {
   overview: AgentOverviewVisibility
   knowledgeBase: boolean
+  /** Phone Calls / phone-call-config under agent (call configuration) */
+  phoneCalls: boolean
 }
 
 export interface MemberVisibility {
@@ -75,6 +77,7 @@ export const DEFAULT_AGENT_OVERVIEW_VISIBILITY: AgentOverviewVisibility = {
 export const DEFAULT_AGENT_VISIBILITY: AgentVisibility = {
   overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
   knowledgeBase: true,
+  phoneCalls: true,
 }
 
 export const DEFAULT_MEMBER_VISIBILITY: MemberVisibility = {
@@ -95,7 +98,8 @@ export const VIEWER_RESTRICTED_VISIBILITY: MemberVisibility = {
   },
   agent: {
     overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
-    knowledgeBase: false,   // Cannot see Knowledge Base in agent list
+    knowledgeBase: false, // Cannot see Knowledge Base
+    phoneCalls: false, // Cannot see Phone Calls (call configuration)
   },
 }
 
@@ -112,6 +116,7 @@ export function mergeWithDefaults(partial: Partial<MemberVisibility> | null | un
     agent: {
       overview: { ...DEFAULT_AGENT_OVERVIEW_VISIBILITY, ...partial.agent?.overview },
       knowledgeBase: partial.agent?.knowledgeBase ?? true,
+      phoneCalls: partial.agent?.phoneCalls ?? true,
     },
   }
 }
@@ -140,6 +145,7 @@ export function getEffectiveVisibility(
     agent: {
       overview: { ...base.agent.overview, ...storedVisibility.agent?.overview },
       knowledgeBase: storedVisibility.agent?.knowledgeBase ?? base.agent.knowledgeBase,
+      phoneCalls: storedVisibility.agent?.phoneCalls ?? base.agent.phoneCalls,
     },
   }
 }
@@ -172,9 +178,10 @@ export function canShowOrgSection(
  */
 export function canShowAgentSection(
   visibility: Partial<MemberVisibility> | null | undefined,
-  key: 'knowledgeBase'
+  key: 'knowledgeBase' | 'phoneCalls'
 ): boolean {
   if (!visibility?.agent || typeof visibility.agent !== 'object') return false
   if (key === 'knowledgeBase') return visibility.agent.knowledgeBase === true
+  if (key === 'phoneCalls') return visibility.agent.phoneCalls === true
   return false
 }
