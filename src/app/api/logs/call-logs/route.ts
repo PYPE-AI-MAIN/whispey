@@ -113,12 +113,19 @@ export async function POST(request: NextRequest) {
       recording_url,
       voice_recording_url,
       telemetry_data,
-      environment = 'dev'
+      environment = 'dev',
+      wcall_event: bodyWcallEvent
     } = body;
+
+    const wcall_event = (bodyWcallEvent === 'call_started' || bodyWcallEvent === 'call_ended')
+      ? bodyWcallEvent
+      : 'call_ended';
 
     console.log("📡 Received call log:", { 
       call_id, 
       agent_id,
+      wcall_event: bodyWcallEvent ?? '(not set → defaults to call_ended)',
+      resolved_wcall_event: wcall_event,
       token: token ? `${token.substring(0, 10)}...` : 'null',
       tokenLength: token?.length || 0,
       duration_seconds,
@@ -142,6 +149,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!agent_id) {
+      return NextResponse.json(
+        { success: false, error: 'agent_id is required' },
+        { status: 400 }
+      );
+    }
+
     // Verify token
     const tokenVerification = await verifyToken(token, environment);
     if (!tokenVerification.valid) {
@@ -152,6 +166,68 @@ export async function POST(request: NextRequest) {
     }
 
     const { project_id } = tokenVerification;
+
+    if (wcall_event === 'call_started') {
+      console.log('🟢 call_started branch hit:', { call_id, agent_id, call_started_at, environment });
+      const minimalData = {
+        call_id,
+        agent_id,
+        customer_number: customer_number ?? null,
+        call_started_at: call_started_at ?? new Date().toISOString(),
+        duration_seconds: 0,
+        environment,
+        wcall_event: 'call_started' as const,
+        created_at: new Date().toISOString()
+      };
+      const { data: existing } = await supabase
+        .from('pype_voice_call_logs')
+        .select('id')
+        .eq('agent_id', agent_id)
+        .eq('call_id', call_id)
+        .eq('wcall_event', 'call_started')
+        .limit(1)
+        .maybeSingle();
+      console.log('🔍 call_started existing row check:', existing ? `found id=${existing.id}` : 'not found → will insert');
+      if (existing) {
+        const { error: updErr } = await supabase
+          .from('pype_voice_call_logs')
+          .update({
+            call_started_at: minimalData.call_started_at,
+            customer_number: minimalData.customer_number,
+            duration_seconds: 0
+          })
+          .eq('id', existing.id);
+        if (updErr) {
+          console.error('❌ call_started update error:', updErr);
+          return NextResponse.json(
+            { success: false, error: 'Failed to update call_started log' },
+            { status: 500 }
+          );
+        }
+        console.log('✅ call_started updated existing row:', existing.id);
+        return NextResponse.json({
+          success: true,
+          data: { message: 'Call started log updated', log_id: existing.id, agent_id, project_id }
+        }, { status: 200 });
+      }
+      const { data: inserted, error: insErr } = await supabase
+        .from('pype_voice_call_logs')
+        .insert(minimalData)
+        .select('id')
+        .single();
+      if (insErr) {
+        console.error('❌ call_started insert error:', insErr);
+        return NextResponse.json(
+          { success: false, error: 'Failed to save call_started log' },
+          { status: 500 }
+        );
+      }
+      console.log('✅ call_started inserted new row:', inserted.id);
+      return NextResponse.json({
+          success: true,
+          data: { message: 'Call started log saved', log_id: inserted.id, agent_id, project_id }
+        }, { status: 200 });
+    }
 
     // Calculate duration with fallback priority:
     // 1. Use provided duration_seconds if valid
@@ -234,7 +310,6 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Prepare log data
     const logData = {
       call_id,
       agent_id,
@@ -249,33 +324,54 @@ export async function POST(request: NextRequest) {
       call_started_at,
       call_ended_at,
       recording_url,
-      duration_seconds: calculatedDuration, // Use calculated duration
+      duration_seconds: calculatedDuration,
       voice_recording_url,
       complete_configuration: (metadata as any)?.complete_configuration || null,
       telemetry_data: telemetry_data as TelemetryData | undefined,
       telemetry_analytics,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      wcall_event: 'call_ended' as const
     };
 
-    // Insert log into database
-    console.log("💾 Inserting log data:", {
-      duration_seconds: logData.duration_seconds,
-      call_started_at: logData.call_started_at,
-      call_ended_at: logData.call_ended_at
-    });
-    
-    const { data: insertedLog, error: insertError } = await supabase
+    const { data: existingStarted } = await supabase
       .from('pype_voice_call_logs')
-      .insert(logData)
-      .select()
-      .single();
+      .select('id')
+      .eq('agent_id', agent_id)
+      .eq('call_id', call_id)
+      .eq('wcall_event', 'call_started')
+      .limit(1)
+      .maybeSingle();
 
-    if (insertError) {
-      console.error('Database insert error:', insertError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to save call log' },
-        { status: 500 }
-      );
+    let insertedLog: { id: string; [k: string]: any };
+    if (existingStarted) {
+      const { data: updated, error: updateError } = await supabase
+        .from('pype_voice_call_logs')
+        .update(logData)
+        .eq('id', existingStarted.id)
+        .select()
+        .single();
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to update call log' },
+          { status: 500 }
+        );
+      }
+      insertedLog = updated;
+    } else {
+      const { data: inserted, error: insertError } = await supabase
+        .from('pype_voice_call_logs')
+        .insert(logData)
+        .select()
+        .single();
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to save call log' },
+          { status: 500 }
+        );
+      }
+      insertedLog = inserted;
     }
 
     console.log("✅ Successfully inserted log:", {

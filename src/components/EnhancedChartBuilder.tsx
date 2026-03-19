@@ -385,8 +385,11 @@ export const useQuickFieldDiscovery = (agentId: string, dateFrom: string, dateTo
           }
         })
 
+        // Never expose apikey/api_url (auth-only)
+        const sensitiveKeys = ['apikey', 'api_url']
+        const metadataList = Array.from(metadataKeys).filter((k) => !sensitiveKeys.includes(k))
         setFields({
-          metadata: Array.from(metadataKeys),
+          metadata: metadataList,
           transcription_metrics: agentData?.field_extractor_keys || []
         })
       } catch (error) {
