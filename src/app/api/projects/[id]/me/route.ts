@@ -1,8 +1,10 @@
-// GET current user's role and permissions (including visibility) for the project
+// GET current user's role and effective visibility for the project.
+// Reads pype_voice_email_project_mapping.permissions (single column); visibility = permissions.visibility.
+// Merges with role defaults via getEffectiveVisibility(). Frontend shows only what visibility allows.
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
+import { getEffectiveVisibility } from '@/types/visibility'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,7 +43,8 @@ export async function GET(
     }
 
     const role = ['user', 'member', 'viewer'].includes(mapping.role) ? 'viewer' : mapping.role
-    const visibility = role === 'viewer' ? VIEWER_RESTRICTED_VISIBILITY : DEFAULT_MEMBER_VISIBILITY
+    const storedVisibility = (mapping.permissions as { visibility?: import('@/types/visibility').MemberVisibility } | null)?.visibility
+    const visibility = getEffectiveVisibility(role, storedVisibility)
 
     return NextResponse.json({
       role,

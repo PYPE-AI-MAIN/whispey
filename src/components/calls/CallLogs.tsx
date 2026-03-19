@@ -13,6 +13,8 @@ import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-tabl
 // Import optimized modules
 import { downloadCSV } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowOrgSection } from '@/types/visibility'
 import { useCallLogsColumns, BASIC_COLUMNS } from '@/hooks/useCallLogsColumns'
 import { useCallLogsStore } from '@/stores/callLogsStore'
 import { createTableColumns } from './tableColumns'
@@ -59,6 +61,10 @@ const CallLogs: React.FC<CallLogsProps> = ({
     fetchNextPage,
     refetch
   } = useCallLogsData(agent, userEmail, project?.id, dateRange, user?.id)
+
+  // Re-analyze only if permissions.visibility.org.reanalyze is true (set in Supabase).
+  const { visibility } = useMemberVisibility(project?.id ?? undefined)
+  const canReanalyze = canShowOrgSection(visibility, 'reanalyze')
 
   // Read this agent's distinctConfig and its setter from the per-agent store slot
   const { distinctConfigByAgent, setDistinctConfigForAgent } = useCallLogsStore()
@@ -344,7 +350,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />
+            {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
             <BackfillDispositionDialog 
               projectId={project?.id} 
               agentId={agent?.id}

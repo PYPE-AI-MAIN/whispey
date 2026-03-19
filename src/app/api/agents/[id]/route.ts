@@ -50,6 +50,10 @@ export async function GET(
     const projectId = agent.project_id
     const roleResult = projectId ? await getProjectRoleForApi(projectId) : null
     const isViewer = roleResult?.role === 'viewer'
+    const visibility = roleResult?.visibility
+    // Include field_extractor/metrics for non-viewers, or for viewers when permissions.visibility grants it (Supabase).
+    const allowFieldExtractor = !isViewer || visibility?.org?.fieldExtractor === true
+    const allowMetrics = !isViewer || visibility?.org?.metrics === true
 
     const agentResponse: Record<string, unknown> = {
       id: agent.id,
@@ -66,11 +70,13 @@ export async function GET(
       vapi_api_key_encrypted: agent.vapi_api_key_encrypted,
       vapi_project_key_encrypted: agent.vapi_project_key_encrypted,
     }
-    if (!isViewer) {
+    if (allowFieldExtractor) {
       agentResponse.field_extractor = agent.field_extractor
       agentResponse.field_extractor_prompt = agent.field_extractor_prompt
       agentResponse.field_extractor_keys = agent.field_extractor_keys
       agentResponse.field_extractor_variables = agent.field_extractor_variables || {}
+    }
+    if (allowMetrics) {
       agentResponse.metrics = agent.metrics ?? null
     }
 

@@ -44,6 +44,7 @@ import {
 import QuickStartGuide from './QuickStartGuide'
 import { useMobile } from '@/hooks/use-mobile'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
 
 interface DashboardProps {
@@ -200,10 +201,10 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
-  const { isOwnerOrAdmin } = useMemberVisibility(project?.id)
-  // Field Extractor and Metrics are only visible to owners/admins
-  const canSeeFieldExtractor = isOwnerOrAdmin
-  const canSeeMetrics = isOwnerOrAdmin
+  const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
+  // Show when permissions.visibility allows (Supabase); viewers can see if DB grants it.
+  const canSeeFieldExtractor = canShowOrgSection(visibility, 'fieldExtractor')
+  const canSeeMetrics = canShowOrgSection(visibility, 'metrics')
 
   const breadcrumb = React.useMemo(() => {
     if (agentLoading || projectLoading) {

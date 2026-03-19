@@ -152,13 +152,14 @@ CREATE TABLE public.pype_voice_email_project_mapping (
     added_by_clerk_id text,
     created_at timestamp with time zone DEFAULT now(),
     clerk_id text,
-    is_active boolean
+    is_active boolean,
+    -- Dedicated column for "what this user can see/access" (single source of truth). App merges with role defaults via getEffectiveVisibility.
+    visibility jsonb
 );
 
--- RPC helper: Normalize all member-like roles into viewer and set consistent permissions.
--- Call from your backend (or Supabase Edge Function) with:
---   SELECT * FROM set_project_member_role(project_id, member_id, role);
--- The function will normalize 'member'/'user'/'viewer' -> 'viewer', and set permissions accordingly.
+-- -----------------------------------------------------------------------------
+-- RPC: set_project_member_role — sets role + permissions (with visibility inside)
+-- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.set_project_member_role(
     p_member_id int,
     p_project_id uuid,
@@ -168,13 +169,11 @@ CREATE OR REPLACE FUNCTION public.set_project_member_role(
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     default_visibility jsonb;
+    perms jsonb;
 BEGIN
-  -- Normalize legacy role values to viewer
   p_role := CASE WHEN p_role IN ('user', 'member', 'viewer') THEN 'viewer' ELSE p_role END;
 
-  -- Set default visibility based on role
   IF p_role = 'viewer' THEN
-    -- Viewers have restricted visibility
     default_visibility := jsonb_build_object(
       'org', jsonb_build_object(
         'agentList', true,
@@ -184,7 +183,8 @@ BEGIN
         'projectApi', true,
         'settings', false,
         'fieldExtractor', false,
-        'metrics', false
+        'metrics', false,
+        'reanalyze', false
       ),
       'agent', jsonb_build_object(
         'overview', jsonb_build_object(
@@ -201,7 +201,6 @@ BEGIN
       )
     );
   ELSE
-    -- Admin/Owner get full visibility
     default_visibility := jsonb_build_object(
       'org', jsonb_build_object(
         'agentList', true,
@@ -211,7 +210,8 @@ BEGIN
         'projectApi', true,
         'settings', true,
         'fieldExtractor', true,
-        'metrics', true
+        'metrics', true,
+        'reanalyze', true
       ),
       'agent', jsonb_build_object(
         'overview', jsonb_build_object(
@@ -229,27 +229,28 @@ BEGIN
     );
   END IF;
 
-  -- Use provided visibility or default
   IF p_visibility IS NULL THEN
     p_visibility := default_visibility;
   END IF;
 
+  perms := (
+    CASE
+      WHEN p_role = 'admin' THEN jsonb_build_object('read', true, 'write', true, 'delete', true, 'admin', false)
+      WHEN p_role = 'owner' THEN jsonb_build_object('read', true, 'write', true, 'delete', true, 'admin', true)
+      ELSE jsonb_build_object('read', true, 'write', false, 'delete', false, 'admin', false)
+    END
+  ) || jsonb_build_object('visibility', p_visibility);
+
   RETURN QUERY
   UPDATE public.pype_voice_email_project_mapping
   SET role = p_role,
-      permissions = (
-        (CASE
-          WHEN p_role = 'admin' THEN jsonb_build_object('read', true, 'write', true, 'delete', true, 'admin', false)
-          WHEN p_role = 'owner' THEN jsonb_build_object('read', true, 'write', true, 'delete', true, 'admin', true)
-          ELSE jsonb_build_object('read', true, 'write', false, 'delete', false, 'admin', false)
-        END)
-        || jsonb_build_object('visibility', p_visibility)
-      )
+      permissions = perms
   WHERE project_id = p_project_id
     AND id = p_member_id
   RETURNING *;
 END;
 $$;
+
 
 CREATE TABLE public.pype_voice_api_keys (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -98,7 +98,7 @@ export async function POST(
     // ✅ NEW: If mapping exists but is inactive, reactivate it
     if (existingMapping && existingMapping.is_active === false) {
       const permissions = getPermissionsByRole(normalizedRole)
-      
+
       const { data: reactivatedMapping, error: reactivateError } = await supabase
         .from('pype_voice_email_project_mapping')
         .update({

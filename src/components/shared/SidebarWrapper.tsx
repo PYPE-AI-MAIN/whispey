@@ -13,6 +13,7 @@ import Sidebar from './Sidebar'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowOrgSection, canShowAgentSection, type MemberVisibility } from '@/types/visibility'
 
 interface SidebarWrapperProps {
   children: ReactNode
@@ -48,8 +49,8 @@ interface SidebarContext {
   canCreatePypeAgent: boolean
   /** Role-based: true for owner/admin in this project (role is per-project) */
   isOwnerOrAdmin: boolean
-  /** Per-project visibility from /api/projects/[id]/me */
-  visibility: { org?: { campaign?: boolean; phoneSetting?: boolean; settings?: boolean }; agent?: { knowledgeBase?: boolean } } | null
+  /** From API (DB permissions.visibility). Only sections with visibility true are shown. */
+  visibility: MemberVisibility | null
 }
 
 interface NavigationItem {
@@ -177,10 +178,10 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Viewer: only Agent List. Admin/Owner: Agent List + Campaign, Phone Settings, API Key, Settings (from Supabase role + visibility).
-      const showCampaign = isOwnerOrAdmin && (visibility?.org?.campaign !== false)
-      const showPhoneSetting = isOwnerOrAdmin && (visibility?.org?.phoneSetting !== false)
-      const showSettings = isOwnerOrAdmin && (visibility?.org?.settings !== false)
+      // Show only what permissions.visibility allows (update in Supabase to change).
+      const showCampaign = canShowOrgSection(visibility, 'campaign')
+      const showPhoneSetting = canShowOrgSection(visibility, 'phoneSetting')
+      const showSettings = canShowOrgSection(visibility, 'settings')
 
       const campaignsItems = []
       if (showCampaign) {
@@ -277,10 +278,10 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Viewer: only Overview + Call Logs. Admin/Owner: also Agent Config, Knowledge Base, Phone Calls (from Supabase role).
+      // Agent nav: Config/Calls = owner/admin only; Knowledge Base = when permissions.visibility allows (Supabase).
       const configItems = []
       const showAgentConfig = agentType === 'pype_agent' && isOwnerOrAdmin
-      const showKnowledgeBase = agentType === 'pype_agent' && isOwnerOrAdmin && (visibility?.agent?.knowledgeBase !== false)
+      const showKnowledgeBase = agentType === 'pype_agent' && canShowAgentSection(visibility, 'knowledgeBase')
       if (showAgentConfig) {
         configItems.push({ 
           id: 'agent-config', 

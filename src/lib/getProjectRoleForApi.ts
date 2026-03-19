@@ -1,16 +1,18 @@
 /**
- * Server-only: get current user's role for a project. Use in API routes to enforce viewer restrictions.
- * Returns role from pype_voice_email_project_mapping (Supabase). Viewer => restrict access to config/knowledge/etc.
+ * Server-only: get current user's role and visibility for a project. Use in API routes to enforce viewer restrictions.
+ * Returns role and effective visibility from pype_voice_email_project_mapping.permissions (Supabase).
  */
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { getEffectiveVisibility } from '@/types/visibility'
+import type { MemberVisibility } from '@/types/visibility'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export async function getProjectRoleForApi(projectId: string): Promise<{ role: string } | null> {
+export async function getProjectRoleForApi(projectId: string): Promise<{ role: string; visibility: MemberVisibility } | null> {
   const { userId } = await auth()
   const user = await currentUser()
   if (!userId || !projectId) return null
@@ -18,7 +20,7 @@ export async function getProjectRoleForApi(projectId: string): Promise<{ role: s
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
   const { data: mapping, error } = await supabase
     .from('pype_voice_email_project_mapping')
-    .select('role, is_active')
+    .select('role, permissions, is_active')
     .eq('project_id', projectId)
     .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
     .or('is_active.is.null,is_active.eq.true')
@@ -26,7 +28,9 @@ export async function getProjectRoleForApi(projectId: string): Promise<{ role: s
 
   if (error || !mapping) return null
   const role = ['user', 'member', 'viewer'].includes(mapping.role) ? 'viewer' : mapping.role
-  return { role }
+  const storedVisibility = (mapping.permissions as { visibility?: MemberVisibility } | null)?.visibility
+  const visibility = getEffectiveVisibility(role, storedVisibility)
+  return { role, visibility }
 }
 
 /** Returns true if current user is viewer (or not a member) for the project. */

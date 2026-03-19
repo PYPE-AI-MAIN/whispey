@@ -1,6 +1,15 @@
 /**
- * Per-member visibility settings. Owner/Admin see everything; User/Viewer see only what is enabled here.
- * Editable by Owner and Admin in Organization Settings per member.
+ * Visibility = what sections/features a user can see. Stored in DB as
+ * pype_voice_email_project_mapping.permissions.visibility (single column).
+ *
+ * Flow:
+ * 1. API /api/projects/[id]/me reads role + permissions.visibility from DB.
+ * 2. getEffectiveVisibility(role, storedVisibility) merges with role defaults.
+ * 3. Frontend useMemberVisibility(projectId) gets { role, visibility } and gates UI.
+ * 4. Components use canShowOrgSection(visibility, 'campaign') etc. so only allowed data is shown.
+ *
+ * To change what users see: edit defaults here or update permissions.visibility in Supabase;
+ * frontend reflects on next load or refocus.
  */
 
 export interface OrgVisibility {
@@ -15,6 +24,8 @@ export interface OrgVisibility {
   fieldExtractor: boolean
   /** Metrics (on agent pages) */
   metrics: boolean
+  /** Re-analyze Logs (in Call Logs) */
+  reanalyze: boolean
 }
 
 export interface AgentOverviewVisibility {
@@ -47,6 +58,7 @@ export const DEFAULT_ORG_VISIBILITY: OrgVisibility = {
   settings: true,
   fieldExtractor: true,
   metrics: true,
+  reanalyze: true,
 }
 
 export const DEFAULT_AGENT_OVERVIEW_VISIBILITY: AgentOverviewVisibility = {
@@ -79,6 +91,7 @@ export const VIEWER_RESTRICTED_VISIBILITY: MemberVisibility = {
     phoneSetting: false,    // Cannot see Phone Setting
     fieldExtractor: false,  // Cannot see Field Extractor in Overview/Call logs
     metrics: false,         // Cannot see Metrics in Overview/Call logs
+    reanalyze: false,       // Cannot see Re-analyze Logs in Call Logs
   },
   agent: {
     overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
@@ -101,4 +114,67 @@ export function mergeWithDefaults(partial: Partial<MemberVisibility> | null | un
       knowledgeBase: partial.agent?.knowledgeBase ?? true,
     },
   }
+}
+
+/**
+ * Single source of truth: compute effective visibility for a member from role + stored DB overrides.
+ * - Viewer: base = VIEWER_RESTRICTED_VISIBILITY, then merge stored overrides (so DB can grant e.g. campaign).
+ * - Owner/Admin: base = DEFAULT_MEMBER_VISIBILITY, then merge stored overrides.
+ * Change defaults in VIEWER_RESTRICTED_VISIBILITY / DEFAULT_MEMBER_VISIBILITY or store in DB to change what users see.
+ */
+export function getEffectiveVisibility(
+  role: string,
+  storedVisibility: Partial<MemberVisibility> | null | undefined
+): MemberVisibility {
+  const isViewer = ['user', 'member', 'viewer'].includes(role)
+  const base = isViewer ? VIEWER_RESTRICTED_VISIBILITY : DEFAULT_MEMBER_VISIBILITY
+  if (!storedVisibility || typeof storedVisibility !== 'object') return base
+  const org = { ...base.org, ...storedVisibility.org }
+  if (Array.isArray(storedVisibility.org?.visibleAgentIds)) {
+    org.visibleAgentIds = storedVisibility.org.visibleAgentIds
+  } else if (storedVisibility.org?.visibleAgentIds === null) {
+    org.visibleAgentIds = null
+  }
+  return {
+    org,
+    agent: {
+      overview: { ...base.agent.overview, ...storedVisibility.agent?.overview },
+      knowledgeBase: storedVisibility.agent?.knowledgeBase ?? base.agent.knowledgeBase,
+    },
+  }
+}
+
+/** Keys for org-level sidebar sections and features driven by visibility (single place to add new sections). */
+export const ORG_VISIBILITY_KEYS = {
+  campaign: 'campaign',
+  phoneSetting: 'phoneSetting',
+  settings: 'settings',
+  fieldExtractor: 'fieldExtractor',
+  metrics: 'metrics',
+  reanalyze: 'reanalyze',
+} as const
+
+/**
+ * Whether an org-level section should be shown. Use this in the sidebar so all sections follow one rule.
+ * Change visibility in DB or via getEffectiveVisibility defaults to affect the UI.
+ */
+export function canShowOrgSection(
+  visibility: Partial<MemberVisibility> | null | undefined,
+  key: keyof typeof ORG_VISIBILITY_KEYS
+): boolean {
+  if (!visibility?.org || typeof visibility.org !== 'object') return false
+  const value = (visibility.org as unknown as Record<string, boolean | undefined>)[key]
+  return value === true
+}
+
+/**
+ * Whether an agent-level section should be shown (e.g. Knowledge Base). Single rule for all agent nav items.
+ */
+export function canShowAgentSection(
+  visibility: Partial<MemberVisibility> | null | undefined,
+  key: 'knowledgeBase'
+): boolean {
+  if (!visibility?.agent || typeof visibility.agent !== 'object') return false
+  if (key === 'knowledgeBase') return visibility.agent.knowledgeBase === true
+  return false
 }
