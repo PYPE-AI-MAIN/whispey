@@ -64,7 +64,7 @@
     "eslint": "^9.34.0",
     "formik": "^2.4.6",
     "fumadocs-core": "^15.7.5",
-    "fumadocs-mdx": "^14.2.9",
+    "fumadocs-mdx": "^14.2.11",
     "fumadocs-ui": "^15.7.5",
     "jsonwebtoken": "^9.0.2",
     "lightningcss": "^1.30.1",
