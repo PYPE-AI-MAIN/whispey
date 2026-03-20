@@ -278,9 +278,11 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Agent nav: Agent Config = owner/admin; Knowledge Base & Phone Calls = permissions.visibility.agent (Supabase).
+      // Agent nav: Agent Config = owner/admin OR permissions.visibility.agent.agentConfig (Supabase).
       const configItems = []
-      const showAgentConfig = agentType === 'pype_agent' && isOwnerOrAdmin
+      const showAgentConfig =
+        agentType === 'pype_agent' &&
+        (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
       const showKnowledgeBase = agentType === 'pype_agent' && canShowAgentSection(visibility, 'knowledgeBase')
       const showPhoneCalls = agentType === 'pype_agent' && canShowAgentSection(visibility, 'phoneCalls')
 

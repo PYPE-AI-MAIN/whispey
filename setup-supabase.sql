@@ -198,6 +198,7 @@ BEGIN
           'retry', true,
           'charts', true
         ),
+        'agentConfig', false,
         'knowledgeBase', false,
         'phoneCalls', false
       )
@@ -226,6 +227,7 @@ BEGIN
           'retry', true,
           'charts', true
         ),
+        'agentConfig', true,
         'knowledgeBase', true,
         'phoneCalls', true
       )

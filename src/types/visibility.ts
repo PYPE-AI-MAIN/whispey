@@ -41,6 +41,8 @@ export interface AgentOverviewVisibility {
 
 export interface AgentVisibility {
   overview: AgentOverviewVisibility
+  /** Agent Config page (/agents/.../config); owner/admin always see it; viewers need this true in DB */
+  agentConfig: boolean
   knowledgeBase: boolean
   /** Phone Calls / phone-call-config under agent (call configuration) */
   phoneCalls: boolean
@@ -76,6 +78,7 @@ export const DEFAULT_AGENT_OVERVIEW_VISIBILITY: AgentOverviewVisibility = {
 
 export const DEFAULT_AGENT_VISIBILITY: AgentVisibility = {
   overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
+  agentConfig: true,
   knowledgeBase: true,
   phoneCalls: true,
 }
@@ -98,6 +101,7 @@ export const VIEWER_RESTRICTED_VISIBILITY: MemberVisibility = {
   },
   agent: {
     overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
+    agentConfig: false,
     knowledgeBase: false, // Cannot see Knowledge Base
     phoneCalls: false, // Cannot see Phone Calls (call configuration)
   },
@@ -115,6 +119,7 @@ export function mergeWithDefaults(partial: Partial<MemberVisibility> | null | un
     org,
     agent: {
       overview: { ...DEFAULT_AGENT_OVERVIEW_VISIBILITY, ...partial.agent?.overview },
+      agentConfig: partial.agent?.agentConfig ?? true,
       knowledgeBase: partial.agent?.knowledgeBase ?? true,
       phoneCalls: partial.agent?.phoneCalls ?? true,
     },
@@ -144,6 +149,7 @@ export function getEffectiveVisibility(
     org,
     agent: {
       overview: { ...base.agent.overview, ...storedVisibility.agent?.overview },
+      agentConfig: storedVisibility.agent?.agentConfig ?? base.agent.agentConfig,
       knowledgeBase: storedVisibility.agent?.knowledgeBase ?? base.agent.knowledgeBase,
       phoneCalls: storedVisibility.agent?.phoneCalls ?? base.agent.phoneCalls,
     },
@@ -178,9 +184,10 @@ export function canShowOrgSection(
  */
 export function canShowAgentSection(
   visibility: Partial<MemberVisibility> | null | undefined,
-  key: 'knowledgeBase' | 'phoneCalls'
+  key: 'agentConfig' | 'knowledgeBase' | 'phoneCalls'
 ): boolean {
   if (!visibility?.agent || typeof visibility.agent !== 'object') return false
+  if (key === 'agentConfig') return visibility.agent.agentConfig === true
   if (key === 'knowledgeBase') return visibility.agent.knowledgeBase === true
   if (key === 'phoneCalls') return visibility.agent.phoneCalls === true
   return false
