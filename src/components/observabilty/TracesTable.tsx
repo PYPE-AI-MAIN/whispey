@@ -51,6 +51,17 @@ interface TraceLog {
   metadata?: any
 }
 
+// Shared select for pype_voice_metrics_logs used here AND in ObservabilityStats.
+// MUST be identical in both places so React Query deduplicates into a single network request.
+// `otel_spans` is intentionally excluded — it is a large embedded JSONB tree per turn
+// that duplicates data already in the pype_voice_spans table and is not rendered directly.
+export const METRICS_LOGS_SELECT =
+  "id, session_id, turn_id, user_transcript, agent_response, " +
+  "stt_metrics, llm_metrics, tts_metrics, eou_metrics, " +
+  "tool_calls, trace_id, trace_duration_ms, trace_cost_usd, " +
+  "created_at, unix_timestamp, bug_report, " +
+  "call_success, lesson_day, lesson_completed, phone_number"
+
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, filters }) => {
 
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
@@ -59,8 +70,11 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
 
 
   const { data: sessionTrace, isLoading: traceLoading } = useSessionTrace(sessionId || null);
-  
-  // Use the infinite scroll hook instead of the old hook
+
+  // Only fetch spans when the user opens the "trace" or "waterfall" tab —
+  // these are the largest requests on the page (~600kB) and are never needed
+  // on the default "turns" tab.
+  const spansEnabled = activeTab === "trace" || activeTab === "waterfall";
   const { 
     allSpans: sessionSpans, 
     hasNextPage,
@@ -68,16 +82,19 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     isFetchingNextPage,
     isLoading: spansLoading,
     totalCount: totalSpansCount
-  } = useSessionSpansInfinite(sessionTrace);
+  } = useSessionSpansInfinite(sessionTrace, spansEnabled);
 
 
-  // Get call data to access bug report metadata
+  // Get call data to access bug report metadata + transcript fallback + audio URL.
+  // Select only the columns actually used; limit:1 matches page.tsx query so React
+  // Query can share the same cache entry (identical select + filters + limit).
   const { data: callData } = useSupabaseQuery("pype_voice_call_logs", {
-    select: "*",
+    select: "id, agent_id, metadata, transcript_json, recording_url, voice_recording_url, call_started_at, created_at",
     filters: sessionId 
       ? [{ column: "id", operator: "eq", value: sessionId }]
       : [{ column: "agent_id", operator: "eq", value: agentId }],
-    orderBy: { column: "created_at", ascending: false }
+    orderBy: { column: "created_at", ascending: false },
+    limit: 1,
   })
 
   const isVapiAgent = useMemo(() => {
@@ -91,13 +108,13 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   }, [agent])
 
 
-  // trace data
+  // trace data — use the shared select so React Query deduplicates with ObservabilityStats
   const {
     data: traceData,
     isLoading: traceDataLoading,
     error,
   } = useSupabaseQuery("pype_voice_metrics_logs", {
-    select: "*",
+    select: METRICS_LOGS_SELECT,
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
@@ -149,19 +166,47 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
 
   // Filter and process data
   const processedTraces = useMemo(() => {
-    if (!traceData?.length) return []
+    if (traceData?.length) {
+      let filtered = traceData.filter((item: TraceLog) => 
+        item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
+      )
     
-    let filtered = traceData.filter((item: TraceLog) => 
-      item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
-    )
-  
-    filtered.sort((a, b) => {
-      const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
-      const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
-      return aTurnNum - bTurnNum
-    })
-  
-    return filtered
+      filtered.sort((a, b) => {
+        const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
+        const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
+        return aTurnNum - bTurnNum
+      })
+    
+      return filtered
+    }
+
+    // Fallback: build traces from transcript_json in call_logs
+    if (callData?.length) {
+      const call = callData[0]
+      let transcriptJson = call?.transcript_json
+      if (!transcriptJson) return []
+
+      if (typeof transcriptJson === 'string') {
+        try { transcriptJson = JSON.parse(transcriptJson) } catch { return [] }
+      }
+      if (!Array.isArray(transcriptJson) || transcriptJson.length === 0) return []
+
+      return transcriptJson.map((msg: any, idx: number) => {
+        const role = msg.role?.toLowerCase()
+        const content = Array.isArray(msg.content) ? msg.content.join(' ') : (msg.content || '')
+        return {
+          id: `transcript_${idx}`,
+          session_id: call.id,
+          turn_id: `turn_${idx + 1}`,
+          user_transcript: role === 'user' ? content.trim() : '',
+          agent_response: role === 'assistant' ? content.trim() : '',
+          created_at: call.created_at,
+          unix_timestamp: idx,
+        } as TraceLog
+      }).filter((t: TraceLog) => t.user_transcript || t.agent_response)
+    }
+
+    return []
   }, [traceData, filters])
 
 
@@ -233,11 +278,6 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     return `${Math.floor(diff / (24 * 60 * 60 * 1000))}d`
   }
 
-  const truncateText = (text: string, maxLength: number = 50) => {
-    if (!text) return ""
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength) + "..."
-  }
 
   const getToolCallsInfo = (toolCalls: any[] = []) => {
     const total = toolCalls.length
@@ -409,7 +449,7 @@ const handleRowClick = (trace: TraceLog) => {
               >
                 Turns ({processedTraces.length})
               </button>
-            {sessionSpans && sessionSpans.length > 0 && (
+            {sessionTrace && (
             <>
               <button 
                 onClick={() => setActiveTab("trace")}
@@ -420,7 +460,7 @@ const handleRowClick = (trace: TraceLog) => {
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 )}
               >
-                Trace ({totalSpansCount})
+                Trace {spansLoading ? "…" : totalSpansCount > 0 ? `(${totalSpansCount})` : ""}
               </button>
               <button 
                 onClick={() => setActiveTab("waterfall")}
@@ -431,7 +471,7 @@ const handleRowClick = (trace: TraceLog) => {
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 )}
               >
-                Timeline ({totalSpansCount})
+                Timeline {spansLoading ? "…" : totalSpansCount > 0 ? `(${totalSpansCount})` : ""}
               </button>
             </>
           )}
@@ -545,7 +585,7 @@ const handleRowClick = (trace: TraceLog) => {
                           {trace.user_transcript && (
                             <div className="text-xs">
                               <span className="text-blue-600 dark:text-blue-400 font-medium">→</span>
-                              <span className="ml-1 text-gray-800 dark:text-gray-200">{truncateText(trace.user_transcript, 60)}</span>
+                              <span className="ml-1 text-gray-800 dark:text-gray-200">{trace.user_transcript}</span>
                             </div>
                           )}
                           {trace.agent_response && (
@@ -560,7 +600,7 @@ const handleRowClick = (trace: TraceLog) => {
                               <span className={cn(
                                 "ml-1",
                                 hasBugReport ? "text-red-800 dark:text-red-300" : "text-gray-600 dark:text-gray-300"
-                              )}>{truncateText(trace.agent_response, 60)}</span>
+                              )}>{trace.agent_response}</span>
                               {hasBugReport && (
                                 <span className="ml-2 text-red-600 dark:text-red-400 font-medium">[REPORTED]</span>
                               )}
