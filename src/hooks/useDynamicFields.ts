@@ -66,8 +66,11 @@ export const useDynamicFields = (agentId: string, limit: number = 100): DynamicF
           }
         })
 
-        // Convert to sorted arrays
-        const sortedMetadataFields = Array.from(metadataKeysSet).sort()
+        // Never expose apikey/api_url (auth-only, must not appear in UI)
+        const SENSITIVE_METADATA_KEYS = ['apikey', 'api_url']
+        const sortedMetadataFields = Array.from(metadataKeysSet)
+          .filter((key) => !SENSITIVE_METADATA_KEYS.includes(key))
+          .sort()
         const sortedTranscriptionFields = Array.from(transcriptionKeysSet).sort()
 
         setMetadataFields(sortedMetadataFields)
