@@ -4,6 +4,7 @@
 import { useMemo } from "react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSupabaseQuery } from "../../hooks/useSupabase"
+import { METRICS_LOGS_SELECT } from "./TracesTable"
 import { cn } from "@/lib/utils"
 import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio } from "lucide-react"
 
@@ -34,7 +35,9 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
     data: transcriptLogs,
     isLoading: transcriptLoading,
   } = useSupabaseQuery("pype_voice_metrics_logs", {
-    select: "*",
+    // Use the shared select so React Query deduplicates this with the TracesTable query
+    // into a single network request when both components are mounted simultaneously.
+    select: METRICS_LOGS_SELECT,
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
@@ -136,15 +139,6 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       
       return { avg, min, max, count: values.length, p50, p75 }
     }
-   
-    console.log({
-      isVapiAgent,
-      agentExists: !!agent,
-      agentType: agent?.agent_type,
-      totalTurnLatencies: metrics.totalTurnLatencies.slice(0, 5),
-      endToEndLatencies: metrics.endToEndLatencies.slice(0, 5),
-      p75EndToEnd: calculateStats(metrics.endToEndLatencies).p75
-    })
    
     return {
       ...metrics,
