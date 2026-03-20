@@ -75,6 +75,7 @@ const COLUMNS = [
   { value: 'avg_latency', label: 'Avg Latency (ms)', type: 'number', numericType: 'float' as const },
   { value: 'call_started_at', label: 'Date', type: 'date' },
   { value: 'call_ended_reason', label: 'Status', type: 'text' },
+  { value: 'tags', label: 'Tags', type: 'tags' },
   { value: 'metadata', label: 'Metadata', type: 'jsonb' },
   { value: 'transcription_metrics', label: 'Transcription', type: 'jsonb' }
 ]
@@ -94,6 +95,10 @@ const OPERATIONS = {
     { value: 'equals', label: 'On date' },
     { value: 'greater_than', label: 'After' },
     { value: 'less_than', label: 'Before' }
+  ],
+  tags: [
+    { value: 'contains', label: 'Contains tag' },
+    { value: 'equals', label: 'Exact tag match' }
   ],
   jsonb: [
     { value: 'json_equals', label: 'Equals' },

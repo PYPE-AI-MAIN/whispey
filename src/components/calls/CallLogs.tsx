@@ -123,10 +123,20 @@ const CallLogs: React.FC<CallLogsProps> = ({
     filteredBasicColumns
   } = useCallLogsColumns(agent, calls, role)
 
+  // Collect all distinct tags used across the current call set (for tag suggestions)
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>()
+    calls.forEach(call => {
+      const tags = call.transcription_metrics?.tags
+      if (Array.isArray(tags)) tags.forEach((t: string) => tagSet.add(t))
+    })
+    return Array.from(tagSet).sort()
+  }, [calls])
+
   // Memoize table columns
   const columns = useMemo(
-    () => createTableColumns(visibleColumns),
-    [visibleColumns]
+    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetch }),
+    [visibleColumns, availableTags, refetch]
   )
 
   // React Table instance

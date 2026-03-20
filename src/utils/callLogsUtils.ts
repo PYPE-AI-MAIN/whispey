@@ -54,6 +54,20 @@ export const isColumnVisibleForRole = (columnKey: string, role: string | null): 
 
 // Helper function to convert a filter operation to Supabase Filter
 const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type: 'filter' }>): Filter | null => {
+  // Tags are stored as a JSON array inside transcription_metrics.tags.
+  // Cast the JSONB array to text and use ilike so "contains" works naturally.
+  if (filter.column === 'tags') {
+    switch (filter.operation) {
+      case 'contains':
+        return { column: "transcription_metrics->>'tags'", operator: 'ilike', value: `%${filter.value}%` }
+      case 'equals':
+        // Match the exact JSON string representation of the tag e.g. "follow-up"
+        return { column: "transcription_metrics->>'tags'", operator: 'ilike', value: `%"${filter.value}"%` }
+      default:
+        return null
+    }
+  }
+
   const getColumnName = (forTextOperation = false) => {
     // Backward compatibility: If JSONB column but no jsonField, skip this filter
     if ((filter.column === 'metadata' || filter.column === 'transcription_metrics') && !filter.jsonField) {
@@ -227,6 +241,7 @@ export const getSelectColumns = (role: string | null): string => {
     'call_started_at', 'call_ended_at', 'duration_seconds', 'recording_url',
     'metadata', 'environment', 'transcript_type', 'transcript_json',
     'created_at', 'transcription_metrics', 'billing_duration_seconds', 'metrics'
+    // tags live inside transcription_metrics JSONB — no separate column needed
   ]
 
   if (isColumnVisibleForRole('avg_latency', role)) {
@@ -249,7 +264,11 @@ export const flattenCallLogForCSV = (
   const flat: Record<string, any> = {}
 
   for (const key of basic) {
-    if (key in row && key !== 'total_cost') {
+    if (key === 'tags') {
+      // tags live inside transcription_metrics.tags — serialize as comma-separated
+      const tags = row.transcription_metrics?.tags
+      flat['tags'] = Array.isArray(tags) ? tags.join(', ') : ''
+    } else if (key in row && key !== 'total_cost') {
       flat[key] = row[key as keyof CallLog]
     }
   }
