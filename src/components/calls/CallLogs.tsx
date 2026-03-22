@@ -135,8 +135,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   // Memoize table columns
   const columns = useMemo(
-    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetch }),
-    [visibleColumns, availableTags, refetch]
+    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetch, role }),
+    [visibleColumns, availableTags, refetch, role]
   )
 
   // React Table instance
