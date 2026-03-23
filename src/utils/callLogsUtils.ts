@@ -68,6 +68,19 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
     }
   }
 
+  // Flag is stored inside transcription_metrics.flag.text (JSONB nested text)
+  if (filter.column === 'flag') {
+    switch (filter.operation) {
+      case 'contains':
+        return { column: "transcription_metrics->'flag'->>'text'", operator: 'ilike', value: `%${filter.value}%` }
+      case 'exists':
+        // Any call that has a flag object with a non-empty text field
+        return { column: "transcription_metrics->>'flag'", operator: 'not.is', value: null }
+      default:
+        return null
+    }
+  }
+
   const getColumnName = (forTextOperation = false) => {
     // Backward compatibility: If JSONB column but no jsonField, skip this filter
     if ((filter.column === 'metadata' || filter.column === 'transcription_metrics') && !filter.jsonField) {
@@ -268,6 +281,10 @@ export const flattenCallLogForCSV = (
       // tags live inside transcription_metrics.tags — serialize as comma-separated
       const tags = row.transcription_metrics?.tags
       flat['tags'] = Array.isArray(tags) ? tags.join(', ') : ''
+    } else if (key === 'flag') {
+      // flag lives inside transcription_metrics.flag
+      const flagData = row.transcription_metrics?.flag as { text?: string } | undefined
+      flat['flag'] = flagData?.text ?? ''
     } else if (key in row && key !== 'total_cost') {
       flat[key] = row[key as keyof CallLog]
     }
