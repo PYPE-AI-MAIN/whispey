@@ -72,7 +72,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
       const fetchPipecatAgents = async () => {
         try {
           setLoadingPipecatAgents(true)
-          const response = await fetch('http://13.201.89.77:7860/v1/agents')
+          const response = await fetch('/api/pipecat/agents')
           if (!response.ok) throw new Error('Failed to fetch pipecat agents')
           const data = await response.json()
           setPipecatAgents(data.map((a: any) => ({ id: a.id, name: a.name })))
