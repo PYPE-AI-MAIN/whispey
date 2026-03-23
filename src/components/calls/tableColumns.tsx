@@ -11,6 +11,7 @@ import { DynamicJsonCell } from './sub-components'
 import { CostTooltip } from "../tool-tip/costToolTip"
 import { BASIC_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { TagEditor } from './TagEditor'
+import { FlagEditor, FlagData } from './FlagEditor'
 import { cn } from "@/lib/utils"
 
 export const createTableColumns = (
@@ -23,10 +24,15 @@ export const createTableColumns = (
   options?: {
     availableTags?: string[]
     onTagsUpdated?: () => void
+    /** Current user role — used to gate comment & flag capabilities */
+    role?: string | null
   }
 ): ColumnDef<CallLog>[] => {
   const availableTags = options?.availableTags ?? []
   const onTagsUpdated = options?.onTagsUpdated
+  const role = options?.role ?? null
+  // owner/admin can add per-tag annotations; viewers use the Flag column instead
+  const canComment = role !== null && role !== 'user'
   const cols: ColumnDef<CallLog>[] = []
 
   // Basic columns
@@ -118,7 +124,28 @@ export const createTableColumns = (
                     ? call.transcription_metrics.tags
                     : []
                 }
+                initialTagComments={
+                  call.transcription_metrics?.tagComments &&
+                  typeof call.transcription_metrics.tagComments === 'object' &&
+                  !Array.isArray(call.transcription_metrics.tagComments)
+                    ? (call.transcription_metrics.tagComments as Record<string, string>)
+                    : {}
+                }
                 availableTags={availableTags}
+                canComment={canComment}
+                onUpdated={onTagsUpdated}
+              />
+            )
+          case "flag":
+            return (
+              <FlagEditor
+                callId={call.id}
+                initialFlag={
+                  call.transcription_metrics?.flag &&
+                  typeof call.transcription_metrics.flag === 'object'
+                    ? (call.transcription_metrics.flag as FlagData)
+                    : null
+                }
                 onUpdated={onTagsUpdated}
               />
             )
@@ -126,8 +153,8 @@ export const createTableColumns = (
             return <span>{call[key as keyof CallLog] as any ?? "-"}</span>
         }
       },
-      minSize: key === "customer_number" ? 180 : key === "tags" ? 200 : 150,
-      size: key === "customer_number" ? 180 : key === "tags" ? 220 : undefined,
+      minSize: key === "customer_number" ? 180 : key === "tags" ? 200 : key === "flag" ? 100 : 150,
+      size: key === "customer_number" ? 180 : key === "tags" ? 220 : key === "flag" ? 110 : undefined,
     })
   })
 

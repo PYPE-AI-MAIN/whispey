@@ -8,6 +8,7 @@ import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
+import { useTheme } from "next-themes"
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table'
 
 // Import optimized modules
@@ -42,6 +43,15 @@ const CallLogs: React.FC<CallLogsProps> = ({
   const router = useRouter()
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
+  const { resolvedTheme } = useTheme()
+
+  // Inline style for flagged rows — Tailwind v4 purges dynamically assembled
+  // class strings, so we use explicit CSS values (same fix used for tag colours).
+  const flaggedRowStyle: React.CSSProperties = {
+    backgroundColor: resolvedTheme === 'dark'
+      ? 'rgba(136, 19, 55, 0.18)'   // rose-950 @ 18% — visible but not blinding on dark bg
+      : '#fff1f2',                    // rose-50 — very light warm red on light bg
+  }
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -135,8 +145,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   // Memoize table columns
   const columns = useMemo(
-    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetch }),
-    [visibleColumns, availableTags, refetch]
+    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetch, role }),
+    [visibleColumns, availableTags, refetch, role]
   )
 
   // React Table instance
@@ -454,12 +464,21 @@ const CallLogs: React.FC<CallLogsProps> = ({
                       const row = rows[index]
                       if (!row) return null
                       const isFirstRow = index === startIndex
+                      const isFlaggedRow = Boolean(row.original.transcription_metrics?.flag?.text)
                     
                       return (
                         <tr
                           key={row.id}
+                          style={
+                            selectedCallId === row.original.id ? undefined
+                            : isFlaggedRow ? flaggedRowStyle
+                            : undefined
+                          }
                           className={cn(
-                            "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20",
+                            "cursor-pointer transition-all border-b border-border/50 h-20",
+                            isFlaggedRow
+                              ? "hover:brightness-95"
+                              : "hover:bg-muted/30 dark:hover:bg-gray-800/50",
                             selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
                           )}
                           onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
@@ -480,11 +499,21 @@ const CallLogs: React.FC<CallLogsProps> = ({
                     })
                   ) : (
                     // Fallback: if visibleItems is empty, show first few rows
-                    rows.slice(0, 20).map((row) => (
+                    rows.slice(0, 20).map((row) => {
+                      const isFlaggedRow = Boolean(row.original.transcription_metrics?.flag?.text)
+                      return (
                       <tr
                         key={row.id}
+                        style={
+                          selectedCallId === row.original.id ? undefined
+                          : isFlaggedRow ? flaggedRowStyle
+                          : undefined
+                        }
                         className={cn(
-                          "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20",
+                          "cursor-pointer transition-all border-b border-border/50 h-20",
+                          isFlaggedRow
+                            ? "hover:brightness-95"
+                            : "hover:bg-muted/30 dark:hover:bg-gray-800/50",
                           selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
                         )}
                         onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
@@ -498,7 +527,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                           </td>
                         ))}
                       </tr>
-                    ))
+                    )})
                   )}
                   
                   {/* Bottom spacer to maintain scroll position */}
@@ -517,11 +546,21 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 </>
               ) : (
                 // Render all rows when virtualization is disabled (small datasets)
-                rows.map((row, rowIndex) => (
+                rows.map((row, rowIndex) => {
+                  const isFlaggedRow = Boolean(row.original.transcription_metrics?.flag?.text)
+                  return (
                   <tr
                     key={row.id}
+                    style={
+                      selectedCallId === row.original.id ? undefined
+                      : isFlaggedRow ? flaggedRowStyle
+                      : undefined
+                    }
                     className={cn(
-                      "cursor-pointer hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-all border-b border-border/50 h-20",
+                      "cursor-pointer transition-all border-b border-border/50 h-20",
+                      isFlaggedRow
+                        ? "hover:brightness-95"
+                        : "hover:bg-muted/30 dark:hover:bg-gray-800/50",
                       selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
                     )}
                     onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
@@ -538,7 +577,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                       </td>
                     ))}
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>
