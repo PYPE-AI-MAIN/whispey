@@ -11,6 +11,8 @@ interface MetricGroupTabsProps {
   onGroupChange: (groupId: string | 'all') => void
   onManageGroups: () => void
   customTotalsCount: number
+  /** When false, hide create/manage group controls (viewers). Default true. */
+  canManageGroups?: boolean
 }
 
 export function MetricGroupTabs({
@@ -18,7 +20,8 @@ export function MetricGroupTabs({
   activeGroupId,
   onGroupChange,
   onManageGroups,
-  customTotalsCount
+  customTotalsCount,
+  canManageGroups = true,
 }: MetricGroupTabsProps) {
   const { isMobile } = useMobile(768)
 
@@ -67,21 +70,23 @@ export function MetricGroupTabs({
           ))}
 
           {/* New Group Button */}
-          <button
-            onClick={onManageGroups}
-            className={`
-              ${isMobile ? 'px-3 py-1.5' : 'px-4 py-2'}
-              text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300
-              hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all
-              border border-dashed border-gray-300 dark:border-gray-600 whitespace-nowrap flex-shrink-0
-            `}
-          >
-            <Plus className={`${isMobile ? 'w-4 h-4' : 'w-4 h-4'}`} />
-          </button>
+          {canManageGroups && (
+            <button
+              onClick={onManageGroups}
+              className={`
+                ${isMobile ? 'px-3 py-1.5' : 'px-4 py-2'}
+                text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300
+                hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all
+                border border-dashed border-gray-300 dark:border-gray-600 whitespace-nowrap flex-shrink-0
+              `}
+            >
+              <Plus className={`${isMobile ? 'w-4 h-4' : 'w-4 h-4'}`} />
+            </button>
+          )}
         </div>
 
         {/* Manage Button */}
-        {!isMobile && groups.length > 0 && (
+        {canManageGroups && !isMobile && groups.length > 0 && (
           <Button
             variant="ghost"
             size="sm"

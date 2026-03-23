@@ -1,16 +1,26 @@
 // src/services/getUserRole.ts
 import { supabase } from "@/lib/supabase"
 
-export async function getUserProjectRole(email: string, projectId: string) {
-  
+export async function getUserProjectRole(
+  email: string,
+  projectId: string,
+  clerkId?: string | null
+) {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('pype_voice_email_project_mapping')
       .select('role, permissions, is_active')
-      .eq('email', email)
       .eq('project_id', projectId)
-      // .eq('is_active', true)
-      .maybeSingle()
+
+    if (clerkId && clerkId.trim() !== '' && email && email.trim() !== '') {
+      query = query.or(`clerk_id.eq.${clerkId},email.ilike.${email}`)
+    } else if (clerkId && clerkId.trim() !== '') {
+      query = query.eq('clerk_id', clerkId)
+    } else {
+      query = query.eq('email', email)
+    }
+
+    const { data, error } = await query.maybeSingle()
 
     if (error) {
       return { role: 'user', permissions: null }
@@ -20,8 +30,9 @@ export async function getUserProjectRole(email: string, projectId: string) {
       return { role: 'user', permissions: null }
     }
 
+    const normalizedRole = ['user', 'member', 'viewer'].includes(data.role) ? 'viewer' : data.role
     const result = { 
-      role: data.role || 'user',
+      role: normalizedRole || 'user',
       permissions: data.permissions
     }
     

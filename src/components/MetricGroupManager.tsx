@@ -50,7 +50,8 @@ export function MetricGroupManager({
 
   // Get available metric IDs based on role
   const availableMetricIds = Object.values(METRIC_IDS).filter(id => {
-    if (role === 'user') {
+    // Only owners/admins can see financial / billing metrics
+    if (role !== 'admin' && role !== 'owner') {
       return id !== METRIC_IDS.TOTAL_COST && id !== METRIC_IDS.AVG_LATENCY && id !== METRIC_IDS.TOTAL_BILLING_MINUTES
     }
     return true

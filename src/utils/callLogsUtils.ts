@@ -253,7 +253,7 @@ export const getSelectColumns = (role: string | null): string => {
     'id', 'agent_id', 'call_id', 'customer_number', 'call_ended_reason',
     'call_started_at', 'call_ended_at', 'duration_seconds', 'recording_url',
     'metadata', 'environment', 'transcript_type', 'transcript_json',
-    'created_at', 'transcription_metrics', 'billing_duration_seconds', 'metrics'
+    'created_at', 'transcription_metrics', 'billing_duration_seconds', 'metrics', 'wcall_event'
     // tags live inside transcription_metrics JSONB — no separate column needed
   ]
 

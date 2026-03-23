@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, BookOpen, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { KnowledgeBaseUploadZone } from '@/components/knowledge/KnowledgeBaseUploadZone'
 import {
   KnowledgeBaseDocumentList,
@@ -37,6 +38,14 @@ export default function KnowledgeBasePage() {
   const router = useRouter()
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid
   const agentId = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid
+
+  const { role, isLoading: roleLoading } = useMemberVisibility(projectId || undefined)
+  useEffect(() => {
+    if (roleLoading || !projectId || !agentId) return
+    if (role === 'viewer') {
+      router.replace(`/${projectId}/agents/${agentId}`)
+    }
+  }, [role, roleLoading, projectId, agentId, router])
 
   const { backendAgentName, agentLoading } = useBackendAgentName(agentId)
 

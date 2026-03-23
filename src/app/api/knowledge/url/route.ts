@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
 
 /**
  * Proxy URL ingestion for RAG knowledge base.
+ * Viewers get 403.
  * Backend contract: POST {base}/knowledge/url with JSON { url, agent_id }.
  */
 const LOG_PREFIX = '[Knowledge URL]'
@@ -9,6 +11,21 @@ const LOG_PREFIX = '[Knowledge URL]'
 export async function POST(request: NextRequest) {
   try {
     console.log(`${LOG_PREFIX} Step 1: Request received`)
+
+    const body = await request.json().catch(() => ({}))
+    const { url, agent_id: agentId } = body
+    if (!url?.trim() || !agentId?.trim()) {
+      console.error(`${LOG_PREFIX} Step 3 FAILED: url or agent_id missing -> url=${!!url?.trim()}, agent_id=${!!agentId?.trim()}`)
+      return NextResponse.json(
+        { error: 'url and agent_id are required' },
+        { status: 400 }
+      )
+    }
+
+    const projectId = await getProjectIdFromAgentBackendName(agentId.trim())
+    if (projectId && (await isViewerForProject(projectId))) {
+      return NextResponse.json({ error: 'Forbidden: viewers cannot add URLs to knowledge base' }, { status: 403 })
+    }
 
     const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
     if (!apiBaseUrl) {
@@ -20,15 +37,6 @@ export async function POST(request: NextRequest) {
     }
     console.log(`${LOG_PREFIX} Step 2: API base URL configured -> ${apiBaseUrl}`)
 
-    const body = await request.json().catch(() => ({}))
-    const { url, agent_id: agentId } = body
-    if (!url?.trim() || !agentId?.trim()) {
-      console.error(`${LOG_PREFIX} Step 3 FAILED: url or agent_id missing -> url=${!!url?.trim()}, agent_id=${!!agentId?.trim()}`)
-      return NextResponse.json(
-        { error: 'url and agent_id are required' },
-        { status: 400 }
-      )
-    }
     console.log(`${LOG_PREFIX} Step 3: url and agent_id present -> url=${url.trim()}, agent_id=${agentId.trim()}`)
 
     const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'

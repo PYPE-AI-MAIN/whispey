@@ -2161,8 +2161,13 @@ def extract_complete_session_configuration(session, session_data):
     session_attrs = {}
     for key, value in vars(session).items():
         if not key.startswith('_'):
-            session_attrs[key] = make_serializable(value)
-    
+            try:
+                session_attrs[key] = make_serializable(value)
+            except Exception as attr_err:
+                # Some LiveKit session attributes (e.g. logging-related) can raise
+                # UnboundLocalError / NameError when accessed. Skip safely.
+                session_attrs[key] = f"<extraction_failed: {type(attr_err).__name__}>"
+
     complete_config['session_metadata'] = {
         'session_attributes': session_attrs,
         'session_class': type(session).__name__,
@@ -2172,8 +2177,9 @@ def extract_complete_session_configuration(session, session_data):
     
     # Store in session data
     session_data['complete_configuration'] = complete_config
-    session_data['telemetry_instance'] = telemetry_instance
-    
+    # Note: telemetry_instance is set in session_data by observe_session before this is called;
+    # do not overwrite it here as telemetry_instance is not in scope of this function.
+
     return complete_config
 
 

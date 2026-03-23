@@ -7,7 +7,7 @@ __author__ = "Whispey AI Voice Analytics"
 import re
 import logging
 from typing import List, Optional, AsyncIterable, Any, Union, Dict
-from .whispey import observe_session, send_session_to_whispey
+from .whispey import observe_session, send_session_to_whispey, send_call_started_to_whispey
 import time
 
 logger = logging.getLogger("whispey-sdk")
@@ -103,9 +103,8 @@ class LivekitObserve:
         from opentelemetry.sdk.trace import TracerProvider, SpanProcessor
         import time
         import uuid
-        import logging
-        
-        logger = logging.getLogger("whispey-sdk")
+        # Do NOT re-import logging or re-assign logger here; use the module-level logger
+        # to avoid 'cannot access local variable' scoping errors.
         
         tracer_provider = TracerProvider()
 
@@ -308,6 +307,10 @@ class LivekitObserve:
         if 'call_ended_reason' not in kwargs:
             kwargs['call_ended_reason'] = 'completed'
         
+        # Ensure apikey and api_url are passed for Lambda (call_started/call_ended); not sent as metadata
+        kwargs.setdefault('apikey', self.apikey)
+        kwargs.setdefault('api_url', getattr(self, 'api_url', None) or self.host_url)
+        
         bug_detector = self if self.enable_bug_reports else None
         session_id = observe_session(
             session, 
@@ -373,16 +376,20 @@ class LivekitObserve:
             session_data = session_info.get('session_data', {})
             
             conversation_history = []
-            
-            if hasattr(chat_ctx, 'messages') and chat_ctx.messages:
-                for msg in chat_ctx.messages:
-                    conversation_history.append({
-                        'role': str(msg.role),
-                        'content': str(msg.content) if msg.content else None,
-                        'id': getattr(msg, 'id', None),
-                        'name': getattr(msg, 'name', None),
-                        'timestamp': getattr(msg, 'timestamp', None)
-                    })
+
+            if hasattr(chat_ctx, 'messages'):
+                # messages may be a regular method (needs calling) or a property (returns a list directly)
+                _messages_attr = chat_ctx.messages
+                _messages_list = _messages_attr() if callable(_messages_attr) else _messages_attr
+                if _messages_list:
+                    for msg in _messages_list:
+                        conversation_history.append({
+                            'role': str(msg.role),
+                            'content': str(msg.content) if msg.content else None,
+                            'id': getattr(msg, 'id', None),
+                            'name': getattr(msg, 'name', None),
+                            'timestamp': getattr(msg, 'timestamp', None)
+                        })
             
             # Method 2: Try items if messages doesn't exist
             elif hasattr(chat_ctx, 'items') and chat_ctx.items:
@@ -819,4 +826,4 @@ class LivekitObserve:
             api_url=self.host_url,
         )
 
-__all__ = ['LivekitObserve', 'observe_session', 'send_session_to_whispey']
+__all__ = ['LivekitObserve', 'observe_session', 'send_session_to_whispey', 'send_call_started_to_whispey']
