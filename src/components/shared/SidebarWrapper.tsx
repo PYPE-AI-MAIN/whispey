@@ -12,6 +12,8 @@ import { Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowOrgSection, canShowAgentSection, type MemberVisibility } from '@/types/visibility'
 
 interface SidebarWrapperProps {
   children: ReactNode
@@ -45,6 +47,10 @@ interface SidebarContext {
   canAccessPhoneCalls: boolean
   canAccessPhoneSettings: boolean
   canCreatePypeAgent: boolean
+  /** Role-based: true for owner/admin in this project (role is per-project) */
+  isOwnerOrAdmin: boolean
+  /** From API (DB permissions.visibility). Only sections with visibility true are shown. */
+  visibility: MemberVisibility | null
 }
 
 interface NavigationItem {
@@ -160,7 +166,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys, canAccessPhoneSettings } = context
+      const { userCanViewApiKeys, isOwnerOrAdmin, visibility } = context
 
       const baseNavigation = [
         {
@@ -172,9 +178,13 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-    
+      // Show only what permissions.visibility allows (update in Supabase to change).
+      const showCampaign = canShowOrgSection(visibility, 'campaign')
+      const showPhoneSetting = canShowOrgSection(visibility, 'phoneSetting')
+      const showSettings = canShowOrgSection(visibility, 'settings')
+
       const campaignsItems = []
-      if (canAccessPhoneSettings) {
+      if (showCampaign) {
         campaignsItems.push({
           id: 'campaigns',
           name: 'Campaigns',
@@ -185,8 +195,7 @@ const sidebarRoutes: SidebarRoute[] = [
       }
 
       const configurationItems = []
-      
-      if (canAccessPhoneSettings) {
+      if (showPhoneSetting) {
         configurationItems.push({
           id: 'sip-management',
           name: 'Phone Settings',
@@ -207,14 +216,15 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'Project Settings'
         })
       }
-      
-      projectSettingItems.push({
-        id: 'settings',
-        name: 'Settings',
-        icon: 'Settings',
-        path: `/${projectId}/settings`,
-        group: 'Project Settings'
-      })
+      if (showSettings) {
+        projectSettingItems.push({
+          id: 'settings',
+          name: 'Settings',
+          icon: 'Settings',
+          path: `/${projectId}/settings`,
+          group: 'Project Settings'
+        })
+      }
 
       return {
         type: 'project-agents',
@@ -244,7 +254,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, canAccessPhoneCalls } = context
+      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -268,8 +278,15 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
+      // Agent nav: Agent Config = owner/admin OR permissions.visibility.agent.agentConfig (Supabase).
       const configItems = []
-      if (agentType === 'pype_agent' && context.canCreatePypeAgent) {
+      const showAgentConfig =
+        agentType === 'pype_agent' &&
+        (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
+      const showKnowledgeBase = agentType === 'pype_agent' && canShowAgentSection(visibility, 'knowledgeBase')
+      const showPhoneCalls = agentType === 'pype_agent' && canShowAgentSection(visibility, 'phoneCalls')
+
+      if (showAgentConfig) {
         configItems.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
@@ -277,6 +294,8 @@ const sidebarRoutes: SidebarRoute[] = [
           path: `/${projectId}/agents/${agentId}/config`, 
           group: 'configuration' 
         })
+      }
+      if (showKnowledgeBase) {
         configItems.push({ 
           id: 'knowledge', 
           name: 'Knowledge Base', 
@@ -287,7 +306,7 @@ const sidebarRoutes: SidebarRoute[] = [
       }
 
       const callItems = []
-      if (agentType === 'pype_agent' && canAccessPhoneCalls) {
+      if (showPhoneCalls) {
         callItems.push({
           id: 'phone-call',
           name: 'Phone Calls',
@@ -436,6 +455,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   
   // Check if projectId is valid (not a reserved path)
   const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
+
+  const { isOwnerOrAdmin, visibility } = useMemberVisibility(isValidProjectId ? projectId : undefined)
   
   // Check if agentId is valid (not a reserved path)
   const agentReservedPaths = ['api-keys', 'sip-management']
@@ -477,7 +498,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
       }
 
       try {
-        const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId!)
+        const { role } = await getUserProjectRole(user.emailAddresses[0].emailAddress, projectId!, user.id)
         setUserCanViewApiKeys(canViewApiKeys(role))
       } catch (error) {
         setUserCanViewApiKeys(false)
@@ -499,7 +520,9 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     agentType: agent?.agent_type,
     canAccessPhoneCalls,
     canAccessPhoneSettings,
-    canCreatePypeAgent
+    canCreatePypeAgent,
+    isOwnerOrAdmin: isOwnerOrAdmin ?? false,
+    visibility: visibility ?? null,
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)
