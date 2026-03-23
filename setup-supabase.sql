@@ -153,7 +153,7 @@ CREATE TABLE public.pype_voice_email_project_mapping (
     added_by_clerk_id text,
     created_at timestamp with time zone DEFAULT now(),
     clerk_id text,
-    is_active boolean
+    is_active boolean,
 );
 
 CREATE TABLE public.pype_voice_api_keys (
@@ -1215,6 +1215,161 @@ CREATE TABLE public.pype_voice_phone_numbers (
     assigned_at timestamp with time zone,
     trunk_direction varchar NOT NULL DEFAULT 'outbound'::character varying
 );
+
+-- Function to get call logs with distinct and filtering support
+CREATE OR REPLACE FUNCTION get_call_logs_with_distinct(
+  p_agent_id uuid,
+  p_pre_distinct_filters jsonb DEFAULT '[]'::jsonb,
+  p_post_distinct_filters jsonb DEFAULT '[]'::jsonb,
+  p_select text DEFAULT '*',
+  p_order_by_column text DEFAULT 'created_at',
+  p_order_ascending boolean DEFAULT false,
+  p_limit integer DEFAULT 50,
+  p_offset integer DEFAULT 0,
+  p_distinct_column text DEFAULT NULL,
+  p_distinct_json_field text DEFAULT NULL,
+  p_distinct_order text DEFAULT 'asc',
+  p_date_from text DEFAULT NULL,
+  p_date_to text DEFAULT NULL,
+  p_user_clerk_id text DEFAULT NULL,
+  p_user_email text DEFAULT NULL
+)
+RETURNS TABLE(
+  id uuid,
+  call_id varchar,
+  agent_id uuid,
+  customer_number text,
+  call_ended_reason varchar,
+  transcript_type varchar,
+  transcript_json jsonb,
+  metadata jsonb,
+  dynamic_variables jsonb,
+  environment varchar,
+  created_at timestamp,
+  call_started_at timestamp,
+  call_ended_at timestamp,
+  duration_seconds int4,
+  recording_url text,
+  avg_latency float8,
+  transcription_metrics jsonb,
+  total_stt_cost float8,
+  total_tts_cost float8,
+  total_llm_cost float8,
+  p50_latency float8,
+  complete_configuration jsonb,
+  telemetry_spans jsonb,
+  telemetry_analytics jsonb,
+  telemetry_data jsonb,
+  billing_duration_seconds float8,
+  metrics jsonb,
+  updated_at timestamp
+) AS $$
+DECLARE
+  query_text TEXT;
+  where_conditions TEXT[] := ARRAY[]::TEXT[];
+  pre_filter_conditions TEXT[] := ARRAY[]::TEXT[];
+  post_filter_conditions TEXT[] := ARRAY[]::TEXT[];
+  final_where TEXT := '';
+  filter_item JSONB;
+  filter_condition TEXT;
+  distinct_clause TEXT := '';
+  order_clause TEXT := '';
+  user_role TEXT;
+  user_visibility JSONB;
+  select_columns TEXT;
+BEGIN
+  -- Get user role and visibility if identifying info provided
+  IF p_user_clerk_id IS NOT NULL OR p_user_email IS NOT NULL THEN
+    SELECT
+      CASE WHEN role IN ('user', 'member', 'viewer') THEN 'viewer' ELSE role END,
+      permissions->'visibility'
+    INTO user_role, user_visibility
+    FROM pype_voice_email_project_mapping
+    WHERE (
+      (p_user_clerk_id IS NOT NULL AND clerk_id = p_user_clerk_id)
+      OR (p_user_email IS NOT NULL AND email = p_user_email)
+    )
+    AND project_id = (SELECT project_id FROM pype_voice_agents WHERE id = p_agent_id)
+    AND (is_active IS NULL OR is_active = true)
+    LIMIT 1;
+
+    -- If not a member, return no results
+    IF user_role IS NULL THEN
+      RETURN;
+    END IF;
+
+    -- Viewer: still return full columns so RETURNS TABLE shape is consistent; frontend hides cost/latency for viewers
+    select_columns := p_select;
+  ELSE
+    select_columns := p_select;
+  END IF;
+
+  -- Build base query
+  query_text := 'SELECT ' || select_columns || ' FROM pype_voice_call_logs WHERE agent_id = $1';
+
+  -- Add date range conditions
+  IF p_date_from IS NOT NULL THEN
+    where_conditions := array_append(where_conditions,
+      'call_started_at >= ' || quote_literal(p_date_from || ' 00:00:00'));
+  END IF;
+
+  IF p_date_to IS NOT NULL THEN
+    where_conditions := array_append(where_conditions,
+      'call_started_at <= ' || quote_literal(p_date_to || ' 23:59:59.999'));
+  END IF;
+
+  -- Process pre-distinct filters
+  FOR filter_item IN SELECT * FROM jsonb_array_elements(p_pre_distinct_filters)
+  LOOP
+    filter_condition := build_single_filter_condition(filter_item);
+    IF filter_condition IS NOT NULL AND filter_condition != '' THEN
+      pre_filter_conditions := array_append(pre_filter_conditions, filter_condition);
+    END IF;
+  END LOOP;
+
+  -- Process post-distinct filters
+  FOR filter_item IN SELECT * FROM jsonb_array_elements(p_post_distinct_filters)
+  LOOP
+    filter_condition := build_single_filter_condition(filter_item);
+    IF filter_condition IS NOT NULL AND filter_condition != '' THEN
+      post_filter_conditions := array_append(post_filter_conditions, filter_condition);
+    END IF;
+  END LOOP;
+
+  -- Build WHERE clause
+  IF array_length(where_conditions, 1) > 0 THEN
+    final_where := ' AND ' || array_to_string(where_conditions, ' AND ');
+  END IF;
+
+  IF array_length(pre_filter_conditions, 1) > 0 THEN
+    final_where := final_where || ' AND (' || array_to_string(pre_filter_conditions, ' AND ') || ')';
+  END IF;
+
+  -- Build ORDER BY clause
+  IF p_order_by_column IS NOT NULL AND p_order_by_column != '' THEN
+    order_clause := ' ORDER BY ' || quote_ident(p_order_by_column) || ' ' || CASE WHEN p_order_ascending THEN 'ASC' ELSE 'DESC' END;
+  END IF;
+
+  -- Handle distinct operation
+  IF p_distinct_column IS NOT NULL THEN
+    IF p_distinct_json_field IS NOT NULL THEN
+      distinct_clause := 'DISTINCT ON (' || quote_ident(p_distinct_column) || '->>' || quote_literal(p_distinct_json_field) || ')';
+    ELSE
+      distinct_clause := 'DISTINCT ON (' || quote_ident(p_distinct_column) || ')';
+    END IF;
+
+    -- Modify select for distinct
+    query_text := 'SELECT ' || distinct_clause || ' ' || select_columns || ' FROM pype_voice_call_logs WHERE agent_id = $1';
+    final_where := final_where || ' AND (' || array_to_string(post_filter_conditions, ' AND ') || ')';
+  END IF;
+
+  -- Build final query
+  query_text := query_text || final_where || order_clause || ' LIMIT ' || p_limit || ' OFFSET ' || p_offset;
+
+  -- Execute the query
+  RETURN QUERY EXECUTE query_text USING p_agent_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TABLE public.pype_voice_webhook_configs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
