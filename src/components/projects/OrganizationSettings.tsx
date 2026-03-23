@@ -54,8 +54,9 @@ interface TeamMember {
   id: string
   email: string
   role: 'owner' | 'admin' | 'member' | 'user' | 'viewer'
-  status: 'active' | 'pending' | 'inactive' // ✅ ADDED 'inactive'
+  status: 'active' | 'pending' | 'inactive'
   joinedAt: string
+  permissions?: Record<string, unknown>
 }
 
 interface Organization {
@@ -119,8 +120,9 @@ export default function OrganizationSettings({
         id: m.id.toString(),
         email: m.user?.email || m.email,
         role: m.role,
-        status: m.is_active === false ? 'inactive' : 'active', // ✅ FIXED
-        joinedAt: m.joined_at || m.created_at
+        status: m.is_active === false ? 'inactive' : 'active',
+        joinedAt: m.joined_at || m.created_at,
+        permissions: m.permissions,
       }))
       setTeamMembers(activeMembers)
     }
@@ -131,7 +133,8 @@ export default function OrganizationSettings({
         email: m.email,
         role: m.role,
         status: 'pending' as const,
-        joinedAt: m.created_at
+        joinedAt: m.created_at,
+        permissions: m.permissions,
       }))
       setPendingMembers(pending)
     }
@@ -139,7 +142,7 @@ export default function OrganizationSettings({
 
   // Invite member states
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member' | 'user' | 'viewer'>('member')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'viewer'>('viewer')
   const [isInviting, setIsInviting] = useState(false)
 
   // Delete organization states
@@ -151,7 +154,8 @@ export default function OrganizationSettings({
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null)
   const [isRemoving, setIsRemoving] = useState(false)
   const [changingRole, setChangingRole] = useState<string | null>(null)
-  const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft') // ✅ ADDED
+  const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft')
+
 
   const currentUserRole = membersData?.currentUserRole || teamMembers.find(
     m => m.email === user?.emailAddresses?.[0]?.emailAddress
@@ -199,7 +203,7 @@ export default function OrganizationSettings({
       refetchMembers()
       
       setInviteEmail('')
-      setInviteRole('member')
+      setInviteRole('viewer')
 
       if (data.type === 'direct_add') {
         toast.success(`${inviteEmail} has been added to the organization!`)
@@ -336,9 +340,7 @@ export default function OrganizationSettings({
       case 'admin':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800'
       case 'member':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800'
       case 'user':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200 dark:border-orange-800'
       case 'viewer':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600'
       default:
@@ -353,9 +355,7 @@ export default function OrganizationSettings({
       case 'admin':
         return <Shield className="w-3 h-3" />
       case 'member':
-        return <Users className="w-3 h-3" />
       case 'user':
-        return <User className="w-3 h-3" />
       case 'viewer':
         return <Eye className="w-3 h-3" />
       default:
@@ -372,7 +372,7 @@ export default function OrganizationSettings({
     })
   }
 
-  const handleRoleChange = async (memberId: string, newRole: 'admin' | 'member' | 'user' | 'viewer') => {
+  const handleRoleChange = async (memberId: string, newRole: 'admin' | 'viewer') => {
     setChangingRole(memberId)
   
     try {
@@ -400,6 +400,7 @@ export default function OrganizationSettings({
       setChangingRole(null)
     }
   }
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -460,7 +461,7 @@ export default function OrganizationSettings({
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="invite-role" className="text-xs text-gray-700 dark:text-gray-300">Role</Label>
-                    <Select value={inviteRole} onValueChange={(value: 'admin' | 'member' | 'user' | 'viewer') => setInviteRole(value)}>
+                    <Select value={inviteRole} onValueChange={(value: 'admin' | 'viewer') => setInviteRole(value)}>
                       <SelectTrigger id="invite-role" className="w-[130px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                         <SelectValue />
                       </SelectTrigger>
@@ -469,18 +470,6 @@ export default function OrganizationSettings({
                           <div className="flex items-center gap-2">
                             <Eye className="w-3 h-3" />
                             Viewer
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="user" className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <User className="w-3 h-3" />
-                            User
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="member" className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <Users className="w-3 h-3" />
-                            Member
                           </div>
                         </SelectItem>
                         <SelectItem value="admin" className="text-gray-900 dark:text-gray-100">
@@ -564,7 +553,7 @@ export default function OrganizationSettings({
                               {canChangeRole && !isInactive ? (
                                 <Select 
                                   value={member.role} 
-                                  onValueChange={(value: 'admin' | 'member' | 'user' | 'viewer') => handleRoleChange(member.id, value)}
+                                  onValueChange={(value: 'admin' | 'viewer') => handleRoleChange(member.id, value)}
                                   disabled={changingRole === member.id}
                                 >
                                   <SelectTrigger className={`w-[130px] h-6 text-xs ${getRoleBadgeColor(member.role)}`}>
@@ -584,18 +573,6 @@ export default function OrganizationSettings({
                                       <div className="flex items-center gap-2">
                                         <Eye className="w-3 h-3" />
                                         Viewer
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="user" className="text-xs">
-                                      <div className="flex items-center gap-2">
-                                        <User className="w-3 h-3" />
-                                        User
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="member" className="text-xs">
-                                      <div className="flex items-center gap-2">
-                                        <Users className="w-3 h-3" />
-                                        Member
                                       </div>
                                     </SelectItem>
                                     <SelectItem value="admin" className="text-xs">
@@ -638,7 +615,7 @@ export default function OrganizationSettings({
                           </div>
                         </div>
 
-                        {/* ✅ UPDATED ACTION BUTTONS */}
+                        {/* Action buttons */}
                         {canManageMembers && member.role !== 'owner' && !isCurrentUser && (
                           <div className="flex items-center gap-1">
                             {isInactive ? (
@@ -792,7 +769,8 @@ export default function OrganizationSettings({
         )}
       </div>
 
-      {/* ✅ UPDATED Remove Member Confirmation Dialog */}
+
+      {/* Remove Member Confirmation Dialog */}
       <Dialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
         <DialogContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>

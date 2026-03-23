@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
 
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url)
-    // pathname = "/api/agent-config/FanaticAuthorship"
     const pathSegments = url.pathname.split("/")
     const agentName = pathSegments[pathSegments.length - 1]
 
     if (!agentName) {
       return NextResponse.json({ message: "Agent name is required" }, { status: 400 })
+    }
+
+    const projectId = await getProjectIdFromAgentBackendName(agentName)
+    if (projectId && (await isViewerForProject(projectId))) {
+      return NextResponse.json({ message: "Forbidden: viewers cannot access agent config" }, { status: 403 })
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
