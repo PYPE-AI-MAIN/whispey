@@ -77,6 +77,7 @@ const COLUMNS = [
   { value: 'call_ended_reason', label: 'Status', type: 'text' },
   { value: 'wcall_event', label: 'Call Event', type: 'text' },
   { value: 'tags', label: 'Tags', type: 'tags' },
+  { value: 'flag', label: 'Flag', type: 'flag' },
   { value: 'metadata', label: 'Metadata', type: 'jsonb' },
   { value: 'transcription_metrics', label: 'Transcription', type: 'jsonb' }
 ]
@@ -105,6 +106,10 @@ const OPERATIONS = {
   tags: [
     { value: 'contains', label: 'Contains tag' },
     { value: 'equals', label: 'Exact tag match' }
+  ],
+  flag: [
+    { value: 'contains', label: 'Contains text' },
+    { value: 'exists', label: 'Has any flag' }
   ],
   jsonb: [
     { value: 'json_equals', label: 'Equals' },

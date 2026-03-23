@@ -11,6 +11,7 @@ export const BASIC_COLUMNS = [
   { key: "call_ended_reason", label: "Call Status" },    // 3
   { key: "duration_seconds", label: "Duration" },        // 4
   { key: "tags", label: "Tags" },                        // 5
+  { key: "flag", label: "Flag" },                        // 6
   { key: "billing_duration_seconds", label: "Billing Duration" },
   { key: "total_cost", label: "Total Cost (₹)" },
   { key: "call_started_at", label: "Start Time" },
@@ -36,7 +37,7 @@ const EXCLUDED_METADATA_COLUMNS = [
 ]
 
 // transcription_metrics keys managed as first-class BASIC_COLUMNS — skip auto-discovery
-const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = ['tags']
+const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = ['tags', 'tagComments', 'flag']
 
 interface VisibleColumns {
   basic: string[]
