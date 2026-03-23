@@ -16,6 +16,7 @@ interface RetryConfigurationProps {
   values: {
     retryConfig: RetryConfig[]
     agentId?: string
+    agentRuntime?: 'livekit' | 'pipecat'
   }
 }
 
@@ -41,8 +42,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
   }, [values.agentId])
 
   const fetchAgentFields = async () => {
-    if (!values.agentId) {
-      console.log('No agentId provided, clearing fields')
+    if (!values.agentId || values.agentRuntime === 'pipecat') {
+      console.log('No agentId or pipecat runtime, clearing fields')
       setAvailableMetrics([])
       setAvailableFields([])
       return
