@@ -1026,7 +1026,8 @@ async def send_call_started_to_whispey(session_id: str, apikey: str = None, api_
         "wcall_event": "call_started",
         "environment": (info.get("dynamic_params") or {}).get("environment", "dev"),
     }
-    logger.info("[WHISPEY] call_started payload keys: %s", list(payload.keys()))
+    logger.info("[WHISPEY] call_started payload keys: %s",
+                ["call_id", "agent_id", "customer_number", "call_started_at", "duration_seconds", "wcall_event", "environment"])
     try:
         out = await send_to_whispey(payload, apikey=key, api_url=url)
         if not out.get("success"):

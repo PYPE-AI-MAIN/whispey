@@ -167,6 +167,14 @@ async def upload_to_s3_presigned(data, upload_url):
                 raise Exception(f"S3 upload failed ({response.status}): {error_text}")
             return True
 
+_ALLOWED_WCALL_EVENTS = {"call_started", "call_ended", "in_progress", "completed", "failed", "unknown"}
+
+def _sanitize_wcall_event(raw_event):
+    """Return a whitelisted, non-sensitive event label safe for logging."""
+    if isinstance(raw_event, str) and raw_event in _ALLOWED_WCALL_EVENTS:
+        return raw_event
+    return "unknown"
+
 async def send_to_whispey(data, apikey=None, api_url=None):
     """
     Send data to Whispey API with automatic compression for large payloads
@@ -184,6 +192,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
         data["call_ended_reason"] = "completed"
 
     wcall_event = data.get("wcall_event", "unknown")
+    safe_event = _sanitize_wcall_event(wcall_event)
     # Convert timestamp fields to proper ISO format
     if "call_started_at" in data:
         data["call_started_at"] = convert_timestamp(data["call_started_at"])
@@ -194,7 +203,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     url_to_use = api_url if api_url else (os.getenv("WHISPEY_API_URL") or WHISPEY_API_URL)
 
     logger.info("[WHISPEY] send_to_whispey: event=%s url=%s apikey=%s",
-                wcall_event, url_to_use, "set" if api_key_to_use else "MISSING")
+                safe_event, url_to_use, "set" if api_key_to_use else "MISSING")
 
     if not api_key_to_use:
         error_msg = "API key not provided and WHISPEY_API_KEY environment variable not set"
@@ -206,7 +215,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     
     # Check payload size and route accordingly
     original_size = get_payload_size(data)
-    logger.info("[WHISPEY] send_to_whispey: payload_size=%d bytes event=%s", original_size, wcall_event)
+    logger.info("[WHISPEY] send_to_whispey: payload_size=%d bytes event=%s", original_size, safe_event)
     
     # NEW: Use S3 for very large payloads (> 5MB)
     if USE_S3_FOR_LARGE and original_size > S3_UPLOAD_THRESHOLD:
@@ -313,16 +322,16 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     
     try:
         json_str = json.dumps(payload)
-        logger.info("[WHISPEY] send_to_whispey: sending %d chars event=%s", len(json_str), wcall_event)
+        logger.info("[WHISPEY] send_to_whispey: sending %d chars event=%s", len(json_str), safe_event)
 
         connector = aiohttp.TCPConnector(**_CONNECTOR_KWARGS)
         async with aiohttp.ClientSession(connector=connector, timeout=_REQUEST_TIMEOUT) as session:
             async with session.post(url_to_use, json=payload, headers=headers) as response:
-                logger.info("[WHISPEY] send_to_whispey: response status=%d event=%s", response.status, wcall_event)
+                logger.info("[WHISPEY] send_to_whispey: response status=%d event=%s", response.status, safe_event)
                 
                 if response.status >= 400:
                     error_text = await response.text()
-                    logger.error("[WHISPEY] send_to_whispey: HTTP %d error=%s event=%s", response.status, error_text[:200], wcall_event)
+                    logger.error("[WHISPEY] send_to_whispey: HTTP %d error=%s event=%s", response.status, error_text[:200], safe_event)
                     return {
                         "success": False,
                         "status": response.status,
@@ -330,7 +339,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     }
                 else:
                     result = await response.json()
-                    logger.info("[WHISPEY] send_to_whispey: success event=%s", wcall_event)
+                    logger.info("[WHISPEY] send_to_whispey: success event=%s", safe_event)
                     return {
                         "success": True,
                         "status": response.status,
@@ -339,14 +348,14 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     
     except (TypeError, ValueError) as e:
         error_msg = f"JSON serialization failed: {e}"
-        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, wcall_event)
+        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, safe_event)
         return {
             "success": False,
             "error": error_msg
         }
     except Exception as e:
         error_msg = f"Request failed: {e}"
-        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, wcall_event)
+        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, safe_event)
         return {
             "success": False,
             "error": error_msg
