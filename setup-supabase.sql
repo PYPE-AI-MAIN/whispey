@@ -192,7 +192,7 @@ BEGIN
           'totalCalls', true,
           'totalMinutes', true,
           'billing', true,
-          'totalCost', true,
+          'totalCost', false,
           'responseTime', true,
           'success', true,
           'retry', true,

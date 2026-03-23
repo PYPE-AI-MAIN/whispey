@@ -76,6 +76,12 @@ export const DEFAULT_AGENT_OVERVIEW_VISIBILITY: AgentOverviewVisibility = {
   charts: true,
 }
 
+/** Viewer overview defaults: cost card off unless explicitly granted in DB (merge in getEffectiveVisibility). */
+export const VIEWER_AGENT_OVERVIEW_VISIBILITY: AgentOverviewVisibility = {
+  ...DEFAULT_AGENT_OVERVIEW_VISIBILITY,
+  totalCost: false,
+}
+
 export const DEFAULT_AGENT_VISIBILITY: AgentVisibility = {
   overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
   agentConfig: true,
@@ -100,7 +106,7 @@ export const VIEWER_RESTRICTED_VISIBILITY: MemberVisibility = {
     reanalyze: false,       // Cannot see Re-analyze Logs in Call Logs
   },
   agent: {
-    overview: DEFAULT_AGENT_OVERVIEW_VISIBILITY,
+    overview: VIEWER_AGENT_OVERVIEW_VISIBILITY,
     agentConfig: false,
     knowledgeBase: false, // Cannot see Knowledge Base
     phoneCalls: false, // Cannot see Phone Calls (call configuration)
