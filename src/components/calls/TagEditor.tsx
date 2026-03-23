@@ -85,18 +85,41 @@ interface TagBadgeProps {
   tag: string
   comment?: string
   canComment: boolean
+  /** When true the comment popover opens automatically on mount (used after tag creation) */
+  autoOpen?: boolean
+  onCommentPopoverOpened?: () => void
   onRemove: (tag: string) => void
   onCommentSave: (tag: string, comment: string) => void
 }
 
-const TagBadge: React.FC<TagBadgeProps> = ({ tag, comment, canComment, onRemove, onCommentSave }) => {
+const TagBadge: React.FC<TagBadgeProps> = ({
+  tag, comment, canComment, autoOpen = false,
+  onCommentPopoverOpened, onRemove, onCommentSave,
+}) => {
   const color = useTagColor(tag)
   const [commentOpen, setCommentOpen] = useState(false)
   const [draft, setDraft] = useState(comment || '')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // Grace-period flag: prevents Radix from immediately re-closing the popover
+  // when pointer events from the closing add-tag popover propagate through.
+  const suppressDismissRef = useRef(false)
 
   // Sync draft when parent comment changes
   useEffect(() => { setDraft(comment || '') }, [comment])
+
+  // Auto-open comment popover when requested (e.g. right after tag creation).
+  useEffect(() => {
+    if (!autoOpen || !canComment) return
+    const t = setTimeout(() => {
+      suppressDismissRef.current = true          // start grace period
+      setCommentOpen(true)
+      onCommentPopoverOpened?.()
+      // Clear grace period after pointer-event propagation has settled
+      setTimeout(() => { suppressDismissRef.current = false }, 400)
+    }, 100)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen])
 
   useEffect(() => {
     if (commentOpen) setTimeout(() => textareaRef.current?.focus(), 50)
@@ -155,16 +178,35 @@ const TagBadge: React.FC<TagBadgeProps> = ({ tag, comment, canComment, onRemove,
 
   if (!canComment) return badge
 
+  // For admin/owner: wrap trigger in a tooltip (shows existing annotation on hover)
+  // then Popover opens on click for editing.
+  const triggerEl = comment ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <PopoverTrigger asChild>{badgeEl}</PopoverTrigger>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs text-xs">
+        <div className="flex items-start gap-1.5">
+          <MessageSquare className="w-3 h-3 mt-0.5 shrink-0 opacity-70" />
+          <span className="whitespace-pre-wrap">{comment}</span>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  ) : (
+    <PopoverTrigger asChild>{badgeEl}</PopoverTrigger>
+  )
+
   return (
     <Popover open={commentOpen} onOpenChange={setCommentOpen}>
-      <PopoverTrigger asChild>
-        {badgeEl}
-      </PopoverTrigger>
+      {triggerEl}
       <PopoverContent
         className="w-64 p-3 shadow-lg"
         align="start"
         side="bottom"
         onClick={e => e.stopPropagation()}
+        onInteractOutside={e => {
+          if (suppressDismissRef.current) e.preventDefault()
+        }}
       >
         <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground font-medium">
           <MessageSquare className="w-3 h-3" />
@@ -252,16 +294,19 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [justAddedTag, setJustAddedTag] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setTags(initialTags) }, [initialTags])
-  useEffect(() => { setTagComments(initialTagComments) }, [initialTagComments])
+  // No prop-sync useEffects here intentionally — local state is the source of
+  // truth after mount. Syncing from props on every parent refetch was causing
+  // the "disappear then reappear" flicker. The component resets naturally when
+  // React unmounts/remounts it (key change on callId).
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50)
   }, [open])
 
-  const persistTags = useCallback(async (nextTags: string[]) => {
+  const persistTags = useCallback(async (nextTags: string[], prevTags: string[]) => {
     setSaving(true)
     try {
       const res = await fetch(`/api/logs/call-logs/${callId}/tags`, {
@@ -270,23 +315,19 @@ export const TagEditor: React.FC<TagEditorProps> = ({
         body: JSON.stringify({ tags: nextTags }),
       })
       if (!res.ok) throw new Error(await res.text())
-      onUpdated?.()
+      // No refetch — local state is already correct; refetching caused the flicker
     } catch (err) {
       console.error('Failed to save tags:', err)
-      setTags(initialTags)
+      setTags(prevTags)   // revert to pre-save snapshot, not stale initialTags
     } finally {
       setSaving(false)
     }
-  }, [callId, initialTags, onUpdated])
+  }, [callId])
 
-  const persistComment = useCallback(async (tag: string, comment: string) => {
-    const nextComments = { ...tagComments }
-    if (comment.trim()) {
-      nextComments[tag] = comment.trim()
-    } else {
-      delete nextComments[tag]
-    }
-    setTagComments(nextComments)
+  const persistComment = useCallback(async (
+    nextComments: Record<string, string>,
+    prevComments: Record<string, string>
+  ) => {
     try {
       const res = await fetch(`/api/logs/call-logs/${callId}/tags`, {
         method: 'PATCH',
@@ -294,26 +335,42 @@ export const TagEditor: React.FC<TagEditorProps> = ({
         body: JSON.stringify({ tagComments: nextComments }),
       })
       if (!res.ok) throw new Error(await res.text())
-      onUpdated?.()
     } catch (err) {
       console.error('Failed to save tag comment:', err)
-      setTagComments(initialTagComments)
+      setTagComments(prevComments)  // revert to pre-save snapshot
     }
-  }, [callId, tagComments, initialTagComments, onUpdated])
+  }, [callId])
+
+  // Wrapper called by TagBadge with (tag, comment string)
+  const handleCommentSave = useCallback((tag: string, comment: string) => {
+    const prev = tagComments
+    const next = { ...tagComments }
+    if (comment.trim()) {
+      next[tag] = comment.trim()
+    } else {
+      delete next[tag]
+    }
+    setTagComments(next)
+    persistComment(next, prev)
+  }, [tagComments, persistComment])
 
   const addTag = useCallback((tag: string) => {
     const trimmed = tag.trim()
     if (!trimmed || tags.includes(trimmed)) return
+    const prev = tags
     const next = [...tags, trimmed]
     setTags(next)
-    persistTags(next)
+    persistTags(next, prev)
     setInput('')
-  }, [tags, persistTags])
+    setOpen(false)
+    if (canComment) setJustAddedTag(trimmed)
+  }, [tags, persistTags, canComment])
 
   const removeTag = useCallback((tag: string) => {
+    const prev = tags
     const next = tags.filter(t => t !== tag)
     setTags(next)
-    persistTags(next)
+    persistTags(next, prev)
   }, [tags, persistTags])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -336,8 +393,10 @@ export const TagEditor: React.FC<TagEditorProps> = ({
           tag={tag}
           comment={tagComments[tag]}
           canComment={canComment}
+          autoOpen={canComment && justAddedTag === tag}
+          onCommentPopoverOpened={() => setJustAddedTag(null)}
           onRemove={removeTag}
-          onCommentSave={persistComment}
+          onCommentSave={handleCommentSave}
         />
       ))}
 
@@ -425,9 +484,11 @@ export const TagEditor: React.FC<TagEditorProps> = ({
             </p>
           )}
 
-          {canComment && tags.length > 0 && (
+          {canComment && (
             <p className="text-[10px] text-muted-foreground mt-2 px-1 border-t border-border pt-2">
-              Click a tag to add an annotation
+              {tags.length > 0
+                ? 'Click any tag badge to annotate it'
+                : 'Adding a tag will prompt for an annotation'}
             </p>
           )}
         </PopoverContent>

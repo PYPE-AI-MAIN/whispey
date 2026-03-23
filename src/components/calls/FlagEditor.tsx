@@ -28,16 +28,18 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
   const [saving, setSaving] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
-    setFlag(initialFlag ?? null)
-    setDraft(initialFlag?.text ?? '')
-  }, [initialFlag])
+  // No prop-sync useEffect — local state is the source of truth after mount.
 
   useEffect(() => {
     if (open) setTimeout(() => textareaRef.current?.focus(), 50)
   }, [open])
 
   const persist = useCallback(async (nextFlag: { text: string } | null) => {
+    const prevFlag = flag        // snapshot before update
+    const prevDraft = draft
+    // Apply optimistically
+    if (nextFlag === null) { setFlag(null); setDraft('') }
+    else setFlag({ text: nextFlag.text, flagged_at: new Date().toISOString() })
     setSaving(true)
     try {
       const res = await fetch(`/api/logs/call-logs/${callId}/flag`, {
@@ -46,21 +48,15 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
         body: JSON.stringify({ flag: nextFlag }),
       })
       if (!res.ok) throw new Error(await res.text())
-      if (nextFlag === null) {
-        setFlag(null)
-        setDraft('')
-      } else {
-        setFlag({ text: nextFlag.text, flagged_at: new Date().toISOString() })
-      }
-      onUpdated?.()
+      onUpdated?.()   // kept for row-colour update in CallLogs
     } catch (err) {
       console.error('Failed to save flag:', err)
-      setFlag(initialFlag ?? null)
-      setDraft(initialFlag?.text ?? '')
+      setFlag(prevFlag)
+      setDraft(prevDraft)
     } finally {
       setSaving(false)
     }
-  }, [callId, initialFlag, onUpdated])
+  }, [callId, flag, draft, onUpdated])
 
   const handleSave = () => {
     if (!draft.trim()) return
