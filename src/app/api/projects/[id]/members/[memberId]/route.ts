@@ -2,22 +2,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
+import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-function getPermissionsByRole(role: string): Record<string, boolean> {
-  const rolePermissions: Record<string, Record<string, boolean>> = {
-    viewer: { read: true, write: false, delete: false, admin: false },
-    user: { read: true, write: false, delete: false, admin: false },
-    member: { read: true, write: true, delete: false, admin: false },
-    admin: { read: true, write: true, delete: true, admin: false },
-    owner: { read: true, write: true, delete: true, admin: true },
-  }
-
-  return rolePermissions[role] || rolePermissions['member']
+function normalizeRole(role: string): string {
+  if (role === 'user' || role === 'member' || role === 'viewer') return 'viewer'
+  return role
 }
 
 export async function PATCH(
@@ -38,9 +32,13 @@ export async function PATCH(
     const body = await request.json()
     const { role } = body
 
-    // Validate role
-    const validRoles = ['viewer', 'user', 'member', 'admin', 'owner']
-    if (!role || !validRoles.includes(role)) {
+    // Require role for updates (visibility is managed by backend based on role)
+    if (!role) {
+      return NextResponse.json({ error: 'Provide role' }, { status: 400 })
+    }
+
+    const validRoles = ['viewer', 'admin', 'owner']
+    if (!validRoles.includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
@@ -61,6 +59,9 @@ export async function PATCH(
     if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
+
+    // Normalize the role early
+    const newRole = normalizeRole(role)
 
     // ✅ FIXED: Get the member being updated (check only active members for role changes)
     const { data: memberToUpdate, error: memberError } = await supabase
@@ -86,24 +87,37 @@ export async function PATCH(
     }
 
     // Don't allow non-owners to assign owner role
-    if (role === 'owner' && userAccessMapping.role !== 'owner') {
+    if (newRole === 'owner' && userAccessMapping.role !== 'owner') {
       return NextResponse.json({ error: 'Only owners can assign owner role' }, { status: 403 })
     }
 
-    // Don't allow changing your own role
-    if (memberToUpdate.clerk_id === userId || memberToUpdate.email?.toLowerCase() === userEmail?.toLowerCase()) {
+    // Don't allow changing your own role (but allow changing own visibility for future use)
+    const isSelf = memberToUpdate.clerk_id === userId || memberToUpdate.email?.toLowerCase() === userEmail?.toLowerCase()
+    if (role && isSelf) {
       return NextResponse.json({ error: 'You cannot change your own role' }, { status: 400 })
     }
 
-    // Update the member's role
-    const permissions = getPermissionsByRole(role)
-    
+    // Determine permissions based on role (visibility is fixed per role)
+    const getPermissionsForRole = (r: string) => {
+      const normalized = normalizeRole(r)
+      const base = {
+        read: true,
+        write: normalized === 'admin' || normalized === 'owner',
+        delete: normalized === 'admin' || normalized === 'owner',
+        admin: normalized === 'owner',
+      }
+
+      return {
+        ...base,
+        visibility: normalized === 'viewer' ? VIEWER_RESTRICTED_VISIBILITY : DEFAULT_MEMBER_VISIBILITY,
+      }
+    }
+
+    const permissions = getPermissionsForRole(newRole)
+
     const { data: updatedMember, error: updateError } = await supabase
       .from('pype_voice_email_project_mapping')
-      .update({ 
-        role,
-        permissions 
-      })
+      .update({ role: newRole, permissions })
       .eq('id', memberId)
       .eq('project_id', projectId)
       .select()

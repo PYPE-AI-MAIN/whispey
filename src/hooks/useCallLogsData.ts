@@ -13,7 +13,8 @@ export const useCallLogsData = (
   agent: any,
   userEmail?: string,
   projectId?: string,
-  dateRange?: { from: string; to: string }
+  dateRange?: { from: string; to: string },
+  userId?: string
 ) => {
   const [role, setRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
@@ -38,13 +39,13 @@ export const useCallLogsData = (
     [activeFilters, agentId]
   )
 
-  // Fetch user role
+  // Fetch user role (use clerk_id when available so owners/members added by clerk_id are found)
   useEffect(() => {
-    if (userEmail && projectId) {
+    if ((userEmail || userId) && projectId) {
       const getUserRole = async () => {
         setRoleLoading(true)
         try {
-          const userRole = await getUserProjectRole(userEmail, projectId)
+          const userRole = await getUserProjectRole(userEmail ?? '', projectId, userId)
           setRole(userRole.role)
         } catch (error) {
           console.error('Failed to load user role:', error)
@@ -58,7 +59,7 @@ export const useCallLogsData = (
       setRoleLoading(false)
       setRole('user')
     }
-  }, [userEmail, projectId])
+  }, [userEmail, projectId, userId])
 
   const selectColumns = useMemo(() => getSelectColumns(role), [role])
 

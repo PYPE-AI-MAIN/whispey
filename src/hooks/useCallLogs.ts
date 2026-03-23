@@ -24,6 +24,8 @@ interface UseCallLogsOptions {
   refetchOnWindowFocus?: boolean
   staleTime?: number
   gcTime?: number
+  userId?: string
+  userEmail?: string
 }
 
 export const useCallLogs = ({
@@ -38,7 +40,9 @@ export const useCallLogs = ({
   refetchOnMount = false,
   refetchOnWindowFocus = false,
   staleTime = 5 * 60 * 1000, // 5 minutes
-  gcTime = 10 * 60 * 1000 // 10 minutes (formerly cacheTime)
+  gcTime = 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+  userId,
+  userEmail
 }: UseCallLogsOptions) => {
   return useInfiniteQuery({
     queryKey: [
@@ -49,7 +53,8 @@ export const useCallLogs = ({
       select, 
       `${orderBy.column}-${orderBy.ascending}`,
       distinctConfig ? JSON.stringify(distinctConfig) : 'no-distinct',
-      dateRange ? `${dateRange.from}-${dateRange.to}` : 'no-date-range'
+      dateRange ? `${dateRange.from}-${dateRange.to}` : 'no-date-range',
+      userId ?? 'no-user'
     ],
     
     initialPageParam: 0,
@@ -63,7 +68,7 @@ export const useCallLogs = ({
       // Use RPC function for all queries (handles filters correctly)
       // Always use RPC to ensure consistent filter handling
       if (true) {
-        const rpcParams = {
+        const rpcParamsWithUser = {
           p_agent_id: agentId,
           p_pre_distinct_filters: preDistinctFilters,
           p_post_distinct_filters: postDistinctFilters,
@@ -76,24 +81,43 @@ export const useCallLogs = ({
           p_distinct_json_field: distinctConfig?.jsonField || null,
           p_distinct_order: distinctConfig?.order || 'asc',
           p_date_from: dateRange?.from || null,
-          p_date_to: dateRange?.to || null
+          p_date_to: dateRange?.to || null,
+          p_user_clerk_id: userId || null,
+          p_user_email: userEmail || null
         }
-        
-        console.log('🔍 RPC Call - Parameters:', JSON.stringify(rpcParams, null, 2))
-        console.log('🔍 Pre-distinct filters:', JSON.stringify(preDistinctFilters, null, 2))
-        console.log('🔍 Post-distinct filters:', JSON.stringify(postDistinctFilters, null, 2))
-        console.log('🔍 OrderBy column:', orderBy.column)
-        console.log('🔍 Distinct config:', JSON.stringify(distinctConfig, null, 2))
-        
-        const { data, error } = await supabase.rpc('get_call_logs_with_distinct', rpcParams)
+
+        let { data, error } = await supabase.rpc('get_call_logs_with_distinct', rpcParamsWithUser)
+
+        if (error?.code === 'PGRST202') {
+          const params13 = {
+            p_agent_id: agentId,
+            p_pre_distinct_filters: preDistinctFilters,
+            p_post_distinct_filters: postDistinctFilters,
+            p_select: select,
+            p_order_by_column: orderBy.column,
+            p_order_ascending: orderBy.ascending,
+            p_limit: limit,
+            p_offset: offset,
+            p_distinct_column: distinctConfig?.column || null,
+            p_distinct_json_field: distinctConfig?.jsonField || null,
+            p_distinct_order: distinctConfig?.order || 'asc',
+            p_date_from: dateRange?.from || null,
+            p_date_to: dateRange?.to || null
+          }
+          const fallback = await supabase.rpc('get_call_logs_with_distinct', params13)
+          if (fallback.error) {
+            console.error('❌ RPC Error (15-param and 13-param fallback):', fallback.error)
+            throw fallback.error
+          }
+          data = fallback.data
+          error = null
+        }
 
         if (error) {
           console.error('❌ RPC Error:', error)
-          console.error('❌ Error details:', JSON.stringify(error, null, 2))
           throw error
         }
-        
-        console.log('✅ RPC Success - Data count:', data?.length || 0)
+
         return (data || []) as unknown as CallLog[]
       }
 
