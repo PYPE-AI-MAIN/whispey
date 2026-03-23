@@ -82,6 +82,7 @@ export const createTableColumns = (
               </code>
             )
           case "call_ended_reason":
+            if (call.wcall_event === "call_started") return <span className="text-muted-foreground">—</span>
             return (
               <Badge
                 variant={call.call_ended_reason === "completed" ? "default" : "destructive"}
@@ -111,6 +112,12 @@ export const createTableColumns = (
             )
           case "call_started_at":
             return <span>{formatToIndianDateTime(call.call_started_at)}</span>
+          case "wcall_event":
+            return (
+              <Badge variant={call.wcall_event === "call_ended" ? "default" : "secondary"} className="text-xs font-medium px-2 py-0.5">
+                {call.wcall_event === "call_ended" ? "Ended" : call.wcall_event === "call_started" ? "Started" : (call.wcall_event ?? "-")}
+              </Badge>
+            )
           case "total_cost":
             return call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
               <CostTooltip call={call} />
