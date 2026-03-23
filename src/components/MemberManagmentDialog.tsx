@@ -61,7 +61,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
 }) => {
 
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState('member')
+  const [role, setRole] = useState<'admin' | 'viewer'>('viewer')
   const [loading, setLoading] = useState(false)
   const [members, setMembers] = useState<Member[]>([])
   const [pendingMappings, setPendingMappings] = useState<PendingMapping[]>([])
@@ -137,7 +137,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
       })
       
       setEmail('')
-      setRole('member')
+      setRole('viewer')
       
       // Refresh members list
       fetchMembers()
@@ -153,10 +153,11 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-      case 'user': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
       case 'admin': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-      case 'member': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-      case 'viewer': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+      case 'member':
+      case 'user':
+      case 'viewer':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
     }
   }
@@ -173,7 +174,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
 
   const handleClose = () => {
     setEmail('')
-    setRole('member')
+    setRole('viewer')
     setMessage(null)
     setMembers([])
     setPendingMappings([])
@@ -240,12 +241,10 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
                   </label>
                   <select
                     value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => setRole(e.target.value as 'admin' | 'viewer')}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                   >
-                    <option value="user">User</option>
                     <option value="viewer">Viewer (Read only)</option>
-                    <option value="member">Member (Read & Write)</option>
                     <option value="admin">Admin (Read, Write & Delete)</option>
                   </select>
                 </div>

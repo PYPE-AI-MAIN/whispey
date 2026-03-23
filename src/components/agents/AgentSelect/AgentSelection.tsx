@@ -17,6 +17,7 @@ import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useMobile } from '@/hooks/use-mobile'
 import { UserPermissionsProvider, useInvalidateUserPermissions } from '@/contexts/UserPermissionsContext'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 
 interface Agent {
   id: string
@@ -150,7 +151,9 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
     }
   }
 
-  // Filter agents based on search and status
+  const { isOwnerOrAdmin } = useMemberVisibility(projectId)
+
+  // All users can see the agents in their project (backend enforces access controls)
   const filteredAgents = (agents || []).filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.agent_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
