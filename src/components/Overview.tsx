@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import '../utils/verifyDistinctConfig' // Load verification utility for console debugging
 import { Tooltip } from 'recharts'
 import {
@@ -58,6 +58,9 @@ import { MetricGroupTabs } from './MetricGroupTabs'
 import { MetricGroupManager } from './MetricGroupManager'
 import { MetricGroupService } from '@/services/metricGroupService'
 import { MetricGroup, METRIC_IDS, CHART_IDS } from '@/types/metricGroups'
+import type { AgentOverviewVisibility } from '@/types/visibility'
+import { canShowOrgSection } from '@/types/visibility'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 
 interface OverviewProps {
   project: any
@@ -103,10 +106,30 @@ const AVAILABLE_COLUMNS = [
   { key: 'transcription_metrics', label: 'Transcription Metrics', type: 'jsonb' as const }
 ]
 
+/** Maps metric card IDs → `permissions.visibility.agent.overview` keys in Supabase. */
+const OVERVIEW_KEY_BY_METRIC_ID: Partial<Record<string, keyof AgentOverviewVisibility>> = {
+  [METRIC_IDS.TOTAL_CALLS]: 'totalCalls',
+  [METRIC_IDS.TOTAL_MINUTES]: 'totalMinutes',
+  [METRIC_IDS.TOTAL_BILLING_MINUTES]: 'billing',
+  [METRIC_IDS.TOTAL_COST]: 'totalCost',
+  [METRIC_IDS.AVG_LATENCY]: 'responseTime',
+  [METRIC_IDS.SUCCESSFUL_CALLS]: 'success',
+  /** Failed Calls card — DB JSON uses `retry` */
+  [METRIC_IDS.FAILED_CALLS]: 'retry',
+}
+
+/** Maps built-in chart IDs → overview keys; all charts also require `overview.charts`. */
+const OVERVIEW_KEY_BY_CHART_ID: Partial<Record<string, keyof AgentOverviewVisibility>> = {
+  [CHART_IDS.DAILY_CALLS]: 'totalCalls',
+  [CHART_IDS.DAILY_MINUTES]: 'totalMinutes',
+  [CHART_IDS.AVG_LATENCY]: 'responseTime',
+  [CHART_IDS.SUCCESS_ANALYSIS]: 'success',
+}
+
 // Mobile-responsive skeleton components
 function MetricsGridSkeleton({ role, isMobile }: { role: string | null; isMobile: boolean }) {
   const getVisibleCardCount = () => {
-    if (role === 'user') return 3
+    if (role !== 'admin' && role !== 'owner') return 3
     return 6
   }
 
@@ -187,6 +210,8 @@ const Overview: React.FC<OverviewProps> = ({
 
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
+
+  const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
 
   // Data fetching
   const { data: analytics, loading: analyticsLoading, error } = useOverviewQuery({
@@ -327,35 +352,57 @@ const Overview: React.FC<OverviewProps> = ({
   // Filter metrics based on active group
   const visibleMetricIds = useMemo(() => {
     if (activeGroupId === 'all') {
-      // Show all metrics
       const baseMetrics = Object.values(METRIC_IDS)
       const customMetricIds = customTotals.map(ct => `custom_${ct.id}`)
       return [...baseMetrics, ...customMetricIds]
     }
-
     const activeGroup = metricGroups.find(g => g.id === activeGroupId)
     return activeGroup?.metric_ids || []
   }, [activeGroupId, metricGroups, customTotals])
 
   const visibleChartIds = useMemo(() => {
-      if (activeGroupId === 'all') {
-        // Show all charts
-        return Object.values(CHART_IDS)
-      }
-
-      const activeGroup = metricGroups.find(g => g.id === activeGroupId)
-      return activeGroup?.chart_ids || []
-    }, [activeGroupId, metricGroups])
-
-    // Check if a chart should be visible
-    const isChartVisible = (chartId: string) => {
-      return visibleChartIds.includes(chartId)
+    if (activeGroupId === 'all') {
+      return Object.values(CHART_IDS)
     }
+    const activeGroup = metricGroups.find(g => g.id === activeGroupId)
+    return activeGroup?.chart_ids || []
+  }, [activeGroupId, metricGroups])
 
-  // Check if a metric should be visible
-  const isMetricVisible = (metricId: string) => {
-    return visibleMetricIds.includes(metricId)
-  }
+  const isMetricVisible = useCallback(
+    (metricId: string) => {
+      if (!visibleMetricIds.includes(metricId)) return false
+      const ov = visibility.agent.overview
+      if (metricId.startsWith('custom_')) {
+        return canShowOrgSection(visibility, 'metrics')
+      }
+      const key = OVERVIEW_KEY_BY_METRIC_ID[metricId]
+      if (!key) return true
+      return ov[key] === true
+    },
+    [visibleMetricIds, visibility]
+  )
+
+  const isChartVisible = useCallback(
+    (chartId: string) => {
+      if (!visibleChartIds.includes(chartId)) return false
+      const ov = visibility.agent.overview
+      if (ov.charts !== true) return false
+      const key = OVERVIEW_KEY_BY_CHART_ID[chartId]
+      if (!key) return true
+      return ov[key] === true
+    },
+    [visibleChartIds, visibility]
+  )
+
+  const overviewShowsNothing = useMemo(() => {
+    const noMetrics =
+      visibleMetricIds.length === 0 ||
+      visibleMetricIds.every((id) => !isMetricVisible(id))
+    const noCharts =
+      visibleChartIds.length === 0 ||
+      visibleChartIds.every((id) => !isChartVisible(id))
+    return noMetrics && noCharts
+  }, [visibleMetricIds, visibleChartIds, isMetricVisible, isChartVisible])
 
   // Build filters for download (same as before)
   const buildFiltersForDownload = (
@@ -688,6 +735,7 @@ const Overview: React.FC<OverviewProps> = ({
         onGroupChange={setActiveGroupId}
         onManageGroups={() => setShowGroupManager(true)}
         customTotalsCount={customTotals.length}
+        canManageGroups={isOwnerOrAdmin}
       />
 
       <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-8 space-y-8'}`}>
@@ -782,7 +830,7 @@ const Overview: React.FC<OverviewProps> = ({
           )}
 
           {/* Total Cost */}
-          {isMetricVisible(METRIC_IDS.TOTAL_COST) && role !== 'user' && (
+          {isMetricVisible(METRIC_IDS.TOTAL_COST) && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
@@ -807,7 +855,7 @@ const Overview: React.FC<OverviewProps> = ({
           )}
 
           {/* Average Latency */}
-          {isMetricVisible(METRIC_IDS.AVG_LATENCY) && role !== 'user' && (
+          {isMetricVisible(METRIC_IDS.AVG_LATENCY) && (
             <div className="group">
               <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                 <div className={isMobile ? 'p-3' : 'p-5'}>
@@ -950,6 +998,15 @@ const Overview: React.FC<OverviewProps> = ({
             )
           })}
         </div>
+
+        {overviewShowsNothing && (
+          <div className="text-center py-12 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/30">
+            <p className="text-sm text-gray-500 dark:text-gray-400 px-4">
+              No overview metrics or charts are visible for your account. Permissions are controlled in{' '}
+              <span className="font-medium">permissions.visibility.agent.overview</span> (and org metrics for custom totals).
+            </p>
+          </div>
+        )}
 
         {/* Show message when no metrics visible */}
         {activeGroupId !== 'all' && visibleMetricIds.length === 0 && (
@@ -1255,8 +1312,10 @@ const Overview: React.FC<OverviewProps> = ({
           </div>
         )}
 
-        {/* Chart Analytics Section */}
-        {!isMobile && (
+        {/* Chart Analytics Section — extra builder; gated by overview.charts + org.metrics */}
+        {!isMobile &&
+          visibility.agent.overview.charts === true &&
+          canShowOrgSection(visibility, 'metrics') && (
           <ChartProvider>
             <div className="space-y-6">
               <EnhancedChartBuilder 
@@ -1275,7 +1334,7 @@ const Overview: React.FC<OverviewProps> = ({
                   agentId={agent.id}
                   projectId={project.id}
                   userEmail={userEmail}
-                  availableColumns={role === 'user' 
+                  availableColumns={role !== 'admin' && role !== 'owner'
                     ? AVAILABLE_COLUMNS.filter(col => col.key !== 'billing_duration_seconds')
                     : AVAILABLE_COLUMNS
                   }
@@ -1288,7 +1347,7 @@ const Overview: React.FC<OverviewProps> = ({
       </div>
 
       {/* Metric Group Manager Modal */}
-      {userEmail && project?.id && agent?.id && (
+      {userEmail && project?.id && agent?.id && isOwnerOrAdmin && (
         <MetricGroupManager
           open={showGroupManager}
           onOpenChange={setShowGroupManager}

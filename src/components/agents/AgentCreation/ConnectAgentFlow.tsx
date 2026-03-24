@@ -57,6 +57,13 @@ const PLATFORM_OPTIONS = [
     color: 'blue'
   },
   {
+    value: 'pipecat',
+    label: 'Pipecat Agent',
+    description: 'Monitor your Pipecat voice agent',
+    icon: Radio,
+    color: 'orange'
+  },
+  {
     value: 'vapi',
     label: 'Vapi Assistant',
     description: 'Monitor your Vapi assistant calls',
@@ -257,6 +264,18 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
           platform: 'vapi',
         }
 
+      } else if (selectedPlatform === 'pipecat') {
+        payload = {
+          name: formData.name.trim(),
+          agent_type: 'pipecat',
+          configuration: {
+            description: formData.description?.trim() || null,
+          },
+          project_id: projectId,
+          environment: 'dev',
+          platform: 'pipecat',
+        }
+
       } else if (selectedPlatform === 'retell') {
         const encryptedProjectApiKey = await fetchProjectApiKey()
         const selectedAgent = retellData.availableAgents.find(a => a.agent_id === retellData.selectedAgentId)
@@ -336,7 +355,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
   if (currentStep === 'creating' || currentStep === 'connecting') {
     return (
       <div className="px-6 py-8 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
+        <div className="w-16 h-16 mx-auto mb-4 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -376,7 +395,11 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
 
   // ── Success state ───────────────────────────────────────────────────────────
   if (currentStep === 'success') {
-    const platformLabel = selectedPlatform === 'vapi' ? 'Vapi' : selectedPlatform === 'retell' ? 'Retell' : 'LiveKit'
+    const platformLabel = 
+      selectedPlatform === 'vapi' ? 'Vapi' : 
+      selectedPlatform === 'retell' ? 'Retell' : 
+      selectedPlatform === 'pipecat' ? 'Pipecat' : 
+      'LiveKit'
     return (
       <>
         <DialogHeader className="px-6 pt-6 pb-4 text-center border-b border-gray-100 dark:border-gray-800">
@@ -460,6 +483,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
   // ── Form ────────────────────────────────────────────────────────────────────
   const platformAccentClass = {
     livekit: { border: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'bg-blue-600 text-white', section: '', button: 'bg-blue-600 hover:bg-blue-700' },
+    pipecat: { border: 'border-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', icon: 'bg-orange-600 text-white', section: '', button: 'bg-orange-600 hover:bg-orange-700' },
     vapi:    { border: 'border-teal-500', bg: 'bg-teal-50 dark:bg-teal-900/20', icon: 'bg-teal-600 text-white', section: 'bg-teal-50/50 dark:bg-teal-900/10 px-4 py-4 rounded-lg border border-teal-100 dark:border-teal-800', button: 'bg-teal-600 hover:bg-teal-700' },
     retell:  { border: 'border-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'bg-purple-600 text-white', section: 'bg-purple-50/50 dark:bg-purple-900/10 px-4 py-4 rounded-lg border border-purple-100 dark:border-purple-800', button: 'bg-purple-600 hover:bg-purple-700' },
   }
@@ -471,12 +495,13 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
     !formData.name.trim() ||
     (selectedPlatform === 'vapi' && !vapiData.selectedAssistantId) ||
     (selectedPlatform === 'retell' && !retellData.selectedAgentId)
+  // pipecat only needs a name, no extra fields — already covered by !formData.name.trim()
 
   return (
     <>
-      <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
+      <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
+          <div className="w-12 h-12 mx-auto mb-3 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
             <Eye className="w-6 h-6 text-gray-700 dark:text-gray-300" />
           </div>
           <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
@@ -748,7 +773,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="flex-shrink-0 px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
+      <div className="shrink-0 px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
         <div className="flex gap-3">
           <Button
             type="button"

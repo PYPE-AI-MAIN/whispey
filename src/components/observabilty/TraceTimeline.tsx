@@ -259,9 +259,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                   <div className="text-sm">
                     <span className="font-medium text-blue-600">User:</span>
                     <span className="ml-2 text-gray-700">
-                      {trace.user_transcript.length > 120 
-                        ? trace.user_transcript.substring(0, 120) + "..." 
-                        : trace.user_transcript}
+                      {trace.user_transcript}
                     </span>
                   </div>
                 )}
@@ -269,9 +267,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                   <div className="text-sm">
                     <span className="font-medium text-purple-600">Assistant:</span>
                     <span className="ml-2 text-gray-700">
-                      {trace.agent_response.length > 120 
-                        ? trace.agent_response.substring(0, 120) + "..." 
-                        : trace.agent_response}
+                      {trace.agent_response}
                     </span>
                   </div>
                 )}

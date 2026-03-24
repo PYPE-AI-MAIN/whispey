@@ -100,6 +100,7 @@ export const useSupabaseQuery = <T = any>(
 export interface InfiniteQueryOptions extends QueryOptions {
   pageSize: number;
   cursorColumn: string;
+  enabled?: boolean;
 }
 
 export const useSupabaseInfiniteQuery = <T = any>(
@@ -108,6 +109,7 @@ export const useSupabaseInfiniteQuery = <T = any>(
 ) => {
   return useInfiniteQuery<T[]>({
     queryKey: [table, "infinite", options],
+    enabled: options.enabled !== false, // default true; pass false to defer fetching
     queryFn: async ({ pageParam }: { pageParam: any }) => {
       let query = supabase.from(table).select(options.select || "*");
 

@@ -69,19 +69,25 @@ export const useSessionSpans = (sessionTrace: any) => {
   return result;
 };
 
-// NEW: Infinite scroll version with proper typing and total count
-export const useSessionSpansInfinite = (sessionTrace: any) => {
+// NEW: Infinite scroll version with proper typing and total count.
+// Pass `enabled: false` to defer all network requests until the tab is opened.
+export const useSessionSpansInfinite = (sessionTrace: any, enabled = true) => {
+  const shouldFetch = enabled && Boolean(sessionTrace?.trace_key);
+
   const result = useSupabaseInfiniteQuery<Span>("pype_voice_spans", {
-    select: "id, span_id, trace_key, name, operation_type, start_time_ns, end_time_ns, duration_ms, status, parent_span_id, captured_at, attributes, events",
+    // `events` is excluded — it's a large JSONB column only needed in SpanDetailSheet
+    // which already lazy-fetches the full span via a separate query when opened.
+    select: "id, span_id, trace_key, name, operation_type, start_time_ns, end_time_ns, duration_ms, status, parent_span_id, captured_at, attributes",
     filters: sessionTrace?.trace_key 
       ? [{ column: "trace_key", operator: "eq", value: sessionTrace.trace_key }] 
       : [{ column: "trace_key", operator: "eq", value: "no-trace-key" }],
     orderBy: { column: "start_time_ns", ascending: true },
     pageSize: 50,
     cursorColumn: "start_time_ns",
+    enabled: shouldFetch,
   });
 
-  // Fetch total count with a separate query
+  // Fetch total count with a separate query — same enabled gate
   const { data: countData } = useQuery({
     queryKey: ["pype_voice_spans_count", sessionTrace?.trace_key],
     queryFn: async () => {
@@ -95,7 +101,7 @@ export const useSessionSpansInfinite = (sessionTrace: any) => {
       if (error) throw error;
       return count || 0;
     },
-    enabled: Boolean(sessionTrace?.trace_key),
+    enabled: shouldFetch,
   });
 
   // Flatten all pages into a single array - now properly typed

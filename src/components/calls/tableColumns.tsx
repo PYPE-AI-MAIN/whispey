@@ -10,6 +10,8 @@ import { formatDuration, formatToIndianDateTime } from '@/utils/callLogsUtils'
 import { DynamicJsonCell } from './sub-components'
 import { CostTooltip } from "../tool-tip/costToolTip"
 import { BASIC_COLUMNS } from "@/hooks/useCallLogsColumns"
+import { TagEditor } from './TagEditor'
+import { FlagEditor, FlagData } from './FlagEditor'
 import { cn } from "@/lib/utils"
 
 export const createTableColumns = (
@@ -18,8 +20,19 @@ export const createTableColumns = (
     metadata: string[]
     transcription_metrics: string[]
     metrics: string[]
+  },
+  options?: {
+    availableTags?: string[]
+    onTagsUpdated?: () => void
+    /** Current user role — used to gate comment & flag capabilities */
+    role?: string | null
   }
 ): ColumnDef<CallLog>[] => {
+  const availableTags = options?.availableTags ?? []
+  const onTagsUpdated = options?.onTagsUpdated
+  const role = options?.role ?? null
+  // owner/admin can add per-tag annotations; viewers use the Flag column instead
+  const canComment = role !== null && role !== 'user'
   const cols: ColumnDef<CallLog>[] = []
 
   // Basic columns
@@ -41,7 +54,7 @@ export const createTableColumns = (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex w-full items-center gap-2 min-w-[180px] max-w-[180px]">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary/10 flex-shrink-0">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary/10 shrink-0">
                       <Phone className="w-3 h-3 text-primary" />
                     </div>
                     <span 
@@ -109,12 +122,46 @@ export const createTableColumns = (
             return call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
               <CostTooltip call={call} />
             ) : "-"
+          case "tags":
+            return (
+              <TagEditor
+                callId={call.id}
+                initialTags={
+                  Array.isArray(call.transcription_metrics?.tags)
+                    ? call.transcription_metrics.tags
+                    : []
+                }
+                initialTagComments={
+                  call.transcription_metrics?.tagComments &&
+                  typeof call.transcription_metrics.tagComments === 'object' &&
+                  !Array.isArray(call.transcription_metrics.tagComments)
+                    ? (call.transcription_metrics.tagComments as Record<string, string>)
+                    : {}
+                }
+                availableTags={availableTags}
+                canComment={canComment}
+                onUpdated={onTagsUpdated}
+              />
+            )
+          case "flag":
+            return (
+              <FlagEditor
+                callId={call.id}
+                initialFlag={
+                  call.transcription_metrics?.flag &&
+                  typeof call.transcription_metrics.flag === 'object'
+                    ? (call.transcription_metrics.flag as FlagData)
+                    : null
+                }
+                onUpdated={onTagsUpdated}
+              />
+            )
           default:
             return <span>{call[key as keyof CallLog] as any ?? "-"}</span>
         }
       },
-      minSize: key === "customer_number" ? 180 : 150,
-      size: key === "customer_number" ? 180 : undefined,
+      minSize: key === "customer_number" ? 180 : key === "tags" ? 200 : key === "flag" ? 100 : 150,
+      size: key === "customer_number" ? 180 : key === "tags" ? 220 : key === "flag" ? 110 : undefined,
     })
   })
 

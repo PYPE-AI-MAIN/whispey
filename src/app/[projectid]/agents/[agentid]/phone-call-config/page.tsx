@@ -1,8 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowAgentSection } from '@/types/visibility'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -58,6 +60,17 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 export default function PhoneCallConfig() {
   const params = useParams()
+  const router = useRouter()
+  const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid
+  const agentId = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid
+  const { visibility, isLoading: roleLoading } = useMemberVisibility(projectId || undefined)
+  useEffect(() => {
+    if (roleLoading || !projectId || !agentId) return
+    if (!canShowAgentSection(visibility, 'phoneCalls')) {
+      router.replace(`/${projectId}/agents/${agentId}`)
+    }
+  }, [visibility, roleLoading, projectId, agentId, router])
+
   const [agent, setAgent] = useState<Agent | null>(null)
   const [runningAgents, setRunningAgents] = useState<RunningAgent[]>([])
   const [isCheckingRunning, setIsCheckingRunning] = useState(false)
@@ -78,8 +91,6 @@ export default function PhoneCallConfig() {
   const [editingName, setEditingName] = useState('')
   const [callCounter, setCallCounter] = useState(1)
 
-  const agentId = params.agentid as string
-  const projectId = params.projectid as string
   const currentCountry = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[0]
 
   useEffect(() => {
