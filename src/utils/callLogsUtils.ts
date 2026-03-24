@@ -40,17 +40,9 @@ export const normalizeRoleForColumnAccess = (role: string | null): string | null
   return ['user', 'member', 'viewer'].includes(role) ? 'viewer' : role
 }
 
-/** Viewer cannot see these basic columns (see `isColumnVisibleForRole`). */
+/** Viewer-only hidden basic columns: Tags only; everything else matches owner/admin. */
 export const ROLE_RESTRICTIONS = {
-  viewer: [
-    'total_cost',
-    'total_llm_cost',
-    'total_tts_cost',
-    'total_stt_cost',
-    'avg_latency',
-    'billing_duration_seconds',
-    'tags',
-  ],
+  viewer: ['tags'],
 } as const
 
 export const isViewerRole = (role: string | null | undefined): boolean =>
