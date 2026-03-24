@@ -6,10 +6,12 @@ import { useCallLogsStore } from '@/stores/callLogsStore'
 
 
 export const BASIC_COLUMNS = [
-  { key: "customer_number", label: "Customer Number" },
-  { key: "call_id", label: "Call ID" },
-  { key: "call_ended_reason", label: "Call Status" },
-  { key: "duration_seconds", label: "Duration" },
+  { key: "customer_number", label: "Customer Number" },  // 1
+  { key: "call_id", label: "Call ID" },                  // 2
+  { key: "call_ended_reason", label: "Call Status" },    // 3
+  { key: "duration_seconds", label: "Duration" },        // 4
+  { key: "tags", label: "Tags" },                        // 5
+  { key: "flag", label: "Flag" },                        // 6
   { key: "billing_duration_seconds", label: "Billing Duration" },
   { key: "total_cost", label: "Total Cost (₹)" },
   { key: "call_started_at", label: "Start Time" },
@@ -33,6 +35,9 @@ const EXCLUDED_METADATA_COLUMNS = [
   'apikey',
   'api_url'
 ]
+
+// transcription_metrics keys managed as first-class BASIC_COLUMNS — skip auto-discovery
+const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = ['tags', 'tagComments', 'flag']
 
 interface VisibleColumns {
   basic: string[]
@@ -71,7 +76,9 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
         Object.keys(call.metadata).forEach(key => metadataKeys.add(key))
       }
       if (call.transcription_metrics && typeof call.transcription_metrics === 'object') {
-        Object.keys(call.transcription_metrics).forEach(key => transcriptionKeys.add(key))
+        Object.keys(call.transcription_metrics)
+          .filter(key => !EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS.includes(key))
+          .forEach(key => transcriptionKeys.add(key))
       }
       if (call.metrics && typeof call.metrics === 'object') {
         Object.keys(call.metrics).forEach(metricId => metricsKeys.add(metricId))

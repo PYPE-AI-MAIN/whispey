@@ -183,7 +183,6 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     if data.get("wcall_event") != "call_started" and "call_ended_reason" not in data:
         data["call_ended_reason"] = "completed"
 
-    wcall_event = data.get("wcall_event", "unknown")
     # Convert timestamp fields to proper ISO format
     if "call_started_at" in data:
         data["call_started_at"] = convert_timestamp(data["call_started_at"])
@@ -193,8 +192,8 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     api_key_to_use = apikey if apikey is not None else os.getenv("WHISPEY_API_KEY") or WHISPEY_API_KEY
     url_to_use = api_url if api_url else (os.getenv("WHISPEY_API_URL") or WHISPEY_API_URL)
 
-    logger.info("[WHISPEY] send_to_whispey: event=%s url=%s apikey=%s",
-                wcall_event, url_to_use, "set" if api_key_to_use else "MISSING")
+    logger.info("[WHISPEY] send_to_whispey: url=%s apikey=%s",
+                url_to_use, "set" if api_key_to_use else "MISSING")
 
     if not api_key_to_use:
         error_msg = "API key not provided and WHISPEY_API_KEY environment variable not set"
@@ -206,7 +205,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     
     # Check payload size and route accordingly
     original_size = get_payload_size(data)
-    logger.info("[WHISPEY] send_to_whispey: payload_size=%d bytes event=%s", original_size, wcall_event)
+    logger.info("[WHISPEY] send_to_whispey: payload_size=%d bytes", original_size)
     
     # NEW: Use S3 for very large payloads (> 5MB)
     if USE_S3_FOR_LARGE and original_size > S3_UPLOAD_THRESHOLD:
@@ -313,16 +312,16 @@ async def send_to_whispey(data, apikey=None, api_url=None):
     
     try:
         json_str = json.dumps(payload)
-        logger.info("[WHISPEY] send_to_whispey: sending %d chars event=%s", len(json_str), wcall_event)
+        logger.info("[WHISPEY] send_to_whispey: sending %d chars", len(json_str))
 
         connector = aiohttp.TCPConnector(**_CONNECTOR_KWARGS)
         async with aiohttp.ClientSession(connector=connector, timeout=_REQUEST_TIMEOUT) as session:
             async with session.post(url_to_use, json=payload, headers=headers) as response:
-                logger.info("[WHISPEY] send_to_whispey: response status=%d event=%s", response.status, wcall_event)
+                logger.info("[WHISPEY] send_to_whispey: response status=%d", response.status)
                 
                 if response.status >= 400:
                     error_text = await response.text()
-                    logger.error("[WHISPEY] send_to_whispey: HTTP %d error=%s event=%s", response.status, error_text[:200], wcall_event)
+                    logger.error("[WHISPEY] send_to_whispey: HTTP %d (error body omitted)", response.status)
                     return {
                         "success": False,
                         "status": response.status,
@@ -330,7 +329,7 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     }
                 else:
                     result = await response.json()
-                    logger.info("[WHISPEY] send_to_whispey: success event=%s", wcall_event)
+                    logger.info("[WHISPEY] send_to_whispey: success")
                     return {
                         "success": True,
                         "status": response.status,
@@ -339,14 +338,14 @@ async def send_to_whispey(data, apikey=None, api_url=None):
                     
     except (TypeError, ValueError) as e:
         error_msg = f"JSON serialization failed: {e}"
-        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, wcall_event)
+        logger.error("[WHISPEY] send_to_whispey: %s", error_msg)
         return {
             "success": False,
             "error": error_msg
         }
     except Exception as e:
         error_msg = f"Request failed: {e}"
-        logger.error("[WHISPEY] send_to_whispey: %s event=%s", error_msg, wcall_event)
+        logger.error("[WHISPEY] send_to_whispey: %s", error_msg)
         return {
             "success": False,
             "error": error_msg

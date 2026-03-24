@@ -428,13 +428,6 @@ const getSidebarConfig = (
   return null
 }
 
-const fetchProject = async (projectId: string) => {
-  const response = await fetch(`/api/projects`)
-  if (!response.ok) throw new Error('Failed to fetch projects')
-  const projects = await response.json()
-  return projects.find((p: any) => p.id === projectId)
-}
-
 const fetchAgent = async (agentId: string) => {
   const response = await fetch(`/api/agents/${agentId}/type`)
   if (!response.ok) {
@@ -469,17 +462,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const agentReservedPaths = ['api-keys', 'sip-management']
   const isValidAgentId = agentId && !agentReservedPaths.includes(agentId)
   
-  // Use React Query for project data
-  const { data: project } = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => fetchProject(projectId!),
-    enabled: !!isValidProjectId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  })
-
   const { data: agent } = useQuery({
     queryKey: ['agent', agentId],
     queryFn: () => fetchAgent(agentId!),
@@ -528,7 +510,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     fetchUserRole()
   }, [user, projectId, isValidProjectId])
   
-  const isEnhancedProject = project?.id === ENHANCED_PROJECT_ID
+  // projectId comes directly from the URL — no API call needed to check this
+  const isEnhancedProject = projectId === ENHANCED_PROJECT_ID
   
   const sidebarContext: SidebarContext = {
     isEnhancedProject,
