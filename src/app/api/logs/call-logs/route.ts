@@ -210,6 +210,29 @@ export async function POST(request: NextRequest) {
           data: { message: 'Call started log updated', log_id: existing.id, agent_id, project_id }
         }, { status: 200 });
       }
+      // If call_ended already persisted first, do not add or change anything for call_started.
+      const { data: existingEnded } = await supabase
+        .from('pype_voice_call_logs')
+        .select('id')
+        .eq('agent_id', agent_id)
+        .eq('call_id', call_id)
+        .eq('wcall_event', 'call_ended')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingEnded) {
+        console.log('⏭️ call_started skipped: call_ended row already exists for call_id:', existingEnded.id);
+        return NextResponse.json({
+          success: true,
+          data: {
+            message: 'call_started skipped; call already ended',
+            log_id: existingEnded.id,
+            agent_id,
+            project_id,
+            skipped: true
+          }
+        }, { status: 200 });
+      }
       const { data: inserted, error: insErr } = await supabase
         .from('pype_voice_call_logs')
         .insert(minimalData)
@@ -359,19 +382,47 @@ export async function POST(request: NextRequest) {
       }
       insertedLog = updated;
     } else {
-      const { data: inserted, error: insertError } = await supabase
+      // Deduplicate repeated call_ended submissions for same call_id.
+      const { data: existingEnded } = await supabase
         .from('pype_voice_call_logs')
-        .insert(logData)
-        .select()
-        .single();
-      if (insertError) {
-        console.error('Database insert error:', insertError);
-        return NextResponse.json(
-          { success: false, error: 'Failed to save call log' },
-          { status: 500 }
-        );
+        .select('id')
+        .eq('agent_id', agent_id)
+        .eq('call_id', call_id)
+        .eq('wcall_event', 'call_ended')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingEnded) {
+        const { data: updatedEnded, error: updateEndedError } = await supabase
+          .from('pype_voice_call_logs')
+          .update(logData)
+          .eq('id', existingEnded.id)
+          .select()
+          .single();
+        if (updateEndedError) {
+          console.error('Database update (existing call_ended) error:', updateEndedError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to update existing call log' },
+            { status: 500 }
+          );
+        }
+        insertedLog = updatedEnded;
+      } else {
+        const { data: inserted, error: insertError } = await supabase
+          .from('pype_voice_call_logs')
+          .insert(logData)
+          .select()
+          .single();
+        if (insertError) {
+          console.error('Database insert error:', insertError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to save call log' },
+            { status: 500 }
+          );
+        }
+        insertedLog = inserted;
       }
-      insertedLog = inserted;
     }
 
     console.log("✅ Successfully inserted log:", {
