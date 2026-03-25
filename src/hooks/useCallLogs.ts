@@ -119,7 +119,36 @@ export const useCallLogs = ({
           p_distinct_json_field: distinctConfig?.jsonField || null,
           p_distinct_order: distinctConfig?.order || 'asc',
           p_date_from: dateRange?.from || null,
-          p_date_to: dateRange?.to || null
+          p_date_to: dateRange?.to || null,
+          p_user_clerk_id: userId || null,
+          p_user_email: userEmail || null
+        }
+
+        let { data, error } = await supabase.rpc('get_call_logs_with_distinct', rpcParamsWithUser)
+
+        if (error?.code === 'PGRST202') {
+          const params13 = {
+            p_agent_id: agentId,
+            p_pre_distinct_filters: preDistinctFilters,
+            p_post_distinct_filters: postDistinctFilters,
+            p_select: select,
+            p_order_by_column: orderBy.column,
+            p_order_ascending: orderBy.ascending,
+            p_limit: limit,
+            p_offset: offset,
+            p_distinct_column: distinctConfig?.column || null,
+            p_distinct_json_field: distinctConfig?.jsonField || null,
+            p_distinct_order: distinctConfig?.order || 'asc',
+            p_date_from: dateRange?.from || null,
+            p_date_to: dateRange?.to || null
+          }
+          const fallback = await supabase.rpc('get_call_logs_with_distinct', params13)
+          if (fallback.error) {
+            console.error('❌ RPC Error (15-param and 13-param fallback):', fallback.error)
+            throw fallback.error
+          }
+          data = fallback.data
+          error = null
         }
         const fallback = await supabase.rpc('get_call_logs_with_distinct', params13)
         if (fallback.error) {
