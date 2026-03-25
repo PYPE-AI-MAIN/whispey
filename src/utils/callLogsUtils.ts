@@ -34,20 +34,25 @@ export const formatToIndianDateTime = (timestamp: any): string => {
   })
 }
 
+/** Maps DB/API roles to the key used in ROLE_RESTRICTIONS (viewer includes user, member, viewer). */
+export const normalizeRoleForColumnAccess = (role: string | null): string | null => {
+  if (!role) return null
+  return ['user', 'member', 'viewer'].includes(role) ? 'viewer' : role
+}
+
+/** Viewer-only hidden basic columns: Tags only; everything else matches owner/admin. */
 export const ROLE_RESTRICTIONS = {
-  user: [
-    'total_cost',
-    'total_llm_cost', 
-    'total_tts_cost',
-    'total_stt_cost',
-    'avg_latency',
-    'billing_duration_seconds'
-  ],
+  viewer: ['tags'],
 } as const
 
+export const isViewerRole = (role: string | null | undefined): boolean =>
+  normalizeRoleForColumnAccess(role ?? null) === 'viewer'
+
 export const isColumnVisibleForRole = (columnKey: string, role: string | null): boolean => {
-  if (!role) return false
-  const restrictedColumns = ROLE_RESTRICTIONS[role as keyof typeof ROLE_RESTRICTIONS]
+  if (!role) return true
+  const effective = normalizeRoleForColumnAccess(role)
+  if (!effective) return true
+  const restrictedColumns = ROLE_RESTRICTIONS[effective as keyof typeof ROLE_RESTRICTIONS]
   if (!restrictedColumns) return true
   return !(restrictedColumns as readonly string[]).includes(columnKey)
 }

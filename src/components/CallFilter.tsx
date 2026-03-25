@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
+import { isColumnVisibleForRole } from '@/utils/callLogsUtils'
 
 // Unified filter operation type that can be either a filter or a distinct operation
 export type FilterOperation = 
@@ -67,6 +68,20 @@ interface CallFilterProps {
   initialFilters?: FilterOperation[]
   distinctConfig?: DistinctConfig  // Keep for backward compatibility
   onDistinctConfigChange?: (config: DistinctConfig | undefined) => void  // Keep for backward compatibility
+  /** When set, hides filter targets the user cannot use (e.g. Tags for viewers). */
+  role?: string | null
+}
+
+/** Maps filter dropdown `value` to basic column keys used by `isColumnVisibleForRole`. */
+const FILTER_VALUE_TO_BASIC_KEY: Record<string, string> = {
+  customer_number: 'customer_number',
+  duration_seconds: 'duration_seconds',
+  avg_latency: 'avg_latency',
+  call_started_at: 'call_started_at',
+  call_ended_reason: 'call_ended_reason',
+  wcall_event: 'wcall_event',
+  tags: 'tags',
+  flag: 'flag',
 }
 
 const COLUMNS = [
@@ -127,8 +142,18 @@ const CallFilter: React.FC<CallFilterProps> = ({
   availableTranscriptionFields = [],
   initialFilters = [],
   distinctConfig,
-  onDistinctConfigChange
+  onDistinctConfigChange,
+  role = null,
 }) => {
+  const columnsForRole = useMemo(() => {
+    if (role == null) return COLUMNS
+    return COLUMNS.filter((c) => {
+      const key = FILTER_VALUE_TO_BASIC_KEY[c.value]
+      if (key === undefined) return true
+      return isColumnVisibleForRole(key, role)
+    })
+  }, [role])
+
   const [operations, setOperations] = useState<FilterOperation[]>(initialFilters)
   const [isOpen, setIsOpen] = useState(false)
   
@@ -546,7 +571,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
-                        {COLUMNS.map((column) => (
+                        {columnsForRole.map((column) => (
                           <DropdownMenuItem
                             key={column.value}
                             onClick={() => {
@@ -721,7 +746,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
-                        {COLUMNS.map((column) => (
+                        {columnsForRole.map((column) => (
                           <DropdownMenuItem
                             key={column.value}
                             onClick={() => {

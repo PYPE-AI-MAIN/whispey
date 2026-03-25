@@ -23,7 +23,14 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     .required('Campaign name is required')
     .min(3, 'Must be at least 3 characters'),
   agentId: Yup.string().required('Please select an agent'),
-  fromNumber: Yup.string().required('Please select a phone number'),
+  agentRuntime: Yup.string()
+    .oneOf(['livekit', 'pipecat'])
+    .required('Agent runtime is required'),
+  fromNumber: Yup.string().when('agentRuntime', {
+    is: 'livekit',
+    then: (schema) => schema.required('Please select a phone number'),
+    otherwise: (schema) => schema.optional(),
+  }),
   sendType: Yup.string().oneOf(['now', 'schedule']).required(),
   scheduleDate: Yup.date().when('sendType', {
     is: 'schedule',
@@ -120,6 +127,7 @@ function CreateCampaign() {
   const initialValues = {
     campaignName: '',
     agentId: '',
+    agentRuntime: 'livekit' as 'livekit' | 'pipecat',
     fromNumber: '',
     sendType: 'now' as 'now' | 'schedule',
     scheduleDate: '',
@@ -221,21 +229,17 @@ function CreateCampaign() {
       const campaignId = uuidv4()
 
       // Step 1: Upload CSV to S3
-      // Use Papa.unparse to properly format CSV with quoted fields
-      // Preserve all columns from the CSV - phone is required, others will be stored as additionalData
       const normalizedData = csvData.map(row => {
         const rowData: any = {}
-        // Include all columns from the parsed CSV (headers are already normalized)
         Object.keys(row).forEach(key => {
           const value = (row as any)[key]
-          // Only include non-empty values
           if (value !== undefined && value !== null && value !== '') {
             rowData[key] = value
           }
         })
         return rowData
       })
-      
+
       const csvContent = Papa.unparse(normalizedData, {
         header: true,
         quotes: true,
@@ -258,37 +262,39 @@ function CreateCampaign() {
       const uploadData = await uploadResponse.json()
       const s3FileKey = uploadData.s3FileKey || uploadData.fileKey
 
-      // Get phone number details for trunk_id and provider
+      // Get phone number details for trunk_id and provider (livekit only)
       const selectedPhone = phoneNumbers.find(phone => phone.id === values.fromNumber)
       
-      if (!selectedPhone) {
-        throw new Error('Selected phone number not found')
-      }
+      // if (!selectedPhone) {
+      //   throw new Error('Selected phone number not found')
+      // }
 
-      // Get agent name from agent ID and construct name with ID suffix (as expected by backend)
+      // Step 2: Resolve agentName based on runtime
       let agentName = values.agentId
-      try {
-        const { data: agent } = await supabase
-          .from('pype_voice_agents')
-          .select('name, id')
-          .eq('id', values.agentId)
-          .single()
-        
-        if (agent?.name && agent?.id) {
-          // Construct agent name with ID suffix (matching backend format)
-          // Replace dashes with underscores in the ID, as done in agent creation
-          const sanitizedAgentId = agent.id.replace(/-/g, '_')
-          agentName = `${agent.name}_${sanitizedAgentId}`
-        } else if (agent?.name) {
-          // Fallback to just name if ID is missing
-          agentName = agent.name
-        }
-      } catch (err) {
-        console.error('Error fetching agent name:', err)
-        // Fallback to using agentId as agentName
-      }
 
-      // Step 2: Create campaign
+      if (values.agentRuntime === 'livekit') {
+        // Supabase lookup only for livekit
+        try {
+          const { data: agent } = await supabase
+            .from('pype_voice_agents')
+            .select('name, id')
+            .eq('id', values.agentId)
+            .single()
+
+          if (agent?.name && agent?.id) {
+            const sanitizedAgentId = agent.id.replace(/-/g, '_')
+            agentName = `${agent.name}_${sanitizedAgentId}`
+          } else if (agent?.name) {
+            agentName = agent.name
+          }
+        } catch (err) {
+          console.error('Error fetching agent name:', err)
+          // Fallback to agentId
+        }
+      }
+      // For pipecat: agentName = agentId directly (the pipecat agent id from the API)
+
+      // Step 3: Create campaign
       const createResponse = await fetch('/api/campaigns/create', {
         method: 'POST',
         headers: {
@@ -300,8 +306,9 @@ function CreateCampaign() {
           campaignName: values.campaignName,
           s3FileKey,
           agentName: agentName,
-          sipTrunkId: selectedPhone.trunk_id,
-          provider: selectedPhone.provider || 'Unknown',
+          sipTrunkId: selectedPhone?.trunk_id || '',
+          provider: selectedPhone?.provider || 'Unknown',
+          agentRuntime: values.agentRuntime,
         }),
       })
 
@@ -310,25 +317,23 @@ function CreateCampaign() {
         throw new Error(error.error || 'Failed to create campaign')
       }
 
-      // Step 3: Schedule campaign
-      const scheduleDate = values.sendType === 'schedule' 
+      // Step 4: Schedule campaign
+      const scheduleDate = values.sendType === 'schedule'
         ? new Date(values.scheduleDate).toISOString()
         : new Date().toISOString()
 
       // Format retryConfig according to backend requirements
       const formattedRetryConfig = values.retryConfig.map(config => {
         if (config.type === 'sipCode' || !config.type) {
-          // SIP Code retry: ensure errorCodes is an array of strings
           return {
             type: 'sipCode',
-            errorCodes: Array.isArray(config.errorCodes) 
+            errorCodes: Array.isArray(config.errorCodes)
               ? config.errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
               : (config.errorCodes ? [String(config.errorCodes).trim()] : ['480']),
             delayMinutes: Number(config.delayMinutes),
             maxRetries: Number(config.maxRetries),
           }
         } else if (config.type === 'metric') {
-          // Metric retry: NO errorCodes field
           const metricConfig: any = {
             type: 'metric',
             metricName: config.metricName,
@@ -337,10 +342,8 @@ function CreateCampaign() {
             delayMinutes: Number(config.delayMinutes),
             maxRetries: Number(config.maxRetries),
           }
-          // Remove any errorCodes if present
           return metricConfig
         } else if (config.type === 'fieldExtractor') {
-          // Field Extractor retry: NO errorCodes field
           const fieldConfig: any = {
             type: 'fieldExtractor',
             fieldName: config.fieldName,
@@ -348,13 +351,10 @@ function CreateCampaign() {
             delayMinutes: Number(config.delayMinutes),
             maxRetries: Number(config.maxRetries),
           }
-          // Include expectedValue only if operator is not 'missing'
-          // Type assertion needed because operator can be either metric or fieldExtractor type
           const fieldOperator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
           if (fieldOperator && fieldOperator !== 'missing' && config.expectedValue) {
             fieldConfig.expectedValue = config.expectedValue
           }
-          // Remove any errorCodes if present
           return fieldConfig
         }
         return config
@@ -373,7 +373,9 @@ function CreateCampaign() {
           startDate: scheduleDate,
           frequency: values.reservedConcurrency,
           enabled: true,
-          days: values.selectedDays.length > 0 ? values.selectedDays : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+          days: values.selectedDays.length > 0
+            ? values.selectedDays
+            : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
           retryConfig: formattedRetryConfig,
         }),
       })
@@ -457,6 +459,7 @@ function CreateCampaign() {
                   values={{
                     retryConfig: values.retryConfig,
                     agentId: values.agentId,
+                    agentRuntime: values.agentRuntime,  // ← ADD
                   }}
                 />
 

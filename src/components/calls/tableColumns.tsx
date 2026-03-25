@@ -13,6 +13,7 @@ import { BASIC_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { TagEditor } from './TagEditor'
 import { FlagEditor, FlagData } from './FlagEditor'
 import { cn } from "@/lib/utils"
+import { isViewerRole } from '@/utils/callLogsUtils'
 
 export const createTableColumns = (
   visibleColumns: {
@@ -31,8 +32,8 @@ export const createTableColumns = (
   const availableTags = options?.availableTags ?? []
   const onTagsUpdated = options?.onTagsUpdated
   const role = options?.role ?? null
-  // owner/admin can add per-tag annotations; viewers use the Flag column instead
-  const canComment = role !== null && role !== 'user'
+  // owner/admin can add per-tag annotations; viewers cannot
+  const canComment = role !== null && !isViewerRole(role)
   const cols: ColumnDef<CallLog>[] = []
 
   // Basic columns
