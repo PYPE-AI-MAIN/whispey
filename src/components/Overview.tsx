@@ -46,11 +46,9 @@ import { FloatingActionMenu } from './FloatingActionMenu'
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { useUser } from "@clerk/nextjs"
 import CustomTotalsBuilder from './CustomTotalBuilds'
-import { CustomTotalsService } from '@/services/customTotalService'
 import { CustomTotalConfig, CustomTotalResult } from '../types/customTotals'
 import { Card, CardContent } from './ui/card'
 import { Button } from './ui/button'
-import { supabase } from '@/lib/supabase'
 import Papa from 'papaparse'
 import { useTheme } from 'next-themes'
 import { useMobile } from '@/hooks/use-mobile'
@@ -274,8 +272,12 @@ const Overview: React.FC<OverviewProps> = ({
   const loadCustomTotals = async () => {
     if (!project?.id || !agent?.id) return
     try {
-      const configs = await CustomTotalsService.getCustomTotals(project.id, agent.id)
-      setCustomTotals(configs)
+      const res = await fetch(`/api/custom-totals/${project.id}/${agent.id}`)
+      const json = (await res.json()) as { configs?: CustomTotalConfig[] }
+      if (!res.ok) {
+        throw new Error((json as { error?: string }).error || res.statusText)
+      }
+      setCustomTotals(json.configs || [])
     } catch (error) {
       console.error('❌ [Overview] Failed to load custom totals:', error)
     }
@@ -289,7 +291,7 @@ const Overview: React.FC<OverviewProps> = ({
 
   useEffect(() => {
     const run = async () => {
-      if (customTotals.length === 0 || roleLoading || parentLoading || !agent?.id) {
+      if (customTotals.length === 0 || roleLoading || parentLoading || !agent?.id || !project?.id) {
         console.log('⏸️ [Overview] Skipping calculation - conditions not met:', {
           customTotalsLength: customTotals.length,
           roleLoading,
@@ -300,13 +302,20 @@ const Overview: React.FC<OverviewProps> = ({
       }
       setLoadingCustomTotals(true)
       try {
-        const results = await CustomTotalsService.batchCalculateCustomTotals(
-          customTotals,
-          agent.id,
-          dateRange.from,
-          dateRange.to
-        )
-        setCustomTotalResults(results)
+        const res = await fetch(`/api/custom-totals/calculate/${project.id}/${agent.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            configIds: customTotals.map((c) => c.id),
+            dateFrom: dateRange.from,
+            dateTo: dateRange.to,
+          }),
+        })
+        const json = (await res.json()) as { results?: CustomTotalResult[]; error?: string }
+        if (!res.ok) {
+          throw new Error(json.error || res.statusText)
+        }
+        setCustomTotalResults(json.results || [])
       } catch (e) {
         console.error('❌ [Overview] Batch calc failed', e)
       } finally {
@@ -314,7 +323,7 @@ const Overview: React.FC<OverviewProps> = ({
       }
     }
     run()
-  }, [customTotals, dateRange.from, dateRange.to, roleLoading, parentLoading, agent?.id])
+  }, [customTotals, dateRange.from, dateRange.to, roleLoading, parentLoading, agent?.id, project?.id])
 
   // Metric Group Handlers
   const handleSaveMetricGroup = async (group: Omit<MetricGroup, 'id' | 'created_at' | 'updated_at'>) => {
@@ -404,188 +413,28 @@ const Overview: React.FC<OverviewProps> = ({
     return noMetrics && noCharts
   }, [visibleMetricIds, visibleChartIds, isMetricVisible, isChartVisible])
 
-  // Build filters for download (same as before)
-  const buildFiltersForDownload = (
-    config: CustomTotalConfig,
-    agentId: string,
-    dateFrom?: string,
-    dateTo?: string
-  ) => {
-    const andFilters: { column: string; operator: string; value: any }[] = []
-
-    andFilters.push({ column: 'agent_id', operator: 'eq', value: agentId })
-    if (dateFrom) andFilters.push({ column: 'call_started_at', operator: 'gte', value: `${dateFrom} 00:00:00` })
-    if (dateTo) andFilters.push({ column: 'call_started_at', operator: 'lte', value: `${dateTo} 23:59:59.999` })
-
-    const getColumnName = (col: string, jsonField?: string, forText?: boolean) => {
-      if (!jsonField) return col
-      return `${col}${forText ? '->>' : '->'}${jsonField}`
-    }
-
-    if ((config.aggregation === 'COUNT' || (config.aggregation === 'COUNT_DISTINCT' && !!config.jsonField)) && config.jsonField) {
-      const existsCol = getColumnName(config.column, config.jsonField, true)
-      andFilters.push({ column: existsCol, operator: 'not.is', value: null })
-      andFilters.push({ column: existsCol, operator: 'neq', value: '' })
-    }
-
-    const isTextOp = (op: string) => ['contains', 'json_contains', 'equals', 'json_equals', 'starts_with'].includes(op)
-
-    const toSimpleCond = (f: CustomTotalConfig['filters'][number]) => {
-      const col = getColumnName(f.column, f.jsonField, isTextOp(f.operation))
-      switch (f.operation) {
-        case 'equals':
-        case 'json_equals':
-          return { column: col, operator: 'eq', value: f.value }
-        case 'contains':
-        case 'json_contains':
-          return { column: col, operator: 'ilike', value: `%${f.value}%` }
-        case 'starts_with':
-          return { column: col, operator: 'ilike', value: `${f.value}%` }
-        case 'greater_than':
-        case 'json_greater_than':
-          return { column: col.includes('->') ? `${col}::numeric` : col, operator: 'gt', value: f.value }
-        case 'less_than':
-        case 'json_less_than':
-          return { column: col.includes('->') ? `${col}::numeric` : col, operator: 'lt', value: f.value }
-        case 'json_exists': {
-          return { column: col, operator: 'json_exists', value: null }
-        }
-        default:
-          return null
-      }
-    }
-
-    const filters = (config.filters || []).map(toSimpleCond).filter(Boolean) as { column: string; operator: string; value: any }[]
-
-    let orString: string | null = null
-    if (config.filterLogic === 'OR' && filters.length > 0) {
-      const parts = filters.map(f => {
-        if (f.operator === 'json_exists') {
-          return `and(${f.column}.not.is.null,${f.column}.neq.)`
-        }
-        if (f.operator === 'eq') return `${f.column}.eq.${encodeURIComponent(String(f.value))}`
-        if (f.operator === 'ilike') return `${f.column}.ilike.*${encodeURIComponent(String(f.value).replace(/%/g, ''))}*`
-        if (f.operator === 'gt') return `${f.column}.gt.${encodeURIComponent(String(f.value))}`
-        if (f.operator === 'lt') return `${f.column}.lt.${encodeURIComponent(String(f.value))}`
-        return ''
-      }).filter(Boolean)
-      orString = parts.join(',') || null
-    } else {
-      for (const f of filters) {
-        if (f.operator === 'json_exists') {
-          andFilters.push({ column: f.column, operator: 'not.is', value: null })
-          andFilters.push({ column: f.column, operator: 'neq', value: '' })
-        } else {
-          andFilters.push(f)
-        }
-      }
-    }
-
-    return { andFilters, orString }
-  }
-
   const handleDownloadCustomTotal = async (config: CustomTotalConfig) => {
+    if (!agent?.id) return
     try {
-      let query = supabase
-        .from('pype_voice_call_logs')
-        .select('id,agent_id,customer_number,call_id,call_ended_reason,call_started_at,call_ended_at,duration_seconds,metadata,transcription_metrics,avg_latency,created_at')
-        .order('created_at', { ascending: false })
-        .limit(2000)
-
-      const { andFilters, orString } = buildFiltersForDownload(config, agent.id, dateRange?.from, dateRange?.to)
-      for (const f of andFilters) {
-        switch (f.operator) {
-          case 'eq':
-            query = query.eq(f.column, f.value)
-            break
-          case 'ilike':
-            query = query.ilike(f.column, f.value)
-            break
-          case 'gte':
-            query = query.gte(f.column, f.value)
-            break
-          case 'lte':
-            query = query.lte(f.column, f.value)
-            break
-          case 'gt':
-            query = query.gt(f.column, f.value)
-            break
-          case 'lt':
-            query = query.lt(f.column, f.value)
-            break
-          case 'not.is':
-            query = query.not(f.column, 'is', f.value)
-            break
-          case 'neq':
-            query = query.neq(f.column, f.value)
-            break
-        }
-      }
-      if (orString) {
-        query = query.or(orString)
-      }
-
-      const { data, error } = await query
-      if (error) {
-        alert(`Failed to fetch logs: ${error.message}`)
+      const res = await fetch(`/api/agents/${agent.id}/custom-total-export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          config,
+          dateFrom: dateRange?.from,
+          dateTo: dateRange?.to,
+        }),
+      })
+      const json = (await res.json()) as { rows?: Record<string, unknown>[]; error?: string }
+      if (!res.ok) {
+        alert(json.error || 'Failed to fetch logs')
         return
       }
-      
-      const asObj = (v: any): Record<string, any> => {
-        try {
-          if (!v) return {}
-          return typeof v === 'string' ? (JSON.parse(v) || {}) : v
-        } catch {
-          return {}
-        }
-      }
-
-      const pickJsonValue = (obj: Record<string, any>, key?: string): any => {
-        if (!obj || !key) return undefined
-        if (key in obj) return obj[key]
-        const noSpace = key.replace(/\s+/g, '')
-        if (noSpace in obj) return obj[noSpace]
-        const lowerFirst = key.charAt(0).toLowerCase() + key.slice(1)
-        if (lowerFirst in obj) return obj[lowerFirst]
-        const found = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase())
-        return found ? obj[found] : undefined
-      }
-
-      const rows = (data || []).map((row: any) => {
-        const tm = asObj(row.transcription_metrics)
-        const md = asObj(row.metadata)
-        const flattenedMd = Object.fromEntries(Object.entries(md).map(([k, v]) => [
-          `metadata_${k}`, typeof v === 'object' ? JSON.stringify(v) : v
-        ]))
-        const flattenedTm = Object.fromEntries(Object.entries(tm).map(([k, v]) => [
-          `transcription_${k}`, typeof v === 'object' ? JSON.stringify(v) : v
-        ]))
-
-        return {
-          id: row.id,
-          customer_number: row.customer_number,
-          call_id: row.call_id,
-          call_ended_reason: row.call_ended_reason,
-          call_started_at: row.call_started_at,
-          duration_seconds: row.duration_seconds,
-          avg_latency: row.avg_latency,
-          ...flattenedMd,
-          ...flattenedTm,
-
-          ...(config.jsonField && config.column === 'transcription_metrics'
-            ? { [config.jsonField]: pickJsonValue(tm, config.jsonField) }
-            : {}),
-          ...(config.jsonField && config.column === 'metadata'
-            ? { [config.jsonField]: pickJsonValue(md, config.jsonField) }
-            : {}),
-        }
-      })
-
+      const rows = json.rows || []
       if (!rows.length) {
         alert('No logs found for this custom total and date range.')
         return
       }
-
       const csv = Papa.unparse(rows)
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
@@ -596,7 +445,7 @@ const Overview: React.FC<OverviewProps> = ({
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e)
       alert('Failed to download CSV')
     }
@@ -605,11 +454,16 @@ const Overview: React.FC<OverviewProps> = ({
   const handleSaveCustomTotal = async (config: CustomTotalConfig) => {
     if (!project?.id || !agent?.id) return
     try {
-      const result = await CustomTotalsService.saveCustomTotal(config, project.id, agent.id)
-      if (result.success) {
+      const res = await fetch(`/api/custom-totals/${project.id}/${agent.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      })
+      const json = (await res.json()) as { success?: boolean; error?: string }
+      if (res.ok) {
         await loadCustomTotals()
       } else {
-        alert(`Failed to save: ${result.error}`)
+        alert(`Failed to save: ${json.error || res.statusText}`)
       }
     } catch (error) {
       console.error('Failed to save custom total:', error)
@@ -621,11 +475,12 @@ const Overview: React.FC<OverviewProps> = ({
     if (!confirm('Are you sure you want to delete this custom total?')) return
 
     try {
-      const result = await CustomTotalsService.deleteCustomTotal(configId)
-      if (result.success) {
+      const res = await fetch(`/api/custom-totals/${configId}`, { method: 'DELETE' })
+      const json = (await res.json()) as { success?: boolean; error?: string }
+      if (res.ok) {
         await loadCustomTotals()
       } else {
-        alert(`Failed to delete: ${result.error}`)
+        alert(`Failed to delete: ${json.error || res.statusText}`)
       }
     } catch (error) {
       console.error('Failed to delete custom total:', error)

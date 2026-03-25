@@ -1,106 +1,41 @@
 // hooks/useSupabase.ts
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { createClient } from '@supabase/supabase-js';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import {
+  postSupabaseSelect,
+} from '@/lib/supabase-select-client'
+import type {
+  Filter,
+  FilterOperator,
+  InfiniteQueryOptions,
+  QueryOptions,
+} from '@/lib/supabase-query-types'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+export type { Filter, FilterOperator, InfiniteQueryOptions, QueryOptions }
 
-export type FilterOperator = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "in" | "not.is";
-
-export interface Filter {
-  column: string;
-  operator: FilterOperator;
-  value: any;
-}
-
-export interface QueryOptions {
-  select?: string | null;
-  filters?: Filter[];
-  orderBy?: { column: string; ascending: boolean };
-  limit?: number;
-}
-
-// Apply filters to a Supabase query
-const applyFilters = (query: any, filters: Filter[]) => {
-  filters.forEach((filter) => {
-    switch (filter.operator) {
-      case "eq":
-        query = query.eq(filter.column, filter.value);
-        break;
-      case "neq":
-        query = query.neq(filter.column, filter.value);
-        break;
-      case "gt":
-        query = query.gt(filter.column, filter.value);
-        break;
-      case "gte":
-        query = query.gte(filter.column, filter.value);
-        break;
-      case "lt":
-        query = query.lt(filter.column, filter.value);
-        break;
-      case "lte":
-        query = query.lte(filter.column, filter.value);
-        break;
-      case "like":
-        query = query.like(filter.column, filter.value);
-        break;
-      case "ilike":
-        query = query.ilike(filter.column, filter.value);
-        break;
-      case "in":
-        query = query.in(filter.column, filter.value);
-        break;
-      case "not.is":
-        query = query.not(filter.column, 'is', filter.value);
-        break;
-    }
-  });
-  return query;
-};
-
-// Original useSupabaseQuery with generic type
 export const useSupabaseQuery = <T = any>(
-  table: string, 
+  table: string,
   options: QueryOptions | null | undefined = {}
 ) => {
   return useQuery<T[]>({
     queryKey: [table, options],
     queryFn: async () => {
-      if (!options) return []; // Return empty array if options is null
-      
-      let query = supabase.from(table).select(options.select || "*");
-
-      if (options.filters) {
-        query = applyFilters(query, options.filters);
-      }
-
-      if (options.orderBy) {
-        query = query.order(options.orderBy.column, {
-          ascending: options.orderBy.ascending,
-        });
-      }
-
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return (data || []) as T[];
+      if (!options) return []
+      const { auth, ...query } = options
+      const data = await postSupabaseSelect<T>({
+        table,
+        mode: 'list',
+        query: {
+          select: query.select ?? '*',
+          filters: query.filters,
+          orderBy: query.orderBy,
+          limit: query.limit,
+        },
+        auth,
+      })
+      return data as T[]
     },
-    enabled: options !== null && options !== undefined, // Only run query if options exist
-  });
-};
-
-// New: Infinite query hook for cursor-based pagination with generic type
-export interface InfiniteQueryOptions extends QueryOptions {
-  pageSize: number;
-  cursorColumn: string;
-  enabled?: boolean;
+    enabled: options !== null && options !== undefined,
+  })
 }
 
 export const useSupabaseInfiniteQuery = <T = any>(
@@ -108,46 +43,32 @@ export const useSupabaseInfiniteQuery = <T = any>(
   options: InfiniteQueryOptions
 ) => {
   return useInfiniteQuery<T[]>({
-    queryKey: [table, "infinite", options],
-    enabled: options.enabled !== false, // default true; pass false to defer fetching
-    queryFn: async ({ pageParam }: { pageParam: any }) => {
-      let query = supabase.from(table).select(options.select || "*");
-
-      // Apply base filters (excluding cursor)
-      if (options.filters) {
-        query = applyFilters(query, options.filters);
-      }
-
-      // Apply cursor for pagination (if pageParam exists)
-      if (pageParam !== undefined && pageParam !== null) {
-        query = query.gt(options.cursorColumn, pageParam);
-      }
-
-      // Apply ordering
-      if (options.orderBy) {
-        query = query.order(options.orderBy.column, {
-          ascending: options.orderBy.ascending,
-        });
-      }
-
-      // Apply page size limit
-      query = query.limit(options.pageSize);
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return (data || []) as T[];
+    queryKey: [table, 'infinite', options],
+    enabled: options.enabled !== false,
+    queryFn: async ({ pageParam }) => {
+      const { auth, ...rest } = options
+      const data = await postSupabaseSelect<T>({
+        table,
+        mode: 'infinite',
+        query: {
+          select: rest.select ?? '*',
+          filters: rest.filters,
+          orderBy: rest.orderBy,
+          pageParam,
+          cursorColumn: rest.cursorColumn,
+          pageSize: rest.pageSize,
+        },
+        auth,
+      })
+      return data as T[]
     },
     getNextPageParam: (lastPage: T[]) => {
-      // If page is empty or less than pageSize, no more pages
       if (!lastPage || lastPage.length < options.pageSize) {
-        return undefined;
+        return undefined
       }
-
-      // Return the cursor value from the last item
-      const lastItem = lastPage[lastPage.length - 1] as any;
-      return lastItem ? lastItem[options.cursorColumn] : undefined;
+      const lastItem = lastPage[lastPage.length - 1] as Record<string, unknown>
+      return lastItem ? lastItem[options.cursorColumn] : undefined
     },
     initialPageParam: undefined,
-  });
-};
+  })
+}

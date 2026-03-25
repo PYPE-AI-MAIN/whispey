@@ -60,7 +60,8 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   // Fetch project data
   const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active, plans, agent',
-    filters: [{ column: 'id', operator: 'eq', value: projectId }]
+    filters: [{ column: 'id', operator: 'eq', value: projectId }],
+    auth: { projectId },
   })
 
   const project = projects?.[0]
@@ -80,7 +81,8 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
     filters: [
       { column: 'project_id', operator: 'eq', value: projectId }
     ],
-    orderBy: { column: 'created_at', ascending: sortOrder === 'asc' }
+    orderBy: { column: 'created_at', ascending: sortOrder === 'asc' },
+    auth: { projectId },
   })
 
   const handleCreateAgent = () => {

@@ -14,7 +14,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Sparkles, AlertCircle, CalendarDays, CheckCircle } from 'lucide-react'
 import { DateRange } from 'react-day-picker'
 import { cn } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
 
 // Helper functions for date manipulation
 const subDays = (date: Date, days: number) => {
@@ -90,14 +89,14 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
     setLoadingFields(true)
     try {
       // Fetch agent config
-      const { data: agent, error } = await supabase
-        .from('pype_voice_agents')
-        .select('field_extractor_prompt, metrics')
-        .eq('id', agentId)
-        .single()
-
-      if (error) {
-        console.error('Error fetching agent config:', error)
+      const res = await fetch(`/api/agents/${agentId}`)
+      const agent = (await res.json()) as {
+        field_extractor_prompt?: unknown
+        metrics?: unknown
+        error?: string
+      }
+      if (!res.ok) {
+        console.error('Error fetching agent config:', agent)
         return
       }
 
