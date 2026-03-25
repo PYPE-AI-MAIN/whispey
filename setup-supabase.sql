@@ -1220,3 +1220,26 @@ CREATE TABLE public.pype_voice_webhook_configs (
     updated_at timestamp without time zone DEFAULT now()
 );
 
+-- ========================================
+-- Agent Config Version History
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS public.pype_agent_config_versions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id uuid NOT NULL REFERENCES public.pype_voice_agents(id) ON DELETE CASCADE,
+    project_id uuid NOT NULL,
+    version_number integer NOT NULL,
+    commit_message text,
+    config_snapshot jsonb NOT NULL,
+    created_by_email text,
+    created_by_user_id text,
+    created_at timestamp with time zone DEFAULT now(),
+    UNIQUE (agent_id, version_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_config_versions_agent_id ON public.pype_agent_config_versions(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_config_versions_created_at ON public.pype_agent_config_versions(agent_id, created_at DESC);
+
+-- Access controlled at the API layer (service role key used server-side)
+ALTER TABLE public.pype_agent_config_versions DISABLE ROW LEVEL SECURITY;
+

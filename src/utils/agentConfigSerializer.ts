@@ -238,67 +238,131 @@ export function serializeConfig(
 }
 
 /**
- * Deserializes a JSON configuration back to application state
+ * Deserializes a JSON configuration back to application state.
+ * Accepts BOTH the serialized format and the raw config_snapshot format.
  */
 export function deserializeConfig(json: string): DeserializedConfig {
-  const parsed: SerializedAgentConfig = JSON.parse(json)
-  
-  const { config } = parsed
+  const parsed = JSON.parse(json)
+
+  // Raw config_snapshot format
+  if (isSnapshotFormat(parsed)) {
+    return deserializeFromSnapshot(parsed)
+  }
+
+  // Serialized format
+  const { config } = parsed as SerializedAgentConfig
 
   return {
     formikValues: {
-      // LLM
       selectedProvider: config.llm.provider,
-      selectedModel: config.llm.model,
-      temperature: config.llm.temperature,
-      
-      // TTS
-      ttsProvider: config.tts.provider,
-      ttsModel: config.tts.model,
-      selectedVoice: config.tts.voiceId,
+      selectedModel:    config.llm.model,
+      temperature:      config.llm.temperature,
+
+      ttsProvider:    config.tts.provider,
+      ttsModel:       config.tts.model,
+      selectedVoice:  config.tts.voiceId,
       selectedLanguage: config.tts.language,
       ttsVoiceConfig: config.tts.config,
-      
-      // STT
+
       sttProvider: config.stt.provider,
-      sttModel: config.stt.model,
-      sttConfig: config.stt.config,
-      
-      // Prompt
-      prompt: config.prompt.text,
+      sttModel:    config.stt.model,
+      sttConfig:   config.stt.config,
+
+      prompt:    config.prompt.text,
       variables: config.prompt.variables,
-      
-      // Conversation Flow
-      firstMessageMode: config.conversationFlow.firstMessageMode,
-      customFirstMessage: config.conversationFlow.customFirstMessage,
+
+      firstMessageMode:     config.conversationFlow.firstMessageMode,
+      customFirstMessage:   config.conversationFlow.customFirstMessage,
       aiStartsAfterSilence: config.conversationFlow.aiStartsAfterSilence,
-      silenceTime: config.conversationFlow.silenceTime,
-      
-      // Dynamic TTS
-      dynamic_tts: config.dynamicTTS,
-      
-      // Advanced Settings
-      advancedSettings: config.advancedSettings
+      silenceTime:          config.conversationFlow.silenceTime,
+
+      dynamic_tts:      config.dynamicTTS,
+      advancedSettings: config.advancedSettings,
     },
     ttsConfig: {
       provider: config.tts.provider,
-      model: config.tts.model,
-      config: config.tts.config
+      model:    config.tts.model,
+      config:   config.tts.config,
     },
     sttConfig: {
       provider: config.stt.provider,
-      model: config.stt.model,
-      config: config.stt.config
+      model:    config.stt.model,
+      config:   config.stt.config,
     },
     azureConfig: {
-      endpoint: config.llm.azureConfig?.endpoint || '',
-      apiVersion: config.llm.azureConfig?.apiVersion || ''
-    }
+      endpoint:   config.llm.azureConfig?.endpoint   || '',
+      apiVersion: config.llm.azureConfig?.apiVersion || '',
+    },
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal: detect which format the pasted JSON is
+// ─────────────────────────────────────────────────────────────────────────────
+
+function isSnapshotFormat(parsed: any): boolean {
+  // Raw config_snapshot: { agent: { assistant: [{ ... }] } }
+  return !!(parsed?.agent?.assistant && Array.isArray(parsed.agent.assistant))
+}
+
+function extractAssistant(parsed: any): any {
+  return parsed?.agent?.assistant?.[0] ?? parsed?.assistant?.[0] ?? {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal: deserialize from raw config_snapshot
+// ─────────────────────────────────────────────────────────────────────────────
+
+function deserializeFromSnapshot(parsed: any): DeserializedConfig {
+  const a = extractAssistant(parsed)
+
+  return {
+    formikValues: {
+      selectedProvider: a.llm?.provider || '',
+      selectedModel:    a.llm?.model    || '',
+      temperature:      a.llm?.temperature ?? 0.7,
+
+      ttsProvider:    a.tts?.provider || '',
+      ttsModel:       a.tts?.model    || '',
+      selectedVoice:  a.tts?.voice ?? a.tts?.voiceId ?? a.tts?.voice_id ?? '',
+      ttsVoiceConfig: a.tts?.config   || {},
+
+      sttProvider: a.stt?.provider || '',
+      sttModel:    a.stt?.model    || '',
+      sttConfig:   a.stt?.config   || {},
+
+      prompt:    a.prompt    || '',
+      variables: Array.isArray(a.variables) ? a.variables : [],
+
+      firstMessageMode:   a.first_message_mode ?? a.firstMessageMode ?? 'assistant_waits_for_user',
+      customFirstMessage: a.first_message ?? a.firstMessage ?? '',
+      aiStartsAfterSilence: false,
+      silenceTime: 10,
+
+      dynamic_tts:      a.dynamic_tts      || [],
+      advancedSettings: a.advancedSettings  || {},
+    },
+    ttsConfig: {
+      provider: a.tts?.provider || '',
+      model:    a.tts?.model    || '',
+      config:   a.tts?.config   || {},
+    },
+    sttConfig: {
+      provider: a.stt?.provider || '',
+      model:    a.stt?.model    || '',
+      config:   a.stt?.config   || {},
+    },
+    azureConfig: {
+      endpoint:   a.llm?.azureConfig?.endpoint   || '',
+      apiVersion: a.llm?.azureConfig?.apiVersion || '',
+    },
   }
 }
 
 /**
- * Validates the configuration JSON structure
+ * Validates the configuration JSON structure.
+ * Accepts BOTH the serialized format ({ version, config }) and
+ * the raw config_snapshot format ({ agent: { assistant: [...] } }).
  */
 export function validateConfigSchema(json: string): ValidationResult {
   const errors: string[] = []
@@ -306,14 +370,27 @@ export function validateConfigSchema(json: string): ValidationResult {
   try {
     const parsed = JSON.parse(json)
 
-    // Check version
+    // ── Raw config_snapshot format ────────────────────────────────────────────
+    if (isSnapshotFormat(parsed)) {
+      const a = extractAssistant(parsed)
+      if (!a || Object.keys(a).length === 0) {
+        errors.push('Could not find assistant configuration inside the snapshot')
+        return { valid: false, errors }
+      }
+      if (!a.llm?.provider) errors.push('Missing LLM provider')
+      if (!a.llm?.model)    errors.push('Missing LLM model')
+      if (!a.tts?.provider) errors.push('Missing TTS provider')
+      if (!a.stt?.provider) errors.push('Missing STT provider')
+      return { valid: errors.length === 0, errors }
+    }
+
+    // ── Serialized format ({ version, config }) ───────────────────────────────
     if (!parsed.version) {
       errors.push('Missing version field')
     } else if (parsed.version !== CURRENT_VERSION) {
       errors.push(`Unsupported version: ${parsed.version}. Expected: ${CURRENT_VERSION}`)
     }
 
-    // Check config object exists
     if (!parsed.config) {
       errors.push('Missing config object')
       return { valid: false, errors }
@@ -321,71 +398,50 @@ export function validateConfigSchema(json: string): ValidationResult {
 
     const { config } = parsed
 
-    // Validate LLM
     if (!config.llm) {
       errors.push('Missing LLM configuration')
     } else {
       if (!config.llm.provider) errors.push('Missing LLM provider')
-      if (!config.llm.model) errors.push('Missing LLM model')
-      if (typeof config.llm.temperature !== 'number') {
-        errors.push('Invalid temperature value')
-      }
+      if (!config.llm.model)    errors.push('Missing LLM model')
+      if (typeof config.llm.temperature !== 'number') errors.push('Invalid temperature value')
     }
 
-    // Validate TTS
     if (!config.tts) {
       errors.push('Missing TTS configuration')
     } else {
       if (!config.tts.provider) errors.push('Missing TTS provider')
     }
 
-    // Validate STT
     if (!config.stt) {
       errors.push('Missing STT configuration')
     } else {
       if (!config.stt.provider) errors.push('Missing STT provider')
     }
 
-    // Validate Prompt
     if (!config.prompt) {
       errors.push('Missing prompt configuration')
     } else {
-      if (typeof config.prompt.text !== 'string') {
-        errors.push('Invalid prompt text')
-      }
-      if (!Array.isArray(config.prompt.variables)) {
-        errors.push('Invalid variables format')
-      }
+      if (typeof config.prompt.text !== 'string') errors.push('Invalid prompt text')
+      if (!Array.isArray(config.prompt.variables)) errors.push('Invalid variables format')
     }
 
-    // Validate Conversation Flow
-    if (!config.conversationFlow) {
-      errors.push('Missing conversation flow configuration')
-    }
+    if (!config.conversationFlow) errors.push('Missing conversation flow configuration')
 
-    // Validate Advanced Settings (basic structure check)
     if (!config.advancedSettings) {
       errors.push('Missing advanced settings')
     } else {
-      const requiredSections = ['interruption', 'vad', 'session', 'tools', 'fillers', 'bugs', 'backgroundAudio']
-      for (const section of requiredSections) {
+      const required = ['interruption', 'vad', 'session', 'tools', 'fillers', 'bugs', 'backgroundAudio']
+      for (const section of required) {
         if (!config.advancedSettings[section]) {
           errors.push(`Missing advanced settings section: ${section}`)
         }
       }
     }
 
-    return {
-      valid: errors.length === 0,
-      errors
-    }
+    return { valid: errors.length === 0, errors }
 
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      errors.push('Invalid JSON format')
-    } else {
-      errors.push('Unknown validation error')
-    }
+    errors.push(error instanceof SyntaxError ? 'Invalid JSON format' : 'Unknown validation error')
     return { valid: false, errors }
   }
 }
