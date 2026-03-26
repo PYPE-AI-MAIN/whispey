@@ -31,6 +31,7 @@ function WebhookSettings({
   projectId
 }: WebhookSettingsProps) {
   const [headerEntries, setHeaderEntries] = useState<Array<{ key: string; value: string }>>([])
+  const [webhookUrlError, setWebhookUrlError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [isLoading, setIsLoading] = useState(false)
@@ -192,6 +193,18 @@ function WebhookSettings({
     updateHeaders(newEntries)
   }
 
+  const isValidWebhookUrl = (url: string) => {
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) return true
+
+    try {
+      const parsedUrl = new URL(trimmedUrl)
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
+
   const saveWebhookConfig = async (silent = false) => {
     if (!currentAgentId || !currentProjectId) {
       if (!silent) {
@@ -204,6 +217,15 @@ function WebhookSettings({
     setIsSaving(true)
     if (!silent) {
       setSaveStatus('idle')
+    }
+    setWebhookUrlError('')
+
+    if (!isValidWebhookUrl(effectiveWebhookUrl)) {
+      if (!silent) {
+        setWebhookUrlError('Please enter a valid URL (include http:// or https://).')
+      }
+      setIsSaving(false)
+      return
     }
 
     try {
@@ -324,10 +346,16 @@ function WebhookSettings({
                   placeholder="https://your-api.com/webhook"
                   value={effectiveWebhookUrl}
                   onChange={(e) => {
+                    if (webhookUrlError) {
+                      setWebhookUrlError('')
+                    }
                     setDisplayState(prev => prev ? { ...prev, webhookUrl: e.target.value } : { triggerOnCallLog: true, webhookUrl: e.target.value, httpMethod: 'POST', headers: {}, isActive: false })
                   }}
                   className="h-8 text-xs"
                 />
+                {webhookUrlError && (
+                  <p className="text-xs text-red-500 mt-1">{webhookUrlError}</p>
+                )}
               </div>
 
               {/* HTTP Method */}
