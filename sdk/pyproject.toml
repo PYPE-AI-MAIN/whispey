@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Whispey"
-version = "4.2.1"
+version = "4.2.2"
 description = "Voice Analytics SDK for AI Agents"
 readme = "README.md"
 license = {text = "MIT"}
