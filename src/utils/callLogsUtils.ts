@@ -340,11 +340,19 @@ export const downloadCSV = async (
 ) => {
   const { basic, metadata, transcription_metrics } = visibleColumns
 
+  // 'tags' and 'flag' are virtual — they live inside transcription_metrics JSONB,
+  // not as top-level columns, so must never appear directly in the SELECT clause.
+  const VIRTUAL_BASIC_COLS = new Set(['total_cost', 'tags', 'flag'])
+  const needsTranscriptionMetrics =
+    transcription_metrics.length > 0 ||
+    basic.includes('tags') ||
+    basic.includes('flag')
+
   const selectColumns = [
     'id', 'agent_id',
-    ...basic.filter(col => col !== "total_cost"),
+    ...basic.filter(col => !VIRTUAL_BASIC_COLS.has(col)),
     ...(metadata.length > 0 ? ['metadata'] : []),
-    ...(transcription_metrics.length > 0 ? ['transcription_metrics'] : []),
+    ...(needsTranscriptionMetrics ? ['transcription_metrics'] : []),
   ]
 
   try {
