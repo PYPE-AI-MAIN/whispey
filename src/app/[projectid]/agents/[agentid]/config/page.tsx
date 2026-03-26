@@ -217,12 +217,15 @@ export default function AgentConfig() {
   // Holds the last-deployed config so user can optionally save it as a checkpoint
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
   const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
+  const [isCheckpointExiting, setIsCheckpointExiting] = useState(false)
 
   // Auto-dismiss checkpoint banner after 15 seconds if no action taken
   useEffect(() => {
     if (!pendingCheckpoint) return
+    setIsCheckpointExiting(false)
+    const exitT = setTimeout(() => setIsCheckpointExiting(true), 14_700)
     const t = setTimeout(() => setPendingCheckpoint(null), 15_000)
-    return () => clearTimeout(t)
+    return () => { clearTimeout(exitT); clearTimeout(t) }
   }, [pendingCheckpoint])
   
   // Agent status state
@@ -1413,9 +1416,9 @@ const unmappedVariablesCount = useMemo(() => {
 
       {/* Version prompt — appears after every successful deploy, anchored below the header */}
       {pendingCheckpoint && (
-        <div className="fixed top-[72px] left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed top-[84px] left-1/2 -translate-x-1/2 z-50">
           {/* Inner: relative so the absolute progress bar anchors to it */}
-          <div className="relative bg-background border shadow-lg rounded-xl overflow-hidden animate-in slide-in-from-top-4 duration-300 whitespace-nowrap">
+          <div className={`relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap ${isCheckpointExiting ? 'animate-out slide-out-to-top-4 fade-out duration-300 fill-mode-forwards' : 'animate-in slide-in-from-top-4 duration-300'}`}>
             {/* Progress bar — spans 100% of card width, shrinks to 0 over 15 s */}
             <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
               <div
@@ -1441,7 +1444,7 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 variant="ghost"
                 className="h-7 text-xs text-muted-foreground"
-                onClick={() => setPendingCheckpoint(null)}
+                onClick={() => { setIsCheckpointExiting(true); setTimeout(() => setPendingCheckpoint(null), 300) }}
                 disabled={isSavingCheckpoint}
               >
                 Skip

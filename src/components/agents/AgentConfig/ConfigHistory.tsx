@@ -699,7 +699,7 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
   return (
     <>
       <Sheet open={open} onOpenChange={v => !v && onClose()}>
-        <SheetContent side="right" className="w-[420px] sm:w-[480px] flex flex-col p-0">
+        <SheetContent side="right" className="w-[420px] sm:w-[480px] min-w-[420px] sm:min-w-[480px] sm:max-w-none flex flex-col p-0">
 
           <SheetHeader className="px-4 py-4 border-b shrink-0">
             <SheetTitle className="text-sm font-semibold">
