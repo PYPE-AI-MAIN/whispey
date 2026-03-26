@@ -220,6 +220,14 @@ async def send_to_whispey(data, apikey=None, api_url=None):
             print(f"✅ Got upload URL: {s3_key}")
             
             # Step 2: Upload directly to S3 (no AWS credentials needed!)
+            # Embed token in the payload so Lambda can authenticate when reading from S3
+            # (S3-triggered Lambda has no HTTP headers, token must come from the body).
+            # Only embed if we actually have a valid token — never write None/empty string.
+            if api_key_to_use:
+                data["token"] = api_key_to_use
+            else:
+                logger.warning("[WHISPEY] S3 upload: no api_key available — token will NOT be embedded; "
+                               "Lambda will resolve project by agent_id instead")
             await upload_to_s3_presigned(data, upload_url)
             print(f"✅ Uploaded to S3 successfully")
             
