@@ -176,11 +176,15 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
         const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
         return aTurnNum - bTurnNum
       })
-    
-      return filtered
+
+      // If at least one turn has actual transcript text, use the metrics data.
+      // Otherwise fall through to transcript_json so the conversation is still visible.
+      const hasTranscriptContent = filtered.some(t => t.user_transcript || t.agent_response)
+      if (hasTranscriptContent) return filtered
     }
 
-    // Fallback: build traces from transcript_json in call_logs
+    // Fallback: build traces from transcript_json in call_logs.
+    // Used when metrics logs are absent OR contain no transcript text.
     if (callData?.length) {
       const call = callData[0]
       let transcriptJson = call?.transcript_json
@@ -207,7 +211,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     }
 
     return []
-  }, [traceData, filters])
+  }, [traceData, callData, filters])
 
 
   const getTraceStatus = (trace: TraceLog) => {
