@@ -1,14 +1,12 @@
 // src/app/api/projects/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
 import crypto from 'crypto'
 import { createProjectApiKey } from '@/lib/api-key-management'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createServiceRoleClient()
 
 // Generate a secure API token
 function generateApiToken(): string {
@@ -297,7 +295,7 @@ export async function GET(
 
     const { data: projectRow, error: fetchError } = await supabase
       .from('pype_voice_projects')
-      .select('id, agent, plans')
+      .select('id, agent, plans, campaign_config')
       .eq('id', projectId)
       .single()
 

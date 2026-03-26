@@ -21,6 +21,7 @@
     ],
     "baseUrl": ".",
     "paths": {
+      "@/lib/supabase-server": ["./src/lib/supabase-server.ts"],
       "@/*": ["./src/*"]
     }
   },

@@ -1,10 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { UsageData, CostResult } from '../types/logs';
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Create server-side Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createServiceRoleClient();
 
 // Default fallback if DB misses data
 const FALLBACK = {

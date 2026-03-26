@@ -1,5 +1,5 @@
 // lib/user-data.ts
-import { supabase } from '../lib/supabase'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 
 
@@ -27,6 +27,7 @@ export async function getCurrentUserProfile(): Promise<{
       return { data: null, error: 'Not authenticated' }
     }
     
+    const supabase = createServiceRoleClient()
     const { data, error } = await supabase
       .from('pype_voice_users')
       .select('*')

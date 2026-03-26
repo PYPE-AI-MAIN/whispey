@@ -28,7 +28,8 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
-    orderBy: { column: "created_at", ascending: false }
+    orderBy: { column: "created_at", ascending: false },
+    auth: { agentId },
   })
 
   // Calculate summary statistics
