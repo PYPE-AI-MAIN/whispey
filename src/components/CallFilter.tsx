@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
+import { isColumnVisibleForRole } from '@/utils/callLogsUtils'
 
 // Unified filter operation type that can be either a filter or a distinct operation
 export type FilterOperation = 
@@ -67,6 +68,20 @@ interface CallFilterProps {
   initialFilters?: FilterOperation[]
   distinctConfig?: DistinctConfig  // Keep for backward compatibility
   onDistinctConfigChange?: (config: DistinctConfig | undefined) => void  // Keep for backward compatibility
+  /** When set, hides filter targets the user cannot use (e.g. Tags for viewers). */
+  role?: string | null
+}
+
+/** Maps filter dropdown `value` to basic column keys used by `isColumnVisibleForRole`. */
+const FILTER_VALUE_TO_BASIC_KEY: Record<string, string> = {
+  customer_number: 'customer_number',
+  duration_seconds: 'duration_seconds',
+  avg_latency: 'avg_latency',
+  call_started_at: 'call_started_at',
+  call_ended_reason: 'call_ended_reason',
+  wcall_event: 'wcall_event',
+  tags: 'tags',
+  flag: 'flag',
 }
 
 const COLUMNS = [
@@ -75,10 +90,16 @@ const COLUMNS = [
   { value: 'avg_latency', label: 'Avg Latency (ms)', type: 'number', numericType: 'float' as const },
   { value: 'call_started_at', label: 'Date', type: 'date' },
   { value: 'call_ended_reason', label: 'Status', type: 'text' },
+  { value: 'wcall_event', label: 'Call Event', type: 'text' },
   { value: 'tags', label: 'Tags', type: 'tags' },
   { value: 'flag', label: 'Flag', type: 'flag' },
   { value: 'metadata', label: 'Metadata', type: 'jsonb' },
   { value: 'transcription_metrics', label: 'Transcription', type: 'jsonb' }
+]
+
+const CALL_EVENT_OPTIONS = [
+  { value: 'call_started', label: 'Started' },
+  { value: 'call_ended', label: 'Ended' }
 ]
 
 const OPERATIONS = {
@@ -121,8 +142,18 @@ const CallFilter: React.FC<CallFilterProps> = ({
   availableTranscriptionFields = [],
   initialFilters = [],
   distinctConfig,
-  onDistinctConfigChange
+  onDistinctConfigChange,
+  role = null,
 }) => {
+  const columnsForRole = useMemo(() => {
+    if (role == null) return COLUMNS
+    return COLUMNS.filter((c) => {
+      const key = FILTER_VALUE_TO_BASIC_KEY[c.value]
+      if (key === undefined) return true
+      return isColumnVisibleForRole(key, role)
+    })
+  }, [role])
+
   const [operations, setOperations] = useState<FilterOperation[]>(initialFilters)
   const [isOpen, setIsOpen] = useState(false)
   
@@ -386,12 +417,18 @@ const CallFilter: React.FC<CallFilterProps> = ({
     return OPERATIONS[selectedColumn.type as keyof typeof OPERATIONS] || []
   }
 
+  const getCallEventLabel = (value: string) =>
+    CALL_EVENT_OPTIONS.find(o => o.value === value)?.label ?? value
+
   const getOperationDisplayText = (operation: FilterOperation) => {
     if (operation.type === 'filter') {
       const columnLabel = getColumnLabel(operation.column)
       const operationLabel = getOperationLabel(operation.operation)
       const jsonFieldText = operation.jsonField ? `.${operation.jsonField}` : ''
-      const valueText = operation.operation !== 'json_exists' ? ` "${operation.value}"` : ''
+      const valueDisplay = operation.column === 'wcall_event'
+        ? getCallEventLabel(operation.value)
+        : operation.value
+      const valueText = operation.operation !== 'json_exists' ? ` "${valueDisplay}"` : ''
       
       return `${columnLabel}${jsonFieldText} ${operationLabel}${valueText}`
     } else {
@@ -534,7 +571,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
-                        {COLUMNS.map((column) => (
+                        {columnsForRole.map((column) => (
                           <DropdownMenuItem
                             key={column.value}
                             onClick={() => {
@@ -639,6 +676,28 @@ const CallFilter: React.FC<CallFilterProps> = ({
                               />
                             </PopoverContent>
                           </Popover>
+                        ) : newFilter.column === 'wcall_event' ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-0">
+                                <span className="truncate">
+                                  {newFilter.value ? getCallEventLabel(newFilter.value) : 'Call Event'}
+                                </span>
+                                <ChevronDown className="h-3 w-3 flex-shrink-0 ml-1" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-40">
+                              {CALL_EVENT_OPTIONS.map((opt) => (
+                                <DropdownMenuItem
+                                  key={opt.value}
+                                  onClick={() => setNewFilter({ ...newFilter, value: opt.value })}
+                                  className="text-xs"
+                                >
+                                  {opt.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         ) : (
                           <Input
                             placeholder="Value"
@@ -687,7 +746,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
-                        {COLUMNS.map((column) => (
+                        {columnsForRole.map((column) => (
                           <DropdownMenuItem
                             key={column.value}
                             onClick={() => {

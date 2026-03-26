@@ -43,6 +43,9 @@ import {
 } from '@/components/ui/tooltip'
 import QuickStartGuide from './QuickStartGuide'
 import { useMobile } from '@/hooks/use-mobile'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowOrgSection } from '@/types/visibility'
+import { useAgentById } from '@/hooks/useAgentById'
 
 interface DashboardProps {
   agentId: string
@@ -155,13 +158,9 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     }
   }, [quickFilter, dateRange, isCustomRange])
 
-  // Data fetching - now happens in parallel with UI rendering
-  const { data: agents, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id, field_extractor_prompt, field_extractor, field_extractor_variables, metrics',
-    filters: [{ column: 'id', operator: 'eq', value: agentId }]
-  })
-
-  const agent = agents?.[0]
+  // Fetch agent via API so viewers get role-based response (no field_extractor/metrics data)
+  const { data: agentData, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useAgentById(agentId)
+  const agent = agentData ?? null
 
 const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery(
   'pype_voice_projects',
@@ -202,6 +201,10 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
+  const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
+  // Show when permissions.visibility allows (Supabase); viewers can see if DB grants it.
+  const canSeeFieldExtractor = canShowOrgSection(visibility, 'fieldExtractor')
+  const canSeeMetrics = canShowOrgSection(visibility, 'metrics')
 
   const breadcrumb = React.useMemo(() => {
     if (agentLoading || projectLoading) {
@@ -675,15 +678,16 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                       </Popover>
                     </div>
                     
-                    {/* Field Extractor & Metrics - skeleton while agent loading */}
+                    {/* Field Extractor & Metrics - skeleton while agent loading; visibility-controlled */}
                     <div className="flex gap-2">
                       {agentLoading ? (
                         <>
                           <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
                           <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
                         </>
-                      ) : agent ? (
+                      ) : agent && (canSeeFieldExtractor || canSeeMetrics) ? (
                         <>
+                          {canSeeFieldExtractor && (
                           <FieldExtractorDialog
                             initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                             initialVariables={(agent as any)?.field_extractor_variables || {}}
@@ -705,6 +709,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                               }
                             }}
                           />
+                          )}
+                          {canSeeMetrics && (
                           <MetricsDialog
                             initialMetrics={agent?.metrics ? (typeof agent.metrics === 'string' ? JSON.parse(agent.metrics) : agent.metrics) : {}}
                             onSave={async (metrics) => {
@@ -720,6 +726,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                               }
                             }}
                           />
+                          )}
                         </>
                       ) : null}
                     </div>
@@ -832,8 +839,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 </div>
               </div> */}
 
-              {/* Field Extractor for mobile */}
-              {agent && (
+              {/* Field Extractor for mobile (visibility-controlled) */}
+              {agent && canSeeFieldExtractor && (
                 <div>
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Tools</div>
                   <FieldExtractorDialog

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { getUserProjectRole } from "@/services/getUserRole"
-import { toCamelCase, getSelectColumns, extractFiltersAndDistinct } from '@/utils/callLogsUtils'
+import { toCamelCase, getSelectColumns, extractFiltersAndDistinct, isViewerRole } from '@/utils/callLogsUtils'
 import { FilterOperation } from '@/components/CallFilter'
 import { useCallLogs } from "@/hooks/useCallLogs"
 import { useCallLogsStore } from '@/stores/callLogsStore'
@@ -13,7 +13,8 @@ export const useCallLogsData = (
   agent: any,
   userEmail?: string,
   projectId?: string,
-  dateRange?: { from: string; to: string }
+  dateRange?: { from: string; to: string },
+  userId?: string
 ) => {
   const [role, setRole] = useState<string | null>(null)
   const [roleLoading, setRoleLoading] = useState(true)
@@ -38,13 +39,13 @@ export const useCallLogsData = (
     [activeFilters, agentId]
   )
 
-  // Fetch user role
+  // Fetch user role (use clerk_id when available so owners/members added by clerk_id are found)
   useEffect(() => {
-    if (userEmail && projectId) {
+    if ((userEmail || userId) && projectId) {
       const getUserRole = async () => {
         setRoleLoading(true)
         try {
-          const userRole = await getUserProjectRole(userEmail, projectId)
+          const userRole = await getUserProjectRole(userEmail ?? '', projectId, userId)
           setRole(userRole.role)
         } catch (error) {
           console.error('Failed to load user role:', error)
@@ -58,7 +59,17 @@ export const useCallLogsData = (
       setRoleLoading(false)
       setRole('user')
     }
-  }, [userEmail, projectId])
+  }, [userEmail, projectId, userId])
+
+  // Viewers cannot use tag filters; drop persisted tag filters if role is viewer
+  useEffect(() => {
+    if (!agentId || !isViewerRole(role)) return
+    const next = activeFilters.filter(
+      op => !(op.type === 'filter' && op.column === 'tags')
+    )
+    if (next.length === activeFilters.length) return
+    setActiveFilters(next)
+  }, [role, agentId, activeFilters, setActiveFilters])
 
   const selectColumns = useMemo(() => getSelectColumns(role), [role])
 
@@ -73,6 +84,7 @@ export const useCallLogsData = (
     refetch
   } = useCallLogs({
     agentId,
+    projectId,
     preDistinctFilters,
     postDistinctFilters,
     select: selectColumns,
@@ -82,7 +94,9 @@ export const useCallLogsData = (
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000
+    gcTime: 10 * 60 * 1000,
+    userId,
+    userEmail
   })
 
   const calls = useMemo(() => data?.pages.flat() ?? [], [data])

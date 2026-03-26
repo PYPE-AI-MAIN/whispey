@@ -11,6 +11,8 @@ interface MetricGroupTabsProps {
   onGroupChange: (groupId: string | 'all') => void
   onManageGroups: () => void
   customTotalsCount: number
+  /** When false, hide create/manage group controls (viewers). Default true. */
+  canManageGroups?: boolean
 }
 
 export function MetricGroupTabs({
@@ -18,7 +20,8 @@ export function MetricGroupTabs({
   activeGroupId,
   onGroupChange,
   onManageGroups,
-  customTotalsCount
+  customTotalsCount,
+  canManageGroups = true,
 }: MetricGroupTabsProps) {
   const { isMobile } = useMobile(768)
 
@@ -32,7 +35,7 @@ export function MetricGroupTabs({
             onClick={() => onGroupChange('all')}
             className={`
               ${isMobile ? 'px-3 py-1.5 text-sm' : 'px-4 py-2 text-sm'}
-              font-medium rounded-lg transition-all whitespace-nowrap flex-shrink-0
+              font-medium rounded-lg transition-all whitespace-nowrap shrink-0
               ${activeGroupId === 'all'
                 ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-transparent'
@@ -52,7 +55,7 @@ export function MetricGroupTabs({
               onClick={() => onGroupChange(group.id)}
               className={`
                 ${isMobile ? 'px-3 py-1.5 text-sm' : 'px-4 py-2 text-sm'}
-                font-medium rounded-lg transition-all whitespace-nowrap flex-shrink-0
+                font-medium rounded-lg transition-all whitespace-nowrap shrink-0
                 ${activeGroupId === group.id
                   ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border border-transparent'
@@ -67,26 +70,28 @@ export function MetricGroupTabs({
           ))}
 
           {/* New Group Button */}
-          <button
-            onClick={onManageGroups}
-            className={`
-              ${isMobile ? 'px-3 py-1.5' : 'px-4 py-2'}
-              text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300
-              hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all
-              border border-dashed border-gray-300 dark:border-gray-600 whitespace-nowrap flex-shrink-0
-            `}
-          >
-            <Plus className={`${isMobile ? 'w-4 h-4' : 'w-4 h-4'}`} />
-          </button>
+          {canManageGroups && (
+            <button
+              onClick={onManageGroups}
+              className={`
+                ${isMobile ? 'px-3 py-1.5' : 'px-4 py-2'}
+                text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300
+                hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-all
+                border border-dashed border-gray-300 dark:border-gray-600 whitespace-nowrap flex-shrink-0
+              `}
+            >
+              <Plus className={`${isMobile ? 'w-4 h-4' : 'w-4 h-4'}`} />
+            </button>
+          )}
         </div>
 
         {/* Manage Button */}
-        {!isMobile && groups.length > 0 && (
+        {canManageGroups && !isMobile && groups.length > 0 && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onManageGroups}
-            className="ml-4 flex-shrink-0"
+            className="ml-4 shrink-0"
           >
             <Settings2 className="w-4 h-4 mr-2" />
             Manage

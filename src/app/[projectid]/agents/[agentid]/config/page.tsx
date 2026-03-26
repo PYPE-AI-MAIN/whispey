@@ -61,6 +61,8 @@ import { DeserializedConfig } from '@/utils/agentConfigSerializer'
 import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
 import { useUser } from '@clerk/nextjs'
 import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowAgentSection } from '@/types/visibility'
 
 // Agent status service
 const agentStatusService = {
@@ -202,6 +204,17 @@ export default function AgentConfig() {
   const agentid = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
   const { user } = useUser()
+  
+  const { isOwnerOrAdmin, visibility, isLoading: roleLoading } = useMemberVisibility(projectId || undefined)
+
+  useEffect(() => {
+    if (roleLoading || !projectId || !agentid) return
+    const allowed = isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig')
+    if (!allowed) {
+      router.replace(`/${projectId}/agents/${agentid}`)
+    }
+  }, [isOwnerOrAdmin, visibility, roleLoading, projectId, agentid, router])
+
   const [isCopied, setIsCopied] = useState(false)
   const [isPromptSettingsOpen, setIsPromptSettingsOpen] = useState(false)
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)

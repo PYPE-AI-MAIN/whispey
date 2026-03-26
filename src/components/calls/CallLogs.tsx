@@ -14,6 +14,8 @@ import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-tabl
 // Import optimized modules
 import { downloadCSV } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
+import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { canShowOrgSection } from '@/types/visibility'
 import { useCallLogsColumns, BASIC_COLUMNS } from '@/hooks/useCallLogsColumns'
 import { useCallLogsStore } from '@/stores/callLogsStore'
 import { createTableColumns } from './tableColumns'
@@ -68,7 +70,11 @@ const CallLogs: React.FC<CallLogsProps> = ({
     setActiveFilters,
     fetchNextPage,
     refetch
-  } = useCallLogsData(agent, userEmail, project?.id, dateRange)
+  } = useCallLogsData(agent, userEmail, project?.id, dateRange, user?.id)
+
+  // Re-analyze only if permissions.visibility.org.reanalyze is true (set in Supabase).
+  const { visibility } = useMemberVisibility(project?.id ?? undefined)
+  const canReanalyze = canShowOrgSection(visibility, 'reanalyze')
 
   // Read this agent's distinctConfig and its setter from the per-agent store slot
   const { distinctConfigByAgent, setDistinctConfigForAgent } = useCallLogsStore()
@@ -350,6 +356,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
               initialFilters={activeFilters}
               distinctConfig={distinctConfig}
               onDistinctConfigChange={handleDistinctConfigChange}
+              role={role}
             />
             <Button
               variant="outline"
@@ -364,7 +371,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />
+            {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
             <BackfillDispositionDialog 
               projectId={project?.id} 
               agentId={agent?.id}
@@ -380,9 +387,9 @@ const CallLogs: React.FC<CallLogsProps> = ({
               Download CSV
             </Button>
             <ColumnSelector
-              basicColumns={BASIC_COLUMNS.map((col) => col.key)}
+              basicColumns={filteredBasicColumns.map((col) => col.key)}
               basicColumnLabels={Object.fromEntries(
-                BASIC_COLUMNS.filter(col => !('hidden' in col && col.hidden)).map((col) => [col.key, col.label])
+                filteredBasicColumns.map((col) => [col.key, col.label])
               )}
               metadataColumns={dynamicColumns.metadata}
               transcriptionColumns={dynamicColumns.transcription_metrics}
