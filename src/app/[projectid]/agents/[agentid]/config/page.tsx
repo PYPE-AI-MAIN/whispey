@@ -672,6 +672,7 @@ const unmappedVariablesCount = useMemo(() => {
 }, [promptValidation.validVariables, formik.values.variables])
 
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
+  const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
   // Loading state
   if (agentLoading || isConfigLoading) {
@@ -822,7 +823,8 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm" 
                 className="h-8 px-3" 
                 onClick={handleSaveAndDeploy}
-                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid}
+                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable}
+                title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
                 {saveAndDeploy.isPending || isConfigFetching ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -999,7 +1001,8 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid}
+              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable}
+              title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
               {saveAndDeploy.isPending || isConfigFetching ? (
                 <>

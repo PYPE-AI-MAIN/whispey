@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import {
+  getPypeApiBaseUrlForServer,
+  isPypeUpstreamUnreachable,
+  pypeApiAbortSignal,
+} from '@/lib/pypeApiFetch'
 
 const supabase = createServiceRoleClient()
 
@@ -102,17 +107,40 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    
-    const apiUrl = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_config/${agentName}`
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': 'pype-api-v1'
-      },
-      body: JSON.stringify(agentConfigBody)
-    })
+
+    const baseUrl = getPypeApiBaseUrlForServer()
+    if (!baseUrl) {
+      return NextResponse.json(
+        { message: 'Voice backend URL is not configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.' },
+        { status: 503 }
+      )
+    }
+
+    const apiUrl = `${baseUrl}/agent_config/${agentName}`
+
+    let response: Response
+    try {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'pype-api-v1'
+        },
+        body: JSON.stringify(agentConfigBody),
+        signal: pypeApiAbortSignal(),
+      })
+    } catch (fetchErr: unknown) {
+      if (isPypeUpstreamUnreachable(fetchErr)) {
+        return NextResponse.json(
+          {
+            message: 'Voice backend unreachable. The agent config could not be deployed because the voice backend did not respond.',
+            backendUnavailable: true,
+          },
+          { status: 503 }
+        )
+      }
+      throw fetchErr
+    }
 
     if (!response.ok) {
       const errorText = await response.text()

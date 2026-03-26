@@ -380,7 +380,8 @@ const Overview: React.FC<OverviewProps> = ({
   const isMetricVisible = useCallback(
     (metricId: string) => {
       if (!visibleMetricIds.includes(metricId)) return false
-      const ov = visibility.agent.overview
+          const ov = visibility?.agent?.overview
+          if (!ov) return false
       if (metricId.startsWith('custom_')) {
         return canShowOrgSection(visibility, 'metrics')
       }
@@ -394,7 +395,8 @@ const Overview: React.FC<OverviewProps> = ({
   const isChartVisible = useCallback(
     (chartId: string) => {
       if (!visibleChartIds.includes(chartId)) return false
-      const ov = visibility.agent.overview
+       const ov = visibility?.agent?.overview
+       if (!ov) return false
       if (ov.charts !== true) return false
       const key = OVERVIEW_KEY_BY_CHART_ID[chartId]
       if (!key) return true
@@ -1169,7 +1171,7 @@ const Overview: React.FC<OverviewProps> = ({
 
         {/* Chart Analytics Section — extra builder; gated by overview.charts + org.metrics */}
         {!isMobile &&
-          visibility.agent.overview.charts === true &&
+          visibility?.agent?.overview.charts === true &&
           canShowOrgSection(visibility, 'metrics') && (
           <ChartProvider>
             <div className="space-y-6">
