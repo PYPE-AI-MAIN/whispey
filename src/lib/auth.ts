@@ -1,13 +1,11 @@
 // src/lib/auth.ts
 import crypto from 'crypto';
 import { updateKeyLastUsed } from './api-key-management';
-import { createClient } from '@supabase/supabase-js';
 import { TokenVerificationResult } from '../types/logs';
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Create server-side Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createServiceRoleClient();
 
 export const verifyToken = async (token: string, environment: string = 'dev'): Promise<TokenVerificationResult> => {
   try {

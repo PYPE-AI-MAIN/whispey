@@ -1,12 +1,9 @@
 // src/app/api/reprocess-call-logs/count/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 export async function GET(request: NextRequest) {
   try {

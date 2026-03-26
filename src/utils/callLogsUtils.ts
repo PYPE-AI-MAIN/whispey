@@ -1,10 +1,9 @@
 // utils/callLogsUtils.ts
 
 import Papa from 'papaparse'
-import { supabase } from "@/lib/supabase"
 import { CallLog } from "@/types/logs"
 import { FilterOperation } from '@/components/CallFilter'
-import { Filter } from '@/hooks/useSupabase'
+import { Filter } from '@/lib/supabase-query-types'
 
 // Pure utility functions - no React dependencies
 export const toCamelCase = (str: string): string => {
@@ -336,7 +335,8 @@ export const downloadCSV = async (
     basic: string[]
     metadata: string[]
     transcription_metrics: string[]
-  }
+  },
+  projectId?: string
 ) => {
   const { basic, metadata, transcription_metrics } = visibleColumns
 
@@ -356,23 +356,14 @@ export const downloadCSV = async (
   ]
 
   try {
-    let query = supabase.from("pype_voice_call_logs").select(selectColumns.join(','))
-    const { preDistinctFilters } = extractFiltersAndDistinct(activeFilters, agentId)
-    
-    for (const filter of preDistinctFilters) {
-      switch (filter.operator) {
-        case 'eq': query = query.eq(filter.column, filter.value); break
-        case 'ilike': query = query.ilike(filter.column, filter.value); break
-        case 'gte': query = query.gte(filter.column, filter.value); break
-        case 'lte': query = query.lte(filter.column, filter.value); break
-        case 'gt': query = query.gt(filter.column, filter.value); break
-        case 'lt': query = query.lt(filter.column, filter.value); break
-        case 'not.is': query = query.not(filter.column, 'is', filter.value); break
-        default: console.warn(`Unknown operator: ${filter.operator}`)
-      }
-    }
+    const { preDistinctFilters, postDistinctFilters, distinctConfig } = extractFiltersAndDistinct(
+      activeFilters,
+      agentId
+    )
 
-    query = query.order('created_at', { ascending: false })
+    const queryUrl = projectId
+      ? `/api/projects/${projectId}/call-logs/query`
+      : `/api/agents/${agentId}/call-logs/query`
 
     let allData: CallLog[] = []
     let page = 0
@@ -380,14 +371,32 @@ export const downloadCSV = async (
     let hasMoreData = true
 
     while (hasMoreData) {
-      const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1)
-      
-      if (error) {
-        throw new Error("Failed to fetch data for export: " + error.message)
+      const res = await fetch(queryUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_agent_id: agentId,
+          p_pre_distinct_filters: preDistinctFilters,
+          p_post_distinct_filters: postDistinctFilters,
+          p_select: selectColumns.join(','),
+          p_order_by_column: 'created_at',
+          p_order_ascending: false,
+          p_limit: pageSize,
+          p_offset: page * pageSize,
+          p_distinct_column: distinctConfig?.column || null,
+          p_distinct_json_field: distinctConfig?.jsonField || null,
+          p_distinct_order: distinctConfig?.order || 'asc',
+          p_date_from: null,
+          p_date_to: null,
+        }),
+      })
+      const json = (await res.json()) as { data?: CallLog[]; error?: string }
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to fetch data for export')
       }
-
-      if (data && data.length > 0) {
-        allData = allData.concat(data as unknown as CallLog[])
+      const data = json.data || []
+      if (data.length > 0) {
+        allData = allData.concat(data)
         if (data.length < pageSize) {
           hasMoreData = false
         } else {
@@ -408,14 +417,14 @@ export const downloadCSV = async (
 
     const csv = Papa.unparse(csvData)
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
+    const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
-    link.href = url
+    link.href = blobUrl
     link.setAttribute("download", `call_logs_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    URL.revokeObjectURL(blobUrl)
 
   } catch (error) {
     console.error('Download error:', error)

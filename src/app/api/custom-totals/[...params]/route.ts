@@ -1,6 +1,6 @@
 // app/api/custom-totals/[...params]/route.ts
 import { auth } from '@clerk/nextjs/server'
-import { CustomTotalsService } from '@/services/customTotalService'
+import * as customTotalsRepo from '@/server/customTotalsRepo'
 import { NextRequest } from 'next/server'
 
 // GET /api/custom-totals/[projectId]/[agentId]
@@ -22,7 +22,7 @@ export async function GET(
   }
 
   try {
-    const configs = await CustomTotalsService.getCustomTotals(projectId, agentId)
+    const configs = await customTotalsRepo.getCustomTotals(projectId, agentId)
     return Response.json({ configs })
   } catch (error) {
     console.error('Custom totals GET error:', error)
@@ -60,13 +60,13 @@ export async function POST(
       }
 
       // Get configurations
-      const allConfigs = await CustomTotalsService.getCustomTotals(projectId, agentId)
+      const allConfigs = await customTotalsRepo.getCustomTotals(projectId, agentId)
       const targetConfigs = allConfigs.filter(config => configIds.includes(config.id))
 
       // Calculate results
       const results = await Promise.all(
         targetConfigs.map(config => 
-          CustomTotalsService.calculateCustomTotal(config, agentId, dateFrom, dateTo)
+          customTotalsRepo.calculateCustomTotal(config, agentId, dateFrom, dateTo)
         )
       )
 
@@ -91,7 +91,7 @@ export async function POST(
       config.createdAt = new Date().toISOString()
       config.updatedAt = new Date().toISOString()
 
-      const result = await CustomTotalsService.saveCustomTotal(config, actualProjectId, actualAgentId)
+      const result = await customTotalsRepo.saveCustomTotal(config, actualProjectId, actualAgentId)
       
       if (result.success) {
         return Response.json({ success: true }, { status: 201 })
@@ -127,7 +127,7 @@ export async function PUT(
     const updates = await request.json()
     updates.updatedAt = new Date().toISOString()
 
-    const result = await CustomTotalsService.updateCustomTotal(configId, updates)
+    const result = await customTotalsRepo.updateCustomTotal(configId, updates)
     
     if (result.success) {
       return Response.json({ success: true })
@@ -159,7 +159,7 @@ export async function DELETE(
   }
 
   try {
-    const result = await CustomTotalsService.deleteCustomTotal(configId)
+    const result = await customTotalsRepo.deleteCustomTotal(configId)
     
     if (result.success) {
       return Response.json({ success: true })

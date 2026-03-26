@@ -1,14 +1,11 @@
 // src/app/api/agents/create-agent/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Server-side Supabase client (prefer service role for row updates)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 type AgentQuotaState = {
   limits: { max_agents: number }

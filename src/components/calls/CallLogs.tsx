@@ -231,7 +231,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
         basic: visibleColumns.basic,
         metadata: visibleColumns.metadata,
         transcription_metrics: visibleColumns.transcription_metrics
-      })
+      }, project?.id)
     } catch (error) {
       alert((error as Error).message)
     }

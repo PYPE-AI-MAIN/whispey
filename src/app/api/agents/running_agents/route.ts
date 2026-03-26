@@ -1,9 +1,10 @@
 // Create: app/api/agents/running_agents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { isPypeUpstreamUnreachable, pypeApiAbortSignal } from '@/lib/pypeApiFetch'
 
 export async function GET(request: NextRequest) {
   try {
-    const apiUrl = process.env.PYPEAI_API_URL
+    const apiUrl = process.env.PYPEAI_API_URL || process.env.NEXT_PUBLIC_PYPEAI_API_URL
     
     if (!apiUrl) {
       console.error('PYPEAI_API_URL environment variable is not set')
@@ -15,16 +16,25 @@ export async function GET(request: NextRequest) {
 
     console.log(`Fetching running agents from: ${apiUrl}/running_agents`)
 
-    const response = await fetch(`${apiUrl}/running_agents`, {
-      method: 'GET',
-      headers: {
-        'x-api-key': 'pype-api-v1',
-        'ngrok-skip-browser-warning': 'true',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'User-Agent': 'NextJS-Proxy'
+    let response: Response
+    try {
+      response = await fetch(`${apiUrl}/running_agents`, {
+        method: 'GET',
+        headers: {
+          'x-api-key': 'pype-api-v1',
+          'ngrok-skip-browser-warning': 'true',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'NextJS-Proxy'
+        },
+        signal: pypeApiAbortSignal(),
+      })
+    } catch (fetchErr: unknown) {
+      if (isPypeUpstreamUnreachable(fetchErr)) {
+        return NextResponse.json([])
       }
-    })
+      throw fetchErr
+    }
 
     if (!response.ok) {
       console.error(`Backend API error: ${response.status} ${response.statusText}`)

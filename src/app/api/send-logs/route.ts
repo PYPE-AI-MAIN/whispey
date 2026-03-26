@@ -1,12 +1,10 @@
 // app/api/send-logs/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createServiceRoleClient()
 
 // Helper function to verify token
 const verifyToken = async (token: string, environment = 'dev') => {

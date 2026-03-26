@@ -1,13 +1,10 @@
 // src/app/api/projects/[id]/members/[memberId]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 function normalizeRole(role: string): string {
   if (role === 'user' || role === 'member' || role === 'viewer') return 'viewer'

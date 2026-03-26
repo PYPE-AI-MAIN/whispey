@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { RecipientRow, CsvValidationError, PhoneNumber, RetryConfig } from '@/utils/campaigns/constants'
-import { supabase } from '@/lib/supabase'
 import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
@@ -156,13 +155,13 @@ function CreateCampaign() {
   useEffect(() => {
     const fetchProjectConfig = async () => {
       try {
-        const { data: project, error } = await supabase
-          .from('pype_voice_projects')
-          .select('campaign_config')
-          .eq('id', projectId)
-          .single()
+        const projectRes = await fetch(`/api/projects/${projectId}`)
+        const projectPayload = (await projectRes.json()) as {
+          data?: { campaign_config?: { max_concurrency?: number } }
+        }
+        const project = projectPayload.data
 
-        if (!error && project?.campaign_config) {
+        if (projectRes.ok && project?.campaign_config) {
           const maxConcurrencyFromConfig = project.campaign_config.max_concurrency || 5
           setMaxConcurrency(maxConcurrencyFromConfig)
           console.log('📊 Max concurrency from config:', maxConcurrencyFromConfig)
@@ -275,13 +274,10 @@ function CreateCampaign() {
       if (values.agentRuntime === 'livekit') {
         // Supabase lookup only for livekit
         try {
-          const { data: agent } = await supabase
-            .from('pype_voice_agents')
-            .select('name, id')
-            .eq('id', values.agentId)
-            .single()
+          const agentRes = await fetch(`/api/agents/${values.agentId}`)
+          const agent = (await agentRes.json()) as { name?: string; id?: string; error?: string }
 
-          if (agent?.name && agent?.id) {
+          if (agentRes.ok && agent?.name && agent?.id) {
             const sanitizedAgentId = agent.id.replace(/-/g, '_')
             agentName = `${agent.name}_${sanitizedAgentId}`
           } else if (agent?.name) {

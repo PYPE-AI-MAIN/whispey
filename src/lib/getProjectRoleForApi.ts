@@ -3,14 +3,11 @@
  * Returns role and effective visibility from pype_voice_email_project_mapping.permissions (Supabase).
  */
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
 import { getEffectiveVisibility } from '@/types/visibility'
 import type { MemberVisibility } from '@/types/visibility'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 export async function getProjectRoleForApi(projectId: string): Promise<{ role: string; visibility: MemberVisibility } | null> {
   const { userId } = await auth()

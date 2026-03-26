@@ -1,14 +1,12 @@
 // app/api/projects/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import crypto from 'crypto'
 import { createProjectApiKey } from '@/lib/api-key-management'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Create Supabase client for server-side operations (use service role for admin operations)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = createServiceRoleClient()
 
 // Generate a secure API token
 function generateApiToken(): string {

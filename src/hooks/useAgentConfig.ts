@@ -161,6 +161,9 @@ export interface AgentConfigResponse {
     }>
   }
   _usedAgentName?: string
+  /** True when NEXT_PUBLIC_PYPEAI_API_URL could not be reached (timeout / network). */
+  backendUnavailable?: boolean
+  backendUnavailableMessage?: string
 }
 
 const fetchAgentConfigWithFallback = async (

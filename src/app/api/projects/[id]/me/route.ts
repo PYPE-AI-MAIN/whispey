@@ -2,14 +2,11 @@
 // Reads pype_voice_email_project_mapping.permissions (single column); visibility = permissions.visibility.
 // Merges with role defaults via getEffectiveVisibility(). Frontend shows only what visibility allows.
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getEffectiveVisibility } from '@/types/visibility'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 export async function GET(
   _request: NextRequest,

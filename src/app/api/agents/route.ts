@@ -1,12 +1,10 @@
 // src/app/api/agents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { encryptApiKey } from '@/lib/vapi-encryption'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Create Supabase client for server-side operations
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createServiceRoleClient()
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,20 +1,8 @@
 // src/app/api/agents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { auth } from '@clerk/nextjs/server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
-
-// Helper function to create Supabase client (lazy initialization)
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey)
-}
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // GET method to fetch agent details
 export async function GET(
@@ -22,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseClient()
+    const supabase = createServiceRoleClient()
     const { id: agentId } = await params
 
     // Fetch agent data from database
@@ -91,13 +79,102 @@ export async function GET(
   }
 }
 
+const PATCHABLE_AGENT_FIELDS = [
+  'field_extractor_prompt',
+  'field_extractor',
+  'field_extractor_variables',
+  'metrics',
+] as const
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = createServiceRoleClient()
+    const { id: agentId } = await params
+    if (!agentId) {
+      return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 })
+    }
+
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
+
+    const { data: agent, error: fetchErr } = await supabase
+      .from('pype_voice_agents')
+      .select('project_id')
+      .eq('id', agentId)
+      .single()
+
+    if (fetchErr || !agent?.project_id) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
+    }
+
+    const projectId = agent.project_id as string
+    const roleResult = await getProjectRoleForApi(projectId)
+    if (!roleResult) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const isViewer = roleResult.role === 'viewer'
+    const visibility = roleResult.visibility
+    const allowFieldExtractor = !isViewer || visibility?.org?.fieldExtractor === true
+    const allowMetrics = !isViewer || visibility?.org?.metrics === true
+
+    const updatePayload: Record<string, unknown> = {}
+    for (const key of PATCHABLE_AGENT_FIELDS) {
+      if (key in body) {
+        if (key === 'field_extractor_prompt' || key === 'field_extractor' || key === 'field_extractor_variables') {
+          if (!allowFieldExtractor) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+          }
+        }
+        if (key === 'metrics') {
+          if (!allowMetrics) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+          }
+        }
+        updatePayload[key] = body[key]
+      }
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    updatePayload.updated_at = new Date().toISOString()
+
+    const { error: updateErr } = await supabase
+      .from('pype_voice_agents')
+      .update(updatePayload)
+      .eq('id', agentId)
+
+    if (updateErr) {
+      console.error('Agent PATCH error:', updateErr)
+      return NextResponse.json({ error: updateErr.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Agent PATCH:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+
 // DELETE method to remove agent and all related data
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseClient()
+    const supabase = createServiceRoleClient()
     const { id: agentId } = await params
 
     if (!agentId) {

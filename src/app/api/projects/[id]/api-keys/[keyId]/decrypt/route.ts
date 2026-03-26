@@ -1,13 +1,10 @@
 // src/app/api/projects/[id]/api-keys/[keyId]/decrypt/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 export async function POST(
   request: NextRequest,
