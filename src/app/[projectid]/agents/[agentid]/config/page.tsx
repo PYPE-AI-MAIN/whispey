@@ -22,7 +22,8 @@ import {
   Save,
   X,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  History
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -59,6 +60,8 @@ import CopyConfigDialog from '@/components/agents/AgentConfig/CopyConfigDialog'
 import PasteConfigDialog from '@/components/agents/AgentConfig/PasteConfigDialog'
 import { DeserializedConfig } from '@/utils/agentConfigSerializer'
 import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
+import { useUser } from '@clerk/nextjs'
+import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowAgentSection } from '@/types/visibility'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -209,6 +212,8 @@ export default function AgentConfig() {
   const router = useRouter()
   const agentid = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
+  const { user } = useUser()
+  
   const { isOwnerOrAdmin, visibility, isLoading: roleLoading } = useMemberVisibility(projectId || undefined)
 
   useEffect(() => {
@@ -224,9 +229,26 @@ export default function AgentConfig() {
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
   const [isTalkToAssistantOpen, setIsTalkToAssistantOpen] = useState(false)
   const [isDynamicTTSDialogOpen, setIsDynamicTTSDialogOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
 
   const [isCopyConfigDialogOpen, setIsCopyConfigDialogOpen] = useState(false)
   const [isPasteConfigDialogOpen, setIsPasteConfigDialogOpen] = useState(false)
+
+  // Tracks loading across BOTH the deploy call AND the subsequent refetch
+  const [isSaving, setIsSaving] = useState(false)
+  // Holds the last-deployed config so user can optionally save it as a checkpoint
+  const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
+  const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
+  const [isCheckpointExiting, setIsCheckpointExiting] = useState(false)
+
+  // Auto-dismiss checkpoint banner after 15 seconds if no action taken
+  useEffect(() => {
+    if (!pendingCheckpoint) return
+    setIsCheckpointExiting(false)
+    const exitT = setTimeout(() => setIsCheckpointExiting(true), 14_700)
+    const t = setTimeout(() => setPendingCheckpoint(null), 15_000)
+    return () => { clearTimeout(exitT); clearTimeout(t) }
+  }, [pendingCheckpoint])
   
   // Agent status state
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
@@ -397,18 +419,36 @@ export default function AgentConfig() {
   }
 
   const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(formik.values.prompt)
-      setIsCopied(true)
-      setTimeout(() => setIsCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy text: ', err)
-      const textArea = document.createElement('textarea')
-      textArea.value = formik.values.prompt
-      document.body.appendChild(textArea)
-      textArea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textArea)
+    const text = formik.values.prompt
+    if (!text) return
+    let success = false
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text)
+        success = true
+      } catch {
+        // fall through to execCommand fallback
+      }
+    }
+    if (!success) {
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        ta.style.position = 'fixed'
+        ta.style.top = '0'
+        ta.style.left = '0'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        success = true
+      } catch (err) {
+        console.error('Failed to copy text: ', err)
+      }
+    }
+    if (success) {
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), 2000)
     }
@@ -535,8 +575,7 @@ export default function AgentConfig() {
     }
 
     const payload = buildSavePayload()
-    
-    // This part is correct - only override on save
+
     const validVariables = Array.from(promptValidation.validVariables)
     const validVariablesArray = validVariables.map(name => {
       const existing = formik.values.variables?.find((v: any) => v.name === name)
@@ -546,25 +585,48 @@ export default function AgentConfig() {
         description: existing?.description || ''
       }
     })
-    
+
     if (payload.agent?.assistant?.[0]) {
       payload.agent.assistant[0].variables = validVariablesArray.reduce((acc: any, v: any) => {
         acc[v.name] = v.value
         return acc
       }, {})
     }
-    
-    console.log('💾 Saving with validated variables:', validVariables)
-    
+
+    const userEmail = user?.primaryEmailAddress?.emailAddress ?? null
+    const userId = user?.id ?? null
+
+    setIsSaving(true)
     try {
-      // First, perform the update
       await saveAndDeploy.mutateAsync(payload)
-      
-      // Then, explicitly refetch the config and wait for it to complete
-      // This ensures loading state persists until both update and fetch are done
       await refetchConfig()
+      // Offer checkpoint — show the floating bar
+      setPendingCheckpoint({ config: payload, userEmail, userId })
     } catch (error) {
       console.error('❌ Error during save and deploy:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveCheckpoint = async () => {
+    if (!pendingCheckpoint) return
+    setIsSavingCheckpoint(true)
+    try {
+      const res = await fetch(`/api/agents/${agentid}/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pendingCheckpoint),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        console.error('[checkpoint] Save failed:', err.message)
+      }
+    } catch (err) {
+      console.error('[checkpoint] Unexpected error:', err)
+    } finally {
+      setIsSavingCheckpoint(false)
+      setPendingCheckpoint(null)
     }
   }
 
@@ -826,13 +888,23 @@ const unmappedVariablesCount = useMemo(() => {
                 disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable}
                 title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
-                {saveAndDeploy.isPending || isConfigFetching ? (
+                {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
               </Button>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 gap-1.5"
+              onClick={() => setIsHistoryOpen(true)}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span className="text-xs">History</span>
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1004,7 +1076,7 @@ const unmappedVariablesCount = useMemo(() => {
               disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable}
               title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
-              {saveAndDeploy.isPending || isConfigFetching ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="w-3 h-3 mr-1 animate-spin inline" />
                   Updating...
@@ -1012,6 +1084,16 @@ const unmappedVariablesCount = useMemo(() => {
               ) : (
                 'Update Config'
               )}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => setIsHistoryOpen(true)}
+            >
+              <History className="w-3.5 h-3.5" />
+              History
             </Button>
 
             <DropdownMenu>
@@ -1361,6 +1443,52 @@ const unmappedVariablesCount = useMemo(() => {
         onApplyConfig={handleApplyPastedConfig}
         isFormDirty={isFormDirty}
       />
+
+      <ConfigHistory
+        open={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        agentId={agentid}
+      />
+
+      {/* Version prompt — appears after every successful deploy, anchored below the header */}
+      {pendingCheckpoint && (
+        <div className="fixed top-[50px] left-1/2 -translate-x-1/2 z-50">
+          {/* Inner: relative so the absolute progress bar anchors to it */}
+          <div className={`relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap ${isCheckpointExiting ? 'animate-out slide-out-to-top-4 fade-out duration-300 fill-mode-forwards' : 'animate-in slide-in-from-top-4 duration-300'}`}>
+            {/* Progress bar — spans 100% of card width, shrinks to 0 over 15 s */}
+            <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
+              <div
+                className="h-full bg-primary"
+                style={{ animation: 'version-progress 15s linear forwards' }}
+              />
+            </div>
+            {/* Content — pt-4 gives room for the 3px bar */}
+            <div className="flex items-center gap-3 px-4 pt-4 pb-3 text-sm">
+              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
+              <span className="text-foreground text-xs">Config deployed. Save as a version?</span>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={handleSaveCheckpoint}
+                disabled={isSavingCheckpoint}
+              >
+                {isSavingCheckpoint ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save version'}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={() => { setIsCheckpointExiting(true); setTimeout(() => setPendingCheckpoint(null), 300) }}
+                disabled={isSavingCheckpoint}
+              >
+                Skip
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

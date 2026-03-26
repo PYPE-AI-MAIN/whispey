@@ -1,5 +1,5 @@
 // hooks/useMultiAssistantState.ts
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import { getFallback } from '@/config/agentDefaults'
 
@@ -36,7 +36,7 @@ export function useMultiAssistantState({
 }: UseMultiAssistantStateProps) {
   
   const [assistantNames, setAssistantNames] = useState<string[]>(() => {
-    return initialAssistants.map(a => a.name) || [agentName]
+    return initialAssistants.map(a => a.name)
   })
 
   const [assistantsData, setAssistantsData] = useState<Map<string, AssistantFormData>>(() => {
@@ -66,6 +66,31 @@ export function useMultiAssistantState({
     }
     return map
   })
+
+  // Sync assistantNames when agentConfigData loads after initial render
+  const initializedRef = useRef(false)
+  useEffect(() => {
+    if (initialAssistants.length === 0 || initializedRef.current) return
+    initializedRef.current = true
+    setAssistantNames(initialAssistants.map(a => a.name))
+    setAssistantsData(prev => {
+      const map = new Map(prev)
+      initialAssistants.forEach(assistant => {
+        if (!map.has(assistant.name)) {
+          map.set(assistant.name, {
+            name: assistant.name,
+            formikRef: null,
+            ttsConfig: assistant.tts || {},
+            sttConfig: assistant.stt || {},
+            azureConfig: {},
+            hasUnsavedChanges: false,
+            isConfigured: true,
+          })
+        }
+      })
+      return map
+    })
+  }, [initialAssistants])
 
   const getAssistantData = useCallback((name: string): AssistantFormData => {
     return assistantsData.get(name) || {
@@ -435,6 +460,7 @@ export function useMultiAssistantState({
         agent: {
           name: agentName,
           type: agentType,
+          agent_id: agentId,
           assistant: [assistant]
         }
       }

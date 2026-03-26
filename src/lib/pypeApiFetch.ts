@@ -1,5 +1,13 @@
-/** Timeout for outbound requests to the Pype inference API (avoids 10s+ hangs when host is unreachable). */
+/** Timeout for quick read requests (status checks, config fetches). */
 export const PYPE_API_FETCH_TIMEOUT_MS = 8_000
+
+/**
+ * Timeout for agent config deploy — updating a running agent requires restarting
+ * its worker process on the backend which takes significantly longer than a read.
+ * Must be set via PYPE_DEPLOY_TIMEOUT_SEC env var (in seconds).
+ */
+export const PYPE_API_DEPLOY_TIMEOUT_MS =
+  parseInt(process.env.PYPE_DEPLOY_TIMEOUT_SEC || '', 10) * 1_000
 
 /**
  * Base URL for server-side routes that proxy to the voice/inference API.
@@ -10,8 +18,8 @@ export function getPypeApiBaseUrlForServer(): string | undefined {
   return process.env.PYPEAI_API_URL || process.env.NEXT_PUBLIC_PYPEAI_API_URL
 }
 
-export function pypeApiAbortSignal(): AbortSignal {
-  return AbortSignal.timeout(PYPE_API_FETCH_TIMEOUT_MS)
+export function pypeApiAbortSignal(timeoutMs = PYPE_API_FETCH_TIMEOUT_MS): AbortSignal {
+  return AbortSignal.timeout(timeoutMs)
 }
 
 /** True when fetch failed due to timeout, DNS, or refused connection (not HTTP 4xx/5xx). */
