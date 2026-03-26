@@ -1429,7 +1429,7 @@ const unmappedVariablesCount = useMemo(() => {
 
       {/* Version prompt — appears after every successful deploy, anchored below the header */}
       {pendingCheckpoint && (
-        <div className="fixed top-[50px] left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
           {/* Inner: relative so the absolute progress bar anchors to it */}
           <div className={`relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap ${isCheckpointExiting ? 'animate-out slide-out-to-top-4 fade-out duration-300 fill-mode-forwards' : 'animate-in slide-in-from-top-4 duration-300'}`}>
             {/* Progress bar — spans 100% of card width, shrinks to 0 over 15 s */}
