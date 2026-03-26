@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const agentId = searchParams.get('agent_id')
     const projectId = searchParams.get('project_id')
+    const includeInactive = searchParams.get('include_inactive') === 'true'
 
     if (!agentId && !projectId) {
       return NextResponse.json(
@@ -142,7 +143,12 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('pype_voice_webhook_configs')
       .select('*')
-      .eq('is_active', true)
+      // .eq('is_active', true)
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true)
+      }
+  
 
     if (agentId) {
       query = query.eq('agent_id', agentId)
