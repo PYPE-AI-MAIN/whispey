@@ -1,5 +1,12 @@
-import { supabase } from '@/lib/supabase'
 import { MetricGroup } from '@/types/metricGroups'
+
+async function parseJson<T>(res: Response): Promise<T> {
+  const json = (await res.json()) as T & { error?: string }
+  if (!res.ok) {
+    throw new Error((json as { error?: string }).error || res.statusText)
+  }
+  return json as T
+}
 
 export class MetricGroupService {
   static async getMetricGroups(
@@ -8,20 +15,10 @@ export class MetricGroupService {
     userEmail: string
   ): Promise<MetricGroup[]> {
     try {
-      const { data, error } = await supabase
-        .from('pype_voice_metric_groups')
-        .select('*')
-        .eq('project_id', projectId)
-        .eq('agent_id', agentId)
-        .eq('user_email', userEmail)
-        .order('order', { ascending: true })
-
-      if (error) {
-        console.error('Supabase error loading metric groups:', error)
-        throw error
-      }
-      
-      return data || []
+      const params = new URLSearchParams({ projectId, agentId })
+      const res = await fetch(`/api/metric-groups?${params.toString()}`)
+      const json = await parseJson<{ data: MetricGroup[] }>(res)
+      return json.data || []
     } catch (error) {
       console.error('Failed to load metric groups:', error)
       return []
@@ -32,29 +29,19 @@ export class MetricGroupService {
     group: Omit<MetricGroup, 'id' | 'created_at' | 'updated_at'>
   ): Promise<{ success: boolean; data?: MetricGroup; error?: string }> {
     try {
-      const { data, error } = await supabase
-        .from('pype_voice_metric_groups')
-        .insert({
-          name: group.name,
-          project_id: group.project_id,
-          agent_id: group.agent_id,
-          user_email: group.user_email,
-          metric_ids: group.metric_ids,
-          chart_ids: group.chart_ids,
-          order: group.order,
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Supabase error creating metric group:', error)
-        return { success: false, error: error.message }
+      const res = await fetch('/api/metric-groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(group),
+      })
+      const json = (await res.json()) as { data?: MetricGroup; error?: string }
+      if (!res.ok) {
+        return { success: false, error: json.error || res.statusText }
       }
-
-      return { success: true, data }
-    } catch (error: any) {
-      console.error('Failed to create metric group:', error)
-      return { success: false, error: error.message }
+      return { success: true, data: json.data }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
     }
   }
 
@@ -63,29 +50,19 @@ export class MetricGroupService {
     updates: Partial<MetricGroup>
   ): Promise<{ success: boolean; data?: MetricGroup; error?: string }> {
     try {
-      const updateData: any = {}
-      
-      if (updates.name !== undefined) updateData.name = updates.name
-      if (updates.metric_ids !== undefined) updateData.metric_ids = updates.metric_ids
-      if (updates.chart_ids !== undefined) updateData.chart_ids = updates.chart_ids
-      if (updates.order !== undefined) updateData.order = updates.order
-
-      const { data, error } = await supabase
-        .from('pype_voice_metric_groups')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Supabase error updating metric group:', error)
-        return { success: false, error: error.message }
+      const res = await fetch(`/api/metric-groups/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      const json = (await res.json()) as { data?: MetricGroup; error?: string }
+      if (!res.ok) {
+        return { success: false, error: json.error || res.statusText }
       }
-
-      return { success: true, data }
-    } catch (error: any) {
-      console.error('Failed to update metric group:', error)
-      return { success: false, error: error.message }
+      return { success: true, data: json.data }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
     }
   }
 
@@ -96,23 +73,15 @@ export class MetricGroupService {
     userEmail: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
-        .from('pype_voice_metric_groups')
-        .delete()
-        .eq('id', id)
-        .eq('project_id', projectId)
-        .eq('agent_id', agentId)
-        .eq('user_email', userEmail)
-
-      if (error) {
-        console.error('Supabase error deleting metric group:', error)
-        return { success: false, error: error.message }
+      const res = await fetch(`/api/metric-groups/${id}`, { method: 'DELETE' })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        return { success: false, error: json.error || res.statusText }
       }
-
       return { success: true }
-    } catch (error: any) {
-      console.error('Failed to delete metric group:', error)
-      return { success: false, error: error.message }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
     }
   }
 
@@ -123,22 +92,19 @@ export class MetricGroupService {
     userEmail: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Update all groups' order
-      const updates = groups.map((g) =>
-        supabase
-          .from('pype_voice_metric_groups')
-          .update({ order: g.order })
-          .eq('id', g.id)
-          .eq('project_id', projectId)
-          .eq('agent_id', agentId)
-          .eq('user_email', userEmail)
-      )
-
-      await Promise.all(updates)
+      const res = await fetch('/api/metric-groups/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, agentId, groups }),
+      })
+      const json = (await res.json()) as { error?: string }
+      if (!res.ok) {
+        return { success: false, error: json.error || res.statusText }
+      }
       return { success: true }
-    } catch (error: any) {
-      console.error('Failed to reorder metric groups:', error)
-      return { success: false, error: error.message }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
     }
   }
 }

@@ -283,10 +283,15 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
 
   const shouldFetchFull = isOpen && activeTab === 'raw' && span?.id;
   
-  const { data: fullSpanData } = useSupabaseQuery("pype_voice_spans", {
-    select: shouldFetchFull ? "*" : null,
-    filters: shouldFetchFull ? [{ column: "id", operator: "eq", value: span.id }] : [],
-  });
+  const { data: fullSpanData } = useSupabaseQuery(
+    "pype_voice_spans",
+    shouldFetchFull
+      ? {
+          select: "*",
+          filters: [{ column: "id", operator: "eq", value: span.id }],
+        }
+      : null
+  );
 
   const displaySpan = fullSpanData?.[0] || span;
 

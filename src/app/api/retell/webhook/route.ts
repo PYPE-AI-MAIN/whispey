@@ -5,15 +5,12 @@
 // So we look up the Whispey agent by matching call.agent_id → configuration->retell->agentId in our DB.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { retellAdapter, type RetellWebhookPayload } from '@/lib/adapters/retell.adapter'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import type { NormalizedCallData } from '@/lib/adapters/types'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 export async function POST(request: NextRequest) {
   try {

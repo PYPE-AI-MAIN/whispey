@@ -4,13 +4,10 @@
 // can identify which Whispey project this agent belongs to.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { decryptApiKey } from '@/lib/vapi-encryption'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createServiceRoleClient()
 
 const RETELL_API_BASE = 'https://api.retellai.com'
 

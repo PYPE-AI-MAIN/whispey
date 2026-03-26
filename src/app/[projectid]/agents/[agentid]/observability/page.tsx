@@ -39,13 +39,15 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata",
     filters: queryFilters,
     orderBy: { column: "created_at", ascending: false },
-    limit: 1
+    limit: 1,
+    auth: { agentId: resolvedParams.agentid },
   })
 
   const { data: agentData, isLoading: agentLoading, error: agentError } = useSupabaseQuery("pype_voice_agents", {
     select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
     filters: [{ column: "id", operator: "eq", value: resolvedParams.agentid }],
-    limit: 1
+    limit: 1,
+    auth: { agentId: resolvedParams.agentid },
   })
 
   const agent = agentData && agentData.length > 0 ? agentData[0] : null

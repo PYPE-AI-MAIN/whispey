@@ -1,5 +1,10 @@
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  getPypeApiBaseUrlForServer,
+  isPypeUpstreamUnreachable,
+  pypeApiAbortSignal,
+} from '@/lib/pypeApiFetch'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -25,35 +30,43 @@ export async function GET(
       )
     }
 
-    // Get API base URL from environment
-    const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
+    const apiBaseUrl = getPypeApiBaseUrlForServer()
     if (!apiBaseUrl) {
-      console.error('NEXT_PUBLIC_PYPEAI_API_URL is not configured')
+      console.error('PYPEAI_API_URL / NEXT_PUBLIC_PYPEAI_API_URL is not configured')
       return NextResponse.json(
         { error: 'API configuration error' },
         { status: 500 }
       )
     }
 
-    // Get API key from environment
-    const apiKey = process.env.NEXT_PUBLIC_X_API_KEY
-    if (!apiKey) {
-      console.error('NEXT_PUBLIC_X_API_KEY is not configured')
-      return NextResponse.json(
-        { error: 'API key not configured' },
-        { status: 500 }
-      )
-    }
+    const apiKey =
+      process.env.PYPEAI_X_API_KEY ||
+      process.env.NEXT_PUBLIC_X_API_KEY ||
+      'pype-api-v1'
 
     // Call backend API
     const url = `${apiBaseUrl}/agent_status/${encodeURIComponent(agentName)}`
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey
+        },
+        signal: pypeApiAbortSignal(),
+      })
+    } catch (fetchErr: unknown) {
+      if (isPypeUpstreamUnreachable(fetchErr)) {
+        return NextResponse.json({
+          is_active: false,
+          worker_running: false,
+          inbound_ready: false,
+          backend_unavailable: true,
+        })
       }
-    })
+      throw fetchErr
+    }
 
     // Handle non-OK responses
     if (!response.ok) {

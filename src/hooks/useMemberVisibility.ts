@@ -36,7 +36,7 @@ export function useMemberVisibility(projectId: string | undefined) {
   })
 
   const role = data?.role ?? null
-  const visibility: MemberVisibility = data?.visibility ?? DEFAULT_MEMBER_VISIBILITY
+  const visibility: MemberVisibility | null = data?.visibility ?? null
 
   return {
     role,

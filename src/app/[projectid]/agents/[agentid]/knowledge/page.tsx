@@ -23,6 +23,7 @@ function useBackendAgentName(agentId: string | undefined) {
       select: 'id, name',
       filters: agentId ? [{ column: 'id', operator: 'eq', value: agentId }] : [],
       limit: 1,
+      auth: agentId ? { agentId } : undefined,
     }
   )
   const backendAgentName = useMemo(() => {

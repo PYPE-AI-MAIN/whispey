@@ -33,7 +33,6 @@ import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
 import MetricsDialog from './MetricsDialog'
-import { supabase } from '../lib/supabase'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
 import { 
   Tooltip,
@@ -169,6 +168,7 @@ const { data: projects, isLoading: projectLoading, error: projectError } = useSu
     filters: agent?.project_id 
       ? [{ column: 'id', operator: 'eq', value: agent.project_id }]
       : [{ column: 'id', operator: 'eq', value: 'never-match' }],
+    auth: agent?.project_id ? { projectId: agent.project_id } : undefined,
   }
 )
 
@@ -180,7 +180,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     filters: agent?.id 
       ? [{ column: 'agent_id', operator: 'eq', value: agent.id }]
       : [{ column: 'agent_id', operator: 'eq', value: 'never-match' }],
-    limit: 1
+    limit: 1,
+    auth: agent?.id ? { agentId: agent.id } : undefined,
   }
 )
 
@@ -693,19 +694,21 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                             initialVariables={(agent as any)?.field_extractor_variables || {}}
                             isEnabled={!!agent?.field_extractor}
                             onSave={async (data, enabled, variables) => {
-                              const { error } = await supabase
-                                .from('pype_voice_agents')
-                                .update({ 
-                                  field_extractor_prompt: JSON.stringify(data), 
+                              const res = await fetch(`/api/agents/${agent.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  field_extractor_prompt: JSON.stringify(data),
                                   field_extractor: enabled,
-                                  field_extractor_variables: variables
-                                })
-                                .eq('id', agent.id)
-                              if (!error) {
+                                  field_extractor_variables: variables,
+                                }),
+                              })
+                              const j = (await res.json()) as { error?: string }
+                              if (res.ok) {
                                 alert('Saved field extractor config.')
                                 refetchAgent()
                               } else {
-                                alert('Error saving config: ' + error.message)
+                                alert('Error saving config: ' + (j.error || res.statusText))
                               }
                             }}
                           />
@@ -714,15 +717,17 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                           <MetricsDialog
                             initialMetrics={agent?.metrics ? (typeof agent.metrics === 'string' ? JSON.parse(agent.metrics) : agent.metrics) : {}}
                             onSave={async (metrics) => {
-                              const { error } = await supabase
-                                .from('pype_voice_agents')
-                                .update({ metrics })
-                                .eq('id', agent.id)
-                              if (!error) {
+                              const res = await fetch(`/api/agents/${agent.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ metrics }),
+                              })
+                              const j = (await res.json()) as { error?: string }
+                              if (res.ok) {
                                 alert('Saved metrics config.')
                                 refetchAgent()
                               } else {
-                                alert('Error saving metrics: ' + error.message)
+                                alert('Error saving metrics: ' + (j.error || res.statusText))
                               }
                             }}
                           />
@@ -848,19 +853,21 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     initialVariables={(agent as any)?.field_extractor_variables || {}}
                     isEnabled={!!agent?.field_extractor}
                     onSave={async (data, enabled, variables) => {
-                      const { error } = await supabase
-                        .from('pype_voice_agents')
-                        .update({ 
-                          field_extractor_prompt: JSON.stringify(data), 
+                      const res = await fetch(`/api/agents/${agent.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          field_extractor_prompt: JSON.stringify(data),
                           field_extractor: enabled,
-                          field_extractor_variables: variables
-                        })
-                        .eq('id', agent.id)
-                      if (!error) {
+                          field_extractor_variables: variables,
+                        }),
+                      })
+                      const j = (await res.json()) as { error?: string }
+                      if (res.ok) {
                         alert('Saved field extractor config.')
                         refetchAgent()
                       } else {
-                        alert('Error saving config: ' + error.message)
+                        alert('Error saving config: ' + (j.error || res.statusText))
                       }
                     }}
                   />

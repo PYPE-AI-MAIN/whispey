@@ -22,6 +22,7 @@ import {
   Save,
   X,
   ArrowLeft,
+  AlertCircle,
   History
 } from 'lucide-react'
 import {
@@ -63,6 +64,7 @@ import { useUser } from '@clerk/nextjs'
 import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowAgentSection } from '@/types/visibility'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 // Agent status service
 const agentStatusService = {
@@ -82,6 +84,13 @@ const agentStatusService = {
       
       if (response.ok) {
         const data = await response.json()
+        if (data.backend_unavailable) {
+          return {
+            status: 'stopped' as const,
+            error: 'Voice backend unreachable',
+            raw: data,
+          }
+        }
         const status: AgentStatus['status'] = data.is_active && data.worker_running ? 'running' : 'stopped'
         
         const mappedStatus: AgentStatus = {
@@ -278,7 +287,8 @@ export default function AgentConfig() {
   const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
     select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
     filters: [{ column: "id", operator: "eq", value: agentid }],
-    limit: 1
+    limit: 1,
+    auth: agentid ? { agentId: agentid } : undefined,
   })
 
   const agentNameWithId = useMemo(() => {
@@ -724,6 +734,7 @@ const unmappedVariablesCount = useMemo(() => {
 }, [promptValidation.validVariables, formik.values.variables])
 
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
+  const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
   // Loading state
   if (agentLoading || isConfigLoading) {
@@ -798,6 +809,16 @@ const unmappedVariablesCount = useMemo(() => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      {agentConfigData?.backendUnavailable && (
+        <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <AlertCircle className="text-amber-600 dark:text-amber-400" />
+          <AlertTitle>Voice backend unreachable</AlertTitle>
+          <AlertDescription>
+            {agentConfigData.backendUnavailableMessage ??
+              'Set PYPEAI_API_URL to a URL your machine can reach (e.g. http://127.0.0.1:8000 if the API runs locally), or fix NEXT_PUBLIC_PYPEAI_API_URL, restart next dev, and refresh.'}
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Mobile Header */}
       <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -864,7 +885,8 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm" 
                 className="h-8 px-3" 
                 onClick={handleSaveAndDeploy}
-                disabled={isSaving || !promptValidation.isValid}
+                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable}
+                title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1051,7 +1073,8 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={isSaving || !isFormDirty || !promptValidation.isValid}
+              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable}
+              title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
               {isSaving ? (
                 <>

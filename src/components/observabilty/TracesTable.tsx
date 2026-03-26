@@ -69,7 +69,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   const [activeTab, setActiveTab] = useState("turns");
 
 
-  const { data: sessionTrace, isLoading: traceLoading } = useSessionTrace(sessionId || null);
+  const { data: sessionTrace, isLoading: traceLoading } = useSessionTrace(sessionId || null, agentId);
 
   // Only fetch spans when the user opens the "trace" or "waterfall" tab —
   // these are the largest requests on the page (~600kB) and are never needed
@@ -82,7 +82,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     isFetchingNextPage,
     isLoading: spansLoading,
     totalCount: totalSpansCount
-  } = useSessionSpansInfinite(sessionTrace, spansEnabled);
+  } = useSessionSpansInfinite(sessionTrace, spansEnabled, agentId);
 
 
   // Get call data to access bug report metadata + transcript fallback + audio URL.
@@ -95,6 +95,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
       : [{ column: "agent_id", operator: "eq", value: agentId }],
     orderBy: { column: "created_at", ascending: false },
     limit: 1,
+    auth: { agentId },
   })
 
   const isVapiAgent = useMemo(() => {
@@ -118,7 +119,8 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
-    orderBy: { column: "unix_timestamp", ascending: true }
+    orderBy: { column: "unix_timestamp", ascending: true },
+    auth: { agentId },
   })
 
   // Extract bug report data from call metadata
