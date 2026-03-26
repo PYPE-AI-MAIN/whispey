@@ -6,10 +6,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     let agentConfigBody
     let agentName
     let agentId: string | null = null
@@ -127,7 +128,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await response.json()    
+    const result = await response.json()
+
     return NextResponse.json({
       success: true,
       message: 'Agent deployed successfully',

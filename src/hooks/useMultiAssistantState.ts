@@ -435,6 +435,7 @@ export function useMultiAssistantState({
         agent: {
           name: agentName,
           type: agentType,
+          agent_id: agentId,
           assistant: [assistant]
         }
       }
