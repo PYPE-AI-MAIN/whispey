@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
+import { createServiceRoleClient } from '@/lib/supabase-server'
+import {
+  getPypeApiBaseUrlForServer,
+  isPypeUpstreamUnreachable,
+  pypeApiAbortSignal,
+  PYPE_API_DEPLOY_TIMEOUT_MS,
+} from '@/lib/pypeApiFetch'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createServiceRoleClient()
 
 
 export async function POST(request: NextRequest) {
@@ -42,6 +46,15 @@ export async function POST(request: NextRequest) {
     if (!agentName) {
       return NextResponse.json(
         { message: 'Agent name is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate agentName to prevent SSRF via path traversal.
+    // Only allow alphanumeric characters, hyphens, and underscores.
+    if (!/^[a-zA-Z0-9_-]+$/.test(agentName)) {
+      return NextResponse.json(
+        { message: 'Invalid agent name. Only alphanumeric characters, hyphens, and underscores are allowed.' },
         { status: 400 }
       )
     }
@@ -105,30 +118,95 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    
-    const apiUrl = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_config/${agentName}`
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': 'pype-api-v1'
-      },
-      body: JSON.stringify(agentConfigBody)
+
+    const baseUrl = getPypeApiBaseUrlForServer()
+    if (!baseUrl) {
+      console.error('❌ [save-and-deploy] No voice backend URL configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.')
+      return NextResponse.json(
+        { message: 'Voice backend URL is not configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.' },
+        { status: 503 }
+      )
+    }
+
+    const apiUrl = `${baseUrl}/agent_config/${encodeURIComponent(agentName)}`
+
+    console.log('📤 [save-and-deploy] Sending to voice backend:', {
+      url: apiUrl,
+      agentName,
+      agentId,
+      assistantCount: agentConfigBody?.agent?.assistant?.length ?? 0,
+      assistantNames: agentConfigBody?.agent?.assistant?.map((a: any) => a?.name) ?? [],
+      payloadKeys: Object.keys(agentConfigBody?.agent ?? {}),
+    })
+
+    let response: Response
+    const fetchStart = Date.now()
+    try {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'pype-api-v1'
+        },
+        body: JSON.stringify(agentConfigBody),
+        signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS),
+      })
+    } catch (fetchErr: unknown) {
+      const elapsed = Date.now() - fetchStart
+      const e = fetchErr as any
+      console.error('❌ [save-and-deploy] Fetch threw after', elapsed, 'ms:', {
+        name: e?.name,
+        message: e?.message,
+        causeCode: e?.cause?.code,
+        url: apiUrl,
+      })
+      if (isPypeUpstreamUnreachable(fetchErr)) {
+        return NextResponse.json(
+          {
+            message: 'Voice backend unreachable. The agent config could not be deployed because the voice backend did not respond.',
+            backendUnavailable: true,
+            debug: {
+              url: apiUrl,
+              elapsedMs: elapsed,
+              errorName: e?.name,
+              errorMessage: e?.message,
+              causeCode: e?.cause?.code,
+            },
+          },
+          { status: 503 }
+        )
+      }
+      throw fetchErr
+    }
+
+    const elapsed = Date.now() - fetchStart
+    console.log('📥 [save-and-deploy] Voice backend responded:', {
+      status: response.status,
+      statusText: response.statusText,
+      elapsedMs: elapsed,
+      url: apiUrl,
     })
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.error('❌ [save-and-deploy] Voice backend returned error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+        url: apiUrl,
+      })
       return NextResponse.json(
         { 
           message: `Failed to deploy agent: ${response.status} ${response.statusText}`,
-          error: errorText 
+          error: errorText,
+          debug: { url: apiUrl, status: response.status },
         },
         { status: response.status }
       )
     }
 
     const result = await response.json()
+    console.log('✅ [save-and-deploy] Agent deployed successfully:', { agentName, elapsedMs: elapsed })
 
     return NextResponse.json({
       success: true,
