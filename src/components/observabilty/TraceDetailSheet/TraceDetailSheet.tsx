@@ -185,10 +185,29 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
   // Early return if no trace
   if (!trace) return null
 
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedField(field)
-    setTimeout(() => setCopiedField(null), 2000)
+  const copyToClipboard = async (text: string | null | undefined, field: string) => {
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 2000)
+    } catch {
+      // Fallback for HTTP or restricted contexts
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        setCopiedField(field)
+        setTimeout(() => setCopiedField(null), 2000)
+      } catch {
+        // clipboard completely unavailable — silently ignore
+      }
+    }
   }
 
   // Extract configuration data
