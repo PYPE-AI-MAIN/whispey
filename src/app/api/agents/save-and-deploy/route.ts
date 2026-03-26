@@ -50,6 +50,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate agentName to prevent SSRF via path traversal.
+    // Only allow alphanumeric characters, hyphens, and underscores.
+    if (!/^[a-zA-Z0-9_-]+$/.test(agentName)) {
+      return NextResponse.json(
+        { message: 'Invalid agent name. Only alphanumeric characters, hyphens, and underscores are allowed.' },
+        { status: 400 }
+      )
+    }
+
     // Fetch and decrypt API key from database
     if (agentId) {
       try {
@@ -119,7 +128,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const apiUrl = `${baseUrl}/agent_config/${agentName}`
+    const apiUrl = `${baseUrl}/agent_config/${encodeURIComponent(agentName)}`
 
     console.log('📤 [save-and-deploy] Sending to voice backend:', {
       url: apiUrl,
