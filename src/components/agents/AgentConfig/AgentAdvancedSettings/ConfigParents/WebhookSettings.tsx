@@ -26,7 +26,7 @@ function WebhookSettings({
   httpMethod,
   headers,
   isActive,
-  onFieldChange,
+  onFieldChange: _onFieldChange,
   agentId,
   projectId
 }: WebhookSettingsProps) {
@@ -93,14 +93,6 @@ function WebhookSettings({
     return false
   }
   
-  // Sync display state to parent form when user makes changes
-  const syncToParent = (field: string, value: any) => {
-    // Update display state
-    setDisplayState(prev => prev ? { ...prev, [field]: value } : null)
-    // Update parent form
-    onFieldChange(field, value)
-  }
-
   // Initialize header entries from effective headers
   useEffect(() => {
     const headersToUse = effectiveHeaders || {}
@@ -117,11 +109,11 @@ function WebhookSettings({
 
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/webhooks/config?agent_id=${currentAgentId}`)
+      const response = await fetch(`/api/webhooks/config?agent_id=${currentAgentId}&include_inactive=true`)
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.data && data.data.length > 0) {
-          const config = data.data[0] // Get first active config
+          const config = data.data[0]
           const loadedState = {
             triggerOnCallLog: true, // Always true since toggle is removed
             webhookUrl: config.webhook_url || '',
@@ -179,9 +171,8 @@ function WebhookSettings({
         headersObj[entry.key.trim()] = entry.value.trim()
       }
     })
-    // Update display state and sync to parent
+    // Keep webhook edits local; only persist via explicit save action.
     setDisplayState(prev => prev ? { ...prev, headers: headersObj } : null)
-    onFieldChange('advancedSettings.webhook.headers', headersObj)
   }
 
   const addHeaderEntry = () => {
@@ -216,6 +207,41 @@ function WebhookSettings({
     }
 
     try {
+      // When webhook is disabled and URL is cleared, remove config entirely.
+      // This keeps DB constraints intact (webhook_url is NOT NULL) and matches UX intent.
+      if (!effectiveIsActive && !effectiveWebhookUrl.trim()) {
+        const deleteResponse = await fetch(`/api/webhooks/config?agent_id=${currentAgentId}`, {
+          method: 'DELETE'
+        })
+
+        if (!deleteResponse.ok) {
+          throw new Error('Failed to remove webhook configuration')
+        }
+
+        if (!silent) {
+          setSaveStatus('success')
+          setTimeout(() => setSaveStatus('idle'), 3000)
+        }
+
+        setInitialState({
+          triggerOnCallLog: effectiveTriggerOnCallLog,
+          webhookUrl: effectiveWebhookUrl,
+          httpMethod: effectiveHttpMethod,
+          headers: effectiveHeaders || {},
+          isActive: effectiveIsActive
+        })
+
+        setDisplayState({
+          triggerOnCallLog: effectiveTriggerOnCallLog,
+          webhookUrl: effectiveWebhookUrl,
+          httpMethod: effectiveHttpMethod,
+          headers: effectiveHeaders || {},
+          isActive: effectiveIsActive
+        })
+
+        return
+      }
+
       const webhookConfig = {
         project_id: currentProjectId,
         agent_id: currentAgentId,
@@ -299,7 +325,6 @@ function WebhookSettings({
                   value={effectiveWebhookUrl}
                   onChange={(e) => {
                     setDisplayState(prev => prev ? { ...prev, webhookUrl: e.target.value } : { triggerOnCallLog: true, webhookUrl: e.target.value, httpMethod: 'POST', headers: {}, isActive: false })
-                    onFieldChange('advancedSettings.webhook.webhookUrl', e.target.value)
                   }}
                   className="h-8 text-xs"
                 />
@@ -314,7 +339,6 @@ function WebhookSettings({
                   value={effectiveHttpMethod}
                   onValueChange={(value) => {
                     setDisplayState(prev => prev ? { ...prev, httpMethod: value } : { triggerOnCallLog: true, webhookUrl: '', httpMethod: value, headers: {}, isActive: false })
-                    onFieldChange('advancedSettings.webhook.httpMethod', value)
                   }}
                 >
                   <SelectTrigger className="h-8 text-xs">
@@ -393,7 +417,6 @@ function WebhookSettings({
                   checked={effectiveIsActive}
                   onCheckedChange={(checked) => {
                     setDisplayState(prev => prev ? { ...prev, isActive: checked } : { triggerOnCallLog: true, webhookUrl: '', httpMethod: 'POST', headers: {}, isActive: checked })
-                    onFieldChange('advancedSettings.webhook.isActive', checked)
                   }}
                   className="scale-75"
                 />
@@ -404,7 +427,7 @@ function WebhookSettings({
                 <Button
                   type="button"
                   onClick={() => saveWebhookConfig()}
-                  disabled={isSaving || !effectiveWebhookUrl.trim() || !hasChanges()}
+                  disabled={isSaving || !hasChanges() || (effectiveIsActive && !effectiveWebhookUrl.trim())}
                   className="h-8 text-xs w-full"
                   variant={saveStatus === 'success' ? 'default' : saveStatus === 'error' ? 'destructive' : 'default'}
                 >
