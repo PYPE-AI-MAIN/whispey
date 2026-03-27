@@ -162,19 +162,27 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/campaigns' },
       { pattern: '/:projectId/settings' },
       { pattern: '/:projectId/campaigns/:campaignId' },
-      { pattern: '/:projectId/campaigns/create' }
+      { pattern: '/:projectId/campaigns/create' },
+      { pattern: '/:projectId/analytics' }, 
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
       const { userCanViewApiKeys, isOwnerOrAdmin, visibility } = context
 
       const baseNavigation = [
+         {
+          id: 'analytics',
+          name: 'Org Overview',
+          icon: 'BarChart3',
+          path: `/${projectId}/analytics`,
+          group: 'Agents'
+        },
         {
-          id: 'agent-list', 
-          name: 'Agent List', 
-          icon: 'Activity', 
-          path: `/${projectId}/agents`, 
-          group: 'Agents' 
+          id: 'agent-list',
+          name: 'Agent List',
+          icon: 'Activity',
+          path: `/${projectId}/agents`,
+          group: 'Agents'
         }
       ]
 
