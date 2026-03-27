@@ -1,10 +1,8 @@
 // src/app/api/webhooks/config/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createServiceRoleClient()
 
 export async function POST(request: NextRequest) {
   try {
@@ -133,6 +131,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const agentId = searchParams.get('agent_id')
     const projectId = searchParams.get('project_id')
+    const includeInactive = searchParams.get('include_inactive') === 'true'
 
     if (!agentId && !projectId) {
       return NextResponse.json(
@@ -144,7 +143,12 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('pype_voice_webhook_configs')
       .select('*')
-      .eq('is_active', true)
+      // .eq('is_active', true)
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true)
+      }
+  
 
     if (agentId) {
       query = query.eq('agent_id', agentId)

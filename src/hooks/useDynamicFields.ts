@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { postSupabaseSelect } from '@/lib/supabase-select-client'
 
 interface DynamicFields {
   metadataFields: string[]
@@ -22,19 +22,23 @@ export const useDynamicFields = (agentId: string, limit: number = 100): DynamicF
       setError(null)
 
       try {
-        // Fetch recent call logs to extract dynamic fields
-        const { data: calls, error: fetchError } = await supabase
-          .from('pype_voice_call_logs')
-          .select('metadata, transcription_metrics')
-          .eq('agent_id', agentId)
-          .not('metadata', 'is', null)
-          .not('transcription_metrics', 'is', null)
-          .limit(limit)
-          .order('created_at', { ascending: false })
-
-        if (fetchError) {
-          throw fetchError
-        }
+        const calls = (await postSupabaseSelect<{
+          metadata: unknown
+          transcription_metrics: unknown
+        }>({
+          table: 'pype_voice_call_logs',
+          query: {
+            select: 'metadata, transcription_metrics',
+            filters: [
+              { column: 'agent_id', operator: 'eq', value: agentId },
+              { column: 'metadata', operator: 'not.is', value: null },
+              { column: 'transcription_metrics', operator: 'not.is', value: null },
+            ],
+            orderBy: { column: 'created_at', ascending: false },
+            limit,
+          },
+          auth: { agentId },
+        })) as Array<{ metadata?: unknown; transcription_metrics?: unknown }>
 
         if (!calls || calls.length === 0) {
           setMetadataFields([])
@@ -42,23 +46,20 @@ export const useDynamicFields = (agentId: string, limit: number = 100): DynamicF
           return
         }
 
-        // Extract all unique keys from metadata
         const metadataKeysSet = new Set<string>()
         const transcriptionKeysSet = new Set<string>()
 
-        calls.forEach((call: any) => {
-          // Extract metadata keys
+        calls.forEach((call) => {
           if (call.metadata && typeof call.metadata === 'object') {
-            Object.keys(call.metadata).forEach(key => {
+            Object.keys(call.metadata as object).forEach((key) => {
               if (key && typeof key === 'string') {
                 metadataKeysSet.add(key)
               }
             })
           }
 
-          // Extract transcription_metrics keys
           if (call.transcription_metrics && typeof call.transcription_metrics === 'object') {
-            Object.keys(call.transcription_metrics).forEach(key => {
+            Object.keys(call.transcription_metrics as object).forEach((key) => {
               if (key && typeof key === 'string') {
                 transcriptionKeysSet.add(key)
               }
@@ -66,7 +67,6 @@ export const useDynamicFields = (agentId: string, limit: number = 100): DynamicF
           }
         })
 
-        // Never expose apikey/api_url (auth-only, must not appear in UI)
         const SENSITIVE_METADATA_KEYS = ['apikey', 'api_url']
         const sortedMetadataFields = Array.from(metadataKeysSet)
           .filter((key) => !SENSITIVE_METADATA_KEYS.includes(key))
@@ -75,10 +75,9 @@ export const useDynamicFields = (agentId: string, limit: number = 100): DynamicF
 
         setMetadataFields(sortedMetadataFields)
         setTranscriptionFields(sortedTranscriptionFields)
-
       } catch (err) {
         console.error('Error extracting dynamic fields:', err)
-        setError('Failed to load dynamic fields')
+        setError(err instanceof Error ? err.message : 'Failed to load fields')
       } finally {
         setLoading(false)
       }
@@ -87,10 +86,5 @@ export const useDynamicFields = (agentId: string, limit: number = 100): DynamicF
     extractDynamicFields()
   }, [agentId, limit])
 
-  return {
-    metadataFields,
-    transcriptionFields,
-    loading,
-    error
-  }
+  return { metadataFields, transcriptionFields, loading, error }
 }

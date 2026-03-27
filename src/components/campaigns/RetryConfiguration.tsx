@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, Info, Plus, X, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RetryConfig } from '@/utils/campaigns/constants'
-import { supabase } from '@/lib/supabase'
 
 interface RetryConfigurationProps {
   onFieldChange: (field: string, value: any) => void
@@ -52,45 +51,24 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
     console.log('Fetching agent fields for agentId:', values.agentId)
     setLoadingFields(true)
     try {
-      // First try with metrics column
-      let agent: any = null
-      let { data, error } = await supabase
-        .from('pype_voice_agents')
-        .select('field_extractor_prompt, metrics, configuration')
-        .eq('id', values.agentId)
-        .single()
-
-      // If metrics column doesn't exist, try without it
-      if (error && error.code === '42703') {
-        console.log('Metrics column not found, trying without it and checking configuration...')
-        const { data: data2, error: error2 } = await supabase
-          .from('pype_voice_agents')
-          .select('field_extractor_prompt, configuration')
-          .eq('id', values.agentId)
-          .single()
-        
-        if (error2) {
-          console.error('Error fetching agent config:', error2)
-          setAvailableMetrics([])
-          setAvailableFields([])
-          return
-        }
-        
-        agent = data2
-        // Try to extract metrics from configuration if it exists
-        if (agent?.configuration && typeof agent.configuration === 'object') {
-          const config = agent.configuration as any
-          if (config.metrics) {
-            agent.metrics = config.metrics
-          }
-        }
-      } else if (error) {
-        console.error('Error fetching agent config:', error)
+      const res = await fetch(`/api/agents/${values.agentId}`)
+      const agent = (await res.json()) as Record<string, unknown> & {
+        field_extractor_prompt?: unknown
+        metrics?: unknown
+        configuration?: unknown
+      }
+      if (!res.ok) {
+        console.error('Error fetching agent config:', agent)
         setAvailableMetrics([])
         setAvailableFields([])
         return
-      } else {
-        agent = data
+      }
+
+      if (agent?.configuration && typeof agent.configuration === 'object' && !agent.metrics) {
+        const config = agent.configuration as { metrics?: unknown }
+        if (config.metrics) {
+          agent.metrics = config.metrics
+        }
       }
 
       if (!agent) {

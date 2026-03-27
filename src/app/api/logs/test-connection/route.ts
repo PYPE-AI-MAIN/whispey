@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase-server';
 
 // Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
@@ -15,6 +15,7 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createServiceRoleClient();
     // Test Supabase connection
     const { data, error } = await supabase
       .from('pype_voice_projects')

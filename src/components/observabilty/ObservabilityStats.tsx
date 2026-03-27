@@ -42,6 +42,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
     orderBy: { column: "unix_timestamp", ascending: true },
+    auth: { agentId },
   })
 
   const bugReportData = useMemo(() => {

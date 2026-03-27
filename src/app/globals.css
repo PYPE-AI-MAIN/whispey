@@ -278,4 +278,10 @@
       opacity: 0.4;
     }
   }
+
+}
+
+@keyframes version-progress {
+  from { width: 100%; }
+  to   { width: 0%;   }
 }

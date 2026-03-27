@@ -69,7 +69,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   const [activeTab, setActiveTab] = useState("turns");
 
 
-  const { data: sessionTrace, isLoading: traceLoading } = useSessionTrace(sessionId || null);
+  const { data: sessionTrace, isLoading: traceLoading } = useSessionTrace(sessionId || null, agentId);
 
   // Only fetch spans when the user opens the "trace" or "waterfall" tab —
   // these are the largest requests on the page (~600kB) and are never needed
@@ -82,19 +82,20 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     isFetchingNextPage,
     isLoading: spansLoading,
     totalCount: totalSpansCount
-  } = useSessionSpansInfinite(sessionTrace, spansEnabled);
+  } = useSessionSpansInfinite(sessionTrace, spansEnabled, agentId);
 
 
   // Get call data to access bug report metadata + transcript fallback + audio URL.
   // Select only the columns actually used; limit:1 matches page.tsx query so React
   // Query can share the same cache entry (identical select + filters + limit).
   const { data: callData } = useSupabaseQuery("pype_voice_call_logs", {
-    select: "id, agent_id, metadata, transcript_json, recording_url, voice_recording_url, call_started_at, created_at",
+    select: "id, agent_id, metadata, transcript_json, recording_url, call_started_at, created_at",
     filters: sessionId 
       ? [{ column: "id", operator: "eq", value: sessionId }]
       : [{ column: "agent_id", operator: "eq", value: agentId }],
     orderBy: { column: "created_at", ascending: false },
     limit: 1,
+    auth: { agentId },
   })
 
   const isVapiAgent = useMemo(() => {
@@ -118,7 +119,8 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
-    orderBy: { column: "unix_timestamp", ascending: true }
+    orderBy: { column: "unix_timestamp", ascending: true },
+    auth: { agentId },
   })
 
   // Extract bug report data from call metadata
@@ -176,11 +178,15 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
         const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
         return aTurnNum - bTurnNum
       })
-    
-      return filtered
+
+      // If at least one turn has actual transcript text, use the metrics data.
+      // Otherwise fall through to transcript_json so the conversation is still visible.
+      const hasTranscriptContent = filtered.some(t => t.user_transcript || t.agent_response)
+      if (hasTranscriptContent) return filtered
     }
 
-    // Fallback: build traces from transcript_json in call_logs
+    // Fallback: build traces from transcript_json in call_logs.
+    // Used when metrics logs are absent OR contain no transcript text.
     if (callData?.length) {
       const call = callData[0]
       let transcriptJson = call?.transcript_json
@@ -191,23 +197,101 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
       }
       if (!Array.isArray(transcriptJson) || transcriptJson.length === 0) return []
 
-      return transcriptJson.map((msg: any, idx: number) => {
+      // Pair messages into conversation turns: each turn holds one user message
+      // and the immediately following assistant reply (or vice-versa for agent-opens flows).
+      const getText = (msg: any): string => {
+        const c = msg.content
+        if (Array.isArray(c)) return c.join(' ').trim()
+        return (c || '').trim()
+      }
+
+      const turns: TraceLog[] = []
+      let turnIdx = 0
+      let i = 0
+
+      while (i < transcriptJson.length) {
+        const msg = transcriptJson[i]
         const role = msg.role?.toLowerCase()
-        const content = Array.isArray(msg.content) ? msg.content.join(' ') : (msg.content || '')
-        return {
-          id: `transcript_${idx}`,
-          session_id: call.id,
-          turn_id: `turn_${idx + 1}`,
-          user_transcript: role === 'user' ? content.trim() : '',
-          agent_response: role === 'assistant' ? content.trim() : '',
-          created_at: call.created_at,
-          unix_timestamp: idx,
-        } as TraceLog
-      }).filter((t: TraceLog) => t.user_transcript || t.agent_response)
+        const text = getText(msg)
+
+        if (!text) { i++; continue }
+
+        if (role === 'assistant') {
+          // Check if the previous message was a user message already consumed
+          // — if so this is an agent reply to a pending user turn (handled below).
+          // Stand-alone assistant message (e.g. opening greeting): emit its own turn.
+          const nextMsg = transcriptJson[i + 1]
+          const nextRole = nextMsg?.role?.toLowerCase()
+
+          if (nextRole === 'user') {
+            // Pair: assistant[i] is an opening, keep it alone
+            turns.push({
+              id: `transcript_${turnIdx}`,
+              session_id: call.id,
+              turn_id: `turn_${turnIdx + 1}`,
+              user_transcript: '',
+              agent_response: text,
+              created_at: call.created_at,
+              unix_timestamp: turnIdx,
+            } as TraceLog)
+            turnIdx++
+            i++
+          } else {
+            // Orphan assistant message at end
+            turns.push({
+              id: `transcript_${turnIdx}`,
+              session_id: call.id,
+              turn_id: `turn_${turnIdx + 1}`,
+              user_transcript: '',
+              agent_response: text,
+              created_at: call.created_at,
+              unix_timestamp: turnIdx,
+            } as TraceLog)
+            turnIdx++
+            i++
+          }
+        } else if (role === 'user') {
+          // Pair user message with the immediately following assistant reply
+          const nextMsg = transcriptJson[i + 1]
+          const nextRole = nextMsg?.role?.toLowerCase()
+          const nextText = nextMsg ? getText(nextMsg) : ''
+
+          if (nextRole === 'assistant' && nextText) {
+            turns.push({
+              id: `transcript_${turnIdx}`,
+              session_id: call.id,
+              turn_id: `turn_${turnIdx + 1}`,
+              user_transcript: text,
+              agent_response: nextText,
+              created_at: call.created_at,
+              unix_timestamp: turnIdx,
+            } as TraceLog)
+            turnIdx++
+            i += 2 // consume both
+          } else {
+            // User message with no following assistant reply
+            turns.push({
+              id: `transcript_${turnIdx}`,
+              session_id: call.id,
+              turn_id: `turn_${turnIdx + 1}`,
+              user_transcript: text,
+              agent_response: '',
+              created_at: call.created_at,
+              unix_timestamp: turnIdx,
+            } as TraceLog)
+            turnIdx++
+            i++
+          }
+        } else {
+          i++
+        }
+      }
+
+      return turns.filter(t => t.user_transcript || t.agent_response)
     }
 
     return []
-  }, [traceData, filters])
+  }, [traceData, callData, filters])
 
 
   const getTraceStatus = (trace: TraceLog) => {
@@ -713,7 +797,7 @@ const handleRowClick = (trace: TraceLog) => {
         isOpen={isDetailSheetOpen}
         trace={selectedTrace}
         agent={agent}
-        recordingUrl={callData?.[0]?.recording_url || callData?.[0]?.voice_recording_url}
+        recordingUrl={callData?.[0]?.recording_url}
         callStartTime={callData?.[0]?.call_started_at}
         onClose={() => {
           setIsDetailSheetOpen(false)

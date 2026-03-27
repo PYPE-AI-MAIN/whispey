@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase-server';
 import { verifyToken } from '../../../../lib/auth';
 import { FailureReportRequest } from '../../../../types/logs';
 
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString()
     };
 
+    const supabase = createServiceRoleClient();
     const { data: insertedLog, error: insertError } = await supabase
       .from('pype_voice_call_logs')
       .insert(failureData)

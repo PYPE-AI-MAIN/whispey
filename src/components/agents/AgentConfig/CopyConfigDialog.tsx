@@ -86,7 +86,7 @@ export default function CopyConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Copy Agent Configuration</DialogTitle>
           <DialogDescription>
@@ -94,21 +94,25 @@ export default function CopyConfigDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 flex flex-col gap-4">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
           {isGenerating ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             </div>
           ) : (
             <>
-              <Textarea
-                value={configJson}
-                readOnly
-                className="flex-1 min-h-[400px] font-mono text-xs resize-none"
-                placeholder="Configuration JSON will appear here..."
-              />
+              {/* Scrollable textarea — takes all available space */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <Textarea
+                  value={configJson}
+                  readOnly
+                  className="h-full min-h-[200px] font-mono text-xs resize-none"
+                  placeholder="Configuration JSON will appear here..."
+                />
+              </div>
 
-              <div className="flex items-center justify-between pt-2 border-t">
+              {/* Footer — always visible, never pushed off screen */}
+              <div className="shrink-0 flex items-center justify-between pt-2 border-t">
                 <span className="text-xs text-gray-500">
                   {configJson.length.toLocaleString()} characters
                 </span>

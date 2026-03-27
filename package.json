@@ -61,6 +61,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "diff": "^8.0.4",
     "eslint": "^9.34.0",
     "formik": "^2.4.6",
     "fumadocs-core": "^15.7.5",
@@ -104,6 +105,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@mdx-js/rollup": "^3.1.0",
+    "@types/diff": "^7.0.2",
     "@types/lodash": "^4.17.20",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/parser": "^8.53.0",

@@ -231,7 +231,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
         basic: visibleColumns.basic,
         metadata: visibleColumns.metadata,
         transcription_metrics: visibleColumns.transcription_metrics
-      })
+      }, project?.id)
     } catch (error) {
       alert((error as Error).message)
     }
@@ -356,6 +356,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
               initialFilters={activeFilters}
               distinctConfig={distinctConfig}
               onDistinctConfigChange={handleDistinctConfigChange}
+              role={role}
             />
             <Button
               variant="outline"
@@ -386,9 +387,9 @@ const CallLogs: React.FC<CallLogsProps> = ({
               Download CSV
             </Button>
             <ColumnSelector
-              basicColumns={BASIC_COLUMNS.map((col) => col.key)}
+              basicColumns={filteredBasicColumns.map((col) => col.key)}
               basicColumnLabels={Object.fromEntries(
-                BASIC_COLUMNS.filter(col => !('hidden' in col && col.hidden)).map((col) => [col.key, col.label])
+                filteredBasicColumns.map((col) => [col.key, col.label])
               )}
               metadataColumns={dynamicColumns.metadata}
               transcriptionColumns={dynamicColumns.transcription_metrics}

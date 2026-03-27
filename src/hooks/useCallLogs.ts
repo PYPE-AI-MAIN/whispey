@@ -2,7 +2,6 @@
 'use client'
 
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
 import type { CallLog } from '@/types/logs'
 
 interface DistinctConfig {
@@ -13,8 +12,10 @@ interface DistinctConfig {
 
 interface UseCallLogsOptions {
   agentId: string | undefined
-  preDistinctFilters: any[]
-  postDistinctFilters: any[]
+  /** When set, loads via project route so tags can be redacted for viewers. */
+  projectId?: string
+  preDistinctFilters: unknown[]
+  postDistinctFilters: unknown[]
   select?: string
   orderBy?: { column: string; ascending: boolean }
   distinctConfig?: DistinctConfig
@@ -30,6 +31,7 @@ interface UseCallLogsOptions {
 
 export const useCallLogs = ({
   agentId,
+  projectId,
   preDistinctFilters = [],
   postDistinctFilters = [],
   select = '*',
@@ -39,91 +41,69 @@ export const useCallLogs = ({
   enabled = true,
   refetchOnMount = false,
   refetchOnWindowFocus = false,
-  staleTime = 5 * 60 * 1000, // 5 minutes
-  gcTime = 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+  staleTime = 5 * 60 * 1000,
+  gcTime = 10 * 60 * 1000,
   userId,
-  userEmail
+  userEmail,
 }: UseCallLogsOptions) => {
   return useInfiniteQuery({
     queryKey: [
-      'call-logs', 
+      'call-logs',
+      'server',
+      projectId ?? '',
       agentId ?? '',
-      JSON.stringify(preDistinctFilters), 
+      JSON.stringify(preDistinctFilters),
       JSON.stringify(postDistinctFilters),
-      select, 
+      select,
       `${orderBy.column}-${orderBy.ascending}`,
       distinctConfig ? JSON.stringify(distinctConfig) : 'no-distinct',
       dateRange ? `${dateRange.from}-${dateRange.to}` : 'no-date-range',
-      userId ?? 'no-user'
+      userId ?? 'no-user',
     ],
-    
+
     initialPageParam: 0,
-    
+
     queryFn: async ({ pageParam }: { pageParam: number }) => {
       if (!agentId) throw new Error('Agent ID required')
 
       const limit = 50
       const offset = pageParam
 
-      // Use RPC function for all queries (handles filters correctly)
-      // Always use RPC to ensure consistent filter handling
-      if (true) {
-        const rpcParamsWithUser = {
-          p_agent_id: agentId,
-          p_pre_distinct_filters: preDistinctFilters,
-          p_post_distinct_filters: postDistinctFilters,
-          p_select: select,
-          p_order_by_column: orderBy.column,
-          p_order_ascending: orderBy.ascending,
-          p_limit: limit,
-          p_offset: offset,
-          p_distinct_column: distinctConfig?.column || null,
-          p_distinct_json_field: distinctConfig?.jsonField || null,
-          p_distinct_order: distinctConfig?.order || 'asc',
-          p_date_from: dateRange?.from || null,
-          p_date_to: dateRange?.to || null,
-          p_user_clerk_id: userId || null,
-          p_user_email: userEmail || null
-        }
-
-        let { data, error } = await supabase.rpc('get_call_logs_with_distinct', rpcParamsWithUser)
-
-        if (error?.code === 'PGRST202') {
-          const params13 = {
-            p_agent_id: agentId,
-            p_pre_distinct_filters: preDistinctFilters,
-            p_post_distinct_filters: postDistinctFilters,
-            p_select: select,
-            p_order_by_column: orderBy.column,
-            p_order_ascending: orderBy.ascending,
-            p_limit: limit,
-            p_offset: offset,
-            p_distinct_column: distinctConfig?.column || null,
-            p_distinct_json_field: distinctConfig?.jsonField || null,
-            p_distinct_order: distinctConfig?.order || 'asc',
-            p_date_from: dateRange?.from || null,
-            p_date_to: dateRange?.to || null
-          }
-          const fallback = await supabase.rpc('get_call_logs_with_distinct', params13)
-          if (fallback.error) {
-            console.error('❌ RPC Error (15-param and 13-param fallback):', fallback.error)
-            throw fallback.error
-          }
-          data = fallback.data
-          error = null
-        }
-
-        if (error) {
-          console.error('❌ RPC Error:', error)
-          throw error
-        }
-
-        return (data || []) as unknown as CallLog[]
+      const rpcParamsWithUser = {
+        p_agent_id: agentId,
+        p_pre_distinct_filters: preDistinctFilters,
+        p_post_distinct_filters: postDistinctFilters,
+        p_select: select,
+        p_order_by_column: orderBy.column,
+        p_order_ascending: orderBy.ascending,
+        p_limit: limit,
+        p_offset: offset,
+        p_distinct_column: distinctConfig?.column || null,
+        p_distinct_json_field: distinctConfig?.jsonField || null,
+        p_distinct_order: distinctConfig?.order || 'asc',
+        p_date_from: dateRange?.from || null,
+        p_date_to: dateRange?.to || null,
+        p_user_clerk_id: userId || null,
+        p_user_email: userEmail || null,
       }
 
+      const url = projectId
+        ? `/api/projects/${projectId}/call-logs/query`
+        : `/api/agents/${agentId}/call-logs/query`
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rpcParamsWithUser),
+      })
+      const json = (await res.json()) as { data?: CallLog[]; error?: string }
+      if (!res.ok) {
+        throw new Error(json.error || res.statusText)
+      }
+      return (json.data || []) as CallLog[]
     },
 
-    getNextPageParam: (lastPage: any, allPages: any[]) => {
+    getNextPageParam: (lastPage: CallLog[], allPages: CallLog[][]) => {
       if (!lastPage || lastPage.length < 50) return undefined
       return allPages.length * 50
     },
@@ -132,6 +112,6 @@ export const useCallLogs = ({
     staleTime,
     gcTime,
     refetchOnWindowFocus,
-    refetchOnMount
+    refetchOnMount,
   })
 }
