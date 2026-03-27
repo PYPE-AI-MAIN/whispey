@@ -16,6 +16,7 @@ DROP FUNCTION IF EXISTS batch_calculate_custom_totals(uuid, jsonb, date, date) C
 DROP FUNCTION IF EXISTS get_available_json_fields(uuid, text, integer) CASCADE;
 DROP FUNCTION IF EXISTS get_distinct_values(uuid, text, text, integer) CASCADE;
 DROP FUNCTION IF EXISTS calculate_custom_total(uuid, text, text, text, jsonb, text, date, date) CASCADE;
+DROP FUNCTION IF EXISTS calculate_custom_total(uuid, text, text, text, jsonb, text, date, date, jsonb) CASCADE;
 DROP FUNCTION IF EXISTS build_singl_filter_condition(jsonb) CASCADE;
 
 -- Drop existing tables (in reverse dependency order)
@@ -672,7 +673,8 @@ CREATE OR REPLACE FUNCTION calculate_custom_total(
     p_filters JSONB DEFAULT '[]'::jsonb,
     p_filter_logic TEXT DEFAULT 'AND',
     p_date_from DATE DEFAULT NULL,
-    p_date_to DATE DEFAULT NULL
+    p_date_to DATE DEFAULT NULL,
+    p_distinct_config JSONB DEFAULT NULL
 )
 RETURNS TABLE(
     result NUMERIC,
@@ -688,15 +690,37 @@ DECLARE
     rec RECORD;
     filter_item JSONB;
     filter_condition TEXT;
+    distinct_col TEXT := NULL;
+    distinct_json_field TEXT := NULL;
 BEGIN
     -- Normalize p_json_field
     IF p_json_field = '' OR p_json_field = 'null' THEN
         p_json_field := NULL;
     END IF;
 
+    -- Extract distinct config if provided
+    IF p_distinct_config IS NOT NULL THEN
+        distinct_col := p_distinct_config->>'column';
+        distinct_json_field := p_distinct_config->>'jsonField';
+        IF distinct_json_field = '' OR distinct_json_field = 'null' THEN
+            distinct_json_field := NULL;
+        END IF;
+    END IF;
+
     -- Build base query
     IF p_aggregation = 'COUNT' THEN
-        base_query := 'SELECT COUNT(*) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+        IF distinct_col IS NOT NULL THEN
+            -- Count distinct values of the column specified in p_distinct_config
+            IF distinct_json_field IS NOT NULL THEN
+                base_query := 'SELECT COUNT(DISTINCT (' || quote_ident(distinct_col) || '->>' || quote_literal(distinct_json_field) || ')) as result FROM pype_voice_call_logs WHERE agent_id = $1 AND ' ||
+                              quote_ident(distinct_col) || '->>' || quote_literal(distinct_json_field) || ' IS NOT NULL AND ' ||
+                              quote_ident(distinct_col) || '->>' || quote_literal(distinct_json_field) || ' != ''''';
+            ELSE
+                base_query := 'SELECT COUNT(DISTINCT ' || quote_ident(distinct_col) || ') as result FROM pype_voice_call_logs WHERE agent_id = $1 AND ' || quote_ident(distinct_col) || ' IS NOT NULL';
+            END IF;
+        ELSE
+            base_query := 'SELECT COUNT(*) as result FROM pype_voice_call_logs WHERE agent_id = $1';
+        END IF;
         
     ELSIF p_aggregation = 'COUNT_DISTINCT' THEN
         IF p_json_field IS NOT NULL THEN
@@ -894,6 +918,7 @@ DECLARE
   json_field TEXT;
   filters JSONB;
   filter_logic TEXT;
+  distinct_config JSONB;
   calc_result RECORD;
 BEGIN
   FOR config_item IN SELECT * FROM jsonb_array_elements(p_configs)
@@ -903,6 +928,7 @@ BEGIN
     json_field := config_item->>'jsonField';
     filters := COALESCE(config_item->'filters', '[]'::jsonb);
     filter_logic := COALESCE(config_item->>'filterLogic', 'AND');
+    distinct_config := config_item->'distinct';
 
     SELECT * INTO calc_result
     FROM calculate_custom_total(
@@ -913,7 +939,8 @@ BEGIN
       filters,
       filter_logic,
       p_date_from,
-      p_date_to
+      p_date_to,
+      distinct_config
     );
 
     RETURN QUERY SELECT 
