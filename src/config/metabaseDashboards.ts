@@ -1,4 +1,4 @@
-export const METABASE_BASE_URL = process.env.NEXT_PUBLIC_METABASE_URL || ''
+export const METABASE_BASE_URL = process.env.NEXT_PUBLIC_METABASE_URL || 'https://analytics.pypeai.com'
 
 const DYNAMIC_DASHBOARD_UUID = 'b049aa11-bcfa-497f-9c74-e4566cd75950'
 
