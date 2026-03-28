@@ -8,7 +8,7 @@ interface DynamicFields {
   error: string | null
 }
 
-export const useDynamicFields = (agentId: string, limit: number = 100): DynamicFields => {
+export const useDynamicFields = (agentId: string, limit: number = 20): DynamicFields => {
   const [metadataFields, setMetadataFields] = useState<string[]>([])
   const [transcriptionFields, setTranscriptionFields] = useState<string[]>([])
   const [loading, setLoading] = useState(true)

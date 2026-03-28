@@ -250,22 +250,32 @@ export const convertToSupabaseFilters = (operations: FilterOperation[], agentId?
   return preDistinctFilters
 }
 
-export const getSelectColumns = (role: string | null): string => {
-  if (!role) return '*'
-  
-  let columns = [
-    'id', 'agent_id', 'call_id', 'customer_number', 'call_ended_reason',
-    'call_started_at', 'call_ended_at', 'duration_seconds', 'recording_url',
-    'metadata', 'environment', 'transcript_type', 'transcript_json',
-    'created_at', 'transcription_metrics', 'billing_duration_seconds', 'metrics', 'wcall_event'
-    // tags live inside transcription_metrics JSONB — no separate column needed
-  ]
+// Base columns always fetched for the call logs list view.
+// Excludes heavy JSONB columns that are not rendered in the table:
+// - complete_configuration / dynamic_variables / telemetry_analytics / telemetry_data
+//   are large blobs used only in the agent config / observability detail screens,
+//   not in the list table — they should never be mass-fetched across 50 rows.
+// - transcript_json is fetched separately by TracesTable (its own narrowed query)
+//   and is not displayed in the call log list table.
+const BASE_CALL_LOG_COLUMNS = [
+  'id', 'agent_id', 'call_id', 'customer_number', 'call_ended_reason',
+  'call_started_at', 'call_ended_at', 'duration_seconds', 'recording_url',
+  'metadata', 'environment', 'transcript_type',
+  'created_at', 'transcription_metrics', 'billing_duration_seconds', 'metrics', 'wcall_event'
+  // tags live inside transcription_metrics JSONB — no separate column needed
+]
 
-  if (isColumnVisibleForRole('avg_latency', role)) {
+export const getSelectColumns = (role: string | null): string => {
+  // When role hasn't loaded yet, use the safe base list rather than '*'.
+  // Selecting '*' would pull large JSONB blobs (complete_configuration,
+  // dynamic_variables, telemetry_analytics, telemetry_data) for every row.
+  const columns = [...BASE_CALL_LOG_COLUMNS]
+
+  if (!role || isColumnVisibleForRole('avg_latency', role)) {
     columns.push('avg_latency')
   }
   
-  if (isColumnVisibleForRole('total_llm_cost', role)) {
+  if (!role || isColumnVisibleForRole('total_llm_cost', role)) {
     columns.push('total_llm_cost', 'total_tts_cost', 'total_stt_cost')
   }
 
