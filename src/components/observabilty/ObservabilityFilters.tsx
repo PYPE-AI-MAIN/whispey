@@ -22,9 +22,11 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
   agentId,
   sessionId
 }) => {
-  // Fetch summary stats
+  // Fetch summary stats — otel_spans intentionally excluded: the error count stat
+  // was computed from it but never rendered in the UI, so fetching the large JSONB
+  // per turn was pure wasted disk I/O.
   const { data: traceData } = useSupabaseQuery("pype_voice_metrics_logs", {
-    select: "trace_id,trace_duration_ms,trace_cost_usd,otel_spans,created_at",
+    select: "trace_id,trace_duration_ms,trace_cost_usd,created_at",
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
       : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
@@ -34,21 +36,15 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
 
   // Calculate summary statistics
   const stats = useMemo(() => {
-    if (!traceData?.length) return { totalTraces: 0, avgDuration: 0, totalCost: 0, errorCount: 0 }
+    if (!traceData?.length) return { totalTraces: 0, avgDuration: 0, totalCost: 0 }
 
-    const traces = traceData.filter(item => item.trace_id) // Only items with traces
+    const traces = traceData.filter(item => item.trace_id)
     const totalTraces = traces.length
     const totalDuration = traces.reduce((sum, item) => sum + (item.trace_duration_ms || 0), 0)
-    const avgDuration = totalTraces > 0 ? totalDuration / totalTraces / 1000 : 0 // Convert to seconds
+    const avgDuration = totalTraces > 0 ? totalDuration / totalTraces / 1000 : 0
     const totalCost = traces.reduce((sum, item) => sum + (parseFloat(item.trace_cost_usd) || 0), 0)
-    
-    // Count errors from spans
-    const errorCount = traces.reduce((count, item) => {
-      const spans = item.otel_spans || []
-      return count + spans.filter((span: any) => span.status === 'error').length
-    }, 0)
 
-    return { totalTraces, avgDuration, totalCost, errorCount }
+    return { totalTraces, avgDuration, totalCost }
   }, [traceData])
 
   const handleSearchChange = (value: string) => {
