@@ -105,11 +105,13 @@ const CALL_EVENT_OPTIONS = [
 const OPERATIONS = {
   text: [
     { value: 'equals', label: 'Equals' },
+    { value: 'not_equals', label: 'Not equals' },
     { value: 'contains', label: 'Contains' },
     { value: 'starts_with', label: 'Starts with' }
   ],
   number: [
     { value: 'equals', label: 'Equals' },
+    { value: 'not_equals', label: 'Not equals' },
     { value: 'greater_than', label: 'Greater than' },
     { value: 'less_than', label: 'Less than' }
   ],
@@ -128,6 +130,7 @@ const OPERATIONS = {
   ],
   jsonb: [
     { value: 'json_equals', label: 'Equals' },
+    { value: 'json_not_equals', label: 'Not equals' },
     { value: 'json_contains', label: 'Contains' },
     { value: 'json_exists', label: 'Field Exists' },
     { value: 'json_greater_than', label: 'Greater than' },
@@ -411,10 +414,17 @@ const CallFilter: React.FC<CallFilterProps> = ({
     return value
   }
 
+  /** "Not equals" is only offered for these columns (per product scope). */
+  const TEXT_NOT_EQUALS_COLUMNS = new Set(['customer_number', 'call_ended_reason'])
+
   const getAvailableOperations = () => {
     const selectedColumn = COLUMNS.find(col => col.value === newFilter.column)
     if (!selectedColumn) return []
-    return OPERATIONS[selectedColumn.type as keyof typeof OPERATIONS] || []
+    const base = OPERATIONS[selectedColumn.type as keyof typeof OPERATIONS] || []
+    if (selectedColumn.type === 'text' && !TEXT_NOT_EQUALS_COLUMNS.has(selectedColumn.value)) {
+      return base.filter((o) => o.value !== 'not_equals')
+    }
+    return base
   }
 
   const getCallEventLabel = (value: string) =>
