@@ -351,12 +351,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     }
   }
 
-  // Set default tab if none specified
-  useEffect(() => {
-    if (!searchParams.get('tab')) {
-      handleTabChange('overview')
-    }
-  }, [searchParams])
+  // activeTab defaults to 'overview' when the URL has no tab param (line above the tabs const).
+  // No useEffect needed — tab buttons always call handleTabChange which preserves all params.
 
   const isEnhancedProject = agent?.project_id === ENHANCED_PROJECT_ID
 
@@ -453,10 +449,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     }
   }, [checkVapiStatus, isVapiAgent, agent?.id])
 
-  // Show tabs immediately - can be calculated without agent data
+  // All tabs — overview and logs are always present; campaign-logs only for enhanced projects
   const tabs = [
-    // Only add campaign-logs if we know it's enhanced (will show when agent data loads)
-    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : [])
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'logs',     label: 'All Logs', icon: List },
+    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
   ]
 
   // Handle errors without blocking entire dashboard
