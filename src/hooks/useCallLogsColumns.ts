@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import { CallLog } from "@/types/logs"
 import { toCamelCase, isColumnVisibleForRole } from '@/utils/callLogsUtils'
 import { FilterRule } from '@/components/CallFilter'
@@ -106,60 +106,67 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
   // Get visible columns from store
   const { visibleColumns, setVisibleColumns } = useCallLogsStore()
 
-  // Initialize visible columns if empty or update when role/dynamic columns change
+  // Shallow array equality helper — avoids JSON.stringify allocations
+  const arrEq = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((v, i) => v === b[i])
+
+  // Prevent the effect from firing on the first render before role is known
+  const roleLoadedRef = useRef(false)
+
+  // Initialize / sync visible columns when role or dynamic columns change.
+  // IMPORTANT: the setVisibleColumns callback returns `prev` unchanged when nothing
+  // actually changed — this prevents Zustand from triggering a re-render and
+  // breaking the infinite-loop guard.
   useEffect(() => {
-    if (role !== null) {
-      const allowedBasicColumns = filteredBasicColumns.map(col => col.key) as string[]
-      
-      setVisibleColumns((prev) => {
-        // Initialize if basic columns are empty or don't match current role
-        const needsInitialization = 
-          prev.basic.length === 0 || 
-          !allowedBasicColumns.every(col => prev.basic.includes(col))
-        
-        // Select all metadata, transcription_metrics, and metrics by default if they're empty
-        // Exclude certain metadata columns from default selection
-        const availableMetadata = dynamicColumns.metadata.filter(
-          (col) => !EXCLUDED_METADATA_COLUMNS.includes(col)
-        )
-        const metadata = prev.metadata.length === 0 && availableMetadata.length > 0
-          ? availableMetadata
-          : prev.metadata.filter((col) => dynamicColumns.metadata.includes(col))
-        
-        // Merge both data from calls AND agent config for backward compatibility
-        // This ensures:
-        // 1. Fields like final_disposition from actual data appear
-        // 2. Fields from agent config are still available (backward compatible)
-        const allAvailableTranscriptionMetrics = Array.from(
-          new Set([...dynamicColumns.transcription_metrics, ...dynamicColumnsKey])
-        ).sort()
-        
-        const transcriptionMetrics = prev.transcription_metrics.length === 0 && allAvailableTranscriptionMetrics.length > 0
-          ? allAvailableTranscriptionMetrics
-          : prev.transcription_metrics.filter((col) => allAvailableTranscriptionMetrics.includes(col))
-        
-        const metrics = prev.metrics.length === 0 && dynamicColumns.metrics.length > 0
-          ? dynamicColumns.metrics
-          : prev.metrics.filter((col) => dynamicColumns.metrics.includes(col))
-        
-        if (needsInitialization) {
-          return {
-        basic: allowedBasicColumns,
-            metadata: metadata,
-            transcription_metrics: transcriptionMetrics,
-            metrics: metrics
-          }
-        } else {
-          // Just filter out invalid columns while preserving user selections
-          return {
-            basic: prev.basic.filter(col => allowedBasicColumns.includes(col)),
-            metadata: metadata,
-            transcription_metrics: transcriptionMetrics,
-            metrics: metrics
-          }
-        }
-      })
-    }
+    if (role === null) return
+    roleLoadedRef.current = true
+
+    const allowedBasicColumns = filteredBasicColumns.map(col => col.key) as string[]
+
+    const availableMetadata = dynamicColumns.metadata.filter(
+      (col) => !EXCLUDED_METADATA_COLUMNS.includes(col)
+    )
+
+    const allAvailableTranscriptionMetrics = Array.from(
+      new Set([...dynamicColumns.transcription_metrics, ...dynamicColumnsKey])
+    ).sort()
+
+    setVisibleColumns((prev) => {
+      const needsInitialization =
+        prev.basic.length === 0 ||
+        !allowedBasicColumns.every(col => prev.basic.includes(col))
+
+      const nextBasic = needsInitialization
+        ? allowedBasicColumns
+        : prev.basic.filter(col => allowedBasicColumns.includes(col))
+
+      const nextMetadata = prev.metadata.length === 0 && availableMetadata.length > 0
+        ? availableMetadata
+        : prev.metadata.filter(col => dynamicColumns.metadata.includes(col))
+
+      const nextTranscription = prev.transcription_metrics.length === 0 && allAvailableTranscriptionMetrics.length > 0
+        ? allAvailableTranscriptionMetrics
+        : prev.transcription_metrics.filter(col => allAvailableTranscriptionMetrics.includes(col))
+
+      const nextMetrics = prev.metrics.length === 0 && dynamicColumns.metrics.length > 0
+        ? dynamicColumns.metrics
+        : prev.metrics.filter(col => dynamicColumns.metrics.includes(col))
+
+      // Return the SAME prev reference if nothing changed — Zustand won't re-render
+      if (
+        arrEq(nextBasic, prev.basic) &&
+        arrEq(nextMetadata, prev.metadata) &&
+        arrEq(nextTranscription, prev.transcription_metrics) &&
+        arrEq(nextMetrics, prev.metrics)
+      ) return prev
+
+      return {
+        basic: nextBasic,
+        metadata: nextMetadata,
+        transcription_metrics: nextTranscription,
+        metrics: nextMetrics,
+      }
+    })
   }, [role, dynamicColumns, dynamicColumnsKey, filteredBasicColumns, setVisibleColumns])
 
   // Merge transcription_metrics from both data and agent config for backward compatibility
