@@ -895,6 +895,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 quickFilter={quickFilter}
                 isCustomRange={isCustomRange}
                 isLoading={agentLoading || projectLoading}
+                isActive={activeTab === 'overview'}
               />
             </div>
             

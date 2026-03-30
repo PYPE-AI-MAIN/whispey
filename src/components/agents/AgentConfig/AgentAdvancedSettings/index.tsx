@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon, PhoneOff } from 'lucide-react'
+import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon, PhoneOff, Zap, Copy, Check } from 'lucide-react'
 import InterruptionSettings from './ConfigParents/InterruptionSettings'
 import VoiceActivitySettings from './ConfigParents/VoiceActivitySettings'
 import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
@@ -103,11 +103,15 @@ interface AgentAdvancedSettingsProps {
     onDynamicTTSChange?: (dynamicTTSList: any[]) => void
   }
 
+const EOD_PROMPT_SNIPPET =
+  'When the conversation is fully resolved and you have said your goodbye, append <eod/> at the very end of your response.'
+
 function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: AgentAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
     session: false,
+    eod: false,
     tools: false,
     fillers: false,
     bugs: false,
@@ -117,6 +121,17 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     ttsSwitcher: false,
     knowledgeBase: false
   })
+  const [eodCopied, setEodCopied] = useState(false)
+
+  const handleEodCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(EOD_PROMPT_SNIPPET)
+      setEodCopied(true)
+      setTimeout(() => setEodCopied(false), 2000)
+    } catch {
+      // clipboard not available in non-secure contexts — silently ignore
+    }
+  }
   
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({
@@ -199,6 +214,57 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               user_away_timeout_message={advancedSettings.session.user_away_timeout_message}
               onFieldChange={onFieldChange}
             />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* EOD Auto-Hangup */}
+        <Collapsible open={openSections.eod} onOpenChange={() => toggleSection('eod')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <Zap className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">EOD Auto-Hangup</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.eod ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-3 space-y-2">
+
+              {/* Description */}
+              <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+                The pipeline ends the call automatically when the LLM appends{' '}
+                <code className="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">
+                  &lt;eod/&gt;
+                </code>{' '}
+                to its response. The tag is stripped before TTS — callers never hear it.
+                After the agent finishes speaking a{' '}
+                <strong className="text-blue-800 dark:text-blue-300">2-second silence window</strong>{' '}
+                begins: if the caller speaks the hangup is cancelled; otherwise the call ends.
+              </p>
+
+              {/* Copyable prompt snippet */}
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-blue-800 dark:text-blue-300">
+                  Add this to your System Prompt to activate:
+                </p>
+                <div className="relative rounded bg-blue-100 dark:bg-blue-900/60 border border-blue-200 dark:border-blue-700">
+                  <pre className="text-xs font-mono text-blue-900 dark:text-blue-200 p-2 pr-8 whitespace-pre-wrap break-words leading-relaxed">
+                    {EOD_PROMPT_SNIPPET}
+                  </pre>
+                  <button
+                    onClick={handleEodCopy}
+                    title="Copy to clipboard"
+                    className="absolute top-1.5 right-1.5 p-1 rounded text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                  >
+                    {eodCopied
+                      ? <Check className="w-3 h-3 text-green-500" />
+                      : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+            </div>
           </CollapsibleContent>
         </Collapsible>
 

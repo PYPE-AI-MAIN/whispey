@@ -24,6 +24,10 @@ interface CallLogsState {
   distinctConfigByAgent: Record<string, DistinctConfig | undefined>
   setDistinctConfigForAgent: (agentId: string, config: DistinctConfig | undefined) => void
 
+  // Per-agent current page — persisted so navigating away and back restores position
+  pageByAgent: Record<string, number>
+  setPageForAgent: (agentId: string, page: number) => void
+
   // Column visibility — intentionally global (shared across agents, user preference)
   visibleColumns: VisibleColumns
   setVisibleColumns: (columns: VisibleColumns | ((prev: VisibleColumns) => VisibleColumns)) => void
@@ -81,6 +85,12 @@ export const useCallLogsStore = create<CallLogsState>()(
           distinctConfigByAgent: { ...state.distinctConfigByAgent, [agentId]: config }
         })),
 
+      pageByAgent: {},
+      setPageForAgent: (agentId, page) =>
+        set((state) => ({
+          pageByAgent: { ...state.pageByAgent, [agentId]: page }
+        })),
+
       visibleColumns: defaultVisibleColumns,
       setVisibleColumns: (columns) =>
         set((state) => ({
@@ -88,17 +98,17 @@ export const useCallLogsStore = create<CallLogsState>()(
         })),
 
       resetState: () =>
-        set({ filtersByAgent: {}, distinctConfigByAgent: {} })
+        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {} })
     }),
     {
       name: 'call-logs-storage',
-      version: 1,
+      version: 2, // bumped: added pageByAgent
       // Runs when stored version < current version.
-      // v0 had flat activeFilters/distinctConfig — impossible to map to an agent,
-      // so we discard them. visibleColumns (column prefs) are preserved.
+      // v0/v1 had no pageByAgent — preserve everything else.
       migrate: (old: any) => ({
-        filtersByAgent: {},
-        distinctConfigByAgent: {},
+        filtersByAgent: old?.filtersByAgent ?? {},
+        distinctConfigByAgent: old?.distinctConfigByAgent ?? {},
+        pageByAgent: {},
         visibleColumns: old?.visibleColumns ?? defaultVisibleColumns
       }),
       // Runs after rehydration — clean any invalid filters that slipped through.
