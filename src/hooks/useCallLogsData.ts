@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getUserProjectRole } from "@/services/getUserRole"
-import { toCamelCase, getSelectColumns, extractFiltersAndDistinct, isViewerRole } from '@/utils/callLogsUtils'
+import { getSelectColumns, extractFiltersAndDistinct, isViewerRole } from '@/utils/callLogsUtils'
 import { FilterOperation } from '@/components/CallFilter'
-import { useCallLogs } from "@/hooks/useCallLogs"
+import { useCallLogs, buildCallLogsQueryKey, PAGE_SIZE } from "@/hooks/useCallLogs"
 import { useCallLogsStore } from '@/stores/callLogsStore'
 
-// Stable reference so CallFilter's useEffect([initialFilters]) doesn't
-// fire on every render when this agent has no stored filters yet.
 const EMPTY_FILTERS: FilterOperation[] = []
+
+export { PAGE_SIZE }
 
 export const useCallLogsData = (
   agent: any,
@@ -21,11 +22,25 @@ export const useCallLogsData = (
 
   const agentId = agent?.id as string | undefined
 
-  // Read this agent's filters from the per-agent store slot
-  const { filtersByAgent, setFiltersForAgent } = useCallLogsStore()
+  const {
+    filtersByAgent, setFiltersForAgent,
+    pageByAgent, setPageForAgent,
+  } = useCallLogsStore()
+
   const activeFilters: FilterOperation[] = (agentId ? filtersByAgent[agentId] : undefined) ?? EMPTY_FILTERS
 
-  // Agent-scoped setter — writes only to this agent's slot
+  // Current page from persisted Zustand store
+  const currentPage: number = (agentId ? pageByAgent[agentId] : undefined) ?? 1
+
+  const setCurrentPage = useCallback(
+    (pageOrFn: number | ((prev: number) => number)) => {
+      if (!agentId) return
+      const next = typeof pageOrFn === 'function' ? pageOrFn(currentPage) : pageOrFn
+      setPageForAgent(agentId, Math.max(1, next))
+    },
+    [agentId, currentPage, setPageForAgent]
+  )
+
   const setActiveFilters = useCallback(
     (operations: FilterOperation[]) => {
       if (agentId) setFiltersForAgent(agentId, operations)
@@ -33,13 +48,11 @@ export const useCallLogsData = (
     [agentId, setFiltersForAgent]
   )
 
-  // Extract filters and distinct config from the unified operations array
   const { preDistinctFilters, postDistinctFilters, distinctConfig } = useMemo(
     () => extractFiltersAndDistinct(activeFilters, agentId),
     [activeFilters, agentId]
   )
 
-  // Fetch user role (use clerk_id when available so owners/members added by clerk_id are found)
   useEffect(() => {
     if ((userEmail || userId) && projectId) {
       const getUserRole = async () => {
@@ -47,8 +60,7 @@ export const useCallLogsData = (
         try {
           const userRole = await getUserProjectRole(userEmail ?? '', projectId, userId)
           setRole(userRole.role)
-        } catch (error) {
-          console.error('Failed to load user role:', error)
+        } catch {
           setRole('user')
         } finally {
           setRoleLoading(false)
@@ -61,7 +73,6 @@ export const useCallLogsData = (
     }
   }, [userEmail, projectId, userId])
 
-  // Viewers cannot use tag filters; drop persisted tag filters if role is viewer
   useEffect(() => {
     if (!agentId || !isViewerRole(role)) return
     const next = activeFilters.filter(
@@ -73,15 +84,27 @@ export const useCallLogsData = (
 
   const selectColumns = useMemo(() => getSelectColumns(role), [role])
 
+  // Reset to page 1 when agent / filters / dates change
+  const filterKey = JSON.stringify(activeFilters)
+  const prevQueryKeyRef = useRef<string>('')
+  useEffect(() => {
+    const key = `${agentId}|${filterKey}|${dateRange?.from}|${dateRange?.to}`
+    if (prevQueryKeyRef.current && prevQueryKeyRef.current !== key) {
+      setCurrentPage(1)
+    }
+    prevQueryKeyRef.current = key
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, filterKey, dateRange?.from, dateRange?.to])
+
+  // ── Per-page query (direct offset fetch — no sequential loading) ──────────
+  const queryEnabled = !!agentId && !roleLoading
   const {
-    data,
+    data: pageData,
     isLoading,
-    isFetchingNextPage,
-    isRefetching,
-    hasNextPage,
+    isFetching,
+    isPlaceholderData,
     error: queryError,
-    fetchNextPage,
-    refetch
+    refetch: rawRefetch,
   } = useCallLogs({
     agentId,
     projectId,
@@ -90,28 +113,147 @@ export const useCallLogsData = (
     select: selectColumns,
     distinctConfig,
     dateRange,
-    enabled: !!agentId && !roleLoading,
+    page: currentPage,
+    enabled: queryEnabled,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     userId,
-    userEmail
+    userEmail,
   })
 
-  const calls = useMemo(() => data?.pages.flat() ?? [], [data])
+  const currentPageCalls = pageData ?? []
+
+  // ── Total count (HEAD query — no rows transferred) ────────────────────────
+  const { data: countData } = useQuery<{ count: number }>({
+    queryKey: ['call-logs-count', agentId, dateRange?.from, dateRange?.to],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (dateRange?.from) params.set('dateFrom', dateRange.from)
+      if (dateRange?.to)   params.set('dateTo',   dateRange.to)
+      const res = await fetch(`/api/agents/${agentId}/call-logs/count?${params}`)
+      if (!res.ok) throw new Error('count fetch failed')
+      return res.json()
+    },
+    enabled: queryEnabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  })
+
+  // Suppress totalCount when filters are active — count doesn't reflect filtered results
+  const totalCount: number | null =
+    activeFilters.length === 0 ? (countData?.count ?? null) : null
+
+  const totalPages = totalCount !== null ? Math.ceil(totalCount / PAGE_SIZE) : null
+
+  // Whether the current page is the last one (no more data)
+  const isLastPage = totalPages !== null
+    ? currentPage >= totalPages
+    : (currentPageCalls.length < PAGE_SIZE && !isFetching)
+
+  const hasNextPage = !isLastPage
+
+  const isFirstPage = currentPage === 1
+
+  // ── Prefetch next page for instant navigation ─────────────────────────────
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!agentId || !queryEnabled || isLastPage) return
+    const nextPage = currentPage + 1
+    const nextKey = buildCallLogsQueryKey(
+      projectId ?? '',
+      agentId,
+      preDistinctFilters,
+      postDistinctFilters,
+      selectColumns,
+      { column: 'created_at', ascending: false },
+      distinctConfig,
+      dateRange,
+      userId ?? 'no-user',
+      nextPage,
+    )
+    queryClient.prefetchQuery({
+      queryKey: nextKey,
+      queryFn: async ({ signal }) => {
+        const body = {
+          p_agent_id: agentId,
+          p_pre_distinct_filters: preDistinctFilters,
+          p_post_distinct_filters: postDistinctFilters,
+          p_select: selectColumns,
+          p_order_by_column: 'created_at',
+          p_order_ascending: false,
+          p_limit: PAGE_SIZE,
+          p_offset: nextPage * PAGE_SIZE - PAGE_SIZE,
+          p_distinct_column: distinctConfig?.column || null,
+          p_distinct_json_field: distinctConfig?.jsonField || null,
+          p_distinct_order: distinctConfig?.order || 'asc',
+          p_date_from: dateRange?.from || null,
+          p_date_to: dateRange?.to || null,
+          p_user_clerk_id: userId || null,
+          p_user_email: userEmail || null,
+        }
+        const url = projectId
+          ? `/api/projects/${projectId}/call-logs/query`
+          : `/api/agents/${agentId}/call-logs/query`
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal,
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || res.statusText)
+        return json.data || []
+      },
+      staleTime: 5 * 60 * 1000,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, agentId, isLastPage])
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  const goToNextPage = useCallback(() => {
+    if (!isLastPage) setCurrentPage(p => p + 1)
+  }, [isLastPage, setCurrentPage])
+
+  const goToPrevPage = useCallback(() => {
+    setCurrentPage(p => Math.max(1, p - 1))
+  }, [setCurrentPage])
+
+  const goToPage = useCallback((page: number) => {
+    if (page >= 1) setCurrentPage(page)
+  }, [setCurrentPage])
+
+  // Refresh: reset to page 1 and re-fetch
+  const refetch = useCallback(async () => {
+    setCurrentPage(1)
+    await rawRefetch()
+  }, [rawRefetch, setCurrentPage])
+
+  // `calls` = all data visible to column/tag detectors (current page)
+  const calls = currentPageCalls
 
   return {
     calls,
+    currentPageCalls,
+    currentPage,
+    setCurrentPage,
+    totalCount,
+    totalPages,
+    isFirstPage,
+    isLastPage,
+    hasNextPage,
+    goToNextPage,
+    goToPrevPage,
+    goToPage,
     role,
     roleLoading,
-    isLoading: isLoading || isFetchingNextPage,
-    isRefetching: isRefetching ?? false,
-    hasNextPage: hasNextPage ?? false,
+    isLoading,
+    isFetchingNextPage: isFetching && !isPlaceholderData,
+    isRefetching: isFetching && !!pageData,
     error: queryError?.message,
     activeFilters,
     setActiveFilters,
-    fetchNextPage,
-    refetch
+    refetch,
   }
 }

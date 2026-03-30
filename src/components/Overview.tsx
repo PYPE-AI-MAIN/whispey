@@ -70,6 +70,10 @@ interface OverviewProps {
   quickFilter?: string
   isCustomRange?: boolean
   isLoading?: boolean
+  /** True when the overview tab is currently visible. Defers the API fetch
+   *  until the user actually opens this tab (avoids wasted requests while
+   *  the component is hidden behind another tab). */
+  isActive?: boolean
 }
 
 const ICON_COMPONENTS = {
@@ -189,7 +193,8 @@ const Overview: React.FC<OverviewProps> = ({
   project, 
   agent,
   dateRange,
-  isLoading: parentLoading
+  isLoading: parentLoading,
+  isActive = true,
 }) => {
 
   const { theme } = useTheme()
@@ -216,6 +221,7 @@ const Overview: React.FC<OverviewProps> = ({
     agentId: agent?.id,
     dateFrom: dateRange.from,
     dateTo: dateRange.to,
+    enabled: isActive,
   })
 
   const { 

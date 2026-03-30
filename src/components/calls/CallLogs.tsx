@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useCallback, useMemo, useEffect, useRef } from "react"
+import React, { useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, RefreshCw, Inbox } from "lucide-react"
+import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table'
 
-// Import optimized modules
 import { downloadCSV } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
@@ -25,7 +24,6 @@ import {
   ReanalyzeDialogWrapper
 } from './sub-components'
 import BackfillDispositionDialog from '@/components/disposition/BackfillDispositionDialog'
-import { useVirtualization } from '@/hooks/useVirtualization'
 
 interface CallLogsProps {
   project: any
@@ -35,10 +33,60 @@ interface CallLogsProps {
   dateRange?: { from: string; to: string }
 }
 
-const CallLogs: React.FC<CallLogsProps> = ({ 
-  project, 
-  agent, 
-  onBack, 
+// ── Smart pagination range ─────────────────────────────────────────────────
+// totalKnown  = pages already loaded in cache
+// totalPages  = exact total derived from count API (may be null if still loading)
+// hasMore     = server still has pages beyond what's loaded
+type PageItem = number | 'start-ellipsis' | 'end-ellipsis' | 'load-more'
+
+function buildPageItems(
+  currentPage: number,
+  totalKnown: number,
+  hasMore: boolean,
+  totalPages: number | null,
+): PageItem[] {
+  // Use the real total if available, otherwise fall back to loaded + maybe-more
+  const last = totalPages ?? (hasMore ? null : totalKnown)
+  if (!last && totalKnown <= 0) return []
+
+  const effectiveLast = last ?? totalKnown
+
+  // If everything fits in ≤7 buttons, show all
+  if (effectiveLast <= 7 && !hasMore) {
+    return Array.from({ length: effectiveLast }, (_, i) => i + 1)
+  }
+
+  const items: PageItem[] = []
+  const addUniq = (p: PageItem) => { if (!items.includes(p)) items.push(p) }
+
+  // First page always shown
+  addUniq(1)
+
+  // Left ellipsis when current is far from start
+  if (currentPage > 3) addUniq('start-ellipsis')
+
+  // Current window: page−1, current, page+1 (clamped)
+  const lo = Math.max(2, currentPage - 1)
+  const hi = Math.min(effectiveLast - 1, currentPage + 1)
+  for (let p = lo; p <= hi; p++) addUniq(p)
+
+  // Right ellipsis when current is far from last known page
+  if (currentPage < effectiveLast - 2) addUniq('end-ellipsis')
+
+  // Last page always shown
+  if (effectiveLast > 1) addUniq(effectiveLast)
+
+  // If there are still more pages beyond the total we know, show a load-more "…"
+  // (only relevant when totalPages is null and hasMore is true)
+  if (!totalPages && hasMore) addUniq('load-more')
+
+  return items
+}
+
+const CallLogs: React.FC<CallLogsProps> = ({
+  project,
+  agent,
+  onBack,
   isLoading: parentLoading,
   dateRange
 }) => {
@@ -47,36 +95,36 @@ const CallLogs: React.FC<CallLogsProps> = ({
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
   const { resolvedTheme } = useTheme()
 
-  // Inline style for flagged rows — Tailwind v4 purges dynamically assembled
-  // class strings, so we use explicit CSS values (same fix used for tag colours).
   const flaggedRowStyle: React.CSSProperties = {
-    backgroundColor: resolvedTheme === 'dark'
-      ? 'rgba(136, 19, 55, 0.18)'   // rose-950 @ 18% — visible but not blinding on dark bg
-      : '#fff1f2',                    // rose-50 — very light warm red on light bg
+    backgroundColor: resolvedTheme === 'dark' ? 'rgba(136, 19, 55, 0.18)' : '#fff1f2',
   }
-  const loadMoreRef = useRef<HTMLDivElement>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  // Use custom hooks for data management
   const {
     calls,
+    currentPageCalls,
+    currentPage,
+    totalCount,
+    totalPages,
+    isFirstPage,
+    isLastPage,
+    hasNextPage,
+    goToNextPage,
+    goToPrevPage,
+    goToPage,
     role,
     roleLoading,
     isLoading,
+    isFetchingNextPage,
     isRefetching,
-    hasNextPage,
     error,
     activeFilters,
     setActiveFilters,
-    fetchNextPage,
-    refetch
+    refetch,
   } = useCallLogsData(agent, userEmail, project?.id, dateRange, user?.id)
 
-  // Re-analyze only if permissions.visibility.org.reanalyze is true (set in Supabase).
   const { visibility } = useMemberVisibility(project?.id ?? undefined)
   const canReanalyze = canShowOrgSection(visibility, 'reanalyze')
 
-  // Read this agent's distinctConfig and its setter from the per-agent store slot
   const { distinctConfigByAgent, setDistinctConfigForAgent } = useCallLogsStore()
   const distinctConfig = agent?.id ? distinctConfigByAgent[agent.id] : undefined
   const setDistinctConfig = useCallback(
@@ -86,60 +134,13 @@ const CallLogs: React.FC<CallLogsProps> = ({
     [agent?.id, setDistinctConfigForAgent]
   )
 
-  // Scroll restoration hook (must be after calls is defined)
-  useEffect(() => {
-    const scrollKey = `call-logs-scroll-${agent?.id}`
-    const container = scrollContainerRef.current
-    
-    if (!container || !calls.length) return
-
-    // Restore scroll position after data loads
-    const savedPosition = sessionStorage.getItem(scrollKey)
-    if (savedPosition) {
-      // Use multiple requestAnimationFrame to ensure DOM is fully rendered and virtualization is ready
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (container) {
-              const position = parseInt(savedPosition, 10)
-              container.scrollTop = position
-              // Trigger a scroll event to ensure virtualization recalculates
-              container.dispatchEvent(new Event('scroll', { bubbles: false }))
-            }
-          })
-        })
-      })
-    }
-
-    // Save scroll position on scroll (debounced to 100ms)
-    let scrollTimeout: NodeJS.Timeout
-    const handleScroll = () => {
-      clearTimeout(scrollTimeout)
-      scrollTimeout = setTimeout(() => {
-        if (container) {
-          sessionStorage.setItem(scrollKey, container.scrollTop.toString())
-        }
-      }, 100)
-    }
-
-    container.addEventListener('scroll', handleScroll, { passive: true })
-
-    return () => {
-      container.removeEventListener('scroll', handleScroll)
-      clearTimeout(scrollTimeout)
-    }
-  }, [agent?.id, calls.length]) // Re-run when agent changes or data loads
-
-  // Use custom hook for columns management
   const {
     visibleColumns,
     setVisibleColumns,
     dynamicColumns,
-    dynamicColumnsKey,
     filteredBasicColumns
   } = useCallLogsColumns(agent, calls, role)
 
-  // Collect all distinct tags used across the current call set (for tag suggestions)
   const availableTags = useMemo(() => {
     const tagSet = new Set<string>()
     calls.forEach(call => {
@@ -149,158 +150,92 @@ const CallLogs: React.FC<CallLogsProps> = ({
     return Array.from(tagSet).sort()
   }, [calls])
 
-  // Memoize table columns
   const columns = useMemo(
     () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetch, role }),
     [visibleColumns, availableTags, refetch, role]
   )
 
-  // React Table instance
   const table = useReactTable({
-    data: calls,
+    data: currentPageCalls,
     columns,
     getCoreRowModel: getCoreRowModel(),
   })
 
-  // Virtualization configuration
-  const ROW_HEIGHT = 80 // h-20 = 80px
-  const HEADER_HEIGHT = 48 // h-12 = 48px
   const rows = table.getRowModel().rows
-  const ENABLE_VIRTUALIZATION_THRESHOLD = 30 // Only virtualize if we have more than 30 rows
-  
-  // Use virtualization hook (only when we have enough rows)
-  const shouldVirtualize = rows.length > ENABLE_VIRTUALIZATION_THRESHOLD
-  const {
-    startIndex,
-    endIndex,
-    visibleItems,
-    totalHeight,
-    offsetY,
-  } = useVirtualization({
-    itemHeight: ROW_HEIGHT,
-    containerRef: scrollContainerRef,
-    totalItems: rows.length,
-    overscan: 5,
-    headerHeight: HEADER_HEIGHT,
-  })
 
-  // Intersection Observer for infinite scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isLoading) {
-          fetchNextPage()
-        }
-      },
-      { threshold: 0.1 }
-    )
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [hasNextPage, isLoading, fetchNextPage])
-
-  // Event handlers - wrapped in useCallback
-  const handleFiltersChange = useCallback((operations: FilterOperation[]) => {
-    setActiveFilters(operations)
+  const handleFiltersChange = useCallback((ops: FilterOperation[]) => {
+    setActiveFilters(ops)
   }, [setActiveFilters])
 
-  const handleClearFilters = useCallback(() => {
-    setActiveFilters([])
-  }, [setActiveFilters])
+  const handleClearFilters = useCallback(() => setActiveFilters([]), [setActiveFilters])
 
   const handleDistinctConfigChange = useCallback((config: typeof distinctConfig) => {
     setDistinctConfig(config)
   }, [setDistinctConfig])
 
+  // Refresh always goes back to page 1 (handled inside hook's refetch)
   const handleRefresh = useCallback(async () => {
     if (isRefetching) return
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-    }
     await refetch()
   }, [refetch, isRefetching])
 
   const handleDownloadCSV = useCallback(async () => {
     if (!agent?.id) return
-    
     try {
       await downloadCSV(agent.id, activeFilters, {
         basic: visibleColumns.basic,
         metadata: visibleColumns.metadata,
         transcription_metrics: visibleColumns.transcription_metrics
       }, project?.id)
-    } catch (error) {
-      alert((error as Error).message)
+    } catch (err) {
+      alert((err as Error).message)
     }
-  }, [agent?.id, activeFilters, visibleColumns])
+  }, [agent?.id, activeFilters, visibleColumns, project?.id])
 
   const handleColumnChange = useCallback((
-    type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics', 
-    column: string, 
-    visible: boolean
+    type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics',
+    column: string, visible: boolean
   ) => {
     setVisibleColumns(prev => ({
       ...prev,
-      [type]: visible 
-        ? [...prev[type], column]
-        : prev[type].filter(col => col !== column)
+      [type]: visible ? [...prev[type], column] : prev[type].filter(c => c !== column)
     }))
   }, [setVisibleColumns])
 
   const handleSelectAll = useCallback((
-    type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics', 
+    type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics',
     visible: boolean
   ) => {
     setVisibleColumns(prev => ({
       ...prev,
       [type]: visible
-        ? (type === "basic" 
-            ? BASIC_COLUMNS.map(col => col.key) 
-            : dynamicColumns[type] || [])
+        ? (type === "basic" ? BASIC_COLUMNS.map(c => c.key) : dynamicColumns[type] || [])
         : []
     }))
   }, [setVisibleColumns, dynamicColumns])
 
-  const handleRowClick = useCallback((callId: string, agentId: string) => {
-    // Save scroll position before navigation
-    const scrollKey = `call-logs-scroll-${agent?.id}`
-    if (scrollContainerRef.current) {
-      sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString())
-    }
-    router.push(`/${project?.id}/agents/${agentId}/observability?session_id=${callId}`)
-  }, [router, project?.id, agent?.id])
-
-  // Track selected call for highlighting
   const [selectedCallId, setSelectedCallId] = React.useState<string | null>(null)
 
-  const handleRowSelect = useCallback((callId: string, agentId: string) => {
+  const handleRowSelect = useCallback((callId: string, callAgentId: string) => {
     setSelectedCallId(callId)
-    handleRowClick(callId, agentId)
-  }, [handleRowClick])
+    // Let React flush the highlight re-render, then navigate
+    // Page is persisted in Zustand (localStorage) automatically
+    setTimeout(() => {
+      router.push(`/${project?.id}/agents/${callAgentId}/observability?session_id=${callId}`)
+    }, 120)
+  }, [router, project?.id])
 
-  // Persist selected call ID across navigation
-  useEffect(() => {
-    const selectedKey = `selected-call-${agent?.id}`
-    const savedCallId = sessionStorage.getItem(selectedKey)
-    if (savedCallId) {
-      setSelectedCallId(savedCallId)
-    }
-  }, [agent?.id])
+  // ── Pagination items ───────────────────────────────────────────────────────
+  // totalPages comes from the hook (null when filters active or count not yet loaded)
+  const pageItems = buildPageItems(currentPage, currentPage, hasNextPage, totalPages)
 
-  useEffect(() => {
-    const selectedKey = `selected-call-${agent?.id}`
-    if (selectedCallId) {
-      sessionStorage.setItem(selectedKey, selectedCallId)
-    } else {
-      sessionStorage.removeItem(selectedKey)
-    }
-  }, [selectedCallId, agent?.id])
+  const pageStart = (currentPage - 1) * 50 + 1
+  const pageEnd   = (currentPage - 1) * 50 + currentPageCalls.length
 
-  // Loading state
-  if (parentLoading || roleLoading || !agent || !project || (isLoading && !calls.length)) {
+  // ── Loading / error guards ─────────────────────────────────────────────────
+  if (parentLoading || roleLoading || !agent || !project || (isLoading && !currentPageCalls.length)) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <FilterHeaderSkeleton />
@@ -309,32 +244,23 @@ const CallLogs: React.FC<CallLogsProps> = ({
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex-none p-4 border-b bg-background/95 dark:bg-gray-900/95">
-          <div className="flex items-center justify-between">
-            <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
-              <AlertCircle className="w-4 h-4 mr-2" />
-              Unable to load calls
-            </div>
+          <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center w-fit">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            Unable to load calls
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-red-500 dark:text-red-400 mx-auto" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Unable to load calls
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">{error}</p>
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h3 className="text-lg font-semibold">{error}</h3>
             {activeFilters.length > 0 && (
-              <button
-                onClick={handleClearFilters}
-                className="mt-2 px-4 py-2 text-sm font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
+              <Button variant="outline" size="sm" onClick={handleClearFilters}>
                 Clear filters and retry
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -344,11 +270,12 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
+
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CallFilter 
+            <CallFilter
               onFiltersChange={handleFiltersChange}
               onClear={handleClearFilters}
               availableMetadataFields={dynamicColumns.metadata}
@@ -359,10 +286,9 @@ const CallLogs: React.FC<CallLogsProps> = ({
               role={role}
             />
             <Button
-              variant="outline"
-              size="sm"
+              variant="outline" size="sm"
               onClick={handleRefresh}
-              disabled={isLoading || isRefetching}
+              disabled={isLoading || isRefetching || isFetchingNextPage}
               className="h-8 w-8 p-0 shrink-0"
               aria-label="Refresh call logs"
             >
@@ -372,25 +298,20 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
           <div className="flex items-center gap-2">
             {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
-            <BackfillDispositionDialog 
-              projectId={project?.id} 
-              agentId={agent?.id}
-              agentName={agent?.name}
-              projectName={project?.name}
+            <BackfillDispositionDialog
+              projectId={project?.id} agentId={agent?.id}
+              agentName={agent?.name} projectName={project?.name}
             />
             <Button
-              variant="outline"
-              size="sm"
+              variant="outline" size="sm"
               onClick={handleDownloadCSV}
               disabled={isLoading || !agent?.id}
             >
               Download CSV
             </Button>
             <ColumnSelector
-              basicColumns={filteredBasicColumns.map((col) => col.key)}
-              basicColumnLabels={Object.fromEntries(
-                filteredBasicColumns.map((col) => [col.key, col.label])
-              )}
+              basicColumns={filteredBasicColumns.map(c => c.key)}
+              basicColumnLabels={Object.fromEntries(filteredBasicColumns.map(c => [c.key, c.label]))}
               metadataColumns={dynamicColumns.metadata}
               transcriptionColumns={dynamicColumns.transcription_metrics}
               metricsColumns={dynamicColumns.metrics}
@@ -402,211 +323,189 @@ const CallLogs: React.FC<CallLogsProps> = ({
         </div>
       </div>
 
-      {/* Table */}
+      {/* ── Table ─────────────────────────────────────────────────────────── */}
       <div className="flex-1 relative overflow-hidden">
-        <div ref={scrollContainerRef} className="absolute inset-0 overflow-auto">
+        <div className="absolute inset-0 overflow-auto">
           <table className="w-full border-collapse border-spacing-0">
             <thead className="sticky h-12 -top-1 z-20 bg-background dark:bg-gray-900 shadow-sm">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="bg-muted/80 dark:bg-gray-800/80">
-                  {headerGroup.headers.map((header) => (
+              {table.getHeaderGroups().map(hg => (
+                <tr key={hg.id} className="bg-muted/80 dark:bg-gray-800/80">
+                  {hg.headers.map(h => (
                     <th
-                      key={header.id}
+                      key={h.id}
                       className="px-6 truncate border-2 border-r-black py-1.5 text-left font-semibold text-foreground dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight"
-                      style={{
-                        minWidth: header.column.columnDef.minSize || 200,
-                        width: header.column.columnDef.size || 'auto',
-                        borderBottomWidth: '2px',
-                      }}
+                      style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                     </th>
                   ))}
                 </tr>
               ))}
             </thead>
-            <tbody style={shouldVirtualize ? { height: totalHeight, position: 'relative' } : undefined}>
+            <tbody>
               {rows.length === 0 && !isLoading ? (
                 <tr>
-                  <td colSpan={columns.length} className="h-[400px] text-center px-6 py-4">
+                  <td colSpan={columns.length} className="h-[400px] text-center">
                     <div className="flex flex-col items-center justify-center space-y-4 py-12">
                       <div className="rounded-full bg-muted/50 p-6">
                         <Inbox className="w-12 h-12 text-muted-foreground" />
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-semibold">No call logs found</h3>
-                        {activeFilters.length > 0 && (
-                          <p className="text-sm text-muted-foreground max-w-md">
-                            No call logs match your current filters. Try adjusting your filter criteria.
-                          </p>
-                        )}
-                      </div>
+                      <h3 className="text-lg font-semibold">No call logs found</h3>
                       {activeFilters.length > 0 && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleClearFilters} 
-                          className="mt-4"
-                        >
-                          Clear Filters
-                        </Button>
+                        <>
+                          <p className="text-sm text-muted-foreground max-w-md">
+                            No calls match your current filters.
+                          </p>
+                          <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                            Clear Filters
+                          </Button>
+                        </>
                       )}
                     </div>
                   </td>
                 </tr>
-              ) : shouldVirtualize ? (
-                <>
-                  {/* Top spacer to maintain scroll position */}
-                  {offsetY > 0 && (
-                    <tr>
-                      <td colSpan={columns.length} style={{ height: offsetY, padding: 0, border: 'none' }} />
-                    </tr>
-                  )}
-                  
-                  {/* Visible rows */}
-                  {visibleItems.length > 0 ? (
-                    visibleItems.map((index) => {
-                      const row = rows[index]
-                      if (!row) return null
-                      const isFirstRow = index === startIndex
-                      const isFlaggedRow = Boolean(row.original.transcription_metrics?.flag?.text)
-                    
-                      return (
-                        <tr
-                          key={row.id}
-                          style={
-                            selectedCallId === row.original.id ? undefined
-                            : isFlaggedRow ? flaggedRowStyle
-                            : undefined
-                          }
-                          className={cn(
-                            "cursor-pointer transition-all border-b border-border/50 h-20",
-                            isFlaggedRow
-                              ? "hover:brightness-95"
-                              : "hover:bg-muted/30 dark:hover:bg-gray-800/50",
-                            selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
-                          )}
-                          onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <td 
-                              key={cell.id} 
-                              className={cn(
-                                "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
-                                isFirstRow && "border-t-0"
-                              )}
-                            >
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                          ))}
-                        </tr>
-                      )
-                    })
-                  ) : (
-                    // Fallback: if visibleItems is empty, show first few rows
-                    rows.slice(0, 20).map((row) => {
-                      const isFlaggedRow = Boolean(row.original.transcription_metrics?.flag?.text)
-                      return (
-                      <tr
-                        key={row.id}
-                        style={
-                          selectedCallId === row.original.id ? undefined
-                          : isFlaggedRow ? flaggedRowStyle
-                          : undefined
-                        }
-                        className={cn(
-                          "cursor-pointer transition-all border-b border-border/50 h-20",
-                          isFlaggedRow
-                            ? "hover:brightness-95"
-                            : "hover:bg-muted/30 dark:hover:bg-gray-800/50",
-                          selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
-                        )}
-                        onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <td 
-                            key={cell.id} 
-                            className="px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20"
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </td>
-                        ))}
-                      </tr>
-                    )})
-                  )}
-                  
-                  {/* Bottom spacer to maintain scroll position */}
-                  {endIndex < rows.length - 1 && (
-                    <tr>
-                      <td 
-                        colSpan={columns.length} 
-                        style={{ 
-                          height: (rows.length - endIndex - 1) * ROW_HEIGHT, 
-                          padding: 0, 
-                          border: 'none' 
-                        }} 
-                      />
-                    </tr>
-                  )}
-                </>
               ) : (
-                // Render all rows when virtualization is disabled (small datasets)
                 rows.map((row, rowIndex) => {
-                  const isFlaggedRow = Boolean(row.original.transcription_metrics?.flag?.text)
+                  const isFlagged = Boolean(row.original.transcription_metrics?.flag?.text)
+                  const isSelected = selectedCallId === row.original.id
                   return (
-                  <tr
-                    key={row.id}
-                    style={
-                      selectedCallId === row.original.id ? undefined
-                      : isFlaggedRow ? flaggedRowStyle
-                      : undefined
-                    }
-                    className={cn(
-                      "cursor-pointer transition-all border-b border-border/50 h-20",
-                      isFlaggedRow
-                        ? "hover:brightness-95"
-                        : "hover:bg-muted/30 dark:hover:bg-gray-800/50",
-                      selectedCallId === row.original.id && "bg-blue-100 dark:bg-blue-900/40"
-                    )}
-                    onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td 
-                        key={cell.id} 
-                        className={cn(
-                          "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
-                          rowIndex === 0 && "border-t-0"
-                        )}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                )})
+                    <tr
+                      key={row.id}
+                      style={
+                        isSelected ? undefined
+                        : isFlagged ? flaggedRowStyle : undefined
+                      }
+                      className={cn(
+                        "cursor-pointer transition-colors border-b border-border/50 h-20",
+                        !isSelected && (isFlagged
+                          ? "hover:brightness-95"
+                          : "hover:bg-muted/30 dark:hover:bg-gray-800/50"
+                        ),
+                      )}
+                      onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
+                    >
+                      {row.getVisibleCells().map(cell => (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
+                            rowIndex === 0 && "border-t-0",
+                            // highlight must be on <td> — tr bg doesn't always show through bordered cells
+                            isSelected && "bg-blue-100 dark:bg-blue-900/40",
+                          )}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
-
-          {/* Load More Trigger */}
-          {hasNextPage && (
-            <div ref={loadMoreRef} className="py-6 border-t">
-              {isLoading && (
-                <div className="flex justify-center">
-                  <RefreshCw className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* End of List */}
-          {!hasNextPage && calls.length > 0 && (
-            <div className="py-4 text-muted-foreground text-sm border-t text-center">
-              All calls loaded ({calls.length} total)
-            </div>
-          )}
         </div>
+      </div>
+
+      {/* ── Pagination bar ────────────────────────────────────────────────── */}
+      <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
+
+        {/* Row range label */}
+        <span className="text-sm text-muted-foreground min-w-[100px]">
+          {currentPageCalls.length > 0
+            ? totalCount !== null
+              ? `${pageStart.toLocaleString()}–${pageEnd.toLocaleString()} of ${totalCount.toLocaleString()}`
+              : `${pageStart}–${pageEnd}`
+            : '—'
+          }
+        </span>
+
+        {/* Page numbers */}
+        <div className="flex items-center gap-1">
+          {/* Prev button */}
+          <Button
+            variant="ghost" size="sm"
+            className="h-8 w-8 p-0"
+            disabled={isFirstPage || isLoading}
+            onClick={goToPrevPage}
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {pageItems.map((item, idx) => {
+            if (item === 'start-ellipsis' || item === 'end-ellipsis') {
+              return (
+                <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground select-none">
+                  …
+                </span>
+              )
+            }
+
+            if (item === 'load-more') {
+              return (
+                <Button
+                  key="load-more"
+                  variant="ghost" size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground"
+                  disabled={isFetchingNextPage}
+                  onClick={goToNextPage}
+                  aria-label="Load more pages"
+                >
+                  {isFetchingNextPage
+                    ? <RefreshCw className="h-3 w-3 animate-spin" />
+                    : <span className="text-sm">…</span>
+                  }
+                </Button>
+              )
+            }
+
+            const pageNum = item as number
+            const isActive = pageNum === currentPage
+            return (
+              <Button
+                key={pageNum}
+                variant={isActive ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "h-8 w-8 p-0 text-sm font-medium",
+                  isActive && "pointer-events-none"
+                )}
+                disabled={isLoading}
+                onClick={() => goToPage(pageNum)}
+                aria-label={`Page ${pageNum}`}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {pageNum}
+              </Button>
+            )
+          })}
+
+          {/* Next button */}
+          <Button
+            variant="ghost" size="sm"
+            className="h-8 w-8 p-0"
+            disabled={isLastPage || isFetchingNextPage}
+            onClick={goToNextPage}
+            aria-label="Next page"
+          >
+            {isFetchingNextPage
+              ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              : <ChevronRight className="h-4 w-4" />
+            }
+          </Button>
+        </div>
+
+        {/* Total count / page indicator */}
+        <span className="text-xs text-muted-foreground min-w-[100px] text-right">
+          {totalCount !== null
+            ? `${totalCount.toLocaleString()} total · ${totalPages} pages`
+            : hasNextPage
+            ? `page ${currentPage}+`
+            : currentPageCalls.length > 0
+            ? `${currentPageCalls.length} on page`
+            : null
+          }
+        </span>
       </div>
     </div>
   )
