@@ -216,16 +216,22 @@ const CallLogs: React.FC<CallLogsProps> = ({
     }))
   }, [setVisibleColumns, dynamicColumns])
 
-  const [selectedCallId, setSelectedCallId] = React.useState<string | null>(null)
+  // Restore last-selected call when returning from log detail
+  const sessionKey = agent?.id ? `call-logs-selected-${agent.id}` : null
+  const [selectedCallId, setSelectedCallId] = React.useState<string | null>(() => {
+    if (!sessionKey) return null
+    return sessionStorage.getItem(sessionKey) ?? null
+  })
 
   const handleRowSelect = useCallback((callId: string, callAgentId: string) => {
     setSelectedCallId(callId)
+    // Persist so the highlight is restored when the user presses Back
+    if (sessionKey) sessionStorage.setItem(sessionKey, callId)
     // Let React flush the highlight re-render, then navigate
-    // Page is persisted in Zustand (localStorage) automatically
     setTimeout(() => {
       router.push(`/${project?.id}/agents/${callAgentId}/observability?session_id=${callId}`)
     }, 120)
-  }, [router, project?.id])
+  }, [router, project?.id, sessionKey])
 
   // ── Pagination items ───────────────────────────────────────────────────────
   // totalPages comes from the hook (null when filters active or count not yet loaded)

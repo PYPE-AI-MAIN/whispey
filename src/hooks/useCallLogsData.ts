@@ -32,13 +32,17 @@ export const useCallLogsData = (
   // Current page from persisted Zustand store
   const currentPage: number = (agentId ? pageByAgent[agentId] : undefined) ?? 1
 
+  // Read current page from store at call time — no stale closure, no currentPage dep.
+  // This keeps setCurrentPage stable (only changes when agentId changes), preventing
+  // cascade re-renders in every callback that depends on it.
   const setCurrentPage = useCallback(
     (pageOrFn: number | ((prev: number) => number)) => {
       if (!agentId) return
-      const next = typeof pageOrFn === 'function' ? pageOrFn(currentPage) : pageOrFn
-      setPageForAgent(agentId, Math.max(1, next))
+      const current = useCallLogsStore.getState().pageByAgent[agentId] ?? 1
+      const next = typeof pageOrFn === 'function' ? pageOrFn(current) : pageOrFn
+      useCallLogsStore.getState().setPageForAgent(agentId, Math.max(1, next))
     },
-    [agentId, currentPage, setPageForAgent]
+    [agentId]  // stable — doesn't recreate on every page change
   )
 
   const setActiveFilters = useCallback(
@@ -123,7 +127,9 @@ export const useCallLogsData = (
     userEmail,
   })
 
-  const currentPageCalls = pageData ?? []
+  // Stable reference: when pageData is undefined (loading), always return the same []
+  // so downstream useMemos that depend on calls don't recompute every render.
+  const currentPageCalls = useMemo(() => pageData ?? [], [pageData])
 
   // ── Total count (HEAD query — no rows transferred) ────────────────────────
   const { data: countData } = useQuery<{ count: number }>({
@@ -147,10 +153,12 @@ export const useCallLogsData = (
 
   const totalPages = totalCount !== null ? Math.ceil(totalCount / PAGE_SIZE) : null
 
-  // Whether the current page is the last one (no more data)
+  // Whether the current page is the last one (no more data).
+  // Use pageData?.length (stable — only changes when real data arrives) instead of
+  // isFetching (flips rapidly with keepPreviousData and would cause effect loops).
   const isLastPage = totalPages !== null
     ? currentPage >= totalPages
-    : (currentPageCalls.length < PAGE_SIZE && !isFetching)
+    : ((pageData?.length ?? PAGE_SIZE) < PAGE_SIZE)
 
   const hasNextPage = !isLastPage
 
