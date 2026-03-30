@@ -123,13 +123,21 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const [retellStatusLoading, setRetellStatusLoading] = useState(false)
   const [connectingRetellWebhook, setConnectingRetellWebhook] = useState(false)
   
-  // Date filter state - these work immediately, no loading needed
-  const [quickFilter, setQuickFilter] = useState('7d')
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: subDays(new Date(), 7),
-    to: new Date()
+  // Date filter state — seeded from URL so it survives navigation away and back
+  const _urlFilter    = searchParams.get('filter')   || '7d'
+  const _urlDateFrom  = searchParams.get('dateFrom')
+  const _urlDateTo    = searchParams.get('dateTo')
+  const _urlIsCustom  = !!(_urlDateFrom && _urlDateTo)
+
+  const [quickFilter,    setQuickFilter]    = useState(_urlFilter)
+  const [isCustomRange,  setIsCustomRange]  = useState(_urlIsCustom)
+  const [dateRange,      setDateRange]      = useState<DateRange>(() => {
+    if (_urlIsCustom && _urlDateFrom && _urlDateTo) {
+      return { from: new Date(_urlDateFrom), to: new Date(_urlDateTo) }
+    }
+    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[_urlFilter] ?? 7
+    return { from: subDays(new Date(), days), to: new Date() }
   })
-  const [isCustomRange, setIsCustomRange] = useState(false)
 
   const activeTab = searchParams.get('tab') || 'overview'
   
@@ -259,8 +267,17 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     const endDate = new Date()
     const startDate = subDays(endDate, days)
     setDateRange({ from: startDate, to: endDate })
+
+    // Persist in URL so the selection survives navigating away and back
+    const current = new URLSearchParams(Array.from(searchParams.entries()))
+    current.set('filter', filterId)
+    current.delete('dateFrom')
+    current.delete('dateTo')
+    const query = current.toString()
+    if (agent?.project_id) {
+      router.replace(`/${agent.project_id}/agents/${agentId}?${query}`)
+    }
     
-    // Close mobile menu after selection
     if (isMobile) {
       setShowMobileMenu(false)
     }
@@ -271,6 +288,16 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       setDateRange(range)
       setIsCustomRange(true)
       setQuickFilter('')
+
+      // Persist custom date range in URL
+      const current = new URLSearchParams(Array.from(searchParams.entries()))
+      current.delete('filter')
+      current.set('dateFrom', formatDateISO(range.from))
+      current.set('dateTo', formatDateISO(range.to))
+      const query = current.toString()
+      if (agent?.project_id) {
+        router.replace(`/${agent.project_id}/agents/${agentId}?${query}`)
+      }
     }
   }
 
