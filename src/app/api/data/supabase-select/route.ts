@@ -13,6 +13,7 @@ function applyFilters(query: any, filters: Filter[]) {
         q = q.eq(filter.column, filter.value)
         break
       case 'neq':
+      case '<>':
         q = q.neq(filter.column, filter.value)
         break
       case 'gt':
