@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useMemo } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table'
 
-import { downloadCSV } from '@/utils/callLogsUtils'
+import { downloadCSV, DownloadProgress } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
@@ -181,18 +181,30 @@ const CallLogs: React.FC<CallLogsProps> = ({
     await refetch()
   }, [refetch, isRefetching])
 
+  const [dlProgress, setDlProgress] = useState<DownloadProgress | null>(null)
+
   const handleDownloadCSV = useCallback(async () => {
     if (!agent?.id) return
+    setDlProgress({ fetched: 0, total: totalCount, phase: 'fetching' })
     try {
-      await downloadCSV(agent.id, activeFilters, {
-        basic: visibleColumns.basic,
-        metadata: visibleColumns.metadata,
-        transcription_metrics: visibleColumns.transcription_metrics
-      }, project?.id)
+      await downloadCSV(
+        agent.id,
+        activeFilters,
+        {
+          basic: visibleColumns.basic,
+          metadata: visibleColumns.metadata,
+          transcription_metrics: visibleColumns.transcription_metrics
+        },
+        project?.id,
+        (p) => setDlProgress(p),
+        dateRange
+      )
     } catch (err) {
       alert((err as Error).message)
+    } finally {
+      setDlProgress(null)
     }
-  }, [agent?.id, activeFilters, visibleColumns, project?.id])
+  }, [agent?.id, activeFilters, visibleColumns, project?.id, totalCount])
 
   const handleColumnChange = useCallback((
     type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics',
@@ -308,13 +320,47 @@ const CallLogs: React.FC<CallLogsProps> = ({
               projectId={project?.id} agentId={agent?.id}
               agentName={agent?.name} projectName={project?.name}
             />
-            <Button
-              variant="outline" size="sm"
-              onClick={handleDownloadCSV}
-              disabled={isLoading || !agent?.id}
-            >
-              Download CSV
-            </Button>
+            {/* Download CSV with progress bar */}
+            <div className="relative">
+              <Button
+                variant="outline" size="sm"
+                onClick={handleDownloadCSV}
+                disabled={isLoading || !agent?.id || !!dlProgress}
+                className="min-w-[120px] overflow-hidden"
+              >
+                {dlProgress ? (
+                  dlProgress.phase === 'processing' ? (
+                    <span className="flex items-center gap-1.5">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Processing…
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      {dlProgress.total
+                        ? `${Math.min(99, Math.round((dlProgress.fetched / dlProgress.total) * 100))}%`
+                        : `${dlProgress.fetched.toLocaleString()} rows`
+                      }
+                    </span>
+                  )
+                ) : (
+                  'Download CSV'
+                )}
+              </Button>
+              {/* Progress bar that fills across the button bottom */}
+              {dlProgress && dlProgress.phase === 'fetching' && (
+                <div className="absolute bottom-0 left-0 h-[2px] bg-blue-500 rounded-b transition-all duration-300"
+                  style={{
+                    width: dlProgress.total
+                      ? `${Math.min(99, Math.round((dlProgress.fetched / dlProgress.total) * 100))}%`
+                      : '60%'
+                  }}
+                />
+              )}
+              {dlProgress && dlProgress.phase === 'processing' && (
+                <div className="absolute bottom-0 left-0 h-[2px] bg-blue-500 rounded-b w-full animate-pulse" />
+              )}
+            </div>
             <ColumnSelector
               basicColumns={filteredBasicColumns.map(c => c.key)}
               basicColumnLabels={Object.fromEntries(filteredBasicColumns.map(c => [c.key, c.label]))}

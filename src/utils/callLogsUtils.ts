@@ -338,6 +338,12 @@ export const flattenCallLogForCSV = (
   return flat
 }
 
+export interface DownloadProgress {
+  fetched: number      // rows fetched so far
+  total: number | null // known total (null = unknown)
+  phase: 'fetching' | 'processing' | 'done'
+}
+
 export const downloadCSV = async (
   agentId: string,
   activeFilters: FilterOperation[],
@@ -346,7 +352,9 @@ export const downloadCSV = async (
     metadata: string[]
     transcription_metrics: string[]
   },
-  projectId?: string
+  projectId?: string,
+  onProgress?: (p: DownloadProgress) => void,
+  dateRange?: { from: string; to: string }
 ) => {
   const { basic, metadata, transcription_metrics } = visibleColumns
 
@@ -375,10 +383,25 @@ export const downloadCSV = async (
       ? `/api/projects/${projectId}/call-logs/query`
       : `/api/agents/${agentId}/call-logs/query`
 
+    // Fetch total count first so we can show a real percentage
+    let knownTotal: number | null = null
+    try {
+      const countParams = new URLSearchParams()
+      if (dateRange?.from) countParams.set('dateFrom', dateRange.from)
+      if (dateRange?.to)   countParams.set('dateTo',   dateRange.to)
+      const countRes = await fetch(`/api/agents/${agentId}/call-logs/count?${countParams}`)
+      if (countRes.ok) {
+        const countJson = await countRes.json()
+        knownTotal = countJson.count ?? null
+      }
+    } catch { /* count is optional — degrade gracefully */ }
+
     let allData: CallLog[] = []
     let page = 0
     const pageSize = 1000
     let hasMoreData = true
+
+    onProgress?.({ fetched: 0, total: knownTotal, phase: 'fetching' })
 
     while (hasMoreData) {
       const res = await fetch(queryUrl, {
@@ -396,17 +419,17 @@ export const downloadCSV = async (
           p_distinct_column: distinctConfig?.column || null,
           p_distinct_json_field: distinctConfig?.jsonField || null,
           p_distinct_order: distinctConfig?.order || 'asc',
-          p_date_from: null,
-          p_date_to: null,
+          p_date_from: dateRange?.from ?? null,
+          p_date_to: dateRange?.to ?? null,
         }),
       })
       const json = (await res.json()) as { data?: CallLog[]; error?: string }
-      if (!res.ok) {
-        throw new Error(json.error || 'Failed to fetch data for export')
-      }
+      if (!res.ok) throw new Error(json.error || 'Failed to fetch data for export')
+
       const data = json.data || []
       if (data.length > 0) {
         allData = allData.concat(data)
+        onProgress?.({ fetched: allData.length, total: knownTotal, phase: 'fetching' })
         if (data.length < pageSize) {
           hasMoreData = false
         } else {
@@ -417,14 +440,11 @@ export const downloadCSV = async (
       }
     }
 
-    if (allData.length === 0) {
-      throw new Error("No data found to export")
-    }
+    if (allData.length === 0) throw new Error("No data found to export")
 
-    const csvData = allData.map((row) => {
-      return flattenCallLogForCSV(row, basic, metadata, transcription_metrics)
-    })
+    onProgress?.({ fetched: allData.length, total: allData.length, phase: 'processing' })
 
+    const csvData = allData.map((row) => flattenCallLogForCSV(row, basic, metadata, transcription_metrics))
     const csv = Papa.unparse(csvData)
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const blobUrl = URL.createObjectURL(blob)
@@ -435,6 +455,8 @@ export const downloadCSV = async (
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(blobUrl)
+
+    onProgress?.({ fetched: allData.length, total: allData.length, phase: 'done' })
 
   } catch (error) {
     console.error('Download error:', error)
