@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight } from "lucide-react"
+import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
@@ -120,6 +120,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
     activeFilters,
     setActiveFilters,
     refetch,
+    refetchCurrentPage,
   } = useCallLogsData(agent, userEmail, project?.id, dateRange, user?.id)
 
   const { visibility } = useMemberVisibility(project?.id ?? undefined)
@@ -151,8 +152,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
   }, [calls])
 
   const columns = useMemo(
-    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetch, role }),
-    [visibleColumns, availableTags, refetch, role]
+    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetchCurrentPage, role }),
+    [visibleColumns, availableTags, refetchCurrentPage, role]
   )
 
   const table = useReactTable({
@@ -235,15 +236,19 @@ const CallLogs: React.FC<CallLogsProps> = ({
     return sessionStorage.getItem(sessionKey) ?? null
   })
 
+  const [navigatingCallId, setNavigatingCallId] = React.useState<string | null>(null)
+
   const handleRowSelect = useCallback((callId: string, callAgentId: string) => {
+    if (navigatingCallId) return  // already navigating, ignore double-clicks
     setSelectedCallId(callId)
+    setNavigatingCallId(callId)
     // Persist so the highlight is restored when the user presses Back
     if (sessionKey) sessionStorage.setItem(sessionKey, callId)
-    // Let React flush the highlight re-render, then navigate
+    // Let React flush the highlight + spinner, then navigate
     setTimeout(() => {
       router.push(`/${project?.id}/agents/${callAgentId}/observability?session_id=${callId}`)
     }, 120)
-  }, [router, project?.id, sessionKey])
+  }, [router, project?.id, sessionKey, navigatingCallId])
 
   // ── Pagination items ───────────────────────────────────────────────────────
   // totalPages comes from the hook (null when filters active or count not yet loaded)
@@ -420,6 +425,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 rows.map((row, rowIndex) => {
                   const isFlagged = Boolean(row.original.transcription_metrics?.flag?.text)
                   const isSelected = selectedCallId === row.original.id
+                  const isNavigatingRow = navigatingCallId === row.original.id
                   return (
                     <tr
                       key={row.id}
@@ -428,7 +434,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
                         : isFlagged ? flaggedRowStyle : undefined
                       }
                       className={cn(
-                        "cursor-pointer transition-colors border-b border-border/50 h-20",
+                        "cursor-pointer transition-colors border-b border-border/50 h-20 relative",
+                        isNavigatingRow && "pointer-events-none",
                         !isSelected && (isFlagged
                           ? "hover:brightness-95"
                           : "hover:bg-muted/30 dark:hover:bg-gray-800/50"
@@ -436,7 +443,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                       )}
                       onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
                     >
-                      {row.getVisibleCells().map(cell => (
+                      {row.getVisibleCells().map((cell, cellIndex) => (
                         <td
                           key={cell.id}
                           className={cn(
@@ -446,6 +453,12 @@ const CallLogs: React.FC<CallLogsProps> = ({
                             isSelected && "bg-blue-100 dark:bg-blue-900/40",
                           )}
                         >
+                          {/* spinner overlay on the first cell only */}
+                          {isNavigatingRow && cellIndex === 0 && (
+                            <span className="absolute inset-0 flex items-center justify-start pl-4 z-10 pointer-events-none">
+                              <Loader2 className="w-4 h-4 animate-spin text-blue-500 dark:text-blue-400" />
+                            </span>
+                          )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
