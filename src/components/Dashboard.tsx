@@ -1,6 +1,6 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Calendar } from '@/components/ui/calendar'
@@ -107,6 +107,9 @@ function NoCallsMessage() {
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  // projectid comes from the URL path — always available, no async needed
+  const routeParams = useParams()
+  const routeProjectId = Array.isArray(routeParams?.projectid) ? routeParams.projectid[0] : (routeParams?.projectid as string | undefined)
   const projectId = searchParams.get('projectid')
   const { isMobile } = useMobile(768)
 
@@ -123,19 +126,23 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const [retellStatusLoading, setRetellStatusLoading] = useState(false)
   const [connectingRetellWebhook, setConnectingRetellWebhook] = useState(false)
   
-  // Date filter state — seeded from URL so it survives navigation away and back
-  const _urlFilter    = searchParams.get('filter')   || '7d'
-  const _urlDateFrom  = searchParams.get('dateFrom')
-  const _urlDateTo    = searchParams.get('dateTo')
-  const _urlIsCustom  = !!(_urlDateFrom && _urlDateTo)
-
-  const [quickFilter,    setQuickFilter]    = useState(_urlFilter)
-  const [isCustomRange,  setIsCustomRange]  = useState(_urlIsCustom)
-  const [dateRange,      setDateRange]      = useState<DateRange>(() => {
-    if (_urlIsCustom && _urlDateFrom && _urlDateTo) {
-      return { from: new Date(_urlDateFrom), to: new Date(_urlDateTo) }
+  // Date filter state — seeded from URL so it survives navigation away and back.
+  // All three useState calls use lazy initialisers so the URL is only read once
+  // (on mount) rather than on every re-render.
+  const [quickFilter, setQuickFilter] = useState<string>(
+    () => searchParams.get('filter') || '7d'
+  )
+  const [isCustomRange, setIsCustomRange] = useState<boolean>(
+    () => !!(searchParams.get('dateFrom') && searchParams.get('dateTo'))
+  )
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const urlDateFrom = searchParams.get('dateFrom')
+    const urlDateTo   = searchParams.get('dateTo')
+    if (urlDateFrom && urlDateTo) {
+      return { from: new Date(urlDateFrom), to: new Date(urlDateTo) }
     }
-    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[_urlFilter] ?? 7
+    const filter = searchParams.get('filter') || '7d'
+    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[filter] ?? 7
     return { from: subDays(new Date(), days), to: new Date() }
   })
 
@@ -268,14 +275,15 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     const startDate = subDays(endDate, days)
     setDateRange({ from: startDate, to: endDate })
 
-    // Persist in URL so the selection survives navigating away and back
-    const current = new URLSearchParams(Array.from(searchParams.entries()))
-    current.set('filter', filterId)
-    current.delete('dateFrom')
-    current.delete('dateTo')
-    const query = current.toString()
-    if (agent?.project_id) {
-      router.replace(`/${agent.project_id}/agents/${agentId}?${query}`)
+    // Persist in URL so the selection survives navigating away and back.
+    // Use routeProjectId (from path params) so this never blocks on agent load.
+    const pid = routeProjectId ?? agent?.project_id
+    if (pid) {
+      const current = new URLSearchParams(Array.from(searchParams.entries()))
+      current.set('filter', filterId)
+      current.delete('dateFrom')
+      current.delete('dateTo')
+      router.replace(`/${pid}/agents/${agentId}?${current.toString()}`)
     }
     
     if (isMobile) {
@@ -289,14 +297,15 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       setIsCustomRange(true)
       setQuickFilter('')
 
-      // Persist custom date range in URL
-      const current = new URLSearchParams(Array.from(searchParams.entries()))
-      current.delete('filter')
-      current.set('dateFrom', formatDateISO(range.from))
-      current.set('dateTo', formatDateISO(range.to))
-      const query = current.toString()
-      if (agent?.project_id) {
-        router.replace(`/${agent.project_id}/agents/${agentId}?${query}`)
+      // Persist custom date range in URL.
+      // Use routeProjectId (from path params) so this never blocks on agent load.
+      const pid = routeProjectId ?? agent?.project_id
+      if (pid) {
+        const current = new URLSearchParams(Array.from(searchParams.entries()))
+        current.delete('filter')
+        current.set('dateFrom', formatDateISO(range.from))
+        current.set('dateTo', formatDateISO(range.to))
+        router.replace(`/${pid}/agents/${agentId}?${current.toString()}`)
       }
     }
   }

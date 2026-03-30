@@ -232,11 +232,17 @@ export const useCallLogsData = (
     if (page >= 1) setCurrentPage(page)
   }, [setCurrentPage])
 
-  // Refresh: reset to page 1 and re-fetch
+  // Refresh: reset to page 1 and re-fetch (used by the manual Refresh button)
   const refetch = useCallback(async () => {
     setCurrentPage(1)
     await rawRefetch()
   }, [rawRefetch, setCurrentPage])
+
+  // Refresh the current page in-place — does NOT reset pagination.
+  // Used for flag / tag updates so the page doesn't jump back to 1.
+  const refetchCurrentPage = useCallback(async () => {
+    await rawRefetch()
+  }, [rawRefetch])
 
   // `calls` = all data visible to column/tag detectors (current page)
   const calls = currentPageCalls
@@ -263,5 +269,6 @@ export const useCallLogsData = (
     activeFilters,
     setActiveFilters,
     refetch,
+    refetchCurrentPage,
   }
 }
