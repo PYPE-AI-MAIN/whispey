@@ -47,7 +47,7 @@ const validateAndCleanOperations = (operations: FilterOperation[]): FilterOperat
   const valid = operations.filter(op => {
     if (op.type === 'filter') {
       if (op.column === 'metadata' || op.column === 'transcription_metrics') {
-        const jsonbOps = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+        const jsonbOps = ['json_equals', 'json_not_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
         if (jsonbOps.includes(op.operation) && !op.jsonField) {
           console.warn(`Removing invalid filter: ${op.column}.${op.operation} missing jsonField`)
           return false
