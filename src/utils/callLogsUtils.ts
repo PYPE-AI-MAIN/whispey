@@ -88,7 +88,7 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
   const getColumnName = (forTextOperation = false) => {
     // Backward compatibility: If JSONB column but no jsonField, skip this filter
     if ((filter.column === 'metadata' || filter.column === 'transcription_metrics') && !filter.jsonField) {
-      const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+      const jsonbOperations = ['json_equals', 'json_not_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
       if (jsonbOperations.includes(filter.operation)) {
         console.warn(`Skipping invalid filter: ${filter.column} with operation ${filter.operation} missing jsonField`)
         return null // Signal to skip this filter
@@ -119,6 +119,12 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
       } else {
         return { column: columnName, operator: 'eq', value: filter.value }
       }
+    case 'not_equals':
+      if (filter.column === 'call_started_at') {
+        return null
+      }
+      // Use "<>" not "neq": some SQL builders concatenate operator into queries; "neq" is invalid in PostgreSQL.
+      return { column: columnName, operator: '<>', value: filter.value }
     case 'contains':
       return { column: columnNameText, operator: 'ilike', value: `%${filter.value}%` }
     case 'starts_with':
@@ -142,6 +148,8 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
       }
     case 'json_equals':
       return { column: columnNameText, operator: 'eq', value: filter.value }
+    case 'json_not_equals':
+      return { column: columnNameText, operator: '<>', value: filter.value }
     case 'json_contains':
       return { column: columnNameText, operator: 'ilike', value: `%${filter.value}%` }
     case 'json_greater_than':
