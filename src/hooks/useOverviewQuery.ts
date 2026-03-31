@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 interface OverviewData {
   totalCalls: number
@@ -22,41 +22,36 @@ interface UseOverviewQueryProps {
   agentId: string
   dateFrom: string
   dateTo: string
+  /** Only fetch while true. Pass activeTab === 'overview' to avoid
+   *  triggering the API call while the user is on other tabs. */
+  enabled?: boolean
 }
 
-export const useOverviewQuery = ({ agentId, dateFrom, dateTo }: UseOverviewQueryProps) => {
-  const [data, setData] = useState<OverviewData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export const useOverviewQuery = ({ agentId, dateFrom, dateTo, enabled = true }: UseOverviewQueryProps) => {
+  const { data, isLoading, error } = useQuery<OverviewData>({
+    queryKey: ['overview', agentId, dateFrom, dateTo],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams({ dateFrom, dateTo })
+      const res = await fetch(
+        `/api/agents/${agentId}/overview/data?${params.toString()}`,
+        { signal }
+      )
+      const json = (await res.json()) as { data?: OverviewData; error?: string }
+      if (!res.ok) throw new Error(json.error || res.statusText)
+      return json.data!
+    },
+    enabled: !!agentId && !!dateFrom && !!dateTo && enabled,
+    // Data is considered fresh for 5 minutes — switching tabs won't re-fetch
+    staleTime: 5 * 60 * 1000,
+    // Keep cached data for 15 minutes after the component is hidden
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
 
-  useEffect(() => {
-    const fetchOverviewData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const params = new URLSearchParams({ dateFrom, dateTo })
-        const res = await fetch(`/api/agents/${agentId}/overview/data?${params.toString()}`)
-        const json = (await res.json()) as { data?: OverviewData; error?: string }
-        if (!res.ok) {
-          throw new Error(json.error || res.statusText)
-        }
-        if (json.data) {
-          setData(json.data)
-        } else {
-          setData(null)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (agentId && dateFrom && dateTo) {
-      fetchOverviewData()
-    }
-  }, [agentId, dateFrom, dateTo])
-
-  return { data, loading, error }
+  return {
+    data: data ?? null,
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+  }
 }

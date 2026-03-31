@@ -35,6 +35,8 @@ export const useSupabaseQuery = <T = any>(
       return data as T[]
     },
     enabled: options !== null && options !== undefined,
+    refetchOnMount: false,       // serve from cache when navigating back
+    refetchOnWindowFocus: false, // navigation back ≠ stale table data
   })
 }
 

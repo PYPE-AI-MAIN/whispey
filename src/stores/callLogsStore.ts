@@ -15,6 +15,18 @@ export interface DistinctConfig {
   order: 'asc' | 'desc'
 }
 
+export interface DateFilter {
+  quickFilter: string   // '1d' | '7d' | '30d' | '' (empty when custom range)
+  isCustomRange: boolean
+  dateFrom?: string     // ISO string, only set when isCustomRange is true
+  dateTo?: string       // ISO string, only set when isCustomRange is true
+}
+
+const DEFAULT_DATE_FILTER: DateFilter = {
+  quickFilter: '7d',
+  isCustomRange: false,
+}
+
 interface CallLogsState {
   // Per-agent filter state — each agent has its own independent slot
   filtersByAgent: Record<string, FilterOperation[]>
@@ -23,6 +35,14 @@ interface CallLogsState {
   // Per-agent distinct config (legacy compat — kept so CallFilter prop still works)
   distinctConfigByAgent: Record<string, DistinctConfig | undefined>
   setDistinctConfigForAgent: (agentId: string, config: DistinctConfig | undefined) => void
+
+  // Per-agent current page — persisted so navigating away and back restores position
+  pageByAgent: Record<string, number>
+  setPageForAgent: (agentId: string, page: number) => void
+
+  // Per-agent date filter — persisted so the selection survives navigation
+  dateFilterByAgent: Record<string, DateFilter>
+  setDateFilterForAgent: (agentId: string, filter: DateFilter) => void
 
   // Column visibility — intentionally global (shared across agents, user preference)
   visibleColumns: VisibleColumns
@@ -43,7 +63,7 @@ const validateAndCleanOperations = (operations: FilterOperation[]): FilterOperat
   const valid = operations.filter(op => {
     if (op.type === 'filter') {
       if (op.column === 'metadata' || op.column === 'transcription_metrics') {
-        const jsonbOps = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+        const jsonbOps = ['json_equals', 'json_not_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
         if (jsonbOps.includes(op.operation) && !op.jsonField) {
           console.warn(`Removing invalid filter: ${op.column}.${op.operation} missing jsonField`)
           return false
@@ -81,6 +101,18 @@ export const useCallLogsStore = create<CallLogsState>()(
           distinctConfigByAgent: { ...state.distinctConfigByAgent, [agentId]: config }
         })),
 
+      pageByAgent: {},
+      setPageForAgent: (agentId, page) =>
+        set((state) => ({
+          pageByAgent: { ...state.pageByAgent, [agentId]: page }
+        })),
+
+      dateFilterByAgent: {},
+      setDateFilterForAgent: (agentId, filter) =>
+        set((state) => ({
+          dateFilterByAgent: { ...state.dateFilterByAgent, [agentId]: filter }
+        })),
+
       visibleColumns: defaultVisibleColumns,
       setVisibleColumns: (columns) =>
         set((state) => ({
@@ -88,20 +120,18 @@ export const useCallLogsStore = create<CallLogsState>()(
         })),
 
       resetState: () =>
-        set({ filtersByAgent: {}, distinctConfigByAgent: {} })
+        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {}, dateFilterByAgent: {} })
     }),
     {
       name: 'call-logs-storage',
-      version: 1,
-      // Runs when stored version < current version.
-      // v0 had flat activeFilters/distinctConfig — impossible to map to an agent,
-      // so we discard them. visibleColumns (column prefs) are preserved.
+      version: 3, // bumped: added dateFilterByAgent
       migrate: (old: any) => ({
-        filtersByAgent: {},
-        distinctConfigByAgent: {},
+        filtersByAgent: old?.filtersByAgent ?? {},
+        distinctConfigByAgent: old?.distinctConfigByAgent ?? {},
+        pageByAgent: old?.pageByAgent ?? {},
+        dateFilterByAgent: {},
         visibleColumns: old?.visibleColumns ?? defaultVisibleColumns
       }),
-      // Runs after rehydration — clean any invalid filters that slipped through.
       onRehydrateStorage: () => (state) => {
         if (!state?.filtersByAgent) return
         for (const [agentId, filters] of Object.entries(state.filtersByAgent)) {
@@ -113,4 +143,7 @@ export const useCallLogsStore = create<CallLogsState>()(
       }
     }
   )
+
 )
+
+export { DEFAULT_DATE_FILTER }
