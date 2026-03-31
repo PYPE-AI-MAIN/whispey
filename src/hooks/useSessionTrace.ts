@@ -35,7 +35,11 @@ export const useSessionTrace = (sessionId: string | null, agentId?: string) => {
     'pype_voice_session_traces',
     sessionId
       ? {
-          select: '*',
+          // Fetch only the columns needed for span queries and overview display.
+          // span_summary (~14 KB JSONB) and performance_summary are excluded here
+          // because they are only rendered in the Trace/Waterfall tabs which
+          // already lazy-load spans separately.
+          select: 'id, session_id, trace_key, total_spans, session_start_time, session_end_time, total_duration_ms, created_at',
           filters: [{ column: 'session_id', operator: 'eq', value: sessionId }],
           auth: agentId ? { agentId } : undefined,
         }

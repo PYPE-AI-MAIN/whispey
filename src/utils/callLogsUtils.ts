@@ -88,7 +88,7 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
   const getColumnName = (forTextOperation = false) => {
     // Backward compatibility: If JSONB column but no jsonField, skip this filter
     if ((filter.column === 'metadata' || filter.column === 'transcription_metrics') && !filter.jsonField) {
-      const jsonbOperations = ['json_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
+      const jsonbOperations = ['json_equals', 'json_not_equals', 'json_contains', 'json_greater_than', 'json_less_than', 'json_exists']
       if (jsonbOperations.includes(filter.operation)) {
         console.warn(`Skipping invalid filter: ${filter.column} with operation ${filter.operation} missing jsonField`)
         return null // Signal to skip this filter
@@ -119,6 +119,12 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
       } else {
         return { column: columnName, operator: 'eq', value: filter.value }
       }
+    case 'not_equals':
+      if (filter.column === 'call_started_at') {
+        return null
+      }
+      // Use "<>" not "neq": some SQL builders concatenate operator into queries; "neq" is invalid in PostgreSQL.
+      return { column: columnName, operator: '<>', value: filter.value }
     case 'contains':
       return { column: columnNameText, operator: 'ilike', value: `%${filter.value}%` }
     case 'starts_with':
@@ -142,6 +148,8 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
       }
     case 'json_equals':
       return { column: columnNameText, operator: 'eq', value: filter.value }
+    case 'json_not_equals':
+      return { column: columnNameText, operator: '<>', value: filter.value }
     case 'json_contains':
       return { column: columnNameText, operator: 'ilike', value: `%${filter.value}%` }
     case 'json_greater_than':
@@ -250,22 +258,32 @@ export const convertToSupabaseFilters = (operations: FilterOperation[], agentId?
   return preDistinctFilters
 }
 
-export const getSelectColumns = (role: string | null): string => {
-  if (!role) return '*'
-  
-  let columns = [
-    'id', 'agent_id', 'call_id', 'customer_number', 'call_ended_reason',
-    'call_started_at', 'call_ended_at', 'duration_seconds', 'recording_url',
-    'metadata', 'environment', 'transcript_type', 'transcript_json',
-    'created_at', 'transcription_metrics', 'billing_duration_seconds', 'metrics', 'wcall_event'
-    // tags live inside transcription_metrics JSONB — no separate column needed
-  ]
+// Base columns always fetched for the call logs list view.
+// Excludes heavy JSONB columns that are not rendered in the table:
+// - complete_configuration / dynamic_variables / telemetry_analytics / telemetry_data
+//   are large blobs used only in the agent config / observability detail screens,
+//   not in the list table — they should never be mass-fetched across 50 rows.
+// - transcript_json is fetched separately by TracesTable (its own narrowed query)
+//   and is not displayed in the call log list table.
+const BASE_CALL_LOG_COLUMNS = [
+  'id', 'agent_id', 'call_id', 'customer_number', 'call_ended_reason',
+  'call_started_at', 'call_ended_at', 'duration_seconds', 'recording_url',
+  'metadata', 'environment', 'transcript_type',
+  'created_at', 'transcription_metrics', 'billing_duration_seconds', 'metrics', 'wcall_event'
+  // tags live inside transcription_metrics JSONB — no separate column needed
+]
 
-  if (isColumnVisibleForRole('avg_latency', role)) {
+export const getSelectColumns = (role: string | null): string => {
+  // When role hasn't loaded yet, use the safe base list rather than '*'.
+  // Selecting '*' would pull large JSONB blobs (complete_configuration,
+  // dynamic_variables, telemetry_analytics, telemetry_data) for every row.
+  const columns = [...BASE_CALL_LOG_COLUMNS]
+
+  if (!role || isColumnVisibleForRole('avg_latency', role)) {
     columns.push('avg_latency')
   }
   
-  if (isColumnVisibleForRole('total_llm_cost', role)) {
+  if (!role || isColumnVisibleForRole('total_llm_cost', role)) {
     columns.push('total_llm_cost', 'total_tts_cost', 'total_stt_cost')
   }
 
@@ -328,6 +346,12 @@ export const flattenCallLogForCSV = (
   return flat
 }
 
+export interface DownloadProgress {
+  fetched: number      // rows fetched so far
+  total: number | null // known total (null = unknown)
+  phase: 'fetching' | 'processing' | 'done'
+}
+
 export const downloadCSV = async (
   agentId: string,
   activeFilters: FilterOperation[],
@@ -336,7 +360,9 @@ export const downloadCSV = async (
     metadata: string[]
     transcription_metrics: string[]
   },
-  projectId?: string
+  projectId?: string,
+  onProgress?: (p: DownloadProgress) => void,
+  dateRange?: { from: string; to: string }
 ) => {
   const { basic, metadata, transcription_metrics } = visibleColumns
 
@@ -365,10 +391,25 @@ export const downloadCSV = async (
       ? `/api/projects/${projectId}/call-logs/query`
       : `/api/agents/${agentId}/call-logs/query`
 
+    // Fetch total count first so we can show a real percentage
+    let knownTotal: number | null = null
+    try {
+      const countParams = new URLSearchParams()
+      if (dateRange?.from) countParams.set('dateFrom', dateRange.from)
+      if (dateRange?.to)   countParams.set('dateTo',   dateRange.to)
+      const countRes = await fetch(`/api/agents/${agentId}/call-logs/count?${countParams}`)
+      if (countRes.ok) {
+        const countJson = await countRes.json()
+        knownTotal = countJson.count ?? null
+      }
+    } catch { /* count is optional — degrade gracefully */ }
+
     let allData: CallLog[] = []
     let page = 0
     const pageSize = 1000
     let hasMoreData = true
+
+    onProgress?.({ fetched: 0, total: knownTotal, phase: 'fetching' })
 
     while (hasMoreData) {
       const res = await fetch(queryUrl, {
@@ -386,17 +427,17 @@ export const downloadCSV = async (
           p_distinct_column: distinctConfig?.column || null,
           p_distinct_json_field: distinctConfig?.jsonField || null,
           p_distinct_order: distinctConfig?.order || 'asc',
-          p_date_from: null,
-          p_date_to: null,
+          p_date_from: dateRange?.from ?? null,
+          p_date_to: dateRange?.to ?? null,
         }),
       })
       const json = (await res.json()) as { data?: CallLog[]; error?: string }
-      if (!res.ok) {
-        throw new Error(json.error || 'Failed to fetch data for export')
-      }
+      if (!res.ok) throw new Error(json.error || 'Failed to fetch data for export')
+
       const data = json.data || []
       if (data.length > 0) {
         allData = allData.concat(data)
+        onProgress?.({ fetched: allData.length, total: knownTotal, phase: 'fetching' })
         if (data.length < pageSize) {
           hasMoreData = false
         } else {
@@ -407,14 +448,11 @@ export const downloadCSV = async (
       }
     }
 
-    if (allData.length === 0) {
-      throw new Error("No data found to export")
-    }
+    if (allData.length === 0) throw new Error("No data found to export")
 
-    const csvData = allData.map((row) => {
-      return flattenCallLogForCSV(row, basic, metadata, transcription_metrics)
-    })
+    onProgress?.({ fetched: allData.length, total: allData.length, phase: 'processing' })
 
+    const csvData = allData.map((row) => flattenCallLogForCSV(row, basic, metadata, transcription_metrics))
     const csv = Papa.unparse(csvData)
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const blobUrl = URL.createObjectURL(blob)
@@ -425,6 +463,8 @@ export const downloadCSV = async (
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(blobUrl)
+
+    onProgress?.({ fetched: allData.length, total: allData.length, phase: 'done' })
 
   } catch (error) {
     console.error('Download error:', error)

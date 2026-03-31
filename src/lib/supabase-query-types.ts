@@ -1,6 +1,8 @@
 export type FilterOperator =
   | 'eq'
   | 'neq'
+  /** SQL inequality; safe if operator text is ever concatenated into raw SQL (neq is not valid SQL). */
+  | '<>'
   | 'gt'
   | 'gte'
   | 'lt'
