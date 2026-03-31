@@ -1,6 +1,6 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Calendar } from '@/components/ui/calendar'
@@ -45,6 +45,7 @@ import { useMobile } from '@/hooks/use-mobile'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
+import { useCallLogsStore, DEFAULT_DATE_FILTER } from '@/stores/callLogsStore'
 
 interface DashboardProps {
   agentId: string
@@ -74,6 +75,9 @@ const subDays = (date: Date, days: number) => {
 const formatDateISO = (date: Date) => {
   return date.toISOString().split('T')[0]
 }
+
+const formatShort = (date: Date) =>
+  date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 // Component for skeleton when agent data is loading
 function AgentHeaderSkeleton({ isMobile }: { isMobile: boolean }) {
@@ -107,7 +111,9 @@ function NoCallsMessage() {
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const projectId = searchParams.get('projectid')
+  // projectid comes from the URL path — always available, no async needed
+  const routeParams = useParams()
+  const routeProjectId = Array.isArray(routeParams?.projectid) ? routeParams.projectid[0] : (routeParams?.projectid as string | undefined)
   const { isMobile } = useMobile(768)
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
@@ -123,13 +129,25 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const [retellStatusLoading, setRetellStatusLoading] = useState(false)
   const [connectingRetellWebhook, setConnectingRetellWebhook] = useState(false)
   
-  // Date filter state - these work immediately, no loading needed
-  const [quickFilter, setQuickFilter] = useState('7d')
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: subDays(new Date(), 7),
-    to: new Date()
-  })
-  const [isCustomRange, setIsCustomRange] = useState(false)
+  // Date filter state — stored in Zustand (persisted) so it survives navigation.
+  const { dateFilterByAgent, setDateFilterForAgent } = useCallLogsStore()
+  const storedDateFilter = dateFilterByAgent[agentId] ?? DEFAULT_DATE_FILTER
+
+  const quickFilter   = storedDateFilter.quickFilter
+  const isCustomRange = storedDateFilter.isCustomRange
+
+  // Stable date range — computed once from the store value, not from `new Date()` on
+  // every render. Using useMemo keeps the object reference stable so downstream memos
+  // and query keys don't see a new object every tick.
+  const dateRange: DateRange = React.useMemo(() => {
+    if (isCustomRange && storedDateFilter.dateFrom && storedDateFilter.dateTo) {
+      return { from: new Date(storedDateFilter.dateFrom), to: new Date(storedDateFilter.dateTo) }
+    }
+    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
+    const to   = new Date()
+    return { from: subDays(to, days), to }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickFilter, isCustomRange, storedDateFilter.dateFrom, storedDateFilter.dateTo])
 
   const activeTab = searchParams.get('tab') || 'overview'
   
@@ -139,23 +157,13 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     { id: '30d', label: '30D', days: 30 }
   ]
 
-  // Date range for API calls - works immediately
-  const apiDateRange = React.useMemo(() => {
-    if (isCustomRange && dateRange.from && dateRange.to) {
-      return {
-        from: formatDateISO(dateRange.from),
-        to: formatDateISO(dateRange.to)
-      }
-    }
-    
-    const days = quickFilters.find(f => f.id === quickFilter)?.days || 7
-    const endDate = new Date()
-    const startDate = subDays(endDate, days)
-    return {
-      from: formatDateISO(startDate),
-      to: formatDateISO(endDate)
-    }
-  }, [quickFilter, dateRange, isCustomRange])
+  // Date range for API calls — always day-precision strings derived from the stable
+  // dateRange object above, so query keys only change when the user actually picks
+  // a new date (not on every render).
+  const apiDateRange = React.useMemo(() => ({
+    from: formatDateISO(dateRange.from!),
+    to:   formatDateISO(dateRange.to!),
+  }), [dateRange])
 
   // Fetch agent via API so viewers get role-based response (no field_extractor/metrics data)
   const { data: agentData, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useAgentById(agentId)
@@ -250,17 +258,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
 
 
-  // Date filter handlers - work immediately
+  // Date filter handlers — write to Zustand store (persisted across navigation)
   const handleQuickFilter = (filterId: string) => {
-    setQuickFilter(filterId)
-    setIsCustomRange(false)
-    
-    const days = quickFilters.find(f => f.id === filterId)?.days || 7
-    const endDate = new Date()
-    const startDate = subDays(endDate, days)
-    setDateRange({ from: startDate, to: endDate })
-    
-    // Close mobile menu after selection
+    setDateFilterForAgent(agentId, {
+      quickFilter: filterId,
+      isCustomRange: false,
+    })
+
     if (isMobile) {
       setShowMobileMenu(false)
     }
@@ -268,9 +272,12 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
-      setDateRange(range)
-      setIsCustomRange(true)
-      setQuickFilter('')
+      setDateFilterForAgent(agentId, {
+        quickFilter: '',
+        isCustomRange: true,
+        dateFrom: formatDateISO(range.from),
+        dateTo: formatDateISO(range.to),
+      })
     }
   }
 
@@ -283,17 +290,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   }
 
   const handleTabChange = (tab: string) => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()))
-    current.set('tab', tab)
-    const search = current.toString()
-    const query = search ? `?${search}` : ""
-    
-    // Use the full path with projectId
-    if (agent?.project_id) {
-      router.push(`/${agent.project_id}/agents/${agentId}${query}`)
+    const pid = routeProjectId ?? agent?.project_id
+    if (pid) {
+      router.push(`/${pid}/agents/${agentId}?tab=${tab}`)
     }
-    
-    // Close mobile menu after tab change
+
     if (isMobile) {
       setShowMobileMenu(false)
     }
@@ -315,12 +316,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     }
   }
 
-  // Set default tab if none specified
-  useEffect(() => {
-    if (!searchParams.get('tab')) {
-      handleTabChange('overview')
-    }
-  }, [searchParams])
+  // activeTab defaults to 'overview' when the URL has no tab param (line above the tabs const).
+  // No useEffect needed — tab buttons always call handleTabChange which preserves all params.
 
   const isEnhancedProject = agent?.project_id === ENHANCED_PROJECT_ID
 
@@ -417,10 +414,17 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     }
   }, [checkVapiStatus, isVapiAgent, agent?.id])
 
-  // Show tabs immediately - can be calculated without agent data
+  // All tabs — overview and logs are always present; campaign-logs only for enhanced projects
+  // Desktop header pills — only extra tabs like Campaign Logs (Overview/Logs nav is in the sub-tab bar)
   const tabs = [
-    // Only add campaign-logs if we know it's enhanced (will show when agent data loads)
-    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : [])
+    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
+  ]
+
+  // Full tab list used in the desktop sub-tab bar and the mobile menu
+  const mobileTabs = [
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'logs',     label: 'All Logs', icon: List },
+    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
   ]
 
   // Handle errors without blocking entire dashboard
@@ -504,8 +508,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 )}
               </div>
 
-              {/* Tab Navigation */}
-              {!isMobile && agent && (
+              {/* Tab Navigation — header pills only for extra tabs (e.g. Campaign Logs) */}
+              {!isMobile && agent && tabs.length > 0 && (
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-6">
                   {tabs.map((tab) => {
                     const Icon = tab.icon
@@ -661,8 +665,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
                             }`}
                           >
-                            <CalendarDays className="mr-2 h-4 w-4" />
-                            Custom
+                            <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                            {isCustomRange && dateRange.from && dateRange.to
+                              ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
+                              : 'Custom'
+                            }
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
@@ -751,7 +758,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 <div>
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
                   <div className="space-y-1">
-                    {tabs.map((tab) => {
+                    {mobileTabs.map((tab) => {
                       const Icon = tab.icon
                       return (
                         <button
@@ -802,8 +809,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                         }`}
                       >
-                        <CalendarDays className="h-3 w-3" />
-                        Custom
+                        <CalendarDays className="h-3 w-3 shrink-0" />
+                        {isCustomRange && dateRange.from && dateRange.to
+                          ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
+                          : 'Custom'
+                        }
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">
@@ -895,6 +905,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 quickFilter={quickFilter}
                 isCustomRange={isCustomRange}
                 isLoading={agentLoading || projectLoading}
+                isActive={activeTab === 'overview'}
               />
             </div>
             
