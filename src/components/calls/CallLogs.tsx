@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
@@ -382,7 +382,22 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
       {/* ── Table ─────────────────────────────────────────────────────────── */}
       <div className="flex-1 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-auto">
+        {/* Thin progress bar — shown while changing pages */}
+        <div
+          className={cn(
+            "absolute top-0 left-0 right-0 h-[2px] z-30 overflow-hidden transition-opacity duration-200",
+            (isFetchingNextPage || isRefetching) ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+        >
+          <div className="h-full bg-blue-500 dark:bg-blue-400 animate-[progress-slide_1.2s_ease-in-out_infinite]" />
+        </div>
+
+        <div
+          className={cn(
+            "absolute inset-0 overflow-auto transition-opacity duration-150",
+            (isFetchingNextPage || isRefetching) && "opacity-60 pointer-events-none"
+          )}
+        >
           <table className="w-full border-collapse border-spacing-0">
             <thead className="sticky h-12 -top-1 z-20 bg-background dark:bg-gray-900 shadow-sm">
               {table.getHeaderGroups().map(hg => (
@@ -429,12 +444,9 @@ const CallLogs: React.FC<CallLogsProps> = ({
                   return (
                     <tr
                       key={row.id}
-                      style={
-                        isSelected ? undefined
-                        : isFlagged ? flaggedRowStyle : undefined
-                      }
+                      style={isSelected ? undefined : isFlagged ? flaggedRowStyle : undefined}
                       className={cn(
-                        "cursor-pointer transition-colors border-b border-border/50 h-20 relative",
+                        "cursor-pointer transition-colors border-b border-border/50 h-20",
                         isNavigatingRow && "pointer-events-none",
                         !isSelected && (isFlagged
                           ? "hover:brightness-95"
@@ -443,22 +455,15 @@ const CallLogs: React.FC<CallLogsProps> = ({
                       )}
                       onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
                     >
-                      {row.getVisibleCells().map((cell, cellIndex) => (
+                      {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
                           className={cn(
                             "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
                             rowIndex === 0 && "border-t-0",
-                            // highlight must be on <td> — tr bg doesn't always show through bordered cells
                             isSelected && "bg-blue-100 dark:bg-blue-900/40",
                           )}
                         >
-                          {/* spinner overlay on the first cell only */}
-                          {isNavigatingRow && cellIndex === 0 && (
-                            <span className="absolute inset-0 flex items-center justify-start pl-4 z-10 pointer-events-none">
-                              <Loader2 className="w-4 h-4 animate-spin text-blue-500 dark:text-blue-400" />
-                            </span>
-                          )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}

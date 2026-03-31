@@ -285,3 +285,15 @@
   from { width: 100%; }
   to   { width: 0%;   }
 }
+
+/* Pagination loading bar — slides across the full width repeatedly */
+@keyframes progress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Row-click shimmer — sweeps left→right across the selected row */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
