@@ -31,8 +31,10 @@ export function useMemberVisibility(projectId: string | undefined) {
     queryKey: ['project-me', projectId],
     queryFn: () => fetchProjectMe(projectId!),
     enabled: !!projectId,
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,   // 5 min — matches global default
+    gcTime: 15 * 60 * 1000,     // keep in cache 15 min after last subscriber unmounts
+    refetchOnWindowFocus: false, // navigation back ≠ stale permissions
+    refetchOnMount: false,       // React Query serves from cache if fresh
   })
 
   const role = data?.role ?? null

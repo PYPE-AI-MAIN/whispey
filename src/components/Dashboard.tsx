@@ -76,6 +76,9 @@ const formatDateISO = (date: Date) => {
   return date.toISOString().split('T')[0]
 }
 
+const formatShort = (date: Date) =>
+  date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
 // Component for skeleton when agent data is loading
 function AgentHeaderSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
@@ -130,14 +133,21 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const { dateFilterByAgent, setDateFilterForAgent } = useCallLogsStore()
   const storedDateFilter = dateFilterByAgent[agentId] ?? DEFAULT_DATE_FILTER
 
-  const quickFilter    = storedDateFilter.quickFilter
-  const isCustomRange  = storedDateFilter.isCustomRange
-  const dateRange: DateRange = isCustomRange && storedDateFilter.dateFrom && storedDateFilter.dateTo
-    ? { from: new Date(storedDateFilter.dateFrom), to: new Date(storedDateFilter.dateTo) }
-    : (() => {
-        const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
-        return { from: subDays(new Date(), days), to: new Date() }
-      })()
+  const quickFilter   = storedDateFilter.quickFilter
+  const isCustomRange = storedDateFilter.isCustomRange
+
+  // Stable date range — computed once from the store value, not from `new Date()` on
+  // every render. Using useMemo keeps the object reference stable so downstream memos
+  // and query keys don't see a new object every tick.
+  const dateRange: DateRange = React.useMemo(() => {
+    if (isCustomRange && storedDateFilter.dateFrom && storedDateFilter.dateTo) {
+      return { from: new Date(storedDateFilter.dateFrom), to: new Date(storedDateFilter.dateTo) }
+    }
+    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
+    const to   = new Date()
+    return { from: subDays(to, days), to }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickFilter, isCustomRange, storedDateFilter.dateFrom, storedDateFilter.dateTo])
 
   const activeTab = searchParams.get('tab') || 'overview'
   
@@ -147,23 +157,13 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     { id: '30d', label: '30D', days: 30 }
   ]
 
-  // Date range for API calls - works immediately
-  const apiDateRange = React.useMemo(() => {
-    if (isCustomRange && dateRange.from && dateRange.to) {
-      return {
-        from: formatDateISO(dateRange.from),
-        to: formatDateISO(dateRange.to)
-      }
-    }
-    
-    const days = quickFilters.find(f => f.id === quickFilter)?.days || 7
-    const endDate = new Date()
-    const startDate = subDays(endDate, days)
-    return {
-      from: formatDateISO(startDate),
-      to: formatDateISO(endDate)
-    }
-  }, [quickFilter, dateRange, isCustomRange])
+  // Date range for API calls — always day-precision strings derived from the stable
+  // dateRange object above, so query keys only change when the user actually picks
+  // a new date (not on every render).
+  const apiDateRange = React.useMemo(() => ({
+    from: formatDateISO(dateRange.from!),
+    to:   formatDateISO(dateRange.to!),
+  }), [dateRange])
 
   // Fetch agent via API so viewers get role-based response (no field_extractor/metrics data)
   const { data: agentData, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useAgentById(agentId)
@@ -665,8 +665,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
                             }`}
                           >
-                            <CalendarDays className="mr-2 h-4 w-4" />
-                            Custom
+                            <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                            {isCustomRange && dateRange.from && dateRange.to
+                              ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
+                              : 'Custom'
+                            }
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
@@ -806,8 +809,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                         }`}
                       >
-                        <CalendarDays className="h-3 w-3" />
-                        Custom
+                        <CalendarDays className="h-3 w-3 shrink-0" />
+                        {isCustomRange && dateRange.from && dateRange.to
+                          ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
+                          : 'Custom'
+                        }
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">
