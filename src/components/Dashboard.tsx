@@ -45,6 +45,7 @@ import { useMobile } from '@/hooks/use-mobile'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
+import { useCallLogsStore, DEFAULT_DATE_FILTER } from '@/stores/callLogsStore'
 
 interface DashboardProps {
   agentId: string
@@ -110,7 +111,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // projectid comes from the URL path — always available, no async needed
   const routeParams = useParams()
   const routeProjectId = Array.isArray(routeParams?.projectid) ? routeParams.projectid[0] : (routeParams?.projectid as string | undefined)
-  const projectId = searchParams.get('projectid')
   const { isMobile } = useMobile(768)
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
@@ -126,25 +126,18 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const [retellStatusLoading, setRetellStatusLoading] = useState(false)
   const [connectingRetellWebhook, setConnectingRetellWebhook] = useState(false)
   
-  // Date filter state — seeded from URL so it survives navigation away and back.
-  // All three useState calls use lazy initialisers so the URL is only read once
-  // (on mount) rather than on every re-render.
-  const [quickFilter, setQuickFilter] = useState<string>(
-    () => searchParams.get('filter') || '7d'
-  )
-  const [isCustomRange, setIsCustomRange] = useState<boolean>(
-    () => !!(searchParams.get('dateFrom') && searchParams.get('dateTo'))
-  )
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const urlDateFrom = searchParams.get('dateFrom')
-    const urlDateTo   = searchParams.get('dateTo')
-    if (urlDateFrom && urlDateTo) {
-      return { from: new Date(urlDateFrom), to: new Date(urlDateTo) }
-    }
-    const filter = searchParams.get('filter') || '7d'
-    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[filter] ?? 7
-    return { from: subDays(new Date(), days), to: new Date() }
-  })
+  // Date filter state — stored in Zustand (persisted) so it survives navigation.
+  const { dateFilterByAgent, setDateFilterForAgent } = useCallLogsStore()
+  const storedDateFilter = dateFilterByAgent[agentId] ?? DEFAULT_DATE_FILTER
+
+  const quickFilter    = storedDateFilter.quickFilter
+  const isCustomRange  = storedDateFilter.isCustomRange
+  const dateRange: DateRange = isCustomRange && storedDateFilter.dateFrom && storedDateFilter.dateTo
+    ? { from: new Date(storedDateFilter.dateFrom), to: new Date(storedDateFilter.dateTo) }
+    : (() => {
+        const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
+        return { from: subDays(new Date(), days), to: new Date() }
+      })()
 
   const activeTab = searchParams.get('tab') || 'overview'
   
@@ -265,27 +258,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
 
 
-  // Date filter handlers - work immediately
+  // Date filter handlers — write to Zustand store (persisted across navigation)
   const handleQuickFilter = (filterId: string) => {
-    setQuickFilter(filterId)
-    setIsCustomRange(false)
-    
-    const days = quickFilters.find(f => f.id === filterId)?.days || 7
-    const endDate = new Date()
-    const startDate = subDays(endDate, days)
-    setDateRange({ from: startDate, to: endDate })
+    setDateFilterForAgent(agentId, {
+      quickFilter: filterId,
+      isCustomRange: false,
+    })
 
-    // Persist in URL so the selection survives navigating away and back.
-    // Use routeProjectId (from path params) so this never blocks on agent load.
-    const pid = routeProjectId ?? agent?.project_id
-    if (pid) {
-      const current = new URLSearchParams(Array.from(searchParams.entries()))
-      current.set('filter', filterId)
-      current.delete('dateFrom')
-      current.delete('dateTo')
-      router.replace(`/${pid}/agents/${agentId}?${current.toString()}`)
-    }
-    
     if (isMobile) {
       setShowMobileMenu(false)
     }
@@ -293,20 +272,12 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
-      setDateRange(range)
-      setIsCustomRange(true)
-      setQuickFilter('')
-
-      // Persist custom date range in URL.
-      // Use routeProjectId (from path params) so this never blocks on agent load.
-      const pid = routeProjectId ?? agent?.project_id
-      if (pid) {
-        const current = new URLSearchParams(Array.from(searchParams.entries()))
-        current.delete('filter')
-        current.set('dateFrom', formatDateISO(range.from))
-        current.set('dateTo', formatDateISO(range.to))
-        router.replace(`/${pid}/agents/${agentId}?${current.toString()}`)
-      }
+      setDateFilterForAgent(agentId, {
+        quickFilter: '',
+        isCustomRange: true,
+        dateFrom: formatDateISO(range.from),
+        dateTo: formatDateISO(range.to),
+      })
     }
   }
 
@@ -319,17 +290,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   }
 
   const handleTabChange = (tab: string) => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()))
-    current.set('tab', tab)
-    const search = current.toString()
-    const query = search ? `?${search}` : ""
-    
-    // Use the full path with projectId
-    if (agent?.project_id) {
-      router.push(`/${agent.project_id}/agents/${agentId}${query}`)
+    const pid = routeProjectId ?? agent?.project_id
+    if (pid) {
+      router.push(`/${pid}/agents/${agentId}?tab=${tab}`)
     }
-    
-    // Close mobile menu after tab change
+
     if (isMobile) {
       setShowMobileMenu(false)
     }
@@ -450,7 +415,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   }, [checkVapiStatus, isVapiAgent, agent?.id])
 
   // All tabs — overview and logs are always present; campaign-logs only for enhanced projects
+  // Desktop header pills — only extra tabs like Campaign Logs (Overview/Logs nav is in the sub-tab bar)
   const tabs = [
+    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
+  ]
+
+  // Full tab list used in the desktop sub-tab bar and the mobile menu
+  const mobileTabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'logs',     label: 'All Logs', icon: List },
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
@@ -537,8 +508,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 )}
               </div>
 
-              {/* Tab Navigation */}
-              {!isMobile && agent && (
+              {/* Tab Navigation — header pills only for extra tabs (e.g. Campaign Logs) */}
+              {!isMobile && agent && tabs.length > 0 && (
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-6">
                   {tabs.map((tab) => {
                     const Icon = tab.icon
@@ -784,7 +755,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 <div>
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
                   <div className="space-y-1">
-                    {tabs.map((tab) => {
+                    {mobileTabs.map((tab) => {
                       const Icon = tab.icon
                       return (
                         <button

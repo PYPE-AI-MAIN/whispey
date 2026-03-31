@@ -15,6 +15,18 @@ export interface DistinctConfig {
   order: 'asc' | 'desc'
 }
 
+export interface DateFilter {
+  quickFilter: string   // '1d' | '7d' | '30d' | '' (empty when custom range)
+  isCustomRange: boolean
+  dateFrom?: string     // ISO string, only set when isCustomRange is true
+  dateTo?: string       // ISO string, only set when isCustomRange is true
+}
+
+const DEFAULT_DATE_FILTER: DateFilter = {
+  quickFilter: '7d',
+  isCustomRange: false,
+}
+
 interface CallLogsState {
   // Per-agent filter state — each agent has its own independent slot
   filtersByAgent: Record<string, FilterOperation[]>
@@ -27,6 +39,10 @@ interface CallLogsState {
   // Per-agent current page — persisted so navigating away and back restores position
   pageByAgent: Record<string, number>
   setPageForAgent: (agentId: string, page: number) => void
+
+  // Per-agent date filter — persisted so the selection survives navigation
+  dateFilterByAgent: Record<string, DateFilter>
+  setDateFilterForAgent: (agentId: string, filter: DateFilter) => void
 
   // Column visibility — intentionally global (shared across agents, user preference)
   visibleColumns: VisibleColumns
@@ -91,6 +107,12 @@ export const useCallLogsStore = create<CallLogsState>()(
           pageByAgent: { ...state.pageByAgent, [agentId]: page }
         })),
 
+      dateFilterByAgent: {},
+      setDateFilterForAgent: (agentId, filter) =>
+        set((state) => ({
+          dateFilterByAgent: { ...state.dateFilterByAgent, [agentId]: filter }
+        })),
+
       visibleColumns: defaultVisibleColumns,
       setVisibleColumns: (columns) =>
         set((state) => ({
@@ -98,20 +120,18 @@ export const useCallLogsStore = create<CallLogsState>()(
         })),
 
       resetState: () =>
-        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {} })
+        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {}, dateFilterByAgent: {} })
     }),
     {
       name: 'call-logs-storage',
-      version: 2, // bumped: added pageByAgent
-      // Runs when stored version < current version.
-      // v0/v1 had no pageByAgent — preserve everything else.
+      version: 3, // bumped: added dateFilterByAgent
       migrate: (old: any) => ({
         filtersByAgent: old?.filtersByAgent ?? {},
         distinctConfigByAgent: old?.distinctConfigByAgent ?? {},
-        pageByAgent: {},
+        pageByAgent: old?.pageByAgent ?? {},
+        dateFilterByAgent: {},
         visibleColumns: old?.visibleColumns ?? defaultVisibleColumns
       }),
-      // Runs after rehydration — clean any invalid filters that slipped through.
       onRehydrateStorage: () => (state) => {
         if (!state?.filtersByAgent) return
         for (const [agentId, filters] of Object.entries(state.filtersByAgent)) {
@@ -123,4 +143,7 @@ export const useCallLogsStore = create<CallLogsState>()(
       }
     }
   )
+
 )
+
+export { DEFAULT_DATE_FILTER }
