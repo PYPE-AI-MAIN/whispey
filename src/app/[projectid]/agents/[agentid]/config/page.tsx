@@ -1,7 +1,7 @@
 // src/app/[projectid]/agents/[agentid]/config/page.tsx
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -45,7 +45,7 @@ import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgen
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
-import TalkToAssistant from '@/components/agents/TalkToAssistant'
+import TalkToAssistant from '@/components/agents/TalkToAssistant' 
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
 import { VariableTextarea } from '@/components/agents/variables/VariableTextarea'
 import { VariableValidationIndicator } from '@/components/agents/variables/VariableErrorDisplay'
@@ -240,6 +240,9 @@ export default function AgentConfig() {
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
   const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
   const [isCheckpointExiting, setIsCheckpointExiting] = useState(false)
+
+  const [flashEndCall, setFlashEndCall] = useState(false)
+  const isTalkToAssistantSessionActiveRef = useRef(false)
 
   // Auto-dismiss checkpoint banner after 15 seconds if no action taken
   useEffect(() => {
@@ -1037,7 +1040,16 @@ const unmappedVariablesCount = useMemo(() => {
               </Button>
             )}
 
-            <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
+            <Sheet
+              open={isTalkToAssistantOpen}
+              onOpenChange={(open) => {
+                if (!open && isTalkToAssistantSessionActiveRef.current) {
+                  setFlashEndCall(true)
+                  return
+                }
+                setIsTalkToAssistantOpen(open)
+              }}
+            >
               <SheetHeader className="sr-only">
                 <SheetTitle>Talk to Assistant</SheetTitle>
               </SheetHeader>
@@ -1052,13 +1064,36 @@ const unmappedVariablesCount = useMemo(() => {
                   Talk to Assistant
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-96 p-0">
+              <SheetContent
+                side="right"
+                className="w-full sm:w-96 p-0"
+                onInteractOutside={(e) => {
+                  if (isTalkToAssistantSessionActiveRef.current) {
+                    e.preventDefault()
+                    setFlashEndCall(true)
+                    // Refocus the input after blocking the outside click
+                    setTimeout(() => {
+                      const input = document.querySelector('[data-talk-input]') as HTMLInputElement
+                      input?.focus()
+                    }, 0)
+                  }
+                }}
+                onEscapeKeyDown={(e) => {
+                  if (isTalkToAssistantSessionActiveRef.current) {
+                    e.preventDefault()
+                    setFlashEndCall(true)
+                  }
+                }}
+              >
                 <TalkToAssistant
                   agentName={activeAgentName || ''}
                   isOpen={isTalkToAssistantOpen}
                   onClose={() => setIsTalkToAssistantOpen(false)}
                   agentStatus={agentStatus}
                   onAgentStatusChange={checkAgentStatus}
+                  flashEndCall={flashEndCall}
+                  onFlashEndCallDone={() => setFlashEndCall(false)}
+                  onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
                 />
               </SheetContent>
             </Sheet>
@@ -1366,8 +1401,37 @@ const unmappedVariablesCount = useMemo(() => {
       </div>
 
       {/* Mobile Sheets */}
-      <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
-        <SheetContent side="right" className="w-full sm:w-96 p-0">
+      <Sheet
+        open={isTalkToAssistantOpen}
+        onOpenChange={(open) => {
+          if (!open && isTalkToAssistantSessionActiveRef.current) {
+            setFlashEndCall(true)
+            return
+          }
+          setIsTalkToAssistantOpen(open)
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:w-96 p-0"
+          onInteractOutside={(e) => {
+            if (isTalkToAssistantSessionActiveRef.current) {
+              e.preventDefault()
+              setFlashEndCall(true)
+              // Refocus the input after blocking the outside click
+              setTimeout(() => {
+                const input = document.querySelector('[data-talk-input]') as HTMLInputElement
+                input?.focus()
+              }, 0)
+            }
+          }}
+          onEscapeKeyDown={(e) => {
+            if (isTalkToAssistantSessionActiveRef.current) {
+              e.preventDefault()
+              setFlashEndCall(true)
+            }
+          }}
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Talk to Assistant</SheetTitle>
           </SheetHeader>
@@ -1377,6 +1441,9 @@ const unmappedVariablesCount = useMemo(() => {
             onClose={() => setIsTalkToAssistantOpen(false)}
             agentStatus={agentStatus}
             onAgentStatusChange={checkAgentStatus}
+            flashEndCall={flashEndCall}
+            onFlashEndCallDone={() => setFlashEndCall(false)}
+            onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
           />
         </SheetContent>
       </Sheet>
