@@ -125,7 +125,8 @@ export default function PlaygroundPage() {
   }, [agentId])
 
   const [agentState, agentActions] = useVoiceAgent({
-    agentName: agentData?.connectionName || ''
+    agentName: agentData?.connectionName || '',
+    mode: 'voice'
   })
 
   if (loading) {
