@@ -29,7 +29,7 @@ export default function AnalyticsPage() {
   const baseUrl = getPublicDashboardUrl(projectId)
 
   const iframeSrc = baseUrl
-    ? `${baseUrl}?date_from=${dateFrom}&date_to=${dateTo}&project_id=${projectId}`
+    ? `${baseUrl}?date_from=${dateFrom}&date_to=${dateTo}&project_id=${projectId}#hide_parameters=date_from,date_to,project_id`
     : null
 
   const handleRefresh = () => setIframeKey(k => k + 1)

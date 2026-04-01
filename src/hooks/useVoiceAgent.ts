@@ -1,4 +1,3 @@
-// Fixed useVoiceAgent.ts - Security improvements for random generation
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -7,38 +6,28 @@ import {
   RoomEvent, 
   RemoteTrack, 
   RemoteParticipant, 
-  LocalParticipant,
   Track,
   TranscriptionSegment,
-  RemoteTrackPublication,
-  TrackPublication,
   Participant,
-  ConnectionState,
   DisconnectReason,
   LocalTrackPublication,
   DataPacket_Kind
 } from 'livekit-client'
 
-interface VoiceAgentConfig {
-  agentName: string
-  apiBaseUrl?: string
-}
+export type AgentTestMode = 'voice' | 'chat'
 
-// FIXED: Updated interface to match your API response
 interface WebSession {
-  room: string              // Changed from room_name
-  user_token: string        // Changed from token  
+  room: string
+  user_token: string
   agent_name: string
   dispatch_cli_output: string
-  // We'll add these fields during processing
   url?: string
-  room_name?: string        // For backward compatibility
-  token?: string            // For backward compatibility
+  room_name?: string
+  token?: string
   participant_identity?: string
 }
 
-// Rest of interfaces remain the same...
-interface Transcript {
+export interface Transcript {
   id: string
   speaker: 'user' | 'agent'
   text: string
@@ -67,554 +56,249 @@ interface VoiceAgentActions {
   toggleMute: () => Promise<void>
   setVolume: (volume: number) => void
   clearTranscripts: () => void
-  sendTextMessage: (message: string) => Promise<void>
+  sendChatMessage: (message: string) => Promise<void>
 }
 
-// SECURITY FIX: Cryptographically secure random number generator with unbiased distribution
-function getSecureRandomInt(max: number): number {
-  if (typeof max !== 'number' || !Number.isInteger(max) || max <= 0) {
-    throw new Error('max must be a positive integer')
-  }
+interface VoiceAgentConfig {
+  agentName: string
+  mode: AgentTestMode
+}
 
-  // Use rejection sampling to eliminate modulo bias
+function getSecureRandomInt(max: number): number {
   const UINT32_MAX = 0xFFFFFFFF
   const threshold = Math.floor((UINT32_MAX + 1) / max) * max
-  
   let randomInt: number
-
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
-    // Browser environment - use Web Crypto API with rejection sampling
+  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
     const array = new Uint32Array(1)
-    do {
-      window.crypto.getRandomValues(array)
-      randomInt = array[0]
-    } while (randomInt >= threshold)
+    do { window.crypto.getRandomValues(array); randomInt = array[0] } while (randomInt >= threshold)
     return randomInt % max
-  } else if (typeof require !== 'undefined') {
-    // Node.js environment - use crypto module with rejection sampling
-    try {
-      const crypto = require('crypto')
-      do {
-        const bytes = crypto.randomBytes(4)
-        randomInt = bytes.readUInt32BE(0)
-      } while (randomInt >= threshold)
-      return randomInt % max
-    } catch (error) {
-      console.warn('Failed to use crypto module, falling back to Math.random():', error)
-      return Math.floor(Math.random() * max)
-    }
-  } else {
-    // Fallback to Math.random() if crypto is not available
-    console.warn('Crypto API not available, using Math.random() fallback')
-    return Math.floor(Math.random() * max)
   }
+  return Math.floor(Math.random() * max)
 }
 
-// Alternative: Generate a more secure random string for identities
-function generateSecureId(prefix: string = 'user'): string {
-  const timestamp = Date.now()
-  const randomPart = getSecureRandomInt(100000) // 5-digit random number
-  return `${prefix}_${timestamp}_${randomPart}`
+function generateSecureId(prefix = 'user') {
+  return `${prefix}_${Date.now()}_${getSecureRandomInt(100000)}`
 }
 
-export function useVoiceAgent({ 
-  agentName, 
-  apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL 
-}: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
-  // State (unchanged)
-  const [room, setRoom] = useState<Room | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
-  const [isConnecting, setIsConnecting] = useState(false)
+function isAgentParticipant(identity = '', metadata = '') {
+  const id = identity.toLowerCase()
+  const m  = metadata.toLowerCase()
+  return id.includes('agent') || id.includes('assistant') || m.includes('agent') || m.includes('assistant')
+}
+
+export function useVoiceAgent({ agentName, mode }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
+  const [room, setRoom]                       = useState<Room | null>(null)
+  const [isConnected, setIsConnected]         = useState(false)
+  const [isConnecting, setIsConnecting]       = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
-  const [transcripts, setTranscripts] = useState<Transcript[]>([])
+  const [transcripts, setTranscripts]         = useState<Transcript[]>([])
   const [agentParticipant, setAgentParticipant] = useState<RemoteParticipant | null>(null)
-  const [agentState, setAgentState] = useState<'initializing' | 'listening' | 'thinking' | 'speaking'>('initializing')
-  const [isMuted, setIsMuted] = useState(false)
-  const [volume, setVolumeState] = useState(80)
-  const [connectionTime, setConnectionTime] = useState(0)
-  const [webSession, setWebSession] = useState<WebSession | null>(null)
+  const [agentState, setAgentState]           = useState<VoiceAgentState['agentState']>('initializing')
+  const [isMuted, setIsMuted]                 = useState(false)
+  const [volume, setVolumeState]              = useState(80)
+  const [connectionTime, setConnectionTime]   = useState(0)
+  const [webSession, setWebSession]           = useState<WebSession | null>(null)
 
-  // Refs (unchanged)
   const connectionTimeInterval = useRef<NodeJS.Timeout | null>(null)
-  const audioElementsRef = useRef<Set<HTMLAudioElement>>(new Set())
-  const roomRef = useRef<Room | null>(null)
+  const audioElementsRef       = useRef<Set<HTMLAudioElement>>(new Set())
+  const roomRef                = useRef<Room | null>(null)
 
-  // Keep roomRef in sync
-  useEffect(() => {
-    roomRef.current = room
-  }, [room])
+  useEffect(() => { roomRef.current = room }, [room])
 
-  // Connection timer (unchanged)
   useEffect(() => {
     if (isConnected) {
-      connectionTimeInterval.current = setInterval(() => {
-        setConnectionTime(prev => prev + 1)
-      }, 1000)
+      connectionTimeInterval.current = setInterval(() => setConnectionTime(p => p + 1), 1000)
     } else {
-      if (connectionTimeInterval.current) {
-        clearInterval(connectionTimeInterval.current)
-        connectionTimeInterval.current = null
-      }
+      if (connectionTimeInterval.current) { clearInterval(connectionTimeInterval.current); connectionTimeInterval.current = null }
       setConnectionTime(0)
     }
-
-    return () => {
-      if (connectionTimeInterval.current) {
-        clearInterval(connectionTimeInterval.current)
-      }
-    }
+    return () => { if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current) }
   }, [isConnected])
 
-  const startWebSession = async (): Promise<WebSession> => {
-    const userIdentity = generateSecureId('user')
-    const userName = `User ${getSecureRandomInt(10000)}`
-
-    // Call your Next.js API route instead of directly calling backend
-    const response = await fetch('/api/agents/start-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_identity: userIdentity,
-        user_name: userName,
-        agent_name: agentName
-      })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(
-        `Failed to start web session: ${response.status} ${response.statusText} - ${errorData.error || 'Unknown error'}`
-      )
-    }
-
-    const sessionData: WebSession = await response.json()
-    return sessionData
-  }
-
-  // All other functions remain exactly the same...
   const cleanupAudioElements = useCallback(() => {
-    audioElementsRef.current.forEach(audio => {
-      try {
-        audio.pause()
-        audio.remove()
-      } catch (error) {
-        console.warn('Error cleaning up audio element:', error)
-      }
-    })
+    audioElementsRef.current.forEach(audio => { try { audio.pause(); audio.remove() } catch {} })
     audioElementsRef.current.clear()
   }, [])
 
+  const upsertTranscript = useCallback((t: Transcript) => {
+    setTranscripts(prev => {
+      const i = prev.findIndex(x => x.id === t.id)
+      if (i >= 0) { const u = [...prev]; u[i] = t; return u }
+      return [...prev.slice(-99), t]
+    })
+  }, [])
+
   const setupRoomListeners = useCallback((liveKitRoom: Room) => {
-    // Connection events
-    liveKitRoom.on(RoomEvent.Connected, () => {
-      setIsConnected(true)
-      setIsConnecting(false)
-      setConnectionError(null)
+    liveKitRoom.on(RoomEvent.Connected,    () => { setIsConnected(true); setIsConnecting(false); setConnectionError(null) })
+    liveKitRoom.on(RoomEvent.Disconnected, () => { setIsConnected(false); setIsConnecting(false); setAgentParticipant(null); setAgentState('initializing'); cleanupAudioElements() })
+    liveKitRoom.on(RoomEvent.Reconnecting, () => setConnectionError('Reconnecting...'))
+    liveKitRoom.on(RoomEvent.Reconnected,  () => setConnectionError(null))
+
+    liveKitRoom.on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
+      if (isAgentParticipant(p.identity, p.metadata ?? '')) { setAgentParticipant(p); setAgentState('listening') }
+    })
+    liveKitRoom.on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
+      if (isAgentParticipant(p.identity, p.metadata ?? '')) { setAgentParticipant(null); setAgentState('initializing') }
     })
 
-    liveKitRoom.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
-      setIsConnected(false)
-      setIsConnecting(false)
-      setAgentParticipant(null)
-      setAgentState('initializing')
-      cleanupAudioElements()
-    })
-
-    liveKitRoom.on(RoomEvent.Reconnecting, () => {
-      setConnectionError('Reconnecting...')
-    })
-
-    liveKitRoom.on(RoomEvent.Reconnected, () => {
-      setConnectionError(null)
-    })
-
-    // Participant events
-    liveKitRoom.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
-      
-      // Detect agent participant - check various indicators
-      const isAgent = participant.identity.toLowerCase().includes('agent') || 
-                     participant.identity.toLowerCase().includes('assistant') ||
-                     participant.metadata?.toLowerCase().includes('agent') ||
-                     participant.metadata?.toLowerCase().includes('assistant')
-      
-      if (isAgent) {
-        setAgentParticipant(participant)
-        setAgentState('listening')
-      }
-    })
-
-    liveKitRoom.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-      if (participant === agentParticipant) {
-        setAgentParticipant(null)
-        setAgentState('initializing')
-      }
-    })
-
-    // Track events
-    liveKitRoom.on(RoomEvent.TrackSubscribed, (
-      track: RemoteTrack, 
-      publication: RemoteTrackPublication, 
-      participant: RemoteParticipant
-    ) => {
-      
-      if (track.kind === Track.Kind.Audio) {
+    // Audio tracks — voice mode only; chat mode is text-only, no audio
+    if (mode === 'voice') {
+      liveKitRoom.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+        if (track.kind !== Track.Kind.Audio) return
         try {
-          // Create audio element
-          const audioElement = document.createElement('audio')
-          audioElement.volume = volume / 100
-          audioElement.autoplay = true
-          audioElement.setAttribute('playsinline', 'true')
-          audioElement.style.display = 'none'
-          
-          // Add event listeners for debugging
-          audioElement.addEventListener('play', () => {
-          })
-          
-          audioElement.addEventListener('error', (e) => {
-          })
-          
-          // Add to DOM and track it
-          document.body.appendChild(audioElement)
-          audioElementsRef.current.add(audioElement)
-          
-          // Attach track
-          track.attach(audioElement)
-          
+          const el = document.createElement('audio')
+          el.volume = volume / 100; el.autoplay = true
+          el.setAttribute('playsinline', 'true'); el.style.display = 'none'
+          document.body.appendChild(el)
+          audioElementsRef.current.add(el)
+          track.attach(el)
+          track.addListener('ended', () => { try { track.detach(el); el.remove(); audioElementsRef.current.delete(el) } catch {} })
+        } catch (e) { console.error('Audio setup error', e) }
+      })
+    }
 
-          // Clean up when track ends
-          const cleanup = () => {
-            try {
-              track.detach(audioElement)
-              audioElement.remove()
-              audioElementsRef.current.delete(audioElement)
-            } catch (error) {
-              console.warn('Error during audio cleanup:', error)
-            }
-          }
-
-          track.addListener('ended', cleanup)
-          track.addListener('muted', () => {
+    // VOICE: RoomEvent.TranscriptionReceived only — prevents duplicates
+    if (mode === 'voice') {
+      liveKitRoom.on(RoomEvent.TranscriptionReceived, (segments: TranscriptionSegment[], participant?: Participant) => {
+        const fromAgent = isAgentParticipant(participant?.identity ?? '', participant?.metadata ?? '')
+        segments.forEach(seg => {
+          if (!seg.text?.trim()) return
+          upsertTranscript({
+            id: seg.id || generateSecureId('seg'),
+            speaker: fromAgent ? 'agent' : 'user',
+            text: seg.text.trim(),
+            timestamp: new Date(),
+            isFinal: seg.final ?? false,
+            participantIdentity: participant?.identity,
           })
-          track.addListener('unmuted', () => {
-          })
-        } catch (error) {
-          console.error('❌ Error setting up audio track:', error)
-        }
-      }
-    })
-
-    liveKitRoom.on(RoomEvent.TrackUnsubscribed, (
-      track: RemoteTrack, 
-      publication: RemoteTrackPublication, 
-      participant: RemoteParticipant
-    ) => {
-    })
-
-    // Transcription events
-    liveKitRoom.on(RoomEvent.TranscriptionReceived, (
-      segments: TranscriptionSegment[], 
-      participant?: Participant, 
-      publication?: TrackPublication
-    ) => {
-      
-      segments.forEach(segment => {
-        if (!segment.text?.trim()) return
-        
-        const isFromAgent = participant?.identity.toLowerCase().includes('agent') || 
-                           participant?.identity.toLowerCase().includes('assistant') ||
-                           participant?.metadata?.toLowerCase().includes('agent') ||
-                           participant?.metadata?.toLowerCase().includes('assistant')
-        
-        const transcript: Transcript = {
-          id: segment.id || `${Date.now()}_${getSecureRandomInt(100000)}`, // SECURITY FIX: Use secure random
-          speaker: isFromAgent ? 'agent' : 'user',
-          text: segment.text.trim(),
-          timestamp: new Date(),
-          isFinal: segment.final ?? false,
-          participantIdentity: participant?.identity
-        }
-        
-        setTranscripts(prev => {
-          const existingIndex = prev.findIndex(t => t.id === transcript.id)
-          if (existingIndex >= 0) {
-            const updated = [...prev]
-            updated[existingIndex] = transcript
-            return updated
-          } else {
-            return [...prev.slice(-99), transcript]
-          }
         })
-        })
-    })
+      })
+    }
 
-    // Data messages for agent state
-    liveKitRoom.on(RoomEvent.DataReceived, (
-      payload: Uint8Array, 
-      participant?: RemoteParticipant, 
-      kind?: DataPacket_Kind,
-      topic?: string
-    ) => {
+    // CHAT: text stream handler only — prevents duplicates
+    if (mode === 'chat') {
+      liveKitRoom.registerTextStreamHandler('lk.transcription', async (reader, participantInfo) => {
+        const attrs     = reader.info.attributes ?? {}
+        const segId     = attrs['lk.segment_id'] || reader.info.id
+        const fromAgent = isAgentParticipant(participantInfo.identity)
+        let accumulated = ''
+        try {
+          for await (const chunk of reader) {
+            accumulated += chunk
+            upsertTranscript({ id: segId, speaker: fromAgent ? 'agent' : 'user', text: accumulated, timestamp: new Date(), isFinal: false })
+          }
+        } catch { /* stream closed */ }
+        if (accumulated.trim()) {
+          upsertTranscript({ id: segId, speaker: fromAgent ? 'agent' : 'user', text: accumulated.trim(), timestamp: new Date(), isFinal: true })
+        }
+      })
+    }
+
+    liveKitRoom.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
       try {
         const data = JSON.parse(new TextDecoder().decode(payload))
-        
-        if (data.type === 'agent_state' && participant && participant === agentParticipant) {
-          const newState = data.state as 'initializing' | 'listening' | 'thinking' | 'speaking'
-          if (['initializing', 'listening', 'thinking', 'speaking'].includes(newState)) {
-            setAgentState(newState)
-          }
+        if (data.type === 'agent_state' && ['initializing','listening','thinking','speaking'].includes(data.state)) {
+          setAgentState(data.state)
         }
-        
-        if (data.type === 'agent_message') {
-          console.log('📨 Agent message:', data.message)
-        }
-      } catch (error) {
-        console.log('📦 Non-JSON data received')
-      }
+      } catch {}
     })
 
-    // Local track events
-    liveKitRoom.on(RoomEvent.LocalTrackPublished, (publication: LocalTrackPublication) => {
-      if (publication.kind === Track.Kind.Audio) {
-        setIsMuted(publication.isMuted)
-      }
+    liveKitRoom.on(RoomEvent.LocalTrackPublished, (pub: LocalTrackPublication) => {
+      if (pub.kind === Track.Kind.Audio) setIsMuted(pub.isMuted)
     })
 
-    liveKitRoom.on(RoomEvent.LocalTrackUnpublished, (publication: LocalTrackPublication) => {
+  }, [mode, volume, upsertTranscript, cleanupAudioElements])
+
+  const startWebSession = async (): Promise<WebSession> => {
+    const res = await fetch('/api/agents/start-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName }),
     })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(`Failed to start web session: ${res.status} - ${err.error}`)
+    }
+    return res.json()
+  }
 
-    // Connection quality events
-    liveKitRoom.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
-      if (participant === liveKitRoom.localParticipant) {
-      }
-    })
-
-  }, [agentParticipant, volume, cleanupAudioElements])
-
-  // FIXED: Updated to use correct field names
   const connect = useCallback(async () => {
-    if (isConnecting || isConnected) {
-      console.warn('⚠️ Already connecting or connected')
-      return
-    }
-
-    if (!agentName?.trim()) {
-      setConnectionError('Agent name is required')
-      return
-    }
-
-    setIsConnecting(true)
-    setConnectionError(null)
-
+    if (isConnecting || isConnected) return
+    if (!agentName?.trim()) { setConnectionError('Agent name is required'); return }
+    setIsConnecting(true); setConnectionError(null)
     try {
-      // Start web session
       const sessionData = await startWebSession()
       setWebSession(sessionData)
-      
-      // Create and configure room
       const liveKitRoom = new Room({
-        audioCaptureDefaults: {
-          autoGainControl: true,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-        publishDefaults: {
-          audioPreset: {
-            maxBitrate: 20000,
-          },
-          simulcast: false,
-        },
-        adaptiveStream: true,
-        disconnectOnPageLeave: true,
+        audioCaptureDefaults: { autoGainControl: true, echoCancellation: true, noiseSuppression: true },
+        publishDefaults: { audioPreset: { maxBitrate: 20000 }, simulcast: false },
+        adaptiveStream: true, disconnectOnPageLeave: true,
       })
-
       setRoom(liveKitRoom)
-      
-      // Setup event listeners before connecting
       setupRoomListeners(liveKitRoom)
-      
-      // FIXED: Use correct field names and add error checking
-      if (!sessionData.url) {
-        throw new Error('No LiveKit server URL provided. Check NEXT_PUBLIC_LIVEKIT_URL environment variable.')
+      if (!sessionData.url) throw new Error('No LiveKit URL. Check NEXT_PUBLIC_LIVEKIT_URL.')
+      if (!sessionData.token && !sessionData.user_token) throw new Error('No token in session response.')
+      await liveKitRoom.connect(sessionData.url, sessionData.token || sessionData.user_token!, { autoSubscribe: true })
+      if (mode === 'voice') {
+        await liveKitRoom.localParticipant.setMicrophoneEnabled(true).catch(e => console.warn('Mic enable failed:', e))
       }
-      
-      if (!sessionData.token && !sessionData.user_token) {
-        throw new Error('No authentication token provided by API')
-      }
-
-      // Connect to room
-      await liveKitRoom.connect(
-        sessionData.url, 
-        sessionData.token || sessionData.user_token!, 
-        {
-          autoSubscribe: true,
-        }
-      )
-      
-      // Enable microphone after connection
-      try {
-        await liveKitRoom.localParticipant.setMicrophoneEnabled(true)
-      } catch (micError) {
-        console.warn('⚠️ Failed to enable microphone:', micError)
-      }
-      
+      // chat mode: mic stays off, no audio elements created
     } catch (error) {
-      console.error('❌ Failed to connect to voice agent:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Connection failed'
-      setConnectionError(errorMessage)
+      console.error('Connect failed:', error)
+      setConnectionError(error instanceof Error ? error.message : 'Connection failed')
       setIsConnecting(false)
-      
-      // Clean up on error
-      if (room) {
-        try {
-          room.disconnect()
-        } catch (disconnectError) {
-          console.warn('Error disconnecting after failed connection:', disconnectError)
-        }
-        setRoom(null)
-      }
+      try { room?.disconnect() } catch {}
+      setRoom(null)
     }
-  }, [agentName, isConnecting, isConnected, setupRoomListeners, room])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentName, isConnecting, isConnected, mode, setupRoomListeners, room])
 
-  // All other methods remain the same...
   const disconnect = useCallback(async () => {
-    try {
-      if (roomRef.current) {
-        roomRef.current.disconnect()
-        setRoom(null)
-      }
-    } catch (error) {
-      console.warn('Error during disconnect:', error)
-    }
-    
-    setIsConnected(false)
-    setIsConnecting(false)
-    setIsMuted(false)
-    setWebSession(null)
-    setTranscripts([])
-    setAgentState('initializing')
-    setConnectionError(null)
-    setAgentParticipant(null)
-    
+    try { if (roomRef.current) { roomRef.current.disconnect(); setRoom(null) } } catch {}
+    setIsConnected(false); setIsConnecting(false); setIsMuted(false)
+    setWebSession(null); setTranscripts([]); setAgentState('initializing')
+    setConnectionError(null); setAgentParticipant(null)
     cleanupAudioElements()
   }, [cleanupAudioElements])
 
   const toggleMute = useCallback(async () => {
-    if (!roomRef.current?.localParticipant) {
-      console.warn('⚠️ No room or local participant for mute toggle')
-      return
-    }
-
-    try {
-      const newMutedState = !isMuted
-      await roomRef.current.localParticipant.setMicrophoneEnabled(!newMutedState)
-      setIsMuted(newMutedState)
-    } catch (error) {
-      console.error('❌ Error toggling mute:', error)
-      setConnectionError('Failed to toggle mute')
-    }
+    if (!roomRef.current?.localParticipant) return
+    try { await roomRef.current.localParticipant.setMicrophoneEnabled(isMuted); setIsMuted(!isMuted) }
+    catch (e) { console.error('Mute toggle failed', e) }
   }, [isMuted])
 
-  const setVolume = useCallback((newVolume: number) => {
-    const clampedVolume = Math.max(0, Math.min(100, newVolume))
-    setVolumeState(clampedVolume)
-    
-    audioElementsRef.current.forEach(audio => {
-      try {
-        audio.volume = clampedVolume / 100
-      } catch (error) {
-        console.warn('Error setting audio volume:', error)
-      }
+  const setVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(100, v))
+    setVolumeState(clamped)
+    audioElementsRef.current.forEach(el => { try { el.volume = clamped / 100 } catch {} })
+  }, [])
+
+  const clearTranscripts = useCallback(() => setTranscripts([]), [])
+
+  const sendChatMessage = useCallback(async (message: string) => {
+    if (!roomRef.current || !isConnected) throw new Error('Not connected to room')
+    const trimmed = message.trim()
+    if (!trimmed) throw new Error('Message cannot be empty')
+    await roomRef.current.localParticipant.sendText(trimmed, { topic: 'lk.chat' })
+    upsertTranscript({
+      id: generateSecureId('chat_user'),
+      speaker: 'user',
+      text: trimmed,
+      timestamp: new Date(),
+      isFinal: true,
     })
-    
-  }, [])
+  }, [isConnected, upsertTranscript])
 
-  const clearTranscripts = useCallback(() => {
-    setTranscripts([])
-  }, [])
-
-  const sendTextMessage = useCallback(async (message: string) => {
-    if (!roomRef.current || !isConnected) {
-      throw new Error('Not connected to room')
-    }
-
-    if (!message?.trim()) {
-      throw new Error('Message cannot be empty')
-    }
-
-    try {
-      const encoder = new TextEncoder()
-      const data = encoder.encode(JSON.stringify({
-        type: 'chat_message',
-        text: message.trim(),
-        timestamp: new Date().toISOString(),
-        sender: 'user'
-      }))
-      
-      await roomRef.current.localParticipant.publishData(data, { 
-        reliable: true,
-        topic: 'chat'
-      })
-      
-      const userTranscript: Transcript = {
-        id: `user_${Date.now()}_${getSecureRandomInt(100000)}`, // SECURITY FIX: Use secure random
-        speaker: 'user',
-        text: message.trim(),
-        timestamp: new Date(),
-        isFinal: true,
-        participantIdentity: roomRef.current.localParticipant.identity
-      }
-      
-      setTranscripts(prev => [...prev.slice(-99), userTranscript])
-      
-    } catch (error) {
-      console.error('❌ Failed to send text message:', error)
-      throw new Error('Failed to send message')
-    }
-  }, [isConnected])
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (roomRef.current && isConnected) {
-        try {
-          roomRef.current.disconnect()
-        } catch (error) {
-          console.warn('Error disconnecting on unmount:', error)
-        }
-      }
-      
+      try { if (roomRef.current && isConnected) roomRef.current.disconnect() } catch {}
       cleanupAudioElements()
-
-      if (connectionTimeInterval.current) {
-        clearInterval(connectionTimeInterval.current)
-      }
+      if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current)
     }
   }, [isConnected, cleanupAudioElements])
 
-  const state: VoiceAgentState = {
-    room,
-    isConnected,
-    isConnecting,
-    connectionError,
-    transcripts,
-    agentParticipant,
-    agentState,
-    isMuted,
-    volume,
-    connectionTime,
-    webSession
-  }
-
-  const actions: VoiceAgentActions = {
-    connect,
-    disconnect,
-    toggleMute,
-    setVolume,
-    clearTranscripts,
-    sendTextMessage
-  }
-
-  return [state, actions]
+  return [
+    { room, isConnected, isConnecting, connectionError, transcripts, agentParticipant, agentState, isMuted, volume, connectionTime, webSession },
+    { connect, disconnect, toggleMute, setVolume, clearTranscripts, sendChatMessage },
+  ]
 }
