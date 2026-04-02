@@ -239,19 +239,9 @@ export default function AgentConfig() {
   // Holds the last-deployed config so user can optionally save it as a checkpoint
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
   const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
-  const [isCheckpointExiting, setIsCheckpointExiting] = useState(false)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
-
-  // Auto-dismiss checkpoint banner after 15 seconds if no action taken
-  useEffect(() => {
-    if (!pendingCheckpoint) return
-    setIsCheckpointExiting(false)
-    const exitT = setTimeout(() => setIsCheckpointExiting(true), 14_700)
-    const t = setTimeout(() => setPendingCheckpoint(null), 15_000)
-    return () => { clearTimeout(exitT); clearTimeout(t) }
-  }, [pendingCheckpoint])
   
   // Agent status state
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
@@ -1521,16 +1511,8 @@ const unmappedVariablesCount = useMemo(() => {
       {pendingCheckpoint && (
         <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
           {/* Inner: relative so the absolute progress bar anchors to it */}
-          <div className={`relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap ${isCheckpointExiting ? 'animate-out slide-out-to-top-4 fade-out duration-300 fill-mode-forwards' : 'animate-in slide-in-from-top-4 duration-300'}`}>
-            {/* Progress bar — spans 100% of card width, shrinks to 0 over 15 s */}
-            <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
-              <div
-                className="h-full bg-primary"
-                style={{ animation: 'version-progress 15s linear forwards' }}
-              />
-            </div>
-            {/* Content — pt-4 gives room for the 3px bar */}
-            <div className="flex items-center gap-3 px-4 pt-4 pb-3 text-sm">
+          <div className="relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3 px-4 py-3 text-sm">
               <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
               <span className="text-foreground text-xs">Config deployed. Save as a version?</span>
               <Button
@@ -1547,7 +1529,7 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 variant="ghost"
                 className="h-7 text-xs text-muted-foreground"
-                onClick={() => { setIsCheckpointExiting(true); setTimeout(() => setPendingCheckpoint(null), 300) }}
+                onClick={() => setPendingCheckpoint(null)}
                 disabled={isSavingCheckpoint}
               >
                 Skip
