@@ -1,3 +1,4 @@
+// src/app/[projectid]/agents/[agentid]/config/pipecat/page.tsx
 'use client'
 
 import { useParams } from 'next/navigation'

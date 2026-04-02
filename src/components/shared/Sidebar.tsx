@@ -287,6 +287,7 @@ export default function Sidebar({
         '/api-keys',
         '/sip-management',
         '/config',
+        '/config/pipecat',
         '/observability',
         '/phone-call-config',
         '/knowledge',

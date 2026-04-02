@@ -256,6 +256,7 @@ const sidebarRoutes: SidebarRoute[] = [
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
       { pattern: '/:projectId/agents/:agentId/config' },
+      { pattern: '/:projectId/agents/:agentId/config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
@@ -299,7 +300,7 @@ const sidebarRoutes: SidebarRoute[] = [
           id: 'agent-config', 
           name: 'Agent Config', 
           icon: 'Settings', 
-          path: `/${projectId}/agents/${agentId}/config`, 
+          path: `/${projectId}/agents/${agentId}/config`,
           group: 'configuration' 
         })
       }

@@ -1,3 +1,4 @@
+// src/app/[projectid]/agents/[agentid]/config/page.tsx
 'use client'
 
 import React from 'react'

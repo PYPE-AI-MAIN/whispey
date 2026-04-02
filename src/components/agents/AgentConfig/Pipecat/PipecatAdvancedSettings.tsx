@@ -1,3 +1,4 @@
+// src/components/agents/AgentConfig/Pipecat/PipecatAdvancedSettings.tsx
 'use client'
 
 import React, { useState } from 'react'

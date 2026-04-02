@@ -1,3 +1,4 @@
+// src/components/agents/AgentConfig/Pipecat/PipecatAgentConfig.tsx
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
