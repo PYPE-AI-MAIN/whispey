@@ -5,9 +5,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
-    const page      = searchParams.get('page')   || '1'
-    const limit     = searchParams.get('limit')  || '10'
-    const search    = searchParams.get('search') || ''
+    const limit = searchParams.get('limit') || '10'
+    const lastKey = searchParams.get('lastKey')
 
     if (!projectId) {
       return NextResponse.json(
@@ -17,14 +16,18 @@ export async function GET(request: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    const url = new URL(`${baseUrl}/api/v1/projects/${projectId}/campaigns`)
-    url.searchParams.set('page',  page)
-    url.searchParams.set('limit', limit)
-    if (search) url.searchParams.set('search', search)
+    let apiUrl = `${baseUrl}/api/v1/projects/${projectId}/campaigns?limit=${limit}`
+    
+    // Add lastKey for pagination if provided
+    if (lastKey) {
+      apiUrl += `&lastKey=${lastKey}`
+    }
 
-    const response = await fetch(url.toString(), {
+    const response = await fetch(apiUrl, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
 
     const data = await response.json()
