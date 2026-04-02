@@ -78,7 +78,9 @@ export const AGENT_DEFAULT_CONFIG = {
       min_endpointing_delay: 0.7,
       max_endpointing_delay: 0.7,
       user_away_timeout: undefined, // None to disable, 0 to use config default, or seconds
-      user_away_timeout_message: undefined // Message to speak when user goes away
+      user_away_timeout_message: undefined, // Message to speak each time user goes away
+      user_away_timeout_max_count: undefined, // Max times to send message before ending call (undefined = unlimited)
+      user_away_timeout_end_message: undefined // Message to speak before ending call after max count
     },
   
     // Background Audio Configuration
@@ -207,7 +209,9 @@ export const AGENT_DEFAULT_CONFIG = {
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
         max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay,
         user_away_timeout: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout,
-        user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message
+        user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message,
+        user_away_timeout_max_count: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_max_count,
+        user_away_timeout_end_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_end_message
       },
       tools: {
         tools: AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({

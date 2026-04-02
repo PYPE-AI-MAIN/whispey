@@ -426,6 +426,12 @@ export function useMultiAssistantState({
           }),
           ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
             user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
+          }),
+          ...(formValues.advancedSettings?.session?.user_away_timeout_max_count !== undefined && {
+            user_away_timeout_max_count: formValues.advancedSettings.session.user_away_timeout_max_count
+          }),
+          ...(formValues.advancedSettings?.session?.user_away_timeout_end_message !== undefined && formValues.advancedSettings.session.user_away_timeout_end_message !== null && formValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
+            user_away_timeout_end_message: formValues.advancedSettings.session.user_away_timeout_end_message
           })
         },
         background_audio: {
@@ -718,6 +724,12 @@ export function useMultiAssistantState({
           }),
           ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
             user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
+          }),
+          ...(formValues.advancedSettings?.session?.user_away_timeout_max_count !== undefined && {
+            user_away_timeout_max_count: formValues.advancedSettings.session.user_away_timeout_max_count
+          }),
+          ...(formValues.advancedSettings?.session?.user_away_timeout_end_message !== undefined && formValues.advancedSettings.session.user_away_timeout_end_message !== null && formValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
+            user_away_timeout_end_message: formValues.advancedSettings.session.user_away_timeout_end_message
           })
         },
         background_audio: {
