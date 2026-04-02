@@ -236,9 +236,6 @@ export default function AgentConfig() {
 
   // Tracks loading across BOTH the deploy call AND the subsequent refetch
   const [isSaving, setIsSaving] = useState(false)
-  // Holds the last-deployed config so user can optionally save it as a checkpoint
-  const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
-  const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -593,33 +590,16 @@ export default function AgentConfig() {
     try {
       await saveAndDeploy.mutateAsync(payload)
       await refetchConfig()
-      // Offer checkpoint — show the floating bar
-      setPendingCheckpoint({ config: payload, userEmail, userId })
+      // Auto-save a version on every deploy (fire-and-forget, retention enforced server-side)
+      fetch(`/api/agents/${agentid}/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: payload, userEmail, userId }),
+      }).catch((err) => console.error('[checkpoint] Auto-save failed:', err))
     } catch (error) {
       console.error('❌ Error during save and deploy:', error)
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handleSaveCheckpoint = async () => {
-    if (!pendingCheckpoint) return
-    setIsSavingCheckpoint(true)
-    try {
-      const res = await fetch(`/api/agents/${agentid}/history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pendingCheckpoint),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        console.error('[checkpoint] Save failed:', err.message)
-      }
-    } catch (err) {
-      console.error('[checkpoint] Unexpected error:', err)
-    } finally {
-      setIsSavingCheckpoint(false)
-      setPendingCheckpoint(null)
     }
   }
 
@@ -1507,37 +1487,6 @@ const unmappedVariablesCount = useMemo(() => {
         agentId={agentid}
       />
 
-      {/* Version prompt — appears after every successful deploy, anchored below the header */}
-      {pendingCheckpoint && (
-        <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
-          {/* Inner: relative so the absolute progress bar anchors to it */}
-          <div className="relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap animate-in slide-in-from-top-4 duration-300">
-            <div className="flex items-center gap-3 px-4 py-3 text-sm">
-              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-foreground text-xs">Config deployed. Save as a version?</span>
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={handleSaveCheckpoint}
-                disabled={isSavingCheckpoint}
-              >
-                {isSavingCheckpoint ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save version'}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-muted-foreground"
-                onClick={() => setPendingCheckpoint(null)}
-                disabled={isSavingCheckpoint}
-              >
-                Skip
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
