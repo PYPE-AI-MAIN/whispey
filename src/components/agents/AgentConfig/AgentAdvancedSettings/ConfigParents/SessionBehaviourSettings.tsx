@@ -13,6 +13,8 @@ interface SessionBehaviourSettingsProps {
   max_endpointing_delay?: number
   user_away_timeout?: number
   user_away_timeout_message?: string
+  user_away_timeout_max_count?: number
+  user_away_timeout_end_message?: string
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -24,6 +26,8 @@ export default function SessionBehaviourSettings({
   max_endpointing_delay = 0.7,
   user_away_timeout,
   user_away_timeout_message,
+  user_away_timeout_max_count,
+  user_away_timeout_end_message,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
   // Local state for input values to handle intermediate states
@@ -32,6 +36,8 @@ export default function SessionBehaviourSettings({
   const [maxDelayInput, setMaxDelayInput] = useState(String(max_endpointing_delay))
   const [userAwayTimeoutInput, setUserAwayTimeoutInput] = useState(user_away_timeout !== undefined && user_away_timeout !== null ? String(user_away_timeout) : '')
   const [userAwayTimeoutMessageInput, setUserAwayTimeoutMessageInput] = useState(user_away_timeout_message || '')
+  const [userAwayMaxCountInput, setUserAwayMaxCountInput] = useState(user_away_timeout_max_count !== undefined && user_away_timeout_max_count !== null ? String(user_away_timeout_max_count) : '')
+  const [userAwayEndMessageInput, setUserAwayEndMessageInput] = useState(user_away_timeout_end_message || '')
 
   // Sync with props when they change externally
   React.useEffect(() => {
@@ -53,6 +59,14 @@ export default function SessionBehaviourSettings({
   React.useEffect(() => {
     setUserAwayTimeoutMessageInput(user_away_timeout_message || '')
   }, [user_away_timeout_message])
+
+  React.useEffect(() => {
+    setUserAwayMaxCountInput(user_away_timeout_max_count !== undefined && user_away_timeout_max_count !== null ? String(user_away_timeout_max_count) : '')
+  }, [user_away_timeout_max_count])
+
+  React.useEffect(() => {
+    setUserAwayEndMessageInput(user_away_timeout_end_message || '')
+  }, [user_away_timeout_end_message])
 
   const handleNumberInput = (
     value: string,
@@ -383,7 +397,7 @@ export default function SessionBehaviourSettings({
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
-                  Message to speak when user goes away. Leave empty to use default message.
+                  Message to speak each time the user goes away. Leave empty to use default message.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -398,6 +412,86 @@ export default function SessionBehaviourSettings({
             }}
             className="h-8 text-xs"
             placeholder="Are you still on the line?"
+          />
+        </div>
+
+        {/* User Away Timeout Max Count */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              User Away Timeout Max Count
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  Maximum number of times the away message is sent before ending the call. For example, with a 7s timeout and count of 3, messages fire at 7s, 14s, 21s — then the call ends. Leave empty for unlimited.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="number"
+            step="1"
+            min="1"
+            value={userAwayMaxCountInput}
+            onChange={(e) => {
+              const value = e.target.value
+              setUserAwayMaxCountInput(value)
+              if (value === '') {
+                onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
+              } else {
+                const numValue = parseInt(value, 10)
+                if (!isNaN(numValue) && numValue >= 1) {
+                  onFieldChange('advancedSettings.session.user_away_timeout_max_count', numValue)
+                }
+              }
+            }}
+            onBlur={(e) => {
+              const value = e.target.value
+              if (value === '' || isNaN(parseInt(value, 10))) {
+                setUserAwayMaxCountInput('')
+                onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
+              } else {
+                const numValue = Math.max(1, parseInt(value, 10))
+                setUserAwayMaxCountInput(String(numValue))
+                onFieldChange('advancedSettings.session.user_away_timeout_max_count', numValue)
+              }
+            }}
+            className="h-8 text-xs"
+            placeholder="Leave empty for unlimited"
+          />
+        </div>
+
+        {/* User Away Timeout End Message */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              User Away End Message
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  Message spoken before ending the call after the max count is reached. Requires Max Count to be set.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="text"
+            value={userAwayEndMessageInput}
+            onChange={(e) => {
+              const value = e.target.value
+              setUserAwayEndMessageInput(value)
+              onFieldChange('advancedSettings.session.user_away_timeout_end_message', value || undefined)
+            }}
+            className="h-8 text-xs"
+            placeholder="It seems you're not there. I'm ending the call. Goodbye!"
           />
         </div>
 

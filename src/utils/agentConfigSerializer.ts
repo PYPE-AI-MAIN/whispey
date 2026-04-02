@@ -64,6 +64,8 @@ export interface SerializedAgentConfig {
         max_endpointing_delay?: number
         user_away_timeout?: number
         user_away_timeout_message?: string
+        user_away_timeout_max_count?: number
+        user_away_timeout_end_message?: string
       }
       tools: {
         tools: any[]
