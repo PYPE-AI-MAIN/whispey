@@ -64,6 +64,18 @@ export async function POST(
       return NextResponse.json({ message: error.message }, { status: 500 })
     }
 
+    // Enforce 100-version retention — delete oldest if over the limit
+    const { data: allVersions } = await supabase
+      .from('pype_agent_config_versions')
+      .select('id')
+      .eq('agent_id', agentId)
+      .order('version_number', { ascending: true })
+
+    if (allVersions && allVersions.length > 100) {
+      const toDelete = allVersions.slice(0, allVersions.length - 100).map((v: { id: string }) => v.id)
+      await supabase.from('pype_agent_config_versions').delete().in('id', toDelete)
+    }
+
     return NextResponse.json({ success: true, version_number: nextVersion })
   } catch (err: any) {
     return NextResponse.json({ message: 'Failed to save checkpoint', error: err.message }, { status: 500 })
