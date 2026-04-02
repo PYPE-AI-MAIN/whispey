@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import { METRICS_LOGS_SELECT } from "./TracesTable"
 import { cn } from "@/lib/utils"
-import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio } from "lucide-react"
+import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio, Phone } from "lucide-react"
 
 interface ObservabilityStatsProps {
   sessionId?: string
@@ -223,7 +223,30 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Overview</h3>
+           <div className="flex items-center gap-3">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Overview</h3>
+              {callData?.[0]?.customer_number && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                  <Phone className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                    {callData[0].customer_number}
+                  </span>
+                </div>
+              )}
+              {callData?.[0]?.call_started_at && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                  <Clock className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                    {new Date(callData[0].call_started_at).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {sessionId ? `Session ${sessionId.slice(0, 8)}...` : `Agent ${agentId.slice(0, 8)}...`}
@@ -240,7 +263,6 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                 </div>
               </div>
             </div>
-            
           </div>
           
           {/* Stats Grid */}
