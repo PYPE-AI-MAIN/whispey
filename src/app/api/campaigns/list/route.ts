@@ -38,7 +38,9 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
 
     const data = await response.json()
