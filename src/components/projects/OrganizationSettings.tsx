@@ -170,12 +170,14 @@ export default function OrganizationSettings({
   const allMembers = [...teamMembers, ...pendingMembers]
 
   const handleInviteMember = async () => {
-    if (!inviteEmail || !inviteEmail.includes('@')) {
+    const normalizedEmail = inviteEmail.trim().toLowerCase()
+
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
       toast.error('Please enter a valid email address')
       return
     }
 
-    if (teamMembers.some(m => m.email === inviteEmail)) {
+    if (teamMembers.some(m => m.email === normalizedEmail)) {
       toast.error('This user is already a member of the organization')
       return
     }
@@ -189,7 +191,7 @@ export default function OrganizationSettings({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: inviteEmail.trim(),
+          email: normalizedEmail,
           role: inviteRole
         }),
       })
@@ -205,12 +207,22 @@ export default function OrganizationSettings({
       setInviteEmail('')
       setInviteRole('viewer')
 
-      if (data.type === 'direct_add') {
-        toast.success(`${inviteEmail} has been added to the organization!`)
-      } else if (data.type === 'reactivated') {
-        toast.success(`${inviteEmail} has been reactivated!`)
+      if (data.inviteSent === false) {
+        if (data.type === 'direct_add') {
+          toast.error(`${normalizedEmail} added to the organization, but the invite email could not be sent. Check your email configuration.`, { duration: 5000 })
+        } else if (data.type === 'reactivated') {
+          toast.error(`${normalizedEmail} re-added, but the invite email could not be sent. Check your email configuration.`, { duration: 5000 })
+        } else {
+          toast.error(`${normalizedEmail} added to pending list, but the invite email could not be sent. Check your email configuration.`, { duration: 5000 })
+        }
       } else {
-        toast.success(`Invitation sent to ${inviteEmail}. They'll be added when they sign up.`)
+        if (data.type === 'direct_add') {
+          toast.success(`${normalizedEmail} has been added to the organization!`)
+        } else if (data.type === 'reactivated') {
+          toast.success(`${normalizedEmail} has been reactivated!`)
+        } else {
+          toast.success(`Invitation sent to ${normalizedEmail}. They'll be added when they sign up.`)
+        }
       }
     } catch (error) {
       console.error('Error inviting member:', error)

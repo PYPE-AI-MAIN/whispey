@@ -22,7 +22,7 @@ interface SidebarWrapperProps {
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
 // Reserved paths that are NOT project IDs
-const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service']
+const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service', 'invite']
 
 interface RoutePattern {
   pattern: string

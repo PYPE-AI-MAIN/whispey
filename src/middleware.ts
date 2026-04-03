@@ -8,10 +8,10 @@ const isPublicRoute = createRouteMatcher([
   "/terms-of-service(.*)",
   "/privacy-policy(.*)",
   '/docs(.*)',
-  '/playground(.*)', // Explicit playground route pattern
+  '/playground(.*)',
+  '/invite(.*)',
   // '/api/webhooks(.*)', // if you have public API routes
   '/api(.*)'
-  // Add other public routes here
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

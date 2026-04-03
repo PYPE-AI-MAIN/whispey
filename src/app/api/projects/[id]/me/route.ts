@@ -22,6 +22,11 @@ export async function GET(
     const { id: projectId } = await params
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(projectId)) {
+      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
+    }
+
     const { data: mapping, error } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role, permissions, is_active')

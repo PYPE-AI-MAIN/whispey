@@ -198,9 +198,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'You cannot remove yourself' }, { status: 400 })
     }
 
-    // Handle permanent vs soft delete
-    if (permanent) {
-      // Hard delete - permanently remove from database
+    // Pending invites (no clerk_id) are always hard deleted
+    // so the invite token is permanently invalidated and the old link stops working.
+    // Active members (with clerk_id) are soft deleted so they can be re-added later.
+    const isPendingInvite = !memberToDelete.clerk_id
+
+    if (isPendingInvite || permanent) {
       const { error: deleteError } = await supabase
         .from('pype_voice_email_project_mapping')
         .delete()
@@ -208,16 +211,16 @@ export async function DELETE(
         .eq('project_id', projectId)
 
       if (deleteError) {
-        console.error('Error permanently deleting member:', deleteError)
-        return NextResponse.json({ error: 'Failed to permanently remove member' }, { status: 500 })
+        console.error('Error deleting member:', deleteError)
+        return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
       }
 
       return NextResponse.json({ 
-        message: 'Member permanently removed',
-        type: 'permanent_delete' 
+        message: isPendingInvite ? 'Invite cancelled' : 'Member permanently removed',
+        type: isPendingInvite ? 'invite_cancelled' : 'permanent_delete',
       }, { status: 200 })
     } else {
-      // Soft delete - set is_active to false
+      // Soft delete active members — preserves history and allows re-adding
       const { error: deleteError } = await supabase
         .from('pype_voice_email_project_mapping')
         .update({ is_active: false })
