@@ -17,11 +17,13 @@ const noSidebarRoutes = [
   '/onboarding'
 ]
 
+function isInviteRoute(pathname: string): boolean {
+  return pathname.startsWith('/invite/')
+}
+
 function shouldShowSidebar(pathname: string): boolean {
-  // Hide sidebar for playground pages
-  if (pathname.includes('/playground')) {
-    return false
-  }
+  if (pathname.includes('/playground')) return false
+  if (isInviteRoute(pathname)) return false
   return !noSidebarRoutes.includes(pathname)
 }
 

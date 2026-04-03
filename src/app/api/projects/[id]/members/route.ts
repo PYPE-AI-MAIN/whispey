@@ -1,8 +1,10 @@
 // src/app/api/projects/[id]/members/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
+import { randomUUID } from 'crypto'
 import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { sendInviteEmail } from '@/lib/sendInviteEmail'
 
 const supabase = createServiceRoleClient()
 
@@ -49,8 +51,11 @@ export async function POST(
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
+    // Normalize to lowercase to prevent duplicate entries from casing differences
+    const normalizedEmail = email.trim().toLowerCase()
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email.trim())) {
+    if (!emailRegex.test(normalizedEmail)) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
@@ -74,11 +79,21 @@ export async function POST(
       )
     }
 
-    // ✅ NEW: Check if already added by email (INCLUDING INACTIVE ONES)
+    // Fetch project name for invite email
+    const { data: project } = await supabase
+      .from('pype_voice_projects')
+      .select('name')
+      .eq('id', projectId)
+      .maybeSingle()
+
+    const orgName = project?.name ?? 'your organization'
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
+
+    // Check if already added by email (INCLUDING INACTIVE ONES)
     const { data: existingMapping, error: existingMappingError } = await supabase
       .from('pype_voice_email_project_mapping')
-      .select('id, is_active, clerk_id')
-      .eq('email', email.trim())
+      .select('id, is_active, clerk_id, invite_token')
+      .eq('email', normalizedEmail)
       .eq('project_id', projectId)
       .maybeSingle()
 
@@ -87,14 +102,15 @@ export async function POST(
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 
-    // ✅ NEW: If mapping exists and is active, return error
+    // If mapping exists and is active, return error
     if (existingMapping && (existingMapping.is_active === true || existingMapping.is_active === null)) {
       return NextResponse.json({ error: 'Email already added to project' }, { status: 400 })
     }
 
-    // ✅ NEW: If mapping exists but is inactive, reactivate it
+    // If mapping exists but is inactive, reactivate it
     if (existingMapping && existingMapping.is_active === false) {
       const permissions = getPermissionsByRole(normalizedRole)
+      const isPending = !existingMapping.clerk_id
 
       const { data: reactivatedMapping, error: reactivateError } = await supabase
         .from('pype_voice_email_project_mapping')
@@ -102,7 +118,12 @@ export async function POST(
           is_active: true,
           role: normalizedRole,
           permissions,
-          added_by_clerk_id: userId
+          added_by_clerk_id: userId,
+          // Generate a new token for pending users to invalidate the old invite link
+          ...(isPending && {
+            invite_token: randomUUID(),
+            invite_sent_at: new Date().toISOString(),
+          }),
         })
         .eq('id', existingMapping.id)
         .select()
@@ -113,10 +134,24 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to add member' }, { status: 500 })
       }
 
+      const isExistingUser = !isPending
+      const inviteLink = isExistingUser
+        ? `${appUrl}/${projectId}/agents`
+        : `${appUrl}/invite/${reactivatedMapping.invite_token}`
+
+      let inviteSent = false
+      try {
+        await sendInviteEmail({ email: normalizedEmail, orgName, inviteLink, isExistingUser })
+        inviteSent = true
+      } catch (err) {
+        console.warn('[invite] User re-added to project, but email could not be sent:', err instanceof Error ? err.message : String(err))
+      }
+
       return NextResponse.json({ 
         message: 'User re-added to project', 
         member: reactivatedMapping,
-        type: 'reactivated'
+        type: 'reactivated',
+        inviteSent,
       }, { status: 201 })
     }
 
@@ -125,7 +160,7 @@ export async function POST(
     const { data: existingUser, error: existingUserError } = await supabase
       .from('pype_voice_users')
       .select('clerk_id')
-      .eq('email', email.trim())
+      .eq('email', normalizedEmail)
       .maybeSingle()
 
     if (existingUserError) {
@@ -160,7 +195,7 @@ export async function POST(
         .from('pype_voice_email_project_mapping')
         .insert({
           clerk_id: existingUser.clerk_id,
-          email: email.trim(),
+          email: normalizedEmail,
           project_id: projectId,
           role: normalizedRole,
           permissions,
@@ -175,22 +210,38 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to add member' }, { status: 500 })
       }
 
+      let inviteSent = false
+      try {
+        await sendInviteEmail({
+          email: normalizedEmail,
+          orgName,
+          inviteLink: `${appUrl}/${projectId}/agents`,
+          isExistingUser: true,
+        })
+        inviteSent = true
+      } catch (err) {
+        console.warn('[invite] User added to project, but email could not be sent:', err instanceof Error ? err.message : String(err))
+      }
+
       return NextResponse.json({ 
         message: 'User added to project', 
         member: newMapping,
-        type: 'direct_add'
+        type: 'direct_add',
+        inviteSent,
       }, { status: 201 })
     } else {
       // Create pending email-based invite
       const { data: mapping, error } = await supabase
         .from('pype_voice_email_project_mapping')
         .insert({
-          email: email.trim(),
+          email: normalizedEmail,
           project_id: projectId,
           role: normalizedRole,
           permissions,
           added_by_clerk_id: userId,
           is_active: true,
+          invite_sent_at: new Date().toISOString(),
+          // invite_token auto-generated by DB DEFAULT gen_random_uuid()
         })
         .select()
         .single()
@@ -200,11 +251,25 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to add member' }, { status: 500 })
       }
 
+      let inviteSent = false
+      try {
+        await sendInviteEmail({
+          email: normalizedEmail,
+          orgName,
+          inviteLink: `${appUrl}/invite/${mapping.invite_token}`,
+          isExistingUser: false,
+        })
+        inviteSent = true
+      } catch (err) {
+        console.warn('[invite] User added to pending list, but email could not be sent:', err instanceof Error ? err.message : String(err))
+      }
+
       return NextResponse.json(
         {
-          message: 'Email added to project successfully. User will be added when they sign up.',
+          message: 'Invite sent. User will be added when they sign up.',
           member: mapping,
-          type: 'email_mapping'
+          type: 'email_mapping',
+          inviteSent,
         },
         { status: 201 }
       )
@@ -262,8 +327,9 @@ export async function GET(
     }
 
     // Separate members into groups
+    // Only show active pending mappings — soft-deleted ones (is_active=false) should not appear
     const membersWithClerkId = allProjectMappings?.filter((m: any) => m.clerk_id) || []
-    const pendingMappings = allProjectMappings?.filter((m: any) => !m.clerk_id) || []
+    const pendingMappings = allProjectMappings?.filter((m: any) => !m.clerk_id && m.is_active !== false) || []
 
     // Get user details for members with clerk_id
     let membersWithDetails: any[] = []

@@ -5,6 +5,29 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 
 const supabase = createServiceRoleClient()
 
+// Links any pending invite mappings (clerk_id = null) for this email to the
+// current clerk userId. Safe to call multiple times — only updates null rows.
+// This runs here because the Clerk webhook may not fire in dev or may fail,
+// so /api/user/create is the reliable fallback that always runs after signup.
+async function linkPendingInvites(userId: string, email: string) {
+  try {
+    const { error } = await supabase
+      .from('pype_voice_email_project_mapping')
+      .update({ clerk_id: userId })
+      .eq('email', email)
+      .is('clerk_id', null)
+      .eq('is_active', true)
+
+    if (error) {
+      console.error('⚠️ Failed to link pending invites:', error)
+    } else {
+      console.log('🔗 Linked pending invites for', email)
+    }
+  } catch (err) {
+    console.error('⚠️ Error linking pending invites:', err)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
@@ -30,6 +53,10 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (existingUser) {
+      // User already exists — still try to link pending invites in case
+      // the Clerk webhook fired but the linking step failed
+      await linkPendingInvites(userId, email)
+
       return NextResponse.json({ 
         message: 'User already exists',
         userId: existingUser.id,
@@ -66,6 +93,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ User created:', newUser.email)
+
+    // Link any pending invite mappings for this newly created user
+    await linkPendingInvites(userId, email)
 
     return NextResponse.json({ 
       message: 'User created successfully',
