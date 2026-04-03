@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import toast from 'react-hot-toast'
 import {
   Search,
   Loader2,
@@ -14,6 +15,8 @@ import {
   Mic,
   Copy,
   Check,
+  Play,
+  Square,
 } from 'lucide-react'
 
 // Import shared SarvamConfig type from SettingsPanel
@@ -89,10 +92,16 @@ const SarvamVoiceCard = ({
   voice,
   isSelected,
   onClick,
+  isPreviewing,
+  isPreviewLoading,
+  onPreview,
 }: {
   voice: SarvamVoice
   isSelected: boolean
   onClick: () => void
+  isPreviewing: boolean
+  isPreviewLoading: boolean
+  onPreview: (e: React.MouseEvent) => void
 }) => (
   <div
     onClick={onClick}
@@ -123,7 +132,23 @@ const SarvamVoiceCard = ({
           <span className="text-xs text-gray-500 dark:text-gray-400">{voice.language}</span>
         </div>
       </div>
-      <CopyButton text={voice.id} />
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onPreview}
+          disabled={isPreviewLoading}
+          className={`w-7 h-7 p-0 transition-opacity ${isPreviewing ? 'opacity-100 text-orange-500' : 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-orange-500'}`}
+          title={isPreviewing ? 'Stop preview' : 'Preview voice'}
+        >
+          {isPreviewLoading
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            : isPreviewing
+              ? <Square className="w-3.5 h-3.5 fill-current" />
+              : <Play className="w-3.5 h-3.5 fill-current" />}
+        </Button>
+        <CopyButton text={voice.id} />
+      </div>
     </div>
   </div>
 )
@@ -132,10 +157,16 @@ const ElevenLabsVoiceCard = ({
   voice,
   isSelected,
   onClick,
+  isPreviewing,
+  isPreviewLoading,
+  onPreview,
 }: {
   voice: ElevenLabsVoice
   isSelected: boolean
   onClick: () => void
+  isPreviewing: boolean
+  isPreviewLoading: boolean
+  onPreview: (e: React.MouseEvent) => void
 }) => (
   <div
     onClick={onClick}
@@ -165,6 +196,20 @@ const ElevenLabsVoiceCard = ({
         </div>
       </div>
       <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onPreview}
+          disabled={isPreviewLoading}
+          className={`w-7 h-7 p-0 transition-opacity ${isPreviewing ? 'opacity-100 text-purple-500' : 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-purple-500'}`}
+          title={isPreviewing ? 'Stop preview' : 'Preview voice'}
+        >
+          {isPreviewLoading
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            : isPreviewing
+              ? <Square className="w-3.5 h-3.5 fill-current" />
+              : <Play className="w-3.5 h-3.5 fill-current" />}
+        </Button>
         <CopyButton text={voice.voice_id} />
         <Button
           variant="ghost"
@@ -273,6 +318,132 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   const [elevenLabsFetched, setElevenLabsFetched] = useState(false)
   const sarvamListRef = useRef<HTMLDivElement>(null)
   const elevenLabsListRef = useRef<HTMLDivElement>(null)
+
+  // ── Audio preview state ──
+  const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null)
+  const [previewLoadingVoiceId, setPreviewLoadingVoiceId] = useState<string | null>(null)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  const stopPreview = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.src = ''
+      currentAudioRef.current = null
+    }
+    setPreviewingVoiceId(null)
+  }, [])
+
+  const handlePreview = useCallback(async (
+    e: React.MouseEvent,
+    voiceId: string,
+    provider: 'sarvam' | 'elevenlabs' | 'google',
+    extra: { speaker?: string; model?: string; languageCode?: string } = {}
+  ) => {
+    e.stopPropagation()
+
+    // Toggle off if same voice is already playing
+    if (previewingVoiceId === voiceId) {
+      stopPreview()
+      return
+    }
+
+    stopPreview()
+    setPreviewLoadingVoiceId(voiceId)
+
+    try {
+      let response: Response
+
+      if (provider === 'sarvam') {
+        response = await fetch('/api/sarvam-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: 'Hi there! This is how I sound.',
+            speaker: extra.speaker || voiceId,
+            model: extra.model || sarvamConfig.model,
+          }),
+        })
+      } else if (provider === 'elevenlabs') {
+        response = await fetch('/api/elevenlabs-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: 'Hi there! This is how I sound.',
+            voice_id: voiceId,
+          }),
+        })
+      } else {
+        response = await fetch('/api/google-tts-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: 'Hi there! This is how I sound.',
+            voiceName: voiceId,
+            languageCode: extra.languageCode,
+          }),
+        })
+      }
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Preview failed' }))
+        throw new Error(err.error || 'Preview failed')
+      }
+
+      const blob = await response.blob()
+
+      // Sanity-check: if the server sent JSON instead of audio (e.g. an error body
+      // with the wrong status code), bail early with a useful message.
+      if (blob.type.includes('json') || blob.type.includes('text')) {
+        const text = await blob.text()
+        let msg = 'Unexpected response from preview API'
+        try { msg = JSON.parse(text)?.error || msg } catch {}
+        throw new Error(msg)
+      }
+
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      currentAudioRef.current = audio
+      setPreviewingVoiceId(voiceId)
+
+      // Track whether playback actually started — onerror can fire spuriously
+      // on some browsers even during/after successful playback (e.g. when src
+      // is cleared or a benign mid-stream hiccup occurs). We only want to show
+      // an error toast if the audio never played at all.
+      let hasStartedPlaying = false
+
+      audio.onplaying = () => { hasStartedPlaying = true }
+
+      audio.onended = () => {
+        setPreviewingVoiceId(null)
+        URL.revokeObjectURL(url)
+        currentAudioRef.current = null
+      }
+
+      audio.onerror = (e) => {
+        if (hasStartedPlaying) return  // benign error after playback started — ignore
+        console.error('Audio element error:', e)
+        setPreviewingVoiceId(null)
+        URL.revokeObjectURL(url)
+        currentAudioRef.current = null
+        toast.error('Failed to play audio preview')
+      }
+
+      // play() returns a Promise — catch autoplay policy rejections
+      audio.play().catch((playErr) => {
+        if (hasStartedPlaying) return
+        console.error('Audio play() rejected:', playErr)
+        setPreviewingVoiceId(null)
+        URL.revokeObjectURL(url)
+        currentAudioRef.current = null
+        toast.error('Browser blocked audio playback — try clicking again')
+      })
+    } catch (err: any) {
+      console.error('Preview error:', err)
+      toast.error(err.message || 'Failed to preview voice')
+    } finally {
+      setPreviewLoadingVoiceId(null)
+    }
+  }, [previewingVoiceId, stopPreview, sarvamConfig.model])
 
   useEffect(() => {
     if (!elevenLabsFetched) fetchElevenLabsVoices()
@@ -451,6 +622,9 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
                         voice={voice}
                         isSelected={isSelected}
                         onClick={() => onVoiceSelect(voice.id, 'sarvam')}
+                        isPreviewing={previewingVoiceId === voice.id}
+                        isPreviewLoading={previewLoadingVoiceId === voice.id}
+                        onPreview={(e) => handlePreview(e, voice.id, 'sarvam', { speaker: voice.id, model: sarvamConfig.model })}
                       />
                     </div>
                   )
@@ -526,6 +700,9 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
                           voice={voice}
                           isSelected={isSelected}
                           onClick={() => onVoiceSelect(voice.voice_id, 'elevenlabs')}
+                          isPreviewing={previewingVoiceId === voice.voice_id}
+                          isPreviewLoading={previewLoadingVoiceId === voice.voice_id}
+                          onPreview={(e) => handlePreview(e, voice.voice_id, 'elevenlabs')}
                         />
                       </div>
                     )
