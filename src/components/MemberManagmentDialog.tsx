@@ -1,6 +1,7 @@
 // components/MemberManagementDialog.tsx
 'use client'
 import React, { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import {
   Dialog,
   DialogContent,
@@ -66,7 +67,6 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
   const [members, setMembers] = useState<Member[]>([])
   const [pendingMappings, setPendingMappings] = useState<PendingMapping[]>([])
   const [fetchingMembers, setFetchingMembers] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   // Check if current user can manage members
   const canManageMembers = project?.user_role === 'owner' || project?.user_role === 'admin'
@@ -102,12 +102,11 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
     e.preventDefault()
     
     if (!project || !email.trim()) {
-      setMessage({ type: 'error', text: 'Please enter an email address' })
+      toast.error('Please enter an email address')
       return
     }
 
     setLoading(true)
-    setMessage(null)
 
     try {
       const response = await fetch(`/api/projects/${project.id}/members`, {
@@ -129,12 +128,20 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
         throw new Error(data.error || 'Member must be logged in.')
       }
 
-      setMessage({ 
-        type: 'success', 
-        text: data.type === 'direct_add' 
-          ? 'User added to project successfully!'
-          : 'Email added! User will be added when they sign up.'
-      })
+      if (data.inviteSent === false) {
+        toast.error(
+          data.type === 'direct_add'
+            ? 'User added to project, but the invite email could not be sent. Check your email configuration.'
+            : 'User added to pending list, but the invite email could not be sent. Check your email configuration.',
+          { duration: 5000 }
+        )
+      } else {
+        toast.success(
+          data.type === 'direct_add'
+            ? 'User added to project successfully! An invite email has been sent.'
+            : 'Invite sent! User will be added when they sign up.'
+        )
+      }
       
       setEmail('')
       setRole('viewer')
@@ -144,7 +151,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
       
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Member must be logged in.'
-      setMessage({ type: 'error', text: errorMessage })
+      toast.error(errorMessage, { duration: 5000 })
     } finally {
       setLoading(false)
     }
@@ -175,7 +182,6 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
   const handleClose = () => {
     setEmail('')
     setRole('viewer')
-    setMessage(null)
     setMembers([])
     setPendingMappings([])
     onClose()
@@ -211,16 +217,6 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Add New Member</h3>
               
-              {message && (
-                <div className={`p-3 rounded-lg ${
-                  message.type === 'success' 
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
-                    : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
-                }`}>
-                  {message.text}
-                </div>
-              )}
-
               <form onSubmit={handleAddMember} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
