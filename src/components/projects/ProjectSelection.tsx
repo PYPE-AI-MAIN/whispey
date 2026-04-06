@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import TokenRegenerationConfirmDialog from '../TokenRegenerationConfirmDialog'
@@ -425,71 +426,57 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
 
   if (loading || !isAuthLoaded) {
     return (
-      <div className="h-full bg-white dark:bg-gray-900 flex flex-col">
-        <div className="max-w-7xl mx-auto px-6 py-6 w-full flex-shrink-0">
-          {/* Header Skeleton */}
+      <div className="h-full bg-background flex flex-col">
+        <div className="max-w-7xl mx-auto px-6 py-6 w-full shrink-0">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                </div>
-                <div className="h-3 w-80 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-3 w-80" />
               </div>
-              <div className="h-8 w-28 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <Skeleton className="h-8 w-28" />
             </div>
-
-            {/* Controls Skeleton */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              </div>
-              <div className="h-7 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-7 w-16" />
             </div>
           </div>
         </div>
 
-        {/* Scrollable Skeleton Content */}
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-track-gray-100 dark:scrollbar-track-gray-800 scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500">
           <div className="max-w-7xl mx-auto px-6 pb-6">
-            {/* Organisation Grid Skeleton */}
             <div className="grid gap-3 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <Card key={index}>
                   <CardContent className="p-4">
-                    {/* Header Skeleton */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse flex-shrink-0"></div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                            <div className="w-1.5 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                        <Skeleton className="w-8 h-8 shrink-0" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="w-1.5 h-1.5 rounded-full" />
                           </div>
                           <div className="flex items-center gap-1">
-                            <div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-                            <div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                            <Skeleton className="h-4 w-12 rounded-full" />
+                            <Skeleton className="h-4 w-8 rounded-full" />
                           </div>
                         </div>
                       </div>
-                      <div className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      <Skeleton className="w-6 h-6" />
                     </div>
-
-                    {/* Description Skeleton */}
                     <div className="space-y-1 mb-4">
-                      <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                      <div className="h-3 w-2/3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-2/3" />
                     </div>
-
-                    {/* Footer Skeleton */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <Skeleton className="w-3 h-3" />
+                        <Skeleton className="h-3 w-16" />
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                        <div className="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <Skeleton className="h-3 w-12" />
+                        <Skeleton className="w-3 h-3" />
                       </div>
                     </div>
                   </CardContent>

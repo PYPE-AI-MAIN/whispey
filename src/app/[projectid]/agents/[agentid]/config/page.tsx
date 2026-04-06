@@ -5,6 +5,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -712,13 +713,11 @@ const unmappedVariablesCount = useMemo(() => {
   // Loading state
   if (agentLoading || isConfigLoading) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-64"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-96"></div>
-            <div className="h-96 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          </div>
+      <div className="h-screen bg-gray-50 dark:bg-gray-950 p-6">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+          <Skeleton className="h-96 w-full" />
         </div>
       </div>
     )
