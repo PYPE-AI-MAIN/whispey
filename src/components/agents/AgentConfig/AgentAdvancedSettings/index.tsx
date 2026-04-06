@@ -16,6 +16,7 @@ import WebhookSettings from './ConfigParents/WebhookSettings'
 import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
 import DynamicTTSSwitch from '../DynamicTTSSwitch'
 import KnowledgeBaseRAGSettings from './ConfigParents/KnowledgeBaseRAGSettings'
+import ContextMemorySettings from './ConfigParents/ContextMemorySettings'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -98,6 +99,9 @@ interface AgentAdvancedSettingsProps {
         enabled: boolean
         topK: number
       }
+      contextMemory?: {
+        enabled: boolean
+      }
     }
     onFieldChange: (field: string, value: any) => void
     projectId?: string
@@ -121,7 +125,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     webhook: false,
     dropoff: false,
     ttsSwitcher: false,
-    knowledgeBase: false
+    knowledgeBase: false,
+    contextMemory: false
   })
   const [eodCopied, setEodCopied] = useState(false)
 
@@ -457,6 +462,26 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             <KnowledgeBaseRAGSettings
               enabled={advancedSettings.knowledgeBase?.enabled ?? false}
               topK={advancedSettings.knowledgeBase?.topK ?? 5}
+              onFieldChange={onFieldChange}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Context Memory */}
+        <Collapsible open={openSections.contextMemory} onOpenChange={() => toggleSection('contextMemory')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Context Memory</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.contextMemory ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <ContextMemorySettings
+              enabled={advancedSettings.contextMemory?.enabled ?? false}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>

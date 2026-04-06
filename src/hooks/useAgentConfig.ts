@@ -112,6 +112,9 @@ export interface AgentConfigResponse {
         response: string
         collection_prompt: string
       }
+      context_memory?: {
+        enabled: boolean
+      }
       background_audio?: {
         enabled: boolean
         type?: string
@@ -562,6 +565,9 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         bugEndCommands: assistant.bug_reports?.bug_end_command || [],
         initialResponse: assistant.bug_reports?.response || "",
         collectionPrompt: assistant.bug_reports?.collection_prompt || "",
+      },
+      contextMemory: {
+        enabled: assistant.context_memory?.enabled ?? false,
       },
       backgroundAudio: {
         mode: backgroundAudioMode,
