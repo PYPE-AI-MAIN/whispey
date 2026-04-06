@@ -11,6 +11,7 @@ import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from "react";
 import { GitHubStarsButton } from "../GithubLink";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface HeaderProps {
   breadcrumb?: {
@@ -90,7 +91,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                     <>
                       <ChevronRight className="w-4 h-4 text-gray-300" />
                       {isLoading ? (
-                        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                        <Skeleton className="h-4 w-24" />
                       ) : (
                         <span className="text-gray-900">
                           {breadcrumbState.project}
@@ -103,7 +104,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                     <>
                       <ChevronRight className="w-4 h-4 text-gray-300" />
                       {isLoading ? (
-                        <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                        <Skeleton className="h-4 w-32" />
                       ) : (
                         <span className="text-gray-900">
                           {breadcrumbState.item}
@@ -204,11 +205,11 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                 // Always show skeleton during SSR and initial load
                 <>
                   <div className="hidden sm:flex flex-col items-end">
-                    <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <Skeleton className="w-20 h-4" />
                   </div>
                   <div className="relative">
-                    <div className="w-9 h-9 bg-gray-200 rounded-full animate-pulse"></div>
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-gray-300 rounded-full border-2 border-white animate-pulse"></div>
+                    <Skeleton className="w-9 h-9 rounded-full" />
+                    <Skeleton className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full" />
                   </div>
                 </>
               ) : (

@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import { METRICS_LOGS_SELECT } from "./TracesTable"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio, Phone } from "lucide-react"
 
 interface ObservabilityStatsProps {
@@ -184,29 +185,27 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
 
   if (transcriptLoading) {
     return (
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-        <div className="animate-pulse">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-32"></div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-20"></div>
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center justify-between mb-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="w-4 h-4" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            ))}
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="text-center">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-8 mb-1"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-6"></div>
-                </div>
-              ))}
-            </div>
+          <div className="flex gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="text-center space-y-1">
+                <Skeleton className="h-3 w-8" />
+                <Skeleton className="h-3 w-6 mx-auto" />
+              </div>
+            ))}
           </div>
         </div>
       </div>

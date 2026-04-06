@@ -34,6 +34,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface CampaignLog {
   id: string
@@ -113,23 +114,19 @@ function useDebounce<T>(value: T, delay: number): T {
 // Skeleton for header section
 function CampaignHeaderSkeleton() {
   return (
-    <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+    <header className="px-6 py-4 border-b border-border bg-background">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="h-7 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </div>
+          <Skeleton className="h-7 w-40" />
           <div className="flex items-center gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <Skeleton key={i} className="h-8 w-20" />
             ))}
           </div>
         </div>
-
-        {/* Filters skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-9 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+            <Skeleton key={i} className="h-9 rounded-lg" />
           ))}
         </div>
       </div>
@@ -140,56 +137,44 @@ function CampaignHeaderSkeleton() {
 // Skeleton for table
 function CampaignTableSkeleton() {
   return (
-    <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-950">
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-auto">
           <div className="min-w-full" style={{ minWidth: "1500px" }}>
             <Table className="w-full">
-              <TableHeader className="sticky top-0 z-10 bg-background/95 dark:bg-gray-900/95 backdrop-blur-sm border-b-2">
-                <TableRow className="bg-muted/80 dark:bg-gray-800/80 hover:bg-muted/80 dark:hover:bg-gray-800/80">
-                  <TableHead className="w-[140px] font-semibold text-foreground dark:text-gray-100 pl-6">Phone Number</TableHead>
-                  <TableHead className="w-[140px] font-semibold text-foreground dark:text-gray-100">Alternative</TableHead>
-                  <TableHead className="w-[160px] font-semibold text-foreground dark:text-gray-100">FPO Name</TableHead>
-                  <TableHead className="w-[120px] font-semibold text-foreground dark:text-gray-100">FPO Login ID</TableHead>
-                  <TableHead className="w-[100px] font-semibold text-foreground dark:text-gray-100">Status</TableHead>
-                  <TableHead className="w-[90px] font-semibold text-foreground dark:text-gray-100">Retry Attempts</TableHead>
-                  <TableHead className="w-[200px] font-semibold text-foreground dark:text-gray-100">System Error</TableHead>
-                  <TableHead className="w-[140px] font-semibold text-foreground dark:text-gray-100 pr-6">Created At</TableHead>
+              <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2">
+                <TableRow className="bg-muted/80 hover:bg-muted/80">
+                  <TableHead className="w-[140px] font-semibold text-foreground pl-6">Phone Number</TableHead>
+                  <TableHead className="w-[140px] font-semibold text-foreground">Alternative</TableHead>
+                  <TableHead className="w-[160px] font-semibold text-foreground">FPO Name</TableHead>
+                  <TableHead className="w-[120px] font-semibold text-foreground">FPO Login ID</TableHead>
+                  <TableHead className="w-[100px] font-semibold text-foreground">Status</TableHead>
+                  <TableHead className="w-[90px] font-semibold text-foreground">Retry Attempts</TableHead>
+                  <TableHead className="w-[200px] font-semibold text-foreground">System Error</TableHead>
+                  <TableHead className="w-[140px] font-semibold text-foreground pr-6">Created At</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 10 }).map((_, index) => (
-                  <TableRow key={index} className="border-b border-border/50 dark:border-gray-700/50">
+                  <TableRow key={index} className="border-b border-border/50">
                     <TableCell className="pl-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-muted animate-pulse rounded-full"></div>
-                        <div className="h-5 w-24 bg-muted animate-pulse rounded"></div>
+                        <Skeleton className="w-8 h-8 rounded-full" />
+                        <Skeleton className="h-5 w-24" />
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
-                      <div className="h-4 w-16 bg-muted animate-pulse rounded"></div>
-                    </TableCell>
+                    <TableCell className="py-4"><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell className="py-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-muted animate-pulse rounded"></div>
-                        <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
+                        <Skeleton className="w-3 h-3" />
+                        <Skeleton className="h-4 w-20" />
                       </div>
                     </TableCell>
-                    <TableCell className="py-4">
-                      <div className="h-5 w-16 bg-muted animate-pulse rounded"></div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="h-6 w-20 bg-muted animate-pulse rounded-full"></div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="h-4 w-8 bg-muted animate-pulse rounded"></div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="h-4 w-8 bg-muted animate-pulse rounded"></div>
-                    </TableCell>
-                    <TableCell className="py-4 pr-6">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
-                    </TableCell>
+                    <TableCell className="py-4"><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell className="py-4"><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                    <TableCell className="py-4"><Skeleton className="h-4 w-8" /></TableCell>
+                    <TableCell className="py-4"><Skeleton className="h-4 w-8" /></TableCell>
+                    <TableCell className="py-4 pr-6"><Skeleton className="h-4 w-28" /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
