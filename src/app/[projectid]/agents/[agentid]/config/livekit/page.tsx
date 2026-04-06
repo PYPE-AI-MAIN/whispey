@@ -1,9 +1,11 @@
-// src/app/[projectid]/agents/[agentid]/config/livekit/page.tsx
+// src/app/[projectid]/agents/[agentid]/config/page.tsx
+'use client'
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -44,7 +46,7 @@ import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgen
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
-import TalkToAssistant from '@/components/agents/TalkToAssistant'
+import TalkToAssistant from '@/components/agents/TalkToAssistant' 
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
 import { VariableTextarea } from '@/components/agents/variables/VariableTextarea'
 import { VariableValidationIndicator } from '@/components/agents/variables/VariableErrorDisplay'
@@ -235,19 +237,9 @@ export default function AgentConfig() {
 
   // Tracks loading across BOTH the deploy call AND the subsequent refetch
   const [isSaving, setIsSaving] = useState(false)
-  // Holds the last-deployed config so user can optionally save it as a checkpoint
-  const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
-  const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
-  const [isCheckpointExiting, setIsCheckpointExiting] = useState(false)
 
-  // Auto-dismiss checkpoint banner after 15 seconds if no action taken
-  useEffect(() => {
-    if (!pendingCheckpoint) return
-    setIsCheckpointExiting(false)
-    const exitT = setTimeout(() => setIsCheckpointExiting(true), 14_700)
-    const t = setTimeout(() => setPendingCheckpoint(null), 15_000)
-    return () => { clearTimeout(exitT); clearTimeout(t) }
-  }, [pendingCheckpoint])
+  const [flashEndCall, setFlashEndCall] = useState(false)
+  const isTalkToAssistantSessionActiveRef = useRef(false)
   
   // Agent status state
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
@@ -599,33 +591,16 @@ export default function AgentConfig() {
     try {
       await saveAndDeploy.mutateAsync(payload)
       await refetchConfig()
-      // Offer checkpoint — show the floating bar
-      setPendingCheckpoint({ config: payload, userEmail, userId })
+      // Auto-save a version on every deploy (fire-and-forget, retention enforced server-side)
+      fetch(`/api/agents/${agentid}/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: payload, userEmail, userId }),
+      }).catch((err) => console.error('[checkpoint] Auto-save failed:', err))
     } catch (error) {
       console.error('❌ Error during save and deploy:', error)
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handleSaveCheckpoint = async () => {
-    if (!pendingCheckpoint) return
-    setIsSavingCheckpoint(true)
-    try {
-      const res = await fetch(`/api/agents/${agentid}/history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pendingCheckpoint),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        console.error('[checkpoint] Save failed:', err.message)
-      }
-    } catch (err) {
-      console.error('[checkpoint] Unexpected error:', err)
-    } finally {
-      setIsSavingCheckpoint(false)
-      setPendingCheckpoint(null)
     }
   }
 
@@ -738,13 +713,11 @@ const unmappedVariablesCount = useMemo(() => {
   // Loading state
   if (agentLoading || isConfigLoading) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-64"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-96"></div>
-            <div className="h-96 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          </div>
+      <div className="h-screen bg-gray-50 dark:bg-gray-950 p-6">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+          <Skeleton className="h-96 w-full" />
         </div>
       </div>
     )
@@ -1036,7 +1009,16 @@ const unmappedVariablesCount = useMemo(() => {
               </Button>
             )}
 
-            <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
+            <Sheet
+              open={isTalkToAssistantOpen}
+              onOpenChange={(open) => {
+                if (!open && isTalkToAssistantSessionActiveRef.current) {
+                  setFlashEndCall(true)
+                  return
+                }
+                setIsTalkToAssistantOpen(open)
+              }}
+            >
               <SheetHeader className="sr-only">
                 <SheetTitle>Talk to Assistant</SheetTitle>
               </SheetHeader>
@@ -1051,13 +1033,36 @@ const unmappedVariablesCount = useMemo(() => {
                   Talk to Assistant
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-96 p-0">
+              <SheetContent
+                side="right"
+                className="w-full sm:w-96 p-0"
+                onInteractOutside={(e) => {
+                  if (isTalkToAssistantSessionActiveRef.current) {
+                    e.preventDefault()
+                    setFlashEndCall(true)
+                    // Refocus the input after blocking the outside click
+                    setTimeout(() => {
+                      const input = document.querySelector('[data-talk-input]') as HTMLInputElement
+                      input?.focus()
+                    }, 0)
+                  }
+                }}
+                onEscapeKeyDown={(e) => {
+                  if (isTalkToAssistantSessionActiveRef.current) {
+                    e.preventDefault()
+                    setFlashEndCall(true)
+                  }
+                }}
+              >
                 <TalkToAssistant
                   agentName={activeAgentName || ''}
                   isOpen={isTalkToAssistantOpen}
                   onClose={() => setIsTalkToAssistantOpen(false)}
                   agentStatus={agentStatus}
                   onAgentStatusChange={checkAgentStatus}
+                  flashEndCall={flashEndCall}
+                  onFlashEndCallDone={() => setFlashEndCall(false)}
+                  onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
                 />
               </SheetContent>
             </Sheet>
@@ -1365,8 +1370,37 @@ const unmappedVariablesCount = useMemo(() => {
       </div>
 
       {/* Mobile Sheets */}
-      <Sheet open={isTalkToAssistantOpen} onOpenChange={setIsTalkToAssistantOpen}>
-        <SheetContent side="right" className="w-full sm:w-96 p-0">
+      <Sheet
+        open={isTalkToAssistantOpen}
+        onOpenChange={(open) => {
+          if (!open && isTalkToAssistantSessionActiveRef.current) {
+            setFlashEndCall(true)
+            return
+          }
+          setIsTalkToAssistantOpen(open)
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:w-96 p-0"
+          onInteractOutside={(e) => {
+            if (isTalkToAssistantSessionActiveRef.current) {
+              e.preventDefault()
+              setFlashEndCall(true)
+              // Refocus the input after blocking the outside click
+              setTimeout(() => {
+                const input = document.querySelector('[data-talk-input]') as HTMLInputElement
+                input?.focus()
+              }, 0)
+            }
+          }}
+          onEscapeKeyDown={(e) => {
+            if (isTalkToAssistantSessionActiveRef.current) {
+              e.preventDefault()
+              setFlashEndCall(true)
+            }
+          }}
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Talk to Assistant</SheetTitle>
           </SheetHeader>
@@ -1376,6 +1410,9 @@ const unmappedVariablesCount = useMemo(() => {
             onClose={() => setIsTalkToAssistantOpen(false)}
             agentStatus={agentStatus}
             onAgentStatusChange={checkAgentStatus}
+            flashEndCall={flashEndCall}
+            onFlashEndCallDone={() => setFlashEndCall(false)}
+            onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
           />
         </SheetContent>
       </Sheet>
@@ -1449,45 +1486,6 @@ const unmappedVariablesCount = useMemo(() => {
         agentId={agentid}
       />
 
-      {/* Version prompt — appears after every successful deploy, anchored below the header */}
-      {pendingCheckpoint && (
-        <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
-          {/* Inner: relative so the absolute progress bar anchors to it */}
-          <div className={`relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap ${isCheckpointExiting ? 'animate-out slide-out-to-top-4 fade-out duration-300 fill-mode-forwards' : 'animate-in slide-in-from-top-4 duration-300'}`}>
-            {/* Progress bar — spans 100% of card width, shrinks to 0 over 15 s */}
-            <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
-              <div
-                className="h-full bg-primary"
-                style={{ animation: 'version-progress 15s linear forwards' }}
-              />
-            </div>
-            {/* Content — pt-4 gives room for the 3px bar */}
-            <div className="flex items-center gap-3 px-4 pt-4 pb-3 text-sm">
-              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-foreground text-xs">Config deployed. Save as a version?</span>
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={handleSaveCheckpoint}
-                disabled={isSavingCheckpoint}
-              >
-                {isSavingCheckpoint ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save version'}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-muted-foreground"
-                onClick={() => { setIsCheckpointExiting(true); setTimeout(() => setPendingCheckpoint(null), 300) }}
-                disabled={isSavingCheckpoint}
-              >
-                Skip
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
