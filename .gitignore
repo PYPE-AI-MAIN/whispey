@@ -11,6 +11,7 @@
 !.yarn/versions
 .env
 # testing
+.claude
 /coverage
 /.source/
 

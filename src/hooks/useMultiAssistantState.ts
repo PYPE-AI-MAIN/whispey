@@ -407,6 +407,9 @@ export function useMultiAssistantState({
           response: formValues.advancedSettings?.bugs?.initialResponse || getFallback(null, 'bug_reports.response'),
           collection_prompt: formValues.advancedSettings?.bugs?.collectionPrompt || getFallback(null, 'bug_reports.collection_prompt')
         },
+        context_memory: {
+          enabled: formValues.advancedSettings?.contextMemory?.enabled ?? false
+        },
         interruptions: {
           allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
           min_interruption_duration: formValues.advancedSettings?.interruption?.minInterruptionDuration ?? getFallback(null, 'interruptions.min_interruption_duration'),
@@ -704,6 +707,9 @@ export function useMultiAssistantState({
           bug_end_command: formValues.advancedSettings?.bugs?.bugEndCommands || getFallback(null, 'bug_reports.bug_end_command'),
           response: formValues.advancedSettings?.bugs?.initialResponse || getFallback(null, 'bug_reports.response'),
           collection_prompt: formValues.advancedSettings?.bugs?.collectionPrompt || getFallback(null, 'bug_reports.collection_prompt')
+        },
+        context_memory: {
+          enabled: formValues.advancedSettings?.contextMemory?.enabled ?? false
         },
         interruptions: {
           allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
