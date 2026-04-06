@@ -127,6 +127,11 @@ export const AGENT_DEFAULT_CONFIG = {
       bug_end_command: [],
       response: "",
       collection_prompt: ""
+    },
+
+    // Context Memory Configuration (disabled by default)
+    context_memory: {
+      enabled: false
     }
   }
   

@@ -392,6 +392,9 @@ function transformFormDataToAgentConfig(formData: any) {
             response: formikValues.advancedSettings.bugs.initialResponse,
             collection_prompt: formikValues.advancedSettings.bugs.collectionPrompt
           },
+          context_memory: {
+            enabled: formikValues.advancedSettings.contextMemory?.enabled ?? false
+          },
           turn_detection: formikValues.advancedSettings.session.turn_detection,
           session_behavior: {
             preemptive_generation: formikValues.advancedSettings.session.preemptiveGeneration || 'disabled',
