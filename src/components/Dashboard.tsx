@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -83,8 +84,8 @@ const formatShort = (date: Date) =>
 function AgentHeaderSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className={`${isMobile ? 'h-6 w-32' : 'h-8 w-40'} bg-gray-200 dark:bg-gray-700 rounded animate-pulse`}></div>
-      <div className={`${isMobile ? 'h-5 w-16' : 'h-6 w-20'} bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse`}></div>
+      <Skeleton className={isMobile ? 'h-6 w-32' : 'h-8 w-40'} />
+      <Skeleton className={`${isMobile ? 'h-5 w-16' : 'h-6 w-20'} rounded-full`} />
     </div>
   )
 }
@@ -533,7 +534,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
               {/* VAPI button - show skeleton or button based on agent data */}
              {agentLoading ? (
-                <div className={`${isMobile ? 'h-8 w-24' : 'h-9 w-32'} bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse ml-4`}></div>
+                <Skeleton className={`${isMobile ? 'h-8 w-24' : 'h-9 w-32'} rounded-lg ml-4`} />
               ) : isVapiAgent ? (
                 <div className="relative">
                   <Button
@@ -690,8 +691,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     <div className="flex gap-2">
                       {agentLoading ? (
                         <>
-                          <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                          <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                          <Skeleton className="h-9 w-32 rounded-lg" />
+                          <Skeleton className="h-9 w-24 rounded-lg" />
                         </>
                       ) : agent && (canSeeFieldExtractor || canSeeMetrics) ? (
                         <>

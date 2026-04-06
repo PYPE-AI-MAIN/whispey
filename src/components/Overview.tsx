@@ -52,6 +52,7 @@ import { Button } from './ui/button'
 import Papa from 'papaparse'
 import { useTheme } from 'next-themes'
 import { useMobile } from '@/hooks/use-mobile'
+import { Skeleton } from './ui/skeleton'
 import { MetricGroupTabs } from './MetricGroupTabs'
 import { MetricGroupManager } from './MetricGroupManager'
 import { MetricGroupService } from '@/services/metricGroupService'
@@ -139,16 +140,16 @@ function MetricsGridSkeleton({ role, isMobile }: { role: string | null; isMobile
     <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-6 gap-4'}`}>
       {Array.from({ length: getVisibleCardCount() }).map((_, index) => (
         <div key={index} className="group">
-          <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
             <div className={isMobile ? 'p-3' : 'p-5'}>
               <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                <div className={`${isMobile ? 'w-7 h-7' : 'w-9 h-9'} bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse`}></div>
-                <div className={`${isMobile ? 'w-8 h-4' : 'w-12 h-5'} bg-gray-100 dark:bg-gray-700 rounded animate-pulse`}></div>
+                <Skeleton className={`${isMobile ? 'w-7 h-7' : 'w-9 h-9'} rounded-lg`} />
+                <Skeleton className={`${isMobile ? 'w-8 h-4' : 'w-12 h-5'}`} />
               </div>
               <div className="space-y-1">
-                <div className={`${isMobile ? 'h-2 w-16' : 'h-3 w-20'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
-                <div className={`${isMobile ? 'h-6 w-12' : 'h-8 w-16'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
-                <div className={`${isMobile ? 'h-2 w-12' : 'h-3 w-16'} bg-gray-100 dark:bg-gray-700 animate-pulse rounded`}></div>
+                <Skeleton className={`${isMobile ? 'h-2 w-16' : 'h-3 w-20'}`} />
+                <Skeleton className={`${isMobile ? 'h-6 w-12' : 'h-8 w-16'}`} />
+                <Skeleton className={`${isMobile ? 'h-2 w-12' : 'h-3 w-16'}`} />
               </div>
             </div>
           </div>
@@ -162,26 +163,24 @@ function ChartGridSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm">
-          <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
+        <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+          <div className={`border-b border-gray-200 dark:border-gray-800 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`${isMobile ? 'w-7 h-7' : 'w-9 h-9'} bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse`}></div>
-                <div>
-                  <div className={`${isMobile ? 'h-4 w-24 mb-1' : 'h-5 w-32 mb-2'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
-                  <div className={`${isMobile ? 'h-3 w-32' : 'h-4 w-48'} bg-gray-100 dark:bg-gray-700 animate-pulse rounded`}></div>
+                <Skeleton className={`${isMobile ? 'w-7 h-7' : 'w-9 h-9'} rounded-lg`} />
+                <div className="space-y-1.5">
+                  <Skeleton className={isMobile ? 'h-4 w-24' : 'h-5 w-32'} />
+                  <Skeleton className={isMobile ? 'h-3 w-32' : 'h-4 w-48'} />
                 </div>
               </div>
-              <div className="text-right">
-                <div className={`${isMobile ? 'h-3 w-8 mb-1' : 'h-4 w-12 mb-1'} bg-gray-100 dark:bg-gray-700 animate-pulse rounded`}></div>
-                <div className={`${isMobile ? 'h-4 w-6' : 'h-5 w-8'} bg-gray-200 dark:bg-gray-600 animate-pulse rounded`}></div>
+              <div className="text-right space-y-1.5">
+                <Skeleton className={isMobile ? 'h-3 w-8' : 'h-4 w-12'} />
+                <Skeleton className={isMobile ? 'h-4 w-6' : 'h-5 w-8'} />
               </div>
             </div>
           </div>
           <div className={isMobile ? 'p-4' : 'p-7'}>
-            <div className={`${isMobile ? 'h-48' : 'h-80'} bg-gray-50 dark:bg-gray-800 rounded-lg animate-pulse flex items-center justify-center`}>
-              <Loader2 className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} animate-spin text-gray-400 dark:text-gray-500`} />
-            </div>
+            <Skeleton className={`${isMobile ? 'h-48' : 'h-80'} w-full rounded-lg`} />
           </div>
         </div>
       ))}
@@ -538,7 +537,7 @@ const Overview: React.FC<OverviewProps> = ({
 
   if (parentLoading || roleLoading || analyticsLoading) {
     return (
-      <div className="h-full bg-gray-50 dark:bg-gray-900">
+      <div className="h-full bg-gray-50 dark:bg-gray-950">
         <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-8 space-y-8'}`}>
           <MetricsGridSkeleton role={role} isMobile={isMobile} />
           <ChartGridSkeleton isMobile={isMobile} />
