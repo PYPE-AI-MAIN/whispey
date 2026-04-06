@@ -1,39 +1,39 @@
+import { Skeleton } from '@/components/ui/skeleton'
+
 export default function ObservabilityLoading() {
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm flex-shrink-0">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm shrink-0">
         <div className="px-4 py-2">
           <div className="flex items-center gap-2">
-            {/* Back button skeleton */}
-            <div className="w-7 h-7 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" />
-            {/* Title skeleton */}
-            <div className="w-28 h-5 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <Skeleton className="w-7 h-7 rounded-lg" />
+            <Skeleton className="w-28 h-5" />
           </div>
         </div>
       </div>
 
       {/* Stats bar */}
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
-        <div className="animate-pulse space-y-3">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-32" />
-            <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-20" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-20" />
           </div>
           <div className="flex items-center justify-between">
             <div className="flex gap-6">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded" />
-                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-14" />
+                  <Skeleton className="w-4 h-4" />
+                  <Skeleton className="h-4 w-14" />
                 </div>
               ))}
             </div>
             <div className="flex gap-4">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="text-center">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-10 mb-1" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-6 mx-auto" />
+                <div key={i} className="text-center space-y-1">
+                  <Skeleton className="h-3 w-10" />
+                  <Skeleton className="h-3 w-6 mx-auto" />
                 </div>
               ))}
             </div>
@@ -44,14 +44,10 @@ export default function ObservabilityLoading() {
       {/* Traces table */}
       <div className="flex-1 overflow-hidden">
         {/* Table header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-2">
           <div className="flex items-center gap-4">
             {[120, 80, 100, 80, 60].map((w, i) => (
-              <div
-                key={i}
-                className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
-                style={{ width: w }}
-              />
+              <Skeleton key={i} className="h-3" style={{ width: w }} />
             ))}
           </div>
         </div>
@@ -61,20 +57,15 @@ export default function ObservabilityLoading() {
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-gray-900 animate-pulse"
+              className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-gray-900"
               style={{ animationDelay: `${i * 40}ms` }}
             >
-              {/* Role badge */}
-              <div className="w-16 h-5 bg-gray-200 dark:bg-gray-700 rounded-full" />
-              {/* Message content */}
+              <Skeleton className="w-16 h-5 rounded-full shrink-0" />
               <div className="flex-1 flex flex-col gap-1.5">
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded" style={{ width: `${60 + (i % 3) * 15}%` }} />
-                {i % 2 === 0 && (
-                  <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/3" />
-                )}
+                <Skeleton className="h-3" style={{ width: `${60 + (i % 3) * 15}%` }} />
+                {i % 2 === 0 && <Skeleton className="h-3 w-1/3" />}
               </div>
-              {/* Timestamp */}
-              <div className="w-20 h-3 bg-gray-200 dark:bg-gray-700 rounded shrink-0" />
+              <Skeleton className="w-20 h-3 shrink-0" />
             </div>
           ))}
         </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Volume2, Sparkles, Settings, RotateCcw } from 'lucide-react'
@@ -476,8 +477,8 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     if (selectedVoice && (!elevenLabsFetched || isLoadingElevenLabs)) {
       return (
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          <div className="w-16 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          <Skeleton className="w-3 h-3" />
+          <Skeleton className="w-16 h-3" />
         </div>
       )
     }
