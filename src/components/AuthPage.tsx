@@ -4,7 +4,11 @@ import { SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
 import { Mic, Sparkles, Shield, Zap } from 'lucide-react';
 
-export default function AuthPage() {
+interface AuthPageProps {
+  redirectUrl?: string
+}
+
+export default function AuthPage({ redirectUrl }: AuthPageProps) {
   return (
     <div className="h-screen bg-white flex overflow-hidden">
       {/* Left Side - Branding & Value Proposition */}
@@ -117,7 +121,7 @@ export default function AuthPage() {
                   socialButtonsPlacement: "top"
                 }
               }}
-              redirectUrl="/projects"
+              redirectUrl={redirectUrl ?? '/projects'}
             />
           </div>
 

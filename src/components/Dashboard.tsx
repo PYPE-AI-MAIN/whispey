@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -45,6 +46,7 @@ import { useMobile } from '@/hooks/use-mobile'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
+import { useCallLogsStore, DEFAULT_DATE_FILTER } from '@/stores/callLogsStore'
 
 interface DashboardProps {
   agentId: string
@@ -75,12 +77,15 @@ const formatDateISO = (date: Date) => {
   return date.toISOString().split('T')[0]
 }
 
+const formatShort = (date: Date) =>
+  date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
 // Component for skeleton when agent data is loading
 function AgentHeaderSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className={`${isMobile ? 'h-6 w-32' : 'h-8 w-40'} bg-gray-200 dark:bg-gray-700 rounded animate-pulse`}></div>
-      <div className={`${isMobile ? 'h-5 w-16' : 'h-6 w-20'} bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse`}></div>
+      <Skeleton className={isMobile ? 'h-6 w-32' : 'h-8 w-40'} />
+      <Skeleton className={`${isMobile ? 'h-5 w-16' : 'h-6 w-20'} rounded-full`} />
     </div>
   )
 }
@@ -110,7 +115,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // projectid comes from the URL path — always available, no async needed
   const routeParams = useParams()
   const routeProjectId = Array.isArray(routeParams?.projectid) ? routeParams.projectid[0] : (routeParams?.projectid as string | undefined)
-  const projectId = searchParams.get('projectid')
   const { isMobile } = useMobile(768)
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
@@ -126,25 +130,25 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const [retellStatusLoading, setRetellStatusLoading] = useState(false)
   const [connectingRetellWebhook, setConnectingRetellWebhook] = useState(false)
   
-  // Date filter state — seeded from URL so it survives navigation away and back.
-  // All three useState calls use lazy initialisers so the URL is only read once
-  // (on mount) rather than on every re-render.
-  const [quickFilter, setQuickFilter] = useState<string>(
-    () => searchParams.get('filter') || '7d'
-  )
-  const [isCustomRange, setIsCustomRange] = useState<boolean>(
-    () => !!(searchParams.get('dateFrom') && searchParams.get('dateTo'))
-  )
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const urlDateFrom = searchParams.get('dateFrom')
-    const urlDateTo   = searchParams.get('dateTo')
-    if (urlDateFrom && urlDateTo) {
-      return { from: new Date(urlDateFrom), to: new Date(urlDateTo) }
+  // Date filter state — stored in Zustand (persisted) so it survives navigation.
+  const { dateFilterByAgent, setDateFilterForAgent } = useCallLogsStore()
+  const storedDateFilter = dateFilterByAgent[agentId] ?? DEFAULT_DATE_FILTER
+
+  const quickFilter   = storedDateFilter.quickFilter
+  const isCustomRange = storedDateFilter.isCustomRange
+
+  // Stable date range — computed once from the store value, not from `new Date()` on
+  // every render. Using useMemo keeps the object reference stable so downstream memos
+  // and query keys don't see a new object every tick.
+  const dateRange: DateRange = React.useMemo(() => {
+    if (isCustomRange && storedDateFilter.dateFrom && storedDateFilter.dateTo) {
+      return { from: new Date(storedDateFilter.dateFrom), to: new Date(storedDateFilter.dateTo) }
     }
-    const filter = searchParams.get('filter') || '7d'
-    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[filter] ?? 7
-    return { from: subDays(new Date(), days), to: new Date() }
-  })
+    const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
+    const to   = new Date()
+    return { from: subDays(to, days), to }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickFilter, isCustomRange, storedDateFilter.dateFrom, storedDateFilter.dateTo])
 
   const activeTab = searchParams.get('tab') || 'overview'
   
@@ -154,23 +158,13 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     { id: '30d', label: '30D', days: 30 }
   ]
 
-  // Date range for API calls - works immediately
-  const apiDateRange = React.useMemo(() => {
-    if (isCustomRange && dateRange.from && dateRange.to) {
-      return {
-        from: formatDateISO(dateRange.from),
-        to: formatDateISO(dateRange.to)
-      }
-    }
-    
-    const days = quickFilters.find(f => f.id === quickFilter)?.days || 7
-    const endDate = new Date()
-    const startDate = subDays(endDate, days)
-    return {
-      from: formatDateISO(startDate),
-      to: formatDateISO(endDate)
-    }
-  }, [quickFilter, dateRange, isCustomRange])
+  // Date range for API calls — always day-precision strings derived from the stable
+  // dateRange object above, so query keys only change when the user actually picks
+  // a new date (not on every render).
+  const apiDateRange = React.useMemo(() => ({
+    from: formatDateISO(dateRange.from!),
+    to:   formatDateISO(dateRange.to!),
+  }), [dateRange])
 
   // Fetch agent via API so viewers get role-based response (no field_extractor/metrics data)
   const { data: agentData, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useAgentById(agentId)
@@ -265,27 +259,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
 
 
-  // Date filter handlers - work immediately
+  // Date filter handlers — write to Zustand store (persisted across navigation)
   const handleQuickFilter = (filterId: string) => {
-    setQuickFilter(filterId)
-    setIsCustomRange(false)
-    
-    const days = quickFilters.find(f => f.id === filterId)?.days || 7
-    const endDate = new Date()
-    const startDate = subDays(endDate, days)
-    setDateRange({ from: startDate, to: endDate })
+    setDateFilterForAgent(agentId, {
+      quickFilter: filterId,
+      isCustomRange: false,
+    })
 
-    // Persist in URL so the selection survives navigating away and back.
-    // Use routeProjectId (from path params) so this never blocks on agent load.
-    const pid = routeProjectId ?? agent?.project_id
-    if (pid) {
-      const current = new URLSearchParams(Array.from(searchParams.entries()))
-      current.set('filter', filterId)
-      current.delete('dateFrom')
-      current.delete('dateTo')
-      router.replace(`/${pid}/agents/${agentId}?${current.toString()}`)
-    }
-    
     if (isMobile) {
       setShowMobileMenu(false)
     }
@@ -293,20 +273,12 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
-      setDateRange(range)
-      setIsCustomRange(true)
-      setQuickFilter('')
-
-      // Persist custom date range in URL.
-      // Use routeProjectId (from path params) so this never blocks on agent load.
-      const pid = routeProjectId ?? agent?.project_id
-      if (pid) {
-        const current = new URLSearchParams(Array.from(searchParams.entries()))
-        current.delete('filter')
-        current.set('dateFrom', formatDateISO(range.from))
-        current.set('dateTo', formatDateISO(range.to))
-        router.replace(`/${pid}/agents/${agentId}?${current.toString()}`)
-      }
+      setDateFilterForAgent(agentId, {
+        quickFilter: '',
+        isCustomRange: true,
+        dateFrom: formatDateISO(range.from),
+        dateTo: formatDateISO(range.to),
+      })
     }
   }
 
@@ -319,17 +291,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   }
 
   const handleTabChange = (tab: string) => {
-    const current = new URLSearchParams(Array.from(searchParams.entries()))
-    current.set('tab', tab)
-    const search = current.toString()
-    const query = search ? `?${search}` : ""
-    
-    // Use the full path with projectId
-    if (agent?.project_id) {
-      router.push(`/${agent.project_id}/agents/${agentId}${query}`)
+    const pid = routeProjectId ?? agent?.project_id
+    if (pid) {
+      router.push(`/${pid}/agents/${agentId}?tab=${tab}`)
     }
-    
-    // Close mobile menu after tab change
+
     if (isMobile) {
       setShowMobileMenu(false)
     }
@@ -450,7 +416,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   }, [checkVapiStatus, isVapiAgent, agent?.id])
 
   // All tabs — overview and logs are always present; campaign-logs only for enhanced projects
+  // Desktop header pills — only extra tabs like Campaign Logs (Overview/Logs nav is in the sub-tab bar)
   const tabs = [
+    ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
+  ]
+
+  // Full tab list used in the desktop sub-tab bar and the mobile menu
+  const mobileTabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'logs',     label: 'All Logs', icon: List },
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
@@ -537,8 +509,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 )}
               </div>
 
-              {/* Tab Navigation */}
-              {!isMobile && agent && (
+              {/* Tab Navigation — header pills only for extra tabs (e.g. Campaign Logs) */}
+              {!isMobile && agent && tabs.length > 0 && (
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-6">
                   {tabs.map((tab) => {
                     const Icon = tab.icon
@@ -562,7 +534,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
               {/* VAPI button - show skeleton or button based on agent data */}
              {agentLoading ? (
-                <div className={`${isMobile ? 'h-8 w-24' : 'h-9 w-32'} bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse ml-4`}></div>
+                <Skeleton className={`${isMobile ? 'h-8 w-24' : 'h-9 w-32'} rounded-lg ml-4`} />
               ) : isVapiAgent ? (
                 <div className="relative">
                   <Button
@@ -694,8 +666,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                                 : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
                             }`}
                           >
-                            <CalendarDays className="mr-2 h-4 w-4" />
-                            Custom
+                            <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                            {isCustomRange && dateRange.from && dateRange.to
+                              ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
+                              : 'Custom'
+                            }
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
@@ -716,8 +691,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     <div className="flex gap-2">
                       {agentLoading ? (
                         <>
-                          <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                          <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+                          <Skeleton className="h-9 w-32 rounded-lg" />
+                          <Skeleton className="h-9 w-24 rounded-lg" />
                         </>
                       ) : agent && (canSeeFieldExtractor || canSeeMetrics) ? (
                         <>
@@ -784,7 +759,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 <div>
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
                   <div className="space-y-1">
-                    {tabs.map((tab) => {
+                    {mobileTabs.map((tab) => {
                       const Icon = tab.icon
                       return (
                         <button
@@ -835,8 +810,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                             : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                         }`}
                       >
-                        <CalendarDays className="h-3 w-3" />
-                        Custom
+                        <CalendarDays className="h-3 w-3 shrink-0" />
+                        {isCustomRange && dateRange.from && dateRange.to
+                          ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
+                          : 'Custom'
+                        }
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end">

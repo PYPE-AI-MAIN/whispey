@@ -77,12 +77,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     if (eventType === 'user.created') {
       const { email_addresses, first_name, last_name, image_url } = evt.data
+      const userEmail = email_addresses[0]?.email_address || ''
 
       console.log('✅ Creating new user in database')
 
       const { data, error } = await supabase.from('pype_voice_users').insert({
         clerk_id: id,
-        email: email_addresses[0]?.email_address || '',
+        email: userEmail,
         first_name: first_name,
         last_name: last_name,
         profile_image_url: image_url,
@@ -94,6 +95,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       console.log('🎉 User created successfully:', data)
+
+      // Link any pending invite mappings for this email
+      // Non-fatal — user still has access via email-based lookup even if this fails
+      try {
+        const { error: linkError } = await supabase
+          .from('pype_voice_email_project_mapping')
+          .update({ clerk_id: id })
+          .eq('email', userEmail)
+          .is('clerk_id', null)
+          .eq('is_active', true)
+
+        if (linkError) {
+          console.error('⚠️ Failed to link pending invites for', userEmail, linkError)
+        } else {
+          console.log('🔗 Linked pending invites for', userEmail)
+        }
+      } catch (linkErr) {
+        console.error('⚠️ Error linking pending invites for', userEmail, linkErr)
+      }
     }
 
     if (eventType === 'user.updated') {

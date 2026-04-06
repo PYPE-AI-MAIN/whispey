@@ -8,6 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { 
   ArrowLeft,
   Activity,
@@ -624,11 +625,11 @@ export default function Sidebar({
         <div className="border-t border-gray-100 dark:border-gray-800 p-3">
           {!mounted || !isLoaded ? (
             <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? 'justify-center' : ''}`}>
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse flex-shrink-0" />
+              <Skeleton className="w-8 h-8 rounded-full shrink-0" />
               {(!isCollapsed || isMobile) && (
-                <div className="min-w-0 flex-1">
-                  <div className="w-16 h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-1" />
-                  <div className="w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="w-16 h-3" />
+                  <Skeleton className="w-12 h-2" />
                 </div>
               )}
             </div>

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -138,6 +138,52 @@ const OPERATIONS = {
   ]
 }
 
+/** Build sorted operations from props (legacy migration + distinct). */
+function buildOperationsFromProps(
+  initialFilters: FilterOperation[],
+  distinctConfig?: DistinctConfig
+): FilterOperation[] {
+  const migratedOperations: FilterOperation[] = []
+
+  initialFilters.forEach((op: any) => {
+    if (op.type === 'filter' || op.type === 'distinct') {
+      migratedOperations.push(op)
+    } else if (op.operation) {
+      migratedOperations.push({
+        id: op.id || `filter-${Date.now()}-${Math.random()}`,
+        type: 'filter',
+        column: op.column,
+        operation: op.operation,
+        value: op.value,
+        jsonField: op.jsonField,
+        order: op.order ?? 0
+      })
+    }
+  })
+
+  if (distinctConfig && !migratedOperations.some(op => op.type === 'distinct')) {
+    const maxOrder = migratedOperations.length > 0
+      ? Math.max(...migratedOperations.map(op => op.order))
+      : -1
+
+    migratedOperations.push({
+      id: `distinct-${Date.now()}`,
+      type: 'distinct',
+      column: distinctConfig.column,
+      jsonField: distinctConfig.jsonField,
+      sortOrder: distinctConfig.order,
+      order: maxOrder + 1
+    })
+  }
+
+  const operationsWithOrder = migratedOperations.map((op, index) => ({
+    ...op,
+    order: op.order !== undefined ? op.order : index
+  }))
+
+  return [...operationsWithOrder].sort((a, b) => a.order - b.order)
+}
+
 const CallFilter: React.FC<CallFilterProps> = ({ 
   onFiltersChange, 
   onClear, 
@@ -175,65 +221,27 @@ const CallFilter: React.FC<CallFilterProps> = ({
   })
   const [selectedDate, setSelectedDate] = useState<Date>()
 
-  // Migrate legacy data to operations on mount
-  useEffect(() => {
-    let migratedOperations: FilterOperation[] = []
-    
-    // Migrate legacy FilterRule[] to FilterOperation[]
-    initialFilters.forEach((op: any) => {
-      // If it's already a FilterOperation, use it
-      if (op.type === 'filter' || op.type === 'distinct') {
-        migratedOperations.push(op)
-      } 
-      // If it's a legacy FilterRule (has 'operation' field but no 'type'), convert it
-      else if (op.operation) {
-        migratedOperations.push({
-          id: op.id || `filter-${Date.now()}-${Math.random()}`,
-          type: 'filter',
-          column: op.column,
-          operation: op.operation,
-          value: op.value,
-          jsonField: op.jsonField,
-          order: op.order ?? 0
-        })
-      }
-    })
-    
-    // If we have legacy distinctConfig, convert it to a distinct operation
-    if (distinctConfig && !migratedOperations.some(op => op.type === 'distinct')) {
-      const maxOrder = migratedOperations.length > 0 
-        ? Math.max(...migratedOperations.map(op => op.order)) 
-        : -1
-      
-      const distinctOperation: FilterOperation = {
-        id: `distinct-${Date.now()}`,
-        type: 'distinct',
-        column: distinctConfig.column,
-        jsonField: distinctConfig.jsonField,
-        sortOrder: distinctConfig.order,
-        order: maxOrder + 1
-      }
-      migratedOperations.push(distinctOperation)
-    }
-    
-    // Ensure all operations have order
-    const operationsWithOrder = migratedOperations.map((op, index) => ({
-      ...op,
-      order: op.order !== undefined ? op.order : index
-    }))
-    
-    // Sort by order
-    const sortedOperations = [...operationsWithOrder].sort((a, b) => a.order - b.order)
-    setOperations(sortedOperations)
-  }, [initialFilters, distinctConfig])
+  const prevIsOpenRef = useRef(false)
 
-  // Reset local state when popover closes without saving
+  // Keep local `operations` in sync with parent when the popover is closed, and when
+  // it closes (outside click / escape) restore from props — fixes edit flow where
+  // `editOperation` removes an op locally but dismiss does not save.
+  useEffect(() => {
+    if (isOpen) {
+      prevIsOpenRef.current = true
+      return
+    }
+    setOperations(buildOperationsFromProps(initialFilters, distinctConfig))
+    if (prevIsOpenRef.current) {
+      setOperationType('filter')
+      setNewFilter({ column: '', operation: '', value: '', jsonField: '' })
+      setNewDistinct({ column: '', jsonField: '', sortOrder: 'asc' })
+      setSelectedDate(undefined)
+      prevIsOpenRef.current = false
+    }
+  }, [initialFilters, distinctConfig, isOpen])
+
   const handleCancel = () => {
-    setOperations(initialFilters)
-    setOperationType('filter')
-    setNewFilter({ column: '', operation: '', value: '', jsonField: '' })
-    setNewDistinct({ column: '', jsonField: '', sortOrder: 'asc' })
-    setSelectedDate(undefined)
     setIsOpen(false)
   }
 

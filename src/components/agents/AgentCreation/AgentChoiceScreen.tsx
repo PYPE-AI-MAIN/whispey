@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Plus, Sparkles, Eye, Lock, Info, ArrowLeft } from 'lucide-react'
 import { useMobile } from '@/hooks/use-mobile'
@@ -219,24 +220,17 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
           {/* Loading state */}
           {permissionsLoading ? (
             <>
-              <div className={`${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700`}>
-                <div className="flex items-start gap-3">
-                  <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse`}></div>
-                  <div className="flex-1">
-                    <div className={`${isMobile ? 'h-4 w-32' : 'h-5 w-40'} bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2`}></div>
-                    <div className={`${isMobile ? 'h-3 w-48' : 'h-4 w-64'} bg-gray-200 dark:bg-gray-700 rounded animate-pulse`}></div>
+              {[1, 2].map((i) => (
+                <div key={i} className={`${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-border`}>
+                  <div className="flex items-start gap-3">
+                    <Skeleton className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl shrink-0`} />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className={isMobile ? 'h-4 w-32' : 'h-5 w-40'} />
+                      <Skeleton className={isMobile ? 'h-3 w-48' : 'h-4 w-64'} />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className={`${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700`}>
-                <div className="flex items-start gap-3">
-                  <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse`}></div>
-                  <div className="flex-1">
-                    <div className={`${isMobile ? 'h-4 w-32' : 'h-5 w-40'} bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2`}></div>
-                    <div className={`${isMobile ? 'h-3 w-48' : 'h-4 w-64'} bg-gray-200 dark:bg-gray-700 rounded animate-pulse`}></div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </>
           ) : (
             <>

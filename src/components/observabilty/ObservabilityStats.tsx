@@ -6,7 +6,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import { METRICS_LOGS_SELECT } from "./TracesTable"
 import { cn } from "@/lib/utils"
-import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio, Phone } from "lucide-react"
 
 interface ObservabilityStatsProps {
   sessionId?: string
@@ -184,29 +185,27 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
 
   if (transcriptLoading) {
     return (
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-        <div className="animate-pulse">
-          <div className="flex items-center justify-between mb-3">
-            <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-32"></div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-20"></div>
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="flex items-center justify-between mb-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="w-4 h-4" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            ))}
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="text-center">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-8 mb-1"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-6"></div>
-                </div>
-              ))}
-            </div>
+          <div className="flex gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="text-center space-y-1">
+                <Skeleton className="h-3 w-8" />
+                <Skeleton className="h-3 w-6 mx-auto" />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -223,7 +222,32 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Overview</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Overview</h3>
+              {callData?.[0]?.customer_number && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <Phone className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      {callData[0].customer_number.length > 15
+                        ? `Web Call: ${callData[0].customer_number.slice(0, 6)}...`
+                        : callData[0].customer_number}
+                    </span>
+                  </div>
+                )}
+              {callData?.[0]?.call_started_at && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                  <Clock className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                    {new Date(callData[0].call_started_at).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {sessionId ? `Session ${sessionId.slice(0, 8)}...` : `Agent ${agentId.slice(0, 8)}...`}
@@ -240,7 +264,6 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                 </div>
               </div>
             </div>
-            
           </div>
           
           {/* Stats Grid */}

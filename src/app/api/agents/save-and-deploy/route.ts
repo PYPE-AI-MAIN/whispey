@@ -404,6 +404,12 @@ function transformFormDataToAgentConfig(formData: any) {
             }),
             ...(formikValues.advancedSettings.session.user_away_timeout_message !== undefined && formikValues.advancedSettings.session.user_away_timeout_message !== null && formikValues.advancedSettings.session.user_away_timeout_message !== '' && {
               user_away_timeout_message: formikValues.advancedSettings.session.user_away_timeout_message
+            }),
+            ...(formikValues.advancedSettings.session.user_away_timeout_max_count !== undefined && {
+              user_away_timeout_max_count: formikValues.advancedSettings.session.user_away_timeout_max_count
+            }),
+            ...(formikValues.advancedSettings.session.user_away_timeout_end_message !== undefined && formikValues.advancedSettings.session.user_away_timeout_end_message !== null && formikValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
+              user_away_timeout_end_message: formikValues.advancedSettings.session.user_away_timeout_end_message
             })
           },
           interruptions: {
