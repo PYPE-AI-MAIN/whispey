@@ -280,10 +280,8 @@ export async function POST(request: NextRequest) {
             .maybeSingle()
 
           if (!keyError && apiKey) {
-            // Store whispey_key_id
-            if (apiKey.id) {
-              agentPayload.agent.whispey_key_id = apiKey.id
-            }
+            // Keep the original whispey_key_id (contains encrypted token_hash_master)
+            // Don't overwrite it with apiKey.id
 
             // Decrypt and store the API key
             if (apiKey.token_hash_master) {
@@ -318,6 +316,8 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify(agentPayload)
       })
+
+      console.log('🔍 Final payload sent to PypeAPI:', JSON.stringify(agentPayload, null, 2))
 
       const data = await response.json()
 

@@ -125,7 +125,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       // ✅ Single unified flow for all platforms — backend handles Pipecat creation
       const agentPayload = {
         name: formData.name.trim(),
-        agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform === 'pipecat' ? 'pype_agent' : selectedPlatform,
+        agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform === 'pipecat' ? 'pipecat_agent' : selectedPlatform,
         configuration: {
           description: formData.description.trim() || null,
         },
@@ -147,8 +147,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
       const localAgent = await agentResponse.json()
 
-      // LiveKit agents still need the PypeAI backend call
-      if (isPypeAgent && selectedPlatform !== 'pipecat') {
+      // LiveKit and Pipecat agents need the PypeAI backend call
+      if (isPypeAgent) {
         const projectApiKey = await fetchProjectApiKey()
 
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {

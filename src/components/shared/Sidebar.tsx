@@ -184,12 +184,9 @@ export default function Sidebar({
 
   useHotkeys('meta+k', (e) => {
     e.preventDefault()
-    // If org switcher is open, close it first
     if (orgSwitcherOpen) {
       setOrgSwitcherOpen(false)
-      setTimeout(() => {
-        setShowCreateDialog(true)
-      }, 150)
+      setTimeout(() => { setShowCreateDialog(true) }, 150)
     } else {
       setShowCreateDialog(true)
     }
@@ -200,12 +197,9 @@ export default function Sidebar({
 
   useHotkeys('ctrl+k', (e) => {
     e.preventDefault()
-    // If org switcher is open, close it first
     if (orgSwitcherOpen) {
       setOrgSwitcherOpen(false)
-      setTimeout(() => {
-        setShowCreateDialog(true)
-      }, 150)
+      setTimeout(() => { setShowCreateDialog(true) }, 150)
     } else {
       setShowCreateDialog(true)
     }
@@ -222,18 +216,15 @@ export default function Sidebar({
   useEffect(() => {
     if (isMobile || !mounted) return
     
-    // Define routes that should auto-collapse the sidebar
     const autoCollapseRoutes = [
       '/campaigns/create',
       '/campaigns/edit'
     ]
     
-    // Check if current path matches any auto-collapse route
     const shouldAutoCollapse = autoCollapseRoutes.some(route => 
       currentPath.includes(route)
     )
     
-    // Only auto-collapse once when entering these routes
     if (shouldAutoCollapse && !isCollapsed && !hasAutoCollapsed) {
       onToggleCollapse?.()
       setHasAutoCollapsed(true)
@@ -242,7 +233,6 @@ export default function Sidebar({
       }
     }
     
-    // Reset the flag when leaving auto-collapse routes
     if (!shouldAutoCollapse && hasAutoCollapsed) {
       setHasAutoCollapsed(false)
     }
@@ -281,13 +271,13 @@ export default function Sidebar({
       return true
     }
     
-
     if (!navQuery && currentBasePath.startsWith(navPath + '/')) {
       const specialSubRoutes = [
         '/api-keys',
         '/sip-management',
         '/config',
         '/config/pipecat',
+        '/config/pipecat/knowledgebase', // ← NEW
         '/observability',
         '/phone-call-config',
         '/knowledge',
@@ -331,14 +321,13 @@ export default function Sidebar({
     }
   }
 
-  // Group navigation items with better organization
+  // Group navigation items
   const groupedNavigation = (): NavigationGroup[] => {
     const groups: Record<string, NavigationItem[]> = {}
     const ungrouped: NavigationItem[] = []
 
     config.navigation.forEach((item: any) => {
       if (item.group) {
-        // Normalize group names for consistency
         const normalizedGroup = item.group.toLowerCase()
         if (!groups[normalizedGroup]) {
           groups[normalizedGroup] = []
@@ -351,7 +340,6 @@ export default function Sidebar({
 
     const result: NavigationGroup[] = []
     
-    // Add ungrouped items first (no group header)
     if (ungrouped.length > 0) {
       result.push({
         id: 'ungrouped',
@@ -360,19 +348,19 @@ export default function Sidebar({
       })
     }
 
-    // Define group order for consistency
     const groupOrder = [
       'logs', 'agents', 'reports', 'analytics', 'integrations', 
-      'team', 'settings', 'configuration', 'batch calls', 'resources'
+      'team', 'settings', 'configuration', 'call configuration', 'batch calls', 'resources',
+      'project settings'
     ]
 
-    // Add groups in preferred order
     groupOrder.forEach(groupId => {
       if (groups[groupId]) {
         result.push({
           id: groupId,
           name: groupId === 'logs' ? 'LOGS' : 
                 groupId === 'batch calls' ? 'Batch Calls' :
+                groupId === 'project settings' ? 'Project Settings' :
                 groupId.charAt(0).toUpperCase() + groupId.slice(1),
           items: groups[groupId]
         })
@@ -380,7 +368,6 @@ export default function Sidebar({
       }
     })
 
-    // Add any remaining groups
     Object.entries(groups).forEach(([groupId, items]) => {
       result.push({
         id: groupId,
@@ -433,7 +420,6 @@ export default function Sidebar({
       </Link>
     )
 
-    // Wrap with tooltip when collapsed on desktop
     if (isCollapsed && !isMobile) {
       return (
         <TooltipProvider key={item.id}>
@@ -474,7 +460,6 @@ export default function Sidebar({
     return null
   }
 
-  // Get pricing config with fallback for new types
   const pricingConfig = PRICING_CONFIGS[config.type] || {
     showPricingBox: false,
     plan: '',
@@ -510,7 +495,6 @@ export default function Sidebar({
         {/* Logo & Context Header */}
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between gap-3">
-            {/* Logo and Name (hidden when collapsed on desktop) */}
             {(!isCollapsed || isMobile) && (
               <Link 
                 href={config.context?.projectId ? `/${config.context.projectId}/agents` : '/'} 
@@ -536,7 +520,6 @@ export default function Sidebar({
               </Link>
             )}
 
-            {/* Collapse Button */}
             {!isMobile && onToggleCollapse && (
               <Button
                 variant="ghost"
@@ -574,15 +557,12 @@ export default function Sidebar({
             onExternalOpenChange={setOrgSwitcherOpen}
             onCreateNew={() => {
               setOrgSwitcherOpen(false)
-              setTimeout(() => {
-                setShowCreateDialog(true)
-              }, 150)
+              setTimeout(() => { setShowCreateDialog(true) }, 150)
             }}
           />
 
           {groupedNavigation().map((group, groupIndex) => (
             <div key={group.id}>
-              {/* Group Header - only show if group has a name and we're not collapsed */}
               {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
                   <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
@@ -591,12 +571,10 @@ export default function Sidebar({
                 </div>
               )}
               
-              {/* Group separator for collapsed mode */}
               {group.name && isCollapsed && !isMobile && groupIndex > 0 && (
                 <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
               )}
 
-              {/* Group Items */}
               <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
                 {group.items.map(item => renderNavigationItem(item))}
               </div>
@@ -691,21 +669,19 @@ export default function Sidebar({
                       className="px-3 py-2 text-xs"
                     >
                       {mounted && theme === 'dark' ? (
-                        <>
-                          <Sun className="w-4 h-4 mr-2" />
-                          Light Mode
-                        </>
+                        <><Sun className="w-4 h-4 mr-2" />Light Mode</>
                       ) : (
-                        <>
-                          <Moon className="w-4 h-4 mr-2" />
-                          Dark Mode
-                        </>
+                        <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
                       )}
                     </DropdownMenuItem>
                   </div>
                   <DropdownMenuSeparator />
                   <div className="py-1">
-                    <DropdownMenuItem onClick={handleSignOut} className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400" disabled={isSigningOut}>
+                    <DropdownMenuItem 
+                      onClick={handleSignOut} 
+                      className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400" 
+                      disabled={isSigningOut}
+                    >
                       <LogOut className={`w-4 h-4 mr-2 ${isSigningOut ? 'animate-spin' : ''}`} />
                       {isSigningOut ? 'Signing out...' : 'Sign Out'}
                     </DropdownMenuItem>

@@ -173,9 +173,8 @@ export async function POST(request: NextRequest) {
         // Fetch project API key to pass to Pipecat
         const { data: apiKeyRow, error: keyError } = await supabase
           .from('pype_voice_api_keys')
-          .select('token_hash_master')
+          .select('id, token_hash, token_hash_master')
           .eq('project_id', project_id)
-          .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
@@ -186,10 +185,12 @@ export async function POST(request: NextRequest) {
           try {
             const { decryptWithWhispeyKey } = await import('@/lib/whispey-crypto')
             whispeyApiKey = decryptWithWhispeyKey(apiKeyRow.token_hash_master)
-            console.log('✅ Decrypted project API key for Pipecat')
+            console.log('✅ Decrypted project API key for Pipecat:', whispeyApiKey)
           } catch (decryptError) {
             console.error('❌ Failed to decrypt API key, using fallback:', decryptError)
           }
+        } else {
+          console.log('🔍 Using fallback API key - keyError:', !!keyError, 'hasTokenHashMaster:', !!apiKeyRow?.token_hash_master)
         }
 
         const pipecatAgent = await createPipecatAgent(agent, project_id, agent.id, whispeyApiKey)
