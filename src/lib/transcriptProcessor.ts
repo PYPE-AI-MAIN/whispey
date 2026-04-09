@@ -120,6 +120,21 @@ function formatPypeTranscript(items: TranscriptItem[]): string {
       if (i.user_transcript && i.user_transcript.trim()) {
         messages.push(`USER: ${i.user_transcript}`);
       }
+
+      // Include tool calls between user input and agent response so the
+      // field extractor / metrics evaluator has full context on what happened.
+      const toolCalls = (i as any).tool_calls;
+      if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+        for (const tool of toolCalls) {
+          const name = tool.tool_name || tool.name || 'unknown';
+          const args = tool.arguments ? JSON.stringify(tool.arguments) : '{}';
+          const result = tool.result !== undefined ? String(tool.result) : 'no result';
+          const status = tool.success === false || tool.status === 'error' ? 'FAILED' : 'SUCCESS';
+          messages.push(`[TOOL CALL: ${name}] args=${args}`);
+          messages.push(`[TOOL RESULT: ${name}] ${result} (${status})`);
+        }
+      }
+
       if (i.agent_response && i.agent_response.trim()) {
         messages.push(`AGENT: ${i.agent_response}`);
       }
