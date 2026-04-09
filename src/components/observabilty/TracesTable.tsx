@@ -333,7 +333,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
       })
 
       if (closestTurn && minDiff < 120) {
-        const id = closestTurn.turn_id
+        const id = (closestTurn as TraceLog).turn_id
         if (!toolsByTurnId.has(id)) toolsByTurnId.set(id, [])
         toolsByTurnId.get(id)!.push(toolSpan)
       }
