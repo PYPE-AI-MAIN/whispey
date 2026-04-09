@@ -71,18 +71,30 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
 
   const { data: sessionTrace, isLoading: traceLoading } = useSessionTrace(sessionId || null, agentId);
 
-  // Only fetch spans when the user opens the "trace" or "waterfall" tab —
-  // these are the largest requests on the page (~600kB) and are never needed
-  // on the default "turns" tab.
+  // Fetch spans only when the user opens the "trace" or "waterfall" tab —
+  // the full span set is large (~600kB) and only needed for those views.
   const spansEnabled = activeTab === "trace" || activeTab === "waterfall";
-  const { 
-    allSpans: sessionSpans, 
+  const {
+    allSpans: sessionSpans,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
     isLoading: spansLoading,
     totalCount: totalSpansCount
   } = useSessionSpansInfinite(sessionTrace, spansEnabled, agentId);
+
+  // Lightweight targeted fetch — only function_tool spans for turn enrichment.
+  // Avoids loading the full paginated span set just to find a handful of tool calls.
+  const { data: functionToolSpans = [] } = useSupabaseQuery<any>('pype_voice_spans',
+    sessionTrace?.trace_key ? {
+      select: 'span_id, name, start_time_ns, duration_ms, status, attributes, captured_at',
+      filters: [
+        { column: 'trace_key', operator: 'eq', value: sessionTrace.trace_key },
+        { column: 'name', operator: 'eq', value: 'function_tool' },
+      ],
+      auth: agentId ? { agentId } : undefined,
+    } : null
+  );
 
 
   // Get call data to access bug report metadata + transcript fallback + audio URL.
@@ -293,6 +305,74 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     return []
   }, [traceData, callData, filters])
 
+  // Enrich turns that have no tool_calls using the targeted functionToolSpans fetch.
+  // In LiveKit's span structure, function_tool is a child of agent_turn which
+  // is a sibling of user_turn — no user_turn ancestor exists, so match by time.
+  const enrichedTraces = useMemo(() => {
+    if (!processedTraces.length || !functionToolSpans.length) return processedTraces
+
+    // captured_at is an ISO string ("2026-04-07T10:05:23.763").
+    // start_time_ns is a nanosecond integer. Convert to seconds for comparison.
+    const toUnixSec = (span: any): number | null => {
+      if (span.start_time_ns) return span.start_time_ns / 1e9
+      if (span.captured_at) return new Date(span.captured_at + 'Z').getTime() / 1000
+      return null
+    }
+
+    // Assign each function_tool span to the closest TraceLog turn (within 120s).
+    const toolsByTurnId = new Map<string, any[]>()
+    functionToolSpans.forEach((toolSpan: any) => {
+      const spanSec = toUnixSec(toolSpan)
+      if (spanSec === null) return
+
+      let closestTurn: TraceLog | null = null
+      let minDiff = Infinity
+      processedTraces.forEach((turn: TraceLog) => {
+        const diff = Math.abs(turn.unix_timestamp - spanSec)
+        if (diff < minDiff) { minDiff = diff; closestTurn = turn }
+      })
+
+      if (closestTurn && minDiff < 120) {
+        const id = closestTurn.turn_id
+        if (!toolsByTurnId.has(id)) toolsByTurnId.set(id, [])
+        toolsByTurnId.get(id)!.push(toolSpan)
+      }
+    })
+
+    if (!toolsByTurnId.size) return processedTraces
+
+    return processedTraces.map((turn: TraceLog) => {
+      if (turn.tool_calls?.length) return turn
+      const toolSpans = toolsByTurnId.get(turn.turn_id)
+      if (!toolSpans?.length) return turn
+
+      return {
+        ...turn,
+        tool_calls: toolSpans.map((s: any) => {
+          const a = s.attributes || {}
+          // LiveKit OTEL attribute keys for function_tool spans
+          const toolName = a['lk.function_tool.name'] ?? a['livekit.function.name'] ?? a['function.name'] ?? 'unknown'
+          const rawArgs = a['lk.function_tool.arguments'] ?? a['livekit.function.arguments'] ?? a['function.arguments'] ?? null
+          let args: any = null
+          if (rawArgs) {
+            try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs } catch { args = rawArgs }
+          }
+          const result = a['lk.function_tool.output'] ?? a['livekit.function.result'] ?? a['function.result'] ?? undefined
+          const isError = a['lk.function_tool.is_error'] === true || s.status?.code === 2 || s.status === 'error'
+          return {
+            tool_name: toolName,
+            name: toolName,
+            arguments: args,
+            result,
+            success: !isError,
+            status: isError ? 'error' : 'success',
+            duration_ms: s.duration_ms,
+          }
+        }),
+      }
+    })
+  }, [processedTraces, functionToolSpans])
+
 
   const getTraceStatus = (trace: TraceLog) => {
     // Check if this turn is flagged for bug reports
@@ -412,15 +492,15 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   }
 
   const downloadFullTranscript = () => {
-    if (!processedTraces.length) return
+    if (!enrichedTraces.length) return
 
     // Format all conversation turns as JSON
     const transcriptData = {
       session_id: sessionId || 'unknown',
       agent_id: agentId,
-      total_turns: processedTraces.length,
+      total_turns: enrichedTraces.length,
       exported_at: new Date().toISOString(),
-      turns: processedTraces.map((trace: TraceLog) => {
+      turns: enrichedTraces.map((trace: TraceLog) => {
         const turnData: any = {
           turn_id: trace.turn_id,
         }
@@ -543,7 +623,7 @@ const handleRowClick = (trace: TraceLog) => {
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 )}
               >
-                Turns ({processedTraces.length})
+                Turns ({enrichedTraces.length})
               </button>
             {sessionTrace && (
             <>
@@ -585,7 +665,7 @@ const handleRowClick = (trace: TraceLog) => {
           </nav>
           
           {/* Download Transcript Button */}
-          {activeTab === "turns" && processedTraces.length > 0 && (
+          {activeTab === "turns" && enrichedTraces.length > 0 && (
             <Button
               variant="outline"
               size="sm"
@@ -616,7 +696,7 @@ const handleRowClick = (trace: TraceLog) => {
   
             {/* Table Body */}
             <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
-              {processedTraces.length === 0 ? (
+              {enrichedTraces.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                     <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -630,7 +710,7 @@ const handleRowClick = (trace: TraceLog) => {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {processedTraces.map((trace: TraceLog) => {
+                  {enrichedTraces.map((trace: TraceLog) => {
                     const status = getTraceStatus(trace)
                     const toolInfo = getToolCallsInfo(trace.tool_calls)
                     const mainOp = getMainOperation(trace)
