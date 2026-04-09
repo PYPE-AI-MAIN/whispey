@@ -1176,8 +1176,7 @@ const Overview: React.FC<OverviewProps> = ({
 
         {/* Chart Analytics Section — extra builder; gated by overview.charts + org.metrics */}
         {!isMobile &&
-          visibility?.agent?.overview.charts === true &&
-          canShowOrgSection(visibility, 'metrics') && (
+               visibility?.agent?.overview.charts === true && (
           <ChartProvider>
             <div className="space-y-6">
               <EnhancedChartBuilder 
