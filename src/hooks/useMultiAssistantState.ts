@@ -370,17 +370,27 @@ export function useMultiAssistantState({
           // Merge Knowledge Base (RAG) tool when enabled
           const kb = formValues.advancedSettings?.knowledgeBase
           const toolsArray = Array.isArray(mappedTools) ? [...mappedTools] : []
+          
+          // Filter out knowledge_search tool if RAG is disabled
+          const filteredTools = kb?.enabled === false 
+            ? toolsArray.filter((t: any) => t?.type !== 'knowledge_search')
+            : toolsArray
+          
           if (kb?.enabled) {
             const topK = typeof kb.topK === 'number' && kb.topK >= 1 ? Math.min(50, kb.topK) : 5
-            const existingIdx = toolsArray.findIndex((t: any) => t?.type === 'knowledge_search')
-            const kbEntry = { type: 'knowledge_search' as const, top_k: topK }
+            const existingIdx = filteredTools.findIndex((t: any) => t?.type === 'knowledge_search')
+            const kbEntry = {
+              type: 'knowledge_search' as const,
+              top_k: topK,
+              knowledge_search_options: { top_k: topK }
+            }
             if (existingIdx >= 0) {
-              toolsArray[existingIdx] = { ...toolsArray[existingIdx], ...kbEntry }
+              filteredTools[existingIdx] = { ...filteredTools[existingIdx], ...kbEntry }
             } else {
-              toolsArray.push(kbEntry)
+              filteredTools.push(kbEntry)
             }
           }
-          return toolsArray.length > 0 ? toolsArray : getFallback(null, 'tools')
+          return filteredTools.length > 0 ? filteredTools : getFallback(null, 'tools')
         })(),
         filler_words: {
           enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
