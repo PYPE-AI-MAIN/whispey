@@ -369,7 +369,6 @@ export function useMultiAssistantState({
 
           // Merge Knowledge Base (RAG) tool when enabled
           const kb = formValues.advancedSettings?.knowledgeBase
-          console.log('🔧 buildSavePayload: kb =', kb)
           const toolsArray = Array.isArray(mappedTools) ? [...mappedTools] : []
           
           // Filter out knowledge_search tool if RAG is disabled
@@ -379,7 +378,6 @@ export function useMultiAssistantState({
           
           if (kb?.enabled) {
             const topK = typeof kb.topK === 'number' && kb.topK >= 1 ? Math.min(50, kb.topK) : 5
-            console.log('🔧 buildSavePayload: kb.topK =', kb.topK, '-> topK =', topK)
             const existingIdx = filteredTools.findIndex((t: any) => t?.type === 'knowledge_search')
             const kbEntry = {
               type: 'knowledge_search' as const,
