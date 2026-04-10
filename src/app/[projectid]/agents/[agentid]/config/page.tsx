@@ -565,8 +565,6 @@ export default function AgentConfig() {
       return
     }
 
-    console.log('🔧 handleSaveAndDeploy: formik.values.advancedSettings.knowledgeBase =', formik.values.advancedSettings?.knowledgeBase)
-
     const payload = buildSavePayload()
 
     const validVariables = Array.from(promptValidation.validVariables)
@@ -585,8 +583,6 @@ export default function AgentConfig() {
         return acc
       }, {})
     }
-
-    console.log('🔧 handleSaveAndDeploy: payload.agent.assistant[0].tools =', payload.agent?.assistant?.[0]?.tools)
 
     const userEmail = user?.primaryEmailAddress?.emailAddress ?? null
     const userId = user?.id ?? null
