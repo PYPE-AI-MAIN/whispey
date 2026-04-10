@@ -36,7 +36,7 @@ function KnowledgeBaseRAGSettings({
       const clamped = Math.min(MAX_TOP_K, Math.max(MIN_TOP_K, value))
       onFieldChange('advancedSettings.knowledgeBase.topK', clamped)
     },
-    [onFieldChange, topK]
+    [onFieldChange]
   )
 
   return (
