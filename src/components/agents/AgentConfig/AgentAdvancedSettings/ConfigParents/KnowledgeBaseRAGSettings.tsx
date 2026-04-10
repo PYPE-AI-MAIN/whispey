@@ -34,7 +34,6 @@ function KnowledgeBaseRAGSettings({
   const handleTopKChange = useCallback(
     (value: number) => {
       const clamped = Math.min(MAX_TOP_K, Math.max(MIN_TOP_K, value))
-      console.log('🔧 KnowledgeBaseRAGSettings: Updating topK from', topK, 'to', clamped)
       onFieldChange('advancedSettings.knowledgeBase.topK', clamped)
     },
     [onFieldChange, topK]
