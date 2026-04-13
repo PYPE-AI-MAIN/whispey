@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
         s3FileKey,
         agentName,
         sipTrunkId,
-        provider,
-        agentRuntime: agentRuntime || 'livekit', 
+        provider: agentRuntime === 'pipecat' ? '' : provider,
+        agentRuntime: agentRuntime || 'livekit',
       }),
     })
 

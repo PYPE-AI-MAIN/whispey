@@ -1,3 +1,4 @@
+// src/app/api/campaign/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 

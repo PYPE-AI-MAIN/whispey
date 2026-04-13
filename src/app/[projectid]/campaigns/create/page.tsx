@@ -302,8 +302,8 @@ function CreateCampaign() {
           campaignName: values.campaignName,
           s3FileKey,
           agentName: agentName,
-          sipTrunkId: selectedPhone?.trunk_id || '',
-          provider: selectedPhone?.provider || 'Unknown',
+          sipTrunkId: values.agentRuntime === 'pipecat' ? '' : (selectedPhone?.trunk_id || ''),
+          provider: values.agentRuntime === 'pipecat' ? '' : (selectedPhone?.provider || ''),
           agentRuntime: values.agentRuntime,
         }),
       })
