@@ -4,6 +4,7 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { redactTagsFromCallLogsForViewer } from '@/lib/redactCallLogsTagsForViewer'
 import type { CallLog } from '@/types/logs'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { queryCallLogs } from '@/lib/queryCallLogs'
 
 const supabase = createServiceRoleClient()
 
@@ -13,7 +14,6 @@ export async function POST(
 ) {
   const { id: agentIdFromUrl } = await params
   const { userId } = await auth()
-  const user = await currentUser()
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -45,55 +45,24 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
-
-  const rpcParamsWithUser = {
+  const { data, error } = await queryCallLogs(supabase, {
     p_agent_id,
-    p_pre_distinct_filters: body.p_pre_distinct_filters ?? [],
-    p_post_distinct_filters: body.p_post_distinct_filters ?? [],
-    p_select: body.p_select ?? '*',
-    p_order_by_column: body.p_order_by_column ?? 'created_at',
-    p_order_ascending: body.p_order_ascending ?? false,
-    p_limit: body.p_limit ?? 50,
-    p_offset: body.p_offset ?? 0,
-    p_distinct_column: body.p_distinct_column ?? null,
-    p_distinct_json_field: body.p_distinct_json_field ?? null,
-    p_distinct_order: body.p_distinct_order ?? 'asc',
-    p_date_from: body.p_date_from ?? null,
-    p_date_to: body.p_date_to ?? null,
-    p_user_clerk_id: userId,
-    p_user_email: userEmail,
-  }
-
-  let { data, error } = await supabase.rpc('get_call_logs_with_distinct', rpcParamsWithUser)
-
-  if (error?.code === 'PGRST202') {
-    const params13 = {
-      p_agent_id: rpcParamsWithUser.p_agent_id,
-      p_pre_distinct_filters: rpcParamsWithUser.p_pre_distinct_filters,
-      p_post_distinct_filters: rpcParamsWithUser.p_post_distinct_filters,
-      p_select: rpcParamsWithUser.p_select,
-      p_order_by_column: rpcParamsWithUser.p_order_by_column,
-      p_order_ascending: rpcParamsWithUser.p_order_ascending,
-      p_limit: rpcParamsWithUser.p_limit,
-      p_offset: rpcParamsWithUser.p_offset,
-      p_distinct_column: rpcParamsWithUser.p_distinct_column,
-      p_distinct_json_field: rpcParamsWithUser.p_distinct_json_field,
-      p_distinct_order: rpcParamsWithUser.p_distinct_order,
-      p_date_from: rpcParamsWithUser.p_date_from,
-      p_date_to: rpcParamsWithUser.p_date_to,
-    }
-    const fallback = await supabase.rpc('get_call_logs_with_distinct', params13)
-    if (fallback.error) {
-      console.error('rpc fallback error:', fallback.error)
-      return NextResponse.json({ error: fallback.error.message }, { status: 500 })
-    }
-    data = fallback.data
-    error = null
-  }
+    p_pre_distinct_filters: (body.p_pre_distinct_filters as any[]) ?? [],
+    p_post_distinct_filters: (body.p_post_distinct_filters as any[]) ?? [],
+    p_select: (body.p_select as string) ?? '*',
+    p_order_by_column: (body.p_order_by_column as string) ?? 'created_at',
+    p_order_ascending: (body.p_order_ascending as boolean) ?? false,
+    p_limit: (body.p_limit as number) ?? 50,
+    p_offset: (body.p_offset as number) ?? 0,
+    p_distinct_column: (body.p_distinct_column as string) ?? null,
+    p_distinct_json_field: (body.p_distinct_json_field as string) ?? null,
+    p_distinct_order: (body.p_distinct_order as string) ?? 'asc',
+    p_date_from: (body.p_date_from as string) ?? null,
+    p_date_to: (body.p_date_to as string) ?? null,
+  })
 
   if (error) {
-    console.error('get_call_logs_with_distinct:', error)
+    console.error('queryCallLogs:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

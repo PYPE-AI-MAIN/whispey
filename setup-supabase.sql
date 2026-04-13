@@ -1266,6 +1266,9 @@ CREATE TABLE IF NOT EXISTS public.pype_voice_phone_numbers (
     trunk_direction varchar NOT NULL DEFAULT 'outbound'::character varying
 );
 
+-- Drop first so we can change the RETURNS TABLE definition (CREATE OR REPLACE cannot change return type)
+DROP FUNCTION IF EXISTS get_call_logs_with_distinct(uuid, jsonb, jsonb, text, text, boolean, integer, integer, text, text, text, text, text, text, text) CASCADE;
+
 -- Function to get call logs with distinct and filtering support
 CREATE OR REPLACE FUNCTION get_call_logs_with_distinct(
   p_agent_id uuid,
@@ -1312,7 +1315,8 @@ RETURNS TABLE(
   telemetry_data jsonb,
   billing_duration_seconds float8,
   metrics jsonb,
-  updated_at timestamp
+  updated_at timestamp,
+  wcall_event varchar
 ) AS $$
 DECLARE
   query_text TEXT;
@@ -1326,7 +1330,10 @@ DECLARE
   order_clause TEXT := '';
   user_role TEXT;
   user_visibility JSONB;
-  select_columns TEXT;
+  -- Fixed column list matching RETURNS TABLE order exactly. p_select is accepted
+  -- for API compatibility but ignored internally — RETURN QUERY EXECUTE matches
+  -- columns positionally so the shape must always match RETURNS TABLE.
+  select_columns CONSTANT TEXT := 'id,call_id,agent_id,customer_number,call_ended_reason,transcript_type,transcript_json,metadata,dynamic_variables,environment,created_at,call_started_at,call_ended_at,duration_seconds,recording_url,avg_latency,transcription_metrics,total_stt_cost,total_tts_cost,total_llm_cost,p50_latency,complete_configuration,telemetry_spans,telemetry_analytics,telemetry_data,billing_duration_seconds,metrics,updated_at,wcall_event';
 BEGIN
   -- Get user role and visibility if identifying info provided
   IF p_user_clerk_id IS NOT NULL OR p_user_email IS NOT NULL THEN
@@ -1339,7 +1346,7 @@ BEGIN
       (p_user_clerk_id IS NOT NULL AND clerk_id = p_user_clerk_id)
       OR (p_user_email IS NOT NULL AND email = p_user_email)
     )
-    AND project_id = (SELECT project_id FROM pype_voice_agents WHERE id = p_agent_id)
+    AND project_id = (SELECT project_id FROM pype_voice_agents WHERE pype_voice_agents.id = p_agent_id)
     AND (is_active IS NULL OR is_active = true)
     LIMIT 1;
 
@@ -1347,11 +1354,6 @@ BEGIN
     IF user_role IS NULL THEN
       RETURN;
     END IF;
-
-    -- Viewer: still return full columns so RETURNS TABLE shape is consistent; frontend hides cost/latency for viewers
-    select_columns := p_select;
-  ELSE
-    select_columns := p_select;
   END IF;
 
   -- Build base query
