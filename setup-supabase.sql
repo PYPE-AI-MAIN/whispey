@@ -557,6 +557,8 @@ SELECT
   COUNT(*) AS calls,
   SUM(duration_seconds) AS total_seconds,
   ROUND(SUM(duration_seconds)::numeric / 60, 0) AS total_minutes,
+  COALESCE(SUM(billing_duration_seconds), 0) AS total_billing_seconds,
+  ROUND(COALESCE(SUM(billing_duration_seconds), 0)::numeric / 60, 0) AS total_billing_minutes,
   AVG(avg_latency) AS avg_latency,
   COUNT(DISTINCT call_id) AS unique_customers,
   COUNT(*) FILTER (WHERE call_ended_reason = 'completed') AS successful_calls,
