@@ -86,11 +86,7 @@ CREATE TABLE public.pype_voice_call_logs (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     call_started_at timestamp without time zone,
     call_ended_at timestamp without time zone,
-    duration_seconds int4 DEFAULT 
-CASE
-    WHEN ((call_ended_at IS NOT NULL) AND (call_started_at IS NOT NULL)) THEN (EXTRACT(epoch FROM (call_ended_at - call_started_at)))::integer
-    ELSE NULL::integer
-END,
+    duration_seconds int4,
     recording_url text,
     avg_latency float8,
     transcription_metrics jsonb,
@@ -154,7 +150,7 @@ CREATE TABLE public.pype_voice_email_project_mapping (
     added_by_clerk_id text,
     created_at timestamp with time zone DEFAULT now(),
     clerk_id text,
-    is_active boolean,
+    is_active boolean
 );
 
 CREATE TABLE public.pype_voice_api_keys (
@@ -257,7 +253,7 @@ CREATE TABLE public.pype_voice_metric_groups (
     updated_at timestamp with time zone DEFAULT now()
 );
 
-CREATE TABLE public.pype_voice_agent_dropoff_settings (
+CREATE TABLE IF NOT EXISTS public.pype_voice_agent_dropoff_settings (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id uuid NOT NULL,
     agent_name varchar NOT NULL,
@@ -1227,7 +1223,7 @@ COMMENT ON COLUMN public.pype_voice_dropoff_calls.stop_reason IS 'Reason why ret
 -- Additional Tables
 -- ========================================
 
-CREATE TABLE public.pype_voice_metrics_templates (
+CREATE TABLE IF NOT EXISTS public.pype_voice_metrics_templates (
     metric_id varchar PRIMARY KEY,
     name varchar NOT NULL,
     description text,
@@ -1244,7 +1240,7 @@ CREATE TABLE public.pype_voice_metrics_templates (
     updated_at timestamp without time zone DEFAULT now()
 );
 
-CREATE TABLE public.pype_voice_phone_numbers (
+CREATE TABLE IF NOT EXISTS public.pype_voice_phone_numbers (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     phone_number text NOT NULL,
     country_code text,
@@ -1423,7 +1419,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TABLE public.pype_voice_webhook_configs (
+CREATE TABLE IF NOT EXISTS public.pype_voice_webhook_configs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id uuid NOT NULL,
     agent_id uuid,
