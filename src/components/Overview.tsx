@@ -19,18 +19,15 @@ import {
   Percent,
 } from 'phosphor-react'
 
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
   CartesianGrid,
-  PieChart,
-  Pie,
-  Cell
 } from 'recharts'
 import { useOverviewQuery } from '../hooks/useOverviewQuery'
 import { getUserProjectRole } from '@/services/getUserRole'
@@ -41,13 +38,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Loader2, MoreHorizontal, Trash2, Download } from 'lucide-react'
-import { EnhancedChartBuilder, ChartProvider } from './EnhancedChartBuilder'
+import {
+  EnhancedChartBuilder,
+  ChartProvider,
+  OverviewCustomChartCard,
+  buildOverviewMergedChartSlots,
+  useChartContext,
+} from './EnhancedChartBuilder'
 import { FloatingActionMenu } from './FloatingActionMenu'
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { useUser } from "@clerk/nextjs"
 import CustomTotalsBuilder from './CustomTotalBuilds'
 import { CustomTotalConfig, CustomTotalResult } from '../types/customTotals'
-import { Card, CardContent } from './ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import Papa from 'papaparse'
 import { useTheme } from 'next-themes'
@@ -163,28 +167,449 @@ function ChartGridSkeleton({ isMobile }: { isMobile: boolean }) {
   return (
     <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
-          <div className={`border-b border-gray-200 dark:border-gray-800 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Skeleton className={`${isMobile ? 'w-7 h-7' : 'w-9 h-9'} rounded-lg`} />
-                <div className="space-y-1.5">
-                  <Skeleton className={isMobile ? 'h-4 w-24' : 'h-5 w-32'} />
-                  <Skeleton className={isMobile ? 'h-3 w-32' : 'h-4 w-48'} />
-                </div>
-              </div>
-              <div className="text-right space-y-1.5">
-                <Skeleton className={isMobile ? 'h-3 w-8' : 'h-4 w-12'} />
-                <Skeleton className={isMobile ? 'h-4 w-6' : 'h-5 w-8'} />
+        <div
+          key={index}
+          className="flex flex-col gap-0 overflow-hidden rounded-xl border border-gray-200 bg-white py-0 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div className="flex flex-row items-center justify-between gap-3 border-b border-gray-200 px-6 py-5 dark:border-gray-800 sm:px-7 sm:py-6">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <Skeleton className={`${isMobile ? 'h-9 w-9' : 'h-9 w-9'} shrink-0 rounded-lg`} />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className={isMobile ? 'h-5 w-32' : 'h-5 w-40'} />
+                <Skeleton className={isMobile ? 'h-4 w-44' : 'h-4 w-56'} />
               </div>
             </div>
+            <div className="hidden shrink-0 space-y-1.5 text-right sm:block">
+              <Skeleton className="ml-auto h-3 w-10" />
+              <Skeleton className="ml-auto h-5 w-12" />
+            </div>
           </div>
-          <div className={isMobile ? 'p-4' : 'p-7'}>
+          <div className="px-6 pb-7 pt-6 sm:px-7">
             <Skeleton className={`${isMobile ? 'h-48' : 'h-80'} w-full rounded-lg`} />
           </div>
         </div>
       ))}
     </div>
+  )
+}
+
+/** Product order for built-in charts in the overview merge layout */
+const OVERVIEW_BUILTIN_CHART_ORDER = [
+  CHART_IDS.DAILY_CALLS,
+  CHART_IDS.DAILY_MINUTES,
+  CHART_IDS.AVG_LATENCY,
+] as const
+
+type OverviewDailyDatum = {
+  date: string
+  calls?: number
+  minutes?: number
+  avg_latency?: number
+}
+
+/** Matches `CountChartVisualization` cartesian layout (non-dialog). */
+const OVERVIEW_BUILTIN_CHART_MARGIN = { top: 16, right: 36, left: 4, bottom: 28 }
+
+const overviewBuiltinCardClassName = cn(
+  'relative z-0 flex h-full min-h-0 flex-col gap-0 overflow-visible py-0 hover:z-[25]',
+  'rounded-xl border border-gray-300 bg-white text-gray-900 shadow-sm transition-all duration-300',
+  'hover:shadow-md hover:border-gray-400',
+  'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-gray-600'
+)
+
+const overviewBuiltinCardHeaderClassName =
+  'flex flex-row items-center justify-between gap-3 border-b border-gray-200 px-6 py-5 dark:border-gray-700 sm:px-7 sm:py-6'
+
+const overviewBuiltinCardContentClassName =
+  'flex min-h-0 flex-1 flex-col overflow-visible px-6 pb-7 pt-6 sm:px-7'
+
+/** Renders one built-in analytics chart card (daily calls, usage minutes, or latency). */
+function OverviewBuiltinChart({
+  chartId,
+  isMobile,
+  analytics,
+  colors,
+  theme,
+}: {
+  chartId: string
+  isMobile: boolean
+  analytics: { dailyData?: OverviewDailyDatum[] } | null | undefined
+  colors: {
+    primary: string
+    success: string
+    danger: string
+    grid: string
+    chartGridStroke: string
+    text: string
+    background: string
+    muted: string
+  }
+  theme: string | undefined
+}) {
+  const tickFont = isMobile ? 9 : 11
+  const axisTick = { fontSize: tickFont, fill: colors.text, fontWeight: 500 as const }
+  const formatDayTick = (value: string | number) => {
+    const date = new Date(value)
+    return `${date.getMonth() + 1}/${date.getDate()}`
+  }
+  const tooltipCommon = {
+    allowEscapeViewBox: { x: false as const, y: true as const },
+    isAnimationActive: false as const,
+    wrapperStyle: { zIndex: 80 as const },
+    labelStyle: { color: theme === 'dark' ? '#f3f4f6' : '#374151', fontWeight: '600' as const },
+    contentStyle: {
+      backgroundColor: colors.background,
+      border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
+      borderRadius: '12px',
+      fontSize: isMobile ? '12px' : '13px',
+      fontWeight: '500' as const,
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+      backdropFilter: 'blur(20px)',
+      color: theme === 'dark' ? '#f3f4f6' : '#374151',
+    },
+  }
+
+  if (chartId === CHART_IDS.DAILY_CALLS) {
+    return (
+      <Card className={overviewBuiltinCardClassName}>
+        <CardHeader className={overviewBuiltinCardHeaderClassName}>
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="shrink-0 rounded-lg border border-blue-100 bg-blue-50 p-2 dark:border-blue-800 dark:bg-blue-900/20">
+              <TrendUp weight="regular" className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600 dark:text-blue-400`} />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                Daily Call Volume
+              </CardTitle>
+              <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                {isMobile ? 'Trend analysis' : 'Trend analysis over selected period'}
+              </p>
+            </div>
+          </div>
+          {!isMobile && (
+            <div className="hidden shrink-0 items-center gap-3 sm:flex">
+              <div className="text-right">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Peak</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {analytics?.dailyData && analytics.dailyData.length > 0
+                    ? Math.max(...analytics.dailyData.map((d: OverviewDailyDatum) => d.calls || 0))
+                    : 0}
+                </div>
+              </div>
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+              <div className="text-right">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {analytics?.dailyData && analytics.dailyData.length > 0
+                    ? Math.round(
+                        analytics.dailyData.reduce(
+                          (sum: number, d: OverviewDailyDatum) => sum + (d.calls || 0),
+                          0
+                        ) / analytics.dailyData.length
+                      )
+                    : 0}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className={overviewBuiltinCardContentClassName}>
+          <div className={isMobile ? 'h-48' : 'h-80'}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={analytics?.dailyData || []} margin={OVERVIEW_BUILTIN_CHART_MARGIN}>
+                <defs>
+                  <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={colors.primary} stopOpacity={0.14} />
+                    <stop offset="95%" stopColor={colors.primary} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={colors.chartGridStroke} strokeDasharray="4 4" vertical={false} horizontal />
+                <CartesianGrid stroke={colors.chartGridStroke} strokeDasharray="0" vertical horizontal={false} />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  tickFormatter={formatDayTick}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  tickFormatter={(value) => value.toLocaleString()}
+                  width={48}
+                />
+                <Tooltip
+                  {...tooltipCommon}
+                  cursor={{ stroke: colors.text, strokeWidth: 1, strokeOpacity: 0.4 }}
+                  labelFormatter={(value) => {
+                    const date = new Date(value)
+                    return date.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  }}
+                  formatter={(value) => [`${value}`, 'Calls']}
+                />
+                <Line
+                  type="natural"
+                  dataKey="calls"
+                  stroke={colors.primary}
+                  strokeWidth={isMobile ? 2 : 3}
+                  fill="url(#callsGradient)"
+                  dot={false}
+                  isAnimationActive={false}
+                  activeDot={{
+                    r: isMobile ? 4 : 6,
+                    fill: colors.primary,
+                    strokeWidth: 2,
+                    stroke: colors.background,
+                    filter: 'drop-shadow(0 2px 4px rgba(59, 130, 246, 0.35))',
+                  }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (chartId === CHART_IDS.DAILY_MINUTES) {
+    return (
+      <Card className={overviewBuiltinCardClassName}>
+        <CardHeader className={overviewBuiltinCardHeaderClassName}>
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="shrink-0 rounded-lg border border-blue-100 bg-blue-50 p-2 dark:border-blue-800 dark:bg-blue-900/20">
+              <ChartBar weight="regular" className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600 dark:text-blue-400`} />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                Usage Minutes
+              </CardTitle>
+              <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                {isMobile ? 'Daily duration' : 'Daily conversation duration'}
+              </p>
+            </div>
+          </div>
+          {!isMobile && (
+            <div className="hidden shrink-0 items-center gap-3 sm:flex">
+              <div className="text-right">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Peak</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {analytics?.dailyData && analytics.dailyData.length > 0
+                    ? `${Math.max(...analytics.dailyData.map((d: OverviewDailyDatum) => d.minutes || 0))}m`
+                    : '0m'}
+                </div>
+              </div>
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+              <div className="text-right">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {analytics?.dailyData && analytics.dailyData.length > 0
+                    ? `${Math.round(
+                        analytics.dailyData.reduce(
+                          (sum: number, d: OverviewDailyDatum) => sum + (d.minutes || 0),
+                          0
+                        ) / analytics.dailyData.length
+                      )}m`
+                    : '0m'}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className={overviewBuiltinCardContentClassName}>
+          <div className={isMobile ? 'h-48' : 'h-80'}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={analytics?.dailyData || []} margin={OVERVIEW_BUILTIN_CHART_MARGIN}>
+                <defs>
+                  <linearGradient id="minutesGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={colors.primary} stopOpacity={0.92} />
+                    <stop offset="95%" stopColor={colors.primary} stopOpacity={0.52} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={colors.chartGridStroke} strokeDasharray="4 4" vertical={false} horizontal />
+                <CartesianGrid stroke={colors.chartGridStroke} strokeDasharray="0" vertical horizontal={false} />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  tickFormatter={formatDayTick}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  width={48}
+                  domain={[0, 'auto']}
+                  tickFormatter={(value) => `${value}m`}
+                />
+                <Tooltip
+                  {...tooltipCommon}
+                  cursor={{ fill: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }}
+                  formatter={(value) => [`${value} min`, 'Duration']}
+                  labelFormatter={(value) => {
+                    const date = new Date(value)
+                    return date.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  }}
+                />
+                <Bar
+                  dataKey="minutes"
+                  fill="url(#minutesGradient)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={56}
+                  isAnimationActive={false}
+                  activeBar={{ fillOpacity: 0.88 }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (chartId === CHART_IDS.AVG_LATENCY) {
+    return (
+      <Card className={overviewBuiltinCardClassName}>
+        <CardHeader className={overviewBuiltinCardHeaderClassName}>
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="shrink-0 rounded-lg border border-orange-100 bg-orange-50 p-2 dark:border-orange-800 dark:bg-orange-900/20">
+              <Activity weight="regular" className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-orange-600 dark:text-orange-400`} />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                Response Performance
+              </CardTitle>
+              <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                {isMobile ? 'Latency metrics' : 'Average latency metrics'}
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className={overviewBuiltinCardContentClassName}>
+          <div className={isMobile ? 'h-48' : 'h-80'}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={analytics?.dailyData || []} margin={OVERVIEW_BUILTIN_CHART_MARGIN}>
+                <defs>
+                  <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ff9500" stopOpacity={0.14} />
+                    <stop offset="95%" stopColor="#ff9500" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={colors.chartGridStroke} strokeDasharray="4 4" vertical={false} horizontal />
+                <CartesianGrid stroke={colors.chartGridStroke} strokeDasharray="0" vertical horizontal={false} />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  tickFormatter={formatDayTick}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  width={48}
+                  domain={[0, 'auto']}
+                  tickFormatter={(value) => `${value}s`}
+                />
+                <Tooltip
+                  {...tooltipCommon}
+                  cursor={{ stroke: colors.text, strokeWidth: 1, strokeOpacity: 0.4 }}
+                  formatter={(value) => [`${value}s`, 'Latency']}
+                  labelFormatter={(value) => {
+                    const date = new Date(value)
+                    return date.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  }}
+                />
+                <Line
+                  type="natural"
+                  dataKey="avg_latency"
+                  stroke="#ff9500"
+                  strokeWidth={isMobile ? 2 : 3}
+                  fill="url(#latencyGradient)"
+                  dot={false}
+                  isAnimationActive={false}
+                  activeDot={{
+                    r: isMobile ? 4 : 6,
+                    fill: '#ff9500',
+                    strokeWidth: 2,
+                    stroke: colors.background,
+                    filter: 'drop-shadow(0 2px 4px rgba(255, 149, 0, 0.3))',
+                  }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return null
+}
+
+function OverviewDesktopMergedCharts({
+  analytics,
+  colors,
+  theme,
+  isChartVisible,
+  agentId,
+  dateFrom,
+  dateTo,
+}: {
+  analytics: React.ComponentProps<typeof OverviewBuiltinChart>['analytics']
+  colors: React.ComponentProps<typeof OverviewBuiltinChart>['colors']
+  theme: string | undefined
+  isChartVisible: (chartId: string) => boolean
+  agentId: string
+  dateFrom: string
+  dateTo: string
+}) {
+  const { charts } = useChartContext()
+  const fixedVisible = useMemo(
+    () => OVERVIEW_BUILTIN_CHART_ORDER.filter((id) => isChartVisible(id)),
+    [isChartVisible]
+  )
+  const slots = useMemo(
+    () => buildOverviewMergedChartSlots(fixedVisible, charts),
+    [fixedVisible, charts]
+  )
+  return (
+    <>
+      {slots.map((slot) => (
+        <div key={slot.key} className="flex h-full min-h-0 min-w-0 flex-col">
+          {slot.kind === 'fixed' ? (
+            <OverviewBuiltinChart
+              chartId={slot.chartId}
+              isMobile={false}
+              analytics={analytics}
+              colors={colors}
+              theme={theme}
+            />
+          ) : (
+            <OverviewCustomChartCard
+              chart={slot.chart}
+              agentId={agentId}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+          )}
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -209,6 +634,11 @@ const Overview: React.FC<OverviewProps> = ({
   const [activeGroupId, setActiveGroupId] = useState<string | 'all'>('all')
   const [showGroupManager, setShowGroupManager] = useState(false)
   const [loadingGroups, setLoadingGroups] = useState(false)
+  const [chartCreateDialogOpen, setChartCreateDialogOpen] = useState(false)
+
+  useEffect(() => {
+    setChartCreateDialogOpen(false)
+  }, [agent?.id])
 
   const { user } = useUser()
   const userEmail = user?.emailAddresses?.[0]?.emailAddress
@@ -519,13 +949,16 @@ const Overview: React.FC<OverviewProps> = ({
   const getChartColors = () => {
     const isDark = theme === 'dark'
     return {
-      primary: '#007aff',
+      /** Tailwind blue-500 — matches primary UI accents */
+      primary: '#3b82f6',
       success: isDark ? '#30d158' : '#28a745',
       danger: isDark ? '#ff453a' : '#dc3545',
-      grid: isDark ? '#374151' : '#f3f4f6',
-      text: isDark ? '#d1d5db' : '#6b7280',
+      grid: isDark ? 'rgba(148, 163, 184, 0.14)' : 'rgba(15, 23, 42, 0.06)',
+      /** Aligned with `CountChartVisualization` dashed grid */
+      chartGridStroke: isDark ? 'rgba(148, 163, 184, 0.24)' : 'rgba(100, 116, 139, 0.22)',
+      text: isDark ? '#94a3b8' : '#64748b',
       background: isDark ? '#1f2937' : '#ffffff',
-      muted: isDark ? '#9ca3af' : '#6b7280'
+      muted: isDark ? '#9ca3af' : '#6b7280',
     }
   }
 
@@ -598,6 +1031,8 @@ const Overview: React.FC<OverviewProps> = ({
         onManageGroups={() => setShowGroupManager(true)}
         customTotalsCount={customTotals.length}
         canManageGroups={isOwnerOrAdmin}
+        showAddChart={visibility?.agent?.overview.charts === true}
+        onAddChart={() => setChartCreateDialogOpen(true)}
       />
 
       <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-8 space-y-8'}`}>
@@ -880,290 +1315,62 @@ const Overview: React.FC<OverviewProps> = ({
         )}
 
         {/* Charts - Filtered by active group */}
-        <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2 gap-6'}`}>
-          {/* Daily Calls Chart */}
-          {isChartVisible(CHART_IDS.DAILY_CALLS) && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
-                      <TrendUp weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
-                    </div>
-                    <div>
-                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Daily Call Volume</h3>
-                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
-                        {isMobile ? 'Trend analysis' : 'Trend analysis over selected period'}
-                      </p>
-                    </div>
-                  </div>
-                  {!isMobile && (
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Peak</div>
-                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {analytics?.dailyData && analytics.dailyData.length > 0 
-                            ? Math.max(...analytics.dailyData.map(d => d.calls || 0)) 
-                            : 0
-                          }
-                        </div>
-                      </div>
-                      <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
-                      <div className="text-right">
-                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg</div>
-                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {analytics?.dailyData && analytics.dailyData.length > 0 
-                            ? Math.round(analytics.dailyData.reduce((sum, d) => sum + (d.calls || 0), 0) / analytics.dailyData.length) 
-                            : 0
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className={isMobile ? 'p-4' : 'p-7'}>
-                <div className={isMobile ? 'h-48' : 'h-80'}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                      <defs>
-                        <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#007aff" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#007aff" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                        height={40}
-                        tickFormatter={(value) => {
-                          const date = new Date(value)
-                          return `${date.getMonth() + 1}/${date.getDate()}`
-                        }}
-                      />
-                      <YAxis 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                        width={isMobile ? 35 : 45}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: colors.background,
-                          border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                          borderRadius: '12px',
-                          fontSize: isMobile ? '12px' : '13px',
-                          fontWeight: '500',
-                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                          backdropFilter: 'blur(20px)',
-                          color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                        }}
-                        labelStyle={{ color: theme === 'dark' ? '#f3f4f6' : '#374151', fontWeight: '600' }}
-                        labelFormatter={(value) => {
-                          const date = new Date(value)
-                          return date.toLocaleDateString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric' 
-                          })
-                        }}
-                        formatter={(value) => [`${value}`, 'Calls']}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="calls" 
-                        stroke={colors.primary} 
-                        strokeWidth={isMobile ? 2 : 3}
-                        fill="url(#callsGradient)"
-                        dot={false}
-                        activeDot={{ 
-                          r: isMobile ? 4 : 6, 
-                          fill: colors.primary, 
-                          strokeWidth: 3, 
-                          stroke: colors.background,
-                          filter: 'drop-shadow(0 2px 4px rgba(0, 122, 255, 0.3))'
-                        }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+        {isMobile ? (
+          <div className="grid grid-cols-1 gap-4">
+            {OVERVIEW_BUILTIN_CHART_ORDER.map((chartId) =>
+              isChartVisible(chartId) ? (
+                <OverviewBuiltinChart
+                  key={chartId}
+                  chartId={chartId}
+                  isMobile
+                  analytics={analytics}
+                  colors={colors}
+                  theme={theme}
+                />
+              ) : null
+            )}
+          </div>
+        ) : visibility?.agent?.overview.charts === true && agent?.id ? (
+          <ChartProvider persistKey={`agent-overview-charts-${agent.id}`}>
+            <div className="grid grid-cols-2 gap-6">
+              <OverviewDesktopMergedCharts
+                analytics={analytics}
+                colors={colors}
+                theme={theme}
+                isChartVisible={isChartVisible}
+                agentId={agent.id}
+                dateFrom={dateRange.from}
+                dateTo={dateRange.to}
+              />
             </div>
-          )}
-
-          {/* Daily Minutes Chart */}
-          {isChartVisible(CHART_IDS.DAILY_MINUTES) && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
-              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800`}>
-                      <ChartBar weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400`} />
-                    </div>
-                    <div>
-                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Usage Minutes</h3>
-                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
-                        {isMobile ? 'Daily duration' : 'Daily conversation duration'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className={isMobile ? 'p-4' : 'p-7'}>
-                <div className={isMobile ? 'h-48' : 'h-80'}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
-                      <defs>
-                        <linearGradient id="minutesGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor={colors.primary} stopOpacity={0.4}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                        height={40}
-                        tickFormatter={(value) => {
-                          const date = new Date(value)
-                          return `${date.getMonth() + 1}/${date.getDate()}`
-                        }}
-                      />
-                      <YAxis 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                        width={isMobile ? 35 : 40}
-                        tickFormatter={(value) => `${value}m`}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: colors.background,
-                          border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                          borderRadius: '12px',
-                          fontSize: isMobile ? '12px' : '13px',
-                          fontWeight: '500',
-                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                          backdropFilter: 'blur(20px)',
-                          color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                        }}
-                        formatter={(value) => [`${value} min`, 'Duration']}
-                        labelFormatter={(value) => {
-                          const date = new Date(value)
-                          return date.toLocaleDateString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric' 
-                          })
-                        }}
-                      />
-                      <Bar 
-                        dataKey="minutes" 
-                        fill="url(#minutesGradient)"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Average Latency Chart */}
-          {isChartVisible(CHART_IDS.AVG_LATENCY) && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300">
-              <div className={`border-b border-gray-200 dark:border-gray-700 ${isMobile ? 'px-4 py-4' : 'px-7 py-6'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800`}>
-                      <Activity weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-orange-600 dark:text-orange-400`} />
-                    </div>
-                    <div>
-                      <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight`}>Response Performance</h3>
-                      <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500 dark:text-gray-400 mt-0.5`}>
-                        {isMobile ? 'Latency metrics' : 'Average latency metrics'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className={isMobile ? 'p-4' : 'p-7'}>
-                <div className={isMobile ? 'h-48' : 'h-80'}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={analytics?.dailyData || []} margin={{ top: 20, right: 20, left: 20, bottom: 40 }}>
-                      <defs>
-                        <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ff9500" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#ff9500" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="1 1" stroke={colors.grid} />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                        height={40}
-                        tickFormatter={(value) => {
-                          const date = new Date(value)
-                          return `${date.getMonth() + 1}/${date.getDate()}`
-                        }}
-                      />
-                      <YAxis 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: isMobile ? 9 : 11, fill: colors.text, fontWeight: 500 }}
-                        width={isMobile ? 35 : 40}
-                        tickFormatter={(value) => `${value}s`}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: colors.background,
-                          border: `1px solid ${theme === 'dark' ? '#374151' : '#e5e7eb'}`,
-                          borderRadius: '12px',
-                          fontSize: isMobile ? '12px' : '13px',
-                          fontWeight: '500',
-                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                          backdropFilter: 'blur(20px)',
-                          color: theme === 'dark' ? '#f3f4f6' : '#374151'
-                        }}
-                        formatter={(value) => [`${value}s`, 'Latency']}
-                        labelFormatter={(value) => {
-                          const date = new Date(value)
-                          return date.toLocaleDateString('en-US', { 
-                            weekday: 'short',
-                            month: 'short', 
-                            day: 'numeric' 
-                          })
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="avg_latency" 
-                        stroke="#ff9500" 
-                        strokeWidth={isMobile ? 2 : 3}
-                        fill="url(#latencyGradient)"
-                        dot={false}
-                        activeDot={{ 
-                          r: isMobile ? 4 : 6, 
-                          fill: '#ff9500', 
-                          strokeWidth: 3, 
-                          stroke: colors.background,
-                          filter: 'drop-shadow(0 2px 4px rgba(255, 149, 0, 0.3))'
-                        }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+            <EnhancedChartBuilder
+              agentId={agent.id}
+              dateFrom={dateRange.from}
+              dateTo={dateRange.to}
+              metadataFields={metadataFields}
+              transcriptionFields={transcriptionFields}
+              fieldsLoading={fieldsLoading}
+              createDialogOpen={chartCreateDialogOpen}
+              onCreateDialogOpenChange={setChartCreateDialogOpen}
+              renderChartGrid={false}
+            />
+            {userEmail && !fieldsLoading && agent?.id && project?.id && (
+              <FloatingActionMenu
+                metadataFields={metadataFields}
+                transcriptionFields={transcriptionFields}
+                agentId={agent.id}
+                projectId={project.id}
+                userEmail={userEmail}
+                availableColumns={
+                  role !== 'admin' && role !== 'owner'
+                    ? AVAILABLE_COLUMNS.filter((col) => col.key !== 'billing_duration_seconds')
+                    : AVAILABLE_COLUMNS
+                }
+                onSaveCustomTotal={handleSaveCustomTotal}
+              />
+            )}
+          </ChartProvider>
+        ) : null}
 
         {/* Show message when no charts or metrics visible */}
         {activeGroupId !== 'all' && visibleChartIds.length === 0 && visibleMetricIds.length === 0 && (
@@ -1172,38 +1379,6 @@ const Overview: React.FC<OverviewProps> = ({
               No metrics or charts in this group. Click "Manage" to add them.
             </p>
           </div>
-        )}
-
-        {/* Chart Analytics Section — extra builder; gated by overview.charts + org.metrics */}
-        {!isMobile &&
-               visibility?.agent?.overview.charts === true && (
-          <ChartProvider>
-            <div className="space-y-6">
-              <EnhancedChartBuilder 
-                agentId={agent?.id}
-                dateFrom={dateRange.from}
-                dateTo={dateRange.to}
-                metadataFields={metadataFields}
-                transcriptionFields={transcriptionFields}
-                fieldsLoading={fieldsLoading}
-              />
-
-              {userEmail && !fieldsLoading && agent?.id && project?.id && (
-                <FloatingActionMenu
-                  metadataFields={metadataFields}
-                  transcriptionFields={transcriptionFields}
-                  agentId={agent.id}
-                  projectId={project.id}
-                  userEmail={userEmail}
-                  availableColumns={role !== 'admin' && role !== 'owner'
-                    ? AVAILABLE_COLUMNS.filter(col => col.key !== 'billing_duration_seconds')
-                    : AVAILABLE_COLUMNS
-                  }
-                  onSaveCustomTotal={handleSaveCustomTotal}
-                />
-              )}
-            </div>
-          </ChartProvider>
         )}
       </div>
 
