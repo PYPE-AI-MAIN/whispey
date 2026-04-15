@@ -423,7 +423,8 @@ export function useMultiAssistantState({
         interruptions: {
           allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
           min_interruption_duration: formValues.advancedSettings?.interruption?.minInterruptionDuration ?? getFallback(null, 'interruptions.min_interruption_duration'),
-          min_interruption_words: formValues.advancedSettings?.interruption?.minInterruptionWords ?? getFallback(null, 'interruptions.min_interruption_words')
+          min_interruption_words: formValues.advancedSettings?.interruption?.minInterruptionWords ?? getFallback(null, 'interruptions.min_interruption_words'),
+          filter_backchannels: formValues.advancedSettings?.interruption?.filterBackchannels ?? false,
         },
         first_message_mode: firstMessageModeConfig,
         first_message: firstMessageModeConfig.first_message,
@@ -434,6 +435,12 @@ export function useMultiAssistantState({
           unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
           min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
           max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
+          ...(formValues.advancedSettings?.session?.endpointing_mode && {
+            endpointing_mode: formValues.advancedSettings.session.endpointing_mode
+          }),
+          ...(formValues.advancedSettings?.session?.interruption_mode && {
+            interruption_mode: formValues.advancedSettings.session.interruption_mode
+          }),
           ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
             user_away_timeout: formValues.advancedSettings.session.user_away_timeout
           }),
@@ -724,7 +731,8 @@ export function useMultiAssistantState({
         interruptions: {
           allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
           min_interruption_duration: formValues.advancedSettings?.interruption?.minInterruptionDuration ?? getFallback(null, 'interruptions.min_interruption_duration'),
-          min_interruption_words: formValues.advancedSettings?.interruption?.minInterruptionWords ?? getFallback(null, 'interruptions.min_interruption_words')
+          min_interruption_words: formValues.advancedSettings?.interruption?.minInterruptionWords ?? getFallback(null, 'interruptions.min_interruption_words'),
+          filter_backchannels: formValues.advancedSettings?.interruption?.filterBackchannels ?? false,
         },
         first_message_mode: firstMessageModeConfig,
         first_message: firstMessageModeConfig.first_message,
@@ -735,6 +743,12 @@ export function useMultiAssistantState({
           unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
           min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
           max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
+          ...(formValues.advancedSettings?.session?.endpointing_mode && {
+            endpointing_mode: formValues.advancedSettings.session.endpointing_mode
+          }),
+          ...(formValues.advancedSettings?.session?.interruption_mode && {
+            interruption_mode: formValues.advancedSettings.session.interruption_mode
+          }),
           ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
             user_away_timeout: formValues.advancedSettings.session.user_away_timeout
           }),
