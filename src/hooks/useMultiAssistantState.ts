@@ -370,17 +370,27 @@ export function useMultiAssistantState({
           // Merge Knowledge Base (RAG) tool when enabled
           const kb = formValues.advancedSettings?.knowledgeBase
           const toolsArray = Array.isArray(mappedTools) ? [...mappedTools] : []
+          
+          // Filter out knowledge_search tool if RAG is disabled
+          const filteredTools = kb?.enabled === false 
+            ? toolsArray.filter((t: any) => t?.type !== 'knowledge_search')
+            : toolsArray
+          
           if (kb?.enabled) {
             const topK = typeof kb.topK === 'number' && kb.topK >= 1 ? Math.min(50, kb.topK) : 5
-            const existingIdx = toolsArray.findIndex((t: any) => t?.type === 'knowledge_search')
-            const kbEntry = { type: 'knowledge_search' as const, top_k: topK }
+            const existingIdx = filteredTools.findIndex((t: any) => t?.type === 'knowledge_search')
+            const kbEntry = {
+              type: 'knowledge_search' as const,
+              top_k: topK,
+              knowledge_search_options: { top_k: topK }
+            }
             if (existingIdx >= 0) {
-              toolsArray[existingIdx] = { ...toolsArray[existingIdx], ...kbEntry }
+              filteredTools[existingIdx] = { ...filteredTools[existingIdx], ...kbEntry }
             } else {
-              toolsArray.push(kbEntry)
+              filteredTools.push(kbEntry)
             }
           }
-          return toolsArray.length > 0 ? toolsArray : getFallback(null, 'tools')
+          return filteredTools.length > 0 ? filteredTools : getFallback(null, 'tools')
         })(),
         filler_words: {
           enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
@@ -406,6 +416,9 @@ export function useMultiAssistantState({
           bug_end_command: formValues.advancedSettings?.bugs?.bugEndCommands || getFallback(null, 'bug_reports.bug_end_command'),
           response: formValues.advancedSettings?.bugs?.initialResponse || getFallback(null, 'bug_reports.response'),
           collection_prompt: formValues.advancedSettings?.bugs?.collectionPrompt || getFallback(null, 'bug_reports.collection_prompt')
+        },
+        context_memory: {
+          enabled: formValues.advancedSettings?.contextMemory?.enabled ?? false
         },
         interruptions: {
           allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
@@ -704,6 +717,9 @@ export function useMultiAssistantState({
           bug_end_command: formValues.advancedSettings?.bugs?.bugEndCommands || getFallback(null, 'bug_reports.bug_end_command'),
           response: formValues.advancedSettings?.bugs?.initialResponse || getFallback(null, 'bug_reports.response'),
           collection_prompt: formValues.advancedSettings?.bugs?.collectionPrompt || getFallback(null, 'bug_reports.collection_prompt')
+        },
+        context_memory: {
+          enabled: formValues.advancedSettings?.contextMemory?.enabled ?? false
         },
         interruptions: {
           allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
