@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
-import PipecatAdvancedSettings from './PipecatAdvancedSettings'
+import PipecatAdvancedSettings from './PipecatAdvancedSettings/index'
 import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
 
 // ── Props ────────────────────────────────────────────────────────────────────
