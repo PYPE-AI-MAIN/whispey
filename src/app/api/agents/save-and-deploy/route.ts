@@ -402,6 +402,12 @@ function transformFormDataToAgentConfig(formData: any) {
             unlikely_threshold: formikValues.advancedSettings.session.unlikely_threshold,
             min_endpointing_delay: formikValues.advancedSettings.session.min_endpointing_delay,
             max_endpointing_delay: formikValues.advancedSettings.session.max_endpointing_delay,
+            ...(formikValues.advancedSettings.session.endpointing_mode && {
+              endpointing_mode: formikValues.advancedSettings.session.endpointing_mode
+            }),
+            ...(formikValues.advancedSettings.session.interruption_mode && {
+              interruption_mode: formikValues.advancedSettings.session.interruption_mode
+            }),
             ...(formikValues.advancedSettings.session.user_away_timeout !== undefined && {
               user_away_timeout: formikValues.advancedSettings.session.user_away_timeout
             }),
@@ -418,7 +424,8 @@ function transformFormDataToAgentConfig(formData: any) {
           interruptions: {
             allow_interruptions: formikValues.advancedSettings.interruption.allowInterruptions,
             min_interruption_duration: formikValues.advancedSettings.interruption.minInterruptionDuration,
-            min_interruption_words: formikValues.advancedSettings.interruption.minInterruptionWords
+            min_interruption_words: formikValues.advancedSettings.interruption.minInterruptionWords,
+            filter_backchannels: formikValues.advancedSettings.interruption.filterBackchannels ?? false,
           },
           first_message_mode: firstMessageModeConfig
         }
