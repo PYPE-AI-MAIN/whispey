@@ -196,7 +196,7 @@ export async function DELETE(
     // Get agent details before deletion (we need name for backend deletion and project_id for quota update)
     const { data: agentData, error: agentFetchError } = await supabase
       .from('pype_voice_agents')
-      .select('name, project_id')
+      .select('name, project_id, configuration')
       .eq('id', agentId)
       .single()
 
@@ -265,49 +265,58 @@ export async function DELETE(
     
     console.log(`Successfully deleted agent: ${agentId}`)
 
-    // 5. Call backend to delete agent with fallback strategy
-    if (agentData && agentData.name) {
+    // 5. Delete from backend — branch on Pipecat vs LiveKit
+    if (agentData?.name) {
       try {
-        console.log('🔄 Attempting backend agent deletion...')
-        
-        // First attempt: Try with just agent_name_agent_id (sanitize agent ID)
-        const sanitizedAgentId = agentId.replace(/-/g, '_')
-        const fallbackAgentName = `${agentData.name}_${sanitizedAgentId}`
-        console.log('🔄 First attempt: Deleting with agent_name:', fallbackAgentName)
-        
-        let backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': 'pype-api-v1'
-          },
-          body: JSON.stringify({ 
-            agent_name: fallbackAgentName
-          })
-        })
+        const pipecatAgentId = agentData.configuration?.pipecat_agent_id
+        const isPipecat = !!pipecatAgentId
 
-        // If first attempt failed, try with agent_name
-        if (!backendDeleteResponse.ok) {
-          console.log('🔄 First attempt failed, trying with agent_name only')
-          console.log('🔄 Second attempt: Deleting with fallback name:', agentData.name)
-          
-          backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': 'pype-api-v1'
-            },
-            body: JSON.stringify({ 
-              agent_name: fallbackAgentName
+        if (isPipecat) {
+          console.log('🔄 Deleting Pipecat agent:', pipecatAgentId)
+          const pipecatBaseUrl = process.env.PIPECAT_BASE_URL
+
+          if (!pipecatBaseUrl) {
+            console.error('❌ PIPECAT_BASE_URL not set')
+          } else {
+            const pipecatResponse = await fetch(`${pipecatBaseUrl}/v1/agents/${pipecatAgentId}`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' }
             })
-          })
-        }
 
-        if (backendDeleteResponse.ok) {
-          console.log('✅ Successfully deleted agent from backend')
+            if (pipecatResponse.ok) {
+              console.log('✅ Pipecat agent deleted successfully')
+            } else {
+              const errorData = await pipecatResponse.text()
+              console.error('❌ Pipecat delete failed:', pipecatResponse.status, errorData)
+            }
+          }
+
         } else {
-          const errorData = await backendDeleteResponse.text()
-          console.error('❌ Backend delete failed on both attempts:', backendDeleteResponse.status, errorData)
+          console.log('🔄 Deleting LiveKit agent from backend...')
+          const sanitizedAgentId = agentId.replace(/-/g, '_')
+          const agentNameWithId = `${agentData.name}_${sanitizedAgentId}`
+
+          let backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': 'pype-api-v1' },
+            body: JSON.stringify({ agent_name: agentNameWithId })
+          })
+
+          if (!backendDeleteResponse.ok) {
+            console.log('🔄 First attempt failed, trying with name only:', agentData.name)
+            backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': 'pype-api-v1' },
+              body: JSON.stringify({ agent_name: agentData.name })
+            })
+          }
+
+          if (backendDeleteResponse.ok) {
+            console.log('✅ LiveKit agent deleted from backend')
+          } else {
+            const errorData = await backendDeleteResponse.text()
+            console.error('❌ Backend delete failed:', backendDeleteResponse.status, errorData)
+          }
         }
       } catch (backendError) {
         console.error('❌ Backend delete error:', backendError)

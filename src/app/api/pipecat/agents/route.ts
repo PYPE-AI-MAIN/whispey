@@ -1,3 +1,4 @@
+// src/app/api/pipecat/agents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
 const PIPECAT_BASE_URL = process.env.PIPECAT_BASE_URL || 'http://13.201.89.77:7860'

@@ -1,3 +1,4 @@
+// src/api/knowledge/documents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
 /**

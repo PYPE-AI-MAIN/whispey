@@ -1,3 +1,4 @@
+// src/components/knowledge/KnowledgeBaseDocumentList.tsx
 'use client'
 
 import React, { useCallback, useState } from 'react'
