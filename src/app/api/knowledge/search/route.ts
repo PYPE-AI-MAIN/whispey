@@ -1,3 +1,4 @@
+// src/app/api/knowledge/search/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
 /**

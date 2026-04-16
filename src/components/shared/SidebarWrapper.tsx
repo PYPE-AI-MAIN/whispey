@@ -153,7 +153,7 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 96
   },
 
-  // Project-level agents routes (UPDATED - now includes campaigns)
+  // Project-level agents routes
   {
     patterns: [
       { pattern: '/:projectId/agents' },
@@ -186,7 +186,6 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Show only what permissions.visibility allows (update in Supabase to change).
       const showCampaign = canShowOrgSection(visibility, 'campaign')
       const showPhoneSetting = canShowOrgSection(visibility, 'phoneSetting')
       const showSettings = canShowOrgSection(visibility, 'settings')
@@ -256,6 +255,8 @@ const sidebarRoutes: SidebarRoute[] = [
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
       { pattern: '/:projectId/agents/:agentId/config' },
+      { pattern: '/:projectId/agents/:agentId/config/pipecat' },
+      { pattern: '/:projectId/agents/:agentId/config/pipecat/knowledgebase' }, // ← NEW
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
@@ -286,29 +287,52 @@ const sidebarRoutes: SidebarRoute[] = [
         }
       ]
 
-      // Agent nav: Agent Config = owner/admin OR permissions.visibility.agent.agentConfig (Supabase).
       const configItems = []
+      const isPipecatAgent = agentType === 'pipecat_agent'
       const showAgentConfig =
         agentType === 'pype_agent' &&
         (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
-      const showKnowledgeBase = agentType === 'pype_agent' && canShowAgentSection(visibility, 'knowledgeBase')
-      const showPhoneCalls = agentType === 'pype_agent' && canShowAgentSection(visibility, 'phoneCalls')
+      const showPipecatConfig =
+        isPipecatAgent &&
+        (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
+      const showKnowledgeBase =
+        (agentType === 'pype_agent' || isPipecatAgent) &&
+        canShowAgentSection(visibility, 'knowledgeBase')
+      const showPhoneCalls =
+        (agentType === 'pype_agent' || isPipecatAgent) &&
+        canShowAgentSection(visibility, 'phoneCalls')
 
       if (showAgentConfig) {
         configItems.push({ 
           id: 'agent-config', 
           name: 'Agent Config', 
           icon: 'Settings', 
-          path: `/${projectId}/agents/${agentId}/config`, 
+          path: `/${projectId}/agents/${agentId}/config`,
           group: 'configuration' 
         })
       }
+
+      if (showPipecatConfig) {
+        configItems.push({
+          id: 'agent-config',
+          name: 'Agent Config',
+          icon: 'Settings',
+          path: `/${projectId}/agents/${agentId}/config/pipecat`,
+          group: 'configuration'
+        })
+      }
+
       if (showKnowledgeBase) {
+        // Pipecat agents use a different KB route
+        const kbPath = isPipecatAgent
+          ? `/${projectId}/agents/${agentId}/config/pipecat/knowledgebase`
+          : `/${projectId}/agents/${agentId}/knowledge`
+
         configItems.push({ 
           id: 'knowledge', 
           name: 'Knowledge Base', 
           icon: 'BookOpen', 
-          path: `/${projectId}/agents/${agentId}/knowledge`, 
+          path: kbPath,
           group: 'configuration' 
         })
       }
@@ -480,7 +504,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     refetchOnMount: false,
   })
 
-  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedState = localStorage.getItem('whispey-sidebar-collapsed')
@@ -518,7 +541,6 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     fetchUserRole()
   }, [user, projectId, isValidProjectId])
   
-  // projectId comes directly from the URL — no API call needed to check this
   const isEnhancedProject = projectId === ENHANCED_PROJECT_ID
   
   const sidebarContext: SidebarContext = {
