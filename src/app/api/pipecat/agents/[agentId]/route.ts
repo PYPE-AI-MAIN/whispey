@@ -1,16 +1,11 @@
 // src/app/api/pipecat/agents/[agentId]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { getPipecatBaseUrl } from '@/lib/utils'
 
 export async function GET(request: NextRequest) {
   try {
-    const pipecatBaseUrl = process.env.PIPECAT_BASE_URL
-    if (!pipecatBaseUrl) {
-      return NextResponse.json(
-        { error: 'PIPECAT_BASE_URL environment variable is not set' },
-        { status: 500 }
-      )
-    }
+    const pipecatBaseUrl = getPipecatBaseUrl()
 
     // Get user info for authorization
     const { userId: clerkUserId } = await auth()
@@ -70,13 +65,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const pipecatBaseUrl = process.env.PIPECAT_BASE_URL
-    if (!pipecatBaseUrl) {
-      return NextResponse.json(
-        { error: 'PIPECAT_BASE_URL environment variable is not set' },
-        { status: 500 }
-      )
-    }
+    const pipecatBaseUrl = getPipecatBaseUrl()
 
     const { userId: clerkUserId } = await auth()
     if (!clerkUserId) {
