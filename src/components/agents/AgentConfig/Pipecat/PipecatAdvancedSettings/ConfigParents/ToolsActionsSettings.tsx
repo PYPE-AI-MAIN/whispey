@@ -19,6 +19,22 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface FillerConfig {
+  enabled: boolean
+  threshold: number       // seconds before first filler fires
+  interval: number        // seconds between repeated fillers
+  mode: 'random' | 'sequential'
+  messages: string[]
+}
+
+const DEFAULT_FILLER_CONFIG: FillerConfig = {
+  enabled: false,
+  threshold: 2.0,
+  interval: 3.0,
+  mode: 'random',
+  messages: [],
+}
+
 interface CustomTool {
   name: string
   description: string
@@ -26,6 +42,7 @@ interface CustomTool {
   method: string
   parameters: Record<string, { type: string; description: string; required: boolean }>
   headers: Record<string, string>
+  filler_config: FillerConfig
 }
 
 interface BackendTool {
@@ -60,6 +77,7 @@ interface ToolsActionsSettingsProps {
 const EMPTY_TOOL: CustomTool = {
   name: '', description: '', url: '', method: 'POST',
   parameters: {}, headers: { 'Content-Type': 'application/json' },
+  filler_config: { ...DEFAULT_FILLER_CONFIG },
 }
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -200,6 +218,7 @@ export default function ToolsActionsSettings({
   const [parametersJson, setParametersJson] = useState('{}')
   const [headersJson, setHeadersJson] = useState('{"Content-Type": "application/json"}')
   const [jsonError, setJsonError] = useState('')
+  const [newFillerMessage, setNewFillerMessage] = useState('')
 
   // Fetch builtin tools from backend
   useEffect(() => {
@@ -240,20 +259,25 @@ export default function ToolsActionsSettings({
   // Custom tool dialog handlers
   const openAddDialog = () => {
     setEditingIndex(null)
-    setEditingTool(EMPTY_TOOL)
+    setEditingTool({ ...EMPTY_TOOL, filler_config: { ...DEFAULT_FILLER_CONFIG } })
     setParametersJson('{}')
     setHeadersJson('{"Content-Type": "application/json"}')
     setJsonError('')
+    setNewFillerMessage('')
     setIsDialogOpen(true)
   }
 
   const openEditDialog = (index: number) => {
     const tool = customTools[index]
     setEditingIndex(index)
-    setEditingTool({ ...tool })
+    setEditingTool({
+      ...tool,
+      filler_config: { ...DEFAULT_FILLER_CONFIG, ...(tool.filler_config ?? {}) },
+    })
     setParametersJson(JSON.stringify(tool.parameters || {}, null, 2))
     setHeadersJson(JSON.stringify(tool.headers || {}, null, 2))
     setJsonError('')
+    setNewFillerMessage('')
     setIsDialogOpen(true)
   }
 
@@ -493,6 +517,169 @@ export default function ToolsActionsSettings({
                 rows={2}
               />
             </div>
+            {/* ── Filler Words ────────────────────────────────────────────── */}
+            <div className="border border-gray-200 dark:border-gray-700 rounded-md p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Tool Call Filler Words</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Speak phrases while this tool is running</p>
+                </div>
+                <Switch
+                  checked={editingTool.filler_config?.enabled ?? false}
+                  onCheckedChange={v =>
+                    setEditingTool(p => ({
+                      ...p,
+                      filler_config: { ...DEFAULT_FILLER_CONFIG, ...p.filler_config, enabled: v },
+                    }))
+                  }
+                  className="scale-75"
+                />
+              </div>
+
+              {editingTool.filler_config?.enabled && (
+                <div className="space-y-3">
+                  {/* Threshold + Interval */}
+                  <div className="flex gap-2">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Delay before first filler (sec)</Label>
+                      <Input
+                        type="number"
+                        value={editingTool.filler_config.threshold}
+                        min={0.5}
+                        max={10}
+                        step={0.5}
+                        onChange={e =>
+                          setEditingTool(p => ({
+                            ...p,
+                            filler_config: { ...p.filler_config!, threshold: parseFloat(e.target.value) || 2 },
+                          }))
+                        }
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Repeat interval (sec)</Label>
+                      <Input
+                        type="number"
+                        value={editingTool.filler_config.interval}
+                        min={0.5}
+                        max={20}
+                        step={0.5}
+                        onChange={e =>
+                          setEditingTool(p => ({
+                            ...p,
+                            filler_config: { ...p.filler_config!, interval: parseFloat(e.target.value) || 3 },
+                          }))
+                        }
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mode */}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Selection mode</Label>
+                    <Select
+                      value={editingTool.filler_config.mode}
+                      onValueChange={v =>
+                        setEditingTool(p => ({
+                          ...p,
+                          filler_config: { ...p.filler_config!, mode: v as 'random' | 'sequential' },
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="random" className="text-xs">Random — pick randomly each time</SelectItem>
+                        <SelectItem value="sequential" className="text-xs">Sequential — cycle through in order</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Messages list */}
+                  <div className="space-y-2">
+                    <Label className="text-xs">Filler messages</Label>
+
+                    {(editingTool.filler_config.messages ?? []).length === 0 && (
+                      <p className="text-xs text-gray-400 italic">No messages added yet.</p>
+                    )}
+
+                    {(editingTool.filler_config.messages ?? []).map((msg, i) => (
+                      <div key={i} className="flex gap-1 items-center">
+                        <Input
+                          value={msg}
+                          onChange={e => {
+                            const msgs = [...editingTool.filler_config!.messages]
+                            msgs[i] = e.target.value
+                            setEditingTool(p => ({
+                              ...p,
+                              filler_config: { ...p.filler_config!, messages: msgs },
+                            }))
+                          }}
+                          placeholder="e.g. okay I am checking…"
+                          className="h-7 text-xs flex-1"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const msgs = editingTool.filler_config!.messages.filter((_, j) => j !== i)
+                            setEditingTool(p => ({
+                              ...p,
+                              filler_config: { ...p.filler_config!, messages: msgs },
+                            }))
+                          }}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+
+                    {/* Add new message input */}
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        value={newFillerMessage}
+                        onChange={e => setNewFillerMessage(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && newFillerMessage.trim()) {
+                            setEditingTool(p => ({
+                              ...p,
+                              filler_config: {
+                                ...p.filler_config!,
+                                messages: [...(p.filler_config?.messages ?? []), newFillerMessage.trim()],
+                              },
+                            }))
+                            setNewFillerMessage('')
+                          }
+                        }}
+                        placeholder="Type a filler message and press Enter or +"
+                        className="h-7 text-xs flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!newFillerMessage.trim()) return
+                          setEditingTool(p => ({
+                            ...p,
+                            filler_config: {
+                              ...p.filler_config!,
+                              messages: [...(p.filler_config?.messages ?? []), newFillerMessage.trim()],
+                            },
+                          }))
+                          setNewFillerMessage('')
+                        }}
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {jsonError && <p className="text-xs text-red-500">{jsonError}</p>}
           </div>
           <div className="flex gap-2 mt-4">
