@@ -1,11 +1,10 @@
 // src/app/api/pipecat/agents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-
-const PIPECAT_BASE_URL = process.env.PIPECAT_BASE_URL || 'http://13.201.89.77:7860'
+import { getPipecatBaseUrl } from '@/lib/utils'
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${PIPECAT_BASE_URL}/v1/agents`, {
+    const response = await fetch(`${getPipecatBaseUrl()}/v1/agents`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

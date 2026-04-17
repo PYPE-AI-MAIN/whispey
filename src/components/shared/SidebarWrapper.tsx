@@ -256,9 +256,11 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId' },
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/config/pipecat' },
-      { pattern: '/:projectId/agents/:agentId/config/pipecat/knowledgebase' }, // ← NEW
+      { pattern: '/:projectId/agents/:agentId/config/pipecat/knowledgebase' },
+      { pattern: '/:projectId/agents/:agentId/config/livekit' },
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
+      { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
     ],
     getSidebarConfig: (params, context) => {

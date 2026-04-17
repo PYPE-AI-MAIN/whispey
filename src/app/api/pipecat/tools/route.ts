@@ -1,14 +1,10 @@
 // src/app/api/pipecat/tools/route.ts
 import { NextResponse } from 'next/server'
+import { getPipecatBaseUrl } from '@/lib/utils'
 
 export async function GET() {
   try {
-    const pipecatBaseUrl = process.env.PIPECAT_BASE_URL
-    if (!pipecatBaseUrl) {
-      return NextResponse.json({ error: 'PIPECAT_BASE_URL not set' }, { status: 500 })
-    }
-
-    const response = await fetch(`${pipecatBaseUrl}/v1/tools`, {
+    const response = await fetch(`${getPipecatBaseUrl()}/v1/tools`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     })

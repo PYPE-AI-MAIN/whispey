@@ -57,6 +57,8 @@ interface PipecatAgent {
   tts_style: number | null
   tts_speed: number
   rag_enabled: boolean
+  ambient_sound_enabled: boolean
+  ambient_sound_volume: number
   whispey_api_key: string
   whispey_agent_id: string
 }
@@ -108,6 +110,8 @@ interface SnapshotValues {
   ttsStyle: number | null
   ttsSpeed: number
   ragEnabled: boolean
+  ambientSoundEnabled: boolean
+  ambientSoundVolume: number
 }
 
 function buildSnapshot(v: SnapshotValues): string {
@@ -193,6 +197,10 @@ export default function PipecatAgentConfig({
   // RAG
   const [ragEnabled, setRagEnabled] = useState(true)
 
+  // Ambient Sound
+  const [ambientSoundEnabled, setAmbientSoundEnabled] = useState(false)
+  const [ambientSoundVolume, setAmbientSoundVolume] = useState(0.3)
+
   const defaultAzureConfig = useMemo(() => ({
     endpoint: 'https://pype-azure-openai.cognitiveservices.azure.com/',
     apiVersion: '2024-12-01-preview',
@@ -210,7 +218,7 @@ export default function PipecatAgentConfig({
     smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
     ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
-    ragEnabled,
+    ragEnabled, ambientSoundEnabled, ambientSoundVolume,
   }) : null
 
   const isDirty = isLoaded && currentSnapshot !== savedSnapshot
@@ -256,6 +264,8 @@ export default function PipecatAgentConfig({
     setTtsSpeed(a.tts_speed ?? 1.0)
 
     setRagEnabled(a.rag_enabled ?? true)
+    setAmbientSoundEnabled(a.ambient_sound_enabled ?? false)
+    setAmbientSoundVolume(a.ambient_sound_volume ?? 0.3)
 
     setSavedSnapshot(buildSnapshot({
       prompt: a.prompt || '',
@@ -284,6 +294,8 @@ export default function PipecatAgentConfig({
       ttsStyle: a.tts_style ?? null,
       ttsSpeed: a.tts_speed ?? 1.0,
       ragEnabled: a.rag_enabled ?? true,
+      ambientSoundEnabled: a.ambient_sound_enabled ?? false,
+      ambientSoundVolume: a.ambient_sound_volume ?? 0.3,
     }))
     setIsLoaded(true)
   }, [])
@@ -341,6 +353,8 @@ export default function PipecatAgentConfig({
         tts_style: ttsStyle,
         tts_speed: ttsSpeed,
         rag_enabled: ragEnabled,
+        ambient_sound_enabled: ambientSoundEnabled,
+        ambient_sound_volume: ambientSoundVolume,
         whispey_api_key: agent.whispey_api_key,
         whispey_agent_id: agent.whispey_agent_id,
       }
@@ -365,7 +379,7 @@ export default function PipecatAgentConfig({
         smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
         ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
-        ragEnabled,
+        ragEnabled, ambientSoundEnabled, ambientSoundVolume,
       }))
 
       // Show checkpoint banner — identical to LiveKit flow
@@ -670,6 +684,10 @@ export default function PipecatAgentConfig({
               onTtsCharChange={handleTtsCharChange}
               ragEnabled={ragEnabled}
               onRagEnabledChange={setRagEnabled}
+              ambientSoundEnabled={ambientSoundEnabled}
+              ambientSoundVolume={ambientSoundVolume}
+              onAmbientSoundEnabledChange={setAmbientSoundEnabled}
+              onAmbientSoundVolumeChange={setAmbientSoundVolume}
               projectId={projectId}
             />
           </div>

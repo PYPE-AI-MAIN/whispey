@@ -1,18 +1,15 @@
 // src/app/api/pipecat/numbers/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { getPipecatBaseUrl } from '@/lib/utils'
 
 export async function GET(req: NextRequest) {
-  const baseUrl = process.env.PIPECAT_BASE_URL
-  if (!baseUrl) {
-    return NextResponse.json({ error: 'PIPECAT_BASE_URL not configured' }, { status: 500 })
-  }
-
   const { searchParams } = new URL(req.url)
   const agentId = searchParams.get('agent_id')
+  const base = getPipecatBaseUrl()
 
   const url = agentId
-    ? `${baseUrl}/v1/numbers?agent_id=${agentId}`
-    : `${baseUrl}/v1/numbers`
+    ? `${base}/v1/numbers?agent_id=${agentId}`
+    : `${base}/v1/numbers`
 
   try {
     const res = await fetch(url, {
