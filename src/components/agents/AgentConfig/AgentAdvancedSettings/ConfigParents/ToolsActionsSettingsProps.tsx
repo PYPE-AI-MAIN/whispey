@@ -12,6 +12,23 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail } from 'lucide-react'
 
+// ── Filler config ─────────────────────────────────────────────────────────────
+interface FillerConfig {
+  enabled: boolean
+  threshold: number
+  interval: number
+  mode: 'random' | 'sequential'
+  messages: string[]
+}
+
+const DEFAULT_FILLER_CONFIG: FillerConfig = {
+  enabled: false,
+  threshold: 2.0,
+  interval: 3.0,
+  mode: 'random',
+  messages: [],
+}
+
 interface PhoneNumber {
   id: string
   phone_number: string
@@ -59,6 +76,8 @@ interface Tool {
     max_results?: number
     hospitals_json?: string
     areas_json?: string
+    // Tool call filler words (custom_function only)
+    filler_config?: FillerConfig
   }
 }
 
@@ -75,6 +94,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
   const [headersJsonString, setHeadersJsonString] = useState<string>('{}')
+  const [newFillerMessage, setNewFillerMessage] = useState('')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -104,7 +124,9 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     // Nearby location finder fields (stored as JSON strings in UI)
     max_results: 3,
     hospitals_json: '[]',
-    areas_json: '{}'
+    areas_json: '{}',
+    // Filler words
+    filler_config: { ...DEFAULT_FILLER_CONFIG } as FillerConfig,
   })
 
   // Fetch phone numbers when component mounts
@@ -139,6 +161,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     setSelectedToolType(toolType)
     setEditingTool(null)
     setHeadersJsonString('{}')
+    setNewFillerMessage('')
     
     if (toolType === 'end_call') {
       setFormData({ 
@@ -167,7 +190,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'handoff') {
       setFormData({ 
@@ -196,7 +220,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'transfer_call') {
       setFormData({ 
@@ -225,7 +250,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'ivr_navigator') {
       setFormData({ 
@@ -254,7 +280,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'nearby_location_finder') {
       setFormData({
@@ -283,7 +310,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'update_vad_options') {
       setFormData({ 
@@ -312,7 +340,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'voicemail_detection') {
       setFormData({ 
@@ -341,7 +370,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else {
       setFormData({ 
@@ -370,7 +400,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
         max_results: 3,
         hospitals_json: '[]',
-        areas_json: '{}'
+        areas_json: '{}',
+        filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     }
     
@@ -416,8 +447,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       task_metadata_keys: tool.config.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
       max_results: tool.config.max_results ?? 3,
       hospitals_json: tool.config.hospitals_json ?? '[]',
-      areas_json: tool.config.areas_json ?? '{}'
+      areas_json: tool.config.areas_json ?? '{}',
+      filler_config: { ...DEFAULT_FILLER_CONFIG, ...(tool.config.filler_config ?? {}) },
     })
+    setNewFillerMessage('')
     setIsDialogOpen(true)
   }
 
@@ -465,6 +498,9 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
           max_results: formData.max_results,
           hospitals_json: formData.hospitals_json,
           areas_json: formData.areas_json
+        }),
+        ...(selectedToolType === 'custom_function' && {
+          filler_config: formData.filler_config,
         })
       }
     }
@@ -1016,6 +1052,171 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Map API response fields to tool response using dot notation (e.g., "data.user.name")
                   </p>
+                </div>
+
+                {/* ── Tool Call Filler Words ──────────────────────────────── */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-md p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Tool Call Filler Words</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Speak phrases while this tool is running</p>
+                    </div>
+                    <Switch
+                      checked={formData.filler_config?.enabled ?? false}
+                      onCheckedChange={v =>
+                        setFormData(prev => ({
+                          ...prev,
+                          filler_config: { ...DEFAULT_FILLER_CONFIG, ...prev.filler_config, enabled: v },
+                        }))
+                      }
+                      className="scale-75"
+                    />
+                  </div>
+
+                  {formData.filler_config?.enabled && (
+                    <div className="space-y-3">
+                      {/* Threshold + Interval */}
+                      <div className="flex gap-2">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs text-gray-700 dark:text-gray-300">Delay before first filler (sec)</Label>
+                          <Input
+                            type="number"
+                            value={formData.filler_config.threshold}
+                            min={0.5}
+                            max={10}
+                            step={0.5}
+                            onChange={e =>
+                              setFormData(prev => ({
+                                ...prev,
+                                filler_config: { ...prev.filler_config!, threshold: parseFloat(e.target.value) || 2 },
+                              }))
+                            }
+                            className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs text-gray-700 dark:text-gray-300">Repeat interval (sec)</Label>
+                          <Input
+                            type="number"
+                            value={formData.filler_config.interval}
+                            min={0.5}
+                            max={20}
+                            step={0.5}
+                            onChange={e =>
+                              setFormData(prev => ({
+                                ...prev,
+                                filler_config: { ...prev.filler_config!, interval: parseFloat(e.target.value) || 3 },
+                              }))
+                            }
+                            className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Mode */}
+                      <div className="space-y-1">
+                        <Label className="text-xs text-gray-700 dark:text-gray-300">Selection mode</Label>
+                        <Select
+                          value={formData.filler_config.mode}
+                          onValueChange={v =>
+                            setFormData(prev => ({
+                              ...prev,
+                              filler_config: { ...prev.filler_config!, mode: v as 'random' | 'sequential' },
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                            <SelectItem value="random" className="text-xs">Random — pick randomly each time</SelectItem>
+                            <SelectItem value="sequential" className="text-xs">Sequential — cycle through in order</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Messages list */}
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-700 dark:text-gray-300">Filler messages</Label>
+
+                        {(formData.filler_config.messages ?? []).length === 0 && (
+                          <p className="text-xs text-gray-400 italic">No messages added yet.</p>
+                        )}
+
+                        {(formData.filler_config.messages ?? []).map((msg, i) => (
+                          <div key={i} className="flex gap-1 items-center">
+                            <Input
+                              value={msg}
+                              onChange={e => {
+                                const msgs = [...formData.filler_config!.messages]
+                                msgs[i] = e.target.value
+                                setFormData(prev => ({
+                                  ...prev,
+                                  filler_config: { ...prev.filler_config!, messages: msgs },
+                                }))
+                              }}
+                              placeholder="e.g. okay I am checking…"
+                              className="h-7 text-xs flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const msgs = formData.filler_config!.messages.filter((_, j) => j !== i)
+                                setFormData(prev => ({
+                                  ...prev,
+                                  filler_config: { ...prev.filler_config!, messages: msgs },
+                                }))
+                              }}
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
+                            >
+                              <TrashIcon className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+
+                        {/* Add new message */}
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            value={newFillerMessage}
+                            onChange={e => setNewFillerMessage(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && newFillerMessage.trim()) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  filler_config: {
+                                    ...prev.filler_config!,
+                                    messages: [...(prev.filler_config?.messages ?? []), newFillerMessage.trim()],
+                                  },
+                                }))
+                                setNewFillerMessage('')
+                              }
+                            }}
+                            placeholder="Type a message and press Enter or +"
+                            className="h-7 text-xs flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (!newFillerMessage.trim()) return
+                              setFormData(prev => ({
+                                ...prev,
+                                filler_config: {
+                                  ...prev.filler_config!,
+                                  messages: [...(prev.filler_config?.messages ?? []), newFillerMessage.trim()],
+                                },
+                              }))
+                              setNewFillerMessage('')
+                            }}
+                            className="h-6 w-6 p-0 flex-shrink-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          >
+                            <PlusIcon className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}
