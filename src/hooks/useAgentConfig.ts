@@ -527,7 +527,15 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             // Nearby hospital finder fields (kept as JSON strings for editor)
             max_results: tool.max_results ?? 3,
             hospitals_json: JSON.stringify(tool.hospitals ?? [], null, 2),
-            areas_json: JSON.stringify(tool.areas ?? {}, null, 2)
+            areas_json: JSON.stringify(tool.areas ?? {}, null, 2),
+            // Filler words config (custom_function only)
+            filler_config: tool.filler_config ?? {
+              enabled: false,
+              threshold: 2.0,
+              interval: 3.0,
+              mode: 'random',
+              messages: [],
+            },
           }
         })) || []
       },
