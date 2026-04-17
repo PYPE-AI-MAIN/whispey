@@ -9,6 +9,7 @@ interface InterruptionSettingsProps {
   allowInterruptions: boolean
   minInterruptionDuration: number
   minInterruptionWords: number
+  filterBackchannels?: boolean
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -16,6 +17,7 @@ function InterruptionSettings({
   allowInterruptions,
   minInterruptionDuration,
   minInterruptionWords,
+  filterBackchannels = false,
   onFieldChange
 }: InterruptionSettingsProps) {
   return (
@@ -92,6 +94,23 @@ function InterruptionSettings({
           disabled={!allowInterruptions}
         />
       </div>}
+
+      {/* Filter Backchannels */}
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            Filter Backchannels
+          </Label>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Silence short acks like "hmm", "okay", "हम्म" — prevents wasted LLM calls
+          </div>
+        </div>
+        <Switch
+          checked={filterBackchannels}
+          onCheckedChange={(checked) => onFieldChange('advancedSettings.interruption.filterBackchannels', checked)}
+          className="scale-75"
+        />
+      </div>
     </div>
   )
 }

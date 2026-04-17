@@ -5,10 +5,28 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, CheckCircle, AlertCircle, Zap, Activity, Info, Copy, ArrowRight } from 'lucide-react'
+import { Loader2, CheckCircle, AlertCircle, Zap, Activity, Info, Copy, ArrowRight, Radio } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AGENT_DEFAULT_CONFIG } from '@/config/agentDefaults'
+
+const PLATFORM_OPTIONS = [
+  {
+    value: 'livekit',
+    label: 'LiveKit Agent',
+    description: 'Create a new LiveKit voice agent from scratch',
+    icon: Activity,
+    color: 'blue'
+  },
+  {
+    value: 'pipecat',
+    label: 'Pipecat Agent', 
+    description: 'Create a new Pipecat voice agent from scratch',
+    icon: Radio,
+    color: 'orange'
+  }
+]
 
 interface CreateAgentFlowProps {
   projectId: string
@@ -94,22 +112,20 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-  
+
     if (!formData.name.trim()) {
       setError('Agent name is required')
       return
     }
-  
+
     onLoadingChange(true)
     setCurrentStep('creating')
-  
+
     try {
-      
-      const projectApiKey = await fetchProjectApiKey()
-  
+      // ✅ Single unified flow for all platforms — backend handles Pipecat creation
       const agentPayload = {
-        name: formData.name.trim(),// add agentId in name here also for consistency in backend
-        agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform,
+        name: formData.name.trim(),
+        agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform === 'pipecat' ? 'pipecat_agent' : selectedPlatform,
         configuration: {
           description: formData.description.trim() || null,
         },
@@ -117,46 +133,38 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         environment: 'dev',
         platform: selectedPlatform
       }
-  
-  
+
       const agentResponse = await fetch('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(agentPayload),
       })
-  
+
       if (!agentResponse.ok) {
         const errorData = await agentResponse.json()
-        console.error('❌ Failed to create local agent:', errorData)
-        throw new Error(errorData.error || 'Failed to create monitoring record')
+        throw new Error(errorData.error || 'Failed to create agent')
       }
-  
+
       const localAgent = await agentResponse.json()
 
-      const sanitizedAgentId = localAgent.id.replace(/-/g, '_')
-
-      // Construct the agent name with ID suffix
-      const agentNameWithId = `${formData.name.trim()}_${sanitizedAgentId}`
-  
+      // LiveKit and Pipecat agents need the PypeAI backend call
       if (isPypeAgent) {
-        // Get encrypted API key
+        const projectApiKey = await fetchProjectApiKey()
+
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: 'pype-api-v1' })
         })
-  
-        if (!encryptResponse.ok) {
-          const encryptError = await encryptResponse.json()
-          console.error('❌ Failed to encrypt API key:', encryptError)
-          throw new Error('Failed to encrypt API key')
-        }
-  
+
+        if (!encryptResponse.ok) throw new Error('Failed to encrypt API key')
+
         const { encrypted: encryptedApiKey } = await encryptResponse.json()
-  
-        // Create the agent payload for PypeAI (matching your exact structure)
+        const sanitizedAgentId = localAgent.id.replace(/-/g, '_')
+        const agentNameWithId = `${formData.name.trim()}_${sanitizedAgentId}`
+
         const pypeAgentPayload = {
-          project_id: projectId, // Add project ID for easier backend processing
+          project_id: projectId,
           agent: {
             name: agentNameWithId,
             type: "OUTBOUND",
@@ -180,34 +188,25 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             whispey_key_id: projectApiKey
           }
         }
-  
-  
+
         const createResponse = await fetch('/api/agents/create-agent', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-api-key': encryptedApiKey
-          },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': encryptedApiKey },
           body: JSON.stringify(pypeAgentPayload)
         })
-  
-  
+
         if (!createResponse.ok) {
           const createErrorData = await createResponse.json()
-          console.error('❌ PypeAI API Error:', createErrorData)
           throw new Error(createErrorData.error || createErrorData.detail || `PypeAI API error: ${createResponse.status}`)
         }
-  
-        const pypeResponse = await createResponse.json()
       }
-      
+
       setCreatedAgentData(localAgent)
       setCurrentStep('success')
-      
+
     } catch (err: unknown) {
       console.error('💥 Agent creation failed:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create agent'
-      setError(errorMessage)
+      setError(err instanceof Error ? err.message : 'Failed to create agent')
       setCurrentStep('form')
     } finally {
       onLoadingChange(false)
@@ -288,6 +287,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 {selectedPlatform === 'vapi' ? (
                   <Zap className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                ) : selectedPlatform === 'pipecat' ? (
+                  <Radio className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 ) : (
                   <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 )}
@@ -300,9 +301,11 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                   <Badge variant="outline" className={`text-xs ${
                     selectedPlatform === 'vapi' 
                       ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800' 
+                      : selectedPlatform === 'pipecat'
+                      ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800'
                       : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
                   }`}>
-                    {selectedPlatform === 'vapi' ? 'Vapi Agent' : 'LiveKit Agent'}
+                    {selectedPlatform === 'vapi' ? 'Vapi Agent' : selectedPlatform === 'pipecat' ? 'Pipecat Agent' : 'LiveKit Agent'}
                   </Badge>
                   <Badge variant="outline" className="text-xs bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                     Ready
@@ -377,6 +380,50 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       {/* Form Content */}
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-5 pb-6">
+          {/* Platform Selection */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              Agent Platform
+            </label>
+            <Select
+              value={selectedPlatform}
+              onValueChange={setSelectedPlatform}
+              disabled={currentStep !== 'form'}
+            >
+              <SelectTrigger className="h-10 w-full">
+                <SelectValue>
+                  {(() => {
+                    const p = PLATFORM_OPTIONS.find(o => o.value === selectedPlatform)
+                    if (!p) return null
+                    const Icon = p.icon
+                    return (
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        <span>{p.label}</span>
+                      </div>
+                    )
+                  })()}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {PLATFORM_OPTIONS.map((platform) => {
+                  const Icon = platform.icon
+                  return (
+                    <SelectItem key={platform.value} value={platform.value}>
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        <span>{platform.label}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {PLATFORM_OPTIONS.find(o => o.value === selectedPlatform)?.description}
+            </p>
+          </div>
+
           {/* Agent Name */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -403,7 +450,10 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               </div>
               
               <Input
-                placeholder={selectedPlatform === 'vapi' ? "SupportAgent" : "VoiceHelper"}
+                placeholder={
+                  selectedPlatform === 'pipecat' ? "PipecatAgent" : 
+                  selectedPlatform === 'vapi' ? "SupportAgent" : "VoiceHelper"
+                }
                 value={formData.name}
                 autoComplete="off"
                 maxLength={14}

@@ -60,7 +60,8 @@ export const AGENT_DEFAULT_CONFIG = {
     interruptions: {
       allow_interruptions: true,
       min_interruption_duration: 0.8,
-      min_interruption_words: 0
+      min_interruption_words: 0,
+      filter_backchannels: false
     },
   
     // First Message Configuration
@@ -77,6 +78,8 @@ export const AGENT_DEFAULT_CONFIG = {
       unlikely_threshold: 0.6,
       min_endpointing_delay: 0.7,
       max_endpointing_delay: 0.7,
+      endpointing_mode: null as string | null,   // "fixed" | "dynamic" | null (auto)
+      interruption_mode: null as string | null,  // "adaptive" | "vad" | null (auto)
       user_away_timeout: undefined, // None to disable, 0 to use config default, or seconds
       user_away_timeout_message: undefined, // Message to speak each time user goes away
       user_away_timeout_max_count: undefined, // Max times to send message before ending call (undefined = unlimited)
@@ -195,7 +198,8 @@ export const AGENT_DEFAULT_CONFIG = {
       interruption: {
         allowInterruptions: AGENT_DEFAULT_CONFIG.interruptions.allow_interruptions,
         minInterruptionDuration: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_duration,
-        minInterruptionWords: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_words
+        minInterruptionWords: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_words,
+        filterBackchannels: AGENT_DEFAULT_CONFIG.interruptions.filter_backchannels
       },
       vad: {
         vadProvider: AGENT_DEFAULT_CONFIG.vad.name,
@@ -213,6 +217,8 @@ export const AGENT_DEFAULT_CONFIG = {
         unlikely_threshold: AGENT_DEFAULT_CONFIG.session_behavior.unlikely_threshold,
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
         max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay,
+        endpointing_mode: AGENT_DEFAULT_CONFIG.session_behavior.endpointing_mode,
+        interruption_mode: AGENT_DEFAULT_CONFIG.session_behavior.interruption_mode,
         user_away_timeout: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout,
         user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message,
         user_away_timeout_max_count: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_max_count,
