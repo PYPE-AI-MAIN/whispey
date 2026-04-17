@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import { useConfigHistory, ConfigHistoryEntryDetail } from '@/hooks/useConfigHistory'
 import { formatDistanceToNow, format } from 'date-fns'
+import { buildFormValuesFromAgent } from '@/hooks/useAgentConfig'
+import { serializeConfig, prettyPrintConfig } from '@/utils/agentConfigSerializer'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -40,6 +42,31 @@ interface ComparePickMode {
 
 function getAssistant(snapshot: any) {
   return snapshot?.agent?.assistant?.[0] ?? snapshot?.assistant?.[0] ?? {}
+}
+
+function buildPortableCopyTextFromSnapshot(configSnapshot: any): string {
+  const assistant = getAssistant(configSnapshot)
+  const formikValues = buildFormValuesFromAgent(assistant)
+
+  const ttsConfig = {
+    provider: formikValues.ttsProvider || '',
+    model: formikValues.ttsModel || '',
+    config: formikValues.ttsVoiceConfig || {},
+  }
+
+  const sttConfig = {
+    provider: formikValues.sttProvider || '',
+    model: formikValues.sttModel || '',
+    config: formikValues.sttConfig || {},
+  }
+
+  const azureConfig = {
+    endpoint: assistant?.llm?.azure_endpoint || '',
+    apiVersion: assistant?.llm?.api_version || '',
+  }
+
+  const serialized = serializeConfig(formikValues, ttsConfig, sttConfig, azureConfig)
+  return prettyPrintConfig(serialized)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -416,8 +443,13 @@ function ConfigDetailView({
   const [isCopied, setIsCopied] = useState(false)
 
   const handleCopy = async () => {
-    const ok = await copyText(JSON.stringify(entry.config_snapshot, null, 2))
-    if (ok) { setIsCopied(true); setTimeout(() => setIsCopied(false), 2000) }
+    try {
+      const text = buildPortableCopyTextFromSnapshot(entry.config_snapshot)
+      const ok = await copyText(text)
+      if (ok) { setIsCopied(true); setTimeout(() => setIsCopied(false), 2000) }
+    } catch (err) {
+      console.error('Failed to copy portable config:', err)
+    }
   }
 
   return (
@@ -653,19 +685,15 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
   const handleCopy = useCallback(async (id: string) => {
     const detail = await getOrFetchDetail(id)
     if (!detail) return
-    // Strip identity fields so pasting doesn't overwrite name/id on the target agent
-    const snapshot = JSON.parse(JSON.stringify(detail.config_snapshot))
-    if (snapshot?.agent) {
-      delete snapshot.agent.agent_id
-      delete snapshot.agent.name
-      delete snapshot.agent.type
-      delete snapshot.agent.whispey_key_id
-      delete snapshot.agent.token
-    }
-    const ok = await copyText(JSON.stringify(snapshot, null, 2))
-    if (ok) {
-      setCopiedId(id)
-      setTimeout(() => setCopiedId(prev => prev === id ? null : prev), 2000)
+    try {
+      const text = buildPortableCopyTextFromSnapshot(detail.config_snapshot)
+      const ok = await copyText(text)
+      if (ok) {
+        setCopiedId(id)
+        setTimeout(() => setCopiedId(prev => prev === id ? null : prev), 2000)
+      }
+    } catch (err) {
+      console.error('Failed to copy portable config:', err)
     }
   }, [getOrFetchDetail])
 
