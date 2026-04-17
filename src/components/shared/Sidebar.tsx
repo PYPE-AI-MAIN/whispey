@@ -278,9 +278,11 @@ export default function Sidebar({
         '/sip-management',
         '/config',
         '/config/pipecat',
-        '/config/pipecat/knowledgebase', // ← NEW
+        '/config/pipecat/knowledgebase',
+        '/config/livekit',
         '/observability',
         '/phone-call-config',
+        '/phone-call-config/pipecat',
         '/knowledge',
         '/settings'
       ]

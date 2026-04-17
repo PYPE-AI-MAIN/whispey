@@ -5,7 +5,7 @@ import React, { useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   ChevronDownIcon, MicIcon, BrainIcon, TimerIcon,
-  Volume2Icon, WrenchIcon, DatabaseIcon,
+  Volume2Icon, WrenchIcon, DatabaseIcon, Music2Icon,
 } from 'lucide-react'
 import VadSettings from './ConfigParents/VadSettings'
 import SmartTurnSettings from './ConfigParents/SmartTurnSettings'
@@ -13,6 +13,7 @@ import TurnManagementSettings from './ConfigParents/TurnManagementSettings'
 import TtsVoiceCharSettings from './ConfigParents/TtsVoiceCharSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettings'
 import KnowledgeBaseSettings from './ConfigParents/KnowledgeBaseSettings'
+import AmbientSoundSettings from './ConfigParents/AmbientSoundSettings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,11 @@ interface PipecatAdvancedSettingsProps {
   // RAG
   ragEnabled: boolean
   onRagEnabledChange: (v: boolean) => void
+  // Ambient Sound
+  ambientSoundEnabled: boolean
+  ambientSoundVolume: number
+  onAmbientSoundEnabledChange: (v: boolean) => void
+  onAmbientSoundVolumeChange: (v: number) => void
   projectId?: string
 }
 
@@ -107,6 +113,7 @@ export default function PipecatAdvancedSettings({
   turnStopTimeout, userIdleTimeout, onTurnChange,
   ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed, onTtsCharChange,
   ragEnabled, onRagEnabledChange,
+  ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
 }: PipecatAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     vad: false,
@@ -115,6 +122,7 @@ export default function PipecatAdvancedSettings({
     ttsChar: false,
     tools: false,
     rag: false,
+    ambient: false,
   })
 
   const toggle = (s: string) =>
@@ -208,6 +216,20 @@ export default function PipecatAdvancedSettings({
           <KnowledgeBaseSettings
             ragEnabled={ragEnabled}
             onRagEnabledChange={onRagEnabledChange}
+          />
+        </Section>
+
+        <Section
+          icon={<Music2Icon className="w-3.5 h-3.5" />}
+          label="Ambient Background Sound"
+          open={openSections.ambient}
+          onToggle={() => toggle('ambient')}
+        >
+          <AmbientSoundSettings
+            ambientSoundEnabled={ambientSoundEnabled}
+            ambientSoundVolume={ambientSoundVolume}
+            onAmbientSoundEnabledChange={onAmbientSoundEnabledChange}
+            onAmbientSoundVolumeChange={onAmbientSoundVolumeChange}
           />
         </Section>
 

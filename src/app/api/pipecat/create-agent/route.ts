@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getPipecatBaseUrl } from '@/lib/utils'
 
 const supabase = createServiceRoleClient()
 
@@ -25,13 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get Pipecat base URL
-    const pipecatBaseUrl = process.env.PIPECAT_BASE_URL
-    if (!pipecatBaseUrl) {
-      return NextResponse.json(
-        { error: 'PIPECAT_BASE_URL environment variable is not set' },
-        { status: 500 }
-      )
-    }
+    const pipecatBaseUrl = getPipecatBaseUrl()
 
     // Identify current user via Clerk for authorization
     const { userId: clerkUserId } = await auth()
@@ -122,13 +117,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const pipecatBaseUrl = process.env.PIPECAT_BASE_URL
-    if (!pipecatBaseUrl) {
-      return NextResponse.json(
-        { error: 'PIPECAT_BASE_URL environment variable is not set' },
-        { status: 500 }
-      )
-    }
+    const pipecatBaseUrl = getPipecatBaseUrl()
 
     // Get user info for authorization
     const { userId: clerkUserId } = await auth()

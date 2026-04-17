@@ -1,6 +1,7 @@
 // src/app/api/pipecat/agents/[agentId]/knowledge/[docId]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { getPipecatBaseUrl } from '@/lib/utils'
 
 function getIds(url: string) {
   const segments = new URL(url).pathname.split('/')
@@ -17,8 +18,7 @@ export async function DELETE(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const base = process.env.PIPECAT_BASE_URL
-  if (!base) return NextResponse.json({ error: 'PIPECAT_BASE_URL not set' }, { status: 500 })
+  const base = getPipecatBaseUrl()
 
   const { agentId, docId } = getIds(request.url)
   if (!agentId || !docId) return NextResponse.json({ error: 'Agent ID and doc ID required' }, { status: 400 })

@@ -1,12 +1,8 @@
 // src/app/api/pipecat/call/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { getPipecatBaseUrl } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
-  const baseUrl = process.env.PIPECAT_BASE_URL
-  if (!baseUrl) {
-    return NextResponse.json({ error: 'PIPECAT_BASE_URL not configured' }, { status: 500 })
-  }
-
   try {
     const body = await req.json()
     const { to, agent_id, metadata } = body
@@ -15,7 +11,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: to, agent_id' }, { status: 400 })
     }
 
-    const res = await fetch(`${baseUrl}/call`, {
+    const res = await fetch(`${getPipecatBaseUrl()}/call`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to, agent_id, ...(metadata ? { metadata } : {}) }),
