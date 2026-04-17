@@ -295,7 +295,8 @@ export function useMultiAssistantState({
                 })) || [],
                 custom_payload: tool.config?.body || '',
                 response_mapping: responseMappingObject,
-                response_mapping_raw: tool.config?.responseMapping || '{}'
+                response_mapping_raw: tool.config?.responseMapping || '{}',
+                filler_config: tool.config?.filler_config ?? null,
               }
             }
 
@@ -630,7 +631,8 @@ export function useMultiAssistantState({
               })) || [],
               custom_payload: tool.config?.body || '',
               response_mapping: responseMappingObject,
-              response_mapping_raw: tool.config?.responseMapping || '{}'
+              response_mapping_raw: tool.config?.responseMapping || '{}',
+              filler_config: tool.config?.filler_config ?? null,
             }
           }
 

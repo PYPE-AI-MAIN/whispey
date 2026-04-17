@@ -360,7 +360,8 @@ function transformFormDataToAgentConfig(formData: any) {
                 timeout: tool.config.timeout,
                 async: tool.config.asyncExecution,
                 headers: tool.config.headers,
-                parameters: tool.config.parameters
+                parameters: tool.config.parameters,
+                filler_config: tool.config.filler_config ?? null,
               } : tool.type === 'transfer_call' ? {
                 transfer_number: tool.config.transferNumber,
                 sip_outbound_trunk: tool.config.sipTrunkId
