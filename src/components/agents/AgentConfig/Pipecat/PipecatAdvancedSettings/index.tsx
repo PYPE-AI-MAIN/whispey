@@ -24,6 +24,13 @@ interface CustomTool {
   method: string
   parameters: Record<string, { type: string; description: string; required: boolean }>
   headers: Record<string, string>
+  filler_config?: {
+    enabled: boolean
+    threshold: number
+    interval: number
+    mode: 'random' | 'sequential'
+    messages: string[]
+  }
 }
 
 interface PipecatAdvancedSettingsProps {
