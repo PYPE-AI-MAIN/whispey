@@ -1082,15 +1082,15 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                           <Input
                             type="number"
                             value={formData.filler_config.threshold}
-                            min={0.5}
-                            max={10}
-                            step={0.5}
-                            onChange={e =>
+                            min={0.1}
+                            step={0.1}
+                            onChange={e => {
+                              const v = parseFloat(e.target.value)
                               setFormData(prev => ({
                                 ...prev,
-                                filler_config: { ...prev.filler_config!, threshold: parseFloat(e.target.value) || 2 },
+                                filler_config: { ...prev.filler_config!, threshold: isNaN(v) ? prev.filler_config!.threshold : v },
                               }))
-                            }
+                            }}
                             className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                           />
                         </div>
@@ -1099,15 +1099,15 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                           <Input
                             type="number"
                             value={formData.filler_config.interval}
-                            min={0.5}
-                            max={20}
-                            step={0.5}
-                            onChange={e =>
+                            min={0.1}
+                            step={0.1}
+                            onChange={e => {
+                              const v = parseFloat(e.target.value)
                               setFormData(prev => ({
                                 ...prev,
-                                filler_config: { ...prev.filler_config!, interval: parseFloat(e.target.value) || 3 },
+                                filler_config: { ...prev.filler_config!, interval: isNaN(v) ? prev.filler_config!.interval : v },
                               }))
-                            }
+                            }}
                             className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                           />
                         </div>
