@@ -25,6 +25,7 @@ interface AgentAdvancedSettingsProps {
         allowInterruptions: boolean
         minInterruptionDuration: number
         minInterruptionWords: number
+        filterBackchannels?: boolean
       }
       vad: {
         vadProvider: string
@@ -42,6 +43,8 @@ interface AgentAdvancedSettingsProps {
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
+        endpointing_mode?: string | null
+        interruption_mode?: string | null
         user_away_timeout?: number
         user_away_timeout_message?: string
         user_away_timeout_max_count?: number
@@ -166,6 +169,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               allowInterruptions={advancedSettings.interruption.allowInterruptions}
               minInterruptionDuration={advancedSettings.interruption.minInterruptionDuration}
               minInterruptionWords={advancedSettings.interruption.minInterruptionWords}
+              filterBackchannels={advancedSettings.interruption.filterBackchannels ?? false}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
@@ -217,6 +221,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               unlikely_threshold={advancedSettings.session.unlikely_threshold}
               min_endpointing_delay={advancedSettings.session.min_endpointing_delay}
               max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
+              endpointing_mode={advancedSettings.session.endpointing_mode}
+              interruption_mode={advancedSettings.session.interruption_mode}
               user_away_timeout={advancedSettings.session.user_away_timeout}
               user_away_timeout_message={advancedSettings.session.user_away_timeout_message}
               user_away_timeout_max_count={advancedSettings.session.user_away_timeout_max_count}
