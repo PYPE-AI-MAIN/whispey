@@ -1,3 +1,4 @@
+// src/api/knowledge/documents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
 

@@ -35,11 +35,20 @@ interface ComparePickMode {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Config extraction
+// Config extraction — handles both LiveKit and Pipecat snapshot shapes
 // ─────────────────────────────────────────────────────────────────────────────
 
+function isPipecatSnapshot(snapshot: any): boolean {
+  return snapshot?.platform === 'pipecat'
+}
+
 function getAssistant(snapshot: any) {
-  return snapshot?.agent?.assistant?.[0] ?? snapshot?.assistant?.[0] ?? {}
+  // LiveKit format: { agent: { assistant: [{ ... }] } }
+  if (snapshot?.agent?.assistant?.[0]) return snapshot.agent.assistant[0]
+  // Pipecat format: { platform: 'pipecat', agent: { prompt, llm_model, ... } }
+  if (isPipecatSnapshot(snapshot)) return snapshot.agent ?? {}
+  // Legacy fallback
+  return snapshot?.assistant?.[0] ?? {}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,7 +92,6 @@ interface DiffLine {
 function buildDiffLines(oldText: string, newText: string, context = 4): DiffLine[] {
   const changes = diffLines(oldText || '', newText || '')
 
-  // Expand to individual lines with metadata
   const expanded: DiffLine[] = []
   let lineOld = 1, lineNew = 1
 
@@ -106,7 +114,6 @@ function buildDiffLines(oldText: string, newText: string, context = 4): DiffLine
     }
   }
 
-  // Context collapse
   const show = new Set<number>()
   expanded.forEach((l, i) => {
     if (l.type !== 'unchanged') {
@@ -116,7 +123,6 @@ function buildDiffLines(oldText: string, newText: string, context = 4): DiffLine
     }
   })
 
-  // If nothing changed, show nothing (caller handles this)
   if (show.size === 0) return []
 
   const result: DiffLine[] = []
@@ -142,18 +148,11 @@ function buildDiffLines(oldText: string, newText: string, context = 4): DiffLine
 // Config diff helper
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Fields to exclude from the settings diff (prompt has its own section; the
-// rest are identity/sensitive keys that should never appear in a diff)
 const CONFIG_DIFF_SKIP = new Set([
   'prompt', 'name',
-  'whispey_api_key', 'token_hash', 'whispey_key_id', 'token',
+  'whispey_api_key', 'whispey_agent_id', 'token_hash', 'whispey_key_id', 'token',
 ])
 
-/**
- * Produce a stable, pretty-printed JSON string of the assistant config with
- * non-config fields removed.  This is fed directly into `buildDiffLines` so
- * ANY change at ANY nesting level will always appear in the diff.
- */
 function configForDiff(assistant: any): string {
   if (!assistant || typeof assistant !== 'object') return '{}'
   const filtered: Record<string, any> = {}
@@ -164,7 +163,7 @@ function configForDiff(assistant: any): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Diff Dialog — professional, GitHub-style diff viewer
+// Diff viewer
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PromptDiffViewer({
@@ -204,15 +203,12 @@ function PromptDiffViewer({
         const isAdded   = line.type === 'added'
         const isRemoved = line.type === 'removed'
 
-        // Row background — opacity-based so it adapts to both light and dark mode
-        // without relying on dark: variants (Dialog portals bypass the .dark scope)
         const rowBg = isAdded
           ? 'bg-green-500/10'
           : isRemoved
             ? 'bg-red-500/10'
             : ''
 
-        // Gutter — slightly stronger tint
         const gutterBg = isAdded
           ? 'bg-green-500/15'
           : isRemoved
@@ -221,15 +217,12 @@ function PromptDiffViewer({
 
         return (
           <div key={i} className={`flex min-h-[20px] ${rowBg}`}>
-            {/* Old line number */}
             <span className={`w-10 text-right pr-1.5 py-px select-none text-[11px] shrink-0 border-r border-border/50 text-muted-foreground/60 ${gutterBg}`}>
               {isAdded ? '' : (line.lineOld ?? '')}
             </span>
-            {/* New line number */}
             <span className={`w-10 text-right pr-1.5 py-px select-none text-[11px] shrink-0 border-r border-border/50 text-muted-foreground/60 ${gutterBg}`}>
               {isRemoved ? '' : (line.lineNew ?? '')}
             </span>
-            {/* +/− sign */}
             <span className={`w-6 text-center py-px select-none shrink-0 font-semibold text-xs ${
               isAdded   ? 'text-green-500' :
               isRemoved ? 'text-red-500'   :
@@ -237,7 +230,6 @@ function PromptDiffViewer({
             }`}>
               {isAdded ? '+' : isRemoved ? '−' : ' '}
             </span>
-            {/* Content — always text-foreground so it's readable in any theme */}
             <span className="flex-1 pl-1 pr-3 py-px whitespace-pre-wrap break-all text-foreground">
               {line.content || '\u00A0'}
             </span>
@@ -248,6 +240,9 @@ function PromptDiffViewer({
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Diff Dialog
+// ─────────────────────────────────────────────────────────────────────────────
 
 function DiffDialog({
   open,
@@ -273,30 +268,19 @@ function DiffDialog({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      {/*
-        Key overrides:
-        - sm:max-w-5xl  → beats the base sm:max-w-lg via tailwind-merge (same prefix, same property)
-        - p-0 gap-0     → remove default padding/gap from DialogContent
-        - overflow-hidden → clip children
-        The inner div handles height + flex layout independently of the dialog's own grid.
-      */}
       <DialogContent
         showCloseButton={false}
         className="sm:max-w-4xl max-w-[calc(100%-2rem)] p-0 gap-0 overflow-hidden"
       >
-        {/* Single inner wrapper — height via style to avoid fighting DialogContent's grid */}
         <div className="flex flex-col" style={{ height: '72vh', minHeight: '480px' }}>
 
-          {/* ── Compact header ── */}
           <div className="shrink-0 px-5 py-3 border-b bg-muted/20">
             <div className="flex items-center justify-between gap-3">
-              {/* Left: title */}
               <div className="flex items-center gap-2 min-w-0">
                 <ArrowLeftRight className="w-4 h-4 text-muted-foreground shrink-0" />
                 <DialogTitle className="text-sm font-semibold leading-none">
                   Diff
                 </DialogTitle>
-                {/* Inline version strip */}
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-1 min-w-0">
                   <span className="font-medium text-foreground">#{older.version_number}</span>
                   <span className="text-muted-foreground/50">·</span>
@@ -308,7 +292,6 @@ function DiffDialog({
                 </div>
               </div>
 
-              {/* Right: chips + close */}
               <div className="flex items-center gap-2 shrink-0">
                 {promptChanged && (
                   <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-amber-500/15 text-amber-600 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
@@ -332,10 +315,7 @@ function DiffDialog({
             </div>
           </div>
 
-          {/* ── Scrollable diff body — both sections always rendered ── */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-
-            {/* System Prompt — always shown */}
             <section>
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-3.5 h-3.5 text-muted-foreground" />
@@ -352,7 +332,6 @@ function DiffDialog({
               />
             </section>
 
-            {/* Settings / full config JSON diff — always shown */}
             <section>
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="w-3.5 h-3.5 text-muted-foreground" />
@@ -368,7 +347,6 @@ function DiffDialog({
                 emptyMessage="All settings are identical in both versions"
               />
             </section>
-
           </div>
         </div>
       </DialogContent>
@@ -377,7 +355,7 @@ function DiffDialog({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Config detail view (inside sheet)
+// Config detail view
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SectionCard({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
@@ -412,7 +390,9 @@ function ConfigDetailView({
   onBack: () => void
   onStartCompare: (entry: ConfigHistoryEntryDetail) => void
 }) {
-  const assistant = getAssistant(entry.config_snapshot)
+  const snapshot = entry.config_snapshot
+  const assistant = getAssistant(snapshot)
+  const isPipecat = isPipecatSnapshot(snapshot)
   const [isCopied, setIsCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -430,7 +410,14 @@ function ConfigDetailView({
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold">Version #{entry.version_number}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold">Version #{entry.version_number}</p>
+            {isPipecat && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium">
+                Pipecat
+              </span>
+            )}
+          </div>
           <p className="text-[10px] text-muted-foreground">{format(new Date(entry.created_at), 'MMM d, yyyy · h:mm a')}</p>
         </div>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={handleCopy}>
@@ -444,6 +431,8 @@ function ConfigDetailView({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+
+        {/* System Prompt — same for both platforms */}
         {assistant.prompt && (
           <SectionCard title="System Prompt" icon={FileText}>
             <pre className="text-xs font-mono whitespace-pre-wrap wrap-break-word leading-relaxed max-h-56 overflow-y-auto">
@@ -451,45 +440,80 @@ function ConfigDetailView({
             </pre>
           </SectionCard>
         )}
-        {assistant.llm && (
-          <SectionCard title="LLM Settings" icon={Cpu}>
-            <FieldRow label="Provider"    value={assistant.llm?.provider} />
-            <FieldRow label="Model"       value={assistant.llm?.model} />
-            <FieldRow label="Temperature" value={assistant.llm?.temperature} />
-            <FieldRow label="Max Tokens"  value={assistant.llm?.maxTokens ?? assistant.llm?.max_tokens} />
-          </SectionCard>
+
+        {/* ── Pipecat-specific fields ── */}
+        {isPipecat && (
+          <>
+            {assistant.llm_model && (
+              <SectionCard title="LLM Settings" icon={Cpu}>
+                <FieldRow label="Provider" value={assistant.llm_provider} />
+                <FieldRow label="Model"    value={assistant.llm_model} />
+              </SectionCard>
+            )}
+            {assistant.tts_model && (
+              <SectionCard title="Voice (TTS)" icon={Volume2}>
+                <FieldRow label="Model"    value={assistant.tts_model} />
+                <FieldRow label="Voice ID" value={assistant.tts_voice_id} />
+              </SectionCard>
+            )}
+            {assistant.stt_model && (
+              <SectionCard title="Speech-to-Text" icon={Mic}>
+                <FieldRow label="Model"    value={assistant.stt_model} />
+                <FieldRow label="Language" value={assistant.stt_language} />
+              </SectionCard>
+            )}
+            {assistant.opening_message && (
+              <SectionCard title="Opening Message" icon={MessageSquare}>
+                <FieldRow label="Message" value={assistant.opening_message} />
+              </SectionCard>
+            )}
+          </>
         )}
-        {assistant.tts && (
-          <SectionCard title="Voice (TTS)" icon={Volume2}>
-            <FieldRow label="Provider" value={assistant.tts?.provider} />
-            <FieldRow label="Voice"    value={assistant.tts?.voice ?? assistant.tts?.voiceId ?? assistant.tts?.voice_id} />
-            <FieldRow label="Model"    value={assistant.tts?.model} />
-          </SectionCard>
-        )}
-        {assistant.stt && (
-          <SectionCard title="Speech-to-Text" icon={Mic}>
-            <FieldRow label="Provider" value={assistant.stt?.provider} />
-            <FieldRow label="Model"    value={assistant.stt?.model} />
-            <FieldRow label="Language" value={assistant.stt?.language} />
-          </SectionCard>
-        )}
-        {(assistant.first_message != null || assistant.firstMessage != null) && (
-          <SectionCard title="First Message" icon={MessageSquare}>
-            <FieldRow label="Message" value={assistant.first_message ?? assistant.firstMessage} />
-            <FieldRow label="Mode"    value={assistant.first_message_mode ?? assistant.firstMessageMode} />
-          </SectionCard>
-        )}
-        {Array.isArray(assistant.variables) && assistant.variables.length > 0 && (
-          <SectionCard title="Variables" icon={Variable}>
-            <div className="space-y-1">
-              {assistant.variables.map((v: any, i: number) => (
-                <div key={i} className="flex items-center justify-between border rounded px-2 py-1.5">
-                  <span className="text-xs font-mono text-primary">{'{{'}{v.name}{'}}'}</span>
-                  {v.description && <span className="text-[10px] text-muted-foreground truncate ml-2">{v.description}</span>}
+
+        {/* ── LiveKit-specific fields ── */}
+        {!isPipecat && (
+          <>
+            {assistant.llm && (
+              <SectionCard title="LLM Settings" icon={Cpu}>
+                <FieldRow label="Provider"    value={assistant.llm?.provider} />
+                <FieldRow label="Model"       value={assistant.llm?.model} />
+                <FieldRow label="Temperature" value={assistant.llm?.temperature} />
+                <FieldRow label="Max Tokens"  value={assistant.llm?.maxTokens ?? assistant.llm?.max_tokens} />
+              </SectionCard>
+            )}
+            {assistant.tts && (
+              <SectionCard title="Voice (TTS)" icon={Volume2}>
+                <FieldRow label="Provider" value={assistant.tts?.provider} />
+                <FieldRow label="Voice"    value={assistant.tts?.voice ?? assistant.tts?.voiceId ?? assistant.tts?.voice_id} />
+                <FieldRow label="Model"    value={assistant.tts?.model} />
+              </SectionCard>
+            )}
+            {assistant.stt && (
+              <SectionCard title="Speech-to-Text" icon={Mic}>
+                <FieldRow label="Provider" value={assistant.stt?.provider} />
+                <FieldRow label="Model"    value={assistant.stt?.model} />
+                <FieldRow label="Language" value={assistant.stt?.language} />
+              </SectionCard>
+            )}
+            {(assistant.first_message != null || assistant.firstMessage != null) && (
+              <SectionCard title="First Message" icon={MessageSquare}>
+                <FieldRow label="Message" value={assistant.first_message ?? assistant.firstMessage} />
+                <FieldRow label="Mode"    value={assistant.first_message_mode ?? assistant.firstMessageMode} />
+              </SectionCard>
+            )}
+            {Array.isArray(assistant.variables) && assistant.variables.length > 0 && (
+              <SectionCard title="Variables" icon={Variable}>
+                <div className="space-y-1">
+                  {assistant.variables.map((v: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between border rounded px-2 py-1.5">
+                      <span className="text-xs font-mono text-primary">{'{{'}{v.name}{'}}'}</span>
+                      {v.description && <span className="text-[10px] text-muted-foreground truncate ml-2">{v.description}</span>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </SectionCard>
+              </SectionCard>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -522,7 +546,6 @@ function HistoryEntryRow({
   const date = new Date(entry.created_at)
   const isCopied = copiedId === entry.id
 
-  // Row click: open detail in normal mode, pick for compare in pick mode
   const handleRowClick = () => {
     if (isComparePickMode && !isCompareBaseline) {
       onSelectForCompare(entry.id)
@@ -542,7 +565,6 @@ function HistoryEntryRow({
             : 'border-border hover:bg-muted/30 cursor-pointer'
       }`}
     >
-      {/* Baseline indicator strip */}
       {isCompareBaseline && (
         <div className="flex items-center justify-between px-3 py-1.5 bg-primary/10 border-b border-primary/20 rounded-t-lg">
           <div className="flex items-center gap-1.5">
@@ -559,7 +581,6 @@ function HistoryEntryRow({
       )}
 
       <div className="flex items-center gap-2.5 px-3 py-3">
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">Version #{entry.version_number}</span>
@@ -574,9 +595,7 @@ function HistoryEntryRow({
           )}
         </div>
 
-        {/* Actions — stop propagation so they don't trigger the row click */}
         <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()}>
-          {/* Copy */}
           <button
             onClick={() => onCopy(entry.id)}
             title="Copy config JSON"
@@ -587,7 +606,6 @@ function HistoryEntryRow({
             {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Compare action */}
           {isComparePickMode && !isCompareBaseline ? (
             <button
               onClick={() => onSelectForCompare(entry.id)}
@@ -623,7 +641,6 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
   const [compareBaseline, setCompareBaseline] = useState<ComparePickMode | null>(null)
   const [diffDialog, setDiffDialog] = useState<{ entryA: ConfigHistoryEntryDetail; entryB: ConfigHistoryEntryDetail } | null>(null)
 
-  // Detail cache to avoid refetching
   const [detailCache] = useState(() => new Map<string, ConfigHistoryEntryDetail>())
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
@@ -653,14 +670,18 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
   const handleCopy = useCallback(async (id: string) => {
     const detail = await getOrFetchDetail(id)
     if (!detail) return
-    // Strip identity fields so pasting doesn't overwrite name/id on the target agent
     const snapshot = JSON.parse(JSON.stringify(detail.config_snapshot))
-    if (snapshot?.agent) {
+    // Strip identity/sensitive fields for both LiveKit and Pipecat
+    if (snapshot?.agent?.assistant) {
       delete snapshot.agent.agent_id
       delete snapshot.agent.name
       delete snapshot.agent.type
       delete snapshot.agent.whispey_key_id
       delete snapshot.agent.token
+    }
+    if (snapshot?.platform === 'pipecat' && snapshot?.agent) {
+      delete snapshot.agent.whispey_api_key
+      delete snapshot.agent.whispey_agent_id
     }
     const ok = await copyText(JSON.stringify(snapshot, null, 2))
     if (ok) {
@@ -678,7 +699,6 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
       return
     }
 
-    // Second selection — fetch both and open the diff dialog
     const [detailA, detailB] = await Promise.all([
       getOrFetchDetail(compareBaseline.entryId),
       getOrFetchDetail(id),
@@ -712,14 +732,12 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
             )}
           </SheetHeader>
 
-          {/* Config loading — min-h ensures sheet width is conserved */}
           {screen.mode === 'config' && screen.loading && (
             <div className="flex-1 flex items-center justify-center min-h-[300px] w-full">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           )}
 
-          {/* Config detail */}
           {screen.mode === 'config' && !screen.loading && (
             <div className="flex-1 min-h-0 flex flex-col">
               <ConfigDetailView
@@ -730,7 +748,6 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
             </div>
           )}
 
-          {/* List */}
           {screen.mode === 'list' && (
             <>
               {isComparePickMode && (
@@ -795,7 +812,6 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
         </SheetContent>
       </Sheet>
 
-      {/* Diff dialog — separate from sheet, full width for readability */}
       {diffDialog && (
         <DiffDialog
           open={true}
