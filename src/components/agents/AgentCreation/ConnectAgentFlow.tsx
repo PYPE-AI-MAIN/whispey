@@ -267,7 +267,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
       } else if (selectedPlatform === 'pipecat') {
         payload = {
           name: formData.name.trim(),
-          agent_type: 'pipecat',
+          agent_type: 'pipecat_agent',
           configuration: {
             description: formData.description?.trim() || null,
           },

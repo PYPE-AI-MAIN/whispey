@@ -5,7 +5,7 @@ import React, { useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   ChevronDownIcon, MicIcon, BrainIcon, TimerIcon,
-  Volume2Icon, WrenchIcon, DatabaseIcon, Music2Icon,
+  Volume2Icon, WrenchIcon, DatabaseIcon, Music2Icon, Webhook,
 } from 'lucide-react'
 import VadSettings from './ConfigParents/VadSettings'
 import SmartTurnSettings from './ConfigParents/SmartTurnSettings'
@@ -14,6 +14,7 @@ import TtsVoiceCharSettings from './ConfigParents/TtsVoiceCharSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettings'
 import KnowledgeBaseSettings from './ConfigParents/KnowledgeBaseSettings'
 import AmbientSoundSettings from './ConfigParents/AmbientSoundSettings'
+import WebhookSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings/ConfigParents/WebhookSettings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ interface PipecatAdvancedSettingsProps {
   // Transfer
   transferNumber: string
   onTransferNumberChange: (value: string) => void
+  acefoneToken: string
+  onAcefoneTokenChange: (value: string) => void
   // Tools
   builtinTools: string[]
   onBuiltinToolsChange: (tools: string[]) => void
@@ -74,6 +77,7 @@ interface PipecatAdvancedSettingsProps {
   onAmbientSoundEnabledChange: (v: boolean) => void
   onAmbientSoundVolumeChange: (v: number) => void
   projectId?: string
+  agentId?: string
 }
 
 // ── Section wrapper — mirrors LiveKit AgentAdvancedSettings pattern ────────────
@@ -113,6 +117,7 @@ function Section({
 export default function PipecatAdvancedSettings({
   vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume, onVadChange,
   transferNumber, onTransferNumberChange,
+  acefoneToken, onAcefoneTokenChange,
   builtinTools, onBuiltinToolsChange,
   toolConfigs, onToolConfigsChange,
   customTools, onCustomToolsChange,
@@ -121,6 +126,7 @@ export default function PipecatAdvancedSettings({
   ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed, onTtsCharChange,
   ragEnabled, onRagEnabledChange,
   ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
+  projectId, agentId,
 }: PipecatAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     vad: false,
@@ -130,6 +136,7 @@ export default function PipecatAdvancedSettings({
     tools: false,
     rag: false,
     ambient: false,
+    webhook: false,
   })
 
   const toggle = (s: string) =>
@@ -211,6 +218,8 @@ export default function PipecatAdvancedSettings({
             onCustomToolsChange={onCustomToolsChange}
             transferNumber={transferNumber}
             onTransferNumberChange={onTransferNumberChange}
+            acefoneToken={acefoneToken}
+            onAcefoneTokenChange={onAcefoneTokenChange}
           />
         </Section>
 
@@ -237,6 +246,24 @@ export default function PipecatAdvancedSettings({
             ambientSoundVolume={ambientSoundVolume}
             onAmbientSoundEnabledChange={onAmbientSoundEnabledChange}
             onAmbientSoundVolumeChange={onAmbientSoundVolumeChange}
+          />
+        </Section>
+
+        <Section
+          icon={<Webhook className="w-3.5 h-3.5" />}
+          label="Webhook Configuration"
+          open={openSections.webhook}
+          onToggle={() => toggle('webhook')}
+        >
+          <WebhookSettings
+            triggerOnCallLog={false}
+            webhookUrl=""
+            httpMethod="POST"
+            headers={{}}
+            isActive={false}
+            onFieldChange={() => {}}
+            agentId={agentId}
+            projectId={projectId}
           />
         </Section>
 
