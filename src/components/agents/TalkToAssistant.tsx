@@ -37,17 +37,19 @@ interface TalkToAssistantProps {
   flashEndCall?: boolean
   onFlashEndCallDone?: () => void
   onSessionActiveChange?: (active: boolean) => void
+  sessionEndpoint?: string  // override the session API (e.g. /api/pipecat/start-web-session)
 }
 
-export default function TalkToAssistant({ 
-  agentName, 
-  isOpen, 
+export default function TalkToAssistant({
+  agentName,
+  isOpen,
   onClose,
   agentStatus,
   onAgentStatusChange,
   flashEndCall = false,
   onFlashEndCallDone,
   onSessionActiveChange,
+  sessionEndpoint,
 }: TalkToAssistantProps) {
   const [mode, setMode]                   = useState<AgentTestMode>('voice')
   const [textMessage, setTextMessage]     = useState('')
@@ -58,7 +60,7 @@ export default function TalkToAssistant({
   const endCallRef       = useRef<HTMLButtonElement>(null)
   const inputRef         = useRef<HTMLInputElement>(null)
 
-  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode })
+  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode, sessionEndpoint })
 
   const sessionActive = voiceState.isConnected || voiceState.isConnecting
 
