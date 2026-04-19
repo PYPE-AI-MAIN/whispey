@@ -70,6 +70,8 @@ interface ToolsActionsSettingsProps {
   onCustomToolsChange: (tools: CustomTool[]) => void
   transferNumber: string
   onTransferNumberChange: (value: string) => void
+  acefoneToken: string
+  onAcefoneTokenChange: (value: string) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -207,6 +209,8 @@ export default function ToolsActionsSettings({
   onCustomToolsChange,
   transferNumber,
   onTransferNumberChange,
+  acefoneToken,
+  onAcefoneTokenChange,
 }: ToolsActionsSettingsProps) {
   const [backendTools, setBackendTools] = useState<BackendTool[]>([])
   const [toolsLoading, setToolsLoading] = useState(false)
@@ -339,22 +343,40 @@ export default function ToolsActionsSettings({
                 />
               </div>
 
-              {/* Transfer number — inline when transfer_call is enabled */}
+              {/* Transfer config — inline when transfer_call is enabled */}
               {isTransferTool && enabled && (
-                <div className="ml-5 mt-1 mb-3 space-y-1.5">
-                  <Label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
-                    <PhoneIcon className="w-3 h-3" />
-                    Transfer Number
-                  </Label>
-                  <Input
-                    value={transferNumber}
-                    onChange={e => onTransferNumberChange(e.target.value)}
-                    placeholder="+91XXXXXXXXXX"
-                    className="h-7 text-xs border-gray-200 dark:border-gray-700"
-                  />
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    Default number to transfer calls to when this tool fires.
-                  </p>
+                <div className="ml-5 mt-1 mb-3 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                      <PhoneIcon className="w-3 h-3" />
+                      Transfer Target
+                    </Label>
+                    <Input
+                      value={transferNumber}
+                      onChange={e => onTransferNumberChange(e.target.value)}
+                      placeholder="+91XXXXXXXXXX"
+                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                    />
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Plivo / web: full phone number e.g. <span className="font-mono">+919876543210</span><br />
+                      Acefone: intercom / extension ID e.g. <span className="font-mono">8001</span> or hunt group <span className="font-mono">8001,8002</span>
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">
+                      Acefone Token <span className="text-gray-400 font-normal">(leave blank if using global env)</span>
+                    </Label>
+                    <Input
+                      value={acefoneToken}
+                      onChange={e => onAcefoneTokenChange(e.target.value)}
+                      placeholder="Bearer eyJ..."
+                      type="password"
+                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                    />
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Per-agent Acefone API token. Overrides the server-level <span className="font-mono">ACEFONE_TOKEN</span> env var.
+                    </p>
+                  </div>
                 </div>
               )}
 

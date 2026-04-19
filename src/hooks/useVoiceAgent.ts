@@ -62,6 +62,7 @@ interface VoiceAgentActions {
 interface VoiceAgentConfig {
   agentName: string
   mode: AgentTestMode
+  sessionEndpoint?: string  // defaults to /api/agents/start-session
 }
 
 function getSecureRandomInt(max: number): number {
@@ -86,7 +87,7 @@ function isAgentParticipant(identity = '', metadata = '') {
   return id.includes('agent') || id.includes('assistant') || m.includes('agent') || m.includes('assistant')
 }
 
-export function useVoiceAgent({ agentName, mode }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
+export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session' }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
   const [room, setRoom]                       = useState<Room | null>(null)
   const [isConnected, setIsConnected]         = useState(false)
   const [isConnecting, setIsConnecting]       = useState(false)
@@ -210,7 +211,7 @@ export function useVoiceAgent({ agentName, mode }: VoiceAgentConfig): [VoiceAgen
   }, [mode, volume, upsertTranscript, cleanupAudioElements])
 
   const startWebSession = async (): Promise<WebSession> => {
-    const res = await fetch('/api/agents/start-session', {
+    const res = await fetch(sessionEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName }),
