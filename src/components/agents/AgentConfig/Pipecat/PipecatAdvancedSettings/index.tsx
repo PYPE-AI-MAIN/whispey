@@ -40,6 +40,8 @@ interface PipecatAdvancedSettingsProps {
   vadStopSecs: number
   vadMinVolume: number
   onVadChange: (field: string, value: number) => void
+  minAudioDuration: number
+  onMinAudioDurationChange: (v: number) => void
   // Transfer
   transferNumber: string
   onTransferNumberChange: (value: string) => void
@@ -64,6 +66,12 @@ interface PipecatAdvancedSettingsProps {
   // RAG
   ragEnabled: boolean
   onRagEnabledChange: (v: boolean) => void
+  ragNResults: number
+  onRagNResultsChange: (v: number) => void
+  ragFillerEnabled: boolean
+  onRagFillerEnabledChange: (v: boolean) => void
+  ragFillerPhrases: string[]
+  onRagFillerPhrasesChange: (v: string[]) => void
   // Ambient Sound
   ambientSoundEnabled: boolean
   ambientSoundVolume: number
@@ -109,6 +117,7 @@ function Section({
 
 export default function PipecatAdvancedSettings({
   vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume, onVadChange,
+  minAudioDuration, onMinAudioDurationChange,
   transferNumber, onTransferNumberChange,
   acefoneToken, onAcefoneTokenChange,
   builtinTools, onBuiltinToolsChange,
@@ -117,6 +126,9 @@ export default function PipecatAdvancedSettings({
   smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs, onSmartTurnChange,
   turnStopTimeout, userIdleTimeout, onTurnChange,
   ragEnabled, onRagEnabledChange,
+  ragNResults, onRagNResultsChange,
+  ragFillerEnabled, onRagFillerEnabledChange,
+  ragFillerPhrases, onRagFillerPhrasesChange,
   ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
   projectId, agentId,
 }: PipecatAdvancedSettingsProps) {
@@ -149,6 +161,8 @@ export default function PipecatAdvancedSettings({
             vadStopSecs={vadStopSecs}
             vadMinVolume={vadMinVolume}
             onVadChange={onVadChange}
+            minAudioDuration={minAudioDuration}
+            onMinAudioDurationChange={onMinAudioDurationChange}
           />
         </Section>
 
@@ -208,6 +222,12 @@ export default function PipecatAdvancedSettings({
           <KnowledgeBaseSettings
             ragEnabled={ragEnabled}
             onRagEnabledChange={onRagEnabledChange}
+            ragNResults={ragNResults}
+            onRagNResultsChange={onRagNResultsChange}
+            ragFillerEnabled={ragFillerEnabled}
+            onRagFillerEnabledChange={onRagFillerEnabledChange}
+            ragFillerPhrases={ragFillerPhrases}
+            onRagFillerPhrasesChange={onRagFillerPhrasesChange}
           />
         </Section>
 

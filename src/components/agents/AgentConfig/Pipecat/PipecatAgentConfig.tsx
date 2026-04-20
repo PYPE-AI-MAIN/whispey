@@ -66,6 +66,10 @@ interface PipecatAgent {
   tts_style: number | null
   tts_speed: number
   rag_enabled: boolean
+  rag_n_results: number
+  rag_filler_enabled: boolean
+  rag_filler_phrases: string[]
+  min_audio_duration: number
   ambient_sound_enabled: boolean
   ambient_sound_volume: number
   whispey_api_key: string
@@ -122,6 +126,10 @@ interface SnapshotValues {
   turnStopTimeout: number
   userIdleTimeout: number | null
   ragEnabled: boolean
+  ragNResults: number
+  ragFillerEnabled: boolean
+  ragFillerPhrases: string[]
+  minAudioDuration: number
   ambientSoundEnabled: boolean
   ambientSoundVolume: number
   timezone: string
@@ -246,6 +254,12 @@ export default function PipecatAgentConfig({
 
   // RAG
   const [ragEnabled, setRagEnabled] = useState(true)
+  const [ragNResults, setRagNResults] = useState(3)
+  const [ragFillerEnabled, setRagFillerEnabled] = useState(true)
+  const [ragFillerPhrases, setRagFillerPhrases] = useState<string[]>([])
+
+  // Noise gate
+  const [minAudioDuration, setMinAudioDuration] = useState(0.4)
 
   // Ambient Sound
   const [ambientSoundEnabled, setAmbientSoundEnabled] = useState(false)
@@ -281,11 +295,12 @@ export default function PipecatAgentConfig({
     selectedProvider, selectedModel,
     sttModel, sttConfig,
     ttsVoiceId, ttsModel,
-    tools, toolConfigs, customTools,ttsProvider,
+    tools, toolConfigs, customTools, ttsProvider,
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
-    ragEnabled, ambientSoundEnabled, ambientSoundVolume,
+    ragEnabled, ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
+    ambientSoundEnabled, ambientSoundVolume,
     timezone, variables,
   }) : null
 
@@ -328,6 +343,10 @@ export default function PipecatAgentConfig({
     setUserIdleTimeout(a.user_idle_timeout ?? null)
 
     setRagEnabled(a.rag_enabled ?? true)
+    setRagNResults(a.rag_n_results ?? 3)
+    setRagFillerEnabled(a.rag_filler_enabled ?? true)
+    setRagFillerPhrases(a.rag_filler_phrases ?? [])
+    setMinAudioDuration(a.min_audio_duration ?? 0.4)
     setAmbientSoundEnabled(a.ambient_sound_enabled ?? false)
     setAmbientSoundVolume(a.ambient_sound_volume ?? 0.3)
     setTimezone(a.timezone || 'Asia/Kolkata')
@@ -357,6 +376,10 @@ export default function PipecatAgentConfig({
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
       ragEnabled: a.rag_enabled ?? true,
+      ragNResults: a.rag_n_results ?? 3,
+      ragFillerEnabled: a.rag_filler_enabled ?? true,
+      ragFillerPhrases: a.rag_filler_phrases ?? [],
+      minAudioDuration: a.min_audio_duration ?? 0.4,
       ambientSoundEnabled: a.ambient_sound_enabled ?? false,
       ambientSoundVolume: a.ambient_sound_volume ?? 0.3,
       timezone: a.timezone || 'Asia/Kolkata',
@@ -417,6 +440,10 @@ export default function PipecatAgentConfig({
         turn_stop_timeout: turnStopTimeout,
         user_idle_timeout: userIdleTimeout,
         rag_enabled: ragEnabled,
+        rag_n_results: ragNResults,
+        rag_filler_enabled: ragFillerEnabled,
+        rag_filler_phrases: ragFillerPhrases,
+        min_audio_duration: minAudioDuration,
         ambient_sound_enabled: ambientSoundEnabled,
         ambient_sound_volume: ambientSoundVolume,
         timezone,
@@ -444,7 +471,8 @@ export default function PipecatAgentConfig({
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
-        ragEnabled, ambientSoundEnabled, ambientSoundVolume,
+        ragEnabled, ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
+        ambientSoundEnabled, ambientSoundVolume,
         timezone, variables,
       }))
 
@@ -786,6 +814,8 @@ export default function PipecatAgentConfig({
               vadStopSecs={vadStopSecs}
               vadMinVolume={vadMinVolume}
               onVadChange={handleVadChange}
+              minAudioDuration={minAudioDuration}
+              onMinAudioDurationChange={setMinAudioDuration}
               transferNumber={transferNumber}
               onTransferNumberChange={setTransferNumber}
               acefoneToken={acefoneToken}
@@ -805,6 +835,12 @@ export default function PipecatAgentConfig({
               onTurnChange={handleTurnChange}
               ragEnabled={ragEnabled}
               onRagEnabledChange={setRagEnabled}
+              ragNResults={ragNResults}
+              onRagNResultsChange={setRagNResults}
+              ragFillerEnabled={ragFillerEnabled}
+              onRagFillerEnabledChange={setRagFillerEnabled}
+              ragFillerPhrases={ragFillerPhrases}
+              onRagFillerPhrasesChange={setRagFillerPhrases}
               ambientSoundEnabled={ambientSoundEnabled}
               ambientSoundVolume={ambientSoundVolume}
               onAmbientSoundEnabledChange={setAmbientSoundEnabled}
