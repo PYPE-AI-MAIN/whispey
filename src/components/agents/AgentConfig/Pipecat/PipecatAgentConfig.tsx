@@ -117,6 +117,10 @@ interface SnapshotValues {
   ttsVoiceId: string
   ttsModel: string
   ttsProvider: string
+  ttsStability: number | null
+  ttsSimilarityBoost: number | null
+  ttsStyle: number | null
+  ttsSpeed: number
   tools: string[]
   toolConfigs: Record<string, Record<string, unknown>>
   customTools: any[]
@@ -129,10 +133,6 @@ interface SnapshotValues {
   smartTurnMaxDurSecs: number
   turnStopTimeout: number
   userIdleTimeout: number | null
-  ttsStability: number | null
-  ttsSimilarityBoost: number | null
-  ttsStyle: number | null
-  ttsSpeed: number
   ragEnabled: boolean
   ragNResults: number
   ragFillerEnabled: boolean
@@ -324,8 +324,7 @@ export default function PipecatAgentConfig({
     ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
     ragEnabled, ambientSoundEnabled, ambientSoundVolume,
     keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
-    ragEnabled, ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
-    ambientSoundEnabled, ambientSoundVolume,
+    ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
     timezone, variables,
   }) : null
 
@@ -396,6 +395,10 @@ export default function PipecatAgentConfig({
       ttsVoiceId: a.tts_voice_id || '',
       ttsModel: a.tts_model || 'eleven_flash_v2_5',
       ttsProvider: (a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'),
+      ttsStability: a.tts_stability ?? null,
+      ttsSimilarityBoost: a.tts_similarity_boost ?? null,
+      ttsStyle: a.tts_style ?? null,
+      ttsSpeed: a.tts_speed ?? 1.0,
       tools: a.tools || ['end_call', 'transfer_call'],
       toolConfigs: a.tool_configs || {},
       customTools: a.custom_tools || [],
@@ -408,10 +411,6 @@ export default function PipecatAgentConfig({
       smartTurnMaxDurSecs: a.smart_turn_max_dur_secs ?? 8.0,
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
-      ttsStability: a.tts_stability ?? null,
-      ttsSimilarityBoost: a.tts_similarity_boost ?? null,
-      ttsStyle: a.tts_style ?? null,
-      ttsSpeed: a.tts_speed ?? 1.0,
       ragEnabled: a.rag_enabled ?? true,
       ragNResults: a.rag_n_results ?? 3,
       ragFillerEnabled: a.rag_filler_enabled ?? true,
