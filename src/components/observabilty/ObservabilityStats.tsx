@@ -46,6 +46,19 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
     auth: { agentId },
   })
 
+  const ensureUTC = (s: string) => s.endsWith('Z') || s.includes('+') ? s : s + 'Z'
+
+  const callStartTime = callData?.[0]?.call_started_at 
+    ? new Date(ensureUTC(callData[0].call_started_at)).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : "N/A"
+
+
   const bugReportData = useMemo(() => {
     if (!callData?.length) return null
     try {
@@ -238,12 +251,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                   <Clock className="w-3 h-3 text-gray-500 dark:text-gray-400" />
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                    {new Date(callData[0].call_started_at).toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {callStartTime}
                   </span>
                 </div>
               )}

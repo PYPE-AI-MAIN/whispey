@@ -1,21 +1,27 @@
 // src/components/agents/AgentConfig/Pipecat/PipecatAgentConfig.tsx
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import {
-  ArrowLeft, Loader2, CopyIcon, CheckIcon, AlertCircle, History,
+  ArrowLeft, Loader2, CopyIcon, CheckIcon, AlertCircle, History, PhoneIcon, SettingsIcon,
+  VariableIcon, TrashIcon, PlusIcon, ChevronDownIcon,
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import PipecatAdvancedSettings from './PipecatAdvancedSettings/index'
 import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
+import DailyTalkToAssistant from '@/components/agents/DailyTalkToAssistant'
+import CallAnalytics, { type CallAnalysisResult } from './CallAnalytics'
+import { type DailyTranscript } from '@/hooks/useDailyVoiceAgent'
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -34,11 +40,14 @@ interface PipecatAgent {
   prompt: string
   llm_model: string
   llm_provider: string
+  stt_provider: string
   stt_model: string
   stt_language: string
-  tts_model: string
+  tts_provider: string
+  tts_model: string | null
   tts_voice_id: string | null
   transfer_number: string
+  acefone_token: string | null
   tools: string[]
   tool_configs: Record<string, Record<string, unknown>>
   custom_tools: any[]
@@ -73,10 +82,13 @@ interface PipecatAgent {
 
 function mapLLMModelToProvider(llmModel: string, llmProvider?: string): { provider: string; model: string } {
   if (llmProvider === 'azure') return { provider: 'azure_openai', model: llmModel }
+  if (llmProvider === 'groq') return { provider: 'groq', model: llmModel }
+  if (llmProvider === 'cerebras') return { provider: 'cerebras', model: llmModel }
   if (llmModel.startsWith('gpt')) return { provider: 'openai', model: llmModel }
   if (llmModel.startsWith('gemini')) return { provider: 'google', model: llmModel }
-  if (llmModel.startsWith('llama') || llmModel.startsWith('groq/')) return { provider: 'groq', model: llmModel }
+  if (llmModel.startsWith('llama') || llmModel.startsWith('groq/') || llmModel.startsWith('meta-llama') || llmModel.startsWith('moonshotai') || llmModel.startsWith('openai/gpt-oss')) return { provider: 'groq', model: llmModel }
   if (llmModel.includes('claude')) return { provider: 'anthropic', model: llmModel }
+  if (llmModel.startsWith('qwen') || llmModel.startsWith('zai-')) return { provider: 'cerebras', model: llmModel }
   return { provider: 'openai', model: llmModel }
 }
 
@@ -85,6 +97,7 @@ function mapProviderToLLMProvider(provider: string): string {
     case 'azure_openai': return 'azure'
     case 'google': return 'google'
     case 'groq': return 'groq'
+    case 'cerebras': return 'cerebras'
     default: return 'openai'
   }
 }
@@ -99,6 +112,7 @@ interface SnapshotValues {
   sttConfig: any
   ttsVoiceId: string
   ttsModel: string
+  ttsProvider: string
   tools: string[]
   toolConfigs: Record<string, Record<string, unknown>>
   customTools: any[]
@@ -145,6 +159,45 @@ export default function PipecatAgentConfig({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isCopied, setIsCopied] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [isTalkOpen, setIsTalkOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isVariablesOpen, setIsVariablesOpen] = useState(true)
+  const [flashEndCall, setFlashEndCall] = useState(false)
+  const isTalkSessionActiveRef = useRef(false)
+
+  // ── Call analytics ────────────────────────────────────────────────────────
+  const [analyticsTranscripts, setAnalyticsTranscripts] = useState<DailyTranscript[]>([])
+  const [analyticsResult, setAnalyticsResult] = useState<CallAnalysisResult | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+
+  const runAnalysis = useCallback(async (transcripts: DailyTranscript[]) => {
+    if (transcripts.length === 0) return
+    setIsAnalyzing(true)
+    setAnalyticsError(null)
+    setAnalyticsResult(null)
+    try {
+      const res = await fetch('/api/pipecat/analyze-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcripts }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Analysis failed')
+      setAnalyticsResult(data)
+    } catch (err) {
+      setAnalyticsError(err instanceof Error ? err.message : 'Analysis failed')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }, [])
+
+  const handleCallEnded = useCallback((transcripts: DailyTranscript[]) => {
+    setAnalyticsTranscripts(transcripts)
+    setAnalyticsResult(null)
+    setAnalyticsError(null)
+    runAnalysis(transcripts)
+  }, [runAnalysis])
 
   // ── Checkpoint state (same as LiveKit) ───────────────────────────────────
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{
@@ -172,6 +225,7 @@ export default function PipecatAgentConfig({
   const [prompt, setPrompt] = useState('')
   const [openingMessage, setOpeningMessage] = useState('')
   const [transferNumber, setTransferNumber] = useState('')
+  const [acefoneToken, setAcefoneToken] = useState('')
   const [selectedProvider, setSelectedProvider] = useState('openai')
   const [selectedModel, setSelectedModel] = useState('gpt-4.1-mini')
   const [sttProvider, setSttProvider] = useState('sarvam')
@@ -204,7 +258,7 @@ export default function PipecatAgentConfig({
   const [ttsStability, setTtsStability] = useState<number | null>(null)
   const [ttsSimilarityBoost, setTtsSimilarityBoost] = useState<number | null>(null)
   const [ttsStyle, setTtsStyle] = useState<number | null>(null)
-  const [ttsSpeed, setTtsSpeed] = useState(1.0)
+  const [ttsSpeed, setTtsSpeed] = useState<number>(1.0)
 
   // RAG
   const [ragEnabled, setRagEnabled] = useState(true)
@@ -249,7 +303,7 @@ export default function PipecatAgentConfig({
     selectedProvider, selectedModel,
     sttModel, sttConfig,
     ttsVoiceId, ttsModel,
-    tools, toolConfigs, customTools,
+    tools, toolConfigs, customTools,ttsProvider,
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
@@ -268,6 +322,7 @@ export default function PipecatAgentConfig({
     setPrompt(a.prompt || '')
     setOpeningMessage(a.opening_message || '')
     setTransferNumber(a.transfer_number || '')
+    setAcefoneToken(a.acefone_token || '')
     setTools(a.tools || ['end_call', 'transfer_call'])
     setToolConfigs(a.tool_configs || {})
     setCustomTools(a.custom_tools || [])
@@ -276,11 +331,11 @@ export default function PipecatAgentConfig({
     setSelectedProvider(provider)
     setSelectedModel(model)
 
-    setSttProvider('sarvam')
+    setSttProvider((a as any).stt_provider || (a.stt_model?.startsWith('nova-') ? 'deepgram' : a.stt_model === 'whisper-1' ? 'openai' : 'sarvam'))
     setSttModel(a.stt_model || 'saarika:v2.5')
     setSttConfig({ language: a.stt_language || 'en-IN' })
 
-    setTtsProvider('elevenlabs')
+    setTtsProvider((a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'))
     setTtsModel(a.tts_model || 'eleven_flash_v2_5')
     setTtsVoiceId(a.tts_voice_id || '')
 
@@ -295,11 +350,6 @@ export default function PipecatAgentConfig({
 
     setTurnStopTimeout(a.turn_stop_timeout ?? 5.0)
     setUserIdleTimeout(a.user_idle_timeout ?? null)
-
-    setTtsStability(a.tts_stability ?? null)
-    setTtsSimilarityBoost(a.tts_similarity_boost ?? null)
-    setTtsStyle(a.tts_style ?? null)
-    setTtsSpeed(a.tts_speed ?? 1.0)
 
     setRagEnabled(a.rag_enabled ?? true)
     setAmbientSoundEnabled(a.ambient_sound_enabled ?? false)
@@ -321,6 +371,7 @@ export default function PipecatAgentConfig({
       sttConfig: { language: a.stt_language || 'en-IN' },
       ttsVoiceId: a.tts_voice_id || '',
       ttsModel: a.tts_model || 'eleven_flash_v2_5',
+      ttsProvider: (a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'),
       tools: a.tools || ['end_call', 'transfer_call'],
       toolConfigs: a.tool_configs || {},
       customTools: a.custom_tools || [],
@@ -333,10 +384,6 @@ export default function PipecatAgentConfig({
       smartTurnMaxDurSecs: a.smart_turn_max_dur_secs ?? 8.0,
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
-      ttsStability: a.tts_stability ?? null,
-      ttsSimilarityBoost: a.tts_similarity_boost ?? null,
-      ttsStyle: a.tts_style ?? null,
-      ttsSpeed: a.tts_speed ?? 1.0,
       ragEnabled: a.rag_enabled ?? true,
       ambientSoundEnabled: a.ambient_sound_enabled ?? false,
       ambientSoundVolume: a.ambient_sound_volume ?? 0.3,
@@ -381,11 +428,14 @@ export default function PipecatAgentConfig({
         opening_message: openingMessage || null,
         llm_model: selectedModel,
         llm_provider: mapProviderToLLMProvider(selectedProvider),
+        stt_provider: sttProvider,
         stt_model: sttModel,
         stt_language: sttConfig?.language || 'en-IN',
-        tts_model: ttsModel,
+        tts_provider: ttsProvider,
+        tts_model: ttsModel || null,
         tts_voice_id: ttsVoiceId || null,
         transfer_number: transferNumber,
+        acefone_token: acefoneToken || null,
         tools,
         tool_configs: toolConfigs,
         custom_tools: customTools,
@@ -398,10 +448,6 @@ export default function PipecatAgentConfig({
         smart_turn_max_dur_secs: smartTurnMaxDurSecs,
         turn_stop_timeout: turnStopTimeout,
         user_idle_timeout: userIdleTimeout,
-        tts_stability: ttsStability,
-        tts_similarity_boost: ttsSimilarityBoost,
-        tts_style: ttsStyle,
-        tts_speed: ttsSpeed,
         rag_enabled: ragEnabled,
         ambient_sound_enabled: ambientSoundEnabled,
         ambient_sound_volume: ambientSoundVolume,
@@ -430,7 +476,7 @@ export default function PipecatAgentConfig({
         prompt, openingMessage, transferNumber,
         selectedProvider, selectedModel,
         sttModel, sttConfig, ttsVoiceId, ttsModel,
-        tools, toolConfigs, customTools,
+        tools, toolConfigs, customTools,ttsProvider, 
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
@@ -521,13 +567,6 @@ export default function PipecatAgentConfig({
     else if (field === 'userIdleTimeout') setUserIdleTimeout(value)
   }
 
-  const handleTtsCharChange = (field: string, value: number | null) => {
-    if (field === 'stability') setTtsStability(value)
-    else if (field === 'similarityBoost') setTtsSimilarityBoost(value)
-    else if (field === 'style') setTtsStyle(value)
-    else if (field === 'speed') setTtsSpeed(value as number)
-  }
-
   const copyPrompt = async () => {
     if (!prompt) return
     try {
@@ -595,6 +634,15 @@ export default function PipecatAgentConfig({
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => setIsTalkOpen(true)}
+            >
+              <PhoneIcon className="w-3 h-3" />
+              Talk to Agent
+            </Button>
             {isDirty && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleDiscard}>
                 Discard
@@ -639,7 +687,7 @@ export default function PipecatAgentConfig({
         <div className="h-full flex gap-4">
 
           {/* Left — main config */}
-          <div className="flex-1 min-w-0 flex flex-col space-y-3">
+          <div className="flex-1 min-w-0 flex flex-col space-y-3 overflow-y-auto">
 
             {/* Model / STT / TTS row */}
             <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
@@ -672,31 +720,70 @@ export default function PipecatAgentConfig({
               </div>
             </div>
 
-            {/* Opening Message */}
-            <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-1.5">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Opening Message</label>
-              <Input
-                value={openingMessage}
-                onChange={e => setOpeningMessage(e.target.value)}
-                placeholder="नमस्ते! बताइए..."
-                className="h-8 text-sm border-gray-200 dark:border-gray-700"
-              />
+            {/* Opening Message + Timezone row */}
+            <div className="flex gap-3 flex-shrink-0">
+              <div className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-1.5">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Opening Message</label>
+                <Input
+                  value={openingMessage}
+                  onChange={e => setOpeningMessage(e.target.value)}
+                  placeholder="नमस्ते! बताइए... or Hello {{customer_name}}!"
+                  className="h-8 text-sm border-gray-200 dark:border-gray-700"
+                />
+              </div>
+              <div className="w-52 flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-1.5">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Timezone</label>
+                <select
+                  value={timezone}
+                  onChange={e => setTimezone(e.target.value)}
+                  className="w-full h-8 px-2 text-xs rounded-md border border-gray-200 dark:border-gray-700
+                             bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                             focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {[
+                    'Asia/Kolkata','Asia/Dubai','Asia/Singapore','Asia/Tokyo',
+                    'Asia/Shanghai','Asia/Jakarta','Asia/Karachi','Asia/Dhaka',
+                    'Europe/London','Europe/Paris','Europe/Berlin','Europe/Moscow',
+                    'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+                    'America/Sao_Paulo','Africa/Cairo','Africa/Lagos',
+                    'Australia/Sydney','Pacific/Auckland',
+                  ].map(tz => (
+                    <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* System Prompt */}
-            <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+            <div className={`${analyticsTranscripts.length === 0 ? 'flex-1 min-h-0' : 'min-h-[280px]'} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col`}>
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
-                <button
-                  onClick={copyPrompt}
-                  className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                  disabled={!prompt}
-                >
-                  {isCopied
-                    ? <><CheckIcon className="w-4 h-4 text-green-500" /><span className="text-green-500">Copied!</span></>
-                    : <><CopyIcon className="w-4 h-4" /><span>Copy</span></>
-                  }
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className={`flex items-center gap-1 text-xs transition-colors ${
+                      detectedVarNames.some(n => !(n in variables))
+                        ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    <SettingsIcon className="w-4 h-4" />
+                    <span>Settings</span>
+                    {detectedVarNames.some(n => !(n in variables)) && (
+                      <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    )}
+                  </button>
+                  <button
+                    onClick={copyPrompt}
+                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    disabled={!prompt}
+                  >
+                    {isCopied
+                      ? <><CheckIcon className="w-4 h-4 text-green-500" /><span className="text-green-500">Copied!</span></>
+                      : <><CopyIcon className="w-4 h-4" /><span>Copy</span></>
+                    }
+                  </button>
+                </div>
               </div>
               <Textarea
                 value={prompt}
@@ -710,6 +797,23 @@ export default function PipecatAgentConfig({
                 </span>
               </div>
             </div>
+
+            {/* Call Analytics — shown after a web call ends */}
+            {analyticsTranscripts.length > 0 && (
+              <CallAnalytics
+                transcripts={analyticsTranscripts}
+                analysis={analyticsResult}
+                isAnalyzing={isAnalyzing}
+                error={analyticsError}
+                onRetry={() => runAnalysis(analyticsTranscripts)}
+                onDismiss={() => {
+                  setAnalyticsTranscripts([])
+                  setAnalyticsResult(null)
+                  setAnalyticsError(null)
+                }}
+              />
+            )}
+
           </div>
 
           {/* Right — advanced settings */}
@@ -722,6 +826,8 @@ export default function PipecatAgentConfig({
               onVadChange={handleVadChange}
               transferNumber={transferNumber}
               onTransferNumberChange={setTransferNumber}
+              acefoneToken={acefoneToken}
+              onAcefoneTokenChange={setAcefoneToken}
               builtinTools={tools}
               onBuiltinToolsChange={setTools}
               toolConfigs={toolConfigs}
@@ -735,11 +841,6 @@ export default function PipecatAgentConfig({
               turnStopTimeout={turnStopTimeout}
               userIdleTimeout={userIdleTimeout}
               onTurnChange={handleTurnChange}
-              ttsStability={ttsStability}
-              ttsSimilarityBoost={ttsSimilarityBoost}
-              ttsStyle={ttsStyle}
-              ttsSpeed={ttsSpeed}
-              onTtsCharChange={handleTtsCharChange}
               ragEnabled={ragEnabled}
               onRagEnabledChange={setRagEnabled}
               ambientSoundEnabled={ambientSoundEnabled}
@@ -755,6 +856,7 @@ export default function PipecatAgentConfig({
               onKeyboardSoundProbabilityChange={setKeyboardSoundProbability}
               onKeyboardSoundOnToolCallsChange={setKeyboardSoundOnToolCalls}
               projectId={projectId}
+              agentId={agentId}
             />
           </div>
 
@@ -766,6 +868,216 @@ export default function PipecatAgentConfig({
         onClose={() => setIsHistoryOpen(false)}
         agentId={agentId}
       />
+
+      {/* Prompt Settings Sheet — variables (same approach as LiveKit) */}
+      <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <SheetContent className="w-[500px] sm:max-w-[500px] p-6 overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <SettingsIcon className="w-4 h-4" />
+              Prompt Settings
+            </SheetTitle>
+            <SheetDescription>
+              Configure variables detected in your prompt and greeting
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-6 mt-6">
+            {/* Unmapped variable warning */}
+            {detectedVarNames.filter(n => !(n in variables)).length > 0 && (
+              <div
+                className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                onClick={() => {
+                  const unmapped = detectedVarNames.filter(n => !(n in variables))
+                  setVariables(v => {
+                    const next = { ...v }
+                    unmapped.forEach(n => { if (!(n in next)) next[n] = '' })
+                    return next
+                  })
+                }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 flex-1">
+                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-red-800 dark:text-red-200">
+                      <p className="font-medium mb-1">
+                        {detectedVarNames.filter(n => !(n in variables)).length} unmapped variable{detectedVarNames.filter(n => !(n in variables)).length > 1 ? 's' : ''} — click to configure
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {detectedVarNames.filter(n => !(n in variables)).map(name => (
+                          <code key={name} className="bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
+                            {`{{${name}}}`}
+                          </code>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const unmapped = detectedVarNames.filter(n => !(n in variables))
+                      setVariables(v => {
+                        const next = { ...v }
+                        unmapped.forEach(n => { if (!(n in next)) next[n] = '' })
+                        return next
+                      })
+                    }}
+                    className="h-7 text-xs flex-shrink-0 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  >
+                    Map All
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Variables collapsible */}
+            <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <div className="flex items-center gap-2">
+                  <VariableIcon className="w-4 h-4" />
+                  <span className="font-medium text-sm">Variables</span>
+                  {Object.keys(variables).length > 0 && (
+                    <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-0.5 rounded-full">
+                      {Object.keys(variables).length}
+                    </span>
+                  )}
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform ${isVariablesOpen ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="space-y-4 mt-4">
+                {/* Detected vars from prompt/greeting */}
+                {detectedVarNames.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Detected in prompt / greeting</p>
+                    <div className="space-y-2">
+                      {detectedVarNames.map(name => (
+                        <div key={name} className="flex items-center gap-2">
+                          <code className="font-mono text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded w-36 flex-shrink-0 truncate">
+                            {`{{${name}}}`}
+                          </code>
+                          <Input
+                            value={variables[name] ?? ''}
+                            onChange={e => setVariables(v => ({ ...v, [name]: e.target.value }))}
+                            placeholder="default value…"
+                            className="h-8 text-xs flex-1 border-gray-200 dark:border-gray-700"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Extra (manually added) vars */}
+                <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Custom Variables</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        const name = `variable_${Object.keys(variables).length + 1}`
+                        setVariables(v => ({ ...v, [name]: '' }))
+                      }}
+                    >
+                      <PlusIcon className="w-3 h-3" />
+                      Add
+                    </Button>
+                  </div>
+
+                  {Object.keys(variables).filter(k => !detectedVarNames.includes(k)).length === 0 ? (
+                    <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                      <VariableIcon className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">No custom variables</p>
+                      <p className="text-[10px] mt-1">
+                        Use <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.keys(variables)
+                        .filter(k => !detectedVarNames.includes(k))
+                        .map(name => (
+                          <div key={name} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 w-1/2">
+                                <Input
+                                  value={name}
+                                  onChange={e => {
+                                    let newName = e.target.value.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32)
+                                    if (newName === name) return
+                                    setVariables(v => {
+                                      const next: Record<string, string> = {}
+                                      Object.keys(v).forEach(k => { next[k === name ? newName : k] = v[k] })
+                                      return next
+                                    })
+                                  }}
+                                  placeholder="variable_name"
+                                  className="h-8 text-xs border-gray-200 dark:border-gray-700"
+                                />
+                              </div>
+                              <div className="w-1/2">
+                                <Input
+                                  value={variables[name] ?? ''}
+                                  onChange={e => setVariables(v => ({ ...v, [name]: e.target.value }))}
+                                  placeholder="Default value"
+                                  className="h-8 text-xs border-gray-200 dark:border-gray-700"
+                                />
+                              </div>
+                              <button
+                                onClick={() => setVariables(v => { const n = { ...v }; delete n[name]; return n })}
+                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded"
+                              >
+                                <TrashIcon className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={isTalkOpen}
+        onOpenChange={(open) => {
+          if (!open && isTalkSessionActiveRef.current) { setFlashEndCall(true); return }
+          setIsTalkOpen(open)
+        }}
+      >
+        <SheetHeader className="sr-only">
+          <SheetTitle>Talk to Agent</SheetTitle>
+        </SheetHeader>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-96 p-0"
+          onInteractOutside={(e) => {
+            if (isTalkSessionActiveRef.current) { e.preventDefault(); setFlashEndCall(true) }
+          }}
+          onEscapeKeyDown={(e) => {
+            if (isTalkSessionActiveRef.current) { e.preventDefault(); setFlashEndCall(true) }
+          }}
+        >
+          <DailyTalkToAssistant
+            agentName={agent?.name || agentName}
+            isOpen={isTalkOpen}
+            onClose={() => setIsTalkOpen(false)}
+            agentStatus={{ status: 'running' }}
+            flashEndCall={flashEndCall}
+            onFlashEndCallDone={() => setFlashEndCall(false)}
+            onSessionActiveChange={(active) => { isTalkSessionActiveRef.current = active }}
+            sessionEndpoint="/api/pipecat/start-web-session"
+            onCallEnded={handleCallEnded}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Checkpoint banner — identical to LiveKit */}
       {pendingCheckpoint && (

@@ -1,14 +1,15 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { 
+import {
   ChevronLeft,
-  BarChart3, 
+  BarChart3,
   List,
   Loader2,
   AlertCircle,
@@ -25,11 +26,13 @@ import {
   Key,
   Download,
   Menu,
-  X
+  X,
+  Phone,
 } from 'lucide-react'
 import Overview from './Overview'
 import CallLogs from './calls/CallLogs'
 import CampaignLogs from './campaigns/CampaignLogs'
+import PhoneNumbersPanel from './agents/PhoneNumbersPanel'
 import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
@@ -73,8 +76,16 @@ const subDays = (date: Date, days: number) => {
   return result
 }
 
-const formatDateISO = (date: Date) => {
-  return date.toISOString().split('T')[0]
+const parseLocalDate = (s: string): Date => {
+  const [y, mo, d] = s.split('-').map(Number)
+  return new Date(y, mo - 1, d)  // local midnight, no UTC shift
+}
+
+const formatDateISO = (date: Date): string => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 const formatShort = (date: Date) =>
@@ -109,6 +120,8 @@ function NoCallsMessage() {
   )
 }
 
+const PHONE_NUMBERS_EMAIL = 'deepesh@pypeai.com'
+
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -116,6 +129,11 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const routeParams = useParams()
   const routeProjectId = Array.isArray(routeParams?.projectid) ? routeParams.projectid[0] : (routeParams?.projectid as string | undefined)
   const { isMobile } = useMobile(768)
+
+  // Gate phone-numbers tab to a specific email only
+  const { user: clerkUser } = useUser()
+  const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? ''
+  const canSeePhoneNumbers = currentEmail === PHONE_NUMBERS_EMAIL
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
   const [vapiStatusLoading, setVapiStatusLoading] = useState(false)
@@ -142,7 +160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // and query keys don't see a new object every tick.
   const dateRange: DateRange = React.useMemo(() => {
     if (isCustomRange && storedDateFilter.dateFrom && storedDateFilter.dateTo) {
-      return { from: new Date(storedDateFilter.dateFrom), to: new Date(storedDateFilter.dateTo) }
+      return { from: parseLocalDate(storedDateFilter.dateFrom), to: parseLocalDate(storedDateFilter.dateTo) }
     }
     const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
     const to   = new Date()
@@ -419,6 +437,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   // Desktop header pills — only extra tabs like Campaign Logs (Overview/Logs nav is in the sub-tab bar)
   const tabs = [
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
+    ...(canSeePhoneNumbers ? [{ id: 'phone-numbers', label: 'Phone Numbers', icon: Phone }] : []),
   ]
 
   // Full tab list used in the desktop sub-tab bar and the mobile menu
@@ -426,6 +445,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'logs',     label: 'All Logs', icon: List },
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
+    ...(canSeePhoneNumbers ? [{ id: 'phone-numbers', label: 'Phone Numbers', icon: Phone }] : []),
   ]
 
   // Handle errors without blocking entire dashboard
@@ -924,11 +944,21 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
             
             {isEnhancedProject && (
               <div className={activeTab === 'campaign-logs' ? 'block h-full' : 'hidden'}>
-                <CampaignLogs 
-                  project={project} 
-                  agent={agent} 
+                <CampaignLogs
+                  project={project}
+                  agent={agent}
                   onBack={handleBack}
                   isLoading={agentLoading || projectLoading}
+                />
+              </div>
+            )}
+
+            {canSeePhoneNumbers && (
+              <div className={activeTab === 'phone-numbers' ? 'block h-full' : 'hidden'}>
+                <PhoneNumbersPanel
+                  agentId={agentId}
+                  pipecatAgentId={agent?.configuration?.pipecat_agent_id}
+                  agentName={agent?.name}
                 />
               </div>
             )}
