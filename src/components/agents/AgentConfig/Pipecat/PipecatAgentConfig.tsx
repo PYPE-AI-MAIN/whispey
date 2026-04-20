@@ -40,9 +40,11 @@ interface PipecatAgent {
   prompt: string
   llm_model: string
   llm_provider: string
+  stt_provider: string
   stt_model: string
   stt_language: string
-  tts_model: string
+  tts_provider: string
+  tts_model: string | null
   tts_voice_id: string | null
   transfer_number: string
   acefone_token: string | null
@@ -76,10 +78,13 @@ interface PipecatAgent {
 
 function mapLLMModelToProvider(llmModel: string, llmProvider?: string): { provider: string; model: string } {
   if (llmProvider === 'azure') return { provider: 'azure_openai', model: llmModel }
+  if (llmProvider === 'groq') return { provider: 'groq', model: llmModel }
+  if (llmProvider === 'cerebras') return { provider: 'cerebras', model: llmModel }
   if (llmModel.startsWith('gpt')) return { provider: 'openai', model: llmModel }
   if (llmModel.startsWith('gemini')) return { provider: 'google', model: llmModel }
-  if (llmModel.startsWith('llama') || llmModel.startsWith('groq/')) return { provider: 'groq', model: llmModel }
+  if (llmModel.startsWith('llama') || llmModel.startsWith('groq/') || llmModel.startsWith('meta-llama') || llmModel.startsWith('moonshotai') || llmModel.startsWith('openai/gpt-oss')) return { provider: 'groq', model: llmModel }
   if (llmModel.includes('claude')) return { provider: 'anthropic', model: llmModel }
+  if (llmModel.startsWith('qwen') || llmModel.startsWith('zai-')) return { provider: 'cerebras', model: llmModel }
   return { provider: 'openai', model: llmModel }
 }
 
@@ -88,6 +93,7 @@ function mapProviderToLLMProvider(provider: string): string {
     case 'azure_openai': return 'azure'
     case 'google': return 'google'
     case 'groq': return 'groq'
+    case 'cerebras': return 'cerebras'
     default: return 'openai'
   }
 }
@@ -102,6 +108,7 @@ interface SnapshotValues {
   sttConfig: any
   ttsVoiceId: string
   ttsModel: string
+  ttsProvider: string
   tools: string[]
   toolConfigs: Record<string, Record<string, unknown>>
   customTools: any[]
@@ -282,7 +289,7 @@ export default function PipecatAgentConfig({
     selectedProvider, selectedModel,
     sttModel, sttConfig,
     ttsVoiceId, ttsModel,
-    tools, toolConfigs, customTools,
+    tools, toolConfigs, customTools,ttsProvider,
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
@@ -309,11 +316,11 @@ export default function PipecatAgentConfig({
     setSelectedProvider(provider)
     setSelectedModel(model)
 
-    setSttProvider('sarvam')
+    setSttProvider((a as any).stt_provider || (a.stt_model?.startsWith('nova-') ? 'deepgram' : a.stt_model === 'whisper-1' ? 'openai' : 'sarvam'))
     setSttModel(a.stt_model || 'saarika:v2.5')
     setSttConfig({ language: a.stt_language || 'en-IN' })
 
-    setTtsProvider('elevenlabs')
+    setTtsProvider((a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'))
     setTtsModel(a.tts_model || 'eleven_flash_v2_5')
     setTtsVoiceId(a.tts_voice_id || '')
 
@@ -350,6 +357,7 @@ export default function PipecatAgentConfig({
       sttConfig: { language: a.stt_language || 'en-IN' },
       ttsVoiceId: a.tts_voice_id || '',
       ttsModel: a.tts_model || 'eleven_flash_v2_5',
+      ttsProvider: (a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'),
       tools: a.tools || ['end_call', 'transfer_call'],
       toolConfigs: a.tool_configs || {},
       customTools: a.custom_tools || [],
@@ -406,9 +414,11 @@ export default function PipecatAgentConfig({
         opening_message: openingMessage || null,
         llm_model: selectedModel,
         llm_provider: mapProviderToLLMProvider(selectedProvider),
+        stt_provider: sttProvider,
         stt_model: sttModel,
         stt_language: sttConfig?.language || 'en-IN',
-        tts_model: ttsModel,
+        tts_provider: ttsProvider,
+        tts_model: ttsModel || null,
         tts_voice_id: ttsVoiceId || null,
         transfer_number: transferNumber,
         acefone_token: acefoneToken || null,
@@ -452,7 +462,7 @@ export default function PipecatAgentConfig({
         prompt, openingMessage, transferNumber,
         selectedProvider, selectedModel,
         sttModel, sttConfig, ttsVoiceId, ttsModel,
-        tools, toolConfigs, customTools,
+        tools, toolConfigs, customTools,ttsProvider, 
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
