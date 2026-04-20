@@ -14,6 +14,8 @@ import TtsVoiceCharSettings from './ConfigParents/TtsVoiceCharSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettings'
 import KnowledgeBaseSettings from './ConfigParents/KnowledgeBaseSettings'
 import AmbientSoundSettings from './ConfigParents/AmbientSoundSettings'
+import KeyboardSoundSettings from './ConfigParents/KeyboardSoundSettings'
+import WebhookSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings/ConfigParents/WebhookSettings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,6 +68,15 @@ interface PipecatAdvancedSettingsProps {
   ambientSoundVolume: number
   onAmbientSoundEnabledChange: (v: boolean) => void
   onAmbientSoundVolumeChange: (v: number) => void
+  // Keyboard Sound
+  keyboardSoundEnabled: boolean
+  keyboardSoundVolume: number
+  keyboardSoundProbability: number
+  keyboardSoundOnToolCalls: boolean
+  onKeyboardSoundEnabledChange: (v: boolean) => void
+  onKeyboardSoundVolumeChange: (v: number) => void
+  onKeyboardSoundProbabilityChange: (v: number) => void
+  onKeyboardSoundOnToolCallsChange: (v: boolean) => void
   projectId?: string
 }
 
@@ -114,6 +125,9 @@ export default function PipecatAdvancedSettings({
   ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed, onTtsCharChange,
   ragEnabled, onRagEnabledChange,
   ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
+  keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
+  onKeyboardSoundEnabledChange, onKeyboardSoundVolumeChange, onKeyboardSoundProbabilityChange, onKeyboardSoundOnToolCallsChange,
+  projectId,
 }: PipecatAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     vad: false,
@@ -221,15 +235,34 @@ export default function PipecatAdvancedSettings({
 
         <Section
           icon={<Music2Icon className="w-3.5 h-3.5" />}
-          label="Ambient Background Sound"
+          label="Background Sounds"
           open={openSections.ambient}
           onToggle={() => toggle('ambient')}
         >
+          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+            Ambient
+          </p>
           <AmbientSoundSettings
             ambientSoundEnabled={ambientSoundEnabled}
             ambientSoundVolume={ambientSoundVolume}
             onAmbientSoundEnabledChange={onAmbientSoundEnabledChange}
             onAmbientSoundVolumeChange={onAmbientSoundVolumeChange}
+          />
+
+          <div className="h-px bg-gray-200 dark:bg-gray-700 my-4" />
+
+          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+            Keyboard Typing
+          </p>
+          <KeyboardSoundSettings
+            keyboardSoundEnabled={keyboardSoundEnabled}
+            keyboardSoundVolume={keyboardSoundVolume}
+            keyboardSoundProbability={keyboardSoundProbability}
+            keyboardSoundOnToolCalls={keyboardSoundOnToolCalls}
+            onKeyboardSoundEnabledChange={onKeyboardSoundEnabledChange}
+            onKeyboardSoundVolumeChange={onKeyboardSoundVolumeChange}
+            onKeyboardSoundProbabilityChange={onKeyboardSoundProbabilityChange}
+            onKeyboardSoundOnToolCallsChange={onKeyboardSoundOnToolCallsChange}
           />
         </Section>
 

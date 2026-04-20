@@ -59,8 +59,14 @@ interface PipecatAgent {
   rag_enabled: boolean
   ambient_sound_enabled: boolean
   ambient_sound_volume: number
+  keyboard_sound_enabled: boolean
+  keyboard_sound_volume: number
+  keyboard_sound_probability: number
+  keyboard_sound_on_tool_calls: boolean
   whispey_api_key: string
   whispey_agent_id: string
+  timezone: string
+  variables: Record<string, string>
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,6 +118,12 @@ interface SnapshotValues {
   ragEnabled: boolean
   ambientSoundEnabled: boolean
   ambientSoundVolume: number
+  keyboardSoundEnabled: boolean
+  keyboardSoundVolume: number
+  keyboardSoundProbability: number
+  keyboardSoundOnToolCalls: boolean
+  timezone: string
+  variables: Record<string, string>
 }
 
 function buildSnapshot(v: SnapshotValues): string {
@@ -201,6 +213,30 @@ export default function PipecatAgentConfig({
   const [ambientSoundEnabled, setAmbientSoundEnabled] = useState(false)
   const [ambientSoundVolume, setAmbientSoundVolume] = useState(0.3)
 
+  // Keyboard Sound
+  const [keyboardSoundEnabled, setKeyboardSoundEnabled] = useState(false)
+  const [keyboardSoundVolume, setKeyboardSoundVolume] = useState(0.3)
+  const [keyboardSoundProbability, setKeyboardSoundProbability] = useState(0.4)
+  const [keyboardSoundOnToolCalls, setKeyboardSoundOnToolCalls] = useState(false)
+
+  // Timezone
+  const [timezone, setTimezone] = useState('Asia/Kolkata')
+
+  // Variables — key/value pairs, e.g. { customer_name: 'John' }
+  const [variables, setVariables] = useState<Record<string, string>>({})
+
+  // Detect {{var_name}} placeholders in prompt + opening message
+  const detectedVarNames = useMemo(() => {
+    const regex = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g
+    const names = new Set<string>()
+    let m: RegExpExecArray | null
+    const r1 = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g
+    while ((m = r1.exec(prompt)) !== null) names.add(m[1])
+    const r2 = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g
+    while ((m = r2.exec(openingMessage)) !== null) names.add(m[1])
+    return [...names]
+  }, [prompt, openingMessage])
+
   const defaultAzureConfig = useMemo(() => ({
     endpoint: 'https://pype-azure-openai.cognitiveservices.azure.com/',
     apiVersion: '2024-12-01-preview',
@@ -219,6 +255,8 @@ export default function PipecatAgentConfig({
     turnStopTimeout, userIdleTimeout,
     ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
     ragEnabled, ambientSoundEnabled, ambientSoundVolume,
+    keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
+    timezone, variables,
   }) : null
 
   const isDirty = isLoaded && currentSnapshot !== savedSnapshot
@@ -266,6 +304,12 @@ export default function PipecatAgentConfig({
     setRagEnabled(a.rag_enabled ?? true)
     setAmbientSoundEnabled(a.ambient_sound_enabled ?? false)
     setAmbientSoundVolume(a.ambient_sound_volume ?? 0.3)
+    setKeyboardSoundEnabled(a.keyboard_sound_enabled ?? false)
+    setKeyboardSoundVolume(a.keyboard_sound_volume ?? 0.3)
+    setKeyboardSoundProbability(a.keyboard_sound_probability ?? 0.4)
+    setKeyboardSoundOnToolCalls(a.keyboard_sound_on_tool_calls ?? false)
+    setTimezone(a.timezone || 'Asia/Kolkata')
+    setVariables(a.variables || {})
 
     setSavedSnapshot(buildSnapshot({
       prompt: a.prompt || '',
@@ -296,6 +340,12 @@ export default function PipecatAgentConfig({
       ragEnabled: a.rag_enabled ?? true,
       ambientSoundEnabled: a.ambient_sound_enabled ?? false,
       ambientSoundVolume: a.ambient_sound_volume ?? 0.3,
+      keyboardSoundEnabled: a.keyboard_sound_enabled ?? false,
+      keyboardSoundVolume: a.keyboard_sound_volume ?? 0.3,
+      keyboardSoundProbability: a.keyboard_sound_probability ?? 0.4,
+      keyboardSoundOnToolCalls: a.keyboard_sound_on_tool_calls ?? false,
+      timezone: a.timezone || 'Asia/Kolkata',
+      variables: a.variables || {},
     }))
     setIsLoaded(true)
   }, [])
@@ -355,6 +405,12 @@ export default function PipecatAgentConfig({
         rag_enabled: ragEnabled,
         ambient_sound_enabled: ambientSoundEnabled,
         ambient_sound_volume: ambientSoundVolume,
+        keyboard_sound_enabled: keyboardSoundEnabled,
+        keyboard_sound_volume: keyboardSoundVolume,
+        keyboard_sound_probability: keyboardSoundProbability,
+        keyboard_sound_on_tool_calls: keyboardSoundOnToolCalls,
+        timezone,
+        variables,
         whispey_api_key: agent.whispey_api_key,
         whispey_agent_id: agent.whispey_agent_id,
       }
@@ -380,6 +436,8 @@ export default function PipecatAgentConfig({
         turnStopTimeout, userIdleTimeout,
         ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
         ragEnabled, ambientSoundEnabled, ambientSoundVolume,
+        keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
+        timezone, variables,
       }))
 
       // Show checkpoint banner — identical to LiveKit flow
@@ -688,6 +746,14 @@ export default function PipecatAgentConfig({
               ambientSoundVolume={ambientSoundVolume}
               onAmbientSoundEnabledChange={setAmbientSoundEnabled}
               onAmbientSoundVolumeChange={setAmbientSoundVolume}
+              keyboardSoundEnabled={keyboardSoundEnabled}
+              keyboardSoundVolume={keyboardSoundVolume}
+              keyboardSoundProbability={keyboardSoundProbability}
+              keyboardSoundOnToolCalls={keyboardSoundOnToolCalls}
+              onKeyboardSoundEnabledChange={setKeyboardSoundEnabled}
+              onKeyboardSoundVolumeChange={setKeyboardSoundVolume}
+              onKeyboardSoundProbabilityChange={setKeyboardSoundProbability}
+              onKeyboardSoundOnToolCallsChange={setKeyboardSoundOnToolCalls}
               projectId={projectId}
             />
           </div>
