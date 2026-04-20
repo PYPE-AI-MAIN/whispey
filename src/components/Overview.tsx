@@ -45,7 +45,6 @@ import {
   buildOverviewMergedChartSlots,
   useChartContext,
 } from './EnhancedChartBuilder'
-import { FloatingActionMenu } from './FloatingActionMenu'
 import { useDynamicFields } from '../hooks/useDynamicFields'
 import { useUser } from "@clerk/nextjs"
 import CustomTotalsBuilder from './CustomTotalBuilds'
@@ -635,6 +634,7 @@ const Overview: React.FC<OverviewProps> = ({
   const [showGroupManager, setShowGroupManager] = useState(false)
   const [loadingGroups, setLoadingGroups] = useState(false)
   const [chartCreateDialogOpen, setChartCreateDialogOpen] = useState(false)
+  const [customSummaryDialogOpen, setCustomSummaryDialogOpen] = useState(false)
 
   useEffect(() => {
     setChartCreateDialogOpen(false)
@@ -1294,6 +1294,35 @@ const Overview: React.FC<OverviewProps> = ({
               </div>
             )
           })}
+
+          {/* Add Custom Summary Card */}
+          {userEmail && project?.id && agent?.id && (
+            <div className="group">
+              <button
+                type="button"
+                onClick={() => setCustomSummaryDialogOpen(true)}
+                className={cn(
+                  'h-full w-full',
+                  'bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl',
+                  'shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-500 transition-all duration-300',
+                  'flex min-h-[120px] flex-col items-center justify-center gap-2'
+                )}
+                aria-label="Add custom summary"
+              >
+                <span
+                  className={cn(
+                    'font-light leading-none text-white',
+                    isMobile ? 'text-4xl' : 'text-5xl'
+                  )}
+                >
+                  +
+                </span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-200">
+                  Add chart summary
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {overviewShowsNothing && (
@@ -1354,21 +1383,6 @@ const Overview: React.FC<OverviewProps> = ({
               onCreateDialogOpenChange={setChartCreateDialogOpen}
               renderChartGrid={false}
             />
-            {userEmail && !fieldsLoading && agent?.id && project?.id && (
-              <FloatingActionMenu
-                metadataFields={metadataFields}
-                transcriptionFields={transcriptionFields}
-                agentId={agent.id}
-                projectId={project.id}
-                userEmail={userEmail}
-                availableColumns={
-                  role !== 'admin' && role !== 'owner'
-                    ? AVAILABLE_COLUMNS.filter((col) => col.key !== 'billing_duration_seconds')
-                    : AVAILABLE_COLUMNS
-                }
-                onSaveCustomTotal={handleSaveCustomTotal}
-              />
-            )}
           </ChartProvider>
         ) : null}
 
@@ -1396,6 +1410,26 @@ const Overview: React.FC<OverviewProps> = ({
           onSave={handleSaveMetricGroup}
           onUpdate={handleUpdateMetricGroup}
           onDelete={handleDeleteMetricGroup}
+        />
+      )}
+
+      {/* Custom Summary Dialog */}
+      {userEmail && project?.id && agent?.id && (
+        <CustomTotalsBuilder
+          agentId={agent.id}
+          projectId={project.id}
+          userEmail={userEmail}
+          availableColumns={
+            role !== 'admin' && role !== 'owner'
+              ? AVAILABLE_COLUMNS.filter((col) => col.key !== 'billing_duration_seconds')
+              : AVAILABLE_COLUMNS
+          }
+          dynamicMetadataFields={metadataFields}
+          dynamicTranscriptionFields={transcriptionFields}
+          onSave={handleSaveCustomTotal}
+          open={customSummaryDialogOpen}
+          onOpenChange={setCustomSummaryDialogOpen}
+          hideTrigger
         />
       )}
     </div>

@@ -593,6 +593,13 @@ function formatCartesianTooltipLabel(label: unknown): string {
   return String(label)
 }
 
+function formatSeriesLabel(label: unknown, maxChars = 28): string {
+  const text = String(label ?? '').trim()
+  if (!text) return '—'
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars - 1)}…`
+}
+
 function buildPieSlices(
   config: ChartConfig,
   data: ChartDataPoint[],
@@ -700,7 +707,7 @@ const CountChartVisualization: React.FC<{
         }}
       >
         <p className="mb-2 break-words font-medium">{formatCartesianTooltipLabel(label)}</p>
-        {payload.map((entry: any, index: number) => {
+        {(fixedDimensions ? payload.slice(0, 6) : payload).map((entry: any, index: number) => {
           const seriesColor = entry.color ?? entry.payload?.fill
           const dataKey = entry.dataKey as string | undefined
           const seriesName = dataKey === 'value' ? config.field : (dataKey ?? entry.name ?? 'Series')
@@ -722,12 +729,20 @@ const CountChartVisualization: React.FC<{
                   className="mt-0.5 h-3 w-3 shrink-0 rounded-full"
                   style={{ backgroundColor: seriesColor }}
                 />
-                <span className="break-words text-left text-sm leading-snug opacity-90">{seriesName}</span>
+                <span
+                  className="break-words text-left text-sm leading-snug opacity-90"
+                  title={String(seriesName)}
+                >
+                  {formatSeriesLabel(seriesName, tooltipLabelLimit)}
+                </span>
               </div>
               <span className="shrink-0 pt-0.5 text-sm font-semibold tabular-nums">{display}</span>
             </div>
           )
         })}
+        {fixedDimensions && payload.length > 6 && (
+          <p className="mt-2 text-xs opacity-80">+{payload.length - 6} more series</p>
+        )}
       </div>
     )
   }
@@ -751,7 +766,9 @@ const CountChartVisualization: React.FC<{
       >
         <div className="mb-1 flex items-center gap-2">
           <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: fill }} />
-          <span className="min-w-0 break-words font-medium">{name}</span>
+          <span className="min-w-0 break-words font-medium" title={String(name)}>
+            {formatSeriesLabel(name, tooltipLabelLimit)}
+          </span>
         </div>
         <div className="text-sm tabular-nums">
           {value.toLocaleString()}{' '}
@@ -768,6 +785,8 @@ const CountChartVisualization: React.FC<{
   const cartesianMargin = fixedDimensions
     ? { top: 12, right: 48, left: 0, bottom: 44 }
     : { top: 16, right: 36, left: 4, bottom: 28 }
+  const legendLabelLimit = fixedDimensions ? 18 : 28
+  const tooltipLabelLimit = fixedDimensions ? 32 : 52
 
   const formatXDateTick = (value: string) => {
     if (config.groupBy === 'day') {
@@ -812,7 +831,11 @@ const CountChartVisualization: React.FC<{
           verticalAlign="bottom"
           align="center"
           wrapperStyle={{ paddingTop: 8, width: '100%' }}
-          formatter={(value) => <span style={{ color: tickFill, fontSize: 12 }}>{value}</span>}
+          formatter={(value) => (
+            <span style={{ color: tickFill, fontSize: 12 }} title={String(value)}>
+              {formatSeriesLabel(value, legendLabelLimit)}
+            </span>
+          )}
         />
       </PieChart>
     ) : config.chartType === 'line' ? (
@@ -891,7 +914,11 @@ const CountChartVisualization: React.FC<{
           <Legend
             wrapperStyle={{ paddingTop: 16 }}
             iconType="line"
-            formatter={(value) => <span style={{ color: tickFill, fontSize: 12 }}>{value}</span>}
+            formatter={(value) => (
+              <span style={{ color: tickFill, fontSize: 12 }} title={String(value)}>
+                {formatSeriesLabel(value, legendLabelLimit)}
+              </span>
+            )}
           />
         )}
       </LineChart>
@@ -955,7 +982,11 @@ const CountChartVisualization: React.FC<{
         {!config.filterValue && uniqueValues.length > 1 && (
           <Legend
             wrapperStyle={{ paddingTop: 16 }}
-            formatter={(value) => <span style={{ color: tickFill, fontSize: 12 }}>{value}</span>}
+            formatter={(value) => (
+              <span style={{ color: tickFill, fontSize: 12 }} title={String(value)}>
+                {formatSeriesLabel(value, legendLabelLimit)}
+              </span>
+            )}
           />
         )}
       </BarChart>
@@ -1271,11 +1302,16 @@ const EnhancedChartBuilderContent: React.FC<EnhancedChartBuilderProps> = ({
           className={cn(
             'max-h-[min(90vh,720px)] w-full max-w-[calc(100vw-2rem)] gap-0 overflow-visible rounded-xl border border-gray-300 bg-white p-0 text-gray-900 shadow-xl',
             'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100',
-            'sm:max-w-4xl lg:max-w-5xl'
+            previewReady ? 'sm:max-w-4xl lg:max-w-5xl' : 'sm:max-w-xl'
           )}
         >
           <div className="flex min-h-0 max-h-[min(90vh,720px)] flex-col overflow-visible lg:flex-row">
-            <div className="flex min-h-0 max-h-[min(90vh,720px)] w-full flex-col overflow-hidden border-gray-200 bg-white lg:w-[min(100%,380px)] lg:shrink-0 lg:border-r dark:border-gray-700 dark:bg-gray-800">
+            <div
+              className={cn(
+                'flex min-h-0 max-h-[min(90vh,720px)] w-full flex-col overflow-hidden border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800',
+                previewReady && 'lg:w-[min(100%,380px)] lg:shrink-0 lg:border-r'
+              )}
+            >
               <div className="border-b border-gray-200 px-6 py-5 dark:border-gray-700">
                 <DialogHeader className="space-y-1 text-left">
                   <DialogTitle className="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
@@ -1430,10 +1466,8 @@ const EnhancedChartBuilderContent: React.FC<EnhancedChartBuilderProps> = ({
               </DialogFooter>
             </div>
 
-            <div className="flex min-h-[280px] flex-1 flex-col overflow-visible bg-gray-50 p-6 dark:bg-gray-900 lg:min-h-0">
-              {!previewReady ? (
-                <div className="flex flex-1" aria-hidden />
-              ) : (
+            {previewReady ? (
+              <div className="flex min-h-[280px] flex-1 flex-col overflow-visible bg-gray-50 p-6 dark:bg-gray-900 lg:min-h-0">
                 <div className="relative flex flex-1 flex-col overflow-visible rounded-xl">
                   <span className="absolute left-4 top-4 z-10 rounded-full border border-gray-200 bg-white/95 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500 shadow-sm backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/95 dark:text-gray-400">
                     Preview
@@ -1463,8 +1497,8 @@ const EnhancedChartBuilderContent: React.FC<EnhancedChartBuilderProps> = ({
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
