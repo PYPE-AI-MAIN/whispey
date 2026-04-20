@@ -3,6 +3,12 @@ import type { CustomTotalConfig, CustomTotalResult } from '@/types/customTotals'
 
 const db = () => createServiceRoleClient()
 
+const RETRYABLE_PLAN_MISMATCH_MESSAGE = 'does not match that when preparing the plan'
+
+function isRetryablePlanMismatch(errorMessage: string): boolean {
+  return errorMessage.toLowerCase().includes(RETRYABLE_PLAN_MISMATCH_MESSAGE)
+}
+
 export async function saveCustomTotal(
   config: CustomTotalConfig,
   projectId: string,
@@ -84,11 +90,27 @@ export async function calculateCustomTotal(
     p_distinct_config: config.distinct || null,
   }
 
-  const { data, error } = await db().rpc('calculate_custom_total', rpcParams)
-  if (error) {
-    return { configId: config.id, value: 0, label: config.name, error: error.message }
+  let data: unknown
+  let errorMessage: string | null = null
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data: rpcData, error } = await db().rpc('calculate_custom_total', rpcParams)
+    if (!error) {
+      data = rpcData
+      errorMessage = null
+      break
+    }
+
+    errorMessage = error.message
+    if (!isRetryablePlanMismatch(errorMessage) || attempt === 1) {
+      break
+    }
   }
-  const result = (data as any[])?.[0]
+
+  if (errorMessage) {
+    return { configId: config.id, value: 0, label: config.name, error: errorMessage }
+  }
+  const result = (data as Array<{ result?: number; error_message?: string }> | undefined)?.[0]
   if (result?.error_message) {
     return { configId: config.id, value: 0, label: config.name, error: result.error_message }
   }
