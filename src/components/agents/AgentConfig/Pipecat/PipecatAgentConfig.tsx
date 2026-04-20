@@ -121,10 +121,6 @@ interface SnapshotValues {
   smartTurnMaxDurSecs: number
   turnStopTimeout: number
   userIdleTimeout: number | null
-  ttsStability: number | null
-  ttsSimilarityBoost: number | null
-  ttsStyle: number | null
-  ttsSpeed: number
   ragEnabled: boolean
   ambientSoundEnabled: boolean
   ambientSoundVolume: number
@@ -247,10 +243,6 @@ export default function PipecatAgentConfig({
   const [userIdleTimeout, setUserIdleTimeout] = useState<number | null>(null)
 
   // TTS Voice Character
-  const [ttsStability, setTtsStability] = useState<number | null>(null)
-  const [ttsSimilarityBoost, setTtsSimilarityBoost] = useState<number | null>(null)
-  const [ttsStyle, setTtsStyle] = useState<number | null>(null)
-  const [ttsSpeed, setTtsSpeed] = useState(1.0)
 
   // RAG
   const [ragEnabled, setRagEnabled] = useState(true)
@@ -293,7 +285,6 @@ export default function PipecatAgentConfig({
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
-    ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
     ragEnabled, ambientSoundEnabled, ambientSoundVolume,
     timezone, variables,
   }) : null
@@ -336,11 +327,6 @@ export default function PipecatAgentConfig({
     setTurnStopTimeout(a.turn_stop_timeout ?? 5.0)
     setUserIdleTimeout(a.user_idle_timeout ?? null)
 
-    setTtsStability(a.tts_stability ?? null)
-    setTtsSimilarityBoost(a.tts_similarity_boost ?? null)
-    setTtsStyle(a.tts_style ?? null)
-    setTtsSpeed(a.tts_speed ?? 1.0)
-
     setRagEnabled(a.rag_enabled ?? true)
     setAmbientSoundEnabled(a.ambient_sound_enabled ?? false)
     setAmbientSoundVolume(a.ambient_sound_volume ?? 0.3)
@@ -370,10 +356,6 @@ export default function PipecatAgentConfig({
       smartTurnMaxDurSecs: a.smart_turn_max_dur_secs ?? 8.0,
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
-      ttsStability: a.tts_stability ?? null,
-      ttsSimilarityBoost: a.tts_similarity_boost ?? null,
-      ttsStyle: a.tts_style ?? null,
-      ttsSpeed: a.tts_speed ?? 1.0,
       ragEnabled: a.rag_enabled ?? true,
       ambientSoundEnabled: a.ambient_sound_enabled ?? false,
       ambientSoundVolume: a.ambient_sound_volume ?? 0.3,
@@ -434,10 +416,6 @@ export default function PipecatAgentConfig({
         smart_turn_max_dur_secs: smartTurnMaxDurSecs,
         turn_stop_timeout: turnStopTimeout,
         user_idle_timeout: userIdleTimeout,
-        tts_stability: ttsStability,
-        tts_similarity_boost: ttsSimilarityBoost,
-        tts_style: ttsStyle,
-        tts_speed: ttsSpeed,
         rag_enabled: ragEnabled,
         ambient_sound_enabled: ambientSoundEnabled,
         ambient_sound_volume: ambientSoundVolume,
@@ -466,7 +444,6 @@ export default function PipecatAgentConfig({
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
-        ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
         ragEnabled, ambientSoundEnabled, ambientSoundVolume,
         timezone, variables,
       }))
@@ -550,13 +527,6 @@ export default function PipecatAgentConfig({
   const handleTurnChange = (field: string, value: number | null) => {
     if (field === 'turnStopTimeout') setTurnStopTimeout(value as number)
     else if (field === 'userIdleTimeout') setUserIdleTimeout(value)
-  }
-
-  const handleTtsCharChange = (field: string, value: number | null) => {
-    if (field === 'stability') setTtsStability(value)
-    else if (field === 'similarityBoost') setTtsSimilarityBoost(value)
-    else if (field === 'style') setTtsStyle(value)
-    else if (field === 'speed') setTtsSpeed(value as number)
   }
 
   const copyPrompt = async () => {
@@ -833,11 +803,6 @@ export default function PipecatAgentConfig({
               turnStopTimeout={turnStopTimeout}
               userIdleTimeout={userIdleTimeout}
               onTurnChange={handleTurnChange}
-              ttsStability={ttsStability}
-              ttsSimilarityBoost={ttsSimilarityBoost}
-              ttsStyle={ttsStyle}
-              ttsSpeed={ttsSpeed}
-              onTtsCharChange={handleTtsCharChange}
               ragEnabled={ragEnabled}
               onRagEnabledChange={setRagEnabled}
               ambientSoundEnabled={ambientSoundEnabled}
