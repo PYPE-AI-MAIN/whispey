@@ -338,6 +338,10 @@ export default function PipecatAgentConfig({
     setTtsProvider((a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'))
     setTtsModel(a.tts_model || 'eleven_flash_v2_5')
     setTtsVoiceId(a.tts_voice_id || '')
+    setTtsStability(a.tts_stability ?? null)
+    setTtsSimilarityBoost(a.tts_similarity_boost ?? null)
+    setTtsStyle(a.tts_style ?? null)
+    setTtsSpeed(a.tts_speed ?? 1.0)
 
     setVadConfidence(a.vad_confidence ?? 0.7)
     setVadStartSecs(a.vad_start_secs ?? 0.2)
@@ -384,6 +388,10 @@ export default function PipecatAgentConfig({
       smartTurnMaxDurSecs: a.smart_turn_max_dur_secs ?? 8.0,
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
+      ttsStability: a.tts_stability ?? null,
+      ttsSimilarityBoost: a.tts_similarity_boost ?? null,
+      ttsStyle: a.tts_style ?? null,
+      ttsSpeed: a.tts_speed ?? 1.0,
       ragEnabled: a.rag_enabled ?? true,
       ambientSoundEnabled: a.ambient_sound_enabled ?? false,
       ambientSoundVolume: a.ambient_sound_volume ?? 0.3,
@@ -434,6 +442,10 @@ export default function PipecatAgentConfig({
         tts_provider: ttsProvider,
         tts_model: ttsModel || null,
         tts_voice_id: ttsVoiceId || null,
+        tts_stability: ttsStability,
+        tts_similarity_boost: ttsSimilarityBoost,
+        tts_style: ttsStyle,
+        tts_speed: ttsSpeed,
         transfer_number: transferNumber,
         acefone_token: acefoneToken || null,
         tools,
