@@ -108,6 +108,7 @@ interface SnapshotValues {
   sttConfig: any
   ttsVoiceId: string
   ttsModel: string
+  ttsProvider: string
   tools: string[]
   toolConfigs: Record<string, Record<string, unknown>>
   customTools: any[]
@@ -288,7 +289,7 @@ export default function PipecatAgentConfig({
     selectedProvider, selectedModel,
     sttModel, sttConfig,
     ttsVoiceId, ttsModel,
-    tools, toolConfigs, customTools,
+    tools, toolConfigs, customTools,ttsProvider,
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
@@ -461,7 +462,7 @@ export default function PipecatAgentConfig({
         prompt, openingMessage, transferNumber,
         selectedProvider, selectedModel,
         sttModel, sttConfig, ttsVoiceId, ttsModel,
-        tools, toolConfigs, customTools,
+        tools, toolConfigs, customTools,ttsProvider, 
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
