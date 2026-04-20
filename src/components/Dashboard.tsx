@@ -76,8 +76,16 @@ const subDays = (date: Date, days: number) => {
   return result
 }
 
-const formatDateISO = (date: Date) => {
-  return date.toISOString().split('T')[0]
+const parseLocalDate = (s: string): Date => {
+  const [y, mo, d] = s.split('-').map(Number)
+  return new Date(y, mo - 1, d)  // local midnight, no UTC shift
+}
+
+const formatDateISO = (date: Date): string => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 const formatShort = (date: Date) =>
@@ -152,7 +160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // and query keys don't see a new object every tick.
   const dateRange: DateRange = React.useMemo(() => {
     if (isCustomRange && storedDateFilter.dateFrom && storedDateFilter.dateTo) {
-      return { from: new Date(storedDateFilter.dateFrom), to: new Date(storedDateFilter.dateTo) }
+      return { from: parseLocalDate(storedDateFilter.dateFrom), to: parseLocalDate(storedDateFilter.dateTo) }
     }
     const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
     const to   = new Date()
