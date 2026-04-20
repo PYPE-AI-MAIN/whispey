@@ -5,12 +5,11 @@ import React, { useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   ChevronDownIcon, MicIcon, BrainIcon, TimerIcon,
-  Volume2Icon, WrenchIcon, DatabaseIcon, Music2Icon, Webhook,
+  WrenchIcon, DatabaseIcon, Music2Icon, Webhook,
 } from 'lucide-react'
 import VadSettings from './ConfigParents/VadSettings'
 import SmartTurnSettings from './ConfigParents/SmartTurnSettings'
 import TurnManagementSettings from './ConfigParents/TurnManagementSettings'
-import TtsVoiceCharSettings from './ConfigParents/TtsVoiceCharSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettings'
 import KnowledgeBaseSettings from './ConfigParents/KnowledgeBaseSettings'
 import AmbientSoundSettings from './ConfigParents/AmbientSoundSettings'
@@ -41,6 +40,8 @@ interface PipecatAdvancedSettingsProps {
   vadStopSecs: number
   vadMinVolume: number
   onVadChange: (field: string, value: number) => void
+  minAudioDuration: number
+  onMinAudioDurationChange: (v: number) => void
   // Transfer
   transferNumber: string
   onTransferNumberChange: (value: string) => void
@@ -62,15 +63,15 @@ interface PipecatAdvancedSettingsProps {
   turnStopTimeout: number
   userIdleTimeout: number | null
   onTurnChange: (field: string, value: number | null) => void
-  // TTS Voice Character
-  ttsStability: number | null
-  ttsSimilarityBoost: number | null
-  ttsStyle: number | null
-  ttsSpeed: number
-  onTtsCharChange: (field: string, value: number | null) => void
   // RAG
   ragEnabled: boolean
   onRagEnabledChange: (v: boolean) => void
+  ragNResults: number
+  onRagNResultsChange: (v: number) => void
+  ragFillerEnabled: boolean
+  onRagFillerEnabledChange: (v: boolean) => void
+  ragFillerPhrases: string[]
+  onRagFillerPhrasesChange: (v: string[]) => void
   // Ambient Sound
   ambientSoundEnabled: boolean
   ambientSoundVolume: number
@@ -116,6 +117,7 @@ function Section({
 
 export default function PipecatAdvancedSettings({
   vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume, onVadChange,
+  minAudioDuration, onMinAudioDurationChange,
   transferNumber, onTransferNumberChange,
   acefoneToken, onAcefoneTokenChange,
   builtinTools, onBuiltinToolsChange,
@@ -123,8 +125,10 @@ export default function PipecatAdvancedSettings({
   customTools, onCustomToolsChange,
   smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs, onSmartTurnChange,
   turnStopTimeout, userIdleTimeout, onTurnChange,
-  ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed, onTtsCharChange,
   ragEnabled, onRagEnabledChange,
+  ragNResults, onRagNResultsChange,
+  ragFillerEnabled, onRagFillerEnabledChange,
+  ragFillerPhrases, onRagFillerPhrasesChange,
   ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
   projectId, agentId,
 }: PipecatAdvancedSettingsProps) {
@@ -132,7 +136,6 @@ export default function PipecatAdvancedSettings({
     vad: false,
     smartTurn: false,
     turn: false,
-    ttsChar: false,
     tools: false,
     rag: false,
     ambient: false,
@@ -158,6 +161,8 @@ export default function PipecatAdvancedSettings({
             vadStopSecs={vadStopSecs}
             vadMinVolume={vadMinVolume}
             onVadChange={onVadChange}
+            minAudioDuration={minAudioDuration}
+            onMinAudioDurationChange={onMinAudioDurationChange}
           />
         </Section>
 
@@ -185,21 +190,6 @@ export default function PipecatAdvancedSettings({
             turnStopTimeout={turnStopTimeout}
             userIdleTimeout={userIdleTimeout}
             onTurnChange={onTurnChange}
-          />
-        </Section>
-
-        <Section
-          icon={<Volume2Icon className="w-3.5 h-3.5" />}
-          label="TTS Voice Character"
-          open={openSections.ttsChar}
-          onToggle={() => toggle('ttsChar')}
-        >
-          <TtsVoiceCharSettings
-            ttsStability={ttsStability}
-            ttsSimilarityBoost={ttsSimilarityBoost}
-            ttsStyle={ttsStyle}
-            ttsSpeed={ttsSpeed}
-            onTtsCharChange={onTtsCharChange}
           />
         </Section>
 
@@ -232,6 +222,12 @@ export default function PipecatAdvancedSettings({
           <KnowledgeBaseSettings
             ragEnabled={ragEnabled}
             onRagEnabledChange={onRagEnabledChange}
+            ragNResults={ragNResults}
+            onRagNResultsChange={onRagNResultsChange}
+            ragFillerEnabled={ragFillerEnabled}
+            onRagFillerEnabledChange={onRagFillerEnabledChange}
+            ragFillerPhrases={ragFillerPhrases}
+            onRagFillerPhrasesChange={onRagFillerPhrasesChange}
           />
         </Section>
 
