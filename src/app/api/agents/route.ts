@@ -12,6 +12,7 @@ async function createPipecatAgent(agentData: any, projectId: string, whispeyAgen
   }
 
   const pipecatPayload = {
+    id: whispeyAgentId,              // ✅ use Supabase UUID so both DBs share the same ID
     name: agentData.name,
     prompt: `You are a helpful voice assistant named ${agentData.name}. ${agentData.configuration?.description || 'Assist users with their queries in a friendly and professional manner.'}`,
     tools: ["end_call", "transfer_call"],
@@ -23,7 +24,7 @@ async function createPipecatAgent(agentData: any, projectId: string, whispeyAgen
     llm_model: "gpt-4.1-mini",
     transfer_number: "",
     whispey_api_key: whispeyApiKey,
-    whispey_agent_id: whispeyAgentId  // ✅ now correctly set
+    whispey_agent_id: whispeyAgentId
   }
 
   console.log('🔧 Creating Pipecat agent with payload:', pipecatPayload)
