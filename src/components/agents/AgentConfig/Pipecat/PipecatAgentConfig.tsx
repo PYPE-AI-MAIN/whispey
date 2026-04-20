@@ -72,6 +72,10 @@ interface PipecatAgent {
   min_audio_duration: number
   ambient_sound_enabled: boolean
   ambient_sound_volume: number
+  keyboard_sound_enabled: boolean
+  keyboard_sound_volume: number
+  keyboard_sound_probability: number
+  keyboard_sound_on_tool_calls: boolean
   whispey_api_key: string
   whispey_agent_id: string
   timezone: string
@@ -113,6 +117,10 @@ interface SnapshotValues {
   ttsVoiceId: string
   ttsModel: string
   ttsProvider: string
+  ttsStability: number | null
+  ttsSimilarityBoost: number | null
+  ttsStyle: number | null
+  ttsSpeed: number
   tools: string[]
   toolConfigs: Record<string, Record<string, unknown>>
   customTools: any[]
@@ -132,6 +140,10 @@ interface SnapshotValues {
   minAudioDuration: number
   ambientSoundEnabled: boolean
   ambientSoundVolume: number
+  keyboardSoundEnabled: boolean
+  keyboardSoundVolume: number
+  keyboardSoundProbability: number
+  keyboardSoundOnToolCalls: boolean
   timezone: string
   variables: Record<string, string>
 }
@@ -251,6 +263,10 @@ export default function PipecatAgentConfig({
   const [userIdleTimeout, setUserIdleTimeout] = useState<number | null>(null)
 
   // TTS Voice Character
+  const [ttsStability, setTtsStability] = useState<number | null>(null)
+  const [ttsSimilarityBoost, setTtsSimilarityBoost] = useState<number | null>(null)
+  const [ttsStyle, setTtsStyle] = useState<number | null>(null)
+  const [ttsSpeed, setTtsSpeed] = useState<number>(1.0)
 
   // RAG
   const [ragEnabled, setRagEnabled] = useState(true)
@@ -264,6 +280,12 @@ export default function PipecatAgentConfig({
   // Ambient Sound
   const [ambientSoundEnabled, setAmbientSoundEnabled] = useState(false)
   const [ambientSoundVolume, setAmbientSoundVolume] = useState(0.3)
+
+  // Keyboard Sound
+  const [keyboardSoundEnabled, setKeyboardSoundEnabled] = useState(false)
+  const [keyboardSoundVolume, setKeyboardSoundVolume] = useState(0.3)
+  const [keyboardSoundProbability, setKeyboardSoundProbability] = useState(0.4)
+  const [keyboardSoundOnToolCalls, setKeyboardSoundOnToolCalls] = useState(false)
 
   // Timezone
   const [timezone, setTimezone] = useState('Asia/Kolkata')
@@ -299,8 +321,10 @@ export default function PipecatAgentConfig({
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
-    ragEnabled, ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
-    ambientSoundEnabled, ambientSoundVolume,
+    ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
+    ragEnabled, ambientSoundEnabled, ambientSoundVolume,
+    keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
+    ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
     timezone, variables,
   }) : null
 
@@ -329,6 +353,10 @@ export default function PipecatAgentConfig({
     setTtsProvider((a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'))
     setTtsModel(a.tts_model || 'eleven_flash_v2_5')
     setTtsVoiceId(a.tts_voice_id || '')
+    setTtsStability(a.tts_stability ?? null)
+    setTtsSimilarityBoost(a.tts_similarity_boost ?? null)
+    setTtsStyle(a.tts_style ?? null)
+    setTtsSpeed(a.tts_speed ?? 1.0)
 
     setVadConfidence(a.vad_confidence ?? 0.7)
     setVadStartSecs(a.vad_start_secs ?? 0.2)
@@ -349,6 +377,10 @@ export default function PipecatAgentConfig({
     setMinAudioDuration(a.min_audio_duration ?? 0.4)
     setAmbientSoundEnabled(a.ambient_sound_enabled ?? false)
     setAmbientSoundVolume(a.ambient_sound_volume ?? 0.3)
+    setKeyboardSoundEnabled(a.keyboard_sound_enabled ?? false)
+    setKeyboardSoundVolume(a.keyboard_sound_volume ?? 0.3)
+    setKeyboardSoundProbability(a.keyboard_sound_probability ?? 0.4)
+    setKeyboardSoundOnToolCalls(a.keyboard_sound_on_tool_calls ?? false)
     setTimezone(a.timezone || 'Asia/Kolkata')
     setVariables(a.variables || {})
 
@@ -363,6 +395,10 @@ export default function PipecatAgentConfig({
       ttsVoiceId: a.tts_voice_id || '',
       ttsModel: a.tts_model || 'eleven_flash_v2_5',
       ttsProvider: (a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'),
+      ttsStability: a.tts_stability ?? null,
+      ttsSimilarityBoost: a.tts_similarity_boost ?? null,
+      ttsStyle: a.tts_style ?? null,
+      ttsSpeed: a.tts_speed ?? 1.0,
       tools: a.tools || ['end_call', 'transfer_call'],
       toolConfigs: a.tool_configs || {},
       customTools: a.custom_tools || [],
@@ -382,6 +418,10 @@ export default function PipecatAgentConfig({
       minAudioDuration: a.min_audio_duration ?? 0.4,
       ambientSoundEnabled: a.ambient_sound_enabled ?? false,
       ambientSoundVolume: a.ambient_sound_volume ?? 0.3,
+      keyboardSoundEnabled: a.keyboard_sound_enabled ?? false,
+      keyboardSoundVolume: a.keyboard_sound_volume ?? 0.3,
+      keyboardSoundProbability: a.keyboard_sound_probability ?? 0.4,
+      keyboardSoundOnToolCalls: a.keyboard_sound_on_tool_calls ?? false,
       timezone: a.timezone || 'Asia/Kolkata',
       variables: a.variables || {},
     }))
@@ -425,6 +465,10 @@ export default function PipecatAgentConfig({
         tts_provider: ttsProvider,
         tts_model: ttsModel || null,
         tts_voice_id: ttsVoiceId || null,
+        tts_stability: ttsStability,
+        tts_similarity_boost: ttsSimilarityBoost,
+        tts_style: ttsStyle,
+        tts_speed: ttsSpeed,
         transfer_number: transferNumber,
         acefone_token: acefoneToken || null,
         tools,
@@ -446,6 +490,10 @@ export default function PipecatAgentConfig({
         min_audio_duration: minAudioDuration,
         ambient_sound_enabled: ambientSoundEnabled,
         ambient_sound_volume: ambientSoundVolume,
+        keyboard_sound_enabled: keyboardSoundEnabled,
+        keyboard_sound_volume: keyboardSoundVolume,
+        keyboard_sound_probability: keyboardSoundProbability,
+        keyboard_sound_on_tool_calls: keyboardSoundOnToolCalls,
         timezone,
         variables,
         whispey_api_key: agent.whispey_api_key,
@@ -471,8 +519,10 @@ export default function PipecatAgentConfig({
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
-        ragEnabled, ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
-        ambientSoundEnabled, ambientSoundVolume,
+        ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
+        ragEnabled, ambientSoundEnabled, ambientSoundVolume,
+        keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
+        ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
         timezone, variables,
       }))
 
@@ -845,6 +895,14 @@ export default function PipecatAgentConfig({
               ambientSoundVolume={ambientSoundVolume}
               onAmbientSoundEnabledChange={setAmbientSoundEnabled}
               onAmbientSoundVolumeChange={setAmbientSoundVolume}
+              keyboardSoundEnabled={keyboardSoundEnabled}
+              keyboardSoundVolume={keyboardSoundVolume}
+              keyboardSoundProbability={keyboardSoundProbability}
+              keyboardSoundOnToolCalls={keyboardSoundOnToolCalls}
+              onKeyboardSoundEnabledChange={setKeyboardSoundEnabled}
+              onKeyboardSoundVolumeChange={setKeyboardSoundVolume}
+              onKeyboardSoundProbabilityChange={setKeyboardSoundProbability}
+              onKeyboardSoundOnToolCallsChange={setKeyboardSoundOnToolCalls}
               projectId={projectId}
               agentId={agentId}
             />
