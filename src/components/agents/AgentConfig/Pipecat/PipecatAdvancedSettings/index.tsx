@@ -135,7 +135,13 @@ export default function PipecatAdvancedSettings({
   projectId, agentId,
 }: PipecatAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    vad: false, smartTurn: false, turn: false, tools: false, rag: false, ambient: false, webhook: false,
+    vad: false,
+    smartTurn: false,
+    turn: false,
+    tools: false,
+    rag: false,
+    ambient: false,
+    webhook: false,
   })
 
   const toggle = (s: string) => setOpenSections(prev => ({ ...prev, [s]: !prev[s] }))
@@ -171,9 +177,24 @@ export default function PipecatAdvancedSettings({
           <TurnManagementSettings turnStopTimeout={turnStopTimeout} userIdleTimeout={userIdleTimeout} onTurnChange={onTurnChange} />
         </Section>
 
-        {/* Tools */}
-        <Section icon={<WrenchIcon className="w-3.5 h-3.5" />} label="Tools & Actions" open={openSections.tools} onToggle={() => toggle('tools')}>
-          <ToolsActionsSettings builtinTools={builtinTools} onBuiltinToolsChange={onBuiltinToolsChange} toolConfigs={toolConfigs} onToolConfigsChange={onToolConfigsChange} customTools={customTools} onCustomToolsChange={onCustomToolsChange} transferNumber={transferNumber} onTransferNumberChange={onTransferNumberChange} acefoneToken={acefoneToken} onAcefoneTokenChange={onAcefoneTokenChange} />
+        <Section
+          icon={<WrenchIcon className="w-3.5 h-3.5" />}
+          label="Tools & Actions"
+          open={openSections.tools}
+          onToggle={() => toggle('tools')}
+        >
+          <ToolsActionsSettings
+            builtinTools={builtinTools}
+            onBuiltinToolsChange={onBuiltinToolsChange}
+            toolConfigs={toolConfigs}
+            onToolConfigsChange={onToolConfigsChange}
+            customTools={customTools}
+            onCustomToolsChange={onCustomToolsChange}
+            transferNumber={transferNumber}
+            onTransferNumberChange={onTransferNumberChange}
+            acefoneToken={acefoneToken}
+            onAcefoneTokenChange={onAcefoneTokenChange}
+          />
         </Section>
 
         <Section
