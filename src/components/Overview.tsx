@@ -1302,23 +1302,49 @@ const Overview: React.FC<OverviewProps> = ({
                 type="button"
                 onClick={() => setCustomSummaryDialogOpen(true)}
                 className={cn(
-                  'h-full w-full',
-                  'bg-white dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl',
-                  'shadow-sm hover:shadow-md hover:border-purple-400 dark:hover:border-purple-500 transition-all duration-300',
-                  'flex min-h-[120px] flex-col items-center justify-center gap-2'
+                  'h-full w-full min-h-[160px]',
+                  'relative overflow-hidden rounded-2xl',
+                  'bg-[#151c2c] dark:bg-[#0f1521]',
+                  'border border-dashed border-slate-500/90 dark:border-slate-500/80',
+                  'hover:border-indigo-500/90 dark:hover:border-indigo-400/80',
+                  'hover:bg-[#1a2236] dark:hover:bg-[#141c2e]',
+                  'transition-all duration-300 ease-out',
+                  'hover:shadow-[0_0_24px_-4px_rgba(99,102,241,0.25)]',
+                  'flex flex-col items-center justify-center gap-3'
                 )}
                 aria-label="Add custom summary"
               >
-                <span
-                  className={cn(
-                    'font-light leading-none text-white',
-                    isMobile ? 'text-4xl' : 'text-5xl'
-                  )}
-                >
-                  +
-                </span>
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-200">
-                  Add chart summary
+                <div className={cn(
+                  'flex items-center justify-center rounded-full',
+                  'bg-slate-700/50 group-hover:bg-indigo-500/20',
+                  'border border-slate-600/40 group-hover:border-indigo-400/40',
+                  'transition-all duration-300',
+                  isMobile ? 'w-10 h-10' : 'w-12 h-12'
+                )}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={cn(
+                      'text-slate-300 group-hover:text-indigo-300 transition-colors duration-300',
+                      isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                    )}
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </div>
+                <span className={cn(
+                  'font-semibold tracking-[0.12em] uppercase',
+                  'text-slate-400 group-hover:text-slate-200',
+                  'transition-colors duration-300',
+                  isMobile ? 'text-[10px]' : 'text-[11px]'
+                )}>
+                  Add Chart Summary
                 </span>
               </button>
             </div>

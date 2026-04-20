@@ -122,11 +122,11 @@ function writePersistedChartBuilder(
   }
 }
 
-/** Chart-type tiles: same dark fill and white content; only the border changes when selected. */
+/** Chart-type tiles: theme-aware fill; border and tint change when selected. */
 const CHART_TYPE_TILE_BASE =
-  'flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 text-xs font-semibold transition-[border-color] duration-200 [&_svg]:shrink-0 bg-slate-900 text-white shadow-none'
-const CHART_TYPE_TILE_BORDER_IDLE = 'border-slate-600 hover:border-slate-500'
-const CHART_TYPE_TILE_BORDER_ACTIVE = 'border-white hover:border-white'
+  'flex flex-col items-center gap-1.5 rounded-xl border-2 py-3 text-xs font-semibold transition-all duration-200 [&_svg]:shrink-0 bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-300'
+const CHART_TYPE_TILE_BORDER_IDLE = 'border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500'
+const CHART_TYPE_TILE_BORDER_ACTIVE = 'border-blue-600 bg-blue-50 text-blue-700 hover:border-blue-600 dark:border-blue-500 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:border-blue-500'
 
 // Chart Context
 interface ChartContextType {
