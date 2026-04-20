@@ -13,6 +13,8 @@ interface VadSettingsProps {
   vadStopSecs: number
   vadMinVolume: number
   onVadChange: (field: string, value: number) => void
+  minAudioDuration: number
+  onMinAudioDurationChange: (v: number) => void
 }
 
 function NumericField({
@@ -76,6 +78,8 @@ export default function VadSettings({
   vadStopSecs,
   vadMinVolume,
   onVadChange,
+  minAudioDuration,
+  onMinAudioDurationChange,
 }: VadSettingsProps) {
   return (
     <TooltipProvider>
@@ -118,6 +122,17 @@ export default function VadSettings({
           hint="Minimum volume to consider audio as speech. Range: 0.0–1.0"
           tooltip="Audio below this volume level is ignored even if VAD confidence is high."
           onCommit={v => onVadChange('minVolume', v)}
+        />
+
+        <div className="h-px bg-gray-100 dark:bg-gray-700" />
+
+        <NumericField
+          label="Min Utterance Duration (s)"
+          value={minAudioDuration}
+          min={0.1} max={1.5} step={0.05}
+          hint="Transcripts shorter than this are dropped as noise. Default: 0.4s"
+          tooltip="Any STT transcript whose audio was shorter than this duration is silently discarded. Prevents phantom noise triggers."
+          onCommit={onMinAudioDurationChange}
         />
       </div>
     </TooltipProvider>

@@ -41,6 +41,8 @@ interface PipecatAdvancedSettingsProps {
   vadStopSecs: number
   vadMinVolume: number
   onVadChange: (field: string, value: number) => void
+  minAudioDuration: number
+  onMinAudioDurationChange: (v: number) => void
   // Transfer
   transferNumber: string
   onTransferNumberChange: (value: string) => void
@@ -65,6 +67,12 @@ interface PipecatAdvancedSettingsProps {
   // RAG
   ragEnabled: boolean
   onRagEnabledChange: (v: boolean) => void
+  ragNResults: number
+  onRagNResultsChange: (v: number) => void
+  ragFillerEnabled: boolean
+  onRagFillerEnabledChange: (v: boolean) => void
+  ragFillerPhrases: string[]
+  onRagFillerPhrasesChange: (v: string[]) => void
   // Ambient Sound
   ambientSoundEnabled: boolean
   ambientSoundVolume: number
@@ -109,6 +117,7 @@ function Section({ icon, label, open, onToggle, children }: {
 
 export default function PipecatAdvancedSettings({
   vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume, onVadChange,
+  minAudioDuration, onMinAudioDurationChange,
   transferNumber, onTransferNumberChange,
   acefoneToken, onAcefoneTokenChange,
   builtinTools, onBuiltinToolsChange,
@@ -117,6 +126,9 @@ export default function PipecatAdvancedSettings({
   smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs, onSmartTurnChange,
   turnStopTimeout, userIdleTimeout, onTurnChange,
   ragEnabled, onRagEnabledChange,
+  ragNResults, onRagNResultsChange,
+  ragFillerEnabled, onRagFillerEnabledChange,
+  ragFillerPhrases, onRagFillerPhrasesChange,
   ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
   keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
   onKeyboardSoundEnabledChange, onKeyboardSoundVolumeChange, onKeyboardSoundProbabilityChange, onKeyboardSoundOnToolCallsChange,
@@ -132,9 +144,21 @@ export default function PipecatAdvancedSettings({
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg h-full overflow-y-auto">
       <div className="p-4 space-y-3">
 
-        {/* VAD */}
-        <Section icon={<MicIcon className="w-3.5 h-3.5" />} label="Voice Activity Detection (VAD)" open={openSections.vad} onToggle={() => toggle('vad')}>
-          <VadSettings vadConfidence={vadConfidence} vadStartSecs={vadStartSecs} vadStopSecs={vadStopSecs} vadMinVolume={vadMinVolume} onVadChange={onVadChange} />
+        <Section
+          icon={<MicIcon className="w-3.5 h-3.5" />}
+          label="Voice Activity Detection (VAD)"
+          open={openSections.vad}
+          onToggle={() => toggle('vad')}
+        >
+          <VadSettings
+            vadConfidence={vadConfidence}
+            vadStartSecs={vadStartSecs}
+            vadStopSecs={vadStopSecs}
+            vadMinVolume={vadMinVolume}
+            onVadChange={onVadChange}
+            minAudioDuration={minAudioDuration}
+            onMinAudioDurationChange={onMinAudioDurationChange}
+          />
         </Section>
 
         {/* Smart Turn */}
@@ -152,9 +176,22 @@ export default function PipecatAdvancedSettings({
           <ToolsActionsSettings builtinTools={builtinTools} onBuiltinToolsChange={onBuiltinToolsChange} toolConfigs={toolConfigs} onToolConfigsChange={onToolConfigsChange} customTools={customTools} onCustomToolsChange={onCustomToolsChange} transferNumber={transferNumber} onTransferNumberChange={onTransferNumberChange} acefoneToken={acefoneToken} onAcefoneTokenChange={onAcefoneTokenChange} />
         </Section>
 
-        {/* RAG */}
-        <Section icon={<DatabaseIcon className="w-3.5 h-3.5" />} label="Knowledge Base (RAG)" open={openSections.rag} onToggle={() => toggle('rag')}>
-          <KnowledgeBaseSettings ragEnabled={ragEnabled} onRagEnabledChange={onRagEnabledChange} />
+        <Section
+          icon={<DatabaseIcon className="w-3.5 h-3.5" />}
+          label="Knowledge Base (RAG)"
+          open={openSections.rag}
+          onToggle={() => toggle('rag')}
+        >
+          <KnowledgeBaseSettings
+            ragEnabled={ragEnabled}
+            onRagEnabledChange={onRagEnabledChange}
+            ragNResults={ragNResults}
+            onRagNResultsChange={onRagNResultsChange}
+            ragFillerEnabled={ragFillerEnabled}
+            onRagFillerEnabledChange={onRagFillerEnabledChange}
+            ragFillerPhrases={ragFillerPhrases}
+            onRagFillerPhrasesChange={onRagFillerPhrasesChange}
+          />
         </Section>
 
         {/* Background Sounds */}
