@@ -70,6 +70,8 @@ export interface AgentConfigResponse {
         allow_interruptions: boolean
         min_interruption_duration: number
         min_interruption_words: number
+        drop_filler_words?: boolean
+        filler_drop_list?: string[]
       }
       first_message?: string
       ai_starts_after_silence?: boolean
@@ -451,7 +453,8 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         allowInterruptions: assistant.interruptions?.allow_interruptions ?? assistant.allow_interruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
         minInterruptionDuration: assistant.interruptions?.min_interruption_duration ?? assistant.min_interruption_duration ?? getFallback(null, 'interruptions.min_interruption_duration'),
         minInterruptionWords: assistant.interruptions?.min_interruption_words ?? assistant.min_interruption_words ?? getFallback(null, 'interruptions.min_interruption_words'),
-        filterBackchannels: assistant.interruptions?.filter_backchannels ?? false,
+        dropFillerWords: assistant.interruptions?.drop_filler_words ?? false,
+        fillerDropList: assistant.interruptions?.filler_drop_list ?? [],
       },
       vad: {
         vadProvider: assistant.vad?.name || getFallback(null, 'vad.name'),

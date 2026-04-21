@@ -426,7 +426,8 @@ function transformFormDataToAgentConfig(formData: any) {
             allow_interruptions: formikValues.advancedSettings.interruption.allowInterruptions,
             min_interruption_duration: formikValues.advancedSettings.interruption.minInterruptionDuration,
             min_interruption_words: formikValues.advancedSettings.interruption.minInterruptionWords,
-            filter_backchannels: formikValues.advancedSettings.interruption.filterBackchannels ?? false,
+            drop_filler_words: formikValues.advancedSettings.interruption.dropFillerWords ?? false,
+            filler_drop_list: formikValues.advancedSettings.interruption.fillerDropList ?? [],
           },
           first_message_mode: firstMessageModeConfig
         }
