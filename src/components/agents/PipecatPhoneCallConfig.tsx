@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   PhoneCall, Loader2, AlertCircle, CheckCircle, Phone,
   Clock, History, Trash2, RotateCcw, Settings,
-  Delete, PhoneOff, Pencil, Check, X,
+  Delete, PhoneOff, Pencil, Check, X, Plus,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -68,6 +68,8 @@ export default function PipecatPhoneCallConfig({
   const [phoneNumber, setPhoneNumber] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('IN')
   const [selectedFromNumber, setSelectedFromNumber] = useState('')
+
+  const [variables, setVariables] = useState<{ key: string; value: string }[]>([])
 
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -155,12 +157,18 @@ export default function PipecatPhoneCallConfig({
     try {
       const formattedNumber = `${currentCountry.prefix}${cleaned}`
 
+      const metadata: Record<string, string> = {}
+      variables.forEach(({ key, value }) => {
+        if (key.trim()) metadata[key.trim()] = value
+      })
+
       const res = await fetch('/api/pipecat/call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: formattedNumber,
           agent_id: pipecatAgentId,
+          ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
         }),
       })
 
@@ -481,6 +489,51 @@ export default function PipecatPhoneCallConfig({
                   </button>
                 </div>
               )}
+
+              {/* Variables */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Variables <span className="text-xs font-normal text-gray-400">(optional)</span>
+                  </label>
+                  <button
+                    onClick={() => setVariables(prev => [...prev, { key: '', value: '' }])}
+                    className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Variable
+                  </button>
+                </div>
+                {variables.length === 0 ? (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                    No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {variables.map((v, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <Input
+                          placeholder="key"
+                          value={v.key}
+                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
+                          className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
+                        />
+                        <Input
+                          placeholder="value"
+                          value={v.value}
+                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
+                          className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
+                        />
+                        <button
+                          onClick={() => setVariables(prev => prev.filter((_, j) => j !== i))}
+                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Message */}
               {message && (
