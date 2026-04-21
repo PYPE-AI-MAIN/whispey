@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Parse the request body
     const body = await request.json()
-    const { agent_name, phone_number, sip_trunk_id, provider } = body
+    const { agent_name, phone_number, sip_trunk_id, provider, variables } = body
 
     if (!agent_name) {
       return NextResponse.json(
@@ -57,11 +57,12 @@ export async function POST(request: NextRequest) {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        agent_name, 
+      body: JSON.stringify({
+        agent_name,
         phone_number,
         sip_trunk_id,
-        provider
+        provider,
+        ...(variables && Object.keys(variables).length > 0 ? { variables } : {}),
       })
     })
 
