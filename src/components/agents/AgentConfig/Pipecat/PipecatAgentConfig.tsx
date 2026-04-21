@@ -238,6 +238,7 @@ export default function PipecatAgentConfig({
   const [selectedModel, setSelectedModel] = useState('gpt-4.1-mini')
   const [sttProvider, setSttProvider] = useState('sarvam')
   const [sttModel, setSttModel] = useState('saarika:v2.5')
+  const [sttTask, setSttTask] = useState('translate')   // "transcribe" | "translate"
   const [sttConfig, setSttConfig] = useState<any>({ language: 'en-IN' })
   const [ttsVoiceId, setTtsVoiceId] = useState('')
   const [ttsProvider, setTtsProvider] = useState('elevenlabs')
@@ -348,7 +349,8 @@ export default function PipecatAgentConfig({
 
     setSttProvider((a as any).stt_provider || (a.stt_model?.startsWith('nova-') ? 'deepgram' : a.stt_model === 'whisper-1' ? 'openai' : 'sarvam'))
     setSttModel(a.stt_model || 'saarika:v2.5')
-    setSttConfig({ language: a.stt_language || 'en-IN' })
+    setSttTask((a as any).stt_task || 'translate')
+    setSttConfig({ language: a.stt_language || 'en-IN', mode: (a as any).stt_task || 'translate' })
 
     setTtsProvider((a as any).tts_provider || (a.tts_model?.startsWith('bulbul:') ? 'sarvam' : 'elevenlabs'))
     setTtsModel(a.tts_model || 'eleven_flash_v2_5')
@@ -462,6 +464,7 @@ export default function PipecatAgentConfig({
         stt_provider: sttProvider,
         stt_model: sttModel,
         stt_language: sttConfig?.language || 'en-IN',
+        stt_task: sttTask || 'translate',
         tts_provider: ttsProvider,
         tts_model: ttsModel || null,
         tts_voice_id: ttsVoiceId || null,
@@ -578,7 +581,11 @@ export default function PipecatAgentConfig({
   // ── STT / TTS handlers ───────────────────────────────────────────────────
 
   const handleSTTSelect = (provider: string, model: string, config: any) => {
-    setSttProvider(provider); setSttModel(model); setSttConfig(config)
+    setSttProvider(provider)
+    setSttModel(model)
+    setSttConfig(config)
+    // Capture the mode selected in SelectSTT for saaras:v3 (transcribe / translate / etc.)
+    if (config?.mode) setSttTask(config.mode)
   }
 
   const handleVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
