@@ -9,7 +9,7 @@ import { canShowAgentSection } from '@/types/visibility'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PhoneCall, Loader2, AlertCircle, CheckCircle, Phone, Clock, History, Trash2, RotateCcw, Settings, Delete, PhoneOff, Pencil, Check, X } from 'lucide-react'
+import { PhoneCall, Loader2, AlertCircle, CheckCircle, Phone, Clock, History, Trash2, RotateCcw, Settings, Delete, PhoneOff, Pencil, Check, X, Plus } from 'lucide-react'
 
 interface Agent {
   id: string
@@ -99,6 +99,8 @@ export default function PhoneCallConfig() {
   const [fromPhoneNumberId, setFromPhoneNumberId] = useState('')
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(true)
+  const [variables, setVariables] = useState<{ key: string; value: string }[]>([])
+
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingAgent, setIsLoadingAgent] = useState(true)
   const [message, setMessage] = useState('')
@@ -238,7 +240,17 @@ export default function PhoneCallConfig() {
       const response = await fetch('/api/agents/dispatch-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agent_name: agentName, phone_number: formattedNumber, sip_trunk_id: selectedPhone.trunk_id, provider: selectedPhone.provider }),
+        body: JSON.stringify({
+          agent_name: agentName,
+          phone_number: formattedNumber,
+          sip_trunk_id: selectedPhone.trunk_id,
+          provider: selectedPhone.provider,
+          ...(variables.length > 0 ? {
+            variables: Object.fromEntries(
+              variables.filter(v => v.key.trim()).map(v => [v.key.trim(), v.value])
+            )
+          } : {}),
+        }),
       })
       const result = await response.json()
       if (response.ok) {
@@ -434,6 +446,51 @@ export default function PhoneCallConfig() {
                   </button>
                 </div>
               )}
+
+              {/* Variables */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Variables <span className="text-xs font-normal text-gray-400">(optional)</span>
+                  </label>
+                  <button
+                    onClick={() => setVariables(prev => [...prev, { key: '', value: '' }])}
+                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Variable
+                  </button>
+                </div>
+                {variables.length === 0 ? (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                    No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {variables.map((v, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <Input
+                          placeholder="key"
+                          value={v.key}
+                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
+                          className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
+                        />
+                        <Input
+                          placeholder="value"
+                          value={v.value}
+                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
+                          className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
+                        />
+                        <button
+                          onClick={() => setVariables(prev => prev.filter((_, j) => j !== i))}
+                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {message && (
                 <div className={`p-4 rounded-xl border backdrop-blur-sm transition-all ${messageType === 'success' ? 'bg-green-50/80 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-red-50/80 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'}`}>
