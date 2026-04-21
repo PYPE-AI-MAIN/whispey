@@ -378,19 +378,24 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
     )}
       <DialogContent
         className={cn(
-          'h-[84vh] w-full max-w-[calc(100vw-2rem)] gap-0 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 p-0 text-slate-100 shadow-xl sm:max-w-4xl',
-          '[&_label]:mb-1.5 [&_label]:block [&_label]:text-slate-200 [&_input]:border-slate-600 [&_input]:bg-slate-950 [&_input]:text-slate-100 [&_input]:placeholder:text-slate-400',
-          '[&_textarea]:border-slate-600 [&_textarea]:bg-slate-950 [&_textarea]:text-slate-100 [&_textarea]:placeholder:text-slate-400',
-          '[&_[data-slot=select-trigger]]:border-slate-600 [&_[data-slot=select-trigger]]:bg-slate-950 [&_[data-slot=select-trigger]]:text-slate-100',
-          '[&_[data-slot=select-trigger][data-placeholder]]:text-slate-400'
+          'h-[84vh] w-full max-w-[calc(100vw-2rem)] gap-0 overflow-hidden rounded-xl border p-0 shadow-xl sm:max-w-4xl',
+          'border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100',
+          '[&_label]:mb-1.5 [&_label]:block [&_label]:text-gray-700 dark:[&_label]:text-gray-200',
+          '[&_input]:border-gray-300 [&_input]:bg-white [&_input]:text-gray-900 [&_input]:placeholder:text-gray-400',
+          'dark:[&_input]:border-gray-600 dark:[&_input]:bg-gray-900 dark:[&_input]:text-gray-100 dark:[&_input]:placeholder:text-gray-500',
+          '[&_textarea]:border-gray-300 [&_textarea]:bg-white [&_textarea]:text-gray-900 [&_textarea]:placeholder:text-gray-400',
+          'dark:[&_textarea]:border-gray-600 dark:[&_textarea]:bg-gray-900 dark:[&_textarea]:text-gray-100',
+          '[&_[data-slot=select-trigger]]:border-gray-300 [&_[data-slot=select-trigger]]:bg-white [&_[data-slot=select-trigger]]:text-gray-900',
+          'dark:[&_[data-slot=select-trigger]]:border-gray-600 dark:[&_[data-slot=select-trigger]]:bg-gray-900 dark:[&_[data-slot=select-trigger]]:text-gray-100',
+          '[&_[data-slot=select-trigger][data-placeholder]]:text-gray-400 dark:[&_[data-slot=select-trigger][data-placeholder]]:text-gray-500'
         )}
       >
-        <DialogHeader className="border-b border-slate-700 bg-slate-800 px-6 py-5">
-          <DialogTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-slate-100">
+        <DialogHeader className="border-b border-gray-200 bg-gray-50/80 px-6 py-5 dark:border-gray-700 dark:bg-gray-800">
+          <DialogTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
             <Calculator className="h-5 w-5" />
             Create Custom Total
           </DialogTitle>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Build one metric with clear rules and optional filters.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -408,7 +413,7 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
         <ScrollArea className="min-h-0 flex-1 px-6">
           <div className="space-y-5 py-5">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'setup' | 'filters' | 'style')} className="gap-4">
-              <TabsList className="h-10 w-full rounded-lg bg-slate-800 p-1">
+              <TabsList className="h-10 w-full rounded-lg bg-gray-100 p-1 dark:bg-gray-900">
                 <TabsTrigger value="setup">Setup</TabsTrigger>
                 <TabsTrigger value="filters">
                   Filters {config.filters && config.filters.length > 0 ? `(${config.filters.length})` : ''}
@@ -417,10 +422,10 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
               </TabsList>
 
               <TabsContent value="setup" className="space-y-5">
-                <Card className="border-slate-700 bg-slate-800 text-slate-100">
+                <Card className="border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">Metric Setup</CardTitle>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Start with required fields, then optionally enable unique count.
                     </p>
                   </CardHeader>
@@ -534,10 +539,10 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
                 </Card>
 
                 {config.aggregation === 'COUNT' && (
-                  <Card className="border-slate-700 bg-slate-800 text-slate-100">
+                  <Card className="border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                     <CardHeader className="pb-4">
                       <CardTitle className="text-lg">Unique Count (Optional)</CardTitle>
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         Enable only when you need distinct values, like unique callers.
                       </p>
                     </CardHeader>
@@ -561,7 +566,7 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
                       </div>
 
                       {enableDistinct && (
-                        <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-700 bg-slate-900/70 p-4 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label>Column to count uniquely *</Label>
                             <Select
@@ -609,7 +614,7 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
                             </div>
                           )}
                           <div className="md:col-span-2">
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
                               This counts unique values of <strong>{distinctConfig.column}{distinctConfig.jsonField ? '.' + distinctConfig.jsonField : ''}</strong>
                               {config.column && ` where filters apply to ${config.column}${config.jsonField ? '.' + config.jsonField : ''}`}
                             </p>
@@ -622,10 +627,10 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
               </TabsContent>
 
               <TabsContent value="filters">
-                <Card className="border-slate-700 bg-slate-800 text-slate-100">
+                <Card className="border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">Filters (Optional)</CardTitle>
-                    <p className="text-sm text-slate-400">Narrow the data used in this metric.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Narrow the data used in this metric.</p>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-0">
                     <div>
@@ -641,7 +646,7 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
                       </Select>
                     </div>
 
-                    <div className="space-y-4 rounded-lg border border-slate-700 bg-slate-900/70 p-4">
+                    <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                         <div className="space-y-2">
                           <Label className="text-xs">Column</Label>
@@ -714,7 +719,7 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
                           <Label>Current conditions ({config.filterLogic})</Label>
                           <Badge variant="outline">{config.filters.length} filter{config.filters.length !== 1 ? 's' : ''}</Badge>
                         </div>
-                        <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+                        <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
                           {config.filters.map((filter, index) => {
                             const column = availableColumns.find(c => c.key === filter.column)
                             const operation = FILTER_OPERATIONS[getColumnType(filter.column)]?.find(op => op.value === filter.operation)
@@ -726,7 +731,7 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
                                     {config.filterLogic}
                                   </Badge>
                                 )}
-                                <div className="flex min-w-0 flex-1 items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2">
+                                <div className="flex min-w-0 flex-1 items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
                                   <span className="font-medium text-sm">
                                     {column?.label || filter.column}
                                   </span>
@@ -766,10 +771,10 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
               </TabsContent>
 
               <TabsContent value="style">
-                <Card className="border-slate-700 bg-slate-800 text-slate-100">
+                <Card className="border-gray-200 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">Style (Optional)</CardTitle>
-                    <p className="text-sm text-slate-400">Choose how this metric appears in the summary card.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Choose how this metric appears in the summary card.</p>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -833,12 +838,12 @@ const CustomTotalsBuilder: React.FC<CustomTotalsBuilderProps> = ({
           </div>
         </ScrollArea>
         {/* Actions footer */}
-        <div className="border-t border-slate-700 bg-slate-800 px-6 py-4">
+        <div className="border-t border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => handleDialogChange(false)}
-              className="rounded-lg border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+              className="rounded-lg border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-900/50"
             >
               Cancel
             </Button>

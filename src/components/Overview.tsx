@@ -90,12 +90,12 @@ const ICON_COMPONENTS = {
 }
 
 const COLOR_CLASSES = {
-  blue: 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400',
-  green: 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400',
-  purple: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-  orange: 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400',
-  red: 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400',
-  emerald: 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+  blue:    { iconBg: 'bg-blue-50 dark:bg-blue-900/20',    iconBorder: 'border-blue-100 dark:border-blue-800',    iconText: 'text-blue-600 dark:text-blue-400' },
+  green:   { iconBg: 'bg-green-50 dark:bg-green-900/20',  iconBorder: 'border-green-100 dark:border-green-800',  iconText: 'text-green-600 dark:text-green-400' },
+  purple:  { iconBg: 'bg-purple-50 dark:bg-purple-900/20',iconBorder: 'border-purple-100 dark:border-purple-800',iconText: 'text-purple-600 dark:text-purple-400' },
+  orange:  { iconBg: 'bg-orange-50 dark:bg-orange-900/20',iconBorder: 'border-orange-100 dark:border-orange-800',iconText: 'text-orange-600 dark:text-orange-400' },
+  red:     { iconBg: 'bg-red-50 dark:bg-red-900/20',      iconBorder: 'border-red-100 dark:border-red-800',      iconText: 'text-red-600 dark:text-red-400' },
+  emerald: { iconBg: 'bg-emerald-50 dark:bg-emerald-900/20', iconBorder: 'border-emerald-100 dark:border-emerald-800', iconText: 'text-emerald-600 dark:text-emerald-400' },
 }
 
 const AVAILABLE_COLUMNS = [
@@ -1232,8 +1232,8 @@ const Overview: React.FC<OverviewProps> = ({
                 <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md hover:border-gray-400 dark:hover:border-gray-600 transition-all duration-300">
                   <div className={isMobile ? 'p-3' : 'p-5'}>
                     <div className={`flex items-start justify-between ${isMobile ? 'mb-2' : 'mb-4'}`}>
-                      <div className={`p-2 ${colorClass.replace('bg-', 'bg-').replace('text-', 'border-')} rounded-lg border`}>
-                        <IconComponent weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} ${colorClass.split(' ')[1]}`} />
+                      <div className={`p-2 ${colorClass.iconBg} ${colorClass.iconBorder} rounded-lg border`}>
+                        <IconComponent weight="regular" className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} ${colorClass.iconText}`} />
                       </div>
 
                       <div className={`flex items-center gap-1 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
@@ -1304,22 +1304,21 @@ const Overview: React.FC<OverviewProps> = ({
                 className={cn(
                   'h-full w-full min-h-[160px]',
                   'relative overflow-hidden rounded-2xl',
-                  'bg-[#151c2c] dark:bg-[#0f1521]',
-                  'border border-dashed border-slate-500/90 dark:border-slate-500/80',
-                  'hover:border-indigo-500/90 dark:hover:border-indigo-400/80',
-                  'hover:bg-[#1a2236] dark:hover:bg-[#141c2e]',
+                  'bg-white dark:bg-gray-800',
+                  'border border-dashed border-gray-300 dark:border-gray-700',
+                  'hover:border-gray-400 dark:hover:border-gray-600',
+                  'hover:bg-gray-50 dark:hover:bg-gray-750',
                   'transition-all duration-300 ease-out',
-                  'hover:shadow-[0_0_24px_-4px_rgba(99,102,241,0.25)]',
+                  'hover:shadow-md',
                   'flex flex-col items-center justify-center gap-3'
                 )}
                 aria-label="Add custom summary"
               >
                 <div className={cn(
-                  'flex items-center justify-center rounded-full',
-                  'bg-slate-700/50 group-hover:bg-indigo-500/20',
-                  'border border-slate-600/40 group-hover:border-indigo-400/40',
+                  'flex items-center justify-center rounded-xl',
+                  'bg-gray-100 dark:bg-gray-700/60 group-hover:bg-indigo-500/20',
                   'transition-all duration-300',
-                  isMobile ? 'w-10 h-10' : 'w-12 h-12'
+                  isMobile ? 'w-9 h-9' : 'w-10 h-10'
                 )}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1330,7 +1329,7 @@ const Overview: React.FC<OverviewProps> = ({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     className={cn(
-                      'text-slate-300 group-hover:text-indigo-300 transition-colors duration-300',
+                      'text-gray-400 dark:text-slate-300 group-hover:text-indigo-500 dark:group-hover:text-indigo-300 transition-colors duration-300',
                       isMobile ? 'w-4 h-4' : 'w-5 h-5'
                     )}
                   >
@@ -1340,7 +1339,7 @@ const Overview: React.FC<OverviewProps> = ({
                 </div>
                 <span className={cn(
                   'font-semibold tracking-[0.12em] uppercase',
-                  'text-slate-400 group-hover:text-slate-200',
+                  'text-gray-400 dark:text-slate-400 group-hover:text-gray-600 dark:group-hover:text-slate-200',
                   'transition-colors duration-300',
                   isMobile ? 'text-[10px]' : 'text-[11px]'
                 )}>
