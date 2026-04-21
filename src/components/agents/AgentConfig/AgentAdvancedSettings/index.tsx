@@ -25,7 +25,8 @@ interface AgentAdvancedSettingsProps {
         allowInterruptions: boolean
         minInterruptionDuration: number
         minInterruptionWords: number
-        filterBackchannels?: boolean
+        dropFillerWords?: boolean
+        fillerDropList?: string[]
       }
       vad: {
         vadProvider: string
@@ -169,7 +170,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               allowInterruptions={advancedSettings.interruption.allowInterruptions}
               minInterruptionDuration={advancedSettings.interruption.minInterruptionDuration}
               minInterruptionWords={advancedSettings.interruption.minInterruptionWords}
-              filterBackchannels={advancedSettings.interruption.filterBackchannels ?? false}
+              dropFillerWords={advancedSettings.interruption.dropFillerWords ?? false}
+              fillerDropList={advancedSettings.interruption.fillerDropList ?? []}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
