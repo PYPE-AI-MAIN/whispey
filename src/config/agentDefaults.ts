@@ -61,7 +61,8 @@ export const AGENT_DEFAULT_CONFIG = {
       allow_interruptions: true,
       min_interruption_duration: 0.8,
       min_interruption_words: 0,
-      filter_backchannels: false
+      drop_filler_words: false,
+      filler_drop_list: [] as string[]
     },
   
     // First Message Configuration
@@ -199,7 +200,8 @@ export const AGENT_DEFAULT_CONFIG = {
         allowInterruptions: AGENT_DEFAULT_CONFIG.interruptions.allow_interruptions,
         minInterruptionDuration: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_duration,
         minInterruptionWords: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_words,
-        filterBackchannels: AGENT_DEFAULT_CONFIG.interruptions.filter_backchannels
+        dropFillerWords: AGENT_DEFAULT_CONFIG.interruptions.drop_filler_words,
+        fillerDropList: AGENT_DEFAULT_CONFIG.interruptions.filler_drop_list
       },
       vad: {
         vadProvider: AGENT_DEFAULT_CONFIG.vad.name,

@@ -1,15 +1,27 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
+import { X } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+
+export const DEFAULT_FILLER_DROP_WORDS: string[] = [
+  // Greetings
+  'hello', 'hi', 'hey',
+  'हेलो', 'हैलो', 'हलो', 'नमस्ते',
+  // Acks / backchannels
+  'hmm', 'mm', 'uh-huh', 'okay', 'ok',
+  'हम्म', 'हाँ', 'haan', 'yes',
+  'acha', 'अच्छा',
+]
 
 interface InterruptionSettingsProps {
   allowInterruptions: boolean
   minInterruptionDuration: number
   minInterruptionWords: number
-  filterBackchannels?: boolean
+  dropFillerWords?: boolean
+  fillerDropList?: string[]
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -17,9 +29,42 @@ function InterruptionSettings({
   allowInterruptions,
   minInterruptionDuration,
   minInterruptionWords,
-  filterBackchannels = false,
+  dropFillerWords = false,
+  fillerDropList = [],
   onFieldChange
 }: InterruptionSettingsProps) {
+  const [newWord, setNewWord] = useState('')
+
+  const addWord = () => {
+    const trimmed = newWord.trim()
+    if (!trimmed) return
+    const normalized = trimmed.toLowerCase()
+    if (fillerDropList.some(w => w.toLowerCase() === normalized)) {
+      setNewWord('')
+      return
+    }
+    onFieldChange('advancedSettings.interruption.fillerDropList', [...fillerDropList, trimmed])
+    setNewWord('')
+  }
+
+  const removeWord = (word: string) => {
+    onFieldChange(
+      'advancedSettings.interruption.fillerDropList',
+      fillerDropList.filter(w => w !== word)
+    )
+  }
+
+  const restoreDefaults = () => {
+    onFieldChange('advancedSettings.interruption.fillerDropList', [...DEFAULT_FILLER_DROP_WORDS])
+  }
+
+  const handleDropToggle = (checked: boolean) => {
+    onFieldChange('advancedSettings.interruption.dropFillerWords', checked)
+    if (checked && fillerDropList.length === 0) {
+      onFieldChange('advancedSettings.interruption.fillerDropList', [...DEFAULT_FILLER_DROP_WORDS])
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
@@ -95,22 +140,86 @@ function InterruptionSettings({
         />
       </div>}
 
-      {/* Filter Backchannels */}
+      {/* Drop Filler Words */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="pr-4">
           <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-            Filter Backchannels
+            Drop Filler Words
           </Label>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Silence short acks like "hmm", "okay", "हम्म" — prevents wasted LLM calls
+            Silently drop short words (e.g. "hello", "हेलो", "hmm") spoken while the agent is thinking or speaking — prevents wasted LLM calls and mid-response restarts
           </div>
         </div>
         <Switch
-          checked={filterBackchannels}
-          onCheckedChange={(checked) => onFieldChange('advancedSettings.interruption.filterBackchannels', checked)}
+          checked={dropFillerWords}
+          onCheckedChange={handleDropToggle}
           className="scale-75"
         />
       </div>
+
+      {dropFillerWords && (
+        <div className="space-y-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              Words to Drop
+            </Label>
+            <button
+              type="button"
+              onClick={restoreDefaults}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Restore defaults
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {fillerDropList.length === 0 && (
+              <div className="text-xs text-gray-400 dark:text-gray-500 italic">
+                No words — add one below or restore defaults
+              </div>
+            )}
+            {fillerDropList.map((word) => (
+              <span
+                key={word}
+                className="inline-flex items-center gap-1 rounded-md bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs text-gray-700 dark:text-gray-200"
+              >
+                {word}
+                <button
+                  type="button"
+                  onClick={() => removeWord(word)}
+                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  aria-label={`Remove ${word}`}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          <div className="flex gap-1.5">
+            <Input
+              value={newWord}
+              onChange={(e) => setNewWord(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addWord()
+                }
+              }}
+              placeholder='Add a word (e.g. "wait", "haan")'
+              className="h-7 text-xs flex-1"
+            />
+            <button
+              type="button"
+              onClick={addWord}
+              disabled={!newWord.trim()}
+              className="h-7 px-3 text-xs rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
