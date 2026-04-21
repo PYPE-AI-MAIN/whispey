@@ -34,7 +34,7 @@ export function MetricGroupTabs({
   const showRightCluster = canManageGroups || showAddChartButton
 
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+    <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
       <div className={`flex items-center gap-3 ${isMobile ? 'px-4 py-3' : 'px-8 py-4'}`}>
         {/* Scrollable tabs container */}
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500">
