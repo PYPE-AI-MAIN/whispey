@@ -6,8 +6,11 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Info } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Switch } from '@/components/ui/switch'
 
 interface SmartTurnSettingsProps {
+  smartTurnEnabled: boolean
+  onSmartTurnEnabledChange: (v: boolean) => void
   smartTurnStopSecs: number
   smartTurnPreSpeechMs: number
   smartTurnMaxDurSecs: number
@@ -70,6 +73,8 @@ function NumericField({
 }
 
 export default function SmartTurnSettings({
+  smartTurnEnabled,
+  onSmartTurnEnabledChange,
   smartTurnStopSecs,
   smartTurnPreSpeechMs,
   smartTurnMaxDurSecs,
@@ -78,36 +83,52 @@ export default function SmartTurnSettings({
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <div className="text-xs text-gray-600 dark:text-gray-400">
-          LocalSmartTurnAnalyzerV3 — analyses prosody and intonation for accurate end-of-turn detection.
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              Enable Smart Turn Detection
+            </Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Off = plain Silero VAD (faster). On = LocalSmartTurnAnalyzerV3 prosody analysis.
+            </p>
+          </div>
+          <Switch checked={smartTurnEnabled} onCheckedChange={onSmartTurnEnabledChange} />
         </div>
 
-        <NumericField
-          label="Stop Secs"
-          value={smartTurnStopSecs}
-          min={0.5} max={6} step={0.5}
-          hint="Silence before confirming end-of-turn. Range: 0.5–6.0s"
-          tooltip="How long silence must persist before the smart turn detector confirms the user has finished their turn."
-          onCommit={v => onSmartTurnChange('stopSecs', v)}
-        />
+        {smartTurnEnabled && (
+          <>
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              LocalSmartTurnAnalyzerV3 analyses prosody and intonation for accurate end-of-turn detection.
+            </div>
 
-        <NumericField
-          label="Pre-speech Buffer (ms)"
-          value={smartTurnPreSpeechMs}
-          min={100} max={1000} step={50}
-          hint="Audio captured before speech for analysis context. Range: 100–1000ms"
-          tooltip="Amount of audio buffered before detected speech starts, used to improve prosody analysis accuracy."
-          onCommit={v => onSmartTurnChange('preSpeechMs', v)}
-        />
+            <NumericField
+              label="Stop Secs"
+              value={smartTurnStopSecs}
+              min={0.5} max={6} step={0.5}
+              hint="Silence before confirming end-of-turn. Range: 0.5–6.0s"
+              tooltip="How long silence must persist before the smart turn detector confirms the user has finished their turn."
+              onCommit={v => onSmartTurnChange('stopSecs', v)}
+            />
 
-        <NumericField
-          label="Max Segment Secs"
-          value={smartTurnMaxDurSecs}
-          min={4} max={20} step={1}
-          hint="Max segment before rolling window kicks in. Range: 4–20s"
-          tooltip="Maximum duration of a single audio segment before the rolling window mechanism activates."
-          onCommit={v => onSmartTurnChange('maxDurSecs', v)}
-        />
+            <NumericField
+              label="Pre-speech Buffer (ms)"
+              value={smartTurnPreSpeechMs}
+              min={100} max={1000} step={50}
+              hint="Audio captured before speech for analysis context. Range: 100–1000ms"
+              tooltip="Amount of audio buffered before detected speech starts, used to improve prosody analysis accuracy."
+              onCommit={v => onSmartTurnChange('preSpeechMs', v)}
+            />
+
+            <NumericField
+              label="Max Segment Secs"
+              value={smartTurnMaxDurSecs}
+              min={4} max={20} step={1}
+              hint="Max segment before rolling window kicks in. Range: 4–20s"
+              tooltip="Maximum duration of a single audio segment before the rolling window mechanism activates."
+              onCommit={v => onSmartTurnChange('maxDurSecs', v)}
+            />
+          </>
+        )}
       </div>
     </TooltipProvider>
   )
