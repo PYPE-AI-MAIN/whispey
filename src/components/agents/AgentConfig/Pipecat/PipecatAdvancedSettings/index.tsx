@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   ChevronDownIcon, MicIcon, BrainIcon, TimerIcon,
   WrenchIcon, DatabaseIcon, Music2Icon, Webhook,
+  PhoneCallIcon, MessageSquareIcon,
 } from 'lucide-react'
 import VadSettings from './ConfigParents/VadSettings'
 import SmartTurnSettings from './ConfigParents/SmartTurnSettings'
@@ -14,6 +15,8 @@ import ToolsActionsSettings from './ConfigParents/ToolsActionsSettings'
 import KnowledgeBaseSettings from './ConfigParents/KnowledgeBaseSettings'
 import AmbientSoundSettings from './ConfigParents/AmbientSoundSettings'
 import KeyboardSoundSettings from './ConfigParents/KeyboardSoundSettings'
+import CallBehaviorSettings from './ConfigParents/CallBehaviorSettings'
+import PromptRulesSettings from './ConfigParents/PromptRulesSettings'
 import WebhookSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings/ConfigParents/WebhookSettings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -56,6 +59,8 @@ interface PipecatAdvancedSettingsProps {
   customTools: CustomTool[]
   onCustomToolsChange: (tools: CustomTool[]) => void
   // Smart Turn
+  smartTurnEnabled: boolean
+  onSmartTurnEnabledChange: (v: boolean) => void
   smartTurnStopSecs: number
   smartTurnPreSpeechMs: number
   smartTurnMaxDurSecs: number
@@ -64,6 +69,28 @@ interface PipecatAdvancedSettingsProps {
   turnStopTimeout: number
   userIdleTimeout: number | null
   onTurnChange: (field: string, value: number | null) => void
+  // Call behavior
+  allowInterruptions: boolean
+  onAllowInterruptionsChange: (v: boolean) => void
+  minInterruptionDurationMs: number
+  onMinInterruptionDurationMsChange: (v: number) => void
+  noiseCancellation: string
+  onNoiseCancellationChange: (v: string) => void
+  enableMetrics: boolean
+  onEnableMetricsChange: (v: boolean) => void
+  answerDelaySecs: number | null
+  onAnswerDelaySecsChange: (v: number | null) => void
+  maxCallDurationSecs: number | null
+  onMaxCallDurationSecsChange: (v: number | null) => void
+  // Prompt rule blocks (per-agent overrides)
+  responseRules: string
+  onResponseRulesChange: (v: string) => void
+  callClosureRules: string
+  onCallClosureRulesChange: (v: string) => void
+  transferGatingRules: string
+  onTransferGatingRulesChange: (v: string) => void
+  dynamicContextTemplate: string
+  onDynamicContextTemplateChange: (v: string) => void
   // RAG
   ragEnabled: boolean
   onRagEnabledChange: (v: boolean) => void
@@ -123,8 +150,19 @@ export default function PipecatAdvancedSettings({
   builtinTools, onBuiltinToolsChange,
   toolConfigs, onToolConfigsChange,
   customTools, onCustomToolsChange,
+  smartTurnEnabled, onSmartTurnEnabledChange,
   smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs, onSmartTurnChange,
   turnStopTimeout, userIdleTimeout, onTurnChange,
+  allowInterruptions, onAllowInterruptionsChange,
+  minInterruptionDurationMs, onMinInterruptionDurationMsChange,
+  noiseCancellation, onNoiseCancellationChange,
+  enableMetrics, onEnableMetricsChange,
+  answerDelaySecs, onAnswerDelaySecsChange,
+  maxCallDurationSecs, onMaxCallDurationSecsChange,
+  responseRules, onResponseRulesChange,
+  callClosureRules, onCallClosureRulesChange,
+  transferGatingRules, onTransferGatingRulesChange,
+  dynamicContextTemplate, onDynamicContextTemplateChange,
   ragEnabled, onRagEnabledChange,
   ragNResults, onRagNResultsChange,
   ragFillerEnabled, onRagFillerEnabledChange,
@@ -138,6 +176,8 @@ export default function PipecatAdvancedSettings({
     vad: false,
     smartTurn: false,
     turn: false,
+    callBehavior: false,
+    promptRules: false,
     tools: false,
     rag: false,
     ambient: false,
@@ -169,12 +209,61 @@ export default function PipecatAdvancedSettings({
 
         {/* Smart Turn */}
         <Section icon={<BrainIcon className="w-3.5 h-3.5" />} label="Smart Turn Detection" open={openSections.smartTurn} onToggle={() => toggle('smartTurn')}>
-          <SmartTurnSettings smartTurnStopSecs={smartTurnStopSecs} smartTurnPreSpeechMs={smartTurnPreSpeechMs} smartTurnMaxDurSecs={smartTurnMaxDurSecs} onSmartTurnChange={onSmartTurnChange} />
+          <SmartTurnSettings
+            smartTurnEnabled={smartTurnEnabled}
+            onSmartTurnEnabledChange={onSmartTurnEnabledChange}
+            smartTurnStopSecs={smartTurnStopSecs}
+            smartTurnPreSpeechMs={smartTurnPreSpeechMs}
+            smartTurnMaxDurSecs={smartTurnMaxDurSecs}
+            onSmartTurnChange={onSmartTurnChange}
+          />
         </Section>
 
         {/* Turn Management */}
         <Section icon={<TimerIcon className="w-3.5 h-3.5" />} label="Turn Management" open={openSections.turn} onToggle={() => toggle('turn')}>
           <TurnManagementSettings turnStopTimeout={turnStopTimeout} userIdleTimeout={userIdleTimeout} onTurnChange={onTurnChange} />
+        </Section>
+
+        {/* Call Behavior (noise cancellation, metrics, interruptions, delays, max duration) */}
+        <Section
+          icon={<PhoneCallIcon className="w-3.5 h-3.5" />}
+          label="Call Behavior"
+          open={openSections.callBehavior}
+          onToggle={() => toggle('callBehavior')}
+        >
+          <CallBehaviorSettings
+            noiseCancellation={noiseCancellation}
+            onNoiseCancellationChange={onNoiseCancellationChange}
+            enableMetrics={enableMetrics}
+            onEnableMetricsChange={onEnableMetricsChange}
+            allowInterruptions={allowInterruptions}
+            onAllowInterruptionsChange={onAllowInterruptionsChange}
+            minInterruptionDurationMs={minInterruptionDurationMs}
+            onMinInterruptionDurationMsChange={onMinInterruptionDurationMsChange}
+            answerDelaySecs={answerDelaySecs}
+            onAnswerDelaySecsChange={onAnswerDelaySecsChange}
+            maxCallDurationSecs={maxCallDurationSecs}
+            onMaxCallDurationSecsChange={onMaxCallDurationSecsChange}
+          />
+        </Section>
+
+        {/* Prompt Rules (per-agent overrides of injected RESPONSE / TRANSFER / CLOSURE blocks) */}
+        <Section
+          icon={<MessageSquareIcon className="w-3.5 h-3.5" />}
+          label="Prompt Rule Overrides"
+          open={openSections.promptRules}
+          onToggle={() => toggle('promptRules')}
+        >
+          <PromptRulesSettings
+            responseRules={responseRules}
+            onResponseRulesChange={onResponseRulesChange}
+            callClosureRules={callClosureRules}
+            onCallClosureRulesChange={onCallClosureRulesChange}
+            transferGatingRules={transferGatingRules}
+            onTransferGatingRulesChange={onTransferGatingRulesChange}
+            dynamicContextTemplate={dynamicContextTemplate}
+            onDynamicContextTemplateChange={onDynamicContextTemplateChange}
+          />
         </Section>
 
         <Section
