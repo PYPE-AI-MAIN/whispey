@@ -49,18 +49,29 @@ interface PipecatAgent {
   transfer_number: string
   acefone_token: string | null
   tools: string[]
-  tool_configs: Record<string, Record<string, unknown>>
+  tool_config: Record<string, Record<string, unknown>>
   custom_tools: any[]
   opening_message: string | null
   vad_confidence: number
   vad_start_secs: number
   vad_stop_secs: number
   vad_min_volume: number
+  smart_turn_enabled: boolean
   smart_turn_stop_secs: number
   smart_turn_pre_speech_ms: number
   smart_turn_max_dur_secs: number
   turn_stop_timeout: number
   user_idle_timeout: number | null
+  allow_interruptions: boolean
+  min_interruption_duration_ms: number
+  noise_cancellation: string
+  enable_metrics: boolean
+  answer_delay_secs: number | null
+  max_call_duration_secs: number | null
+  response_rules: string | null
+  call_closure_rules: string | null
+  transfer_gating_rules: string | null
+  dynamic_context_template: string | null
   tts_stability: number | null
   tts_similarity_boost: number | null
   tts_style: number | null
@@ -128,11 +139,22 @@ interface SnapshotValues {
   vadStartSecs: number
   vadStopSecs: number
   vadMinVolume: number
+  smartTurnEnabled: boolean
   smartTurnStopSecs: number
   smartTurnPreSpeechMs: number
   smartTurnMaxDurSecs: number
   turnStopTimeout: number
   userIdleTimeout: number | null
+  allowInterruptions: boolean
+  minInterruptionDurationMs: number
+  noiseCancellation: string
+  enableMetrics: boolean
+  answerDelaySecs: number | null
+  maxCallDurationSecs: number | null
+  responseRules: string
+  callClosureRules: string
+  transferGatingRules: string
+  dynamicContextTemplate: string
   ragEnabled: boolean
   ragNResults: number
   ragFillerEnabled: boolean
@@ -255,6 +277,7 @@ export default function PipecatAgentConfig({
   const [vadMinVolume, setVadMinVolume] = useState(0.6)
 
   // Smart Turn
+  const [smartTurnEnabled, setSmartTurnEnabled] = useState(false)
   const [smartTurnStopSecs, setSmartTurnStopSecs] = useState(3.0)
   const [smartTurnPreSpeechMs, setSmartTurnPreSpeechMs] = useState(500)
   const [smartTurnMaxDurSecs, setSmartTurnMaxDurSecs] = useState(8.0)
@@ -262,6 +285,24 @@ export default function PipecatAgentConfig({
   // Turn Management
   const [turnStopTimeout, setTurnStopTimeout] = useState(5.0)
   const [userIdleTimeout, setUserIdleTimeout] = useState<number | null>(null)
+
+  // Interruption behavior
+  const [allowInterruptions, setAllowInterruptions] = useState(true)
+  const [minInterruptionDurationMs, setMinInterruptionDurationMs] = useState(500)
+
+  // Audio processing
+  const [noiseCancellation, setNoiseCancellation] = useState<string>('rnnoise')
+  const [enableMetrics, setEnableMetrics] = useState(true)
+
+  // Call ops safety
+  const [answerDelaySecs, setAnswerDelaySecs] = useState<number | null>(null)
+  const [maxCallDurationSecs, setMaxCallDurationSecs] = useState<number | null>(null)
+
+  // Dynamic prompt rules (per-agent overrides of Pipecat-injected rules)
+  const [responseRules, setResponseRules] = useState<string>('')
+  const [callClosureRules, setCallClosureRules] = useState<string>('')
+  const [transferGatingRules, setTransferGatingRules] = useState<string>('')
+  const [dynamicContextTemplate, setDynamicContextTemplate] = useState<string>('')
 
   // TTS Voice Character
   const [ttsStability, setTtsStability] = useState<number | null>(null)
@@ -320,8 +361,12 @@ export default function PipecatAgentConfig({
     ttsVoiceId, ttsModel,
     tools, toolConfigs, customTools, ttsProvider,
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
-    smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
+    smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout,
+    allowInterruptions, minInterruptionDurationMs,
+    noiseCancellation, enableMetrics,
+    answerDelaySecs, maxCallDurationSecs,
+    responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
     ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
     ragEnabled, ambientSoundEnabled, ambientSoundVolume,
     keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
@@ -340,7 +385,7 @@ export default function PipecatAgentConfig({
     setTransferNumber(a.transfer_number || '')
     setAcefoneToken(a.acefone_token || '')
     setTools(a.tools || ['end_call', 'transfer_call'])
-    setToolConfigs(a.tool_configs || {})
+    setToolConfigs(a.tool_config || {})
     setCustomTools(a.custom_tools || [])
 
     const { provider, model } = mapLLMModelToProvider(a.llm_model, a.llm_provider)
@@ -365,12 +410,24 @@ export default function PipecatAgentConfig({
     setVadStopSecs(a.vad_stop_secs ?? 0.8)
     setVadMinVolume(a.vad_min_volume ?? 0.6)
 
+    setSmartTurnEnabled(a.smart_turn_enabled ?? false)
     setSmartTurnStopSecs(a.smart_turn_stop_secs ?? 3.0)
     setSmartTurnPreSpeechMs(a.smart_turn_pre_speech_ms ?? 500)
     setSmartTurnMaxDurSecs(a.smart_turn_max_dur_secs ?? 8.0)
 
     setTurnStopTimeout(a.turn_stop_timeout ?? 5.0)
     setUserIdleTimeout(a.user_idle_timeout ?? null)
+
+    setAllowInterruptions(a.allow_interruptions ?? true)
+    setMinInterruptionDurationMs(a.min_interruption_duration_ms ?? 500)
+    setNoiseCancellation(a.noise_cancellation || 'rnnoise')
+    setEnableMetrics(a.enable_metrics ?? true)
+    setAnswerDelaySecs(a.answer_delay_secs ?? null)
+    setMaxCallDurationSecs(a.max_call_duration_secs ?? null)
+    setResponseRules(a.response_rules || '')
+    setCallClosureRules(a.call_closure_rules || '')
+    setTransferGatingRules(a.transfer_gating_rules || '')
+    setDynamicContextTemplate(a.dynamic_context_template || '')
 
     setRagEnabled(a.rag_enabled ?? true)
     setRagNResults(a.rag_n_results ?? 3)
@@ -402,17 +459,28 @@ export default function PipecatAgentConfig({
       ttsStyle: a.tts_style ?? null,
       ttsSpeed: a.tts_speed ?? 1.0,
       tools: a.tools || ['end_call', 'transfer_call'],
-      toolConfigs: a.tool_configs || {},
+      toolConfigs: a.tool_config || {},
       customTools: a.custom_tools || [],
       vadConfidence: a.vad_confidence ?? 0.7,
       vadStartSecs: a.vad_start_secs ?? 0.2,
       vadStopSecs: a.vad_stop_secs ?? 0.8,
       vadMinVolume: a.vad_min_volume ?? 0.6,
+      smartTurnEnabled: a.smart_turn_enabled ?? false,
       smartTurnStopSecs: a.smart_turn_stop_secs ?? 3.0,
       smartTurnPreSpeechMs: a.smart_turn_pre_speech_ms ?? 500,
       smartTurnMaxDurSecs: a.smart_turn_max_dur_secs ?? 8.0,
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
+      allowInterruptions: a.allow_interruptions ?? true,
+      minInterruptionDurationMs: a.min_interruption_duration_ms ?? 500,
+      noiseCancellation: a.noise_cancellation || 'rnnoise',
+      enableMetrics: a.enable_metrics ?? true,
+      answerDelaySecs: a.answer_delay_secs ?? null,
+      maxCallDurationSecs: a.max_call_duration_secs ?? null,
+      responseRules: a.response_rules || '',
+      callClosureRules: a.call_closure_rules || '',
+      transferGatingRules: a.transfer_gating_rules || '',
+      dynamicContextTemplate: a.dynamic_context_template || '',
       ragEnabled: a.rag_enabled ?? true,
       ragNResults: a.rag_n_results ?? 3,
       ragFillerEnabled: a.rag_filler_enabled ?? true,
@@ -475,17 +543,28 @@ export default function PipecatAgentConfig({
         transfer_number: transferNumber,
         acefone_token: acefoneToken || null,
         tools,
-        tool_configs: toolConfigs,
+        tool_config: toolConfigs,
         custom_tools: customTools,
         vad_confidence: vadConfidence,
         vad_start_secs: vadStartSecs,
         vad_stop_secs: vadStopSecs,
         vad_min_volume: vadMinVolume,
+        smart_turn_enabled: smartTurnEnabled,
         smart_turn_stop_secs: smartTurnStopSecs,
         smart_turn_pre_speech_ms: smartTurnPreSpeechMs,
         smart_turn_max_dur_secs: smartTurnMaxDurSecs,
         turn_stop_timeout: turnStopTimeout,
         user_idle_timeout: userIdleTimeout,
+        allow_interruptions: allowInterruptions,
+        min_interruption_duration_ms: minInterruptionDurationMs,
+        noise_cancellation: noiseCancellation,
+        enable_metrics: enableMetrics,
+        answer_delay_secs: answerDelaySecs,
+        max_call_duration_secs: maxCallDurationSecs,
+        response_rules: responseRules || null,
+        call_closure_rules: callClosureRules || null,
+        transfer_gating_rules: transferGatingRules || null,
+        dynamic_context_template: dynamicContextTemplate || null,
         rag_enabled: ragEnabled,
         rag_n_results: ragNResults,
         rag_filler_enabled: ragFillerEnabled,
@@ -518,10 +597,14 @@ export default function PipecatAgentConfig({
         prompt, openingMessage, transferNumber,
         selectedProvider, selectedModel,
         sttModel, sttConfig, ttsVoiceId, ttsModel,
-        tools, toolConfigs, customTools,ttsProvider, 
+        tools, toolConfigs, customTools,ttsProvider,
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
-        smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
+        smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout,
+        allowInterruptions, minInterruptionDurationMs,
+        noiseCancellation, enableMetrics,
+        answerDelaySecs, maxCallDurationSecs,
+        responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
         ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
         ragEnabled, ambientSoundEnabled, ambientSoundVolume,
         keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
@@ -883,6 +966,8 @@ export default function PipecatAgentConfig({
               onToolConfigsChange={setToolConfigs}
               customTools={customTools}
               onCustomToolsChange={setCustomTools}
+              smartTurnEnabled={smartTurnEnabled}
+              onSmartTurnEnabledChange={setSmartTurnEnabled}
               smartTurnStopSecs={smartTurnStopSecs}
               smartTurnPreSpeechMs={smartTurnPreSpeechMs}
               smartTurnMaxDurSecs={smartTurnMaxDurSecs}
@@ -890,6 +975,26 @@ export default function PipecatAgentConfig({
               turnStopTimeout={turnStopTimeout}
               userIdleTimeout={userIdleTimeout}
               onTurnChange={handleTurnChange}
+              allowInterruptions={allowInterruptions}
+              onAllowInterruptionsChange={setAllowInterruptions}
+              minInterruptionDurationMs={minInterruptionDurationMs}
+              onMinInterruptionDurationMsChange={setMinInterruptionDurationMs}
+              noiseCancellation={noiseCancellation}
+              onNoiseCancellationChange={setNoiseCancellation}
+              enableMetrics={enableMetrics}
+              onEnableMetricsChange={setEnableMetrics}
+              answerDelaySecs={answerDelaySecs}
+              onAnswerDelaySecsChange={setAnswerDelaySecs}
+              maxCallDurationSecs={maxCallDurationSecs}
+              onMaxCallDurationSecsChange={setMaxCallDurationSecs}
+              responseRules={responseRules}
+              onResponseRulesChange={setResponseRules}
+              callClosureRules={callClosureRules}
+              onCallClosureRulesChange={setCallClosureRules}
+              transferGatingRules={transferGatingRules}
+              onTransferGatingRulesChange={setTransferGatingRules}
+              dynamicContextTemplate={dynamicContextTemplate}
+              onDynamicContextTemplateChange={setDynamicContextTemplate}
               ragEnabled={ragEnabled}
               onRagEnabledChange={setRagEnabled}
               ragNResults={ragNResults}
