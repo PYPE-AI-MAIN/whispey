@@ -316,6 +316,48 @@ export default function PipecatAdvancedSettings({
           />
         </Section>
 
+        {/* Call Behavior (noise cancellation, metrics, interruptions, delays, max duration) */}
+        <Section
+          icon={<PhoneCallIcon className="w-3.5 h-3.5" />}
+          label="Call Behavior"
+          open={openSections.callBehavior}
+          onToggle={() => toggle('callBehavior')}
+        >
+          <CallBehaviorSettings
+            noiseCancellation={noiseCancellation}
+            onNoiseCancellationChange={onNoiseCancellationChange}
+            enableMetrics={enableMetrics}
+            onEnableMetricsChange={onEnableMetricsChange}
+            allowInterruptions={allowInterruptions}
+            onAllowInterruptionsChange={onAllowInterruptionsChange}
+            minInterruptionDurationMs={minInterruptionDurationMs}
+            onMinInterruptionDurationMsChange={onMinInterruptionDurationMsChange}
+            answerDelaySecs={answerDelaySecs}
+            onAnswerDelaySecsChange={onAnswerDelaySecsChange}
+            maxCallDurationSecs={maxCallDurationSecs}
+            onMaxCallDurationSecsChange={onMaxCallDurationSecsChange}
+          />
+        </Section>
+
+        {/* Prompt Rules (per-agent overrides of injected RESPONSE / TRANSFER / CLOSURE blocks) */}
+        <Section
+          icon={<MessageSquareIcon className="w-3.5 h-3.5" />}
+          label="Prompt Rule Overrides"
+          open={openSections.promptRules}
+          onToggle={() => toggle('promptRules')}
+        >
+          <PromptRulesSettings
+            responseRules={responseRules}
+            onResponseRulesChange={onResponseRulesChange}
+            callClosureRules={callClosureRules}
+            onCallClosureRulesChange={onCallClosureRulesChange}
+            transferGatingRules={transferGatingRules}
+            onTransferGatingRulesChange={onTransferGatingRulesChange}
+            dynamicContextTemplate={dynamicContextTemplate}
+            onDynamicContextTemplateChange={onDynamicContextTemplateChange}
+          />
+        </Section>
+
         <Section
           icon={<WrenchIcon className="w-3.5 h-3.5" />}
           label="Tools & Actions"
