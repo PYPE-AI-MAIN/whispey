@@ -62,6 +62,7 @@ interface PipecatAgent {
   smart_turn_max_dur_secs: number
   turn_stop_timeout: number
   user_idle_timeout: number | null
+  idle_nudges: string[] | null
   allow_interruptions: boolean
   min_interruption_duration_ms: number
   noise_cancellation: string
