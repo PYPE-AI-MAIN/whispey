@@ -68,7 +68,9 @@ interface PipecatAdvancedSettingsProps {
   // Turn Management
   turnStopTimeout: number
   userIdleTimeout: number | null
+  idleNudges: string[]
   onTurnChange: (field: string, value: number | null) => void
+  onIdleNudgesChange: (v: string[]) => void
   // Call behavior
   allowInterruptions: boolean
   onAllowInterruptionsChange: (v: boolean) => void
@@ -152,7 +154,7 @@ export default function PipecatAdvancedSettings({
   customTools, onCustomToolsChange,
   smartTurnEnabled, onSmartTurnEnabledChange,
   smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs, onSmartTurnChange,
-  turnStopTimeout, userIdleTimeout, onTurnChange,
+  turnStopTimeout, userIdleTimeout, idleNudges, onTurnChange, onIdleNudgesChange,
   allowInterruptions, onAllowInterruptionsChange,
   minInterruptionDurationMs, onMinInterruptionDurationMsChange,
   noiseCancellation, onNoiseCancellationChange,
@@ -221,7 +223,13 @@ export default function PipecatAdvancedSettings({
 
         {/* Turn Management */}
         <Section icon={<TimerIcon className="w-3.5 h-3.5" />} label="Turn Management" open={openSections.turn} onToggle={() => toggle('turn')}>
-          <TurnManagementSettings turnStopTimeout={turnStopTimeout} userIdleTimeout={userIdleTimeout} onTurnChange={onTurnChange} />
+          <TurnManagementSettings
+            turnStopTimeout={turnStopTimeout}
+            userIdleTimeout={userIdleTimeout}
+            idleNudges={idleNudges}
+            onTurnChange={onTurnChange}
+            onIdleNudgesChange={onIdleNudgesChange}
+          />
         </Section>
 
         {/* Call Behavior (noise cancellation, metrics, interruptions, delays, max duration) */}
