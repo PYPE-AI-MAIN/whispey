@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon, PhoneOff, Zap, Copy, Check } from 'lucide-react'
+import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon, PhoneOff, Zap, Copy, Check, PhoneCall } from 'lucide-react'
 import InterruptionSettings from './ConfigParents/InterruptionSettings'
 import VoiceActivitySettings from './ConfigParents/VoiceActivitySettings'
 import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
@@ -14,6 +14,7 @@ import { Volume2, Webhook, ArrowRightLeft, BookOpen } from 'lucide-react'
 import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 import WebhookSettings from './ConfigParents/WebhookSettings'
 import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
+import CallbackSettings from '@/components/projects/CallbackSettings'
 import DynamicTTSSwitch from '../DynamicTTSSwitch'
 import KnowledgeBaseRAGSettings from './ConfigParents/KnowledgeBaseRAGSettings'
 import ContextMemorySettings from './ConfigParents/ContextMemorySettings'
@@ -128,6 +129,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
     backgroundAudio: false,
     webhook: false,
     dropoff: false,
+    callbackScheduling: false,
     ttsSwitcher: false,
     knowledgeBase: false,
     contextMemory: false
@@ -431,6 +433,27 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               agentId={agentId || ''}
               projectId={projectId}
             />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Callback Scheduling */}
+        <Collapsible open={openSections.callbackScheduling} onOpenChange={() => toggleSection('callbackScheduling')}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <PhoneCall className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Callback Scheduling</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.callbackScheduling ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            {projectId ? (
+              <CallbackSettings projectId={projectId} />
+            ) : (
+              <p className="text-xs text-gray-400">Project ID not available</p>
+            )}
           </CollapsibleContent>
         </Collapsible>
 

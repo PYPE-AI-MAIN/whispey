@@ -1025,6 +1025,7 @@ export default function PipecatAgentConfig({
               onKeyboardSoundOnToolCallsChange={setKeyboardSoundOnToolCalls}
               projectId={projectId}
               agentId={agentId}
+              pipecatAgentId={pipecatAgentId}
             />
           </div>
 
