@@ -18,6 +18,7 @@ import KeyboardSoundSettings from './ConfigParents/KeyboardSoundSettings'
 import CallBehaviorSettings from './ConfigParents/CallBehaviorSettings'
 import PromptRulesSettings from './ConfigParents/PromptRulesSettings'
 import WebhookSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings/ConfigParents/WebhookSettings'
+import CallbackSettings from '@/components/projects/CallbackSettings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -118,6 +119,7 @@ interface PipecatAdvancedSettingsProps {
   onKeyboardSoundOnToolCallsChange: (v: boolean) => void
   projectId?: string
   agentId?: string
+  pipecatAgentId?: string
 }
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
@@ -172,7 +174,7 @@ export default function PipecatAdvancedSettings({
   ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
   keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
   onKeyboardSoundEnabledChange, onKeyboardSoundVolumeChange, onKeyboardSoundProbabilityChange, onKeyboardSoundOnToolCallsChange,
-  projectId, agentId,
+  projectId, agentId, pipecatAgentId,
 }: PipecatAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     vad: false,
@@ -184,6 +186,7 @@ export default function PipecatAdvancedSettings({
     rag: false,
     ambient: false,
     webhook: false,
+    callbackScheduling: false,
   })
 
   const toggle = (s: string) => setOpenSections(prev => ({ ...prev, [s]: !prev[s] }))
@@ -229,90 +232,6 @@ export default function PipecatAdvancedSettings({
             idleNudges={idleNudges}
             onTurnChange={onTurnChange}
             onIdleNudgesChange={onIdleNudgesChange}
-          />
-        </Section>
-
-        {/* Call Behavior (noise cancellation, metrics, interruptions, delays, max duration) */}
-        <Section
-          icon={<PhoneCallIcon className="w-3.5 h-3.5" />}
-          label="Call Behavior"
-          open={openSections.callBehavior}
-          onToggle={() => toggle('callBehavior')}
-        >
-          <CallBehaviorSettings
-            noiseCancellation={noiseCancellation}
-            onNoiseCancellationChange={onNoiseCancellationChange}
-            enableMetrics={enableMetrics}
-            onEnableMetricsChange={onEnableMetricsChange}
-            allowInterruptions={allowInterruptions}
-            onAllowInterruptionsChange={onAllowInterruptionsChange}
-            minInterruptionDurationMs={minInterruptionDurationMs}
-            onMinInterruptionDurationMsChange={onMinInterruptionDurationMsChange}
-            answerDelaySecs={answerDelaySecs}
-            onAnswerDelaySecsChange={onAnswerDelaySecsChange}
-            maxCallDurationSecs={maxCallDurationSecs}
-            onMaxCallDurationSecsChange={onMaxCallDurationSecsChange}
-          />
-        </Section>
-
-        {/* Prompt Rules (per-agent overrides of injected RESPONSE / TRANSFER / CLOSURE blocks) */}
-        <Section
-          icon={<MessageSquareIcon className="w-3.5 h-3.5" />}
-          label="Prompt Rule Overrides"
-          open={openSections.promptRules}
-          onToggle={() => toggle('promptRules')}
-        >
-          <PromptRulesSettings
-            responseRules={responseRules}
-            onResponseRulesChange={onResponseRulesChange}
-            callClosureRules={callClosureRules}
-            onCallClosureRulesChange={onCallClosureRulesChange}
-            transferGatingRules={transferGatingRules}
-            onTransferGatingRulesChange={onTransferGatingRulesChange}
-            dynamicContextTemplate={dynamicContextTemplate}
-            onDynamicContextTemplateChange={onDynamicContextTemplateChange}
-          />
-        </Section>
-
-        {/* Call Behavior (noise cancellation, metrics, interruptions, delays, max duration) */}
-        <Section
-          icon={<PhoneCallIcon className="w-3.5 h-3.5" />}
-          label="Call Behavior"
-          open={openSections.callBehavior}
-          onToggle={() => toggle('callBehavior')}
-        >
-          <CallBehaviorSettings
-            noiseCancellation={noiseCancellation}
-            onNoiseCancellationChange={onNoiseCancellationChange}
-            enableMetrics={enableMetrics}
-            onEnableMetricsChange={onEnableMetricsChange}
-            allowInterruptions={allowInterruptions}
-            onAllowInterruptionsChange={onAllowInterruptionsChange}
-            minInterruptionDurationMs={minInterruptionDurationMs}
-            onMinInterruptionDurationMsChange={onMinInterruptionDurationMsChange}
-            answerDelaySecs={answerDelaySecs}
-            onAnswerDelaySecsChange={onAnswerDelaySecsChange}
-            maxCallDurationSecs={maxCallDurationSecs}
-            onMaxCallDurationSecsChange={onMaxCallDurationSecsChange}
-          />
-        </Section>
-
-        {/* Prompt Rules (per-agent overrides of injected RESPONSE / TRANSFER / CLOSURE blocks) */}
-        <Section
-          icon={<MessageSquareIcon className="w-3.5 h-3.5" />}
-          label="Prompt Rule Overrides"
-          open={openSections.promptRules}
-          onToggle={() => toggle('promptRules')}
-        >
-          <PromptRulesSettings
-            responseRules={responseRules}
-            onResponseRulesChange={onResponseRulesChange}
-            callClosureRules={callClosureRules}
-            onCallClosureRulesChange={onCallClosureRulesChange}
-            transferGatingRules={transferGatingRules}
-            onTransferGatingRulesChange={onTransferGatingRulesChange}
-            dynamicContextTemplate={dynamicContextTemplate}
-            onDynamicContextTemplateChange={onDynamicContextTemplateChange}
           />
         </Section>
 
@@ -408,6 +327,19 @@ export default function PipecatAdvancedSettings({
         {/* Webhook */}
         <Section icon={<Webhook className="w-3.5 h-3.5" />} label="Webhook Configuration" open={openSections.webhook} onToggle={() => toggle('webhook')}>
           <WebhookSettings triggerOnCallLog={false} webhookUrl="" httpMethod="POST" headers={{}} isActive={false} onFieldChange={() => {}} agentId={agentId} projectId={projectId} />
+        </Section>
+
+        {/* Callback Scheduling */}
+        <Section icon={<PhoneCallIcon className="w-3.5 h-3.5" />} label="Callback Scheduling" open={openSections.callbackScheduling} onToggle={() => toggle('callbackScheduling')}>
+          {projectId ? (
+            <CallbackSettings
+              projectId={projectId}
+              agentRuntime="pipecat"
+              pipecatAgentId={pipecatAgentId}
+            />
+          ) : (
+            <p className="text-xs text-gray-400">Project ID not available</p>
+          )}
         </Section>
 
       </div>

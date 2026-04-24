@@ -4,6 +4,7 @@
 import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import OrganizationSettings from "@/components/projects/OrganizationSettings"
+import CallbackSettings from "@/components/projects/CallbackSettings"
 import { Loader2 } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -64,9 +65,20 @@ export default function SettingsPage() {
   }
 
   return (
-    <OrganizationSettings 
-      organizationName={organization.name}
-      organizationId={organization.id}
-    />
+    <div className="space-y-6 p-6 max-w-3xl mx-auto">
+      <OrganizationSettings
+        organizationName={organization.name}
+        organizationId={organization.id}
+      />
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Callback Scheduling</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            When a caller says &quot;call me back in 5 minutes&quot;, automatically schedule the callback.
+          </p>
+        </div>
+        <CallbackSettings projectId={String(projectId)} />
+      </div>
+    </div>
   )
 }
