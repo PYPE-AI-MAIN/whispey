@@ -495,7 +495,11 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
 
         <Button
           onClick={handleSave}
+<<<<<<< HEAD
           disabled={mutation.isPending || !agentId}
+=======
+          disabled={mutation.isPending || !projectId}
+>>>>>>> main
           size="sm"
           className="w-full"
         >
