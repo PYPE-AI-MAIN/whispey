@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id } = await params
     const response = await fetch(
-      `${SCHEDULER_API_URL}/api/v1/projects/${id}/callback-settings`,
+      `${SCHEDULER_API_URL}/api/v1/agents/${id}/callback-settings`,
       { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }
     )
 
@@ -22,7 +22,7 @@ export async function GET(
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
-    console.error('GET callback-settings error:', error)
+    console.error('GET agent callback-settings error:', error)
     return NextResponse.json({ error: 'Failed to fetch callback settings' }, { status: 500 })
   }
 }
@@ -36,7 +36,7 @@ export async function PUT(
     const body = await request.json()
 
     const response = await fetch(
-      `${SCHEDULER_API_URL}/api/v1/projects/${id}/callback-settings`,
+      `${SCHEDULER_API_URL}/api/v1/agents/${id}/callback-settings`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -52,7 +52,7 @@ export async function PUT(
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
-    console.error('PUT callback-settings error:', error)
+    console.error('PUT agent callback-settings error:', error)
     return NextResponse.json({ error: 'Failed to update callback settings' }, { status: 500 })
   }
 }

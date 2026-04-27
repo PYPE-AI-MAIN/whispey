@@ -331,14 +331,15 @@ export default function PipecatAdvancedSettings({
 
         {/* Callback Scheduling */}
         <Section icon={<PhoneCallIcon className="w-3.5 h-3.5" />} label="Callback Scheduling" open={openSections.callbackScheduling} onToggle={() => toggle('callbackScheduling')}>
-          {projectId ? (
+          {agentId && projectId ? (
             <CallbackSettings
+              agentId={agentId}
               projectId={projectId}
               agentRuntime="pipecat"
               pipecatAgentId={pipecatAgentId}
             />
           ) : (
-            <p className="text-xs text-gray-400">Project ID not available</p>
+            <p className="text-xs text-gray-400">Agent / project not available</p>
           )}
         </Section>
 
