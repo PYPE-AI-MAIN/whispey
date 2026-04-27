@@ -316,7 +316,9 @@ export function useMultiAssistantState({
                 ...baseToolConfig,
                 ...commonFields,
                 transfer_number: tool.config?.transferNumber || '',
-                sip_outbound_trunk: tool.config?.sipTrunkId || ''
+                sip_outbound_trunk: tool.config?.sipTrunkId || '',
+                pre_transfer_webhook_url: tool.config?.preTransferWebhookUrl || null,
+                pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null
               }
             }
 
