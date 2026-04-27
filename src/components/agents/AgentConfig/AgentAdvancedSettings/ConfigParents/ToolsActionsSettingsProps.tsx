@@ -9,8 +9,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail } from 'lucide-react'
+
+// ── Pre-transfer webhook field options ────────────────────────────────────────
+const WEBHOOK_FIELD_OPTIONS = [
+  { key: 'transcript', label: 'Full transcript' },
+  { key: 'conversation_summary', label: 'Conversation summary (AI narrative)' },
+  { key: 'context_memory', label: 'Context memory (bullet facts)' },
+  { key: 'variables', label: 'Agent variables' },
+  { key: 'customer_number', label: 'Customer phone number' },
+  { key: 'caller_info', label: 'Caller info' },
+  { key: 'metadata', label: 'Call metadata' },
+  { key: 'duration_seconds', label: 'Call duration' },
+  { key: 'handoffs', label: 'Handoff count' },
+  { key: 'errors', label: 'Errors' },
+]
+const ALL_WEBHOOK_FIELDS = WEBHOOK_FIELD_OPTIONS.map(f => f.key)
 
 // ── Filler config ─────────────────────────────────────────────────────────────
 interface FillerConfig {
@@ -59,6 +75,8 @@ interface Tool {
     handoffMessage?: string
     transferNumber?: string
     sipTrunkId?: string
+    preTransferWebhookUrl?: string
+    preTransferWebhookFields?: string[]
     timeout?: number
     asyncExecution?: boolean
     parameters?: ToolParameter[]
@@ -108,6 +126,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     selectedPhoneId: '',
     transferNumber: '',
     sipTrunkId: '',
+    preTransferWebhookUrl: '',
+    preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
     timeout: 10,
     asyncExecution: false,
     parameters: [] as ToolParameter[],
@@ -176,6 +196,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -206,6 +228,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -236,6 +260,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -266,6 +292,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -296,6 +324,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -326,6 +356,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -356,6 +388,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -386,6 +420,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        preTransferWebhookUrl: '',
+        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -433,6 +469,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       selectedPhoneId: selectedPhoneId,
       transferNumber: tool.config.transferNumber || '',
       sipTrunkId: tool.config.sipTrunkId || '',
+      preTransferWebhookUrl: tool.config.preTransferWebhookUrl || '',
+      preTransferWebhookFields: tool.config.preTransferWebhookFields || ALL_WEBHOOK_FIELDS,
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
       parameters: tool.config.parameters || [],
@@ -480,6 +518,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         handoffMessage: formData.handoffMessage,
         transferNumber: formData.transferNumber,
         sipTrunkId: formData.sipTrunkId,
+        preTransferWebhookUrl: formData.preTransferWebhookUrl,
+        preTransferWebhookFields: formData.preTransferWebhookFields,
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
         parameters: formData.parameters,
@@ -846,6 +886,45 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                     </p>
                   )}
                 </div>
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Pre-Transfer Webhook URL <span className="text-gray-400">(optional)</span></Label>
+                  <Input
+                    value={formData.preTransferWebhookUrl}
+                    onChange={(e) => setFormData(prev => ({ ...prev, preTransferWebhookUrl: e.target.value }))}
+                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="https://your-api.com/webhook"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Called automatically before the transfer is dialed. Receives session ID, transcript, and transfer number.
+                  </p>
+                </div>
+                {formData.preTransferWebhookUrl && (
+                  <div>
+                    <Label className="text-xs text-gray-700 dark:text-gray-300">Fields to include in webhook payload</Label>
+                    <div className="mt-2 grid grid-cols-2 gap-y-2 gap-x-3">
+                      {WEBHOOK_FIELD_OPTIONS.map(({ key, label }) => {
+                        const checked = formData.preTransferWebhookFields.includes(key)
+                        return (
+                          <div key={key} className="flex items-center gap-1.5">
+                            <Checkbox
+                              id={`wf-${key}`}
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  preTransferWebhookFields: v
+                                    ? [...prev.preTransferWebhookFields, key]
+                                    : prev.preTransferWebhookFields.filter(f => f !== key)
+                                }))
+                              }}
+                            />
+                            <label htmlFor={`wf-${key}`} className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">{label}</label>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
