@@ -73,24 +73,27 @@ type UnifiedPhoneNumber = {
 }
 
 interface CallbackSettingsProps {
+  /** Agent these settings belong to. Required — settings are per-agent. */
+  agentId: string
+  /** Project the agent belongs to. Used only to filter the outbound phone numbers. */
   projectId: string
   /** When provided, surfaces Pipecat/Acefone numbers attached to this agent. */
   agentRuntime?: 'livekit' | 'pipecat'
   pipecatAgentId?: string
 }
 
-export default function CallbackSettings({ projectId, agentRuntime, pipecatAgentId }: CallbackSettingsProps) {
+export default function CallbackSettings({ agentId, projectId, agentRuntime, pipecatAgentId }: CallbackSettingsProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<CallbackSettingsData>(DEFAULT_SETTINGS)
 
   const { data: settings, isLoading } = useQuery<CallbackSettingsData>({
-    queryKey: ['callback-settings', projectId],
+    queryKey: ['callback-settings', 'agent', agentId],
     queryFn: async () => {
-      const res = await fetch(`/api/projects/${projectId}/callback-settings`)
+      const res = await fetch(`/api/agents/${agentId}/callback-settings`)
       if (!res.ok) return DEFAULT_SETTINGS
       return res.json()
     },
-    enabled: !!projectId,
+    enabled: !!agentId,
   })
 
   // LiveKit / Plivo SIP trunks (from Supabase)
@@ -147,7 +150,7 @@ export default function CallbackSettings({ projectId, agentRuntime, pipecatAgent
 
   const mutation = useMutation({
     mutationFn: async (data: CallbackSettingsData) => {
-      const res = await fetch(`/api/projects/${projectId}/callback-settings`, {
+      const res = await fetch(`/api/agents/${agentId}/callback-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -159,7 +162,7 @@ export default function CallbackSettings({ projectId, agentRuntime, pipecatAgent
       return res.json()
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['callback-settings', projectId], data)
+      queryClient.setQueryData(['callback-settings', 'agent', agentId], data)
       toast.success('Callback settings saved')
     },
     onError: (err: Error) => {
@@ -492,7 +495,7 @@ export default function CallbackSettings({ projectId, agentRuntime, pipecatAgent
 
         <Button
           onClick={handleSave}
-          disabled={mutation.isPending || !projectId}
+          disabled={mutation.isPending || !agentId}
           size="sm"
           className="w-full"
         >
