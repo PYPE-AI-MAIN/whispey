@@ -4,6 +4,7 @@
 import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import OrganizationSettings from "@/components/projects/OrganizationSettings"
+import CallbackSettings from "@/components/projects/CallbackSettings"
 import { Loader2 } from 'lucide-react'
 
 export default function SettingsPage() {
