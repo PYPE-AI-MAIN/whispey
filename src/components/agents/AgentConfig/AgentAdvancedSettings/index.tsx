@@ -449,10 +449,10 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
-            {projectId ? (
-              <CallbackSettings projectId={projectId} />
+            {agentId && projectId ? (
+              <CallbackSettings agentId={agentId} projectId={projectId} />
             ) : (
-              <p className="text-xs text-gray-400">Project ID not available</p>
+              <p className="text-xs text-gray-400">Agent / project not available</p>
             )}
           </CollapsibleContent>
         </Collapsible>
