@@ -147,8 +147,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
       const localAgent = await agentResponse.json()
 
-      // LiveKit and Pipecat agents need the PypeAI backend call
-      if (isPypeAgent) {
+      // LiveKit agents need the PypeAI backend call; skip for pipecat (handled by /api/agents)
+      if (isPypeAgent && selectedPlatform !== 'pipecat') {
         const projectApiKey = await fetchProjectApiKey()
 
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
