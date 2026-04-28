@@ -82,6 +82,20 @@ const EMPTY_TOOL: CustomTool = {
   filler_config: { ...DEFAULT_FILLER_CONFIG },
 }
 
+const WEBHOOK_FIELD_OPTIONS = [
+  { key: 'customer_number', label: 'Customer phone number' },
+  { key: 'metadata', label: 'Call metadata' },
+  { key: 'duration_seconds', label: 'Call duration' },
+  { key: 'caller_info', label: 'Caller info' },
+  { key: 'transcript', label: 'Transcript' },
+  { key: 'conversation_summary', label: 'Conversation summary' },
+  { key: 'context_memory', label: 'Context memory' },
+  { key: 'variables', label: 'Agent variables' },
+  { key: 'handoffs', label: 'Handoff count' },
+  { key: 'errors', label: 'Errors' },
+]
+const ALL_WEBHOOK_FIELDS = WEBHOOK_FIELD_OPTIONS.map(f => f.key)
+
 const TOOL_ICONS: Record<string, React.ReactNode> = {
   end_call: <PhoneOffIcon className="w-3 h-3 text-gray-400" />,
   transfer_call: <PhoneForwardedIcon className="w-3 h-3 text-gray-400" />,
@@ -377,6 +391,52 @@ export default function ToolsActionsSettings({
                       Per-agent Acefone API token. Overrides the server-level <span className="font-mono">ACEFONE_TOKEN</span> env var.
                     </p>
                   </div>
+                  {/* Pre-transfer webhook */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">
+                      Pre-Transfer Webhook URL <span className="text-gray-400 font-normal">(optional)</span>
+                    </Label>
+                    <Input
+                      value={(toolConfigs['transfer_call'] as any)?.pre_transfer_webhook_url ?? ''}
+                      onChange={e => updateToolConfig('transfer_call', {
+                        ...(toolConfigs['transfer_call'] ?? {}),
+                        pre_transfer_webhook_url: e.target.value,
+                      })}
+                      placeholder="https://your-api.com/webhook"
+                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                    />
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Called before the transfer is dialed. Receives call ID, customer number, metadata, and more.
+                    </p>
+                  </div>
+                  {(toolConfigs['transfer_call'] as any)?.pre_transfer_webhook_url && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600 dark:text-gray-400">Fields to include in webhook payload</Label>
+                      <div className="grid grid-cols-2 gap-y-1.5 gap-x-3 mt-1">
+                        {WEBHOOK_FIELD_OPTIONS.map(({ key, label }) => {
+                          const fields: string[] = (toolConfigs['transfer_call'] as any)?.pre_transfer_webhook_fields ?? ALL_WEBHOOK_FIELDS
+                          const checked = fields.includes(key)
+                          return (
+                            <div key={key} className="flex items-center gap-1.5">
+                              <Checkbox
+                                id={`ptw-${key}`}
+                                checked={checked}
+                                onCheckedChange={v => {
+                                  const next = v ? [...fields, key] : fields.filter(f => f !== key)
+                                  updateToolConfig('transfer_call', {
+                                    ...(toolConfigs['transfer_call'] ?? {}),
+                                    pre_transfer_webhook_fields: next,
+                                  })
+                                }}
+                                className="h-3 w-3"
+                              />
+                              <label htmlFor={`ptw-${key}`} className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">{label}</label>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
