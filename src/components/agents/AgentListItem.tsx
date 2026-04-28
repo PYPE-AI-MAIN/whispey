@@ -98,9 +98,22 @@ const getEnvironmentBadgeColor = (environment: string) => {
   }
 }
 
+// Pipecat agents are stateless — dispatched per call by the FastAPI server,
+// not long-running processes. The "running/stopped" status is meaningless for
+// them, so we suppress it everywhere. In this codebase ``pype_agent`` IS the
+// Pipecat agent type (the names diverged historically); ``pipecat_agent`` and
+// the legacy ``pipecat`` value are also Pipecat. Treating all three the same
+// makes the badge disappear regardless of which row was created when.
+const isPipecatAgent = (agent: Agent): boolean => {
+  const t = (agent.agent_type || '').toLowerCase()
+  if (t === 'pype_agent' || t === 'pipecat_agent' || t === 'pipecat') return true
+  return !!(agent.configuration as any)?.pipecat_agent_id
+}
+
 // Helper function to get agent running status
 const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isLoading?: boolean) => {
-  if (agent.agent_type !== 'pype_agent') {
+  // Pipecat (a.k.a. pype_agent) is stateless — never show running/stopped.
+  if (isPipecatAgent(agent) || agent.agent_type !== 'pype_agent') {
     return null
   }
   
@@ -412,7 +425,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
             
             <div className="flex items-center gap-2">
               {/* Quick actions for Pype agents */}
-              {agent.agent_type === 'pype_agent' && (
+              {agent.agent_type === 'pype_agent' && !isPipecatAgent(agent) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -583,7 +596,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
-                    {agent.agent_type === 'pype_agent' && (
+                    {agent.agent_type === 'pype_agent' && !isPipecatAgent(agent) && (
                       <>
                         <DropdownMenuItem 
                           onClick={handleStartStop}
@@ -710,7 +723,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-36">
-                {agent.agent_type === 'pype_agent' && (
+                {agent.agent_type === 'pype_agent' && !isPipecatAgent(agent) && (
                   <>
                     <DropdownMenuItem 
                       onClick={handleStartStop}

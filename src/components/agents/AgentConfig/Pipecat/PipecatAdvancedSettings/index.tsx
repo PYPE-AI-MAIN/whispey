@@ -85,6 +85,8 @@ interface PipecatAdvancedSettingsProps {
   onAnswerDelaySecsChange: (v: number | null) => void
   maxCallDurationSecs: number | null
   onMaxCallDurationSecsChange: (v: number | null) => void
+  dtmfEnabled: boolean
+  onDtmfEnabledChange: (v: boolean) => void
   // Prompt rule blocks (per-agent overrides)
   responseRules: string
   onResponseRulesChange: (v: string) => void
@@ -163,6 +165,7 @@ export default function PipecatAdvancedSettings({
   enableMetrics, onEnableMetricsChange,
   answerDelaySecs, onAnswerDelaySecsChange,
   maxCallDurationSecs, onMaxCallDurationSecsChange,
+  dtmfEnabled, onDtmfEnabledChange,
   responseRules, onResponseRulesChange,
   callClosureRules, onCallClosureRulesChange,
   transferGatingRules, onTransferGatingRulesChange,
@@ -255,6 +258,8 @@ export default function PipecatAdvancedSettings({
             onAnswerDelaySecsChange={onAnswerDelaySecsChange}
             maxCallDurationSecs={maxCallDurationSecs}
             onMaxCallDurationSecsChange={onMaxCallDurationSecsChange}
+            dtmfEnabled={dtmfEnabled}
+            onDtmfEnabledChange={onDtmfEnabledChange}
           />
         </Section>
 

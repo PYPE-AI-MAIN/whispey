@@ -69,6 +69,7 @@ interface PipecatAgent {
   enable_metrics: boolean
   answer_delay_secs: number | null
   max_call_duration_secs: number | null
+  dtmf_enabled: boolean | null
   response_rules: string | null
   call_closure_rules: string | null
   transfer_gating_rules: string | null
@@ -153,6 +154,7 @@ interface SnapshotValues {
   enableMetrics: boolean
   answerDelaySecs: number | null
   maxCallDurationSecs: number | null
+  dtmfEnabled: boolean
   responseRules: string
   callClosureRules: string
   transferGatingRules: string
@@ -292,6 +294,7 @@ export default function PipecatAgentConfig({
   // Interruption behavior
   const [allowInterruptions, setAllowInterruptions] = useState(true)
   const [minInterruptionDurationMs, setMinInterruptionDurationMs] = useState(500)
+  const [dtmfEnabled, setDtmfEnabled] = useState(false)
 
   // Audio processing
   const [noiseCancellation, setNoiseCancellation] = useState<string>('rnnoise')
@@ -368,7 +371,7 @@ export default function PipecatAgentConfig({
     turnStopTimeout, userIdleTimeout, idleNudges,
     allowInterruptions, minInterruptionDurationMs,
     noiseCancellation, enableMetrics,
-    answerDelaySecs, maxCallDurationSecs,
+    answerDelaySecs, maxCallDurationSecs, dtmfEnabled,
     responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
     ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
     ragEnabled, ambientSoundEnabled, ambientSoundVolume,
@@ -424,6 +427,7 @@ export default function PipecatAgentConfig({
 
     setAllowInterruptions(a.allow_interruptions ?? true)
     setMinInterruptionDurationMs(a.min_interruption_duration_ms ?? 500)
+    setDtmfEnabled(a.dtmf_enabled ?? false)
     setNoiseCancellation(a.noise_cancellation || 'rnnoise')
     setEnableMetrics(a.enable_metrics ?? true)
     setAnswerDelaySecs(a.answer_delay_secs ?? null)
@@ -482,6 +486,7 @@ export default function PipecatAgentConfig({
       enableMetrics: a.enable_metrics ?? true,
       answerDelaySecs: a.answer_delay_secs ?? null,
       maxCallDurationSecs: a.max_call_duration_secs ?? null,
+      dtmfEnabled: a.dtmf_enabled ?? false,
       responseRules: a.response_rules || '',
       callClosureRules: a.call_closure_rules || '',
       transferGatingRules: a.transfer_gating_rules || '',
@@ -563,6 +568,7 @@ export default function PipecatAgentConfig({
         idle_nudges: idleNudges,
         allow_interruptions: allowInterruptions,
         min_interruption_duration_ms: minInterruptionDurationMs,
+        dtmf_enabled: dtmfEnabled,
         noise_cancellation: noiseCancellation,
         enable_metrics: enableMetrics,
         answer_delay_secs: answerDelaySecs,
@@ -609,7 +615,7 @@ export default function PipecatAgentConfig({
         turnStopTimeout, userIdleTimeout, idleNudges,
         allowInterruptions, minInterruptionDurationMs,
         noiseCancellation, enableMetrics,
-        answerDelaySecs, maxCallDurationSecs,
+        answerDelaySecs, maxCallDurationSecs, dtmfEnabled,
         responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
         ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
         ragEnabled, ambientSoundEnabled, ambientSoundVolume,
@@ -995,6 +1001,8 @@ export default function PipecatAgentConfig({
               onAnswerDelaySecsChange={setAnswerDelaySecs}
               maxCallDurationSecs={maxCallDurationSecs}
               onMaxCallDurationSecsChange={setMaxCallDurationSecs}
+              dtmfEnabled={dtmfEnabled}
+              onDtmfEnabledChange={setDtmfEnabled}
               responseRules={responseRules}
               onResponseRulesChange={setResponseRules}
               callClosureRules={callClosureRules}
