@@ -21,6 +21,8 @@ interface CallBehaviorSettingsProps {
   onAnswerDelaySecsChange: (v: number | null) => void
   maxCallDurationSecs: number | null
   onMaxCallDurationSecsChange: (v: number | null) => void
+  dtmfEnabled?: boolean
+  onDtmfEnabledChange?: (v: boolean) => void
 }
 
 function NullableNumberField({
@@ -134,6 +136,7 @@ export default function CallBehaviorSettings({
   minInterruptionDurationMs, onMinInterruptionDurationMsChange,
   answerDelaySecs, onAnswerDelaySecsChange,
   maxCallDurationSecs, onMaxCallDurationSecsChange,
+  dtmfEnabled = false, onDtmfEnabledChange,
 }: CallBehaviorSettingsProps) {
   return (
     <TooltipProvider>
@@ -197,11 +200,27 @@ export default function CallBehaviorSettings({
             step={50}
             min={0}
             max={3000}
-            hint="Stored for future use — callers must speak this long before bot TTS is cut off."
-            tooltip="Guards against tiny noise bursts causing false interruptions."
+            hint="Caller must keep speaking this long before bot TTS is cut off. 0 = interrupt immediately."
+            tooltip="Guards against coughs, sneezes, and tiny noise bursts triggering false interruptions."
             onCommit={onMinInterruptionDurationMsChange}
           />
         )}
+
+        {/* DTMF (keypad) input */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Accept Keypad Input (DTMF)</Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              When on, digits the caller presses (0-9, *, #) are forwarded to the agent
+              as &quot;[The caller pressed 123 on the keypad.]&quot;. Useful for IVR menus or OTP capture.
+            </p>
+          </div>
+          <Switch
+            checked={dtmfEnabled}
+            onCheckedChange={(v) => onDtmfEnabledChange?.(v)}
+            disabled={!onDtmfEnabledChange}
+          />
+        </div>
 
         {/* Answer delay */}
         <NullableNumberField
