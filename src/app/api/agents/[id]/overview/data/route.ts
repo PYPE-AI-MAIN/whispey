@@ -36,11 +36,6 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { error: refreshError } = await supabase.rpc('refresh_call_summary')
-  if (refreshError) {
-    return NextResponse.json({ error: refreshError.message }, { status: 500 })
-  }
-
   const { data: dailyStats, error: queryError } = await supabase
     .from('call_summary_materialized')
     .select(
