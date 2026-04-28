@@ -99,14 +99,11 @@ const getEnvironmentBadgeColor = (environment: string) => {
 }
 
 // Pipecat agents are stateless — dispatched per call by the FastAPI server,
-// not long-running processes. The "running/stopped" status is meaningless for
-// them, so we suppress it everywhere. In this codebase ``pype_agent`` IS the
-// Pipecat agent type (the names diverged historically); ``pipecat_agent`` and
-// the legacy ``pipecat`` value are also Pipecat. Treating all three the same
-// makes the badge disappear regardless of which row was created when.
+// not long-running processes. The only reliable signal is the presence of
+// ``configuration.pipecat_agent_id`` on the row (agent_type values have
+// diverged historically and aren't trustworthy). If that field exists, it's
+// a Pipecat agent and the running/stopped UI should be suppressed.
 const isPipecatAgent = (agent: Agent): boolean => {
-  const t = (agent.agent_type || '').toLowerCase()
-  if (t === 'pype_agent' || t === 'pipecat_agent' || t === 'pipecat') return true
   return !!(agent.configuration as any)?.pipecat_agent_id
 }
 
@@ -160,9 +157,11 @@ const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isL
 
 // Helper function to get status indicator
 const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 'sm' | 'md' = 'sm', isLoading?: boolean) => {
+  // Pipecat agents are stateless — no status dot at all.
+  if (isPipecatAgent(agent)) return null
   const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoading)
   const dotSize = size === 'md' ? 'w-3 h-3' : 'w-2 h-2'
-  
+
   if (!runningStatus) {
     return (
       <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-gray-300 dark:bg-gray-600`}></div>
@@ -184,8 +183,10 @@ const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 
 
 // Helper function to get status text
 const getStatusText = (agent: Agent, runningAgents?: RunningAgent[], isLoading?: boolean) => {
+  // Pipecat agents have no running/stopped concept — render nothing.
+  if (isPipecatAgent(agent)) return ''
   const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoading)
-  
+
   if (!runningStatus) {
     return 'Monitoring'
   }
@@ -364,26 +365,28 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               {agent.environment}
             </span>
             
-            <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
-              {agent.agent_type === 'pype_agent' && runningStatus && (
-                <>
-                  {isStartingAgent ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : isStoppingAgent ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : runningStatus.status === 'loading' ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : runningStatus.isRunning ? (
-                    <Play className="w-4 h-4" />
-                  ) : (
-                    <Square className="w-4 h-4" />
-                  )}
-                </>
-              )}
-              <span>
-                {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents, isLoadingRunningAgents)}
-              </span>
-            </div>
+            {!isPipecatAgent(agent) && (
+              <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
+                {agent.agent_type === 'pype_agent' && runningStatus && (
+                  <>
+                    {isStartingAgent ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isStoppingAgent ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : runningStatus.status === 'loading' ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : runningStatus.isRunning ? (
+                      <Play className="w-4 h-4" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                  </>
+                )}
+                <span>
+                  {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents, isLoadingRunningAgents)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Agent ID section */}
@@ -553,29 +556,31 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                     </Badge>
                   )}
                 </div>
-                <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
-                  {agent.agent_type === 'pype_agent' && runningStatus && (
-                    <>
-                      {isStartingAgent ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : isStoppingAgent ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : runningStatus.status === 'loading' ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : runningStatus.isRunning ? (
-                        <Play className="w-4 h-4" />
-                      ) : (
-                        <Square className="w-4 h-4" />
-                      )}
-                    </>
-                  )}
-                  {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents, isLoadingRunningAgents)}
-                  {!isStartingAgent && !isStoppingAgent && !isLoadingRunningAgents && runningStatus?.isRunning && runningStatus.pid && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      (PID: {runningStatus.pid})
-                    </span>
-                  )}
-                </div>
+                {!isPipecatAgent(agent) && (
+                  <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
+                    {agent.agent_type === 'pype_agent' && runningStatus && (
+                      <>
+                        {isStartingAgent ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : isStoppingAgent ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : runningStatus.status === 'loading' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : runningStatus.isRunning ? (
+                          <Play className="w-4 h-4" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </>
+                    )}
+                    {isStartingAgent ? 'Starting...' : isStoppingAgent ? 'Stopping...' : getStatusText(agent, runningAgents, isLoadingRunningAgents)}
+                    {!isStartingAgent && !isStoppingAgent && !isLoadingRunningAgents && runningStatus?.isRunning && runningStatus.pid && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        (PID: {runningStatus.pid})
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
@@ -826,20 +831,22 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               <Clock className="w-3.5 h-3.5" />
               <span>{formatDate(agent.created_at, isMobile)}</span>
             </div>
-            <div className={`font-medium flex items-center gap-1.5 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
-              {agent.agent_type === 'pype_agent' && runningStatus && (
-                <>
-                  {runningStatus.status === 'loading' ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : runningStatus.isRunning ? (
-                    <Play className="w-3.5 h-3.5" />
-                  ) : (
-                    <Square className="w-3.5 h-3.5" />
-                  )}
-                </>
-              )}
-              {getStatusText(agent, runningAgents, isLoadingRunningAgents)}
-            </div>
+            {!isPipecatAgent(agent) && (
+              <div className={`font-medium flex items-center gap-1.5 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
+                {agent.agent_type === 'pype_agent' && runningStatus && (
+                  <>
+                    {runningStatus.status === 'loading' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : runningStatus.isRunning ? (
+                      <Play className="w-3.5 h-3.5" />
+                    ) : (
+                      <Square className="w-3.5 h-3.5" />
+                    )}
+                  </>
+                )}
+                {getStatusText(agent, runningAgents, isLoadingRunningAgents)}
+              </div>
+            )}
           </div>
 
           {/* Show PID for running Pype agents */}
