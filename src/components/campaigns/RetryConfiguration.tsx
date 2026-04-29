@@ -530,44 +530,122 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                   </>
                 )}
 
-              {/* Common Fields: Delay and Max Retries - keep original structure */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                    Delay (minutes)
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="1440"
-                    value={config.delayMinutes || 0}
-                    onChange={(e) => handleRetryChange(index, 'delayMinutes', parseInt(e.target.value) || 0)}
-                    className="h-8 text-xs"
-                    placeholder="30"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    0-1440 min
-                  </p>
-                </div>
+              {/* Retry timing — Fixed delay vs Backoff schedule (mutually exclusive) */}
+              {(() => {
+                const isBackoff = Array.isArray(config.backoffMinutes) && config.backoffMinutes.length > 0
+                return (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">
+                      Retry Timing
+                    </Label>
+                    <div className="flex items-center gap-4 text-xs text-gray-700 dark:text-gray-300">
+                      <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`retry-mode-${index}`}
+                          checked={!isBackoff}
+                          onChange={() => {
+                            // switch to fixed mode — clear backoffMinutes
+                            const updated = [...values.retryConfig]
+                            const next = { ...updated[index] } as RetryConfig
+                            delete next.backoffMinutes
+                            // ensure fixed-mode defaults exist
+                            if (typeof next.delayMinutes !== 'number') next.delayMinutes = 5
+                            if (typeof next.maxRetries !== 'number') next.maxRetries = 2
+                            updated[index] = next
+                            onFieldChange('retryConfig', updated)
+                          }}
+                          className="cursor-pointer"
+                        />
+                        Fixed delay
+                      </label>
+                      <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`retry-mode-${index}`}
+                          checked={isBackoff}
+                          onChange={() => {
+                            // switch to backoff mode — seed sensible default
+                            handleRetryChange(index, 'backoffMinutes', [5, 10, 30])
+                          }}
+                          className="cursor-pointer"
+                        />
+                        Backoff schedule
+                      </label>
+                    </div>
 
-                <div>
-                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                    Max Retries
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={config.maxRetries || 0}
-                    onChange={(e) => handleRetryChange(index, 'maxRetries', parseInt(e.target.value) || 0)}
-                    className="h-8 text-xs"
-                    placeholder="2"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    0-10 attempts
-                  </p>
-                </div>
-              </div>
+                    {!isBackoff ? (
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                            Delay (minutes)
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="1440"
+                            value={config.delayMinutes ?? 0}
+                            onChange={(e) => handleRetryChange(index, 'delayMinutes', parseInt(e.target.value) || 0)}
+                            className="h-8 text-xs"
+                            placeholder="30"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            0-1440 min
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                            Max Retries
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="10"
+                            value={config.maxRetries ?? 0}
+                            onChange={(e) => handleRetryChange(index, 'maxRetries', parseInt(e.target.value) || 0)}
+                            className="h-8 text-xs"
+                            placeholder="2"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            0-10 attempts
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="pt-1">
+                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          Backoff schedule (comma-separated minutes)
+                        </Label>
+                        <Input
+                          type="text"
+                          value={(config.backoffMinutes || []).join(', ')}
+                          onChange={(e) => {
+                            // Allow free typing; we only persist values that
+                            // satisfy the backend constraints (min 5 min, max
+                            // 1440 min, up to 10 entries).
+                            const parsed = e.target.value
+                              .split(',')
+                              .map(s => s.trim())
+                              .filter(s => s.length > 0)
+                              .map(s => parseInt(s, 10))
+                              .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
+                            handleRetryChange(index, 'backoffMinutes', parsed.slice(0, 10))
+                          }}
+                          className="h-8 text-xs"
+                          placeholder="5, 10, 30"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Attempt 1 waits {(config.backoffMinutes || [])[0] ?? '?'} min,
+                          attempt 2 waits {(config.backoffMinutes || [])[1] ?? '?'} min, etc.
+                          Total retries = {(config.backoffMinutes || []).length} (max 10).
+                          Minimum 5 minutes per entry.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )
         })}

@@ -84,6 +84,11 @@ export interface RetryConfig {
   // Common fields (required for all types):
   delayMinutes: number  // Minutes to wait before retry (0-1440)
   maxRetries: number   // Maximum retry attempts (0-10)
+  // Optional progressive backoff. When non-empty it OVERRIDES delayMinutes
+  // and maxRetries: attempt N waits backoffMinutes[N-1] minutes; total
+  // attempts = backoffMinutes.length. Each value 5-1440 (minimum 5 min).
+  // Length 1-10. Absent / empty = legacy fixed-delay behavior.
+  backoffMinutes?: number[]
 }
 
 // Campaign types
