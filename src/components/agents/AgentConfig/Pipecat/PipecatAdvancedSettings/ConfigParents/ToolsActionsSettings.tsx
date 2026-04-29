@@ -49,7 +49,7 @@ interface BackendTool {
   name: string
   description: string
   config_schema: Record<string, {
-    type: 'multiselect' | 'select' | 'text' | 'number'
+    type: 'multiselect' | 'select' | 'text' | 'number' | 'json'
     label: string
     hint?: string
     placeholder?: string
@@ -200,6 +200,31 @@ function ToolConfigEditor({
                 max={schema.max}
                 onChange={e => onChange({ ...config, [key]: parseFloat(e.target.value) })}
                 className="h-7 text-xs"
+              />
+              {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
+            </div>
+          )
+        }
+
+        if (schema.type === 'json') {
+          const rawValue = currentValue !== undefined
+            ? (typeof currentValue === 'string' ? currentValue : JSON.stringify(currentValue, null, 2))
+            : (schema.default !== undefined ? JSON.stringify(schema.default, null, 2) : '')
+          return (
+            <div key={key} className="space-y-1">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">{schema.label}</Label>
+              <Textarea
+                value={rawValue}
+                onChange={e => {
+                  try {
+                    onChange({ ...config, [key]: JSON.parse(e.target.value) })
+                  } catch {
+                    onChange({ ...config, [key]: e.target.value })
+                  }
+                }}
+                placeholder={schema.placeholder ?? 'Paste JSON here…'}
+                className="text-xs font-mono min-h-[100px] resize-y"
+                rows={4}
               />
               {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
             </div>
