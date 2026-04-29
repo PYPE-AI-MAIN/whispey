@@ -68,6 +68,19 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
         .required('Max retries is required')
         .min(0, 'Must be at least 0')
         .max(10, 'Cannot exceed 10'),
+      // Optional progressive backoff: when present (non-empty array) it
+      // overrides delayMinutes/maxRetries on the backend. Each entry 5-1440
+      // (minimum 5 min — too-tight retries get the contact rate-limited),
+      // up to 10 entries.
+      backoffMinutes: Yup.array()
+        .of(
+          Yup.number()
+            .min(5, 'Backoff minutes must be at least 5')
+            .max(1440, 'Backoff minutes cannot exceed 1440')
+        )
+        .max(10, 'Backoff schedule cannot have more than 10 entries')
+        .nullable()
+        .optional(),
     }).test('validate-retry-config', 'Invalid retry configuration', function(value) {
       if (!value || !value.type) return true // Let required() handle this
       
@@ -318,10 +331,23 @@ function CreateCampaign() {
         ? new Date(values.scheduleDate).toISOString()
         : new Date().toISOString()
 
-      // Format retryConfig according to backend requirements
+      // Sanitize an optional backoffMinutes array: ints in [5, 1440], up to 10.
+      const sanitizeBackoff = (raw: unknown): number[] | undefined => {
+        if (!Array.isArray(raw) || raw.length === 0) return undefined
+        const cleaned = raw
+          .map(v => Number(v))
+          .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
+          .slice(0, 10)
+        return cleaned.length > 0 ? cleaned : undefined
+      }
+
+      // Format retryConfig according to backend requirements. Each branch
+      // explicitly lists its fields, so backoffMinutes MUST be carried
+      // through here or it gets silently dropped.
       const formattedRetryConfig = values.retryConfig.map(config => {
+        const backoff = sanitizeBackoff((config as any).backoffMinutes)
         if (config.type === 'sipCode' || !config.type) {
-          return {
+          const out: any = {
             type: 'sipCode',
             errorCodes: Array.isArray(config.errorCodes)
               ? config.errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
@@ -329,6 +355,8 @@ function CreateCampaign() {
             delayMinutes: Number(config.delayMinutes),
             maxRetries: Number(config.maxRetries),
           }
+          if (backoff) out.backoffMinutes = backoff
+          return out
         } else if (config.type === 'metric') {
           const metricConfig: any = {
             type: 'metric',
@@ -338,6 +366,7 @@ function CreateCampaign() {
             delayMinutes: Number(config.delayMinutes),
             maxRetries: Number(config.maxRetries),
           }
+          if (backoff) metricConfig.backoffMinutes = backoff
           return metricConfig
         } else if (config.type === 'fieldExtractor') {
           const fieldConfig: any = {
@@ -351,6 +380,7 @@ function CreateCampaign() {
           if (fieldOperator && fieldOperator !== 'missing' && config.expectedValue) {
             fieldConfig.expectedValue = config.expectedValue
           }
+          if (backoff) fieldConfig.backoffMinutes = backoff
           return fieldConfig
         }
         return config

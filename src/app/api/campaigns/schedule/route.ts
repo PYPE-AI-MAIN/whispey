@@ -47,6 +47,38 @@ export async function POST(request: NextRequest) {
           )
         }
 
+        // Optional progressive backoff schedule. If present, must be a
+        // non-empty array of integers in [0, 1440] with length ≤ 10. When
+        // set it overrides delayMinutes/maxRetries on the backend.
+        if (config.backoffMinutes !== undefined && config.backoffMinutes !== null) {
+          if (!Array.isArray(config.backoffMinutes)) {
+            return NextResponse.json(
+              { error: 'backoffMinutes must be an array of numbers' },
+              { status: 400 }
+            )
+          }
+          if (config.backoffMinutes.length === 0) {
+            return NextResponse.json(
+              { error: 'backoffMinutes must have at least 1 entry (or omit the field for fixed-delay mode)' },
+              { status: 400 }
+            )
+          }
+          if (config.backoffMinutes.length > 10) {
+            return NextResponse.json(
+              { error: 'backoffMinutes can have at most 10 entries' },
+              { status: 400 }
+            )
+          }
+          for (const m of config.backoffMinutes) {
+            if (typeof m !== 'number' || !Number.isFinite(m) || m < 5 || m > 1440) {
+              return NextResponse.json(
+                { error: 'each backoffMinutes entry must be a number between 5 and 1440 (minimum 5 minutes)' },
+                { status: 400 }
+              )
+            }
+          }
+        }
+
         // Type-specific validations
         if (retryType === 'sipCode') {
           // SIP Code retry: errorCodes is required
