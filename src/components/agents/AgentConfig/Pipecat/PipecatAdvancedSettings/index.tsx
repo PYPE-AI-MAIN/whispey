@@ -52,6 +52,8 @@ interface PipecatAdvancedSettingsProps {
   onTransferNumberChange: (value: string) => void
   acefoneToken: string
   onAcefoneTokenChange: (value: string) => void
+  acefoneApiKeyC2C: string
+  onAcefoneApiKeyC2CChange: (value: string) => void
   // Tools
   builtinTools: string[]
   onBuiltinToolsChange: (tools: string[]) => void
@@ -153,6 +155,7 @@ export default function PipecatAdvancedSettings({
   minAudioDuration, onMinAudioDurationChange,
   transferNumber, onTransferNumberChange,
   acefoneToken, onAcefoneTokenChange,
+  acefoneApiKeyC2C, onAcefoneApiKeyC2CChange,
   builtinTools, onBuiltinToolsChange,
   toolConfigs, onToolConfigsChange,
   customTools, onCustomToolsChange,
@@ -299,6 +302,8 @@ export default function PipecatAdvancedSettings({
             onTransferNumberChange={onTransferNumberChange}
             acefoneToken={acefoneToken}
             onAcefoneTokenChange={onAcefoneTokenChange}
+            acefoneApiKeyC2C={acefoneApiKeyC2C}
+            onAcefoneApiKeyC2CChange={onAcefoneApiKeyC2CChange}
           />
         </Section>
 

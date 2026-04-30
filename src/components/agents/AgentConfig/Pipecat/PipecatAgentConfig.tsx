@@ -48,6 +48,7 @@ interface PipecatAgent {
   tts_voice_id: string | null
   transfer_number: string
   acefone_token: string | null
+  api_key_c2c: string | null
   tools: string[]
   tool_config: Record<string, Record<string, unknown>>
   custom_tools: any[]
@@ -260,6 +261,7 @@ export default function PipecatAgentConfig({
   const [openingMessage, setOpeningMessage] = useState('')
   const [transferNumber, setTransferNumber] = useState('')
   const [acefoneToken, setAcefoneToken] = useState('')
+  const [acefoneApiKeyC2C, setAcefoneApiKeyC2C] = useState('')
   const [selectedProvider, setSelectedProvider] = useState('openai')
   const [selectedModel, setSelectedModel] = useState('gpt-4.1-mini')
   const [sttProvider, setSttProvider] = useState('sarvam')
@@ -390,6 +392,7 @@ export default function PipecatAgentConfig({
     setOpeningMessage(a.opening_message || '')
     setTransferNumber(a.transfer_number || '')
     setAcefoneToken(a.acefone_token || '')
+    setAcefoneApiKeyC2C(a.api_key_c2c || '')
     setTools(a.tools || ['end_call', 'transfer_call'])
     setToolConfigs(a.tool_config || {})
     setCustomTools(a.custom_tools || [])
@@ -552,6 +555,7 @@ export default function PipecatAgentConfig({
         tts_speed: ttsSpeed,
         transfer_number: transferNumber,
         acefone_token: acefoneToken || null,
+        api_key_c2c: acefoneApiKeyC2C || null,
         tools,
         tool_config: toolConfigs,
         custom_tools: customTools,
@@ -972,6 +976,8 @@ export default function PipecatAgentConfig({
               onTransferNumberChange={setTransferNumber}
               acefoneToken={acefoneToken}
               onAcefoneTokenChange={setAcefoneToken}
+              acefoneApiKeyC2C={acefoneApiKeyC2C}
+              onAcefoneApiKeyC2CChange={setAcefoneApiKeyC2C}
               builtinTools={tools}
               onBuiltinToolsChange={setTools}
               toolConfigs={toolConfigs}
