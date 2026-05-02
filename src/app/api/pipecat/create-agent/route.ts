@@ -60,9 +60,8 @@ export async function POST(request: NextRequest) {
       prompt: prompt || `You are a helpful voice assistant named ${name.trim()}. Assist users with their queries in a friendly and professional manner.`,
       tools: tools || ["end_call", "transfer_call"],
       custom_tools: custom_tools ? custom_tools.map((tool: any) => ({
-        name: tool.name,
-        description: tool.description,
-        url: tool.url,
+        // Preserve all fields from the UI (including filler_config and any future keys)
+        ...tool,
         method: tool.method || "GET",
         parameters: tool.parameters || {},
         headers: tool.headers || {}
