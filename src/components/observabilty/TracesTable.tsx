@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity, Download } from "lucide-react"
+import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity, Download, Loader2 } from "lucide-react"
 import { OTelSpan } from "@/types/openTelemetry";
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import TraceDetailSheet from "./TraceDetailSheet/TraceDetailSheet"
@@ -14,6 +14,9 @@ import SessionTraceView from "./SessionTraceView"
 import WaterfallView from "./WaterFallView";
 import ConfigTab from "./ConfigTab";
 import { getAgentPlatform } from "@/utils/agentDetection";
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { useTranscriptEnglishToggle } from "@/hooks/useTranscriptEnglishToggle"
 
 interface TracesTableProps {
   agentId: string
@@ -373,6 +376,8 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     })
   }, [processedTraces, functionToolSpans])
 
+  const { viewEnglish, setViewEnglish, isTranslating, formatTranscript } =
+    useTranscriptEnglishToggle(enrichedTraces)
 
   const getTraceStatus = (trace: TraceLog) => {
     // Check if this turn is flagged for bug reports
@@ -664,17 +669,37 @@ const handleRowClick = (trace: TraceLog) => {
           </button>
           </nav>
           
-          {/* Download Transcript Button */}
+          {/* Transcript: English toggle + download */}
           {activeTab === "turns" && enrichedTraces.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={downloadFullTranscript}
-              className="h-8 text-xs flex items-center gap-1.5"
-            >
-              <Download className="w-3 h-3" />
-              Download Transcript
-            </Button>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="transcript-view-english"
+                  checked={viewEnglish}
+                  onCheckedChange={setViewEnglish}
+                  disabled={isTranslating}
+                  aria-label="Show transcript in English"
+                />
+                <Label
+                  htmlFor="transcript-view-english"
+                  className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer whitespace-nowrap"
+                >
+                  English
+                </Label>
+                {isTranslating && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden />
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadFullTranscript}
+                className="h-8 text-xs flex items-center gap-1.5"
+              >
+                <Download className="w-3 h-3" />
+                Download Transcript
+              </Button>
+            </div>
           )}
           </div>
         </div>
@@ -761,7 +786,9 @@ const handleRowClick = (trace: TraceLog) => {
                           {trace.user_transcript && (
                             <div className="text-xs">
                               <span className="text-blue-600 dark:text-blue-400 font-medium">→</span>
-                              <span className="ml-1 text-gray-800 dark:text-gray-200">{trace.user_transcript}</span>
+                              <span className="ml-1 text-gray-800 dark:text-gray-200">
+                                {formatTranscript(trace.user_transcript)}
+                              </span>
                             </div>
                           )}
 
@@ -820,7 +847,7 @@ const handleRowClick = (trace: TraceLog) => {
                               <span className={cn(
                                 "ml-1",
                                 hasBugReport ? "text-red-800 dark:text-red-300" : "text-gray-600 dark:text-gray-300"
-                              )}>{trace.agent_response}</span>
+                              )}>{formatTranscript(trace.agent_response)}</span>
                               {hasBugReport && (
                                 <span className="ml-2 text-red-600 dark:text-red-400 font-medium">[REPORTED]</span>
                               )}
@@ -935,6 +962,7 @@ const handleRowClick = (trace: TraceLog) => {
         agent={agent}
         recordingUrl={callData?.[0]?.recording_url}
         callStartTime={callData?.[0]?.call_started_at}
+        formatTranscript={formatTranscript}
         onClose={() => {
           setIsDetailSheetOpen(false)
           setSelectedTrace(null)
