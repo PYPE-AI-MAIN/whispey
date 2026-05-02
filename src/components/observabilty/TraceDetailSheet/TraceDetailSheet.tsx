@@ -44,15 +44,20 @@ interface TraceDetailSheetProps {
   recordingUrl?: string
   callStartTime?: string
   agent?: any
+  /** When “English” is on in call logs, maps each stored line to its translated form (same cache keys as the table). */
+  formatTranscript?: (s: string | undefined | null) => string
   onClose: () => void
 }
+
+const defaultFormatTranscript = (s: string | undefined | null) => s ?? ''
 
 const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ 
   isOpen, 
   trace, 
   recordingUrl,
   callStartTime,
-  agent, 
+  agent,
+  formatTranscript = defaultFormatTranscript,
   onClose 
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null)
@@ -399,6 +404,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
                       recordingUrl={recordingUrl}
                       callStartTime={callStartTime}
                       audioSegmentInfo={audioSegmentInfo}
+                      formatTranscript={formatTranscript}
                     />
                   </div>
                 </div>
