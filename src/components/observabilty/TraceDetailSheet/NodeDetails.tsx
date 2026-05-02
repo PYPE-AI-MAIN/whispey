@@ -17,6 +17,7 @@ interface NodeDetailsProps {
     sttDuration: number
     ttsDuration: number
   } | null
+  formatTranscript?: (s: string | undefined | null) => string
 }
 
 function NodeDetails({
@@ -25,7 +26,8 @@ function NodeDetails({
   trace, 
   recordingUrl,
   callStartTime,
-  audioSegmentInfo
+  audioSegmentInfo,
+  formatTranscript = (s) => s ?? '',
 }: NodeDetailsProps) {
     const selectedStage = pipelineStages.find((stage: any) => stage.id === selectedNode)
     if (!selectedStage) return null
@@ -256,12 +258,12 @@ function NodeDetails({
                 )}
                 {selectedStage.id === "llm" && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
-                    "{trace.user_transcript || "No input"}"
+                    "{formatTranscript(trace.user_transcript) || "No input"}"
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
                   <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 dark:border-purple-400 pl-3 py-2 text-sm max-h-32 overflow-y-auto text-gray-900 dark:text-gray-100">
-                    "{trace.agent_response || "No text"}"
+                    "{formatTranscript(trace.agent_response) || "No text"}"
                   </div>
                 )}
               </div>
@@ -278,12 +280,12 @@ function NodeDetails({
                 </h4>
                 {selectedStage.id === "stt" && (
                   <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-400 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
-                    "{trace.user_transcript || "No transcription"}"
+                    "{formatTranscript(trace.user_transcript) || "No transcription"}"
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
                   <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-400 pl-3 py-2 text-sm max-h-40 overflow-y-auto text-gray-900 dark:text-gray-100">
-                    "{trace.agent_response || "No response"}"
+                    "{formatTranscript(trace.agent_response) || "No response"}"
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
