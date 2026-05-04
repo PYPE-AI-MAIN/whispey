@@ -49,7 +49,7 @@ interface BackendTool {
   name: string
   description: string
   config_schema: Record<string, {
-    type: 'multiselect' | 'select' | 'text' | 'number'
+    type: 'multiselect' | 'select' | 'text' | 'number' | 'json'
     label: string
     hint?: string
     placeholder?: string
@@ -72,6 +72,8 @@ interface ToolsActionsSettingsProps {
   onTransferNumberChange: (value: string) => void
   acefoneToken: string
   onAcefoneTokenChange: (value: string) => void
+  acefoneApiKeyC2C: string
+  onAcefoneApiKeyC2CChange: (value: string) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -206,6 +208,31 @@ function ToolConfigEditor({
           )
         }
 
+        if (schema.type === 'json') {
+          const rawValue = currentValue !== undefined
+            ? (typeof currentValue === 'string' ? currentValue : JSON.stringify(currentValue, null, 2))
+            : (schema.default !== undefined ? JSON.stringify(schema.default, null, 2) : '')
+          return (
+            <div key={key} className="space-y-1">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">{schema.label}</Label>
+              <Textarea
+                value={rawValue}
+                onChange={e => {
+                  try {
+                    onChange({ ...config, [key]: JSON.parse(e.target.value) })
+                  } catch {
+                    onChange({ ...config, [key]: e.target.value })
+                  }
+                }}
+                placeholder={schema.placeholder ?? 'Paste JSON here…'}
+                className="text-xs font-mono min-h-[100px] resize-y"
+                rows={4}
+              />
+              {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
+            </div>
+          )
+        }
+
         return null
       })}
     </div>
@@ -225,6 +252,8 @@ export default function ToolsActionsSettings({
   onTransferNumberChange,
   acefoneToken,
   onAcefoneTokenChange,
+  acefoneApiKeyC2C,
+  onAcefoneApiKeyC2CChange,
 }: ToolsActionsSettingsProps) {
   const [backendTools, setBackendTools] = useState<BackendTool[]>([])
   const [toolsLoading, setToolsLoading] = useState(false)
@@ -389,6 +418,21 @@ export default function ToolsActionsSettings({
                     />
                     <p className="text-xs text-gray-400 dark:text-gray-500">
                       Per-agent Acefone API token. Overrides the server-level <span className="font-mono">ACEFONE_TOKEN</span> env var.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">
+                      Acefone Click-to-Call API Key <span className="text-gray-400 font-normal">(leave blank if using global env)</span>
+                    </Label>
+                    <Input
+                      value={acefoneApiKeyC2C}
+                      onChange={e => onAcefoneApiKeyC2CChange(e.target.value)}
+                      placeholder="5f0d3b62-c206-42dd-..."
+                      type="password"
+                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                    />
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      UUID API key for outbound click-to-call. Overrides the server-level <span className="font-mono">ACEFONE_API_KEY</span> env var.
                     </p>
                   </div>
                   {/* Pre-transfer webhook */}
