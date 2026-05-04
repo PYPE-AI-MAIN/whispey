@@ -510,6 +510,13 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             sipTrunkId: tool.sip_outbound_trunk || '',
             preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
             preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
+            transferStayOnLine: tool.transfer_stay_on_line ?? false,
+            transferAnnouncement: tool.transfer_announcement || 'Please hold while I connect you.',
+            holdMusicEnabled: tool.hold_music_enabled ?? true,
+            holdMusicVolume: tool.hold_music_volume ?? 0.6,
+            holdMusicUrl: tool.hold_music_url || '',
+            transferFailedMessage: tool.transfer_failed_message || 'Sorry, no one picked up on the transfer line. How else can I help you?',
+            ringingTimeout: tool.ringing_timeout ?? 30,
             timeout: tool.timeout || 10,
             asyncExecution: tool.async || false,
             parameters: tool.parameters?.map((param: any) => ({

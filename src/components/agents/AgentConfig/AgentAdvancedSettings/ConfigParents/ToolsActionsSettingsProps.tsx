@@ -77,6 +77,13 @@ interface Tool {
     sipTrunkId?: string
     preTransferWebhookUrl?: string
     preTransferWebhookFields?: string[]
+    transferStayOnLine?: boolean
+    transferAnnouncement?: string
+    holdMusicEnabled?: boolean
+    holdMusicVolume?: number
+    holdMusicUrl?: string
+    transferFailedMessage?: string
+    ringingTimeout?: number
     timeout?: number
     asyncExecution?: boolean
     parameters?: ToolParameter[]
@@ -128,6 +135,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     sipTrunkId: '',
     preTransferWebhookUrl: '',
     preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+    transferStayOnLine: false,
+    transferAnnouncement: 'Please hold while I connect you.',
+    holdMusicEnabled: true,
+    holdMusicVolume: 0.6,
+    holdMusicUrl: '',
+    transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+    ringingTimeout: 30,
     timeout: 10,
     asyncExecution: false,
     parameters: [] as ToolParameter[],
@@ -198,6 +212,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -230,6 +251,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -262,6 +290,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -294,6 +329,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -326,6 +368,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -358,6 +407,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -390,6 +446,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -422,6 +485,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        transferStayOnLine: false,
+        transferAnnouncement: 'Please hold while I connect you.',
+        holdMusicEnabled: true,
+        holdMusicVolume: 0.6,
+        holdMusicUrl: '',
+        transferFailedMessage: 'Sorry, no one picked up on the transfer line. How else can I help you?',
+        ringingTimeout: 30,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -471,6 +541,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       sipTrunkId: tool.config.sipTrunkId || '',
       preTransferWebhookUrl: tool.config.preTransferWebhookUrl || '',
       preTransferWebhookFields: tool.config.preTransferWebhookFields || ALL_WEBHOOK_FIELDS,
+      transferStayOnLine: tool.config.transferStayOnLine ?? false,
+      transferAnnouncement: tool.config.transferAnnouncement || 'Please hold while I connect you.',
+      holdMusicEnabled: tool.config.holdMusicEnabled ?? true,
+      holdMusicVolume: tool.config.holdMusicVolume ?? 0.6,
+      holdMusicUrl: tool.config.holdMusicUrl || '',
+      transferFailedMessage: tool.config.transferFailedMessage || 'Sorry, no one picked up on the transfer line. How else can I help you?',
+      ringingTimeout: tool.config.ringingTimeout ?? 30,
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
       parameters: tool.config.parameters || [],
@@ -520,6 +597,13 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: formData.sipTrunkId,
         preTransferWebhookUrl: formData.preTransferWebhookUrl,
         preTransferWebhookFields: formData.preTransferWebhookFields,
+        transferStayOnLine: formData.transferStayOnLine,
+        transferAnnouncement: formData.transferAnnouncement || undefined,
+        holdMusicEnabled: formData.holdMusicEnabled,
+        holdMusicVolume: formData.holdMusicVolume,
+        holdMusicUrl: formData.holdMusicUrl || undefined,
+        transferFailedMessage: formData.transferFailedMessage || undefined,
+        ringingTimeout: formData.ringingTimeout,
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
         parameters: formData.parameters,
@@ -922,6 +1006,84 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                           </div>
                         )
                       })}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-xs text-gray-700 dark:text-gray-300">Stay on line during transfer</Label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Agent waits for pickup, plays hold music, and resumes if no one answers</p>
+                  </div>
+                  <Switch
+                    checked={formData.transferStayOnLine}
+                    onCheckedChange={(v) => setFormData(prev => ({ ...prev, transferStayOnLine: v }))}
+                  />
+                </div>
+                {formData.transferStayOnLine && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-gray-700 dark:text-gray-300">Hold announcement <span className="text-gray-400 font-normal">(optional)</span></Label>
+                      <Input
+                        value={formData.transferAnnouncement}
+                        onChange={(e) => setFormData(prev => ({ ...prev, transferAnnouncement: e.target.value }))}
+                        className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="Please hold while I connect you."
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        What the agent says before going on hold.
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-gray-700 dark:text-gray-300">Hold music while connecting</Label>
+                        <Switch
+                          checked={formData.holdMusicEnabled}
+                          onCheckedChange={(v) => setFormData(prev => ({ ...prev, holdMusicEnabled: v }))}
+                        />
+                      </div>
+                      {formData.holdMusicEnabled && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Label className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Volume</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={formData.holdMusicVolume}
+                            onChange={(e) => setFormData(prev => ({ ...prev, holdMusicVolume: parseFloat(e.target.value) }))}
+                            className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-20"
+                          />
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Plays built-in hold music while waiting for transfer to connect.
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-700 dark:text-gray-300">Transfer failed message <span className="text-gray-400 font-normal">(optional)</span></Label>
+                      <Input
+                        value={formData.transferFailedMessage}
+                        onChange={(e) => setFormData(prev => ({ ...prev, transferFailedMessage: e.target.value }))}
+                        className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="Sorry, no one picked up on the transfer line. How else can I help you?"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Spoken by the agent if the transfer is not answered.
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-700 dark:text-gray-300">Ring timeout <span className="text-gray-400 font-normal">(seconds, default 30)</span></Label>
+                      <Input
+                        type="number"
+                        min="5"
+                        max="120"
+                        value={formData.ringingTimeout}
+                        onChange={(e) => setFormData(prev => ({ ...prev, ringingTimeout: parseInt(e.target.value) }))}
+                        className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-24"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Seconds to wait before giving up on the transfer.
+                      </p>
                     </div>
                   </div>
                 )}

@@ -366,7 +366,14 @@ function transformFormDataToAgentConfig(formData: any) {
                 transfer_number: tool.config.transferNumber,
                 sip_outbound_trunk: tool.config.sipTrunkId,
                 pre_transfer_webhook_url: tool.config.preTransferWebhookUrl || null,
-                pre_transfer_webhook_fields: tool.config.preTransferWebhookFields || null
+                pre_transfer_webhook_fields: tool.config.preTransferWebhookFields || null,
+                transfer_stay_on_line: tool.config.transferStayOnLine ?? false,
+                transfer_announcement: tool.config.transferAnnouncement || null,
+                hold_music_enabled: tool.config.holdMusicEnabled ?? true,
+                hold_music_volume: tool.config.holdMusicVolume ?? 0.6,
+                hold_music_url: tool.config.holdMusicUrl || null,
+                transfer_failed_message: tool.config.transferFailedMessage || null,
+                ringing_timeout: tool.config.ringingTimeout ?? 30,
               } : {})
             } : {})
           })),
