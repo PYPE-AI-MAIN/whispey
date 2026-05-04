@@ -53,6 +53,7 @@ interface OpenAISTTConfig {
 interface DeepgramConfig {
   model: string;
   language: string;
+  languageHints: string[];
   tier: string;
   version: string;
   punctuate: boolean;
@@ -247,6 +248,61 @@ const STT_PROVIDERS: STTProviders = {
 const isFluxModel = (modelId: string) =>
   modelId.startsWith('flux-general')
 
+const FLUX_MULTI_LANGUAGES = [
+  { code: 'hi', name: 'Hindi' },
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'it', name: 'Italian' },
+  { code: 'nl', name: 'Dutch' },
+]
+
+const LanguageHintChips = ({
+  hints,
+  onChange,
+  disabled = false,
+}: {
+  hints: string[]
+  onChange: (hints: string[]) => void
+  disabled?: boolean
+}) => {
+  const toggle = (code: string) => {
+    if (disabled) return
+    if (hints.includes(code)) {
+      if (hints.length > 1) onChange(hints.filter(h => h !== code))
+    } else {
+      onChange([...hints, code])
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {FLUX_MULTI_LANGUAGES.map(lang => {
+        const selected = hints.includes(lang.code)
+        return (
+          <button
+            key={lang.code}
+            type="button"
+            onClick={() => toggle(lang.code)}
+            disabled={disabled}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+              selected
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            {lang.name}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // Provider Card Component
 const ProviderCard = ({ 
   provider, 
@@ -345,6 +401,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
   const [deepgramConfig, setDeepgramConfig] = useState<DeepgramConfig>({
     model: selectedProvider === 'deepgram' ? selectedModel : 'nova-2',
     language: selectedProvider === 'deepgram' ? selectedLanguage : 'en',
+    languageHints: initialConfig?.languageHints || ['en'],
     tier: initialConfig?.tier || 'enhanced',
     version: initialConfig?.version || 'latest',
     punctuate: initialConfig?.punctuate ?? true,
@@ -385,6 +442,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           ...prev,
           model: selectedModel || prev.model,
           language: selectedLanguage || prev.language,
+          languageHints: initialConfig?.languageHints || prev.languageHints,
           ...initialConfig
         }))
         } else if (selectedProvider === 'sarvam') {
@@ -550,29 +608,40 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           </div>
         </div>
 
-        {/* Flux info banner */}
-        {activeProvider === 'deepgram' && isFluxModel(currentModel) && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-start gap-2">
-              <span className="text-lg">⚡</span>
-              <div>
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Flux — Acoustic + Semantic Turn Detection</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                  Uses the <code className="font-mono">/listen/v2</code> API (<code className="font-mono">STTv2</code>). Set <code className="font-mono">turn_detection="stt"</code> on the agent session for best results.
-                  {currentModel === 'flux-general-multi' && ' Multilingual — auto-detects across 10 languages.'}
-                </p>
-              </div>
+        {/* Language selector — varies by provider + model */}
+        {activeProvider === 'deepgram' && currentModel === 'flux-general-en' && (
+          <div className="space-y-2">
+            <Label className="text-sm sm:text-base">Language</Label>
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <span className="text-sm text-gray-700 dark:text-gray-300">English</span>
+              <Badge variant="secondary" className="text-xs ml-auto">Fixed — English only model</Badge>
             </div>
           </div>
         )}
 
-        {/* Language selector */}
-        {!(activeProvider === 'sarvam' && currentModel === 'saaras:v2.5') && (
+        {activeProvider === 'deepgram' && currentModel === 'flux-general-multi' && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm sm:text-base text-gray-400 dark:text-gray-500">Language Hints</Label>
+              <Badge variant="secondary" className="text-xs">Coming soon</Badge>
+            </div>
+            <LanguageHintChips
+              hints={deepgramConfig.languageHints}
+              onChange={(hints) => setDeepgramConfig(prev => ({ ...prev, languageHints: hints }))}
+              disabled={true}
+            />
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Language hints require a newer SDK version — not yet supported. Flux Multi auto-detects across all 10 languages.
+            </p>
+          </div>
+        )}
+
+        {!(activeProvider === 'deepgram' && isFluxModel(currentModel)) && !(activeProvider === 'sarvam' && currentModel === 'saaras:v2.5') && (
           <div className="space-y-2">
             <Label className="text-sm sm:text-base">Language</Label>
             <div className="space-y-2">
-              <Select 
-                value={showCustomLanguage ? 'custom' : currentLanguage} 
+              <Select
+                value={showCustomLanguage ? 'custom' : currentLanguage}
                 onValueChange={(value) => {
                   if (DISABLE_SETTINGS) return
                   if (value === 'custom') {
