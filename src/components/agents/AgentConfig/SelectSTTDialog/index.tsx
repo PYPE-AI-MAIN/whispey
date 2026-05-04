@@ -99,16 +99,43 @@ const STT_PROVIDERS: STTProviders = {
       { code: 'ja', name: 'Japanese' },
       { code: 'ko', name: 'Korean' },
       { code: 'zh', name: 'Chinese' },
-      {code:'sw' ,name:'Swahili'}
+      { code: 'sw', name: 'Swahili' }
     ]
   },
   deepgram: {
     name: 'Deepgram',
     models: [
-      { id: 'nova-2', name: 'Nova 2' },
-      { id: 'nova-3', name: 'Nova 3' },
+      // ── Flux models (v2 API / STTv2) ──────────────────────────────────────
+      {
+        id: 'flux-general-en',
+        name: 'Flux (English)',
+      },
+      {
+        id: 'flux-general-multi',
+        name: 'Flux (Multilingual)',
+      },
+      // ── Nova models (v1 API / STT) ─────────────────────────────────────────
+      { id: 'nova-2', name: 'Nova 2', description: 'Broad language support' },
+      { id: 'nova-3', name: 'Nova 3', description: 'Improved accuracy over Nova 2' },
     ],
     languagesByModel: {
+      // Flux English — single language
+      'flux-general-en': [
+        { code: 'en', name: 'English' }
+      ],
+      // Flux Multilingual — all supported languages per LiveKit docs
+      'flux-general-multi': [
+        { code: 'en', name: 'English' },
+        { code: 'es', name: 'Spanish' },
+        { code: 'fr', name: 'French' },
+        { code: 'de', name: 'German' },
+        { code: 'hi', name: 'Hindi' },
+        { code: 'ru', name: 'Russian' },
+        { code: 'pt', name: 'Portuguese' },
+        { code: 'ja', name: 'Japanese' },
+        { code: 'it', name: 'Italian' },
+        { code: 'nl', name: 'Dutch' },
+      ],
       'nova-2': [
         { code: 'multi', name: 'Multilingual (Spanish + English)' },
         { code: 'bg', name: 'Bulgarian' },
@@ -215,6 +242,10 @@ const STT_PROVIDERS: STTProviders = {
     ]
   }
 }
+
+// Helper: is this a Flux model?
+const isFluxModel = (modelId: string) =>
+  modelId.startsWith('flux-general')
 
 // Provider Card Component
 const ProviderCard = ({ 
@@ -450,13 +481,17 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   if (activeProvider === 'openai') {
                     setOpenAIConfig(prev => ({ ...prev, model: value }))
                   } else if (activeProvider === 'deepgram') {
-                    setDeepgramConfig(prev => ({ ...prev, model: value, language: 'en' }))
+                    // Default language: 'en' for flux-general-en, 'en' for flux-general-multi, keep for Nova
+                    const defaultLang = value === 'flux-general-en' ? 'en'
+                      : value === 'flux-general-multi' ? 'en'
+                      : 'en'
+                    setDeepgramConfig(prev => ({ ...prev, model: value, language: defaultLang }))
                   } else if (activeProvider === 'sarvam') {
                     setSarvamConfig(prev => ({ 
                       ...prev, 
                       model: value,
                       language: value === 'saaras:v2.5' ? 'unknown' : prev.language,
-                      mode: 'transcribe' // reset to default when switching models
+                      mode: 'transcribe'
                     }))
                   }
                 }
@@ -467,7 +502,40 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {provider.models.map((model) => (
+                {/* Group Flux models separately for clarity */}
+                {activeProvider === 'deepgram' && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      Flux
+                    </div>
+                    {provider.models
+                      .filter(m => isFluxModel(m.id))
+                      .map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          <div>
+                            <div className="font-medium text-sm flex items-center gap-1.5">
+                              {model.name}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide mt-1">
+                      Nova
+                    </div>
+                    {provider.models
+                      .filter(m => !isFluxModel(m.id))
+                      .map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          <div>
+                            <div className="font-medium text-sm">{model.name}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </>
+                )}
+
+                {/* Non-Deepgram providers: render flat list as before */}
+                {activeProvider !== 'deepgram' && provider.models.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
                     <div>
                       <div className="font-medium text-sm">{model.name}</div>
@@ -482,7 +550,23 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           </div>
         </div>
 
-        {/* Language selector - Hide for Saaras (auto-detects language) */}
+        {/* Flux info banner */}
+        {activeProvider === 'deepgram' && isFluxModel(currentModel) && (
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start gap-2">
+              <span className="text-lg">⚡</span>
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Flux — Acoustic + Semantic Turn Detection</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  Uses the <code className="font-mono">/listen/v2</code> API (<code className="font-mono">STTv2</code>). Set <code className="font-mono">turn_detection="stt"</code> on the agent session for best results.
+                  {currentModel === 'flux-general-multi' && ' Multilingual — auto-detects across 10 languages.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Language selector */}
         {!(activeProvider === 'sarvam' && currentModel === 'saaras:v2.5') && (
           <div className="space-y-2">
             <Label className="text-sm sm:text-base">Language</Label>
