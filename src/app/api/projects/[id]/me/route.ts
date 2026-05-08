@@ -27,13 +27,20 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
     }
 
-    const { data: mapping, error } = await supabase
-      .from('pype_voice_email_project_mapping')
-      .select('role, permissions, is_active')
-      .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
-      .or('is_active.is.null,is_active.eq.true')
-      .maybeSingle()
+    const [{ data: mapping, error }, { data: userRow }] = await Promise.all([
+      supabase
+        .from('pype_voice_email_project_mapping')
+        .select('role, permissions, is_active')
+        .eq('project_id', projectId)
+        .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+        .or('is_active.is.null,is_active.eq.true')
+        .maybeSingle(),
+      supabase
+        .from('pype_voice_users')
+        .select('roles')
+        .eq('clerk_id', userId)
+        .maybeSingle(),
+    ])
 
     if (error) {
       console.error('Error fetching project me:', error)
@@ -44,13 +51,21 @@ export async function GET(
       return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
     }
 
+    const globalRole: string = userRow?.roles?.globalRole ?? 'user'
+    const globalPermissions: string[] = userRow?.roles?.permissions ?? []
+    const hasPromptForge =
+      (mapping.permissions as Record<string, unknown> | null)?.promptforge === true ||
+      globalRole === 'superadmin' ||
+      globalRole === 'prompter' ||
+      globalPermissions.includes('promptforge')
+
     const role = ['user', 'member', 'viewer'].includes(mapping.role) ? 'viewer' : mapping.role
     const storedVisibility = (mapping.permissions as { visibility?: import('@/types/visibility').MemberVisibility } | null)?.visibility
     const visibility = getEffectiveVisibility(role, storedVisibility)
 
     return NextResponse.json({
       role,
-      permissions: { ...mapping.permissions, visibility },
+      permissions: { ...mapping.permissions, visibility, promptforge: hasPromptForge },
       visibility,
     }, { status: 200 })
   } catch (err) {
