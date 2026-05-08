@@ -101,6 +101,8 @@ interface SidebarProps {
   onToggleCollapse?: () => void
   isMobile?: boolean
   onMobileClose?: () => void
+  isSuperAdmin?: boolean
+  projectId?: string
 }
 
 // Extended pricing configurations
@@ -142,13 +144,15 @@ const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; f
   }
 } as const
 
-export default function Sidebar({ 
-  config, 
-  currentPath, 
-  isCollapsed = false, 
+export default function Sidebar({
+  config,
+  currentPath,
+  isCollapsed = false,
   onToggleCollapse,
   isMobile = false,
-  onMobileClose 
+  onMobileClose,
+  isSuperAdmin = false,
+  projectId,
 }: SidebarProps) {
   const { user, isLoaded } = useUser()
   const { signOut } = useClerk()
@@ -669,8 +673,8 @@ export default function Sidebar({
                     </p>
                   </div>
                   <div className="py-1">
-                    <DropdownMenuItem 
-                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+                    <DropdownMenuItem
+                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                       className="px-3 py-2 text-xs"
                     >
                       {mounted && theme === 'dark' ? (
@@ -679,6 +683,15 @@ export default function Sidebar({
                         <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
                       )}
                     </DropdownMenuItem>
+                    {isSuperAdmin && projectId && (
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/${projectId}/settings/users`)}
+                        className="px-3 py-2 text-xs"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Settings
+                      </DropdownMenuItem>
+                    )}
                   </div>
                   <DropdownMenuSeparator />
                   <div className="py-1">
