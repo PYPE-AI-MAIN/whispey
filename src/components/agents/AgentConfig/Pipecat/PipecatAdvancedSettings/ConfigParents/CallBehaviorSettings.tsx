@@ -17,6 +17,12 @@ interface CallBehaviorSettingsProps {
   onAllowInterruptionsChange: (v: boolean) => void
   minInterruptionDurationMs: number
   onMinInterruptionDurationMsChange: (v: number) => void
+  muteWhileBotSpeaking: boolean
+  onMuteWhileBotSpeakingChange: (v: boolean) => void
+  muteDuringFunctionCalls: boolean
+  onMuteDuringFunctionCallsChange: (v: boolean) => void
+  minInterruptWords: number
+  onMinInterruptWordsChange: (v: number) => void
   answerDelaySecs: number | null
   onAnswerDelaySecsChange: (v: number | null) => void
   maxCallDurationSecs: number | null
@@ -134,6 +140,9 @@ export default function CallBehaviorSettings({
   enableMetrics, onEnableMetricsChange,
   allowInterruptions, onAllowInterruptionsChange,
   minInterruptionDurationMs, onMinInterruptionDurationMsChange,
+  muteWhileBotSpeaking, onMuteWhileBotSpeakingChange,
+  muteDuringFunctionCalls, onMuteDuringFunctionCallsChange,
+  minInterruptWords, onMinInterruptWordsChange,
   answerDelaySecs, onAnswerDelaySecsChange,
   maxCallDurationSecs, onMaxCallDurationSecsChange,
   dtmfEnabled = false, onDtmfEnabledChange,
@@ -205,6 +214,40 @@ export default function CallBehaviorSettings({
             onCommit={onMinInterruptionDurationMsChange}
           />
         )}
+
+        {/* Mute while bot speaking */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Mute User While Bot Speaks</Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Blocks all user VAD frames while TTS is playing — prevents single-word &quot;yes/hmm/hello&quot; from cutting off mid-sentence replies.
+            </p>
+          </div>
+          <Switch checked={muteWhileBotSpeaking} onCheckedChange={onMuteWhileBotSpeakingChange} />
+        </div>
+
+        {/* Mute during function calls */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Mute User During Tool Calls</Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Suppresses interruptions while the agent is executing a tool (e.g. booking lookup). Prevents impatient &quot;hello?&quot; from cancelling in-flight API calls.
+            </p>
+          </div>
+          <Switch checked={muteDuringFunctionCalls} onCheckedChange={onMuteDuringFunctionCallsChange} />
+        </div>
+
+        {/* Min interrupt words */}
+        <NumberField
+          label="Min Words to Interrupt (0 = disabled)"
+          value={minInterruptWords}
+          step={1}
+          min={0}
+          max={10}
+          hint="While bot is speaking, user must say at least this many words to trigger an interruption. 0 disables the filter."
+          tooltip="Set to 3 to ignore single-word backchannels ('yes', 'okay', 'hmm') that would otherwise cancel the bot's reply mid-sentence."
+          onCommit={onMinInterruptWordsChange}
+        />
 
         {/* DTMF (keypad) input */}
         <div className="flex items-start justify-between gap-3">
