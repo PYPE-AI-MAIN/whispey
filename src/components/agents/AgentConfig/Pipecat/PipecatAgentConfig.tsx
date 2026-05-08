@@ -66,6 +66,9 @@ interface PipecatAgent {
   idle_nudges: string[] | null
   allow_interruptions: boolean
   min_interruption_duration_ms: number
+  mute_while_bot_speaking: boolean
+  mute_during_function_calls: boolean
+  min_interrupt_words: number
   noise_cancellation: string
   enable_metrics: boolean
   answer_delay_secs: number | null
@@ -151,6 +154,9 @@ interface SnapshotValues {
   idleNudges: string[]
   allowInterruptions: boolean
   minInterruptionDurationMs: number
+  muteWhileBotSpeaking: boolean
+  muteDuringFunctionCalls: boolean
+  minInterruptWords: number
   noiseCancellation: string
   enableMetrics: boolean
   answerDelaySecs: number | null
@@ -296,6 +302,9 @@ export default function PipecatAgentConfig({
   // Interruption behavior
   const [allowInterruptions, setAllowInterruptions] = useState(true)
   const [minInterruptionDurationMs, setMinInterruptionDurationMs] = useState(500)
+  const [muteWhileBotSpeaking, setMuteWhileBotSpeaking] = useState(true)
+  const [muteDuringFunctionCalls, setMuteDuringFunctionCalls] = useState(true)
+  const [minInterruptWords, setMinInterruptWords] = useState(0)
   const [dtmfEnabled, setDtmfEnabled] = useState(false)
 
   // Audio processing
@@ -372,6 +381,7 @@ export default function PipecatAgentConfig({
     smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
     turnStopTimeout, userIdleTimeout, idleNudges,
     allowInterruptions, minInterruptionDurationMs,
+    muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
     noiseCancellation, enableMetrics,
     answerDelaySecs, maxCallDurationSecs, dtmfEnabled,
     responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
@@ -430,6 +440,9 @@ export default function PipecatAgentConfig({
 
     setAllowInterruptions(a.allow_interruptions ?? true)
     setMinInterruptionDurationMs(a.min_interruption_duration_ms ?? 500)
+    setMuteWhileBotSpeaking(a.mute_while_bot_speaking ?? true)
+    setMuteDuringFunctionCalls(a.mute_during_function_calls ?? true)
+    setMinInterruptWords(a.min_interrupt_words ?? 0)
     setDtmfEnabled(a.dtmf_enabled ?? false)
     setNoiseCancellation(a.noise_cancellation || 'rnnoise')
     setEnableMetrics(a.enable_metrics ?? true)
@@ -485,6 +498,9 @@ export default function PipecatAgentConfig({
       idleNudges: a.idle_nudges ?? [],
       allowInterruptions: a.allow_interruptions ?? true,
       minInterruptionDurationMs: a.min_interruption_duration_ms ?? 500,
+      muteWhileBotSpeaking: a.mute_while_bot_speaking ?? true,
+      muteDuringFunctionCalls: a.mute_during_function_calls ?? true,
+      minInterruptWords: a.min_interrupt_words ?? 0,
       noiseCancellation: a.noise_cancellation || 'rnnoise',
       enableMetrics: a.enable_metrics ?? true,
       answerDelaySecs: a.answer_delay_secs ?? null,
@@ -572,6 +588,9 @@ export default function PipecatAgentConfig({
         idle_nudges: idleNudges,
         allow_interruptions: allowInterruptions,
         min_interruption_duration_ms: minInterruptionDurationMs,
+        mute_while_bot_speaking: muteWhileBotSpeaking,
+        mute_during_function_calls: muteDuringFunctionCalls,
+        min_interrupt_words: minInterruptWords,
         dtmf_enabled: dtmfEnabled,
         noise_cancellation: noiseCancellation,
         enable_metrics: enableMetrics,
@@ -618,6 +637,7 @@ export default function PipecatAgentConfig({
         smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
         turnStopTimeout, userIdleTimeout, idleNudges,
         allowInterruptions, minInterruptionDurationMs,
+        muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
         noiseCancellation, enableMetrics,
         answerDelaySecs, maxCallDurationSecs, dtmfEnabled,
         responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
@@ -999,6 +1019,12 @@ export default function PipecatAgentConfig({
               onAllowInterruptionsChange={setAllowInterruptions}
               minInterruptionDurationMs={minInterruptionDurationMs}
               onMinInterruptionDurationMsChange={setMinInterruptionDurationMs}
+              muteWhileBotSpeaking={muteWhileBotSpeaking}
+              onMuteWhileBotSpeakingChange={setMuteWhileBotSpeaking}
+              muteDuringFunctionCalls={muteDuringFunctionCalls}
+              onMuteDuringFunctionCallsChange={setMuteDuringFunctionCalls}
+              minInterruptWords={minInterruptWords}
+              onMinInterruptWordsChange={setMinInterruptWords}
               noiseCancellation={noiseCancellation}
               onNoiseCancellationChange={setNoiseCancellation}
               enableMetrics={enableMetrics}

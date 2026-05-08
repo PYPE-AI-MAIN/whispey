@@ -79,6 +79,12 @@ interface PipecatAdvancedSettingsProps {
   onAllowInterruptionsChange: (v: boolean) => void
   minInterruptionDurationMs: number
   onMinInterruptionDurationMsChange: (v: number) => void
+  muteWhileBotSpeaking: boolean
+  onMuteWhileBotSpeakingChange: (v: boolean) => void
+  muteDuringFunctionCalls: boolean
+  onMuteDuringFunctionCallsChange: (v: boolean) => void
+  minInterruptWords: number
+  onMinInterruptWordsChange: (v: number) => void
   noiseCancellation: string
   onNoiseCancellationChange: (v: string) => void
   enableMetrics: boolean
@@ -164,6 +170,9 @@ export default function PipecatAdvancedSettings({
   turnStopTimeout, userIdleTimeout, idleNudges, onTurnChange, onIdleNudgesChange,
   allowInterruptions, onAllowInterruptionsChange,
   minInterruptionDurationMs, onMinInterruptionDurationMsChange,
+  muteWhileBotSpeaking, onMuteWhileBotSpeakingChange,
+  muteDuringFunctionCalls, onMuteDuringFunctionCallsChange,
+  minInterruptWords, onMinInterruptWordsChange,
   noiseCancellation, onNoiseCancellationChange,
   enableMetrics, onEnableMetricsChange,
   answerDelaySecs, onAnswerDelaySecsChange,
@@ -257,6 +266,12 @@ export default function PipecatAdvancedSettings({
             onAllowInterruptionsChange={onAllowInterruptionsChange}
             minInterruptionDurationMs={minInterruptionDurationMs}
             onMinInterruptionDurationMsChange={onMinInterruptionDurationMsChange}
+            muteWhileBotSpeaking={muteWhileBotSpeaking}
+            onMuteWhileBotSpeakingChange={onMuteWhileBotSpeakingChange}
+            muteDuringFunctionCalls={muteDuringFunctionCalls}
+            onMuteDuringFunctionCallsChange={onMuteDuringFunctionCallsChange}
+            minInterruptWords={minInterruptWords}
+            onMinInterruptWordsChange={onMinInterruptWordsChange}
             answerDelaySecs={answerDelaySecs}
             onAnswerDelaySecsChange={onAnswerDelaySecsChange}
             maxCallDurationSecs={maxCallDurationSecs}
