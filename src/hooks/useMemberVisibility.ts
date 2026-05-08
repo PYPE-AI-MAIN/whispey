@@ -45,6 +45,7 @@ export function useMemberVisibility(projectId: string | undefined) {
     visibility,
     isOwnerOrAdmin: role === 'owner' || role === 'admin',
     isViewer: role === 'viewer',
+    canAccessPromptForge: data?.permissions?.promptforge === true,
     isLoading,
     error,
   }

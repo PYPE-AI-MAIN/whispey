@@ -40,7 +40,8 @@ import {
   X,
   PanelRightOpen,
   PanelRightClose,
-  BookOpen
+  BookOpen,
+  FlaskConical
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -74,7 +75,8 @@ const ICONS = {
   History,
   Calendar,
   X,
-  BookOpen
+  BookOpen,
+  FlaskConical
 } as const
 
 interface NavigationItem {

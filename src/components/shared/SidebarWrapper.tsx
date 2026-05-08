@@ -51,6 +51,8 @@ interface SidebarContext {
   isOwnerOrAdmin: boolean
   /** From API (DB permissions.visibility). Only sections with visibility true are shown. */
   visibility: MemberVisibility | null
+  /** True when the project's plan type is SUPERADMIN */
+  isSuperAdmin: boolean
 }
 
 interface NavigationItem {
@@ -262,10 +264,11 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
+      { pattern: '/:projectId/agents/:agentId/prompt-forge' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility } = context
+      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -352,12 +355,23 @@ const sidebarRoutes: SidebarRoute[] = [
 
       const enhancedItems = []
       if (isEnhancedProject) {
-        enhancedItems.push({ 
-          id: 'campaign-logs', 
-          name: 'Campaign Logs', 
-          icon: 'BarChart3', 
-          path: `/${projectId}/agents/${agentId}?tab=campaign-logs`, 
-          group: 'Batch Calls' 
+        enhancedItems.push({
+          id: 'campaign-logs',
+          name: 'Campaign Logs',
+          icon: 'BarChart3',
+          path: `/${projectId}/agents/${agentId}?tab=campaign-logs`,
+          group: 'Batch Calls'
+        })
+      }
+
+      const superAdminItems = []
+      if (isSuperAdmin) {
+        superAdminItems.push({
+          id: 'prompt-forge',
+          name: 'Prompt Forge',
+          icon: 'FlaskConical',
+          path: `/${projectId}/agents/${agentId}/prompt-forge`,
+          group: 'Dev Tools'
         })
       }
 
@@ -365,7 +379,8 @@ const sidebarRoutes: SidebarRoute[] = [
         ...baseNavigation,
         ...configItems,
         ...callItems,
-        ...enhancedItems
+        ...enhancedItems,
+        ...superAdminItems
       ]
 
       return {
@@ -490,11 +505,12 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   // Check if projectId is valid (not a reserved path)
   const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
 
-  const { isOwnerOrAdmin, visibility } = useMemberVisibility(isValidProjectId ? projectId : undefined)
+  const { isOwnerOrAdmin, visibility, canAccessPromptForge } = useMemberVisibility(isValidProjectId ? projectId : undefined)
   
   // Check if agentId is valid (not a reserved path)
   const agentReservedPaths = ['api-keys', 'sip-management']
   const isValidAgentId = agentId && !agentReservedPaths.includes(agentId)
+
   
   const { data: agent } = useQuery({
     queryKey: ['agent', agentId],
@@ -555,6 +571,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     canCreatePypeAgent,
     isOwnerOrAdmin: isOwnerOrAdmin ?? false,
     visibility: visibility ?? null,
+    isSuperAdmin: canAccessPromptForge ?? false,
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)

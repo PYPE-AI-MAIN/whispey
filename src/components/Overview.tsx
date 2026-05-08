@@ -727,12 +727,6 @@ const Overview: React.FC<OverviewProps> = ({
   useEffect(() => {
     const run = async () => {
       if (customTotals.length === 0 || roleLoading || parentLoading || !agent?.id || !project?.id) {
-        console.log('⏸️ [Overview] Skipping calculation - conditions not met:', {
-          customTotalsLength: customTotals.length,
-          roleLoading,
-          parentLoading,
-          agentId: agent?.id
-        })
         return
       }
       setLoadingCustomTotals(true)
