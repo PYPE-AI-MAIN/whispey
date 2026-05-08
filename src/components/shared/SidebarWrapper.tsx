@@ -13,6 +13,7 @@ import Sidebar from './Sidebar'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { useGlobalRole } from '@/hooks/useGlobalRole'
 import { canShowOrgSection, canShowAgentSection, type MemberVisibility } from '@/types/visibility'
 
 interface SidebarWrapperProps {
@@ -51,6 +52,10 @@ interface SidebarContext {
   isOwnerOrAdmin: boolean
   /** From API (DB permissions.visibility). Only sections with visibility true are shown. */
   visibility: MemberVisibility | null
+  /** True when the project's plan type is SUPERADMIN */
+  isSuperAdmin: boolean
+  /** True only for users with globalRole === 'superadmin' in pype_voice_users */
+  isGlobalSuperAdmin: boolean
 }
 
 interface NavigationItem {
@@ -161,6 +166,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/sip-management' },
       { pattern: '/:projectId/campaigns' },
       { pattern: '/:projectId/settings' },
+      { pattern: '/:projectId/settings/users' },
       { pattern: '/:projectId/campaigns/:campaignId' },
       { pattern: '/:projectId/campaigns/create' },
       { pattern: '/:projectId/analytics' }, 
@@ -262,10 +268,11 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
+      { pattern: '/:projectId/agents/:agentId/prompt-forge' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility } = context
+      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -352,12 +359,23 @@ const sidebarRoutes: SidebarRoute[] = [
 
       const enhancedItems = []
       if (isEnhancedProject) {
-        enhancedItems.push({ 
-          id: 'campaign-logs', 
-          name: 'Campaign Logs', 
-          icon: 'BarChart3', 
-          path: `/${projectId}/agents/${agentId}?tab=campaign-logs`, 
-          group: 'Batch Calls' 
+        enhancedItems.push({
+          id: 'campaign-logs',
+          name: 'Campaign Logs',
+          icon: 'BarChart3',
+          path: `/${projectId}/agents/${agentId}?tab=campaign-logs`,
+          group: 'Batch Calls'
+        })
+      }
+
+      const superAdminItems = []
+      if (isSuperAdmin) {
+        superAdminItems.push({
+          id: 'prompt-forge',
+          name: 'Prompt Forge',
+          icon: 'FlaskConical',
+          path: `/${projectId}/agents/${agentId}/prompt-forge`,
+          group: 'Dev Tools'
         })
       }
 
@@ -365,7 +383,8 @@ const sidebarRoutes: SidebarRoute[] = [
         ...baseNavigation,
         ...configItems,
         ...callItems,
-        ...enhancedItems
+        ...enhancedItems,
+        ...superAdminItems
       ]
 
       return {
@@ -491,10 +510,12 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const isValidProjectId = projectId && !RESERVED_PATHS.includes(projectId)
 
   const { isOwnerOrAdmin, visibility } = useMemberVisibility(isValidProjectId ? projectId : undefined)
+  const { isSuperAdmin: isGlobalSuperAdmin, canAccessPromptForge: globalCanAccessPromptForge } = useGlobalRole()
   
   // Check if agentId is valid (not a reserved path)
   const agentReservedPaths = ['api-keys', 'sip-management']
   const isValidAgentId = agentId && !agentReservedPaths.includes(agentId)
+
   
   const { data: agent } = useQuery({
     queryKey: ['agent', agentId],
@@ -555,6 +576,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     canCreatePypeAgent,
     isOwnerOrAdmin: isOwnerOrAdmin ?? false,
     visibility: visibility ?? null,
+    isSuperAdmin: globalCanAccessPromptForge,
+    isGlobalSuperAdmin,
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)
@@ -583,11 +606,13 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
                 <VisuallyHidden>
                   <SheetTitle>Navigation Menu</SheetTitle>
                 </VisuallyHidden>
-                <Sidebar 
-                  config={sidebarConfig} 
+                <Sidebar
+                  config={sidebarConfig}
                   currentPath={pathname}
                   isCollapsed={false}
                   isMobile={true}
+                  isSuperAdmin={isGlobalSuperAdmin}
+                  projectId={projectId}
                 />
               </SheetContent>
             </Sheet>
@@ -600,12 +625,14 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
       ) : (
         <>
           <div className="relative">
-            <Sidebar 
-              config={sidebarConfig} 
+            <Sidebar
+              config={sidebarConfig}
               currentPath={pathname}
               isCollapsed={isDesktopCollapsed}
               onToggleCollapse={handleDesktopToggle}
               isMobile={false}
+              isSuperAdmin={isGlobalSuperAdmin}
+              projectId={projectId}
             />
           </div>
           

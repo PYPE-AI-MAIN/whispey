@@ -20,7 +20,12 @@ interface ProjectPermissions {
     type: 'USER' | 'ADMIN' | 'SUPERADMIN' | 'BETA'
     level: number
     metadata: any
-    permissions: string[]
+    permissions: {
+      read: boolean
+      admin: boolean
+      write: boolean
+      delete: boolean
+    }
   }
 }
 
