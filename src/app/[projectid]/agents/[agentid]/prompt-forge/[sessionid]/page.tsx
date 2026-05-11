@@ -7,6 +7,7 @@ import {
   Bot, WifiOff, Settings2, Thermometer, ChevronLeft, ChevronRight, CornerDownLeft,
   Zap, ChevronDown, Phone, X, Loader2, Clock, Code2, Save,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useAgentConfig } from '@/hooks/useAgentConfig'
@@ -160,13 +161,26 @@ function buildImportPageItems(current: number, maxKnown: number, hasNext: boolea
 }
 
 function extractToolsFromAssistant(assistant: any): AgentTool[] {
-  const toolsDef = assistant?.advancedSettings?.tools?.tools ?? []
-  return toolsDef.map((t: any) => ({
-    id: t.id ?? crypto.randomUUID(), type: t.type ?? 'custom_function', name: t.name ?? '',
-    description: t.config?.description ?? '', endpoint: t.config?.endpoint ?? '',
-    method: t.config?.method ?? 'POST', headers: t.config?.headers ?? {}, body: t.config?.body ?? '',
-    parameters: (t.config?.parameters ?? []).map((p: any) => ({ name: p.name ?? '', type: p.type ?? 'string', description: p.description ?? '', required: p.required ?? false })),
-  }))
+  // assistant is the raw API response: tools live at assistant.tools (not advancedSettings)
+  const toolsDef: any[] = assistant?.tools ?? []
+  return toolsDef
+    .filter((t: any) => t.type === 'custom_function')
+    .map((t: any) => ({
+      id: crypto.randomUUID(),
+      type: t.type ?? 'custom_function',
+      name: t.name ?? '',
+      description: t.description ?? '',
+      endpoint: t.api_url ?? '',
+      method: t.http_method ?? 'POST',
+      headers: t.headers ?? {},
+      body: t.custom_payload ?? '',
+      parameters: (t.parameters ?? []).map((p: any) => ({
+        name: p.name ?? '',
+        type: p.type ?? 'string',
+        description: p.description ?? '',
+        required: p.required ?? false,
+      })),
+    }))
 }
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -212,17 +226,34 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
   const [notFound, setNotFound] = useState(false)
 
   const { data: agentRows, isLoading: agentLoading } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type',
+    select: 'id, name, agent_type, configuration',
     filters: [{ column: 'id', operator: 'eq', value: agentId }],
     limit: 1,
     auth: { agentId },
   })
   const agentRow = agentRows?.[0]
+  const pipecatAgentId = agentRow?.configuration?.pipecat_agent_id as string | undefined
+  // Detect pipecat by config key — agent_type may not be standardized across older agents
+  const isPipecat = !!pipecatAgentId || agentRow?.agent_type === 'pipecat_agent'
+
+  // LiveKit/pype agent name — empty for pipecat so useAgentConfig stays disabled
   const agentNameWithId = useMemo(() => {
-    if (!agentRow?.name || !agentId) return ''
+    if (isPipecat || !agentRow?.name || !agentId) return ''
     return `${agentRow.name}_${agentId.replace(/-/g, '_')}`
-  }, [agentRow, agentId])
+  }, [agentRow, agentId, isPipecat])
+
   const { data: agentConfig, isLoading: configLoading } = useAgentConfig(agentNameWithId, agentRow?.name ?? '')
+
+  const { data: pipecatAgent, isLoading: pipecatConfigLoading } = useQuery({
+    queryKey: ['pipecat-agent-forge', pipecatAgentId],
+    queryFn: async () => {
+      const res = await fetch(`/api/pipecat/agents/${pipecatAgentId}`)
+      const json = await res.json()
+      return json.data ?? null
+    },
+    enabled: isPipecat && !!pipecatAgentId,
+    staleTime: 5 * 60 * 1000,
+  })
 
   useEffect(() => {
     fetch(`/api/prompt-forge/sessions/${sessionId}`)
@@ -235,7 +266,11 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
       .catch(() => { setNotFound(true); setSessionLoading(false) })
   }, [sessionId])
 
-  if (sessionLoading || agentLoading || (agentNameWithId && configLoading)) return <PageSkeleton />
+  const isConfigLoading = isPipecat
+    ? (!!pipecatAgentId && pipecatConfigLoading)
+    : (!!agentNameWithId && configLoading)
+
+  if (sessionLoading || agentLoading || isConfigLoading) return <PageSkeleton />
 
   if (notFound) {
     return (
@@ -250,9 +285,50 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
     )
   }
 
-  const assistant = agentConfig?.agent?.assistant?.[0]
-  const llmProvider: Provider = assistant?.llm?.provider === 'azure_openai' ? 'azure_openai' : 'openai'
-  const agentTools = extractToolsFromAssistant(assistant)
+  let initialPrompt = session.system_prompt || ''
+  let initialModel = session.model || 'gpt-4o-mini'
+  let initialProvider: Provider = (session.provider as Provider) || 'openai'
+  let initialTemperature: number = session.temperature ?? 0.7
+  let agentTools: AgentTool[] = session.tools?.length > 0 ? session.tools : []
+  let backendDown = false
+
+  if (isPipecat && pipecatAgent) {
+    initialPrompt = initialPrompt || pipecatAgent.prompt || ''
+    initialModel = session.model || pipecatAgent.llm_model || 'gpt-4o-mini'
+    initialProvider = (session.provider as Provider) || (pipecatAgent.llm_provider === 'azure_openai' ? 'azure_openai' : 'openai')
+    initialTemperature = session.temperature ?? 0.7
+    if (!session.tools?.length) {
+      agentTools = (pipecatAgent.custom_tools ?? []).map((t: any) => {
+        const fn = t.function ?? {}
+        const props = fn.parameters?.properties ?? {}
+        const required: string[] = fn.parameters?.required ?? []
+        return {
+          id: crypto.randomUUID(),
+          type: 'custom_function',
+          name: fn.name ?? t.name ?? '',
+          description: fn.description ?? t.description ?? '',
+          endpoint: t.endpoint ?? '',
+          method: t.method ?? 'POST',
+          headers: t.headers ?? {},
+          body: t.body ?? '',
+          parameters: Object.entries(props).map(([name, schema]: [string, any]) => ({
+            name,
+            type: schema.type ?? 'string',
+            description: schema.description ?? '',
+            required: required.includes(name),
+          })),
+        }
+      })
+    }
+  } else {
+    const assistant = agentConfig?.agent?.assistant?.[0]
+    initialPrompt = initialPrompt || assistant?.prompt || ''
+    initialModel = session.model || assistant?.llm?.model || 'gpt-4o-mini'
+    initialProvider = (session.provider as Provider) || (assistant?.llm?.provider === 'azure_openai' ? 'azure_openai' : 'openai')
+    initialTemperature = session.temperature ?? assistant?.llm?.temperature ?? 0.7
+    if (!session.tools?.length) agentTools = extractToolsFromAssistant(assistant)
+    backendDown = agentConfig?.backendUnavailable ?? false
+  }
 
   return (
     <ForgeUI
@@ -261,14 +337,14 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
       agentName={agentRow?.name ?? ''}
       sessionId={sessionId}
       sessionName={session.name || 'Untitled session'}
-      initialPrompt={session.system_prompt || assistant?.prompt || ''}
-      initialModel={session.model || assistant?.llm?.model || 'gpt-4o-mini'}
-      initialProvider={(session.provider as Provider) || llmProvider}
-      initialTemperature={session.temperature ?? assistant?.llm?.temperature ?? 0.7}
+      initialPrompt={initialPrompt}
+      initialModel={initialModel}
+      initialProvider={initialProvider}
+      initialTemperature={initialTemperature}
       initialVariables={session.variables ?? []}
-      initialTools={session.tools?.length > 0 ? session.tools : agentTools}
+      initialTools={agentTools}
       initialMessages={(session.messages ?? []).map((m: any) => ({ ...m, isFinal: true }))}
-      backendDown={agentConfig?.backendUnavailable ?? false}
+      backendDown={backendDown}
     />
   )
 }
