@@ -161,13 +161,26 @@ function buildImportPageItems(current: number, maxKnown: number, hasNext: boolea
 }
 
 function extractToolsFromAssistant(assistant: any): AgentTool[] {
-  const toolsDef = assistant?.advancedSettings?.tools?.tools ?? []
-  return toolsDef.map((t: any) => ({
-    id: t.id ?? crypto.randomUUID(), type: t.type ?? 'custom_function', name: t.name ?? '',
-    description: t.config?.description ?? '', endpoint: t.config?.endpoint ?? '',
-    method: t.config?.method ?? 'POST', headers: t.config?.headers ?? {}, body: t.config?.body ?? '',
-    parameters: (t.config?.parameters ?? []).map((p: any) => ({ name: p.name ?? '', type: p.type ?? 'string', description: p.description ?? '', required: p.required ?? false })),
-  }))
+  // assistant is the raw API response: tools live at assistant.tools (not advancedSettings)
+  const toolsDef: any[] = assistant?.tools ?? []
+  return toolsDef
+    .filter((t: any) => t.type === 'custom_function')
+    .map((t: any) => ({
+      id: crypto.randomUUID(),
+      type: t.type ?? 'custom_function',
+      name: t.name ?? '',
+      description: t.description ?? '',
+      endpoint: t.api_url ?? '',
+      method: t.http_method ?? 'POST',
+      headers: t.headers ?? {},
+      body: t.custom_payload ?? '',
+      parameters: (t.parameters ?? []).map((p: any) => ({
+        name: p.name ?? '',
+        type: p.type ?? 'string',
+        description: p.description ?? '',
+        required: p.required ?? false,
+      })),
+    }))
 }
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
