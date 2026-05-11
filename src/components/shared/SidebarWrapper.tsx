@@ -492,7 +492,7 @@ const fetchAgent = async (agentId: string) => {
   }
   return response.json()
 }
-
+ 
 export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   const pathname = usePathname()
   const { user } = useUser()
