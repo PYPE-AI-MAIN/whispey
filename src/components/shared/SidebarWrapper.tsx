@@ -269,6 +269,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
       { pattern: '/:projectId/agents/:agentId/prompt-forge' },
+      { pattern: '/:projectId/agents/:agentId/prompt-forge/:sessionId' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params

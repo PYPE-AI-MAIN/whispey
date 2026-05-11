@@ -47,17 +47,26 @@ export async function GET(
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 
-    if (!mapping) {
-      return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
-    }
-
     const globalRole: string = userRow?.roles?.globalRole ?? 'user'
     const globalPermissions: string[] = userRow?.roles?.permissions ?? []
+    const isSuperAdmin = globalRole === 'superadmin' || globalRole === 'prompter' || globalPermissions.includes('promptforge')
+
+    if (!mapping) {
+      if (!isSuperAdmin) {
+        return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
+      }
+      // Superadmins get full access even without a project mapping row
+      const visibility = getEffectiveVisibility('owner', undefined)
+      return NextResponse.json({
+        role: 'owner',
+        permissions: { visibility, promptforge: true },
+        visibility,
+      }, { status: 200 })
+    }
+
     const hasPromptForge =
       (mapping.permissions as Record<string, unknown> | null)?.promptforge === true ||
-      globalRole === 'superadmin' ||
-      globalRole === 'prompter' ||
-      globalPermissions.includes('promptforge')
+      isSuperAdmin
 
     const role = ['user', 'member', 'viewer'].includes(mapping.role) ? 'viewer' : mapping.role
     const storedVisibility = (mapping.permissions as { visibility?: import('@/types/visibility').MemberVisibility } | null)?.visibility

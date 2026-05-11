@@ -16,5 +16,5 @@ export async function GET() {
     .single()
 
   const globalRole: string = data?.roles?.globalRole ?? 'user'
-  return NextResponse.json({ globalRole })
+return NextResponse.json({ globalRole })
 }
