@@ -28,11 +28,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const apiKey = process.env.PYPE_API_KEY ?? ''
+
     // Call Pipecat API to get agent
     const response = await fetch(`${pipecatBaseUrl}/v1/agents/${agentId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        ...(apiKey ? { 'x-api-key': apiKey } : {}),
       }
     })
 
@@ -82,9 +85,14 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json()
 
-    const response = await fetch(`${pipecatBaseUrl}/v1/agents/${agentId}`, {
+    const apiKey = process.env.PYPE_API_KEY ?? ''
+
+    const response = await fetch(`${pipecatBaseUrl}/agents/${agentId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(apiKey ? { 'x-api-key': apiKey } : {}),
+      },
       body: JSON.stringify(body)
     })
 
