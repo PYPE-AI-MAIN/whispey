@@ -6,5 +6,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getPipecatBaseUrl(): string {
-  return (process.env.PIPECAT_BASE_URL || 'http://13.201.89.77:7860').replace(/\/+$/, '')
+  return (process.env.PIPECAT_BASE_URL || 'https://ws.pypeai.com').replace(/\/+$/, '')
 }
