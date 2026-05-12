@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest) {
     console.log('🔧 Updating Pipecat agent with payload:', updatePayload)
 
     // Call Pipecat API to update agent
-    const response = await fetch(`${pipecatBaseUrl}/agents/${agentId}`, {
+    const response = await fetch(`${pipecatBaseUrl}/v1/agents/${agentId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
