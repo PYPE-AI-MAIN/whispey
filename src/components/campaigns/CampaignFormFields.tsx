@@ -237,7 +237,12 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                 ) : (
                   <Select
                     value={field.value}
-                    onValueChange={(value) => onFieldChange('fromNumber', value)}
+                    onValueChange={(value) => {
+                      onFieldChange('fromNumber', value)
+                      const selected = phoneNumbers.find(p => p.id === value)
+                      onFieldChange('sipTrunkId', selected?.trunk_id || '')
+                      onFieldChange('provider', selected?.provider || '')
+                    }}
                   >
                     <SelectTrigger className="w-full h-8 text-sm">
                       <SelectValue placeholder="Select phone number" />
