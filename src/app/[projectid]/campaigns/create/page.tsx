@@ -9,7 +9,7 @@ import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { RecipientRow, CsvValidationError, PhoneNumber, RetryConfig } from '@/utils/campaigns/constants'
+import { RecipientRow, CsvValidationError, RetryConfig } from '@/utils/campaigns/constants'
 import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
@@ -132,7 +132,6 @@ function CreateCampaign() {
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvData, setCsvData] = useState<RecipientRow[]>([])
   const [validationErrors, setValidationErrors] = useState<CsvValidationError[]>([])
-  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [maxConcurrency, setMaxConcurrency] = useState<number>(5) // Default to 5
   const [loadingConfig, setLoadingConfig] = useState<boolean>(true)
 
@@ -141,6 +140,8 @@ function CreateCampaign() {
     agentId: '',
     agentRuntime: 'livekit' as 'livekit' | 'pipecat',
     fromNumber: '',
+    sipTrunkId: '',
+    provider: '',
     sendType: 'now' as 'now' | 'schedule',
     scheduleDate: '',
     timezone: 'Asia/Kolkata',
@@ -190,25 +191,6 @@ function CreateCampaign() {
     }
 
     fetchProjectConfig()
-  }, [projectId])
-
-  // Fetch phone numbers when component mounts
-  useEffect(() => {
-    const fetchPhoneNumbers = async () => {
-      try {
-        const response = await fetch(`/api/calls/phone-numbers/?limit=50`)
-        
-        if (response.ok) {
-          const data: PhoneNumber[] = await response.json()
-          const filteredNumbers = data.filter(phone => phone.project_id === projectId)
-          setPhoneNumbers(filteredNumbers)
-        }
-      } catch (error) {
-        console.error('Error fetching phone numbers:', error)
-      }
-    }
-
-    fetchPhoneNumbers()
   }, [projectId])
 
   const handleFileUpload = (file: File, data: RecipientRow[], errors: CsvValidationError[]) => {
@@ -274,13 +256,6 @@ function CreateCampaign() {
       const uploadData = await uploadResponse.json()
       const s3FileKey = uploadData.s3FileKey || uploadData.fileKey
 
-      // Get phone number details for trunk_id and provider (livekit only)
-      const selectedPhone = phoneNumbers.find(phone => phone.id === values.fromNumber)
-      
-      // if (!selectedPhone) {
-      //   throw new Error('Selected phone number not found')
-      // }
-
       // Step 2: Resolve agentName based on runtime
       let agentName = values.agentId
 
@@ -315,8 +290,8 @@ function CreateCampaign() {
           campaignName: values.campaignName,
           s3FileKey,
           agentName: agentName,
-          sipTrunkId: selectedPhone?.trunk_id || '',
-          provider: selectedPhone?.provider || 'Unknown',
+          sipTrunkId: values.sipTrunkId,
+          provider: values.provider || 'Unknown',
           agentRuntime: values.agentRuntime,
         }),
       })
