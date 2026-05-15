@@ -51,6 +51,8 @@ interface PhoneNumber {
   trunk_id: string
   provider: string | null
   project_id: string | null
+  status: string | null
+  trunk_direction: string | null
 }
 
 interface ToolParameter {
@@ -154,15 +156,24 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhoneNumbers(true)
-        const response = await fetch(`/api/calls/phone-numbers/?limit=50`)
-        
+        const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
+
         if (response.ok) {
           const data: PhoneNumber[] = await response.json()
-          
-          const filteredNumbers = projectId 
-            ? data.filter(phone => phone.project_id === projectId)
-            : data
-          
+
+          // Only show active outbound numbers for this project.
+          // Inbound trunks are excluded — they are not valid transfer targets.
+          const seen = new Set<string>()
+          const filteredNumbers = data.filter(phone => {
+            if (seen.has(phone.id)) return false
+            seen.add(phone.id)
+            return (
+              phone.project_id === projectId &&
+              phone.status === 'active' &&
+              phone.trunk_direction === 'outbound'
+            )
+          })
+
           setPhoneNumbers(filteredNumbers)
         }
       } catch (error) {
