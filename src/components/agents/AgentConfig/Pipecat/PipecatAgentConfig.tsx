@@ -97,6 +97,7 @@ interface PipecatAgent {
   whispey_agent_id: string
   timezone: string
   variables: Record<string, string>
+  context_memory?: { enabled: boolean } | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -179,6 +180,7 @@ interface SnapshotValues {
   keyboardSoundOnToolCalls: boolean
   timezone: string
   variables: Record<string, string>
+  contextMemoryEnabled: boolean
 }
 
 function buildSnapshot(v: SnapshotValues): string {
@@ -352,6 +354,9 @@ export default function PipecatAgentConfig({
   // Variables — key/value pairs, e.g. { customer_name: 'John' }
   const [variables, setVariables] = useState<Record<string, string>>({})
 
+  // Context Memory — rolling per-call summariser (Azure gpt-4.1-mini)
+  const [contextMemoryEnabled, setContextMemoryEnabled] = useState(false)
+
   // Detect {{var_name}} placeholders in prompt + opening message
   const detectedVarNames = useMemo(() => {
     const regex = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g
@@ -390,6 +395,7 @@ export default function PipecatAgentConfig({
     keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
     ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
     timezone, variables,
+    contextMemoryEnabled,
   }) : null
 
   const isDirty = isLoaded && currentSnapshot !== savedSnapshot
@@ -466,6 +472,7 @@ export default function PipecatAgentConfig({
     setKeyboardSoundOnToolCalls(a.keyboard_sound_on_tool_calls ?? false)
     setTimezone(a.timezone || 'Asia/Kolkata')
     setVariables(a.variables || {})
+    setContextMemoryEnabled(Boolean(a.context_memory?.enabled))
 
     setSavedSnapshot(buildSnapshot({
       prompt: a.prompt || '',
@@ -523,6 +530,7 @@ export default function PipecatAgentConfig({
       keyboardSoundOnToolCalls: a.keyboard_sound_on_tool_calls ?? false,
       timezone: a.timezone || 'Asia/Kolkata',
       variables: a.variables || {},
+      contextMemoryEnabled: Boolean(a.context_memory?.enabled),
     }))
     setIsLoaded(true)
   }, [])
@@ -615,6 +623,7 @@ export default function PipecatAgentConfig({
         variables,
         whispey_api_key: agent.whispey_api_key,
         whispey_agent_id: agent.whispey_agent_id,
+        context_memory: { enabled: contextMemoryEnabled },
       }
 
       const res = await fetch(`/api/pipecat/agents/${pipecatAgentId}`, {
@@ -646,6 +655,7 @@ export default function PipecatAgentConfig({
         keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
         ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
         timezone, variables,
+        contextMemoryEnabled,
       }))
 
       // Show checkpoint banner — identical to LiveKit flow
@@ -1063,6 +1073,8 @@ export default function PipecatAgentConfig({
               onKeyboardSoundVolumeChange={setKeyboardSoundVolume}
               onKeyboardSoundProbabilityChange={setKeyboardSoundProbability}
               onKeyboardSoundOnToolCallsChange={setKeyboardSoundOnToolCalls}
+              contextMemoryEnabled={contextMemoryEnabled}
+              onContextMemoryEnabledChange={setContextMemoryEnabled}
               projectId={projectId}
               agentId={agentId}
               pipecatAgentId={pipecatAgentId}
