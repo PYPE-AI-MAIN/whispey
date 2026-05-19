@@ -5,7 +5,7 @@ import { getPipecatBaseUrl } from '@/lib/utils'
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { prompt, llm_model, llm_provider, stt_model, stt_language, stt_provider, stt_task, tts_model, tts_voice_id, tts_provider, tools, transfer_number, acefone_token, whispey_api_key, whispey_agent_id } = body
+    const { prompt, llm_model, llm_provider, stt_model, stt_language, stt_provider, stt_task, tts_model, tts_voice_id, tts_provider, tools, transfer_number, acefone_token, whispey_api_key, whispey_agent_id, context_memory } = body
 
     // Get Pipecat base URL
     const pipecatBaseUrl = getPipecatBaseUrl()
@@ -47,7 +47,8 @@ export async function PUT(request: NextRequest) {
       transfer_number: transfer_number || undefined,
       acefone_token: acefone_token || undefined,
       whispey_api_key: whispey_api_key || "pype-api-v1",
-      whispey_agent_id: whispey_agent_id
+      whispey_agent_id: whispey_agent_id,
+      context_memory: context_memory || undefined,
     }
 
     // Remove undefined values
