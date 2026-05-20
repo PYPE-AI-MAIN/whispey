@@ -64,6 +64,7 @@ interface PipecatAgent {
   turn_stop_timeout: number
   user_idle_timeout: number | null
   idle_nudges: string[] | null
+  idle_end_message: string | null
   allow_interruptions: boolean
   min_interruption_duration_ms: number
   mute_while_bot_speaking: boolean
@@ -153,6 +154,7 @@ interface SnapshotValues {
   turnStopTimeout: number
   userIdleTimeout: number | null
   idleNudges: string[]
+  idleEndMessage: string
   allowInterruptions: boolean
   minInterruptionDurationMs: number
   muteWhileBotSpeaking: boolean
@@ -300,6 +302,7 @@ export default function PipecatAgentConfig({
   const [turnStopTimeout, setTurnStopTimeout] = useState(5.0)
   const [userIdleTimeout, setUserIdleTimeout] = useState<number | null>(null)
   const [idleNudges, setIdleNudges] = useState<string[]>([])
+  const [idleEndMessage, setIdleEndMessage] = useState<string>('')
 
   // Interruption behavior
   const [allowInterruptions, setAllowInterruptions] = useState(true)
@@ -384,7 +387,7 @@ export default function PipecatAgentConfig({
     tools, toolConfigs, customTools, ttsProvider,
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
-    turnStopTimeout, userIdleTimeout, idleNudges,
+    turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage,
     allowInterruptions, minInterruptionDurationMs,
     muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
     noiseCancellation, enableMetrics,
@@ -443,6 +446,7 @@ export default function PipecatAgentConfig({
     setTurnStopTimeout(a.turn_stop_timeout ?? 5.0)
     setUserIdleTimeout(a.user_idle_timeout ?? null)
     setIdleNudges(a.idle_nudges ?? [])
+    setIdleEndMessage(a.idle_end_message ?? '')
 
     setAllowInterruptions(a.allow_interruptions ?? true)
     setMinInterruptionDurationMs(a.min_interruption_duration_ms ?? 500)
@@ -503,6 +507,7 @@ export default function PipecatAgentConfig({
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
       idleNudges: a.idle_nudges ?? [],
+      idleEndMessage: a.idle_end_message ?? '',
       allowInterruptions: a.allow_interruptions ?? true,
       minInterruptionDurationMs: a.min_interruption_duration_ms ?? 500,
       muteWhileBotSpeaking: a.mute_while_bot_speaking ?? true,
@@ -594,6 +599,7 @@ export default function PipecatAgentConfig({
         turn_stop_timeout: turnStopTimeout,
         user_idle_timeout: userIdleTimeout,
         idle_nudges: idleNudges,
+        idle_end_message: idleEndMessage,
         allow_interruptions: allowInterruptions,
         min_interruption_duration_ms: minInterruptionDurationMs,
         mute_while_bot_speaking: muteWhileBotSpeaking,
@@ -644,7 +650,7 @@ export default function PipecatAgentConfig({
         tools, toolConfigs, customTools,ttsProvider,
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
-        turnStopTimeout, userIdleTimeout, idleNudges,
+        turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage,
         allowInterruptions, minInterruptionDurationMs,
         muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
         noiseCancellation, enableMetrics,
@@ -1023,8 +1029,10 @@ export default function PipecatAgentConfig({
               turnStopTimeout={turnStopTimeout}
               userIdleTimeout={userIdleTimeout}
               idleNudges={idleNudges}
+              idleEndMessage={idleEndMessage}
               onTurnChange={handleTurnChange}
               onIdleNudgesChange={setIdleNudges}
+              onIdleEndMessageChange={setIdleEndMessage}
               allowInterruptions={allowInterruptions}
               onAllowInterruptionsChange={setAllowInterruptions}
               minInterruptionDurationMs={minInterruptionDurationMs}
