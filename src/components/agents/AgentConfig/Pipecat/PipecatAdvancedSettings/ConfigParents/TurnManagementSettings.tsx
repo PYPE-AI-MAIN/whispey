@@ -12,8 +12,10 @@ interface TurnManagementSettingsProps {
   turnStopTimeout: number
   userIdleTimeout: number | null
   idleNudges: string[]
+  idleEndMessage: string
   onTurnChange: (field: string, value: number | null) => void
   onIdleNudgesChange: (v: string[]) => void
+  onIdleEndMessageChange: (v: string) => void
 }
 
 function NumericField({
@@ -75,8 +77,10 @@ export default function TurnManagementSettings({
   turnStopTimeout,
   userIdleTimeout,
   idleNudges,
+  idleEndMessage,
   onTurnChange,
   onIdleNudgesChange,
+  onIdleEndMessageChange,
 }: TurnManagementSettingsProps) {
   const [idleLocal, setIdleLocal] = useState(
     userIdleTimeout !== null ? String(userIdleTimeout) : ''
@@ -220,7 +224,41 @@ export default function TurnManagementSettings({
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {idleDisabled
               ? 'Set an Idle Timeout above to enable nudge messages.'
-              : 'After the last nudge, the next idle period ends the call.'}
+              : 'After the last nudge, the End Message below is spoken and the call ends.'}
+          </p>
+        </div>
+
+        {/* Idle End Message — spoken once after the last nudge, then call ends */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              Idle End Message
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  The final farewell spoken right before the call hangs up — after
+                  all idle nudges fail to get a response. Leave empty to use the
+                  built-in default.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="text"
+            value={idleEndMessage}
+            placeholder="e.g. It seems you are not on the line. Have a nice day!"
+            onChange={e => onIdleEndMessageChange(e.target.value)}
+            disabled={idleDisabled}
+            className="h-8 text-xs"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {idleDisabled
+              ? 'Set an Idle Timeout above to enable the end message.'
+              : 'Spoken once after the last nudge, then the call ends.'}
           </p>
         </div>
       </div>

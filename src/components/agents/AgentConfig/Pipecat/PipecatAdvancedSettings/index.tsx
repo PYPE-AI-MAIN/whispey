@@ -73,8 +73,10 @@ interface PipecatAdvancedSettingsProps {
   turnStopTimeout: number
   userIdleTimeout: number | null
   idleNudges: string[]
+  idleEndMessage: string
   onTurnChange: (field: string, value: number | null) => void
   onIdleNudgesChange: (v: string[]) => void
+  onIdleEndMessageChange: (v: string) => void
   // Call behavior
   allowInterruptions: boolean
   onAllowInterruptionsChange: (v: boolean) => void
@@ -171,7 +173,7 @@ export default function PipecatAdvancedSettings({
   customTools, onCustomToolsChange,
   smartTurnEnabled, onSmartTurnEnabledChange,
   smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs, onSmartTurnChange,
-  turnStopTimeout, userIdleTimeout, idleNudges, onTurnChange, onIdleNudgesChange,
+  turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage, onTurnChange, onIdleNudgesChange, onIdleEndMessageChange,
   allowInterruptions, onAllowInterruptionsChange,
   minInterruptionDurationMs, onMinInterruptionDurationMsChange,
   muteWhileBotSpeaking, onMuteWhileBotSpeakingChange,
@@ -251,8 +253,10 @@ export default function PipecatAdvancedSettings({
             turnStopTimeout={turnStopTimeout}
             userIdleTimeout={userIdleTimeout}
             idleNudges={idleNudges}
+            idleEndMessage={idleEndMessage}
             onTurnChange={onTurnChange}
             onIdleNudgesChange={onIdleNudgesChange}
+            onIdleEndMessageChange={onIdleEndMessageChange}
           />
         </Section>
 
