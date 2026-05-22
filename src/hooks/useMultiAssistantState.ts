@@ -318,10 +318,7 @@ export function useMultiAssistantState({
                 transfer_number: tool.config?.transferNumber || '',
                 sip_outbound_trunk: tool.config?.sipTrunkId || '',
                 pre_transfer_webhook_url: tool.config?.preTransferWebhookUrl || null,
-                pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null,
-                // Trigger-mode flags. Defaults preserve current behavior.
-                enable_as_tool: tool.config?.enableAsTool !== false,
-                enable_as_tag:  tool.config?.enableAsTag === true,
+                pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null
               }
             }
 
@@ -658,10 +655,7 @@ export function useMultiAssistantState({
               ...baseToolConfig,
               ...commonFields,
               transfer_number: tool.config?.transferNumber || '',
-              sip_outbound_trunk: tool.config?.sipTrunkId || '',
-              // Trigger-mode flags. Defaults preserve current behavior.
-              enable_as_tool: tool.config?.enableAsTool !== false,
-              enable_as_tag:  tool.config?.enableAsTag === true,
+              sip_outbound_trunk: tool.config?.sipTrunkId || ''
             }
           }
 
