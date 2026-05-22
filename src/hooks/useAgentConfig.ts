@@ -510,6 +510,9 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             sipTrunkId: tool.sip_outbound_trunk || '',
             preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
             preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
+            // Backward-compatible defaults when loading old tools that don't have these keys
+            enableAsTool: tool.enable_as_tool !== false,
+            enableAsTag: tool.enable_as_tag === true,
             timeout: tool.timeout || 10,
             asyncExecution: tool.async || false,
             parameters: tool.parameters?.map((param: any) => ({
