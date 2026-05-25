@@ -405,7 +405,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
                   {hg.headers.map(h => (
                     <th
                       key={h.id}
-                      className="px-6 truncate border-2 border-r-black py-1.5 text-left font-semibold text-foreground dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight"
+                      className={cn(
+                        "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight",
+                        h.id.startsWith('transcription-')
+                          ? "text-purple-600 dark:text-purple-400 bg-purple-50/60 dark:bg-purple-900/10"
+                          : h.id.startsWith('metrics-')
+                            ? "text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-900/10"
+                            : "text-foreground dark:text-gray-100"
+                      )}
                       style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
                     >
                       {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
@@ -461,6 +468,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
                           className={cn(
                             "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
                             rowIndex === 0 && "border-t-0",
+                            !isSelected && cell.column.id.startsWith('transcription-') && "dark:bg-purple-900/10",
+                            !isSelected && cell.column.id.startsWith('metrics-') && "dark:bg-blue-900/10",
                             isSelected && "bg-blue-100 dark:bg-blue-900/40",
                           )}
                         >
