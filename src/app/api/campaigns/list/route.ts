@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId') ?? ''
+    const agentId   = searchParams.get('agentId')   ?? ''
     const page      = searchParams.get('page')      ?? '1'
     const limit     = searchParams.get('limit')     ?? '10'
     const search    = searchParams.get('search')    ?? ''
@@ -29,7 +30,8 @@ export async function GET(request: NextRequest) {
     url.pathname = `${basePath}/api/v1/projects/${encodeURIComponent(projectId)}/campaigns`
     url.searchParams.set('page',  page)
     url.searchParams.set('limit', limit)
-    if (search) url.searchParams.set('search', search)
+    if (search)   url.searchParams.set('search',  search)
+    if (agentId)  url.searchParams.set('agentId', agentId)
 
     // Origin lock: abort if the final host drifts from the trusted base
     if (url.origin !== trustedBase.origin) {
