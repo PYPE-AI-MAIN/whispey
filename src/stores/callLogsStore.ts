@@ -2,6 +2,12 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { FilterOperation } from '@/components/CallFilter'
 
+export interface SelectedCampaign {
+  campaignId: string
+  campaignName: string
+  status: string
+}
+
 interface VisibleColumns {
   basic: string[]
   metadata: string[]
@@ -47,6 +53,10 @@ interface CallLogsState {
   // Column visibility — intentionally global (shared across agents, user preference)
   visibleColumns: VisibleColumns
   setVisibleColumns: (columns: VisibleColumns | ((prev: VisibleColumns) => VisibleColumns)) => void
+
+  // Per-agent selected campaign — persisted so navigating away and back restores selection
+  selectedCampaignByAgent: Record<string, SelectedCampaign | null>
+  setSelectedCampaignForAgent: (agentId: string, campaign: SelectedCampaign | null) => void
 
   // Clears all filter state (column prefs preserved)
   resetState: () => void
@@ -119,18 +129,25 @@ export const useCallLogsStore = create<CallLogsState>()(
           visibleColumns: typeof columns === 'function' ? columns(state.visibleColumns) : columns
         })),
 
+      selectedCampaignByAgent: {},
+      setSelectedCampaignForAgent: (agentId, campaign) =>
+        set((state) => ({
+          selectedCampaignByAgent: { ...state.selectedCampaignByAgent, [agentId]: campaign }
+        })),
+
       resetState: () =>
-        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {}, dateFilterByAgent: {} })
+        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {}, dateFilterByAgent: {}, selectedCampaignByAgent: {} })
     }),
     {
       name: 'call-logs-storage',
-      version: 3, // bumped: added dateFilterByAgent
+      version: 4, // bumped: added selectedCampaignByAgent
       migrate: (old: any) => ({
         filtersByAgent: old?.filtersByAgent ?? {},
         distinctConfigByAgent: old?.distinctConfigByAgent ?? {},
         pageByAgent: old?.pageByAgent ?? {},
-        dateFilterByAgent: {},
-        visibleColumns: old?.visibleColumns ?? defaultVisibleColumns
+        dateFilterByAgent: old?.dateFilterByAgent ?? {},
+        visibleColumns: old?.visibleColumns ?? defaultVisibleColumns,
+        selectedCampaignByAgent: {},
       }),
       onRehydrateStorage: () => (state) => {
         if (!state?.filtersByAgent) return
