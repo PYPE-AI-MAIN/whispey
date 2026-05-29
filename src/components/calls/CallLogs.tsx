@@ -24,6 +24,9 @@ import {
   ReanalyzeDialogWrapper
 } from './sub-components'
 import BackfillDispositionDialog from '@/components/disposition/BackfillDispositionDialog'
+import { CampaignSelector } from './CampaignSelector'
+import type { Campaign } from './CampaignSelector'
+import CampaignCallLogs from './CampaignCallLogs'
 
 interface CallLogsProps {
   project: any
@@ -183,6 +186,13 @@ const CallLogs: React.FC<CallLogsProps> = ({
   }, [refetch, isRefetching])
 
   const [dlProgress, setDlProgress] = useState<DownloadProgress | null>(null)
+  const [campaignDownloadOpen, setCampaignDownloadOpen] = useState(false)
+
+  const { selectedCampaignByAgent, setSelectedCampaignForAgent } = useCallLogsStore()
+  const selectedCampaign = agent?.id ? (selectedCampaignByAgent[agent.id] ?? null) : null
+  const setSelectedCampaign = useCallback((c: Campaign | null) => {
+    if (agent?.id) setSelectedCampaignForAgent(agent.id, c)
+  }, [agent?.id, setSelectedCampaignForAgent])
 
   const handleDownloadCSV = useCallback(async () => {
     if (!agent?.id) return
@@ -295,7 +305,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
+      <div className="flex-none relative p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CallFilter
@@ -308,6 +318,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
               onDistinctConfigChange={handleDistinctConfigChange}
               role={role}
             />
+            {project?.id && (
+              <CampaignSelector
+                projectId={project.id}
+                agentId={agent?.id ?? ''}
+                selectedCampaign={selectedCampaign}
+                onSelect={setSelectedCampaign}
+              />
+            )}
             <Button
               variant="outline" size="sm"
               onClick={handleRefresh}
@@ -325,12 +343,11 @@ const CallLogs: React.FC<CallLogsProps> = ({
               projectId={project?.id} agentId={agent?.id}
               agentName={agent?.name} projectName={project?.name}
             />
-            {/* Download CSV with progress bar */}
             <div className="relative">
               <Button
                 variant="outline" size="sm"
-                onClick={handleDownloadCSV}
-                disabled={isLoading || !agent?.id || !!dlProgress}
+                onClick={selectedCampaign ? () => setCampaignDownloadOpen(true) : handleDownloadCSV}
+                disabled={(!selectedCampaign && (isLoading || !agent?.id || !!dlProgress))}
                 className="min-w-[120px] overflow-hidden"
               >
                 {dlProgress ? (
@@ -380,203 +397,218 @@ const CallLogs: React.FC<CallLogsProps> = ({
         </div>
       </div>
 
-      {/* ── Table ─────────────────────────────────────────────────────────── */}
-      <div className="flex-1 relative overflow-hidden">
-        {/* Thin progress bar — shown while changing pages */}
-        <div
-          className={cn(
-            "absolute top-0 left-0 right-0 h-[2px] z-30 overflow-hidden transition-opacity duration-200",
-            (isFetchingNextPage || isRefetching) ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}
-        >
-          <div className="h-full bg-blue-500 dark:bg-blue-400 animate-[progress-slide_1.2s_ease-in-out_infinite]" />
-        </div>
+      {/* ── Campaign view (replaces table when a campaign is selected) ─────── */}
+      {selectedCampaign && (
+        <CampaignCallLogs
+          agent={agent}
+          project={project}
+          campaign={selectedCampaign}
+          visibleColumns={visibleColumns}
+          availableTags={availableTags}
+          role={role}
+          filters={activeFilters}
+          downloadDialogOpen={campaignDownloadOpen}
+          onDownloadDialogOpenChange={setCampaignDownloadOpen}
+        />
+      )}
 
-        <div
-          className={cn(
-            "absolute inset-0 overflow-auto transition-opacity duration-150",
-            (isFetchingNextPage || isRefetching) && "opacity-60 pointer-events-none"
-          )}
-        >
-          <table className="w-full border-collapse border-spacing-0">
-            <thead className="sticky h-12 -top-1 z-20 bg-background dark:bg-gray-900 shadow-sm">
-              {table.getHeaderGroups().map(hg => (
-                <tr key={hg.id} className="bg-muted/80 dark:bg-gray-800/80">
-                  {hg.headers.map(h => (
-                    <th
-                      key={h.id}
-                      className="px-6 truncate border-2 border-r-black py-1.5 text-left font-semibold text-foreground dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight"
-                      style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
-                    >
-                      {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {rows.length === 0 && !isLoading ? (
-                <tr>
-                  <td colSpan={columns.length} className="h-[400px] text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4 py-12">
-                      <div className="rounded-full bg-muted/50 p-6">
-                        <Inbox className="w-12 h-12 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold">No call logs found</h3>
-                      {activeFilters.length > 0 && (
-                        <>
-                          <p className="text-sm text-muted-foreground max-w-md">
-                            No calls match your current filters.
-                          </p>
-                          <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                            Clear Filters
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, rowIndex) => {
-                  const isFlagged = Boolean(row.original.transcription_metrics?.flag?.text)
-                  const isSelected = selectedCallId === row.original.id
-                  const isNavigatingRow = navigatingCallId === row.original.id
-                  return (
-                    <tr
-                      key={row.id}
-                      style={isSelected ? undefined : isFlagged ? flaggedRowStyle : undefined}
-                      className={cn(
-                        "cursor-pointer transition-colors border-b border-border/50 h-20",
-                        isNavigatingRow && "pointer-events-none",
-                        !isSelected && (isFlagged
-                          ? "hover:brightness-95"
-                          : "hover:bg-muted/30 dark:hover:bg-gray-800/50"
-                        ),
-                      )}
-                      onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <td
-                          key={cell.id}
-                          className={cn(
-                            "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
-                            rowIndex === 0 && "border-t-0",
-                            isSelected && "bg-blue-100 dark:bg-blue-900/40",
-                          )}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Pagination bar ────────────────────────────────────────────────── */}
-      <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
-
-        {/* Row range label */}
-        <span className="text-sm text-muted-foreground min-w-[100px]">
-          {currentPageCalls.length > 0
-            ? totalCount !== null
-              ? `${pageStart.toLocaleString()}–${pageEnd.toLocaleString()} of ${totalCount.toLocaleString()}`
-              : `${pageStart}–${pageEnd}`
-            : '—'
-          }
-        </span>
-
-        {/* Page numbers */}
-        <div className="flex items-center gap-1">
-          {/* Prev button */}
-          <Button
-            variant="ghost" size="sm"
-            className="h-8 w-8 p-0"
-            disabled={isFirstPage || isLoading}
-            onClick={goToPrevPage}
-            aria-label="Previous page"
+      {/* ── Normal table + pagination (hidden when campaign view is active) ─── */}
+      {!selectedCampaign && <>
+        <div className="flex-1 relative overflow-hidden">
+          {/* Thin progress bar — shown while changing pages */}
+          <div
+            className={cn(
+              "absolute top-0 left-0 right-0 h-[2px] z-30 overflow-hidden transition-opacity duration-200",
+              (isFetchingNextPage || isRefetching) ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+            <div className="h-full bg-blue-500 dark:bg-blue-400 animate-[progress-slide_1.2s_ease-in-out_infinite]" />
+          </div>
 
-          {pageItems.map((item, idx) => {
-            if (item === 'start-ellipsis' || item === 'end-ellipsis') {
-              return (
-                <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground select-none">
-                  …
-                </span>
-              )
+          <div
+            className={cn(
+              "absolute inset-0 overflow-auto transition-opacity duration-150",
+              (isFetchingNextPage || isRefetching) && "opacity-60 pointer-events-none"
+            )}
+          >
+            <table className="w-full border-collapse border-spacing-0">
+              <thead className="sticky h-12 -top-1 z-20 bg-background dark:bg-gray-900 shadow-sm">
+                {table.getHeaderGroups().map(hg => (
+                  <tr key={hg.id} className="bg-muted/80 dark:bg-gray-800/80">
+                    {hg.headers.map(h => (
+                      <th
+                        key={h.id}
+                        className="px-6 truncate border-2 border-r-black py-1.5 text-left font-semibold text-foreground dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight"
+                        style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
+                      >
+                        {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {rows.length === 0 && !isLoading ? (
+                  <tr>
+                    <td colSpan={columns.length} className="h-[400px] text-center">
+                      <div className="flex flex-col items-center justify-center space-y-4 py-12">
+                        <div className="rounded-full bg-muted/50 p-6">
+                          <Inbox className="w-12 h-12 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold">No call logs found</h3>
+                        {activeFilters.length > 0 && (
+                          <>
+                            <p className="text-sm text-muted-foreground max-w-md">
+                              No calls match your current filters.
+                            </p>
+                            <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                              Clear Filters
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((row, rowIndex) => {
+                    const isFlagged = Boolean(row.original.transcription_metrics?.flag?.text)
+                    const isSelected = selectedCallId === row.original.id
+                    const isNavigatingRow = navigatingCallId === row.original.id
+                    return (
+                      <tr
+                        key={row.id}
+                        style={isSelected ? undefined : isFlagged ? flaggedRowStyle : undefined}
+                        className={cn(
+                          "cursor-pointer transition-colors border-b border-border/50 h-20",
+                          isNavigatingRow && "pointer-events-none",
+                          !isSelected && (isFlagged
+                            ? "hover:brightness-95"
+                            : "hover:bg-muted/30 dark:hover:bg-gray-800/50"
+                          ),
+                        )}
+                        onClick={() => handleRowSelect(row.original.id, row.original.agent_id)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            className={cn(
+                              "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
+                              rowIndex === 0 && "border-t-0",
+                              isSelected && "bg-blue-100 dark:bg-blue-900/40",
+                            )}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ── Pagination bar ──────────────────────────────────────────────── */}
+        <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
+
+          {/* Row range label */}
+          <span className="text-sm text-muted-foreground min-w-[100px]">
+            {currentPageCalls.length > 0
+              ? totalCount !== null
+                ? `${pageStart.toLocaleString()}–${pageEnd.toLocaleString()} of ${totalCount.toLocaleString()}`
+                : `${pageStart}–${pageEnd}`
+              : '—'
             }
+          </span>
 
-            if (item === 'load-more') {
+          {/* Page numbers */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost" size="sm"
+              className="h-8 w-8 p-0"
+              disabled={isFirstPage || isLoading}
+              onClick={goToPrevPage}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            {pageItems.map((item, idx) => {
+              if (item === 'start-ellipsis' || item === 'end-ellipsis') {
+                return (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground select-none">
+                    …
+                  </span>
+                )
+              }
+
+              if (item === 'load-more') {
+                return (
+                  <Button
+                    key="load-more"
+                    variant="ghost" size="sm"
+                    className="h-8 w-8 p-0 text-muted-foreground"
+                    disabled={isFetchingNextPage}
+                    onClick={goToNextPage}
+                    aria-label="Load more pages"
+                  >
+                    {isFetchingNextPage
+                      ? <RefreshCw className="h-3 w-3 animate-spin" />
+                      : <span className="text-sm">…</span>
+                    }
+                  </Button>
+                )
+              }
+
+              const pageNum = item as number
+              const isActive = pageNum === currentPage
               return (
                 <Button
-                  key="load-more"
-                  variant="ghost" size="sm"
-                  className="h-8 w-8 p-0 text-muted-foreground"
-                  disabled={isFetchingNextPage}
-                  onClick={goToNextPage}
-                  aria-label="Load more pages"
+                  key={pageNum}
+                  variant={isActive ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "h-8 w-8 p-0 text-sm font-medium",
+                    isActive && "pointer-events-none"
+                  )}
+                  disabled={isLoading}
+                  onClick={() => goToPage(pageNum)}
+                  aria-label={`Page ${pageNum}`}
+                  aria-current={isActive ? "page" : undefined}
                 >
-                  {isFetchingNextPage
-                    ? <RefreshCw className="h-3 w-3 animate-spin" />
-                    : <span className="text-sm">…</span>
-                  }
+                  {pageNum}
                 </Button>
               )
-            }
+            })}
 
-            const pageNum = item as number
-            const isActive = pageNum === currentPage
-            return (
-              <Button
-                key={pageNum}
-                variant={isActive ? "default" : "ghost"}
-                size="sm"
-                className={cn(
-                  "h-8 w-8 p-0 text-sm font-medium",
-                  isActive && "pointer-events-none"
-                )}
-                disabled={isLoading}
-                onClick={() => goToPage(pageNum)}
-                aria-label={`Page ${pageNum}`}
-                aria-current={isActive ? "page" : undefined}
-              >
-                {pageNum}
-              </Button>
-            )
-          })}
+            <Button
+              variant="ghost" size="sm"
+              className="h-8 w-8 p-0"
+              disabled={isLastPage || isFetchingNextPage}
+              onClick={goToNextPage}
+              aria-label="Next page"
+            >
+              {isFetchingNextPage
+                ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                : <ChevronRight className="h-4 w-4" />
+              }
+            </Button>
+          </div>
 
-          {/* Next button */}
-          <Button
-            variant="ghost" size="sm"
-            className="h-8 w-8 p-0"
-            disabled={isLastPage || isFetchingNextPage}
-            onClick={goToNextPage}
-            aria-label="Next page"
-          >
-            {isFetchingNextPage
-              ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              : <ChevronRight className="h-4 w-4" />
+          {/* Total count / page indicator */}
+          <span className="text-xs text-muted-foreground min-w-[100px] text-right">
+            {totalCount !== null
+              ? `${totalCount.toLocaleString()} total · ${totalPages} pages`
+              : hasNextPage
+              ? `page ${currentPage}+`
+              : currentPageCalls.length > 0
+              ? `${currentPageCalls.length} on page`
+              : null
             }
-          </Button>
+          </span>
         </div>
-
-        {/* Total count / page indicator */}
-        <span className="text-xs text-muted-foreground min-w-[100px] text-right">
-          {totalCount !== null
-            ? `${totalCount.toLocaleString()} total · ${totalPages} pages`
-            : hasNextPage
-            ? `page ${currentPage}+`
-            : currentPageCalls.length > 0
-            ? `${currentPageCalls.length} on page`
-            : null
-          }
-        </span>
-      </div>
+      </>}
     </div>
   )
 }

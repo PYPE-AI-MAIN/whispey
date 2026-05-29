@@ -1,7 +1,7 @@
 // src/components/agents/AgentSelect/AgentSelection.tsx
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AlertCircle, X, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,7 +41,13 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   const [deletingAgent, setDeletingAgent] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Agent | null>(null)
   const [copiedAgentId, setCopiedAgentId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    try { return (localStorage.getItem('agents_view_mode') as 'grid' | 'list') || 'list' } catch { return 'list' }
+  })
+  const handleViewModeChange = useCallback((mode: 'grid' | 'list') => {
+    setViewMode(mode)
+    try { localStorage.setItem('agents_view_mode', mode) } catch {}
+  }, [])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [breadcrumb, setBreadcrumb] = useState<{
@@ -207,7 +213,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
           onCreateAgent={handleCreateAgent}
           onConnectAgent={handleConnectAgent}
           onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
