@@ -64,6 +64,7 @@ interface PipecatAgent {
   turn_stop_timeout: number
   user_idle_timeout: number | null
   idle_nudges: string[] | null
+  idle_end_message: string | null
   allow_interruptions: boolean
   min_interruption_duration_ms: number
   mute_while_bot_speaking: boolean
@@ -97,6 +98,7 @@ interface PipecatAgent {
   whispey_agent_id: string
   timezone: string
   variables: Record<string, string>
+  context_memory?: { enabled: boolean } | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -152,6 +154,7 @@ interface SnapshotValues {
   turnStopTimeout: number
   userIdleTimeout: number | null
   idleNudges: string[]
+  idleEndMessage: string
   allowInterruptions: boolean
   minInterruptionDurationMs: number
   muteWhileBotSpeaking: boolean
@@ -179,6 +182,7 @@ interface SnapshotValues {
   keyboardSoundOnToolCalls: boolean
   timezone: string
   variables: Record<string, string>
+  contextMemoryEnabled: boolean
 }
 
 function buildSnapshot(v: SnapshotValues): string {
@@ -298,6 +302,7 @@ export default function PipecatAgentConfig({
   const [turnStopTimeout, setTurnStopTimeout] = useState(5.0)
   const [userIdleTimeout, setUserIdleTimeout] = useState<number | null>(null)
   const [idleNudges, setIdleNudges] = useState<string[]>([])
+  const [idleEndMessage, setIdleEndMessage] = useState<string>('')
 
   // Interruption behavior
   const [allowInterruptions, setAllowInterruptions] = useState(true)
@@ -352,6 +357,9 @@ export default function PipecatAgentConfig({
   // Variables — key/value pairs, e.g. { customer_name: 'John' }
   const [variables, setVariables] = useState<Record<string, string>>({})
 
+  // Context Memory — rolling per-call summariser (Azure gpt-4.1-mini)
+  const [contextMemoryEnabled, setContextMemoryEnabled] = useState(false)
+
   // Detect {{var_name}} placeholders in prompt + opening message
   const detectedVarNames = useMemo(() => {
     const regex = /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g
@@ -379,7 +387,7 @@ export default function PipecatAgentConfig({
     tools, toolConfigs, customTools, ttsProvider,
     vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
     smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
-    turnStopTimeout, userIdleTimeout, idleNudges,
+    turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage,
     allowInterruptions, minInterruptionDurationMs,
     muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
     noiseCancellation, enableMetrics,
@@ -390,6 +398,7 @@ export default function PipecatAgentConfig({
     keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
     ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
     timezone, variables,
+    contextMemoryEnabled,
   }) : null
 
   const isDirty = isLoaded && currentSnapshot !== savedSnapshot
@@ -437,6 +446,7 @@ export default function PipecatAgentConfig({
     setTurnStopTimeout(a.turn_stop_timeout ?? 5.0)
     setUserIdleTimeout(a.user_idle_timeout ?? null)
     setIdleNudges(a.idle_nudges ?? [])
+    setIdleEndMessage(a.idle_end_message ?? '')
 
     setAllowInterruptions(a.allow_interruptions ?? true)
     setMinInterruptionDurationMs(a.min_interruption_duration_ms ?? 500)
@@ -466,6 +476,7 @@ export default function PipecatAgentConfig({
     setKeyboardSoundOnToolCalls(a.keyboard_sound_on_tool_calls ?? false)
     setTimezone(a.timezone || 'Asia/Kolkata')
     setVariables(a.variables || {})
+    setContextMemoryEnabled(Boolean(a.context_memory?.enabled))
 
     setSavedSnapshot(buildSnapshot({
       prompt: a.prompt || '',
@@ -496,6 +507,7 @@ export default function PipecatAgentConfig({
       turnStopTimeout: a.turn_stop_timeout ?? 5.0,
       userIdleTimeout: a.user_idle_timeout ?? null,
       idleNudges: a.idle_nudges ?? [],
+      idleEndMessage: a.idle_end_message ?? '',
       allowInterruptions: a.allow_interruptions ?? true,
       minInterruptionDurationMs: a.min_interruption_duration_ms ?? 500,
       muteWhileBotSpeaking: a.mute_while_bot_speaking ?? true,
@@ -523,6 +535,7 @@ export default function PipecatAgentConfig({
       keyboardSoundOnToolCalls: a.keyboard_sound_on_tool_calls ?? false,
       timezone: a.timezone || 'Asia/Kolkata',
       variables: a.variables || {},
+      contextMemoryEnabled: Boolean(a.context_memory?.enabled),
     }))
     setIsLoaded(true)
   }, [])
@@ -586,6 +599,7 @@ export default function PipecatAgentConfig({
         turn_stop_timeout: turnStopTimeout,
         user_idle_timeout: userIdleTimeout,
         idle_nudges: idleNudges,
+        idle_end_message: idleEndMessage,
         allow_interruptions: allowInterruptions,
         min_interruption_duration_ms: minInterruptionDurationMs,
         mute_while_bot_speaking: muteWhileBotSpeaking,
@@ -615,6 +629,7 @@ export default function PipecatAgentConfig({
         variables,
         whispey_api_key: agent.whispey_api_key,
         whispey_agent_id: agent.whispey_agent_id,
+        context_memory: { enabled: contextMemoryEnabled },
       }
 
       const res = await fetch(`/api/pipecat/agents/${pipecatAgentId}`, {
@@ -635,7 +650,7 @@ export default function PipecatAgentConfig({
         tools, toolConfigs, customTools,ttsProvider,
         vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
         smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
-        turnStopTimeout, userIdleTimeout, idleNudges,
+        turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage,
         allowInterruptions, minInterruptionDurationMs,
         muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
         noiseCancellation, enableMetrics,
@@ -646,6 +661,7 @@ export default function PipecatAgentConfig({
         keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
         ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
         timezone, variables,
+        contextMemoryEnabled,
       }))
 
       // Show checkpoint banner — identical to LiveKit flow
@@ -1013,8 +1029,10 @@ export default function PipecatAgentConfig({
               turnStopTimeout={turnStopTimeout}
               userIdleTimeout={userIdleTimeout}
               idleNudges={idleNudges}
+              idleEndMessage={idleEndMessage}
               onTurnChange={handleTurnChange}
               onIdleNudgesChange={setIdleNudges}
+              onIdleEndMessageChange={setIdleEndMessage}
               allowInterruptions={allowInterruptions}
               onAllowInterruptionsChange={setAllowInterruptions}
               minInterruptionDurationMs={minInterruptionDurationMs}
@@ -1063,6 +1081,8 @@ export default function PipecatAgentConfig({
               onKeyboardSoundVolumeChange={setKeyboardSoundVolume}
               onKeyboardSoundProbabilityChange={setKeyboardSoundProbability}
               onKeyboardSoundOnToolCallsChange={setKeyboardSoundOnToolCalls}
+              contextMemoryEnabled={contextMemoryEnabled}
+              onContextMemoryEnabledChange={setContextMemoryEnabled}
               projectId={projectId}
               agentId={agentId}
               pipecatAgentId={pipecatAgentId}

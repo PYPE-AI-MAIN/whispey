@@ -6,7 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import {
   ChevronDownIcon, MicIcon, BrainIcon, TimerIcon,
   WrenchIcon, DatabaseIcon, Music2Icon, Webhook,
-  PhoneCallIcon, MessageSquareIcon,
+  PhoneCallIcon, MessageSquareIcon, NotebookPenIcon,
 } from 'lucide-react'
 import VadSettings from './ConfigParents/VadSettings'
 import SmartTurnSettings from './ConfigParents/SmartTurnSettings'
@@ -19,6 +19,7 @@ import CallBehaviorSettings from './ConfigParents/CallBehaviorSettings'
 import PromptRulesSettings from './ConfigParents/PromptRulesSettings'
 import WebhookSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings/ConfigParents/WebhookSettings'
 import CallbackSettings from '@/components/projects/CallbackSettings'
+import ContextMemorySettings from '@/components/agents/AgentConfig/AgentAdvancedSettings/ConfigParents/ContextMemorySettings'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,8 +73,10 @@ interface PipecatAdvancedSettingsProps {
   turnStopTimeout: number
   userIdleTimeout: number | null
   idleNudges: string[]
+  idleEndMessage: string
   onTurnChange: (field: string, value: number | null) => void
   onIdleNudgesChange: (v: string[]) => void
+  onIdleEndMessageChange: (v: string) => void
   // Call behavior
   allowInterruptions: boolean
   onAllowInterruptionsChange: (v: boolean) => void
@@ -127,6 +130,9 @@ interface PipecatAdvancedSettingsProps {
   onKeyboardSoundVolumeChange: (v: number) => void
   onKeyboardSoundProbabilityChange: (v: number) => void
   onKeyboardSoundOnToolCallsChange: (v: boolean) => void
+  // Context Memory
+  contextMemoryEnabled: boolean
+  onContextMemoryEnabledChange: (v: boolean) => void
   projectId?: string
   agentId?: string
   pipecatAgentId?: string
@@ -167,7 +173,7 @@ export default function PipecatAdvancedSettings({
   customTools, onCustomToolsChange,
   smartTurnEnabled, onSmartTurnEnabledChange,
   smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs, onSmartTurnChange,
-  turnStopTimeout, userIdleTimeout, idleNudges, onTurnChange, onIdleNudgesChange,
+  turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage, onTurnChange, onIdleNudgesChange, onIdleEndMessageChange,
   allowInterruptions, onAllowInterruptionsChange,
   minInterruptionDurationMs, onMinInterruptionDurationMsChange,
   muteWhileBotSpeaking, onMuteWhileBotSpeakingChange,
@@ -189,6 +195,7 @@ export default function PipecatAdvancedSettings({
   ambientSoundEnabled, ambientSoundVolume, onAmbientSoundEnabledChange, onAmbientSoundVolumeChange,
   keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
   onKeyboardSoundEnabledChange, onKeyboardSoundVolumeChange, onKeyboardSoundProbabilityChange, onKeyboardSoundOnToolCallsChange,
+  contextMemoryEnabled, onContextMemoryEnabledChange,
   projectId, agentId, pipecatAgentId,
 }: PipecatAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -202,6 +209,7 @@ export default function PipecatAdvancedSettings({
     ambient: false,
     webhook: false,
     callbackScheduling: false,
+    contextMemory: false,
   })
 
   const toggle = (s: string) => setOpenSections(prev => ({ ...prev, [s]: !prev[s] }))
@@ -245,8 +253,10 @@ export default function PipecatAdvancedSettings({
             turnStopTimeout={turnStopTimeout}
             userIdleTimeout={userIdleTimeout}
             idleNudges={idleNudges}
+            idleEndMessage={idleEndMessage}
             onTurnChange={onTurnChange}
             onIdleNudgesChange={onIdleNudgesChange}
+            onIdleEndMessageChange={onIdleEndMessageChange}
           />
         </Section>
 
@@ -337,6 +347,19 @@ export default function PipecatAdvancedSettings({
             onRagFillerEnabledChange={onRagFillerEnabledChange}
             ragFillerPhrases={ragFillerPhrases}
             onRagFillerPhrasesChange={onRagFillerPhrasesChange}
+          />
+        </Section>
+
+        {/* Context Memory — rolling per-call summariser (Azure gpt-4.1-mini) */}
+        <Section
+          icon={<NotebookPenIcon className="w-3.5 h-3.5" />}
+          label="Context Memory"
+          open={openSections.contextMemory}
+          onToggle={() => toggle('contextMemory')}
+        >
+          <ContextMemorySettings
+            enabled={contextMemoryEnabled}
+            onFieldChange={(_field, value) => onContextMemoryEnabledChange(Boolean(value))}
           />
         </Section>
 

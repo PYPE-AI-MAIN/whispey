@@ -51,6 +51,8 @@ interface PhoneNumber {
   trunk_id: string
   provider: string | null
   project_id: string | null
+  status: string | null
+  trunk_direction: string | null
 }
 
 interface ToolParameter {
@@ -77,6 +79,12 @@ interface Tool {
     sipTrunkId?: string
     preTransferWebhookUrl?: string
     preTransferWebhookFields?: string[]
+    // Transfer trigger mode: Add as Tool (default true) and/or Add as Tag (default false).
+    // - Tool: LLM sees transfer_call as a callable function tool.
+    // - Tag : LLM emits <transfer/> in plain text; agent strips it from TTS and fires the transfer.
+    // Both can be enabled together (idempotency guard prevents double-dial).
+    enableAsTool?: boolean
+    enableAsTag?: boolean
     timeout?: number
     asyncExecution?: boolean
     parameters?: ToolParameter[]
@@ -128,6 +136,9 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     sipTrunkId: '',
     preTransferWebhookUrl: '',
     preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+    // Transfer trigger mode (defaults preserve current behavior: tool ON, tag OFF)
+    enableAsTool: true,
+    enableAsTag: false,
     timeout: 10,
     asyncExecution: false,
     parameters: [] as ToolParameter[],
@@ -154,15 +165,24 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhoneNumbers(true)
-        const response = await fetch(`/api/calls/phone-numbers/?limit=50`)
-        
+        const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
+
         if (response.ok) {
           const data: PhoneNumber[] = await response.json()
-          
-          const filteredNumbers = projectId 
-            ? data.filter(phone => phone.project_id === projectId)
-            : data
-          
+
+          // Only show active outbound numbers for this project.
+          // Inbound trunks are excluded — they are not valid transfer targets.
+          const seen = new Set<string>()
+          const filteredNumbers = data.filter(phone => {
+            if (seen.has(phone.id)) return false
+            seen.add(phone.id)
+            return (
+              phone.project_id === projectId &&
+              phone.status === 'active' &&
+              phone.trunk_direction === 'outbound'
+            )
+          })
+
           setPhoneNumbers(filteredNumbers)
         }
       } catch (error) {
@@ -198,6 +218,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -230,6 +252,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -262,6 +286,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -294,6 +320,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -326,6 +354,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -358,6 +388,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -390,6 +422,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -422,6 +456,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
+        enableAsTool: true,
+        enableAsTag: false,
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -471,6 +507,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       sipTrunkId: tool.config.sipTrunkId || '',
       preTransferWebhookUrl: tool.config.preTransferWebhookUrl || '',
       preTransferWebhookFields: tool.config.preTransferWebhookFields || ALL_WEBHOOK_FIELDS,
+      // Backward-compatible: if the existing tool has no enableAsTool key, default to true
+      // (preserves the "tool only" behavior every saved transfer config has today).
+      enableAsTool: tool.config.enableAsTool !== false,
+      enableAsTag: tool.config.enableAsTag === true,
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
       parameters: tool.config.parameters || [],
@@ -520,6 +560,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         sipTrunkId: formData.sipTrunkId,
         preTransferWebhookUrl: formData.preTransferWebhookUrl,
         preTransferWebhookFields: formData.preTransferWebhookFields,
+        enableAsTool: formData.enableAsTool,
+        enableAsTag: formData.enableAsTag,
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
         parameters: formData.parameters,
@@ -819,6 +861,57 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
             {/* Transfer Call specific fields */}
             {selectedToolType === 'transfer_call' && (
               <>
+                {/* Trigger mode — how the LLM activates the transfer */}
+                <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3">
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                    How should the LLM trigger this transfer?
+                  </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="transfer-enable-as-tool"
+                        checked={formData.enableAsTool}
+                        onCheckedChange={(v) =>
+                          setFormData(prev => ({ ...prev, enableAsTool: v === true }))
+                        }
+                      />
+                      <div className="flex-1">
+                        <label htmlFor="transfer-enable-as-tool" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                          Add as Tool
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Exposes <code>transfer_call</code> as a function tool the LLM can decide to invoke.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="transfer-enable-as-tag"
+                        checked={formData.enableAsTag}
+                        onCheckedChange={(v) =>
+                          setFormData(prev => ({ ...prev, enableAsTag: v === true }))
+                        }
+                      />
+                      <div className="flex-1">
+                        <label htmlFor="transfer-enable-as-tag" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                          Add as Tag
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Looks for <code>&lt;transfer/&gt;</code> in the LLM's spoken text and triggers the transfer
+                          (the tag is stripped from TTS so the caller never hears it).
+                          Add this instruction to your system prompt:{' '}
+                          <em>"When transferring, append <code>&lt;transfer/&gt;</code> to your final response."</em>
+                        </p>
+                      </div>
+                    </div>
+                    {!formData.enableAsTool && !formData.enableAsTag && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 pt-1">
+                        ⚠️ Neither trigger is enabled — the transfer config will be saved but the LLM has no way to fire it.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <Label className="text-xs text-gray-700 dark:text-gray-300">Transfer Number</Label>
                   <Input
