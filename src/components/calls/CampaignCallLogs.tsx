@@ -353,7 +353,14 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                   {hg.headers.map(h => (
                     <th
                       key={h.id}
-                      className="px-4 truncate py-1.5 text-left font-semibold text-foreground dark:text-gray-100 border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight"
+                      className={cn(
+                        "px-4 truncate py-1.5 text-left font-semibold border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight",
+                        h.id.startsWith('transcription-')
+                          ? "text-purple-600 dark:text-purple-400 bg-purple-50/60 dark:bg-purple-900/10"
+                          : h.id.startsWith('metrics-')
+                            ? "text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-900/10"
+                            : "text-foreground dark:text-gray-100"
+                      )}
                       style={{ minWidth: h.column.columnDef.minSize || 120, width: h.column.columnDef.size || 'auto' }}
                     >
                       {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
@@ -406,6 +413,8 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                               'px-4 py-1 text-sm dark:text-gray-100 leading-tight h-20',
                               cellIndex > 0 && 'cursor-pointer border-l border-border/20',
                               rowIndex === 0 && 'border-t-0',
+                              !expandedBg && cell.column.id.startsWith('transcription-') && 'dark:bg-purple-900/10',
+                              !expandedBg && cell.column.id.startsWith('metrics-') && 'dark:bg-blue-900/10',
                             )}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
