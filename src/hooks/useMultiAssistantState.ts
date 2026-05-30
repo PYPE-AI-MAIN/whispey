@@ -140,14 +140,23 @@ export function useMultiAssistantState({
         name: agentName,
         prompt: formValues.prompt || '',
         variables: variablesObject,
-        stt: {
-          name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
-          language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-          model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
-          ...(( currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
-            mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
-          })
-        },
+        stt: (() => {
+          const rawConfig = formValues.sttConfig || currentSttConfig?.config || {}
+          // Exclude structural fields + Deepgram-dialog-only fields that aren't used by the backend
+          const { language: _l, mode: _m, model: _mo, tier: _t, version: _v,
+                  redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
+                  ...extraConfig } = rawConfig as any
+          const result = {
+            name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
+            language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
+            model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
+            ...((currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
+              mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
+            }),
+            ...extraConfig
+          }
+          return result
+        })(),
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
           provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
