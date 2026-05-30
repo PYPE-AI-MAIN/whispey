@@ -498,13 +498,9 @@ export default function AgentConfig() {
       })
       
       setSTTConfig({
-        provider: assistant.stt?.name || assistant.stt?.provider || 'openai',            
+        provider: assistant.stt?.name || assistant.stt?.provider || 'openai',
         model: assistant.stt?.model || 'whisper-1',
-        config: {
-          language: assistant.stt?.language || 'en',
-          ...(assistant.stt?.config?.mode ? { mode: assistant.stt.config.mode } : {}),
-          ...assistant.stt?.config || {}
-        }
+        config: formValues.sttConfig || { language: assistant.stt?.language || 'en' }
       })
       
       const llmConfig = assistant.llm || {}
@@ -534,10 +530,8 @@ export default function AgentConfig() {
     if (saveAndDeploy.isSuccess) {
       setHasExternalChanges(false)
       resetUnsavedChanges()
-      // CRITICAL: Store current values and reset to clear dirty flag
-      const currentValues = formik.values
-      formik.resetForm()
-      formik.setValues(currentValues, false) // false = don't validate
+      // Reset with current values as new initialValues so dirty = false immediately
+      formik.resetForm({ values: formik.values })
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
 
@@ -590,7 +584,6 @@ export default function AgentConfig() {
     setIsSaving(true)
     try {
       await saveAndDeploy.mutateAsync(payload)
-      await refetchConfig()
       // Auto-save a version on every deploy (fire-and-forget, retention enforced server-side)
       fetch(`/api/agents/${agentid}/history`, {
         method: 'POST',
@@ -627,8 +620,9 @@ export default function AgentConfig() {
     formik.setFieldValue('sttProvider', provider)
     formik.setFieldValue('sttModel', model)
     formik.setFieldValue('sttConfig', config)
-    
+
     setSTTConfig({ provider, model, config })
+    setHasExternalChanges(true)
   }
   
   const handleProviderChange = (provider: string) => {
