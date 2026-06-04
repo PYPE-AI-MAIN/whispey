@@ -10,7 +10,12 @@ import { Button } from '@/components/ui/button'
 import {
   Loader2, ChevronLeft, ChevronRight, Clock, User, Copy, Check,
   FileText, Cpu, Volume2, Mic, MessageSquare, Variable, ArrowLeftRight, X,
+  GitMerge, AlertTriangle, CheckCircle2,
 } from 'lucide-react'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { useUser } from '@clerk/nextjs'
 import { useConfigHistory, ConfigHistoryEntryDetail } from '@/hooks/useConfigHistory'
 import { formatDistanceToNow, format } from 'date-fns'
 import { buildFormValuesFromAgent } from '@/hooks/useAgentConfig'
@@ -24,6 +29,8 @@ interface Props {
   open: boolean
   onClose: () => void
   agentId: string
+  projectId: string
+  agentEnvironment?: string
 }
 
 type Screen =
@@ -561,19 +568,33 @@ function HistoryEntryRow({
   isCompareBaseline,
   isComparePickMode,
   copiedId,
+  showMergeButton,
   onView,
   onCopy,
   onSelectForCompare,
   onCancelBaseline,
+  onMerge,
 }: {
-  entry: { id: string; version_number: number; created_by_email: string | null; created_at: string }
+  entry: {
+    id: string
+    version_number: number
+    created_by_email: string | null
+    created_at: string
+    commit_message?: string | null
+    prompt_snapshot?: string | null
+    github_push_ok?: boolean | null
+    merged_to_agent_id?: string | null
+    merged_at?: string | null
+  }
   isCompareBaseline: boolean
   isComparePickMode: boolean
   copiedId: string | null
+  showMergeButton: boolean
   onView: (id: string) => void
   onCopy: (id: string) => void
   onSelectForCompare: (id: string) => void
   onCancelBaseline: () => void
+  onMerge: (id: string) => void
 }) {
   const date = new Date(entry.created_at)
   const isCopied = copiedId === entry.id
@@ -625,6 +646,15 @@ function HistoryEntryRow({
               {entry.created_by_email}
             </p>
           )}
+          {entry.commit_message && (
+            <p className="text-xs text-foreground/80 mt-1 font-medium truncate max-w-[260px]" title={entry.commit_message}>
+              &ldquo;{entry.commit_message}&rdquo;
+            </p>
+          )}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <GitHubBadge ok={entry.github_push_ok ?? null} />
+            {entry.merged_to_agent_id && <MergedChip />}
+          </div>
         </div>
 
         <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -637,6 +667,17 @@ function HistoryEntryRow({
           >
             {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
+
+          {showMergeButton && !entry.merged_to_agent_id && entry.prompt_snapshot && (
+            <button
+              onClick={() => onMerge(entry.id)}
+              title="Merge to prod"
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <GitMerge className="w-3 h-3" />
+              Merge
+            </button>
+          )}
 
           {isComparePickMode && !isCompareBaseline ? (
             <button
@@ -662,12 +703,41 @@ function HistoryEntryRow({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GitHub sync badge
+// ─────────────────────────────────────────────────────────────────────────────
+
+function GitHubBadge({ ok }: { ok: boolean | null }) {
+  if (ok === null || ok === undefined) return null
+  if (ok) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20 font-medium">
+        <CheckCircle2 className="w-2.5 h-2.5" /> GitHub
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 font-medium">
+      <AlertTriangle className="w-2.5 h-2.5" /> Sync failed
+    </span>
+  )
+}
+
+function MergedChip() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border font-medium">
+      <GitMerge className="w-2.5 h-2.5" /> Merged
+    </span>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main panel
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ConfigHistory({ open, onClose, agentId }: Props) {
+export default function ConfigHistory({ open, onClose, agentId, projectId, agentEnvironment = 'dev' }: Props) {
   const { entries, pagination, isLoading, error, currentPage, fetchHistory, fetchEntryDetail, goToPage } =
     useConfigHistory(agentId)
+  const { user } = useUser()
 
   const [screen, setScreen] = useState<Screen>({ mode: 'list' })
   const [compareBaseline, setCompareBaseline] = useState<ComparePickMode | null>(null)
@@ -675,6 +745,58 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
 
   const [detailCache] = useState(() => new Map<string, ConfigHistoryEntryDetail>())
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // ── Merge state ───────────────────────────────────────────────────────────
+  const [mergeVersionId, setMergeVersionId] = useState<string | null>(null)
+  const [prodAgents, setProdAgents] = useState<{ id: string; name: string }[]>([])
+  const [selectedProdAgentId, setSelectedProdAgentId] = useState('')
+  const [isMerging, setIsMerging] = useState(false)
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const [mergeSuccess, setMergeSuccess] = useState<string | null>(null)
+
+  const openMergeDialog = useCallback(async (versionId: string) => {
+    setMergeVersionId(versionId)
+    setSelectedProdAgentId('')
+    setMergeError(null)
+    setMergeSuccess(null)
+    if (prodAgents.length === 0) {
+      const res = await fetch(`/api/agents/prod-list?project_id=${projectId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setProdAgents(data.agents ?? [])
+      }
+    }
+  }, [projectId, prodAgents.length])
+
+  const handleMerge = useCallback(async () => {
+    if (!mergeVersionId || !selectedProdAgentId) return
+    setIsMerging(true)
+    setMergeError(null)
+    try {
+      const res = await fetch(`/api/agents/${agentId}/history/${mergeVersionId}/merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_agent_id: selectedProdAgentId,
+          userEmail: user?.primaryEmailAddress?.emailAddress ?? null,
+          userId: user?.id ?? null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMergeError(data.message ?? 'Merge failed')
+        return
+      }
+      const targetName = prodAgents.find(a => a.id === selectedProdAgentId)?.name ?? 'prod agent'
+      setMergeSuccess(`Merged to ${targetName} (v${data.prod_version_number})`)
+      await fetchHistory(currentPage)
+      setTimeout(() => { setMergeVersionId(null); setMergeSuccess(null) }, 2500)
+    } catch (err: any) {
+      setMergeError(err.message ?? 'Unexpected error')
+    } finally {
+      setIsMerging(false)
+    }
+  }, [mergeVersionId, selectedProdAgentId, agentId, user, prodAgents, fetchHistory, currentPage])
 
   useEffect(() => {
     if (open && agentId) {
@@ -823,10 +945,12 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
                     isCompareBaseline={compareBaseline?.entryId === e.id}
                     isComparePickMode={isComparePickMode}
                     copiedId={copiedId}
+                    showMergeButton={agentEnvironment === 'dev'}
                     onView={handleView}
                     onCopy={handleCopy}
                     onSelectForCompare={handleSelectForCompare}
                     onCancelBaseline={() => setCompareBaseline(null)}
+                    onMerge={openMergeDialog}
                   />
                 ))}
               </div>
@@ -858,6 +982,70 @@ export default function ConfigHistory({ open, onClose, agentId }: Props) {
           entryB={diffDialog.entryB}
         />
       )}
+
+      {/* Merge to Prod dialog */}
+      <Dialog open={!!mergeVersionId} onOpenChange={v => { if (!v && !isMerging) setMergeVersionId(null) }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <GitMerge className="w-4 h-4" />
+              Merge to Production
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {mergeSuccess ? (
+              <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                <p className="text-xs text-green-700 dark:text-green-400 font-medium">{mergeSuccess}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Select the production agent to update with this prompt version.
+                </p>
+                {prodAgents.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    No production agents found in this project.
+                  </p>
+                ) : (
+                  <Select value={selectedProdAgentId} onValueChange={setSelectedProdAgentId}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select production agent..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prodAgents.map(a => (
+                        <SelectItem key={a.id} value={a.id} className="text-xs">{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {mergeError && <p className="text-xs text-destructive">{mergeError}</p>}
+              </>
+            )}
+          </div>
+          {!mergeSuccess && (
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                variant="outline" size="sm" className="h-8 text-xs"
+                onClick={() => setMergeVersionId(null)}
+                disabled={isMerging}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm" className="h-8 text-xs"
+                onClick={handleMerge}
+                disabled={isMerging || !selectedProdAgentId}
+              >
+                {isMerging
+                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Merging...</>
+                  : 'Merge & Deploy'
+                }
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
