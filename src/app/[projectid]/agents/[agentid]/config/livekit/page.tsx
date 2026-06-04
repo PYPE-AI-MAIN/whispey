@@ -276,7 +276,7 @@ export default function AgentConfig() {
 
   // Get agent data from Supabase
   const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
-    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
+    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, environment",
     filters: [{ column: "id", operator: "eq", value: agentid }],
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
@@ -584,12 +584,14 @@ export default function AgentConfig() {
     setIsSaving(true)
     try {
       await saveAndDeploy.mutateAsync(payload)
-      // Auto-save a version on every deploy (fire-and-forget, retention enforced server-side)
-      fetch(`/api/agents/${agentid}/history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: payload, userEmail, userId }),
-      }).catch((err) => console.error('[checkpoint] Auto-save failed:', err))
+      // Auto-save a version on every deploy — skipped for prod agents (server enforces this too)
+      if (agentDataResponse?.[0]?.environment !== 'prod') {
+        fetch(`/api/agents/${agentid}/history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config: payload, userEmail, userId, commit_message: 'Config updated' }),
+        }).catch((err) => console.error('[checkpoint] Auto-save failed:', err))
+      }
     } catch (error) {
       console.error('❌ Error during save and deploy:', error)
     } finally {
@@ -1478,6 +1480,8 @@ const unmappedVariablesCount = useMemo(() => {
         open={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         agentId={agentid}
+        projectId={projectId}
+        agentEnvironment={agentDataResponse?.[0]?.environment ?? 'dev'}
       />
 
     </div>

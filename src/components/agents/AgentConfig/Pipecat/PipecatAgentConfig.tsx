@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
@@ -30,6 +31,7 @@ interface PipecatAgentConfigProps {
   projectId: string
   pipecatAgentId: string
   agentName: string
+  environment?: string
 }
 
 // ── Pipecat agent shape from backend ────────────────────────────────────────
@@ -192,7 +194,7 @@ function buildSnapshot(v: SnapshotValues): string {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function PipecatAgentConfig({
-  agentId, projectId, pipecatAgentId, agentName,
+  agentId, projectId, pipecatAgentId, agentName, environment = 'dev',
 }: PipecatAgentConfigProps) {
   const router = useRouter()
   const { user } = useUser()
@@ -250,16 +252,16 @@ export default function PipecatAgentConfig({
     userEmail: string | null
     userId: string | null
   } | null>(null)
-  const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
-  const [isCheckpointExiting, setIsCheckpointExiting] = useState(false)
+  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
+  const [commitMessage, setCommitMessage] = useState('')
+  const [isSavingVersion, setIsSavingVersion] = useState(false)
+  const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
 
   // Auto-dismiss checkpoint banner after 15 seconds
   useEffect(() => {
     if (!pendingCheckpoint) return
-    setIsCheckpointExiting(false)
-    const exitT = setTimeout(() => setIsCheckpointExiting(true), 14_700)
     const t = setTimeout(() => setPendingCheckpoint(null), 15_000)
-    return () => { clearTimeout(exitT); clearTimeout(t) }
+    return () => clearTimeout(t)
   }, [pendingCheckpoint])
 
   // Dirty tracking
@@ -681,24 +683,34 @@ export default function PipecatAgentConfig({
 
   // ── Checkpoint save ──────────────────────────────────────────────────────
 
-  const handleSaveCheckpoint = async () => {
-    if (!pendingCheckpoint) return
-    setIsSavingCheckpoint(true)
+  const handleOpenCommitModal = () => {
+    setCommitMessage('')
+    setVersionSaveError(null)
+    setIsCommitModalOpen(true)
+  }
+
+  const handleSaveVersion = async () => {
+    if (!pendingCheckpoint || !commitMessage.trim()) return
+    setIsSavingVersion(true)
+    setVersionSaveError(null)
     try {
       const res = await fetch(`/api/agents/${agentId}/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pendingCheckpoint),
+        body: JSON.stringify({ ...pendingCheckpoint, commit_message: commitMessage.trim() }),
       })
       if (!res.ok) {
         const err = await res.json()
-        console.error('[checkpoint] Save failed:', err.message)
+        setVersionSaveError(err.message ?? 'Failed to save version')
+        return
       }
-    } catch (err) {
-      console.error('[checkpoint] Unexpected error:', err)
-    } finally {
-      setIsSavingCheckpoint(false)
+      setIsCommitModalOpen(false)
+      setCommitMessage('')
       setPendingCheckpoint(null)
+    } catch (err: any) {
+      setVersionSaveError(err.message ?? 'Unexpected error')
+    } finally {
+      setIsSavingVersion(false)
     }
   }
 
@@ -834,7 +846,7 @@ export default function PipecatAgentConfig({
               size="sm"
               className="h-8 text-xs"
               onClick={handleSave}
-              disabled={isSaving || !isDirty}
+              disabled={isSaving || !isDirty || environment === 'prod'}
             >
               {isSaving
                 ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
@@ -853,6 +865,19 @@ export default function PipecatAgentConfig({
           </div>
         </div>
       </div>
+
+      {/* Prod read-only banner */}
+      {environment === 'prod' && (
+        <div className="px-6 py-2 flex-shrink-0">
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              <span className="font-semibold">Production agent — read only.</span>{' '}
+              Edit the dev agent and use Merge to Prod to update this prompt.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Save error */}
       {saveError && (
@@ -969,9 +994,10 @@ export default function PipecatAgentConfig({
               </div>
               <Textarea
                 value={prompt}
-                onChange={e => setPrompt(e.target.value)}
+                onChange={e => { if (environment !== 'prod') setPrompt(e.target.value) }}
+                readOnly={environment === 'prod'}
                 placeholder="Define your agent's behavior and personality..."
-                className="flex-1 min-h-0 font-mono text-sm resize-none border-gray-200 dark:border-gray-700 leading-relaxed"
+                className={`flex-1 min-h-0 font-mono text-sm resize-none border-gray-200 dark:border-gray-700 leading-relaxed ${environment === 'prod' ? 'opacity-70 cursor-not-allowed' : ''}`}
               />
               <div className="mt-2 flex justify-end flex-shrink-0">
                 <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -1096,6 +1122,8 @@ export default function PipecatAgentConfig({
         open={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         agentId={agentId}
+        projectId={projectId}
+        agentEnvironment={environment}
       />
 
       {/* Prompt Settings Sheet — variables (same approach as LiveKit) */}
@@ -1308,41 +1336,22 @@ export default function PipecatAgentConfig({
         </SheetContent>
       </Sheet>
 
-      {/* Checkpoint banner — identical to LiveKit */}
-      {pendingCheckpoint && (
+      {/* Checkpoint notification */}
+      {pendingCheckpoint && !isCommitModalOpen && (
         <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
-          <div className={`relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap ${
-            isCheckpointExiting
-              ? 'animate-out slide-out-to-top-4 fade-out duration-300 fill-mode-forwards'
-              : 'animate-in slide-in-from-top-4 duration-300'
-          }`}>
-            {/* Progress bar */}
+          <div className="relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap animate-in slide-in-from-top-4 duration-300">
             <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
-              <div
-                className="h-full bg-primary"
-                style={{ animation: 'version-progress 15s linear forwards' }}
-              />
+              <div className="h-full bg-primary" style={{ animation: 'version-progress 15s linear forwards' }} />
             </div>
-            {/* Content */}
             <div className="flex items-center gap-3 px-4 pt-4 pb-3 text-sm">
               <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
               <span className="text-foreground text-xs">Config saved. Save as a version?</span>
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={handleSaveCheckpoint}
-                disabled={isSavingCheckpoint}
-              >
-                {isSavingCheckpoint ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save version'}
+              <Button type="button" size="sm" className="h-7 text-xs" onClick={handleOpenCommitModal}>
+                Save version
               </Button>
               <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-muted-foreground"
-                onClick={() => { setIsCheckpointExiting(true); setTimeout(() => setPendingCheckpoint(null), 300) }}
-                disabled={isSavingCheckpoint}
+                type="button" size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"
+                onClick={() => setPendingCheckpoint(null)}
               >
                 Skip
               </Button>
@@ -1350,6 +1359,47 @@ export default function PipecatAgentConfig({
           </div>
         </div>
       )}
+
+      {/* Commit message dialog */}
+      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Save prompt version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Describe this change</label>
+              <Textarea
+                placeholder="e.g. Fixed greeting for missed calls"
+                value={commitMessage}
+                onChange={e => setCommitMessage(e.target.value)}
+                className="text-sm resize-none"
+                rows={3}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveVersion() }}
+              />
+              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to save quickly.</p>
+            </div>
+            {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline" size="sm" className="h-8 text-xs"
+              onClick={() => setIsCommitModalOpen(false)}
+              disabled={isSavingVersion}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm" className="h-8 text-xs"
+              onClick={handleSaveVersion}
+              disabled={isSavingVersion || !commitMessage.trim()}
+            >
+              {isSavingVersion ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</> : 'Save & commit'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
