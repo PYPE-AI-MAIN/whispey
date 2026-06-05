@@ -60,45 +60,36 @@ export async function POST(
       return NextResponse.json({ message: 'Target agent is not a production agent.' }, { status: 403 })
     }
 
-    // 3. Get target agent's latest config snapshot as the base
-    const { data: latestProdVersion } = await supabase
-      .from('pype_agent_config_versions')
-      .select('config_snapshot')
-      .eq('agent_id', target_agent_id)
-      .order('version_number', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    let prodConfig: any = latestProdVersion?.config_snapshot
-      ? JSON.parse(JSON.stringify(latestProdVersion.config_snapshot))
-      : null
-
-    // Fallback: build minimal config from Supabase configuration field
-    if (!prodConfig && targetAgent.configuration) {
-      prodConfig = { agent: targetAgent.configuration }
-    }
-
-    if (!prodConfig) {
+    // 3. Take the FULL dev config snapshot and swap agent identifiers to prod values
+    //    This ensures tools, VAD, STT, TTS and all settings are promoted alongside the prompt.
+    if (!version.config_snapshot) {
       return NextResponse.json(
-        { message: 'Could not load target agent config to merge into.' },
-        { status: 500 }
+        { message: 'This version has no config snapshot and cannot be merged.' },
+        { status: 400 }
       )
     }
 
-    // Inject the new prompt
-    if (prodConfig?.agent?.assistant?.[0]) {
-      prodConfig.agent.assistant[0].prompt = promptSnapshot
-    } else if (prodConfig?.agent) {
-      prodConfig.agent.prompt = promptSnapshot
+    const mergedConfig = JSON.parse(JSON.stringify(version.config_snapshot))
+
+    // Replace dev agent identifiers with prod agent identifiers
+    if (mergedConfig?.agent) {
+      mergedConfig.agent.name = targetAgent.name
+      mergedConfig.agent.agent_id = targetAgent.id
+      if (Array.isArray(mergedConfig.agent.assistant)) {
+        mergedConfig.agent.assistant = mergedConfig.agent.assistant.map((a: any) => ({
+          ...a,
+          name: targetAgent.name,
+        }))
+      }
     }
 
-    // 4. Call save-and-deploy for the prod agent
+    // 4. Call save-and-deploy for the prod agent with the full merged config
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     const deployRes = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        agent: prodConfig.agent,
+        agent: mergedConfig.agent,
         metadata: { agentId: target_agent_id, agentName: targetAgent.name },
       }),
     })
@@ -122,7 +113,7 @@ export async function POST(
 
     const nextProdVersion = (prodLatest?.version_number ?? 0) + 1
 
-    // 6. Push to GitHub under prod agent folder
+    // 6. Push ONLY the prompt to GitHub under prod agent folder
     const { data: project } = await supabase
       .from('pype_voice_projects')
       .select('name')
@@ -130,24 +121,27 @@ export async function POST(
       .single()
 
     const projectName = project?.name ?? targetAgent.project_id
-    const commitMsg = `Merged from dev v${version.version_number} by ${userEmail ?? 'unknown'}`
+
+    // Include original commit message so prod history is traceable
+    const originalCommitMsg = version.commit_message ?? `v${version.version_number}`
+    const prodCommitMsg = `Merged from dev v${version.version_number}: "${originalCommitMsg}" by ${userEmail ?? 'unknown'}`
 
     const githubResult = await pushPromptToGitHub(
       projectName,
       targetAgent.name,
       promptSnapshot,
-      commitMsg,
+      prodCommitMsg,
       userEmail ?? 'unknown',
     )
 
-    // 7. Insert version row for prod agent
+    // 7. Insert version row for prod agent (full config + original commit message reference)
     await supabase.from('pype_agent_config_versions').insert({
       agent_id: target_agent_id,
       project_id: targetAgent.project_id,
       version_number: nextProdVersion,
-      config_snapshot: prodConfig,
+      config_snapshot: mergedConfig,
       prompt_snapshot: promptSnapshot,
-      commit_message: commitMsg,
+      commit_message: prodCommitMsg,
       created_by_email: userEmail ?? null,
       created_by_user_id: userId ?? null,
       github_sha: githubResult?.sha ?? null,

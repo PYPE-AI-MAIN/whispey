@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { 
   CopyIcon, 
   CheckIcon, 
@@ -237,6 +238,11 @@ export default function AgentConfig() {
 
   // Tracks loading across BOTH the deploy call AND the subsequent refetch
   const [isSaving, setIsSaving] = useState(false)
+  const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
+  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
+  const [commitMessage, setCommitMessage] = useState('')
+  const [isSavingVersion, setIsSavingVersion] = useState(false)
+  const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -293,6 +299,7 @@ export default function AgentConfig() {
 
   const agentNameHeader = agentDataResponse?.[0]?.name || ''
   const agentNameLegacy = agentDataResponse?.[0]?.name || ''
+  const isProd = agentDataResponse?.[0]?.environment === 'prod'
 
   const [resolvedAgentName, setResolvedAgentName] = useState<string>('')
 
@@ -584,18 +591,45 @@ export default function AgentConfig() {
     setIsSaving(true)
     try {
       await saveAndDeploy.mutateAsync(payload)
-      // Auto-save a version on every deploy — skipped for prod agents (server enforces this too)
+      // Show commit message prompt after successful save (dev agents only)
       if (agentDataResponse?.[0]?.environment !== 'prod') {
-        fetch(`/api/agents/${agentid}/history`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ config: payload, userEmail, userId, commit_message: 'Config updated' }),
-        }).catch((err) => console.error('[checkpoint] Auto-save failed:', err))
+        setPendingCheckpoint({ config: payload, userEmail, userId })
       }
     } catch (error) {
       console.error('❌ Error during save and deploy:', error)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleOpenCommitModal = () => {
+    setCommitMessage('')
+    setVersionSaveError(null)
+    setIsCommitModalOpen(true)
+  }
+
+  const handleSaveVersion = async () => {
+    if (!pendingCheckpoint || !commitMessage.trim()) return
+    setIsSavingVersion(true)
+    setVersionSaveError(null)
+    try {
+      const res = await fetch(`/api/agents/${agentid}/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...pendingCheckpoint, commit_message: commitMessage.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setVersionSaveError(err.message ?? 'Failed to save version')
+        return
+      }
+      setIsCommitModalOpen(false)
+      setCommitMessage('')
+      setPendingCheckpoint(null)
+    } catch (err: any) {
+      setVersionSaveError(err.message ?? 'Unexpected error')
+    } finally {
+      setIsSavingVersion(false)
     }
   }
 
@@ -777,6 +811,15 @@ const unmappedVariablesCount = useMemo(() => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      {isProd && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            <span className="font-semibold">Production agent — read only.</span>{' '}
+            Edit the dev agent and use Merge to Prod to update this prompt.
+          </p>
+        </div>
+      )}
       {agentConfigData?.backendUnavailable && (
         <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertCircle className="text-amber-600 dark:text-amber-400" />
@@ -853,8 +896,8 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm" 
                 className="h-8 px-3" 
                 onClick={handleSaveAndDeploy}
-                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable}
-                title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProd}
+                title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1073,8 +1116,8 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm" 
               className="h-8 text-xs" 
               onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable}
-              title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProd}
+              title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
               {isSaving ? (
                 <>
@@ -1483,6 +1526,74 @@ const unmappedVariablesCount = useMemo(() => {
         projectId={projectId}
         agentEnvironment={agentDataResponse?.[0]?.environment ?? 'dev'}
       />
+
+      {/* Checkpoint notification banner */}
+      {pendingCheckpoint && !isCommitModalOpen && (
+        <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
+          <div className="relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap animate-in slide-in-from-top-4 duration-300">
+            <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
+              <div className="h-full bg-primary" style={{ animation: 'version-progress 15s linear forwards' }} />
+            </div>
+            <div className="flex items-center gap-3 px-4 pt-4 pb-3 text-sm">
+              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
+              <span className="text-foreground text-xs">Config saved. Save as a version?</span>
+              <Button type="button" size="sm" className="h-7 text-xs" onClick={handleOpenCommitModal}>
+                Save version
+              </Button>
+              <Button
+                type="button" size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"
+                onClick={() => setPendingCheckpoint(null)}
+              >
+                Skip
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Commit message dialog */}
+      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Save prompt version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Describe this change</label>
+              <Textarea
+                placeholder="e.g. Fixed greeting for missed calls"
+                value={commitMessage}
+                onChange={e => setCommitMessage(e.target.value)}
+                className="text-sm resize-none"
+                rows={3}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveVersion() }}
+              />
+              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to save quickly.</p>
+            </div>
+            {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline" size="sm" className="h-8 text-xs"
+              onClick={() => setIsCommitModalOpen(false)}
+              disabled={isSavingVersion}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm" className="h-8 text-xs"
+              onClick={handleSaveVersion}
+              disabled={isSavingVersion || !commitMessage.trim()}
+            >
+              {isSavingVersion
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
+                : 'Save & commit'
+              }
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )
