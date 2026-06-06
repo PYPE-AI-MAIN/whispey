@@ -193,7 +193,26 @@ export const AGENT_DEFAULT_CONFIG = {
     silenceTime: 10,
     // Dynamic TTS routing
     dynamic_tts: [],
-  
+
+    // STT Fallback
+    fallbackSttEnabled: false,
+    fallbackSttProvider: '',
+    fallbackSttModel: '',
+    fallbackSttConfig: {} as any,
+
+    // TTS Fallback
+    fallbackTtsEnabled: false,
+    fallbackTtsProvider: '',
+    fallbackTtsModel: '',
+    fallbackTtsVoiceId: '',
+    fallbackTtsVoiceConfig: {} as any,
+
+    // LLM Fallback
+    fallbackLlmEnabled: false,
+    fallbackLlmProvider: '',
+    fallbackLlmModel: '',
+    fallbackLlmTemperature: 0.3 as number,
+
     // Advanced Settings
     advancedSettings: {
       interruption: {
@@ -257,6 +276,9 @@ export const AGENT_DEFAULT_CONFIG = {
         bugEndCommands: [...AGENT_DEFAULT_CONFIG.bug_reports.bug_end_command],
         initialResponse: AGENT_DEFAULT_CONFIG.bug_reports.response,
         collectionPrompt: AGENT_DEFAULT_CONFIG.bug_reports.collection_prompt
+      },
+      contextMemory: {
+        enabled: AGENT_DEFAULT_CONFIG.context_memory.enabled
       },
       backgroundAudio: {
         mode: 'dual' as 'disabled' | 'single' | 'dual',

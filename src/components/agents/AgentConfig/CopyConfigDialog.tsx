@@ -21,6 +21,7 @@ interface CopyConfigDialogProps {
   ttsConfig: any
   sttConfig: any
   azureConfig: any
+  fallbackAzureConfig?: any
 }
 
 export default function CopyConfigDialog({
@@ -29,7 +30,8 @@ export default function CopyConfigDialog({
   formikValues,
   ttsConfig,
   sttConfig,
-  azureConfig
+  azureConfig,
+  fallbackAzureConfig
 }: CopyConfigDialogProps) {
   const [configJson, setConfigJson] = useState<string>('')
   const [isCopied, setIsCopied] = useState(false)
@@ -46,7 +48,8 @@ export default function CopyConfigDialog({
           formikValues,
           ttsConfig,
           sttConfig,
-          azureConfig
+          azureConfig,
+          fallbackAzureConfig
         )
         const prettyJson = prettyPrintConfig(serialized)
         setConfigJson(prettyJson)

@@ -25,6 +25,31 @@ export interface SerializedAgentConfig {
       model: string
       config: any
     }
+    fallback: {
+      llm: {
+        enabled: boolean
+        provider: string
+        model: string
+        temperature: number
+        azureConfig?: {
+          endpoint: string
+          apiVersion: string
+        }
+      }
+      tts: {
+        enabled: boolean
+        provider: string
+        model: string
+        voiceId: string
+        voiceConfig: any
+      }
+      stt: {
+        enabled: boolean
+        provider: string
+        model: string
+        config: any
+      }
+    }
     prompt: {
       text: string
       variables: Array<{
@@ -123,6 +148,10 @@ export interface DeserializedConfig {
     endpoint: string
     apiVersion: string
   }
+  fallbackAzureConfig: {
+    endpoint: string
+    apiVersion: string
+  }
 }
 
 export interface ValidationResult {
@@ -139,7 +168,8 @@ export function serializeConfig(
   formikValues: any,
   ttsConfig: any,
   sttConfig: any,
-  azureConfig: any
+  azureConfig: any,
+  fallbackAzureConfig?: any
 ): SerializedAgentConfig {
   return {
     version: CURRENT_VERSION,
@@ -179,6 +209,33 @@ export function serializeConfig(
         silenceTime: formikValues.silenceTime || 10
       },
       dynamicTTS: formikValues.dynamic_tts || [],
+      fallback: {
+        llm: {
+          enabled: !!formikValues.fallbackLlmEnabled,
+          provider: formikValues.fallbackLlmProvider || '',
+          model: formikValues.fallbackLlmModel || '',
+          temperature: formikValues.fallbackLlmTemperature ?? 0.3,
+          ...(formikValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig ? {
+            azureConfig: {
+              endpoint: fallbackAzureConfig.endpoint || '',
+              apiVersion: fallbackAzureConfig.apiVersion || ''
+            }
+          } : {})
+        },
+        tts: {
+          enabled: !!formikValues.fallbackTtsEnabled,
+          provider: formikValues.fallbackTtsProvider || '',
+          model: formikValues.fallbackTtsModel || '',
+          voiceId: formikValues.fallbackTtsVoiceId || '',
+          voiceConfig: formikValues.fallbackTtsVoiceConfig || {}
+        },
+        stt: {
+          enabled: !!formikValues.fallbackSttEnabled,
+          provider: formikValues.fallbackSttProvider || '',
+          model: formikValues.fallbackSttModel || '',
+          config: formikValues.fallbackSttConfig || {}
+        }
+      },
       advancedSettings: formikValues.advancedSettings || {
         interruption: {
           allowInterruptions: true,
@@ -280,6 +337,22 @@ export function deserializeConfig(json: string): DeserializedConfig {
 
       dynamic_tts:      config.dynamicTTS,
       advancedSettings: config.advancedSettings,
+
+      fallbackLlmEnabled:    config.fallback?.llm?.enabled ?? false,
+      fallbackLlmProvider:   config.fallback?.llm?.provider || '',
+      fallbackLlmModel:      config.fallback?.llm?.model || '',
+      fallbackLlmTemperature: config.fallback?.llm?.temperature ?? 0.3,
+
+      fallbackTtsEnabled:    config.fallback?.tts?.enabled ?? false,
+      fallbackTtsProvider:   config.fallback?.tts?.provider || '',
+      fallbackTtsModel:      config.fallback?.tts?.model || '',
+      fallbackTtsVoiceId:    config.fallback?.tts?.voiceId || '',
+      fallbackTtsVoiceConfig: config.fallback?.tts?.voiceConfig || {},
+
+      fallbackSttEnabled:    config.fallback?.stt?.enabled ?? false,
+      fallbackSttProvider:   config.fallback?.stt?.provider || '',
+      fallbackSttModel:      config.fallback?.stt?.model || '',
+      fallbackSttConfig:     config.fallback?.stt?.config || {},
     },
     ttsConfig: {
       provider: config.tts.provider,
@@ -294,6 +367,10 @@ export function deserializeConfig(json: string): DeserializedConfig {
     azureConfig: {
       endpoint:   config.llm.azureConfig?.endpoint   || '',
       apiVersion: config.llm.azureConfig?.apiVersion || '',
+    },
+    fallbackAzureConfig: {
+      endpoint:   config.fallback?.llm?.azureConfig?.endpoint   || '',
+      apiVersion: config.fallback?.llm?.azureConfig?.apiVersion || '',
     },
   }
 }
@@ -357,6 +434,10 @@ function deserializeFromSnapshot(parsed: any): DeserializedConfig {
     azureConfig: {
       endpoint:   a.llm?.azureConfig?.endpoint   || '',
       apiVersion: a.llm?.azureConfig?.apiVersion || '',
+    },
+    fallbackAzureConfig: {
+      endpoint:   a.llm?.fallback?.azure_endpoint || '',
+      apiVersion: a.llm?.fallback?.api_version    || '',
     },
   }
 }
