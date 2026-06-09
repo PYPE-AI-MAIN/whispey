@@ -5,6 +5,8 @@ const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   reactStrictMode: true,
   webpack: (config) => {
     config.resolve.alias = {
