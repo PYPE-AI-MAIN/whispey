@@ -236,14 +236,11 @@ export default function AgentConfig() {
   const [isCopyConfigDialogOpen, setIsCopyConfigDialogOpen] = useState(false)
   const [isPasteConfigDialogOpen, setIsPasteConfigDialogOpen] = useState(false)
 
-  // Tracks loading across BOTH the deploy call AND the subsequent refetch
-  const [isSaving, setIsSaving] = useState(false)
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
   const [isSavingVersion, setIsSavingVersion] = useState(false)
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
-  const [savedVersionId, setSavedVersionId] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
@@ -619,7 +616,6 @@ export default function AgentConfig() {
       setIsCommitModalOpen(false)
       setCommitMessage('')
       setPendingCheckpoint(null)
-      setSavedVersionId(data.version_id ?? null)
       setShowMergePrompt(true)
     } catch (err: any) {
       setVersionSaveError(err.message ?? 'Save failed')
