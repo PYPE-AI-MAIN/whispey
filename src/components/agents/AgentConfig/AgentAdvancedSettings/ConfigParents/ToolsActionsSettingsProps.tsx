@@ -77,6 +77,7 @@ interface Tool {
     handoffMessage?: string
     transferNumber?: string
     sipTrunkId?: string
+    acefoneToken?: string
     preTransferWebhookUrl?: string
     preTransferWebhookFields?: string[]
     // Transfer trigger mode: Add as Tool (default true) and/or Add as Tag (default false).
@@ -134,6 +135,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     selectedPhoneId: '',
     transferNumber: '',
     sipTrunkId: '',
+    acefoneToken: '',
     preTransferWebhookUrl: '',
     preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
     // Transfer trigger mode (defaults preserve current behavior: tool ON, tag OFF)
@@ -216,6 +218,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -250,6 +253,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -284,6 +288,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -318,6 +323,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -352,6 +358,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -386,6 +393,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -420,6 +428,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -454,6 +463,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         selectedPhoneId: '',
         transferNumber: '',
         sipTrunkId: '',
+        acefoneToken: '',
         preTransferWebhookUrl: '',
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
@@ -505,6 +515,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       selectedPhoneId: selectedPhoneId,
       transferNumber: tool.config.transferNumber || '',
       sipTrunkId: tool.config.sipTrunkId || '',
+      acefoneToken: tool.config.acefoneToken || '',
       preTransferWebhookUrl: tool.config.preTransferWebhookUrl || '',
       preTransferWebhookFields: tool.config.preTransferWebhookFields || ALL_WEBHOOK_FIELDS,
       // Backward-compatible: if the existing tool has no enableAsTool key, default to true
@@ -558,6 +569,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         handoffMessage: formData.handoffMessage,
         transferNumber: formData.transferNumber,
         sipTrunkId: formData.sipTrunkId,
+        acefoneToken: formData.acefoneToken,
         preTransferWebhookUrl: formData.preTransferWebhookUrl,
         preTransferWebhookFields: formData.preTransferWebhookFields,
         enableAsTool: formData.enableAsTool,
@@ -978,6 +990,21 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                       Selected SIP Trunk: <span className="font-mono">{formData.sipTrunkId}</span>
                     </p>
                   )}
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">
+                    Acefone Token <span className="text-gray-400">(bridge calls only — optional)</span>
+                  </Label>
+                  <Input
+                    type="password"
+                    value={formData.acefoneToken}
+                    onChange={(e) => setFormData(prev => ({ ...prev, acefoneToken: e.target.value }))}
+                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="Per-agent Acefone API token"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Required for transfer on Acefone bridge calls. For SIP calls, leave empty and use the SIP Trunk above.
+                  </p>
                 </div>
                 <div>
                   <Label className="text-xs text-gray-700 dark:text-gray-300">Pre-Transfer Webhook URL <span className="text-gray-400">(optional)</span></Label>
