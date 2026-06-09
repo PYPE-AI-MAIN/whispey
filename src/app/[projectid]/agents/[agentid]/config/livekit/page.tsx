@@ -243,6 +243,8 @@ export default function AgentConfig() {
   const [commitMessage, setCommitMessage] = useState('')
   const [isSavingVersion, setIsSavingVersion] = useState(false)
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
+  const [savedVersionId, setSavedVersionId] = useState<string | null>(null)
+  const [showMergePrompt, setShowMergePrompt] = useState(false)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -560,7 +562,9 @@ export default function AgentConfig() {
   }
 
 
-  const handleSaveAndDeploy = async () => {
+  // Opens commit modal, capturing the current config first.
+  // Deploy only happens after the commit message is entered — no skip path.
+  const handleOpenCommitModal = () => {
     if (!promptValidation.isValid) {
       console.error('❌ Cannot save: Variable validation errors exist')
       return
@@ -569,12 +573,12 @@ export default function AgentConfig() {
     const payload = buildSavePayload()
 
     const validVariables = Array.from(promptValidation.validVariables)
-    const validVariablesArray = validVariables.map(name => {
+    const validVariablesArray = validVariables.map((name: string) => {
       const existing = formik.values.variables?.find((v: any) => v.name === name)
       return {
         name,
         value: existing?.value || '',
-        description: existing?.description || ''
+        description: existing?.description || '',
       }
     })
 
@@ -587,22 +591,7 @@ export default function AgentConfig() {
 
     const userEmail = user?.primaryEmailAddress?.emailAddress ?? null
     const userId = user?.id ?? null
-
-    setIsSaving(true)
-    try {
-      await saveAndDeploy.mutateAsync(payload)
-      // Show commit message prompt after successful save (dev agents only)
-      if (agentDataResponse?.[0]?.environment !== 'prod') {
-        setPendingCheckpoint({ config: payload, userEmail, userId })
-      }
-    } catch (error) {
-      console.error('❌ Error during save and deploy:', error)
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleOpenCommitModal = () => {
+    setPendingCheckpoint({ config: payload, userEmail, userId })
     setCommitMessage('')
     setVersionSaveError(null)
     setIsCommitModalOpen(true)
@@ -613,6 +602,9 @@ export default function AgentConfig() {
     setIsSavingVersion(true)
     setVersionSaveError(null)
     try {
+      // Step 1: Deploy config to backend
+      await saveAndDeploy.mutateAsync(pendingCheckpoint.config)
+      // Step 2: Save version checkpoint
       const res = await fetch(`/api/agents/${agentid}/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -623,11 +615,14 @@ export default function AgentConfig() {
         setVersionSaveError(err.message ?? 'Failed to save version')
         return
       }
+      const data = await res.json()
       setIsCommitModalOpen(false)
       setCommitMessage('')
       setPendingCheckpoint(null)
+      setSavedVersionId(data.version_id ?? null)
+      setShowMergePrompt(true)
     } catch (err: any) {
-      setVersionSaveError(err.message ?? 'Unexpected error')
+      setVersionSaveError(err.message ?? 'Save failed')
     } finally {
       setIsSavingVersion(false)
     }
@@ -892,18 +887,14 @@ const unmappedVariablesCount = useMemo(() => {
             )}
 
             {isFormDirty && (
-              <Button 
-                size="sm" 
-                className="h-8 px-3" 
-                onClick={handleSaveAndDeploy}
-                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProd}
+              <Button
+                size="sm"
+                className="h-8 px-3"
+                onClick={handleOpenCommitModal}
+                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProd}
                 title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
+                <Save className="w-4 h-4" />
               </Button>
             )}
 
@@ -1112,21 +1103,14 @@ const unmappedVariablesCount = useMemo(() => {
               </Button>
             )}
             
-            <Button 
-              size="sm" 
-              className="h-8 text-xs" 
-              onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProd}
+            <Button
+              size="sm"
+              className="h-8 text-xs"
+              onClick={handleOpenCommitModal}
+              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProd}
               title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin inline" />
-                  Updating...
-                </>
-              ) : (
-                'Update Config'
-              )}
+              Update Config
             </Button>
 
             <Button
@@ -1370,11 +1354,12 @@ const unmappedVariablesCount = useMemo(() => {
               {/* Variable Textarea - NO overlay, just validation */}
               <VariableTextarea
                 value={formik.values.prompt}
-                onChange={(value) => formik.setFieldValue('prompt', value)}
+                onChange={(value) => { if (!isProd) formik.setFieldValue('prompt', value) }}
                 onValidationChange={setPromptValidation}
                 placeholder="Define your agent's behavior and personality... Use {{variable_name}} for dynamic values."
-                className="flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700"
+                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProd ? 'opacity-70 cursor-not-allowed' : ''}`}
                 style={getTextareaStyles()}
+                disabled={isProd}
               />
               
               {/* Compact Validation Indicator */}
@@ -1527,30 +1512,6 @@ const unmappedVariablesCount = useMemo(() => {
         agentEnvironment={agentDataResponse?.[0]?.environment ?? 'dev'}
       />
 
-      {/* Checkpoint notification banner */}
-      {pendingCheckpoint && !isCommitModalOpen && (
-        <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
-          <div className="relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap animate-in slide-in-from-top-4 duration-300">
-            <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
-              <div className="h-full bg-primary" style={{ animation: 'version-progress 15s linear forwards' }} />
-            </div>
-            <div className="flex items-center gap-3 px-4 pt-4 pb-3 text-sm">
-              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-foreground text-xs">Config saved. Save as a version?</span>
-              <Button type="button" size="sm" className="h-7 text-xs" onClick={handleOpenCommitModal}>
-                Save version
-              </Button>
-              <Button
-                type="button" size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"
-                onClick={() => setPendingCheckpoint(null)}
-              >
-                Skip
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Commit message dialog */}
       <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
         <DialogContent className="sm:max-w-md">
@@ -1588,12 +1549,37 @@ const unmappedVariablesCount = useMemo(() => {
             >
               {isSavingVersion
                 ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
-                : 'Save & commit'
+                : 'Save & Deploy'
               }
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Post-save merge suggestion */}
+      {showMergePrompt && (
+        <Dialog open={showMergePrompt} onOpenChange={v => { if (!v) setShowMergePrompt(false) }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-semibold">Version saved! Merge to prod?</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground py-2">
+              Your version was committed. Do you want to merge this to a production agent now?
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowMergePrompt(false)}>
+                Not now
+              </Button>
+              <Button
+                size="sm" className="h-8 text-xs"
+                onClick={() => { setShowMergePrompt(false); setIsHistoryOpen(true) }}
+              >
+                Open History & Merge
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
     </div>
   )

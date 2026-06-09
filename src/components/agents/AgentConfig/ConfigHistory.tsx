@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import {
   Loader2, ChevronLeft, ChevronRight, Clock, User, Copy, Check,
   FileText, Cpu, Volume2, Mic, MessageSquare, Variable, ArrowLeftRight, X,
-  GitMerge, AlertTriangle, CheckCircle2,
+  GitMerge, AlertTriangle, CheckCircle2, ExternalLink,
 } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -574,6 +574,7 @@ function HistoryEntryRow({
   onSelectForCompare,
   onCancelBaseline,
   onMerge,
+  onRestore,
 }: {
   entry: {
     id: string
@@ -595,6 +596,7 @@ function HistoryEntryRow({
   onSelectForCompare: (id: string) => void
   onCancelBaseline: () => void
   onMerge: (id: string) => void
+  onRestore: (id: string, versionNumber: number, originalMsg: string | null) => void
 }) {
   const date = new Date(entry.created_at)
   const isCopied = copiedId === entry.id
@@ -668,14 +670,23 @@ function HistoryEntryRow({
             {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
 
-          {showMergeButton && !entry.merged_to_agent_id && entry.prompt_snapshot && (
+          {showMergeButton && entry.prompt_snapshot && (
             <button
               onClick={() => onMerge(entry.id)}
-              title="Merge to prod"
+              title="Create PR to merge to prod"
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <GitMerge className="w-3 h-3" />
               Merge
+            </button>
+          )}
+          {showMergeButton && (
+            <button
+              onClick={() => onRestore(entry.id, entry.version_number, entry.commit_message ?? null)}
+              title="Restore this version to dev agent"
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              Restore
             </button>
           )}
 
@@ -747,18 +758,61 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // ── Merge state ───────────────────────────────────────────────────────────
+  // ── Restore state ─────────────────────────────────────────────────────────
+  const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null)
+  const [restoreCommitMsg, setRestoreCommitMsg] = useState('')
+  const [isRestoring, setIsRestoring] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [restoreSuccess, setRestoreSuccess] = useState<string | null>(null)
+
+  const openRestoreDialog = useCallback((versionId: string, versionNumber: number, originalMsg: string | null) => {
+    setRestoreVersionId(versionId)
+    setRestoreCommitMsg(`Rollback to v${versionNumber}${originalMsg ? `: ${originalMsg}` : ''}`)
+    setRestoreError(null)
+    setRestoreSuccess(null)
+  }, [])
+
+  const handleRestore = useCallback(async () => {
+    if (!restoreVersionId || !restoreCommitMsg.trim()) return
+    setIsRestoring(true); setRestoreError(null)
+    try {
+      const res = await fetch(`/api/agents/${agentId}/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          version_id: restoreVersionId,
+          commit_message: restoreCommitMsg.trim(),
+          userEmail: user?.primaryEmailAddress?.emailAddress ?? null,
+          userId: user?.id ?? null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setRestoreError(data.message ?? 'Restore failed'); return }
+      setRestoreSuccess(`Restored as v${data.version_number}`)
+      await fetchHistory(currentPage)
+      setTimeout(() => { setRestoreVersionId(null); setRestoreSuccess(null) }, 2000)
+    } catch (err: any) {
+      setRestoreError(err.message ?? 'Unexpected error')
+    } finally {
+      setIsRestoring(false)
+    }
+  }, [restoreVersionId, restoreCommitMsg, agentId, user, fetchHistory, currentPage])
+
+  // ── Merge state ───────────────────────────────────────────────────────────
   const [mergeVersionId, setMergeVersionId] = useState<string | null>(null)
   const [prodAgents, setProdAgents] = useState<{ id: string; name: string }[]>([])
   const [selectedProdAgentId, setSelectedProdAgentId] = useState('')
-  const [isMerging, setIsMerging] = useState(false)
+  const [isCreatingPR, setIsCreatingPR] = useState(false)
   const [mergeError, setMergeError] = useState<string | null>(null)
-  const [mergeSuccess, setMergeSuccess] = useState<string | null>(null)
+  const [prResult, setPrResult] = useState<{ url: string; number: number } | null>(null)
+  const [copiedPR, setCopiedPR] = useState(false)
 
   const openMergeDialog = useCallback(async (versionId: string) => {
     setMergeVersionId(versionId)
     setSelectedProdAgentId('')
     setMergeError(null)
-    setMergeSuccess(null)
+    setPrResult(null)
+    setCopiedPR(false)
     if (prodAgents.length === 0) {
       const res = await fetch(`/api/agents/prod-list?project_id=${projectId}`)
       if (res.ok) {
@@ -768,9 +822,9 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
     }
   }, [projectId, prodAgents.length])
 
-  const handleMerge = useCallback(async () => {
+  const handleCreatePR = useCallback(async () => {
     if (!mergeVersionId || !selectedProdAgentId) return
-    setIsMerging(true)
+    setIsCreatingPR(true)
     setMergeError(null)
     try {
       const res = await fetch(`/api/agents/${agentId}/history/${mergeVersionId}/merge`, {
@@ -784,19 +838,16 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
       })
       const data = await res.json()
       if (!res.ok) {
-        setMergeError(data.message ?? 'Merge failed')
+        setMergeError(data.message ?? 'PR creation failed')
         return
       }
-      const targetName = prodAgents.find(a => a.id === selectedProdAgentId)?.name ?? 'prod agent'
-      setMergeSuccess(`Merged to ${targetName} (v${data.prod_version_number})`)
-      await fetchHistory(currentPage)
-      setTimeout(() => { setMergeVersionId(null); setMergeSuccess(null) }, 2500)
+      setPrResult({ url: data.pr_url, number: data.pr_number })
     } catch (err: any) {
       setMergeError(err.message ?? 'Unexpected error')
     } finally {
-      setIsMerging(false)
+      setIsCreatingPR(false)
     }
-  }, [mergeVersionId, selectedProdAgentId, agentId, user, prodAgents, fetchHistory, currentPage])
+  }, [mergeVersionId, selectedProdAgentId, agentId, user])
 
   useEffect(() => {
     if (open && agentId) {
@@ -951,6 +1002,7 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
                     onSelectForCompare={handleSelectForCompare}
                     onCancelBaseline={() => setCompareBaseline(null)}
                     onMerge={openMergeDialog}
+                    onRestore={openRestoreDialog}
                   />
                 ))}
               </div>
@@ -983,8 +1035,50 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
         />
       )}
 
-      {/* Merge to Prod dialog */}
-      <Dialog open={!!mergeVersionId} onOpenChange={v => { if (!v && !isMerging) setMergeVersionId(null) }}>
+      {/* Restore old version to dev agent */}
+      <Dialog open={!!restoreVersionId} onOpenChange={v => { if (!v && !isRestoring) setRestoreVersionId(null) }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Restore version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {restoreSuccess ? (
+              <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                <p className="text-xs text-green-700 dark:text-green-400 font-medium">{restoreSuccess}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  This will deploy the selected version&apos;s config to the dev agent and save it as a new version.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Commit message</label>
+                  <textarea
+                    className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                    rows={2}
+                    value={restoreCommitMsg}
+                    onChange={e => setRestoreCommitMsg(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
+              </>
+            )}
+          </div>
+          {!restoreSuccess && (
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setRestoreVersionId(null)} disabled={isRestoring}>Cancel</Button>
+              <Button size="sm" className="h-8 text-xs" onClick={handleRestore} disabled={isRestoring || !restoreCommitMsg.trim()}>
+                {isRestoring ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Restoring...</> : 'Restore & Deploy'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create PR to merge to prod */}
+      <Dialog open={!!mergeVersionId} onOpenChange={v => { if (!v && !isCreatingPR) { setMergeVersionId(null); setPrResult(null) } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold flex items-center gap-2">
@@ -993,15 +1087,43 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {mergeSuccess ? (
-              <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                <p className="text-xs text-green-700 dark:text-green-400 font-medium">{mergeSuccess}</p>
+            {prResult ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+                      PR #{prResult.number} created!
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Share this link for review. Production will update automatically when the PR is merged.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <code className="flex-1 text-[11px] bg-muted rounded px-2 py-1.5 truncate select-all">
+                    {prResult.url}
+                  </code>
+                  <Button
+                    variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"
+                    title="Copy PR link"
+                    onClick={() => { navigator.clipboard.writeText(prResult.url); setCopiedPR(true); setTimeout(() => setCopiedPR(false), 2000) }}
+                  >
+                    {copiedPR ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                  <Button
+                    variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"
+                    title="Open PR on GitHub"
+                    onClick={() => window.open(prResult.url, '_blank')}
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
             ) : (
               <>
                 <p className="text-xs text-muted-foreground">
-                  Select the production agent to update with this prompt version.
+                  Select the production agent. A GitHub PR will be created for review — production deploys automatically when merged.
                 </p>
                 {prodAgents.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">
@@ -1023,24 +1145,34 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
               </>
             )}
           </div>
-          {!mergeSuccess && (
+          {!prResult && (
             <div className="flex justify-end gap-2 pt-1">
               <Button
                 variant="outline" size="sm" className="h-8 text-xs"
                 onClick={() => setMergeVersionId(null)}
-                disabled={isMerging}
+                disabled={isCreatingPR}
               >
                 Cancel
               </Button>
               <Button
                 size="sm" className="h-8 text-xs"
-                onClick={handleMerge}
-                disabled={isMerging || !selectedProdAgentId}
+                onClick={handleCreatePR}
+                disabled={isCreatingPR || !selectedProdAgentId}
               >
-                {isMerging
-                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Merging...</>
-                  : 'Merge & Deploy'
+                {isCreatingPR
+                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Creating PR...</>
+                  : 'Create PR'
                 }
+              </Button>
+            </div>
+          )}
+          {prResult && (
+            <div className="flex justify-end pt-1">
+              <Button
+                variant="outline" size="sm" className="h-8 text-xs"
+                onClick={() => { setMergeVersionId(null); setPrResult(null) }}
+              >
+                Done
               </Button>
             </div>
           )}
