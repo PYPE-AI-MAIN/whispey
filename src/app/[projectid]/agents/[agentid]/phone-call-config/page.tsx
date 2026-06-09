@@ -33,8 +33,20 @@ interface PhoneNumber {
   country_code: string | null
   status: string
   trunk_direction: string
+  number_type: string | null
   project_id: string | null
   project_name: string | null
+}
+
+function formatNumberLabel(phone: PhoneNumber): string {
+  const num = phone.formatted_number || phone.phone_number
+  const kind = phone.number_type === 'acefone_bridge' || phone.number_type === 'plivo_bridge'
+    ? 'bridge'
+    : 'SIP'
+  const provider = phone.provider || ''
+  const dir = phone.trunk_direction || ''
+  const parts = [kind, provider, dir].filter(Boolean)
+  return `${num} (${parts.join(' · ')})`
 }
 
 interface CallRecord {
@@ -143,11 +155,10 @@ export default function PhoneCallConfig() {
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhoneNumbers(true)
-        const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
+        const response = await fetch(`/api/phone-numbers/available?project_id=${projectId}`)
         if (!response.ok) throw new Error('Failed to fetch phone numbers')
         const data: PhoneNumber[] = await response.json()
         const filtered = data.filter(phone =>
-          phone.project_id === projectId &&
           phone.trunk_direction === 'outbound' &&
           phone.status === 'active'
         )
@@ -392,10 +403,7 @@ export default function PhoneCallConfig() {
                     <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                       {phoneNumbers.map((phone) => (
                         <SelectItem key={phone.id} value={phone.id} className="text-gray-900 dark:text-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-medium">{phone.formatted_number || phone.phone_number}</span>
-                            {phone.provider && <span className="text-xs text-gray-500 dark:text-gray-400">({phone.provider})</span>}
-                          </div>
+                          <span className="font-mono text-sm">{formatNumberLabel(phone)}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
