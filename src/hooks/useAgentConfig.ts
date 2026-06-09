@@ -514,6 +514,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             targetAgent: tool.target_agent || '',
             handoffMessage: tool.handoff_message || '',
             transferNumber: tool.transfer_number || '',
+            acefoneToken: tool.acefone_token || '',
             sipTrunkId: tool.sip_outbound_trunk || '',
             preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
             preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
