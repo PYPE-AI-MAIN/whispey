@@ -1101,7 +1101,7 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <code className="flex-1 text-[11px] bg-muted rounded px-2 py-1.5 truncate select-all">
+                  <code className="flex-1 min-w-0 text-[11px] bg-muted rounded px-2 py-1.5 break-all select-all">
                     {prResult.url}
                   </code>
                   <Button

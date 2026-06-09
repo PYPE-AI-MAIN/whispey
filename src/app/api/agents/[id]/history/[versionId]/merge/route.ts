@@ -74,11 +74,45 @@ export async function POST(
       'Merging this PR will automatically deploy the full config to the production agent.',
     ].join('\n')
 
-    // 5. Create GitHub PR — push full config snapshot as YAML
+    // 5. Fetch ancillary settings to include in the GitHub YAML (webhook, dropoff, callback)
+    const [webhookRes, dropoffRes] = await Promise.all([
+      supabase
+        .from('pype_voice_webhook_configs')
+        .select('webhook_name, webhook_url, http_method, headers, trigger_events, is_active')
+        .eq('agent_id', sourceAgentId),
+      supabase
+        .from('pype_voice_agent_dropoff_settings')
+        .select('enabled, dropoff_message, delay_minutes, max_retries, context_dropoff_prompt, sip_trunk_id, phone_number_id')
+        .eq('agent_id', sourceAgentId)
+        .eq('is_active', true)
+        .maybeSingle(),
+    ])
+
+    let callbackSettings: any = null
+    const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+    if (schedulerUrl) {
+      try {
+        const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${sourceAgentId}/callback-settings`, {
+          headers: { 'Content-Type': 'application/json' },
+        })
+        if (cbRes.ok) {
+          const cbData = await cbRes.json()
+          if (cbData && Object.keys(cbData).length > 0) callbackSettings = cbData
+        }
+      } catch {}
+    }
+
+    // Build enriched config: core agent config first, ancillary settings appended at the end
+    const enrichedConfig: any = { ...version.config_snapshot }
+    if (webhookRes.data?.length) enrichedConfig.webhook_configs = webhookRes.data
+    if (dropoffRes.data) enrichedConfig.dropoff_settings = dropoffRes.data
+    if (callbackSettings) enrichedConfig.callback_settings = callbackSettings
+
+    // 6. Create GitHub PR — push enriched config (agent + all settings) as YAML
     const prResult = await createMergePR(
       projectName,
       targetAgent.name,
-      version.config_snapshot,
+      enrichedConfig,
       prTitle,
       prBody,
       userEmail ?? 'unknown',
@@ -92,7 +126,7 @@ export async function POST(
       )
     }
 
-    // 6. Write PR info onto the existing version row.
+    // 7. Write PR info onto the existing version row.
     //    merged_to_agent_id = target (set now), merged_at = null (still pending).
     //    merged_at being null = PR open; being set = deployed.
     const { data: updatedRow, error: updateErr } = await supabase
