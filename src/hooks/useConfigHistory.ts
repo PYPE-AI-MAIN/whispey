@@ -5,11 +5,6 @@ export interface ConfigHistoryEntry {
   version_number: number
   created_by_email: string | null
   created_at: string
-  commit_message: string | null
-  prompt_snapshot: string | null
-  github_push_ok: boolean | null
-  merged_to_agent_id: string | null
-  merged_at: string | null
 }
 
 export interface ConfigHistoryEntryDetail extends ConfigHistoryEntry {

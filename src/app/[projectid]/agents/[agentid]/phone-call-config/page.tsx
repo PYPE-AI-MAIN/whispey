@@ -33,8 +33,20 @@ interface PhoneNumber {
   country_code: string | null
   status: string
   trunk_direction: string
+  number_type: string | null
   project_id: string | null
   project_name: string | null
+}
+
+function formatNumberLabel(phone: PhoneNumber): string {
+  const num = phone.formatted_number || phone.phone_number
+  const kind = phone.number_type === 'acefone_bridge' || phone.number_type === 'plivo_bridge'
+    ? 'bridge'
+    : 'SIP'
+  const provider = phone.provider || ''
+  const dir = phone.trunk_direction || ''
+  const parts = [kind, provider, dir].filter(Boolean)
+  return `${num} (${parts.join(' · ')})`
 }
 
 interface CallRecord {
@@ -143,12 +155,11 @@ export default function PhoneCallConfig() {
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhoneNumbers(true)
-        const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
+        const response = await fetch(`/api/phone-numbers/available?project_id=${projectId}`)
         if (!response.ok) throw new Error('Failed to fetch phone numbers')
         const data: PhoneNumber[] = await response.json()
         const filtered = data.filter(phone =>
-          phone.project_id === projectId &&
-          phone.trunk_direction === 'outbound' &&
+          (phone.trunk_direction === 'outbound' || phone.trunk_direction === 'bidirectional') &&
           phone.status === 'active'
         )
         setPhoneNumbers(filtered)
@@ -229,8 +240,12 @@ export default function PhoneCallConfig() {
     if (cleaned.length < 10) { setMessage('Please enter a valid phone number'); setMessageType('error'); return }
     if (!fromPhoneNumberId.trim()) { setMessage('Please select a phone number to call from'); setMessageType('error'); return }
     const selectedPhone = phoneNumbers.find(p => p.id === fromPhoneNumberId)
-    if (!selectedPhone || !selectedPhone.trunk_id || !selectedPhone.provider) {
-      setMessage('Selected phone number is missing trunk ID or provider'); setMessageType('error'); return
+    if (!selectedPhone) {
+      setMessage('Selected phone number not found'); setMessageType('error'); return
+    }
+    const isBridge = selectedPhone.number_type === 'acefone_bridge' || selectedPhone.number_type === 'plivo_bridge'
+    if (!isBridge && !selectedPhone.trunk_id) {
+      setMessage('Selected phone number is missing trunk ID'); setMessageType('error'); return
     }
     const { isRunning, agentName } = getRunningAgentName(agent, runningAgents)
     if (!isRunning || !agentName) { setMessage('Agent is not currently running. Please start the agent first.'); setMessageType('error'); return }
@@ -245,6 +260,8 @@ export default function PhoneCallConfig() {
           phone_number: formattedNumber,
           sip_trunk_id: selectedPhone.trunk_id,
           provider: selectedPhone.provider,
+          number_type: selectedPhone.number_type,
+          from_number: selectedPhone.phone_number,
           ...(variables.length > 0 ? {
             variables: Object.fromEntries(
               variables.filter(v => v.key.trim()).map(v => [v.key.trim(), v.value])
@@ -392,10 +409,7 @@ export default function PhoneCallConfig() {
                     <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                       {phoneNumbers.map((phone) => (
                         <SelectItem key={phone.id} value={phone.id} className="text-gray-900 dark:text-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-medium">{phone.formatted_number || phone.phone_number}</span>
-                            {phone.provider && <span className="text-xs text-gray-500 dark:text-gray-400">({phone.provider})</span>}
-                          </div>
+                          <span className="font-mono text-sm">{formatNumberLabel(phone)}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>

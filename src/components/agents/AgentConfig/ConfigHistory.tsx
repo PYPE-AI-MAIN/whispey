@@ -10,12 +10,7 @@ import { Button } from '@/components/ui/button'
 import {
   Loader2, ChevronLeft, ChevronRight, Clock, User, Copy, Check,
   FileText, Cpu, Volume2, Mic, MessageSquare, Variable, ArrowLeftRight, X,
-  GitMerge, AlertTriangle, CheckCircle2, ExternalLink,
 } from 'lucide-react'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { useUser } from '@clerk/nextjs'
 import { useConfigHistory, ConfigHistoryEntryDetail } from '@/hooks/useConfigHistory'
 import { formatDistanceToNow, format } from 'date-fns'
 import { buildFormValuesFromAgent } from '@/hooks/useAgentConfig'
@@ -29,8 +24,6 @@ interface Props {
   open: boolean
   onClose: () => void
   agentId: string
-  projectId: string
-  agentEnvironment?: string
 }
 
 type Screen =
@@ -568,35 +561,19 @@ function HistoryEntryRow({
   isCompareBaseline,
   isComparePickMode,
   copiedId,
-  showMergeButton,
   onView,
   onCopy,
   onSelectForCompare,
   onCancelBaseline,
-  onMerge,
-  onRestore,
 }: {
-  entry: {
-    id: string
-    version_number: number
-    created_by_email: string | null
-    created_at: string
-    commit_message?: string | null
-    prompt_snapshot?: string | null
-    github_push_ok?: boolean | null
-    merged_to_agent_id?: string | null
-    merged_at?: string | null
-  }
+  entry: { id: string; version_number: number; created_by_email: string | null; created_at: string }
   isCompareBaseline: boolean
   isComparePickMode: boolean
   copiedId: string | null
-  showMergeButton: boolean
   onView: (id: string) => void
   onCopy: (id: string) => void
   onSelectForCompare: (id: string) => void
   onCancelBaseline: () => void
-  onMerge: (id: string) => void
-  onRestore: (id: string, versionNumber: number, originalMsg: string | null) => void
 }) {
   const date = new Date(entry.created_at)
   const isCopied = copiedId === entry.id
@@ -648,15 +625,6 @@ function HistoryEntryRow({
               {entry.created_by_email}
             </p>
           )}
-          {entry.commit_message && (
-            <p className="text-xs text-foreground/80 mt-1 font-medium truncate max-w-[260px]" title={entry.commit_message}>
-              &ldquo;{entry.commit_message}&rdquo;
-            </p>
-          )}
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <GitHubBadge ok={entry.github_push_ok ?? null} />
-            {entry.merged_to_agent_id && <MergedChip />}
-          </div>
         </div>
 
         <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -669,26 +637,6 @@ function HistoryEntryRow({
           >
             {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
-
-          {showMergeButton && entry.prompt_snapshot && (
-            <button
-              onClick={() => onMerge(entry.id)}
-              title="Create PR to merge to prod"
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <GitMerge className="w-3 h-3" />
-              Merge
-            </button>
-          )}
-          {showMergeButton && (
-            <button
-              onClick={() => onRestore(entry.id, entry.version_number, entry.commit_message ?? null)}
-              title="Restore this version to dev agent"
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              Restore
-            </button>
-          )}
 
           {isComparePickMode && !isCompareBaseline ? (
             <button
@@ -714,41 +662,12 @@ function HistoryEntryRow({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GitHub sync badge
-// ─────────────────────────────────────────────────────────────────────────────
-
-function GitHubBadge({ ok }: { ok: boolean | null }) {
-  if (ok === null || ok === undefined) return null
-  if (ok) {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20 font-medium">
-        <CheckCircle2 className="w-2.5 h-2.5" /> GitHub
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 font-medium">
-      <AlertTriangle className="w-2.5 h-2.5" /> Sync failed
-    </span>
-  )
-}
-
-function MergedChip() {
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border font-medium">
-      <GitMerge className="w-2.5 h-2.5" /> Merged
-    </span>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Main panel
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ConfigHistory({ open, onClose, agentId, projectId, agentEnvironment = 'dev' }: Props) {
+export default function ConfigHistory({ open, onClose, agentId }: Props) {
   const { entries, pagination, isLoading, error, currentPage, fetchHistory, fetchEntryDetail, goToPage } =
     useConfigHistory(agentId)
-  const { user } = useUser()
 
   const [screen, setScreen] = useState<Screen>({ mode: 'list' })
   const [compareBaseline, setCompareBaseline] = useState<ComparePickMode | null>(null)
@@ -756,98 +675,6 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
 
   const [detailCache] = useState(() => new Map<string, ConfigHistoryEntryDetail>())
   const [copiedId, setCopiedId] = useState<string | null>(null)
-
-  // ── Merge state ───────────────────────────────────────────────────────────
-  // ── Restore state ─────────────────────────────────────────────────────────
-  const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null)
-  const [restoreCommitMsg, setRestoreCommitMsg] = useState('')
-  const [isRestoring, setIsRestoring] = useState(false)
-  const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [restoreSuccess, setRestoreSuccess] = useState<string | null>(null)
-
-  const openRestoreDialog = useCallback((versionId: string, versionNumber: number, originalMsg: string | null) => {
-    setRestoreVersionId(versionId)
-    setRestoreCommitMsg(`Rollback to v${versionNumber}${originalMsg ? `: ${originalMsg}` : ''}`)
-    setRestoreError(null)
-    setRestoreSuccess(null)
-  }, [])
-
-  const handleRestore = useCallback(async () => {
-    if (!restoreVersionId || !restoreCommitMsg.trim()) return
-    setIsRestoring(true); setRestoreError(null)
-    try {
-      const res = await fetch(`/api/agents/${agentId}/restore`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          version_id: restoreVersionId,
-          commit_message: restoreCommitMsg.trim(),
-          userEmail: user?.primaryEmailAddress?.emailAddress ?? null,
-          userId: user?.id ?? null,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setRestoreError(data.message ?? 'Restore failed'); return }
-      setRestoreSuccess(`Restored as v${data.version_number}`)
-      await fetchHistory(currentPage)
-      setTimeout(() => { setRestoreVersionId(null); setRestoreSuccess(null) }, 2000)
-    } catch (err: any) {
-      setRestoreError(err.message ?? 'Unexpected error')
-    } finally {
-      setIsRestoring(false)
-    }
-  }, [restoreVersionId, restoreCommitMsg, agentId, user, fetchHistory, currentPage])
-
-  // ── Merge state ───────────────────────────────────────────────────────────
-  const [mergeVersionId, setMergeVersionId] = useState<string | null>(null)
-  const [prodAgents, setProdAgents] = useState<{ id: string; name: string }[]>([])
-  const [selectedProdAgentId, setSelectedProdAgentId] = useState('')
-  const [isCreatingPR, setIsCreatingPR] = useState(false)
-  const [mergeError, setMergeError] = useState<string | null>(null)
-  const [prResult, setPrResult] = useState<{ url: string; number: number } | null>(null)
-  const [copiedPR, setCopiedPR] = useState(false)
-
-  const openMergeDialog = useCallback(async (versionId: string) => {
-    setMergeVersionId(versionId)
-    setSelectedProdAgentId('')
-    setMergeError(null)
-    setPrResult(null)
-    setCopiedPR(false)
-    if (prodAgents.length === 0) {
-      const res = await fetch(`/api/agents/prod-list?project_id=${projectId}`)
-      if (res.ok) {
-        const data = await res.json()
-        setProdAgents(data.agents ?? [])
-      }
-    }
-  }, [projectId, prodAgents.length])
-
-  const handleCreatePR = useCallback(async () => {
-    if (!mergeVersionId || !selectedProdAgentId) return
-    setIsCreatingPR(true)
-    setMergeError(null)
-    try {
-      const res = await fetch(`/api/agents/${agentId}/history/${mergeVersionId}/merge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target_agent_id: selectedProdAgentId,
-          userEmail: user?.primaryEmailAddress?.emailAddress ?? null,
-          userId: user?.id ?? null,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setMergeError(data.message ?? 'PR creation failed')
-        return
-      }
-      setPrResult({ url: data.pr_url, number: data.pr_number })
-    } catch (err: any) {
-      setMergeError(err.message ?? 'Unexpected error')
-    } finally {
-      setIsCreatingPR(false)
-    }
-  }, [mergeVersionId, selectedProdAgentId, agentId, user])
 
   useEffect(() => {
     if (open && agentId) {
@@ -996,13 +823,10 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
                     isCompareBaseline={compareBaseline?.entryId === e.id}
                     isComparePickMode={isComparePickMode}
                     copiedId={copiedId}
-                    showMergeButton={agentEnvironment === 'dev'}
                     onView={handleView}
                     onCopy={handleCopy}
                     onSelectForCompare={handleSelectForCompare}
                     onCancelBaseline={() => setCompareBaseline(null)}
-                    onMerge={openMergeDialog}
-                    onRestore={openRestoreDialog}
                   />
                 ))}
               </div>
@@ -1034,150 +858,6 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
           entryB={diffDialog.entryB}
         />
       )}
-
-      {/* Restore old version to dev agent */}
-      <Dialog open={!!restoreVersionId} onOpenChange={v => { if (!v && !isRestoring) setRestoreVersionId(null) }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Restore version</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            {restoreSuccess ? (
-              <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                <p className="text-xs text-green-700 dark:text-green-400 font-medium">{restoreSuccess}</p>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  This will deploy the selected version&apos;s config to the dev agent and save it as a new version.
-                </p>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Commit message</label>
-                  <textarea
-                    className="w-full text-sm rounded-md border border-input bg-background px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                    rows={2}
-                    value={restoreCommitMsg}
-                    onChange={e => setRestoreCommitMsg(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-                {restoreError && <p className="text-xs text-destructive">{restoreError}</p>}
-              </>
-            )}
-          </div>
-          {!restoreSuccess && (
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setRestoreVersionId(null)} disabled={isRestoring}>Cancel</Button>
-              <Button size="sm" className="h-8 text-xs" onClick={handleRestore} disabled={isRestoring || !restoreCommitMsg.trim()}>
-                {isRestoring ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Restoring...</> : 'Restore & Deploy'}
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Create PR to merge to prod */}
-      <Dialog open={!!mergeVersionId} onOpenChange={v => { if (!v && !isCreatingPR) { setMergeVersionId(null); setPrResult(null) } }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-              <GitMerge className="w-4 h-4" />
-              Merge to Production
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            {prResult ? (
-              <div className="space-y-3">
-                <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs text-green-700 dark:text-green-400 font-medium">
-                      PR #{prResult.number} created!
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Share this link for review. Production will update automatically when the PR is merged.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <code className="flex-1 min-w-0 text-[11px] bg-muted rounded px-2 py-1.5 break-all select-all">
-                    {prResult.url}
-                  </code>
-                  <Button
-                    variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"
-                    title="Copy PR link"
-                    onClick={() => { navigator.clipboard.writeText(prResult.url); setCopiedPR(true); setTimeout(() => setCopiedPR(false), 2000) }}
-                  >
-                    {copiedPR ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                  </Button>
-                  <Button
-                    variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"
-                    title="Open PR on GitHub"
-                    onClick={() => window.open(prResult.url, '_blank')}
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  Select the production agent. A GitHub PR will be created for review — production deploys automatically when merged.
-                </p>
-                {prodAgents.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">
-                    No production agents found in this project.
-                  </p>
-                ) : (
-                  <Select value={selectedProdAgentId} onValueChange={setSelectedProdAgentId}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Select production agent..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {prodAgents.map(a => (
-                        <SelectItem key={a.id} value={a.id} className="text-xs">{a.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {mergeError && <p className="text-xs text-destructive">{mergeError}</p>}
-              </>
-            )}
-          </div>
-          {!prResult && (
-            <div className="flex justify-end gap-2 pt-1">
-              <Button
-                variant="outline" size="sm" className="h-8 text-xs"
-                onClick={() => setMergeVersionId(null)}
-                disabled={isCreatingPR}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm" className="h-8 text-xs"
-                onClick={handleCreatePR}
-                disabled={isCreatingPR || !selectedProdAgentId}
-              >
-                {isCreatingPR
-                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Creating PR...</>
-                  : 'Create PR'
-                }
-              </Button>
-            </div>
-          )}
-          {prResult && (
-            <div className="flex justify-end pt-1">
-              <Button
-                variant="outline" size="sm" className="h-8 text-xs"
-                onClick={() => { setMergeVersionId(null); setPrResult(null) }}
-              >
-                Done
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
@@ -31,7 +30,6 @@ interface PipecatAgentConfigProps {
   projectId: string
   pipecatAgentId: string
   agentName: string
-  environment?: string
 }
 
 // ── Pipecat agent shape from backend ────────────────────────────────────────
@@ -194,7 +192,7 @@ function buildSnapshot(v: SnapshotValues): string {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function PipecatAgentConfig({
-  agentId, projectId, pipecatAgentId, agentName, environment = 'dev',
+  agentId, projectId, pipecatAgentId, agentName,
 }: PipecatAgentConfigProps) {
   const router = useRouter()
   const { user } = useUser()
@@ -246,12 +244,23 @@ export default function PipecatAgentConfig({
     runAnalysis(transcripts)
   }, [runAnalysis])
 
-  // ── Commit modal state ───────────────────────────────────────────────────
-  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
-  const [commitMessage, setCommitMessage] = useState('')
-  const [isSavingVersion, setIsSavingVersion] = useState(false)
-  const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
-  const [showMergePrompt, setShowMergePrompt] = useState(false)
+  // ── Checkpoint state (same as LiveKit) ───────────────────────────────────
+  const [pendingCheckpoint, setPendingCheckpoint] = useState<{
+    config: any
+    userEmail: string | null
+    userId: string | null
+  } | null>(null)
+  const [isSavingCheckpoint, setIsSavingCheckpoint] = useState(false)
+  const [isCheckpointExiting, setIsCheckpointExiting] = useState(false)
+
+  // Auto-dismiss checkpoint banner after 15 seconds
+  useEffect(() => {
+    if (!pendingCheckpoint) return
+    setIsCheckpointExiting(false)
+    const exitT = setTimeout(() => setIsCheckpointExiting(true), 14_700)
+    const t = setTimeout(() => setPendingCheckpoint(null), 15_000)
+    return () => { clearTimeout(exitT); clearTimeout(t) }
+  }, [pendingCheckpoint])
 
   // Dirty tracking
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
@@ -553,150 +562,143 @@ export default function PipecatAgentConfig({
 
   // ── Save ─────────────────────────────────────────────────────────────────
 
-  // Core save logic — builds payload, calls API, updates snapshot, returns config for history.
-  // Throws on failure so callers can handle errors themselves.
-  const executeSave = async (): Promise<{ config: any }> => {
-    if (!agent) throw new Error('No agent loaded')
-    const updatePayload: any = {
-      prompt,
-      opening_message: openingMessage || null,
-      llm_model: selectedModel,
-      llm_provider: mapProviderToLLMProvider(selectedProvider),
-      stt_provider: sttProvider,
-      stt_model: sttModel,
-      stt_language: sttConfig?.language || 'en-IN',
-      stt_task: sttTask || 'translate',
-      tts_provider: ttsProvider,
-      tts_model: ttsModel || null,
-      tts_voice_id: ttsVoiceId || null,
-      tts_stability: ttsStability,
-      tts_similarity_boost: ttsSimilarityBoost,
-      tts_style: ttsStyle,
-      tts_speed: ttsSpeed,
-      transfer_number: transferNumber,
-      acefone_token: acefoneToken || null,
-      api_key_c2c: acefoneApiKeyC2C || null,
-      tools,
-      tool_config: toolConfigs,
-      custom_tools: customTools,
-      vad_confidence: vadConfidence,
-      vad_start_secs: vadStartSecs,
-      vad_stop_secs: vadStopSecs,
-      vad_min_volume: vadMinVolume,
-      smart_turn_enabled: smartTurnEnabled,
-      smart_turn_stop_secs: smartTurnStopSecs,
-      smart_turn_pre_speech_ms: smartTurnPreSpeechMs,
-      smart_turn_max_dur_secs: smartTurnMaxDurSecs,
-      turn_stop_timeout: turnStopTimeout,
-      user_idle_timeout: userIdleTimeout,
-      idle_nudges: idleNudges,
-      idle_end_message: idleEndMessage,
-      allow_interruptions: allowInterruptions,
-      min_interruption_duration_ms: minInterruptionDurationMs,
-      mute_while_bot_speaking: muteWhileBotSpeaking,
-      mute_during_function_calls: muteDuringFunctionCalls,
-      min_interrupt_words: minInterruptWords,
-      dtmf_enabled: dtmfEnabled,
-      noise_cancellation: noiseCancellation,
-      enable_metrics: enableMetrics,
-      answer_delay_secs: answerDelaySecs,
-      max_call_duration_secs: maxCallDurationSecs,
-      response_rules: responseRules || null,
-      call_closure_rules: callClosureRules || null,
-      transfer_gating_rules: transferGatingRules || null,
-      dynamic_context_template: dynamicContextTemplate || null,
-      rag_enabled: ragEnabled,
-      rag_n_results: ragNResults,
-      rag_filler_enabled: ragFillerEnabled,
-      rag_filler_phrases: ragFillerPhrases,
-      min_audio_duration: minAudioDuration,
-      ambient_sound_enabled: ambientSoundEnabled,
-      ambient_sound_volume: ambientSoundVolume,
-      keyboard_sound_enabled: keyboardSoundEnabled,
-      keyboard_sound_volume: keyboardSoundVolume,
-      keyboard_sound_probability: keyboardSoundProbability,
-      keyboard_sound_on_tool_calls: keyboardSoundOnToolCalls,
-      timezone,
-      variables,
-      whispey_api_key: agent.whispey_api_key,
-      whispey_agent_id: agent.whispey_agent_id,
-      context_memory: { enabled: contextMemoryEnabled },
-    }
-
-    const res = await fetch(`/api/pipecat/agents/${pipecatAgentId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatePayload),
-    })
-
-    if (!res.ok) {
-      const errorData = await res.json()
-      throw new Error(errorData.error || 'Failed to save agent')
-    }
-
-    setSavedSnapshot(buildSnapshot({
-      prompt, openingMessage, transferNumber,
-      selectedProvider, selectedModel,
-      sttModel, sttConfig, ttsVoiceId, ttsModel,
-      tools, toolConfigs, customTools, ttsProvider,
-      vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
-      smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
-      turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage,
-      allowInterruptions, minInterruptionDurationMs,
-      muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
-      noiseCancellation, enableMetrics,
-      answerDelaySecs, maxCallDurationSecs, dtmfEnabled,
-      responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
-      ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
-      ragEnabled, ambientSoundEnabled, ambientSoundVolume,
-      keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
-      ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
-      timezone, variables,
-      contextMemoryEnabled,
-    }))
-
-    const { whispey_api_key, ...snapshotPayload } = updatePayload
-    return { config: { platform: 'pipecat', agent: snapshotPayload } }
-  }
-
-  // ── Commit + deploy (mandatory) ──────────────────────────────────────────
-
-  // Opens modal only — deploy happens inside handleSaveVersion after commit message is entered.
-  const handleOpenCommitModal = () => {
-    setCommitMessage('')
-    setVersionSaveError(null)
-    setIsCommitModalOpen(true)
-  }
-
-  const handleSaveVersion = async () => {
-    if (!commitMessage.trim()) return
-    setIsSavingVersion(true); setVersionSaveError(null)
+  const handleSave = async () => {
+    if (!agent) return
+    setIsSaving(true); setSaveError(null)
     try {
-      // Step 1: Deploy config
-      const result = await executeSave()
-      // Step 2: Save version checkpoint
+      const updatePayload: any = {
+        prompt,
+        opening_message: openingMessage || null,
+        llm_model: selectedModel,
+        llm_provider: mapProviderToLLMProvider(selectedProvider),
+        stt_provider: sttProvider,
+        stt_model: sttModel,
+        stt_language: sttConfig?.language || 'en-IN',
+        stt_task: sttTask || 'translate',
+        tts_provider: ttsProvider,
+        tts_model: ttsModel || null,
+        tts_voice_id: ttsVoiceId || null,
+        tts_stability: ttsStability,
+        tts_similarity_boost: ttsSimilarityBoost,
+        tts_style: ttsStyle,
+        tts_speed: ttsSpeed,
+        transfer_number: transferNumber,
+        acefone_token: acefoneToken || null,
+        api_key_c2c: acefoneApiKeyC2C || null,
+        tools,
+        tool_config: toolConfigs,
+        custom_tools: customTools,
+        vad_confidence: vadConfidence,
+        vad_start_secs: vadStartSecs,
+        vad_stop_secs: vadStopSecs,
+        vad_min_volume: vadMinVolume,
+        smart_turn_enabled: smartTurnEnabled,
+        smart_turn_stop_secs: smartTurnStopSecs,
+        smart_turn_pre_speech_ms: smartTurnPreSpeechMs,
+        smart_turn_max_dur_secs: smartTurnMaxDurSecs,
+        turn_stop_timeout: turnStopTimeout,
+        user_idle_timeout: userIdleTimeout,
+        idle_nudges: idleNudges,
+        idle_end_message: idleEndMessage,
+        allow_interruptions: allowInterruptions,
+        min_interruption_duration_ms: minInterruptionDurationMs,
+        mute_while_bot_speaking: muteWhileBotSpeaking,
+        mute_during_function_calls: muteDuringFunctionCalls,
+        min_interrupt_words: minInterruptWords,
+        dtmf_enabled: dtmfEnabled,
+        noise_cancellation: noiseCancellation,
+        enable_metrics: enableMetrics,
+        answer_delay_secs: answerDelaySecs,
+        max_call_duration_secs: maxCallDurationSecs,
+        response_rules: responseRules || null,
+        call_closure_rules: callClosureRules || null,
+        transfer_gating_rules: transferGatingRules || null,
+        dynamic_context_template: dynamicContextTemplate || null,
+        rag_enabled: ragEnabled,
+        rag_n_results: ragNResults,
+        rag_filler_enabled: ragFillerEnabled,
+        rag_filler_phrases: ragFillerPhrases,
+        min_audio_duration: minAudioDuration,
+        ambient_sound_enabled: ambientSoundEnabled,
+        ambient_sound_volume: ambientSoundVolume,
+        keyboard_sound_enabled: keyboardSoundEnabled,
+        keyboard_sound_volume: keyboardSoundVolume,
+        keyboard_sound_probability: keyboardSoundProbability,
+        keyboard_sound_on_tool_calls: keyboardSoundOnToolCalls,
+        timezone,
+        variables,
+        whispey_api_key: agent.whispey_api_key,
+        whispey_agent_id: agent.whispey_agent_id,
+        context_memory: { enabled: contextMemoryEnabled },
+      }
+
+      const res = await fetch(`/api/pipecat/agents/${pipecatAgentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatePayload),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to save agent')
+      }
+
+      setSavedSnapshot(buildSnapshot({
+        prompt, openingMessage, transferNumber,
+        selectedProvider, selectedModel,
+        sttModel, sttConfig, ttsVoiceId, ttsModel,
+        tools, toolConfigs, customTools,ttsProvider,
+        vadConfidence, vadStartSecs, vadStopSecs, vadMinVolume,
+        smartTurnEnabled, smartTurnStopSecs, smartTurnPreSpeechMs, smartTurnMaxDurSecs,
+        turnStopTimeout, userIdleTimeout, idleNudges, idleEndMessage,
+        allowInterruptions, minInterruptionDurationMs,
+        muteWhileBotSpeaking, muteDuringFunctionCalls, minInterruptWords,
+        noiseCancellation, enableMetrics,
+        answerDelaySecs, maxCallDurationSecs, dtmfEnabled,
+        responseRules, callClosureRules, transferGatingRules, dynamicContextTemplate,
+        ttsStability, ttsSimilarityBoost, ttsStyle, ttsSpeed,
+        ragEnabled, ambientSoundEnabled, ambientSoundVolume,
+        keyboardSoundEnabled, keyboardSoundVolume, keyboardSoundProbability, keyboardSoundOnToolCalls,
+        ragNResults, ragFillerEnabled, ragFillerPhrases, minAudioDuration,
+        timezone, variables,
+        contextMemoryEnabled,
+      }))
+
+      // Show checkpoint banner — identical to LiveKit flow
+      const { whispey_api_key, ...snapshotPayload } = updatePayload
+      setPendingCheckpoint({
+        config: { platform: 'pipecat', agent: snapshotPayload },
+        userEmail: user?.primaryEmailAddress?.emailAddress ?? null,
+        userId: user?.id ?? null,
+      })
+
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save agent')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // ── Checkpoint save ──────────────────────────────────────────────────────
+
+  const handleSaveCheckpoint = async () => {
+    if (!pendingCheckpoint) return
+    setIsSavingCheckpoint(true)
+    try {
       const res = await fetch(`/api/agents/${agentId}/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...result,
-          userEmail: user?.primaryEmailAddress?.emailAddress ?? null,
-          userId: user?.id ?? null,
-          commit_message: commitMessage.trim(),
-        }),
+        body: JSON.stringify(pendingCheckpoint),
       })
       if (!res.ok) {
         const err = await res.json()
-        setVersionSaveError(err.message ?? 'Failed to save version')
-        return
+        console.error('[checkpoint] Save failed:', err.message)
       }
-      setIsCommitModalOpen(false)
-      setCommitMessage('')
-      setShowMergePrompt(true)
-    } catch (err: any) {
-      setVersionSaveError(err.message ?? 'Save failed')
+    } catch (err) {
+      console.error('[checkpoint] Unexpected error:', err)
     } finally {
-      setIsSavingVersion(false)
+      setIsSavingCheckpoint(false)
+      setPendingCheckpoint(null)
     }
   }
 
@@ -831,10 +833,13 @@ export default function PipecatAgentConfig({
             <Button
               size="sm"
               className="h-8 text-xs"
-              onClick={handleOpenCommitModal}
-              disabled={isSavingVersion || !isDirty || environment === 'prod'}
+              onClick={handleSave}
+              disabled={isSaving || !isDirty}
             >
-              Update Config
+              {isSaving
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
+                : 'Update Config'
+              }
             </Button>
             <Button
               variant="outline"
@@ -848,19 +853,6 @@ export default function PipecatAgentConfig({
           </div>
         </div>
       </div>
-
-      {/* Prod read-only banner */}
-      {environment === 'prod' && (
-        <div className="px-6 py-2 flex-shrink-0">
-          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              <span className="font-semibold">Production agent — read only.</span>{' '}
-              Edit the dev agent and use Merge to Prod to update this prompt.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Save error */}
       {saveError && (
@@ -977,10 +969,9 @@ export default function PipecatAgentConfig({
               </div>
               <Textarea
                 value={prompt}
-                onChange={e => { if (environment !== 'prod') setPrompt(e.target.value) }}
-                readOnly={environment === 'prod'}
+                onChange={e => setPrompt(e.target.value)}
                 placeholder="Define your agent's behavior and personality..."
-                className={`flex-1 min-h-0 font-mono text-sm resize-none border-gray-200 dark:border-gray-700 leading-relaxed ${environment === 'prod' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className="flex-1 min-h-0 font-mono text-sm resize-none border-gray-200 dark:border-gray-700 leading-relaxed"
               />
               <div className="mt-2 flex justify-end flex-shrink-0">
                 <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -1105,8 +1096,6 @@ export default function PipecatAgentConfig({
         open={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         agentId={agentId}
-        projectId={projectId}
-        agentEnvironment={environment}
       />
 
       {/* Prompt Settings Sheet — variables (same approach as LiveKit) */}
@@ -1319,72 +1308,48 @@ export default function PipecatAgentConfig({
         </SheetContent>
       </Sheet>
 
-
-      {/* Post-save merge suggestion */}
-      {showMergePrompt && (
-        <Dialog open={showMergePrompt} onOpenChange={v => { if (!v) setShowMergePrompt(false) }}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="text-sm font-semibold">Version saved! Merge to prod?</DialogTitle>
-            </DialogHeader>
-            <p className="text-xs text-muted-foreground py-2">
-              Your version was committed. Do you want to merge this to a production agent now?
-            </p>
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowMergePrompt(false)}>
-                Not now
+      {/* Checkpoint banner — identical to LiveKit */}
+      {pendingCheckpoint && (
+        <div className="fixed top-[10px] left-1/2 -translate-x-1/2 z-50">
+          <div className={`relative bg-background border shadow-lg rounded-xl overflow-hidden whitespace-nowrap ${
+            isCheckpointExiting
+              ? 'animate-out slide-out-to-top-4 fade-out duration-300 fill-mode-forwards'
+              : 'animate-in slide-in-from-top-4 duration-300'
+          }`}>
+            {/* Progress bar */}
+            <div className="absolute inset-x-0 top-0 h-[3px] bg-muted/50">
+              <div
+                className="h-full bg-primary"
+                style={{ animation: 'version-progress 15s linear forwards' }}
+              />
+            </div>
+            {/* Content */}
+            <div className="flex items-center gap-3 px-4 pt-4 pb-3 text-sm">
+              <CheckIcon className="w-4 h-4 text-green-500 shrink-0" />
+              <span className="text-foreground text-xs">Config saved. Save as a version?</span>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={handleSaveCheckpoint}
+                disabled={isSavingCheckpoint}
+              >
+                {isSavingCheckpoint ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save version'}
               </Button>
               <Button
-                size="sm" className="h-8 text-xs"
-                onClick={() => { setShowMergePrompt(false); setIsHistoryOpen(true) }}
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-muted-foreground"
+                onClick={() => { setIsCheckpointExiting(true); setTimeout(() => setPendingCheckpoint(null), 300) }}
+                disabled={isSavingCheckpoint}
               >
-                Open History & Merge
+                Skip
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
       )}
-
-      {/* Commit message dialog */}
-      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Save prompt version</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Describe this change</label>
-              <Textarea
-                placeholder="e.g. Fixed greeting for missed calls"
-                value={commitMessage}
-                onChange={e => setCommitMessage(e.target.value)}
-                className="text-sm resize-none"
-                rows={3}
-                autoFocus
-                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveVersion() }}
-              />
-              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to save quickly.</p>
-            </div>
-            {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              variant="outline" size="sm" className="h-8 text-xs"
-              onClick={() => setIsCommitModalOpen(false)}
-              disabled={isSavingVersion}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm" className="h-8 text-xs"
-              onClick={handleSaveVersion}
-              disabled={isSavingVersion || !commitMessage.trim()}
-            >
-              {isSavingVersion ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</> : 'Save & Deploy'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

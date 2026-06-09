@@ -1,10 +1,10 @@
-import React, { JSX } from 'react'
+import React, { JSX, useState } from 'react'
 import Link from 'next/link'
-import { 
-  MoreHorizontal, 
-  Copy, 
-  Settings, 
-  Clock, 
+import {
+  MoreHorizontal,
+  Copy,
+  Settings,
+  Clock,
   BarChart3,
   Eye,
   Activity,
@@ -13,7 +13,8 @@ import {
   Play,
   Square,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  Phone
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -56,6 +57,7 @@ interface AgentListItemProps {
   monitoringEnabled?: boolean
   monitoringToggleLoading?: boolean
   onToggleMonitoring?: (agent: Agent, nextEnabled: boolean) => void
+  assignedInboundNumber?: string
 }
 
 const getAgentTypeIcon = (type: string) => {
@@ -298,8 +300,10 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
   isMobile = false,
   monitoringEnabled = false,
   monitoringToggleLoading = false,
-  onToggleMonitoring
+  onToggleMonitoring,
+  assignedInboundNumber
 }) => {
+  const [copiedNumber, setCopiedNumber] = useState(false)
   const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoadingRunningAgents)
 
   // Handler for start/stop actions
@@ -418,6 +422,37 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               </div>
             )}
           </div>
+
+          {/* Inbound Number - mobile */}
+          {assignedInboundNumber && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Inbound Number</div>
+                  <code className="text-sm text-gray-700 dark:text-gray-300 font-mono block truncate">
+                    {assignedInboundNumber}
+                  </code>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    navigator.clipboard.writeText(assignedInboundNumber)
+                    setCopiedNumber(true)
+                    setTimeout(() => setCopiedNumber(false), 2000)
+                  }}
+                  className="ml-2 w-10 h-10 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              {copiedNumber && (
+                <div className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">✓ Copied!</div>
+              )}
+            </div>
+          )}
 
           {/* Actions row */}
           <div className="flex items-center justify-between">
@@ -586,6 +621,15 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-xs">ID: {agent.id.slice(0, 8)}...{agent.id.slice(-4)}</span>
+                  {assignedInboundNumber && (
+                    <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-mono">
+                      <Phone className="w-3 h-3" />
+                      {assignedInboundNumber}
+                      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(assignedInboundNumber); setCopiedNumber(true); setTimeout(() => setCopiedNumber(false), 1500) }} className="ml-0.5 hover:text-blue-800 dark:hover:text-blue-200">
+                        {copiedNumber ? <span className="text-green-500">✓</span> : <Copy className="w-3 h-3" />}
+                      </button>
+                    </span>
+                  )}
                   <span className="text-xs">Created {formatDate(agent.created_at, isMobile)}</span>
                 </div>
                 
@@ -824,6 +868,37 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               <p className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Copied!</p>
             )}
           </div>
+
+          {/* Inbound Number */}
+          {assignedInboundNumber && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Inbound Number</div>
+                  <code className="text-xs text-gray-700 dark:text-gray-300 font-mono block truncate">
+                    {assignedInboundNumber}
+                  </code>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    navigator.clipboard.writeText(assignedInboundNumber)
+                    setCopiedNumber(true)
+                    setTimeout(() => setCopiedNumber(false), 2000)
+                  }}
+                  className="w-7 h-7 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              {copiedNumber && (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Copied!</p>
+              )}
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
