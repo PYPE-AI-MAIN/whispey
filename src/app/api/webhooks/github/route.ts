@@ -51,18 +51,21 @@ export async function POST(req: NextRequest) {
     }
 
     const prNumber: number = payload.pull_request.number
+    const prUrl: string = payload.pull_request.html_url
     const mergedByEmail: string =
       payload.pull_request.merged_by?.email ??
       payload.pull_request.merged_by?.login ??
       'github'
 
-    console.log('[webhook/github] PR #' + prNumber + ' merged by', mergedByEmail)
+    console.log('[webhook/github] PR #' + prNumber + ' merged by', mergedByEmail, '| url:', prUrl)
 
-    // Find the pending dev version row
+    // Filter by pr_url (globally unique — includes repo path) not just pr_number
+    // (PR numbers are per-repo; switching repos causes duplicate pr_number matches)
     const { data: version, error: vErr } = await supabase
       .from('pype_agent_config_versions')
       .select('*')
       .eq('pr_number', prNumber)
+      .eq('pr_url', prUrl)
       .is('merged_at', null)
       .not('merged_to_agent_id', 'is', null)
       .maybeSingle()
@@ -193,6 +196,9 @@ export async function POST(req: NextRequest) {
     const nextProdVersion = (prodLatest?.version_number ?? 0) + 1
     const prodCommitMsg = `Merged from dev v${version.version_number}: "${version.commit_message ?? ''}" by ${mergedByEmail}`
 
+    // Use the original requester's email (real email) not the GitHub login from merged_by
+    const prodCreatedByEmail = version.created_by_email ?? mergedByEmail
+
     // Insert prod version row
     await supabase.from('pype_agent_config_versions').insert({
       agent_id: targetAgentId,
@@ -201,7 +207,7 @@ export async function POST(req: NextRequest) {
       config_snapshot: mergedConfig,
       prompt_snapshot: version.prompt_snapshot,
       commit_message: prodCommitMsg,
-      created_by_email: mergedByEmail,
+      created_by_email: prodCreatedByEmail,
       github_push_ok: true,
     })
 
@@ -213,6 +219,77 @@ export async function POST(req: NextRequest) {
         merged_by_email: mergedByEmail,
       })
       .eq('id', version.id)
+
+    // ── Copy ancillary settings from dev agent to prod agent ──────────────────
+
+    // 1. Webhook configs (pype_voice_webhook_configs) — replace semantics
+    try {
+      const { data: devWebhooks } = await supabase
+        .from('pype_voice_webhook_configs')
+        .select('webhook_name, webhook_url, http_method, headers, trigger_events, is_active')
+        .eq('agent_id', version.agent_id)
+      // Delete all prod webhook configs first, then re-insert dev's (including empty = cleared)
+      await supabase.from('pype_voice_webhook_configs').delete().eq('agent_id', targetAgentId)
+      if (devWebhooks?.length) {
+        await supabase.from('pype_voice_webhook_configs').insert(
+          devWebhooks.map(wh => ({ ...wh, agent_id: targetAgentId, project_id: targetAgent.project_id }))
+        )
+      }
+      console.log(`[webhook/github] Synced ${devWebhooks?.length ?? 0} webhook config(s) to prod`)
+    } catch (err) {
+      console.error('[webhook/github] Failed to sync webhook configs:', err)
+    }
+
+    // 2. Drop-off call settings (pype_voice_agent_dropoff_settings) — replace semantics
+    try {
+      const { data: devDropoff } = await supabase
+        .from('pype_voice_agent_dropoff_settings')
+        .select('enabled, dropoff_message, delay_minutes, max_retries, context_dropoff_prompt, sip_trunk_id, phone_number_id')
+        .eq('agent_id', version.agent_id)
+        .eq('is_active', true)
+        .maybeSingle()
+      // Delete prod's active dropoff settings first, then re-insert dev's (including empty = cleared)
+      await supabase.from('pype_voice_agent_dropoff_settings').delete().eq('agent_id', targetAgentId).eq('is_active', true)
+      if (devDropoff) {
+        await supabase.from('pype_voice_agent_dropoff_settings').insert({
+          ...devDropoff, agent_id: targetAgentId, agent_name: prodAgentBackendName, is_active: true,
+        })
+      }
+      console.log(`[webhook/github] Synced drop-off settings to prod (${devDropoff ? 'set' : 'cleared'})`)
+    } catch (err) {
+      console.error('[webhook/github] Failed to sync drop-off settings:', err)
+    }
+
+    // 3. Callback scheduling (external scheduler API) — replace semantics
+    const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+    if (schedulerUrl) {
+      try {
+        const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${version.agent_id}/callback-settings`, {
+          headers: { 'Content-Type': 'application/json' },
+        })
+        if (cbRes.ok) {
+          const cbData = await cbRes.json()
+          if (cbData && Object.keys(cbData).length > 0) {
+            // Dev has settings — push to prod
+            await fetch(`${schedulerUrl}/api/v1/agents/${targetAgentId}/callback-settings`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(cbData),
+            })
+            console.log('[webhook/github] Synced callback settings to prod')
+          } else {
+            // Dev has no settings — clear prod's too
+            await fetch(`${schedulerUrl}/api/v1/agents/${targetAgentId}/callback-settings`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+            })
+            console.log('[webhook/github] Cleared callback settings from prod')
+          }
+        }
+      } catch (err) {
+        console.error('[webhook/github] Failed to sync callback settings:', err)
+      }
+    }
 
     console.log(`[webhook/github] PR #${prNumber} merged — deployed to ${prodAgentBackendName} (v${nextProdVersion})`)
     return NextResponse.json({ success: true, prod_version: nextProdVersion })
