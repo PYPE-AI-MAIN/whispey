@@ -159,7 +159,7 @@ export default function PhoneCallConfig() {
         if (!response.ok) throw new Error('Failed to fetch phone numbers')
         const data: PhoneNumber[] = await response.json()
         const filtered = data.filter(phone =>
-          phone.trunk_direction === 'outbound' &&
+          (phone.trunk_direction === 'outbound' || phone.trunk_direction === 'bidirectional') &&
           phone.status === 'active'
         )
         setPhoneNumbers(filtered)
@@ -240,8 +240,12 @@ export default function PhoneCallConfig() {
     if (cleaned.length < 10) { setMessage('Please enter a valid phone number'); setMessageType('error'); return }
     if (!fromPhoneNumberId.trim()) { setMessage('Please select a phone number to call from'); setMessageType('error'); return }
     const selectedPhone = phoneNumbers.find(p => p.id === fromPhoneNumberId)
-    if (!selectedPhone || !selectedPhone.trunk_id || !selectedPhone.provider) {
-      setMessage('Selected phone number is missing trunk ID or provider'); setMessageType('error'); return
+    if (!selectedPhone) {
+      setMessage('Selected phone number not found'); setMessageType('error'); return
+    }
+    const isBridge = selectedPhone.number_type === 'acefone_bridge' || selectedPhone.number_type === 'plivo_bridge'
+    if (!isBridge && !selectedPhone.trunk_id) {
+      setMessage('Selected phone number is missing trunk ID'); setMessageType('error'); return
     }
     const { isRunning, agentName } = getRunningAgentName(agent, runningAgents)
     if (!isRunning || !agentName) { setMessage('Agent is not currently running. Please start the agent first.'); setMessageType('error'); return }
@@ -256,6 +260,8 @@ export default function PhoneCallConfig() {
           phone_number: formattedNumber,
           sip_trunk_id: selectedPhone.trunk_id,
           provider: selectedPhone.provider,
+          number_type: selectedPhone.number_type,
+          from_number: selectedPhone.phone_number,
           ...(variables.length > 0 ? {
             variables: Object.fromEntries(
               variables.filter(v => v.key.trim()).map(v => [v.key.trim(), v.value])

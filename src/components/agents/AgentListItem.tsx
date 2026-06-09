@@ -626,7 +626,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                       <Phone className="w-3 h-3" />
                       {assignedInboundNumber}
                       <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(assignedInboundNumber); setCopiedNumber(true); setTimeout(() => setCopiedNumber(false), 1500) }} className="ml-0.5 hover:text-blue-800 dark:hover:text-blue-200">
-                        <Copy className="w-3 h-3" />
+                        {copiedNumber ? <span className="text-green-500">✓</span> : <Copy className="w-3 h-3" />}
                       </button>
                     </span>
                   )}
