@@ -953,15 +953,19 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                     </div>
                   ) : (
                     <Select
-                      value={formData.selectedPhoneId}
+                      value={formData.selectedPhoneId || '__none__'}
                       onValueChange={(phoneId) => {
-                        const selectedPhone = phoneNumbers.find(p => p.id === phoneId)
-                        if (selectedPhone) {
-                          setFormData(prev => ({
-                            ...prev,
-                            selectedPhoneId: phoneId,
-                            sipTrunkId: selectedPhone.trunk_id
-                          }))
+                        if (phoneId === '__none__') {
+                          setFormData(prev => ({ ...prev, selectedPhoneId: '', sipTrunkId: '' }))
+                        } else {
+                          const selectedPhone = phoneNumbers.find(p => p.id === phoneId)
+                          if (selectedPhone) {
+                            setFormData(prev => ({
+                              ...prev,
+                              selectedPhoneId: phoneId,
+                              sipTrunkId: selectedPhone.trunk_id
+                            }))
+                          }
                         }
                       }}
                     >
@@ -969,6 +973,9 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                         <SelectValue placeholder="Select phone number" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="__none__">
+                          <span className="text-xs text-gray-400">None (bridge / Acefone calls)</span>
+                        </SelectItem>
                         {phoneNumbers.map((phone) => (
                           <SelectItem key={phone.id} value={phone.id}>
                             <div className="flex items-center gap-2">
