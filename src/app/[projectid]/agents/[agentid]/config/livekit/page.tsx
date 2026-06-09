@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { 
   CopyIcon, 
   CheckIcon, 
@@ -235,8 +236,12 @@ export default function AgentConfig() {
   const [isCopyConfigDialogOpen, setIsCopyConfigDialogOpen] = useState(false)
   const [isPasteConfigDialogOpen, setIsPasteConfigDialogOpen] = useState(false)
 
-  // Tracks loading across BOTH the deploy call AND the subsequent refetch
-  const [isSaving, setIsSaving] = useState(false)
+  const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
+  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
+  const [commitMessage, setCommitMessage] = useState('')
+  const [isSavingVersion, setIsSavingVersion] = useState(false)
+  const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
+  const [showMergePrompt, setShowMergePrompt] = useState(false)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -276,7 +281,7 @@ export default function AgentConfig() {
 
   // Get agent data from Supabase
   const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
-    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
+    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, environment",
     filters: [{ column: "id", operator: "eq", value: agentid }],
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
@@ -293,6 +298,7 @@ export default function AgentConfig() {
 
   const agentNameHeader = agentDataResponse?.[0]?.name || ''
   const agentNameLegacy = agentDataResponse?.[0]?.name || ''
+  const isProd = agentDataResponse?.[0]?.environment === 'prod'
 
   const [resolvedAgentName, setResolvedAgentName] = useState<string>('')
 
@@ -553,7 +559,9 @@ export default function AgentConfig() {
   }
 
 
-  const handleSaveAndDeploy = async () => {
+  // Opens commit modal, capturing the current config first.
+  // Deploy only happens after the commit message is entered — no skip path.
+  const handleOpenCommitModal = () => {
     if (!promptValidation.isValid) {
       console.error('❌ Cannot save: Variable validation errors exist')
       return
@@ -562,12 +570,12 @@ export default function AgentConfig() {
     const payload = buildSavePayload()
 
     const validVariables = Array.from(promptValidation.validVariables)
-    const validVariablesArray = validVariables.map(name => {
+    const validVariablesArray = validVariables.map((name: string) => {
       const existing = formik.values.variables?.find((v: any) => v.name === name)
       return {
         name,
         value: existing?.value || '',
-        description: existing?.description || ''
+        description: existing?.description || '',
       }
     })
 
@@ -580,20 +588,39 @@ export default function AgentConfig() {
 
     const userEmail = user?.primaryEmailAddress?.emailAddress ?? null
     const userId = user?.id ?? null
+    setPendingCheckpoint({ config: payload, userEmail, userId })
+    setCommitMessage('')
+    setVersionSaveError(null)
+    setIsCommitModalOpen(true)
+  }
 
-    setIsSaving(true)
+  const handleSaveVersion = async () => {
+    if (!pendingCheckpoint || !commitMessage.trim()) return
+    setIsSavingVersion(true)
+    setVersionSaveError(null)
     try {
-      await saveAndDeploy.mutateAsync(payload)
-      // Auto-save a version on every deploy (fire-and-forget, retention enforced server-side)
-      fetch(`/api/agents/${agentid}/history`, {
+      // Step 1: Deploy config to backend
+      await saveAndDeploy.mutateAsync(pendingCheckpoint.config)
+      // Step 2: Save version checkpoint
+      const res = await fetch(`/api/agents/${agentid}/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: payload, userEmail, userId }),
-      }).catch((err) => console.error('[checkpoint] Auto-save failed:', err))
-    } catch (error) {
-      console.error('❌ Error during save and deploy:', error)
+        body: JSON.stringify({ ...pendingCheckpoint, commit_message: commitMessage.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setVersionSaveError(err.message ?? 'Failed to save version')
+        return
+      }
+      const data = await res.json()
+      setIsCommitModalOpen(false)
+      setCommitMessage('')
+      setPendingCheckpoint(null)
+      setShowMergePrompt(true)
+    } catch (err: any) {
+      setVersionSaveError(err.message ?? 'Save failed')
     } finally {
-      setIsSaving(false)
+      setIsSavingVersion(false)
     }
   }
 
@@ -775,6 +802,15 @@ const unmappedVariablesCount = useMemo(() => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      {isProd && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            <span className="font-semibold">Production agent — read only.</span>{' '}
+            Edit the dev agent and use Merge to Prod to update this prompt.
+          </p>
+        </div>
+      )}
       {agentConfigData?.backendUnavailable && (
         <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertCircle className="text-amber-600 dark:text-amber-400" />
@@ -847,18 +883,14 @@ const unmappedVariablesCount = useMemo(() => {
             )}
 
             {isFormDirty && (
-              <Button 
-                size="sm" 
-                className="h-8 px-3" 
-                onClick={handleSaveAndDeploy}
-                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable}
-                title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+              <Button
+                size="sm"
+                className="h-8 px-3"
+                onClick={handleOpenCommitModal}
+                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProd}
+                title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
+                <Save className="w-4 h-4" />
               </Button>
             )}
 
@@ -1067,21 +1099,14 @@ const unmappedVariablesCount = useMemo(() => {
               </Button>
             )}
             
-            <Button 
-              size="sm" 
-              className="h-8 text-xs" 
-              onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable}
-              title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+            <Button
+              size="sm"
+              className="h-8 text-xs"
+              onClick={handleOpenCommitModal}
+              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProd}
+              title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin inline" />
-                  Updating...
-                </>
-              ) : (
-                'Update Config'
-              )}
+              Update Config
             </Button>
 
             <Button
@@ -1325,11 +1350,12 @@ const unmappedVariablesCount = useMemo(() => {
               {/* Variable Textarea - NO overlay, just validation */}
               <VariableTextarea
                 value={formik.values.prompt}
-                onChange={(value) => formik.setFieldValue('prompt', value)}
+                onChange={(value) => { if (!isProd) formik.setFieldValue('prompt', value) }}
                 onValidationChange={setPromptValidation}
                 placeholder="Define your agent's behavior and personality... Use {{variable_name}} for dynamic values."
-                className="flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700"
+                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProd ? 'opacity-70 cursor-not-allowed' : ''}`}
                 style={getTextareaStyles()}
+                disabled={isProd}
               />
               
               {/* Compact Validation Indicator */}
@@ -1478,7 +1504,78 @@ const unmappedVariablesCount = useMemo(() => {
         open={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         agentId={agentid}
+        projectId={projectId}
+        agentEnvironment={agentDataResponse?.[0]?.environment ?? 'dev'}
       />
+
+      {/* Commit message dialog */}
+      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Save prompt version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Describe this change</label>
+              <Textarea
+                placeholder="e.g. Fixed greeting for missed calls"
+                value={commitMessage}
+                onChange={e => setCommitMessage(e.target.value)}
+                className="text-sm resize-none"
+                rows={3}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveVersion() }}
+              />
+              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to save quickly.</p>
+            </div>
+            {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline" size="sm" className="h-8 text-xs"
+              onClick={() => setIsCommitModalOpen(false)}
+              disabled={isSavingVersion}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm" className="h-8 text-xs"
+              onClick={handleSaveVersion}
+              disabled={isSavingVersion || !commitMessage.trim()}
+            >
+              {isSavingVersion
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
+                : 'Save & Deploy'
+              }
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Post-save merge suggestion */}
+      {showMergePrompt && (
+        <Dialog open={showMergePrompt} onOpenChange={v => { if (!v) setShowMergePrompt(false) }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-semibold">Version saved! Merge to prod?</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground py-2">
+              Your version was committed. Do you want to merge this to a production agent now?
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowMergePrompt(false)}>
+                Not now
+              </Button>
+              <Button
+                size="sm" className="h-8 text-xs"
+                onClick={() => { setShowMergePrompt(false); setIsHistoryOpen(true) }}
+              >
+                Open History & Merge
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
     </div>
   )
