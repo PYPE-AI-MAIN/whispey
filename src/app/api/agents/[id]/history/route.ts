@@ -80,19 +80,17 @@ export async function POST(
     const projectName = project?.name ?? agent.project_id
     const agentName = agent.name ?? agentId
 
-    // Push to GitHub (non-blocking on failure)
-    const githubResult = promptSnapshot
-      ? await pushPromptToGitHub(
-          projectName,
-          agentName,
-          promptSnapshot,
-          commit_message.trim(),
-          userEmail ?? 'unknown',
-        )
-      : null
+    // Push full config as YAML to agents/{project}/{agent}/config.yml (non-blocking on failure)
+    const githubResult = await pushPromptToGitHub(
+      projectName,
+      agentName,
+      snapshot,
+      commit_message.trim(),
+      userEmail ?? 'unknown',
+    )
 
     // Insert version row
-    const { error } = await supabase.from('pype_agent_config_versions').insert({
+    const { data: inserted, error } = await supabase.from('pype_agent_config_versions').insert({
       agent_id: agentId,
       project_id: agent.project_id,
       version_number: nextVersion,
@@ -103,7 +101,7 @@ export async function POST(
       created_by_user_id: userId ?? null,
       github_sha: githubResult?.sha ?? null,
       github_push_ok: githubResult !== null,
-    })
+    }).select('id').single()
 
     if (error) {
       return NextResponse.json({ message: error.message }, { status: 500 })
@@ -123,6 +121,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      version_id: (inserted as any)?.id ?? null,
       version_number: nextVersion,
       github_push_ok: githubResult !== null,
     })
