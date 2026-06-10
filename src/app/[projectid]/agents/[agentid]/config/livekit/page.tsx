@@ -1242,7 +1242,7 @@ const unmappedVariablesCount = useMemo(() => {
             <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
               {/* Pipeline mode toggle */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Voice Pipeline</span>
+                
                 <div className="flex items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5 gap-0.5">
                   <button
                     type="button"
@@ -1260,7 +1260,7 @@ const unmappedVariablesCount = useMemo(() => {
                     onClick={enterFallbackMode}
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
                       showFallback
-                        ? 'bg-amber-500 text-white shadow-sm'
+                        ? 'bg-yellow-100 text-black shadow-sm'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
