@@ -19,6 +19,7 @@ interface PhoneNumber {
   assigned_agent_name?: string | null
   status: string
   acefone_api_key?: string | null
+  trunk_direction?: string
 }
 
 interface Agent {
