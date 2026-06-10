@@ -349,7 +349,7 @@ export default function PhoneNumbersPage() {
   const numberToForm = (n: PhoneNumber): FormState => ({
     phone_number: n.phone_number,
     provider: ((n.provider?.toLowerCase()) as Provider) ?? 'other',
-    number_type: TRUNK_TO_NUMBER_TYPE[n.trunk_direction] ?? 'both',
+    number_type: TRUNK_TO_NUMBER_TYPE[n.trunk_direction ?? ''] ?? 'both',
     acefone_api_key: n.acefone_api_key ?? '',
     assigned_agent_id: n.assigned_agent_id ?? '',
     assigned_agent_name: n.assigned_agent_name ?? '',
