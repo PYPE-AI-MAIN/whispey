@@ -482,11 +482,18 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             : {},
     sttProvider: assistant.stt?.provider || assistant.stt?.name || getFallback(null, 'stt.name'),
     sttModel: assistant.stt?.model || getFallback(null, 'stt.model'),
-    sttConfig: {
-      language: assistant.stt?.language || getFallback(null, 'stt.language'),
-      ...(assistant.stt?.mode ? { mode: assistant.stt.mode } : {}), 
-      ...(assistant.stt?.config || {}),
-    },
+    sttConfig: (() => {
+      const { name: _n, provider: _p, model: _m, language: _l, mode: _mo, config: _c,
+              tier: _t, version: _v, redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
+              ...sttExtra } = (assistant.stt || {}) as any
+      const result = {
+        language: assistant.stt?.language || getFallback(null, 'stt.language'),
+        ...(assistant.stt?.mode ? { mode: assistant.stt.mode } : {}),
+        ...sttExtra,
+        ...(assistant.stt?.config || {}),
+      }
+      return result
+    })(),
     dynamic_tts: assistant.dynamic_tts || [],
     fallbackSttEnabled: !!(assistant.stt?.fallback),
     fallbackSttProvider: assistant.stt?.fallback?.name || '',
@@ -596,6 +603,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             targetAgent: tool.target_agent || '',
             handoffMessage: tool.handoff_message || '',
             transferNumber: tool.transfer_number || '',
+            acefoneToken: tool.acefone_token || '',
             sipTrunkId: tool.sip_outbound_trunk || '',
             preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
             preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,

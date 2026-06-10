@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity, Download, Loader2 } from "lucide-react"
+import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity, Download, Loader2, Copy, Check } from "lucide-react"
 import { OTelSpan } from "@/types/openTelemetry";
 import { useSupabaseQuery } from "../../hooks/useSupabase"
 import TraceDetailSheet from "./TraceDetailSheet/TraceDetailSheet"
@@ -496,6 +496,21 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
     return total
   }
 
+  const [copied, setCopied] = useState(false)
+
+  const copyTranscript = () => {
+    if (!enrichedTraces.length) return
+    const lines: string[] = []
+    enrichedTraces.forEach((trace: TraceLog) => {
+      if (trace.user_transcript?.trim()) lines.push(`User: ${trace.user_transcript.trim()}`)
+      if (trace.agent_response?.trim())  lines.push(`Agent: ${trace.agent_response.trim()}`)
+    })
+    navigator.clipboard.writeText(lines.join('\n\n')).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
   const downloadFullTranscript = () => {
     if (!enrichedTraces.length) return
 
@@ -711,7 +726,19 @@ const handleRowClick = (trace: TraceLog) => {
             <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-4 py-2">
               <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
                 <div className="col-span-3">Trace Info</div>
-                <div className="col-span-4">Conversation</div>
+                <div className="col-span-4 flex items-center gap-2">
+                  Conversation
+                  <button
+                    onClick={copyTranscript}
+                    title="Copy transcript"
+                    className="flex items-center gap-1 text-[10px] font-normal normal-case tracking-normal text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                  >
+                    {copied
+                      ? <><Check className="w-3 h-3 text-green-500" /><span className="text-green-500">Copied</span></>
+                      : <><Copy className="w-3 h-3" /><span>Copy</span></>
+                    }
+                  </button>
+                </div>
                 <div className="col-span-2">Operations</div>
                 <div className="col-span-1">Latency</div>
                 <div className="col-span-1">Cost</div>

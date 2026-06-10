@@ -365,6 +365,7 @@ function transformFormDataToAgentConfig(formData: any) {
               } : tool.type === 'transfer_call' ? {
                 transfer_number: tool.config.transferNumber,
                 sip_outbound_trunk: tool.config.sipTrunkId,
+                acefone_token: tool.config.acefoneToken || null,
                 pre_transfer_webhook_url: tool.config.preTransferWebhookUrl || null,
                 pre_transfer_webhook_fields: tool.config.preTransferWebhookFields || null,
                 // Trigger-mode flags. Defaults preserve old behavior:

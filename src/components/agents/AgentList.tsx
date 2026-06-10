@@ -119,6 +119,28 @@ const AgentList: React.FC<AgentListProps> = ({
 
   const hasPypeAgents = agents.some(agent => agent.agent_type === 'pype_agent')
 
+  const { data: phoneNumbersData = [] } = useQuery<{ id: string; phone_number: string; number_type: string | null; provider: string | null; trunk_direction: string; assigned_agent_id: string | null; assigned_agent_name: string | null; status: string }[]>({
+    queryKey: ['availablePhoneNumbers', projectId],
+    queryFn: async () => {
+      const response = await fetch(`/api/phone-numbers/available?project_id=${projectId}`)
+      if (!response.ok) return []
+      const data = await response.json()
+      return data || []
+    },
+    enabled: !!projectId,
+    refetchOnWindowFocus: false,
+  })
+
+  const agentPhoneMap = React.useMemo(() => {
+    const map: Record<string, string> = {}
+    phoneNumbersData.forEach(num => {
+      if (num.assigned_agent_id) {
+        map[num.assigned_agent_id] = num.phone_number
+      }
+    })
+    return map
+  }, [phoneNumbersData])
+
   const { data: runningAgents = [], isLoading: isLoadingRunningAgents, refetch: refetchRunningAgents } = useQuery<RunningAgent[]>({ // Explicitly type useQuery
     queryKey: ['runningAgents', projectId],
     queryFn: async () => {
@@ -402,6 +424,7 @@ const AgentList: React.FC<AgentListProps> = ({
         monitoringEnabled={monitoringStates[agent.id] ?? false}
         monitoringToggleLoading={Boolean(monitoringLoading[agent.id])}
         onToggleMonitoring={handleToggleMonitoring}
+        assignedInboundNumber={agentPhoneMap[agent.id]}
       />
     )
   }

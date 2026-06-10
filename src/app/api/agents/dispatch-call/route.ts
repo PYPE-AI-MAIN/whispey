@@ -15,34 +15,67 @@ export async function POST(request: NextRequest) {
 
     // Parse the request body
     const body = await request.json()
-    const { agent_name, phone_number, sip_trunk_id, provider, variables } = body
+    const { agent_name, phone_number, sip_trunk_id, provider, number_type, from_number, variables } = body
 
     if (!agent_name) {
-      return NextResponse.json(
-        { error: 'agent_name is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'agent_name is required' }, { status: 400 })
     }
 
     if (!phone_number) {
-      return NextResponse.json(
-        { error: 'phone_number is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'phone_number is required' }, { status: 400 })
     }
 
-    if (!sip_trunk_id) {
-      return NextResponse.json(
-        { error: 'sip_trunk_id is required' },
-        { status: 400 }
-      )
+    const isBridge = number_type === 'acefone_bridge' || number_type === 'plivo_bridge'
+
+    if (!isBridge && !sip_trunk_id) {
+      return NextResponse.json({ error: 'sip_trunk_id is required' }, { status: 400 })
     }
 
+    // Bridge outbound — hit the bridge directly
+    if (isBridge) {
+      const bridgeUrl = process.env.BRIDGE_URL
+      if (!bridgeUrl) {
+        return NextResponse.json({ error: 'BRIDGE_URL not configured' }, { status: 500 })
+      }
+
+      const bridgeEndpoint = number_type === 'acefone_bridge'
+        ? `${bridgeUrl}/outbound/acefone`
+        : `${bridgeUrl}/outbound/plivo`
+
+      console.log(`Bridge outbound: Agent ${agent_name} to ${phone_number} via ${bridgeEndpoint}`)
+
+      try {
+        const response = await fetch(bridgeEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agent_name,
+            to: phone_number,
+            from: from_number,
+            ...(variables && Object.keys(variables).length > 0 ? { variables } : {}),
+          }),
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error')
+          return NextResponse.json({ error: errorText }, { status: response.status })
+        }
+
+        const data = await response.json().catch(() => ({ status: 'dispatched' }))
+        return NextResponse.json(data)
+      } catch (bridgeErr: any) {
+        // Bridge closes the socket after accepting the call — treat as success
+        if (bridgeErr?.cause?.code === 'UND_ERR_SOCKET') {
+          console.log('Bridge closed socket after dispatch (expected) — treating as success')
+          return NextResponse.json({ status: 'dispatched' })
+        }
+        throw bridgeErr
+      }
+    }
+
+    // SIP path
     if (!provider) {
-      return NextResponse.json(
-        { error: 'provider is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'provider is required' }, { status: 400 })
     }
 
     console.log(`Dispatching call: Agent ${agent_name} to ${phone_number}`)

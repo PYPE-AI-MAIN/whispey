@@ -25,6 +25,7 @@ export interface CallLog {
     reason: string
   }>
   wcall_event?: 'call_started' | 'call_ended'
+  sub_rows?: CallLog[]
 }
 
 export interface UsageData {

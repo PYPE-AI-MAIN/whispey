@@ -194,22 +194,30 @@ export function useMultiAssistantState({
         name: agentName,
         prompt: formValues.prompt || '',
         variables: variablesObject,
-        stt: {
-          name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
-          language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-          model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
-          ...(( currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
-            mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
-          }),
-          ...(formValues.fallbackSttEnabled && formValues.fallbackSttProvider && {
-            fallback: {
-              name: formValues.fallbackSttProvider,
-              language: formValues.fallbackSttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-              model: formValues.fallbackSttModel,
-              ...(formValues.fallbackSttConfig?.mode && { mode: formValues.fallbackSttConfig.mode }),
-            }
-          }),
-        },
+        stt: (() => {
+          const rawConfig = formValues.sttConfig || currentSttConfig?.config || {}
+          const { language: _l, mode: _m, model: _mo, tier: _t, version: _v,
+                  redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
+                  ...extraConfig } = rawConfig as any
+          const result = {
+            name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
+            language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
+            model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
+            ...((currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
+              mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
+            }),
+            ...extraConfig,
+            ...(formValues.fallbackSttEnabled && formValues.fallbackSttProvider && {
+              fallback: {
+                name: formValues.fallbackSttProvider,
+                language: formValues.fallbackSttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
+                model: formValues.fallbackSttModel,
+                ...(formValues.fallbackSttConfig?.mode && { mode: formValues.fallbackSttConfig.mode }),
+              }
+            }),
+          }
+          return result
+        })(),
         llm: {
           name: formValues.selectedProvider || getFallback(null, 'llm.name'),
           provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
@@ -397,6 +405,7 @@ export function useMultiAssistantState({
                 ...commonFields,
                 transfer_number: tool.config?.transferNumber || '',
                 sip_outbound_trunk: tool.config?.sipTrunkId || '',
+                acefone_token: tool.config?.acefoneToken || null,
                 pre_transfer_webhook_url: tool.config?.preTransferWebhookUrl || null,
                 pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null,
                 // Trigger-mode flags. Defaults preserve current behavior.
