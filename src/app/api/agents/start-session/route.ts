@@ -108,9 +108,7 @@ export async function POST(request: NextRequest) {
       participant_identity: body.user_identity,
       
       // Add LiveKit server URL
-      url: process.env.NEXT_PUBLIC_LIVEKIT_URL || 
-           `ws://${apiBaseUrl.split('://')[1]?.split('/')[0]?.replace(':8000', ':7880')}` ||
-           'ws://15.206.157.27:7880'
+      url: process.env.LIVEKIT_URL || process.env.NEXT_PUBLIC_LIVEKIT_URL
     }
 
     return NextResponse.json(transformedResponse)

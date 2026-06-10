@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
       sipTrunkId,
       provider,
       agentRuntime,
+      fromNumber,
+      acefoneApiKey,
     } = body
 
     // Validation
@@ -40,7 +42,9 @@ export async function POST(request: NextRequest) {
         agentName,
         sipTrunkId,
         provider,
-        agentRuntime: agentRuntime || 'livekit', 
+        agentRuntime: agentRuntime || 'livekit',
+        fromNumber: fromNumber || undefined,
+        acefoneApiKey: acefoneApiKey || undefined,
       }),
     })
 

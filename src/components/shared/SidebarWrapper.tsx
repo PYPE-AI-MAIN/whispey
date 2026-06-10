@@ -167,6 +167,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/campaigns' },
       { pattern: '/:projectId/settings' },
       { pattern: '/:projectId/settings/users' },
+      { pattern: '/:projectId/settings/phone-numbers' },
       { pattern: '/:projectId/campaigns/:campaignId' },
       { pattern: '/:projectId/campaigns/create' },
       { pattern: '/:projectId/analytics' }, 
