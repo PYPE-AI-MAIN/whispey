@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { data: numbers, error } = await supabase
       .from('pype_voice_phone_numbers')
       .select(
-        'id, phone_number, number_type, provider, trunk_direction, trunk_id, assigned_agent_id, assigned_agent_name, status'
+        'id, phone_number, number_type, provider, trunk_direction, trunk_id, assigned_agent_id, assigned_agent_name, status, acefone_api_key'
       )
       .eq('project_id', projectId)
       .eq('status', 'active')

@@ -22,8 +22,10 @@ interface CampaignFormFieldsProps {
   values: {
     campaignName: string
     agentId: string
-    agentRuntime: 'livekit' | 'pipecat'
+    agentRuntime: 'livekit' | 'pipecat' | 'acefone_bridge'
     fromNumber: string
+    fromNumberE164?: string
+    acefoneApiKey?: string
     callWindowStart: string
     callWindowEnd: string
     reservedConcurrency: number
@@ -41,18 +43,16 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
 
   const agents = permissions?.agent?.agents || []
 
-  // Fetch phone numbers for livekit
+  // Fetch phone numbers
   useEffect(() => {
     const fetchPhoneNumbers = async () => {
       try {
         setLoadingPhones(true)
-        const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
+        const response = await fetch(`/api/phone-numbers/available?project_id=${projectId}`)
         if (!response.ok) throw new Error('Failed to fetch phone numbers')
         const data: PhoneNumber[] = await response.json()
         const filteredNumbers = data.filter(phone =>
-          phone.project_id === projectId &&
-          phone.trunk_direction === 'outbound' &&
-          phone.status === 'active'
+          phone.trunk_direction === 'outbound' || phone.trunk_direction === 'bidirectional'
         )
         setPhoneNumbers(filteredNumbers)
       } catch (error) {
@@ -242,6 +242,9 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                       const selected = phoneNumbers.find(p => p.id === value)
                       onFieldChange('sipTrunkId', selected?.trunk_id || '')
                       onFieldChange('provider', selected?.provider || '')
+                      // Store Acefone details silently (runtime stays as shown in UI)
+                      onFieldChange('fromNumberE164', selected?.phone_number || '')
+                      onFieldChange('acefoneApiKey', selected?.acefone_api_key || '')
                     }}
                   >
                     <SelectTrigger className="w-full h-8 text-sm">

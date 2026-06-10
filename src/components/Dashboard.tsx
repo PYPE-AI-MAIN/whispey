@@ -133,7 +133,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // Gate phone-numbers tab to a specific email only
   const { user: clerkUser } = useUser()
   const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? ''
-  const canSeePhoneNumbers = currentEmail === PHONE_NUMBERS_EMAIL
+  const canSeePhoneNumbers = currentEmail === PHONE_NUMBERS_EMAIL || currentEmail === 'suryadipta@pypeai.com'
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
   const [vapiStatusLoading, setVapiStatusLoading] = useState(false)

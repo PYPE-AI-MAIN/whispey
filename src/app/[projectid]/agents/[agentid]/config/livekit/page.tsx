@@ -265,6 +265,11 @@ export default function AgentConfig() {
     apiVersion: ''
   })
 
+  const [fallbackAzureConfig, setFallbackAzureConfig] = useState<AzureConfig>({
+    endpoint: '',
+    apiVersion: ''
+  })
+
   const [hasExternalChanges, setHasExternalChanges] = useState(false)
 
   const [ttsConfig, setTtsConfig] = useState({
@@ -477,7 +482,8 @@ export default function AgentConfig() {
     currentFormik: formik,
     currentTtsConfig: ttsConfig,
     currentSttConfig: sttConfig,
-    currentAzureConfig: azureConfig
+    currentAzureConfig: azureConfig,
+    fallbackAzureConfig: fallbackAzureConfig
   })
 
   // useEffect(() => {
@@ -523,12 +529,22 @@ export default function AgentConfig() {
       }
       
       if (mappedProvider === 'azure_openai' && assistant.llm) {
-        const azureConfigData = {
+        setAzureConfig({
           endpoint: assistant.llm.azure_endpoint || '',
           apiVersion: assistant.llm.api_version || ''
-        }
-        setAzureConfig(azureConfigData)
+        })
       }
+
+      if (assistant.llm?.fallback) {
+        const fbProvider = assistant.llm.fallback.provider || assistant.llm.fallback.name || ''
+        if (fbProvider === 'azure') {
+          setFallbackAzureConfig({
+            endpoint: assistant.llm.fallback.azure_endpoint || '',
+            apiVersion: assistant.llm.fallback.api_version || ''
+          })
+        }
+      }
+
     }
   }, [agentConfigData])
 
@@ -536,25 +552,31 @@ export default function AgentConfig() {
     if (saveAndDeploy.isSuccess) {
       setHasExternalChanges(false)
       resetUnsavedChanges()
-      // Reset with current values as new initialValues so dirty = false immediately
-      formik.resetForm({ values: formik.values })
+      setIsFallbackView(false)
+      // CRITICAL: Store current values and reset to clear dirty flag
+      const currentValues = formik.values
+      formik.resetForm()
+      formik.setValues(currentValues, false) // false = don't validate
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
 
   const handleApplyPastedConfig = (config: DeserializedConfig) => {
     console.log('📋 Applying pasted configuration:', config)
-    
+
     // Apply formik values
     formik.setValues(config.formikValues, false) // false = don't validate immediately
-    
+
     // Apply external state
     setTtsConfig(config.ttsConfig)
     setSTTConfig(config.sttConfig)
     setAzureConfig(config.azureConfig)
-    
+    if (config.fallbackAzureConfig) {
+      setFallbackAzureConfig(config.fallbackAzureConfig)
+    }
+
     // Mark form as dirty to enable save
     setHasExternalChanges(true)
-    
+
     console.log('✅ Configuration applied successfully')
   }
 
@@ -651,7 +673,20 @@ export default function AgentConfig() {
     setSTTConfig({ provider, model, config })
     setHasExternalChanges(true)
   }
-  
+
+  const handleFallbackSTTSelect = (provider: string, model: string, config: any) => {
+    formik.setFieldValue('fallbackSttProvider', provider)
+    formik.setFieldValue('fallbackSttModel', model)
+    formik.setFieldValue('fallbackSttConfig', config)
+  }
+
+  const handleFallbackVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
+    formik.setFieldValue('fallbackTtsVoiceId', voiceId)
+    formik.setFieldValue('fallbackTtsProvider', provider)
+    formik.setFieldValue('fallbackTtsModel', model || '')
+    formik.setFieldValue('fallbackTtsVoiceConfig', config || {})
+  }
+
   const handleProviderChange = (provider: string) => {
     formik.setFieldValue('selectedProvider', provider)
   }
@@ -666,6 +701,23 @@ export default function AgentConfig() {
 
   const handleAzureConfigChange = (config: AzureConfig) => {
     setAzureConfig(config)
+    setHasExternalChanges(true)
+  }
+
+  const handleFallbackProviderChange = (provider: string) => {
+    formik.setFieldValue('fallbackLlmProvider', provider)
+  }
+
+  const handleFallbackModelChange = (model: string) => {
+    formik.setFieldValue('fallbackLlmModel', model)
+  }
+
+  const handleFallbackTemperatureChange = (temperature: number) => {
+    formik.setFieldValue('fallbackLlmTemperature', temperature)
+  }
+
+  const handleFallbackAzureConfigChange = (config: AzureConfig) => {
+    setFallbackAzureConfig(config)
     setHasExternalChanges(true)
   }
 
@@ -727,6 +779,26 @@ const unmappedVariablesCount = useMemo(() => {
   })
   return unmapped.length
 }, [promptValidation.validVariables, formik.values.variables])
+
+  // View-only toggle: controls which selectors are displayed.
+  // NEVER clears the fallbackXxxEnabled Formik flags — that was the root bug:
+  // clicking "Primary" would set all flags false and the next Save would silently
+  // erase all configured fallbacks from the backend config.
+  const [isFallbackView, setIsFallbackView] = useState(false)
+
+  // showFallback = which panel is currently displayed (alias for readability below)
+  const showFallback = isFallbackView
+
+  const enterPrimaryMode = () => setIsFallbackView(false)
+
+  const enterFallbackMode = () => {
+    setIsFallbackView(true)
+    // Mark all three enabled so buildSavePayload will include them if a provider is set.
+    // Ones with an empty provider are still excluded by the &&-provider guard in buildSavePayload.
+    formik.setFieldValue('fallbackSttEnabled', true)
+    formik.setFieldValue('fallbackTtsEnabled', true)
+    formik.setFieldValue('fallbackLlmEnabled', true)
+  }
 
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
@@ -1167,38 +1239,103 @@ const unmappedVariablesCount = useMemo(() => {
           <div className="flex-1 min-w-0 flex flex-col space-y-3">
             
             {/* Quick Setup Row */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-              <div className="flex-1 min-w-0">
-                <ModelSelector
-                  selectedProvider={formik.values.selectedProvider}
-                  selectedModel={formik.values.selectedModel}
-                  temperature={formik.values.temperature}
-                  onProviderChange={handleProviderChange}
-                  onModelChange={handleModelChange}
-                  onTemperatureChange={handleTemperatureChange}
-                  azureConfig={azureConfig}
-                  onAzureConfigChange={handleAzureConfigChange}
-                />
+            <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+              {/* Pipeline mode toggle */}
+              <div className="flex items-center justify-between">
+                
+                <div className="flex items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={enterPrimaryMode}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
+                      !showFallback
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    Primary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={enterFallbackMode}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
+                      showFallback
+                        ? 'bg-yellow-100 text-black shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    Fallback
+                  </button>
+                </div>
               </div>
 
-              <div className="flex-1 min-w-0">
-                <SelectSTT 
-                  selectedProvider={formik.values.sttProvider}
-                  selectedModel={formik.values.sttModel}
-                  selectedLanguage={formik.values.sttConfig?.language}   
-                  initialConfig={formik.values.sttConfig}                
-                  onSTTSelect={handleSTTSelect}
-                />
-              </div>
+              {/* Selectors */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 min-w-0">
+                  {!showFallback ? (
+                    <ModelSelector
+                      selectedProvider={formik.values.selectedProvider}
+                      selectedModel={formik.values.selectedModel}
+                      temperature={formik.values.temperature}
+                      onProviderChange={handleProviderChange}
+                      onModelChange={handleModelChange}
+                      onTemperatureChange={handleTemperatureChange}
+                      azureConfig={azureConfig}
+                      onAzureConfigChange={handleAzureConfigChange}
+                    />
+                  ) : (
+                    <ModelSelector
+                      selectedProvider={formik.values.fallbackLlmProvider}
+                      selectedModel={formik.values.fallbackLlmModel}
+                      temperature={formik.values.fallbackLlmTemperature}
+                      onProviderChange={handleFallbackProviderChange}
+                      onModelChange={handleFallbackModelChange}
+                      onTemperatureChange={handleFallbackTemperatureChange}
+                      azureConfig={fallbackAzureConfig}
+                      onAzureConfigChange={handleFallbackAzureConfigChange}
+                    />
+                  )}
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <SelectTTS 
-                  selectedVoice={formik.values.selectedVoice}
-                  initialProvider={formik.values.ttsProvider}
-                  initialModel={formik.values.ttsModel}
-                  initialConfig={formik.values.ttsVoiceConfig}
-                  onVoiceSelect={handleVoiceSelect}
-                />
+                <div className="flex-1 min-w-0">
+                  {!showFallback ? (
+                    <SelectSTT
+                      selectedProvider={formik.values.sttProvider}
+                      selectedModel={formik.values.sttModel}
+                      selectedLanguage={formik.values.sttConfig?.language}
+                      initialConfig={formik.values.sttConfig}
+                      onSTTSelect={handleSTTSelect}
+                    />
+                  ) : (
+                    <SelectSTT
+                      selectedProvider={formik.values.fallbackSttProvider}
+                      selectedModel={formik.values.fallbackSttModel}
+                      selectedLanguage={formik.values.fallbackSttConfig?.language}
+                      initialConfig={formik.values.fallbackSttConfig}
+                      onSTTSelect={handleFallbackSTTSelect}
+                    />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  {!showFallback ? (
+                    <SelectTTS
+                      selectedVoice={formik.values.selectedVoice}
+                      initialProvider={formik.values.ttsProvider}
+                      initialModel={formik.values.ttsModel}
+                      initialConfig={formik.values.ttsVoiceConfig}
+                      onVoiceSelect={handleVoiceSelect}
+                    />
+                  ) : (
+                    <SelectTTS
+                      selectedVoice={formik.values.fallbackTtsVoiceId}
+                      initialProvider={formik.values.fallbackTtsProvider}
+                      initialModel={formik.values.fallbackTtsModel}
+                      initialConfig={formik.values.fallbackTtsVoiceConfig}
+                      onVoiceSelect={handleFallbackVoiceSelect}
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1491,6 +1628,7 @@ const unmappedVariablesCount = useMemo(() => {
         ttsConfig={ttsConfig}
         sttConfig={sttConfig}
         azureConfig={azureConfig}
+        fallbackAzureConfig={fallbackAzureConfig}
       />
 
       <PasteConfigDialog

@@ -84,10 +84,12 @@ export async function pushPromptToGitHub(
   const currentSha = await getCurrentSha(path)
   const yamlContent = yaml.dump(normalizeLineEndings(configSnapshot), { lineWidth: -1, noRefs: true })
 
+  const authorName = authorEmail.split('@')[0]
   const body: Record<string, unknown> = {
     message: `${commitMessage}\n\nAuthor: ${authorEmail}`,
     content: Buffer.from(yamlContent, 'utf8').toString('base64'),
     branch: 'main',
+    author: { name: authorName, email: authorEmail },
   }
   if (currentSha) body.sha = currentSha
 
@@ -156,10 +158,12 @@ export async function createMergePR(
   const yamlContent = yaml.dump(normalizeLineEndings(configSnapshot), { lineWidth: -1, noRefs: true })
   const existingSha = await getCurrentSha(path, branchName)
 
+  const authorName = authorEmail.split('@')[0]
   const fileBody: Record<string, unknown> = {
     message: `${prTitle}\n\nAuthor: ${authorEmail}`,
     content: Buffer.from(yamlContent, 'utf8').toString('base64'),
     branch: branchName,
+    author: { name: authorName, email: authorEmail },
   }
   if (existingSha) fileBody.sha = existingSha
 
