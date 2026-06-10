@@ -21,11 +21,22 @@ export interface AgentConfigResponse {
         api_version?: string
         azure_deployment?: string
         api_key_env?: string
+        fallback?: {
+          model?: string
+          provider?: string
+          name?: string
+          temperature?: number
+          azure_endpoint?: string
+          api_version?: string
+          azure_deployment?: string
+          api_key_env?: string
+        }
       }
       tts?: {
         name: string
         model: string
         voice_id?: string
+        voice_name?: string
         speaker?: string
         language?: string
         target_language_code?: string
@@ -38,6 +49,29 @@ export interface AgentConfigResponse {
           style: number
           use_speaker_boost: boolean
           speed: number
+          pace?: number
+          loudness?: number
+          enable_preprocessing?: boolean
+          pitch?: number
+        }
+        fallback?: {
+          name: string
+          model?: string
+          voice_id?: string
+          voice_name?: string
+          language?: string
+          target_language_code?: string
+          gender?: string
+          voice_settings?: Record<string, any>
+          pace?: number
+          loudness?: number
+          enable_preprocessing?: boolean
+          pitch?: number
+          similarityBoost?: number
+          stability?: number
+          style?: number
+          useSpeakerBoost?: boolean
+          speed?: number
         }
       }
       stt?: {
@@ -46,6 +80,12 @@ export interface AgentConfigResponse {
         model?: string
         language?: string
         config?: Record<string, any>
+        fallback?: {
+          name: string
+          model?: string
+          language?: string
+          mode?: string
+        }
       }
       vad?: {
         name: string
@@ -455,6 +495,55 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       return result
     })(),
     dynamic_tts: assistant.dynamic_tts || [],
+    fallbackSttEnabled: !!(assistant.stt?.fallback),
+    fallbackSttProvider: assistant.stt?.fallback?.name || '',
+    fallbackSttModel: assistant.stt?.fallback?.model || '',
+    fallbackSttConfig: assistant.stt?.fallback || {},
+    fallbackTtsEnabled: !!(assistant.tts?.fallback),
+    fallbackTtsProvider: assistant.tts?.fallback?.name || '',
+    fallbackTtsModel: assistant.tts?.fallback?.model || '',
+    // Google uses voice_name; ElevenLabs uses voice_id
+    fallbackTtsVoiceId: assistant.tts?.fallback?.voice_id || assistant.tts?.fallback?.voice_name || '',
+    // Normalize to the same camelCase shape that SelectTTS and buildFallbackTtsPayload expect.
+    // Without this, every re-save after a reload would reset all voice settings to defaults.
+    fallbackTtsVoiceConfig: (() => {
+      const fb = assistant.tts?.fallback
+      if (!fb) return {}
+      const name = fb.name
+      if (name === 'sarvam' || name === 'sarvam_tts') {
+        return {
+          target_language_code: fb.target_language_code || fb.language || 'en-IN',
+          pace: fb.voice_settings?.pace ?? fb.pace ?? fb.voice_settings?.speed ?? fb.speed ?? 1.0,
+          loudness: fb.voice_settings?.loudness ?? fb.loudness ?? 1.0,
+          enable_preprocessing: fb.voice_settings?.enable_preprocessing ?? fb.enable_preprocessing ?? true,
+          pitch: fb.voice_settings?.pitch ?? fb.pitch ?? 0.0,
+        }
+      }
+      if (name === 'google') {
+        return {
+          voice_name: fb.voice_name || fb.voice_id || '',
+          gender: fb.gender,
+        }
+      }
+      // ElevenLabs or any other provider
+      return {
+        voiceId: fb.voice_id || '',
+        language: fb.language || 'en',
+        similarityBoost: fb.voice_settings?.similarity_boost ?? fb.similarityBoost ?? 0.75,
+        stability: fb.voice_settings?.stability ?? fb.stability ?? 0.5,
+        style: fb.voice_settings?.style ?? fb.style ?? 0,
+        useSpeakerBoost: fb.voice_settings?.use_speaker_boost ?? fb.useSpeakerBoost ?? true,
+        speed: fb.voice_settings?.speed ?? fb.speed ?? 1.0,
+      }
+    })(),
+    fallbackLlmEnabled: !!(assistant.llm?.fallback),
+    fallbackLlmProvider: (() => {
+      const fp = assistant.llm?.fallback?.provider || assistant.llm?.fallback?.name || ''
+      if (fp === 'azure') return 'azure_openai'
+      return fp
+    })(),
+    fallbackLlmModel: assistant.llm?.fallback?.model || '',
+    fallbackLlmTemperature: assistant.llm?.fallback?.temperature ?? 0.3,
     advancedSettings: {
       interruption: {
         allowInterruptions: assistant.interruptions?.allow_interruptions ?? assistant.allow_interruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
