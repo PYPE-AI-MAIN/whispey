@@ -15,7 +15,7 @@ interface RetryConfigurationProps {
   values: {
     retryConfig: RetryConfig[]
     agentId?: string
-    agentRuntime?: 'livekit' | 'pipecat'
+    agentRuntime?: 'livekit' | 'pipecat' | 'acefone_bridge'
   }
 }
 
