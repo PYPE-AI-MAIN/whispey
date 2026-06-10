@@ -3,6 +3,58 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import { getFallback } from '@/config/agentDefaults'
 
+function buildFallbackTtsPayload(formValues: any) {
+  const provider = formValues.fallbackTtsProvider
+  // cfg is either already normalized (camelCase from SelectTTS) or raw (snake_case from backend).
+  // All lookups try the normalized key first, then fall back to voice_settings nested format.
+  const cfg = formValues.fallbackTtsVoiceConfig || {}
+
+  if (provider === 'sarvam' || provider === 'sarvam_tts') {
+    return {
+      name: provider,
+      voice_id: formValues.fallbackTtsVoiceId,
+      model: formValues.fallbackTtsModel,
+      language: cfg.target_language_code || cfg.language || 'en-IN',
+      voice_settings: {
+        similarity_boost: 1,
+        stability: 0.8,
+        style: 1,
+        use_speaker_boost: true,
+        // SelectTTS uses `pace`; saved backend config uses `voice_settings.speed`
+        speed: cfg.pace ?? cfg.speed ?? cfg.voice_settings?.pace ?? cfg.voice_settings?.speed ?? 1.0,
+        loudness: cfg.loudness ?? cfg.voice_settings?.loudness ?? 1.0,
+        enable_preprocessing: cfg.enable_preprocessing ?? cfg.voice_settings?.enable_preprocessing ?? true,
+        pitch: cfg.pitch ?? cfg.voice_settings?.pitch ?? 0.0,
+      },
+    }
+  } else if (provider === 'google') {
+    const result: any = {
+      name: 'google',
+      voice_name: formValues.fallbackTtsVoiceId || cfg.voice_name,
+    }
+    if (cfg.gender && cfg.gender !== 'none') {
+      result.gender = cfg.gender.toLowerCase()
+    }
+    return result
+  } else {
+    // ElevenLabs or any other provider
+    // Normalized keys (camelCase) are tried first; raw voice_settings keys are tried as fallback
+    return {
+      name: provider,
+      voice_id: formValues.fallbackTtsVoiceId,
+      model: formValues.fallbackTtsModel,
+      language: cfg.language || 'en',
+      voice_settings: {
+        similarity_boost: cfg.similarityBoost ?? cfg.voice_settings?.similarity_boost ?? 0.75,
+        stability: cfg.stability ?? cfg.voice_settings?.stability ?? 0.5,
+        style: cfg.style ?? cfg.voice_settings?.style ?? 0,
+        use_speaker_boost: cfg.useSpeakerBoost ?? cfg.voice_settings?.use_speaker_boost ?? true,
+        speed: cfg.speed ?? cfg.voice_settings?.speed ?? 1.0,
+      },
+    }
+  }
+}
+
 interface AssistantFormData {
   name: string
   formikRef?: FormikProps<any> | null
@@ -22,17 +74,19 @@ interface UseMultiAssistantStateProps {
   currentTtsConfig?: any
   currentSttConfig?: any
   currentAzureConfig?: any
+  fallbackAzureConfig?: any
 }
 
-export function useMultiAssistantState({ 
-  initialAssistants, 
-  agentId, 
+export function useMultiAssistantState({
+  initialAssistants,
+  agentId,
   agentName,
   agentType = 'OUTBOUND',
   currentFormik,
   currentTtsConfig,
   currentSttConfig,
-  currentAzureConfig
+  currentAzureConfig,
+  fallbackAzureConfig
 }: UseMultiAssistantStateProps) {
   
   const [assistantNames, setAssistantNames] = useState<string[]>(() => {
@@ -142,7 +196,6 @@ export function useMultiAssistantState({
         variables: variablesObject,
         stt: (() => {
           const rawConfig = formValues.sttConfig || currentSttConfig?.config || {}
-          // Exclude structural fields + Deepgram-dialog-only fields that aren't used by the backend
           const { language: _l, mode: _m, model: _mo, tier: _t, version: _v,
                   redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
                   ...extraConfig } = rawConfig as any
@@ -153,7 +206,15 @@ export function useMultiAssistantState({
             ...((currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
               mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
             }),
-            ...extraConfig
+            ...extraConfig,
+            ...(formValues.fallbackSttEnabled && formValues.fallbackSttProvider && {
+              fallback: {
+                name: formValues.fallbackSttProvider,
+                language: formValues.fallbackSttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
+                model: formValues.fallbackSttModel,
+                ...(formValues.fallbackSttConfig?.mode && { mode: formValues.fallbackSttConfig.mode }),
+              }
+            }),
           }
           return result
         })(),
@@ -168,55 +229,72 @@ export function useMultiAssistantState({
             api_version: currentAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
             api_key_env: getFallback(null, 'llm.api_key_env')
           }),
-          ...(formValues.selectedProvider === 'openai' && {
-            api_key_env: 'OPENAI_API_KEY'
+          ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
+          ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
+          ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+          ...(formValues.fallbackLlmEnabled && formValues.fallbackLlmProvider && {
+            fallback: {
+              name: formValues.fallbackLlmProvider,
+              provider: formValues.fallbackLlmProvider === 'azure_openai' ? 'azure' : formValues.fallbackLlmProvider,
+              model: formValues.fallbackLlmModel || getFallback(null, 'llm.model'),
+              temperature: formValues.fallbackLlmTemperature ?? getFallback(null, 'llm.temperature'),
+              ...(formValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig && {
+                azure_deployment: getFallback(null, 'llm.azure_deployment'),
+                azure_endpoint: fallbackAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
+                api_version: fallbackAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
+                api_key_env: getFallback(null, 'llm.api_key_env')
+              }),
+              ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
+              ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
+              ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+            }
           }),
-          ...(formValues.selectedProvider === 'groq' && {
-            api_key_env: 'GROQ_API_KEY'
-          }),
-          ...(formValues.selectedProvider === 'cerebras' && {
-            api_key_env: 'CEREBRAS_API_KEY'
-          })
         },
         tts: (() => {
           const ttsProvider = currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name')
           const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
           const isGoogle = ttsProvider === 'google'
           
+          const fallbackTtsPayload = formValues.fallbackTtsEnabled && formValues.fallbackTtsProvider && formValues.fallbackTtsVoiceId
+            ? { fallback: buildFallbackTtsPayload(formValues) }
+            : {}
+
           if (isSarvam) {
             // Sarvam TTS configuration - using ElevenLabs format
             const targetLanguageCode = currentTtsConfig?.config?.target_language_code || formValues.ttsVoiceConfig?.target_language_code || 'en-IN'
             const sarvamSpeed = currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? 1.0
             const sarvamLoudness = currentTtsConfig?.config?.loudness ?? formValues.ttsVoiceConfig?.loudness ?? 1.0
-            
+
             return {
               name: ttsProvider,
               voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
               model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
-              language: targetLanguageCode, // Map target_language_code to language
+              language: targetLanguageCode,
               voice_settings: {
-                similarity_boost: 1, // Default for Sarvam
-                stability: 0.8, // Default for Sarvam
-                style: 1, // Default for Sarvam
-                use_speaker_boost: true, // Default for Sarvam
-                speed: sarvamSpeed, // Map speed from Sarvam config
-                loudness: sarvamLoudness, // Include loudness in voice_settings
+                similarity_boost: 1,
+                stability: 0.8,
+                style: 1,
+                use_speaker_boost: true,
+                speed: sarvamSpeed,
+                loudness: sarvamLoudness,
                 enable_preprocessing: currentTtsConfig?.config?.enable_preprocessing ?? formValues.ttsVoiceConfig?.enable_preprocessing ?? true
-              }
+              },
+              ...fallbackTtsPayload,
             }
           } else if (isGoogle) {
             // Google TTS configuration - only send voice_name and gender (lowercase)
             const googleConfig = currentTtsConfig?.config || formValues.ttsVoiceConfig || {}
             const result: any = {
               name: 'google',
-              voice_name: formValues.selectedVoice || googleConfig.voice_name || getFallback(null, 'tts.voice_name')
+              voice_name: formValues.selectedVoice || googleConfig.voice_name || getFallback(null, 'tts.voice_name'),
+              ...fallbackTtsPayload,
             }
-            
+
             // Only add gender if it's specified, and convert to lowercase
             if (googleConfig.gender && googleConfig.gender !== 'none') {
               result.gender = googleConfig.gender.toLowerCase()
             }
-            
+
             return result
           } else {
             // ElevenLabs or other TTS configuration
@@ -231,7 +309,8 @@ export function useMultiAssistantState({
                 style: currentTtsConfig?.config?.style ?? formValues.ttsVoiceConfig?.style ?? getFallback(null, 'tts.voice_settings.style'),
                 use_speaker_boost: currentTtsConfig?.config?.useSpeakerBoost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
                 speed: currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
-              }
+              },
+              ...fallbackTtsPayload,
             }
           }
         })(),
@@ -556,15 +635,26 @@ export function useMultiAssistantState({
             api_version: currentAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
             api_key_env: getFallback(null, 'llm.api_key_env')
           }),
-          ...(formValues.selectedProvider === 'openai' && {
-            api_key_env: 'OPENAI_API_KEY'
+          ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
+          ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
+          ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+          ...(formValues.fallbackLlmEnabled && formValues.fallbackLlmProvider && {
+            fallback: {
+              name: formValues.fallbackLlmProvider,
+              provider: formValues.fallbackLlmProvider === 'azure_openai' ? 'azure' : formValues.fallbackLlmProvider,
+              model: formValues.fallbackLlmModel || getFallback(null, 'llm.model'),
+              temperature: formValues.fallbackLlmTemperature ?? getFallback(null, 'llm.temperature'),
+              ...(formValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig && {
+                azure_deployment: getFallback(null, 'llm.azure_deployment'),
+                azure_endpoint: fallbackAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
+                api_version: fallbackAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
+                api_key_env: getFallback(null, 'llm.api_key_env')
+              }),
+              ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
+              ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
+              ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+            }
           }),
-          ...(formValues.selectedProvider === 'groq' && {
-            api_key_env: 'GROQ_API_KEY'
-          }),
-          ...(formValues.selectedProvider === 'cerebras' && {
-            api_key_env: 'CEREBRAS_API_KEY'
-          })
         },
         tts: {
           name: data.ttsConfig?.name || formValues.ttsProvider || getFallback(null, 'tts.name'),
@@ -822,14 +912,15 @@ export function useMultiAssistantState({
     }
   }, [
     assistantNames, 
-    assistantsData, 
-    getAssistantData, 
-    agentName, 
+    assistantsData,
+    getAssistantData,
+    agentName,
     agentType,
     currentFormik,
     currentTtsConfig,
     currentSttConfig,
-    currentAzureConfig
+    currentAzureConfig,
+    fallbackAzureConfig
   ])
 
   const registerFormikRef = useCallback((assistantName: string, formikRef: FormikProps<any>) => {
