@@ -55,6 +55,8 @@ export interface PhoneNumber {
   provider: string | null
   trunk_id: string
   trunk_direction: string
+  telephony_type: string | null
+  acefone_api_key: string | null
   total_calls: number
   last_used_at: string | null
   recording_enabled: boolean

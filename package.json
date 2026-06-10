@@ -65,6 +65,7 @@
     "date-fns": "^4.1.0",
     "diff": "^8.0.4",
     "eslint": "^9.34.0",
+    "eslint-config-next": "15.4.1",
     "formik": "^2.4.6",
     "fumadocs-core": "^15.7.5",
     "fumadocs-mdx": "^14.2.11",
@@ -105,7 +106,8 @@
     "zod": "^3.25.76",
     "zustand": "^5.0.9",
     "@types/js-yaml": "^4.0.9",
-    "typescript-eslint": "^8.53.0"
+    "typescript-eslint": "^8.53.0",
+    "eslint-config-next": "15.4.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -113,8 +115,7 @@
     "@types/diff": "^7.0.2",
     "@types/lodash": "^4.17.20",
     "@types/uuid": "^10.0.0",
-    "@typescript-eslint/parser": "^8.53.0",
-    "eslint-config-next": "15.4.1"
+    "@typescript-eslint/parser": "^8.53.0"
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "^4.1.12",
