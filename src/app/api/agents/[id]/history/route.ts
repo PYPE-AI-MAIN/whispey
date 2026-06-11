@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { pushPromptToGitHub } from '@/lib/github-prompts'
+import { isProdAuthorized } from '@/lib/prod-auth'
 
 const supabase = createServiceRoleClient()
 
@@ -50,10 +52,19 @@ export async function POST(
     }
 
     if (agent.environment === 'prod') {
-      return NextResponse.json(
-        { message: 'Cannot save versions for a production agent. Edit the dev agent instead.' },
-        { status: 403 }
-      )
+      // Verify server-side from Clerk session — never trust the email in the request body
+      const { userId } = await auth()
+      if (!userId) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      }
+      const clerkUser = await currentUser()
+      const sessionEmail = clerkUser?.emailAddresses?.[0]?.emailAddress ?? null
+      if (!isProdAuthorized(sessionEmail)) {
+        return NextResponse.json(
+          { message: 'Cannot save versions for a production agent. Edit the dev agent instead.' },
+          { status: 403 }
+        )
+      }
     }
 
     const snapshot = sanitizeSnapshot(config)
