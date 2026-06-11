@@ -1408,7 +1408,8 @@ const unmappedVariablesCount = useMemo(() => {
                       })
                     }
                   }}
-                  className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
+                  className="text-xs resize-none border-gray-200 dark:border-gray-700 overflow-y-auto"
+                  style={{ fieldSizing: 'fixed' as any, height: '60px' }}
                 />
               )}
             </div>
