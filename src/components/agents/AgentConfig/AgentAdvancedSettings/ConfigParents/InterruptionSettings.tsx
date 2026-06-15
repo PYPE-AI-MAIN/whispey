@@ -113,57 +113,6 @@ function InterruptionSettings({
 
       {allowInterruptions && (
         <>
-          {/* Min Interruption Duration */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Min Interruption Duration (seconds)
-            </Label>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              Minimum time user must speak to be considered an interruption
-            </div>
-            <Input
-              type="number"
-              min="0.1"
-              max="10"
-              step="0.01"
-              value={minInterruptionDuration}
-              onChange={(e) => {
-                const value = e.target.value
-                if (value === '') {
-                  onFieldChange('advancedSettings.interruption.minInterruptionDuration', 0)
-                } else {
-                  onFieldChange('advancedSettings.interruption.minInterruptionDuration', parseFloat(value))
-                }
-              }}
-              onBlur={(e) => {
-                const value = parseFloat(e.target.value)
-                if (isNaN(value) || value < 0.1) {
-                  onFieldChange('advancedSettings.interruption.minInterruptionDuration', 0.1)
-                }
-              }}
-              className="h-7 text-xs"
-            />
-          </div>
-
-          {/* Min Interruption Words */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              Min Interruption Words
-            </Label>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              Minimum number of words required for a valid interruption
-            </div>
-            <Input
-              type="number"
-              min="0"
-              max="20"
-              step="1"
-              value={minInterruptionWords}
-              onChange={(e) => onFieldChange('advancedSettings.interruption.minInterruptionWords', parseInt(e.target.value) || 0)}
-              className="h-7 text-xs"
-            />
-          </div>
-
           {/* Interruption Mode — segmented control */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -195,13 +144,63 @@ function InterruptionSettings({
             </div>
           </div>
 
+          {/* Min Interruption Duration & Words — VAD mode only */}
+          {!isAdaptive && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Min Interruption Duration (seconds)
+                </Label>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Minimum time user must speak to be considered an interruption
+                </div>
+                <Input
+                  type="number"
+                  min="0.1"
+                  max="10"
+                  step="0.01"
+                  value={minInterruptionDuration}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '') {
+                      onFieldChange('advancedSettings.interruption.minInterruptionDuration', 0)
+                    } else {
+                      onFieldChange('advancedSettings.interruption.minInterruptionDuration', parseFloat(value))
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const value = parseFloat(e.target.value)
+                    if (isNaN(value) || value < 0.1) {
+                      onFieldChange('advancedSettings.interruption.minInterruptionDuration', 0.1)
+                    }
+                  }}
+                  className="h-7 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Min Interruption Words
+                </Label>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  Minimum number of words required for a valid interruption
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="20"
+                  step="1"
+                  value={minInterruptionWords}
+                  onChange={(e) => onFieldChange('advancedSettings.interruption.minInterruptionWords', parseInt(e.target.value) || 0)}
+                  className="h-7 text-xs"
+                />
+              </div>
+            </>
+          )}
+
           {/* Adaptive settings panel */}
           {isAdaptive && (
-            <div className="space-y-3 pl-3 border-l-2 border-blue-200 dark:border-blue-800">
-              <p className="text-xs text-blue-700 dark:text-blue-400">
-                ML-based mode — detects backchannels and lets the agent resume. Best for Hindi / multilingual.
-              </p>
-
+            <div className="space-y-3">
               {/* adaptive_min_duration */}
               <AdaptiveField
                 label="Min Interruption Duration"
