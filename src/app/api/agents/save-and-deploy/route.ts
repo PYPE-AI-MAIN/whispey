@@ -437,6 +437,17 @@ function transformFormDataToAgentConfig(formData: any) {
             drop_filler_words: formikValues.advancedSettings.interruption.dropFillerWords ?? false,
             filler_drop_list: formikValues.advancedSettings.interruption.fillerDropList ?? [],
           },
+          interruption_mode: formikValues.advancedSettings.session.interruption_mode ?? null,
+          adaptive_stt: formikValues.advancedSettings.session.interruption_mode === 'adaptive',
+          ...(formikValues.advancedSettings.session.interruption_mode === 'adaptive' && {
+            adaptive_min_duration: formikValues.advancedSettings.interruption.adaptiveMinDuration ?? 0.5,
+            adaptive_min_words: formikValues.advancedSettings.interruption.adaptiveMinWords ?? 0,
+            adaptive_discard_audio_if_uninterruptible: formikValues.advancedSettings.interruption.adaptiveDiscardAudioIfUninterruptible ?? true,
+            adaptive_resume_false_interruption: formikValues.advancedSettings.interruption.adaptiveResumeFalseInterruption ?? true,
+            adaptive_false_interruption_timeout: formikValues.advancedSettings.interruption.adaptiveFalseInterruptionTimeout ?? 2.0,
+            adaptive_backchannel_boundary_start: formikValues.advancedSettings.interruption.adaptiveBackchannelBoundaryStart ?? 1.0,
+            adaptive_backchannel_boundary_end: formikValues.advancedSettings.interruption.adaptiveBackchannelBoundaryEnd ?? 3.5,
+          }),
           first_message_mode: firstMessageModeConfig
         }
       ],

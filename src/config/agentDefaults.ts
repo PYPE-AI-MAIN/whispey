@@ -223,7 +223,14 @@ export const AGENT_DEFAULT_CONFIG = {
         minInterruptionDuration: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_duration,
         minInterruptionWords: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_words,
         dropFillerWords: AGENT_DEFAULT_CONFIG.interruptions.drop_filler_words,
-        fillerDropList: AGENT_DEFAULT_CONFIG.interruptions.filler_drop_list
+        fillerDropList: AGENT_DEFAULT_CONFIG.interruptions.filler_drop_list,
+        adaptiveMinDuration: 0.5,
+        adaptiveMinWords: 0,
+        adaptiveDiscardAudioIfUninterruptible: true,
+        adaptiveResumeFalseInterruption: true,
+        adaptiveFalseInterruptionTimeout: 2.0,
+        adaptiveBackchannelBoundaryStart: 1.0,
+        adaptiveBackchannelBoundaryEnd: 3.5,
       },
       vad: {
         vadProvider: AGENT_DEFAULT_CONFIG.vad.name,
