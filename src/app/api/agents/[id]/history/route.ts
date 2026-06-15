@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { pushPromptToGitHub } from '@/lib/github-prompts'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 const supabase = createServiceRoleClient()
 
@@ -50,10 +52,13 @@ export async function POST(
     }
 
     if (agent.environment === 'prod') {
-      return NextResponse.json(
-        { message: 'Cannot save versions for a production agent. Edit the dev agent instead.' },
-        { status: 403 }
-      )
+      const { userId } = await auth()
+      if (!userId || (await getCallerGlobalRole(userId)) !== 'superadmin') {
+        return NextResponse.json(
+          { message: 'Cannot save versions for a production agent. Edit the dev agent instead.' },
+          { status: 403 }
+        )
+      }
     }
 
     const snapshot = sanitizeSnapshot(config)
