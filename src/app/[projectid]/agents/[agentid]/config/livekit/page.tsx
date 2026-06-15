@@ -46,6 +46,7 @@ import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import TalkToAssistant from '@/components/agents/TalkToAssistant' 
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
@@ -802,14 +803,9 @@ const unmappedVariablesCount = useMemo(() => {
 
   const enterFallbackMode = () => {
     setIsFallbackView(true)
-    // Mark all three enabled so buildSavePayload will include them if a provider is set.
-    // Ones with an empty provider are still excluded by the &&-provider guard in buildSavePayload.
-    formik.setFieldValue('fallbackSttEnabled', true)
-    formik.setFieldValue('fallbackTtsEnabled', true)
-    formik.setFieldValue('fallbackLlmEnabled', true)
   }
 
-  const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
+  const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges 
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
   // Loading state
@@ -1251,7 +1247,7 @@ const unmappedVariablesCount = useMemo(() => {
             <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
               {/* Pipeline mode toggle */}
               <div className="flex items-center justify-between">
-                
+
                 <div className="flex items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5 gap-0.5">
                   <button
                     type="button"
@@ -1276,6 +1272,17 @@ const unmappedVariablesCount = useMemo(() => {
                     Fallback
                   </button>
                 </div>
+
+                {/* Global fallback on/off — only visible in fallback panel */}
+                {showFallback && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Enable Fallback</span>
+                    <Switch
+                      checked={!!formik.values.fallbackGlobalEnabled}
+                      onCheckedChange={(checked) => formik.setFieldValue('fallbackGlobalEnabled', checked)}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Selectors */}
