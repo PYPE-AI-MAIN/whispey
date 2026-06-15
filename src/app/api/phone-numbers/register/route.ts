@@ -25,20 +25,41 @@ export async function POST(request: NextRequest) {
     const resolvedTelephonyType =
       telephony_type ?? (provider?.toLowerCase() === 'acefone' ? 'acefone_bridge' : 'sip')
 
-    const { data, error } = await supabase
+    const record = {
+      phone_number,
+      number_type: resolvedTelephonyType,
+      provider: provider ?? 'other',
+      telephony_type: resolvedTelephonyType,
+      acefone_api_key: acefone_api_key ?? null,
+      project_id,
+      status: 'active',
+      trunk_direction: trunk_direction ?? 'bidirectional',
+    }
+
+    // Check if this number already exists (avoids needing a unique constraint on prod)
+    const { data: existing } = await supabase
       .from('pype_voice_phone_numbers')
-      .upsert({
-        phone_number,
-        number_type: resolvedTelephonyType, // number_type stores telephony provider type (sip, acefone_bridge)
-        provider: provider ?? 'other',
-        telephony_type: resolvedTelephonyType,
-        acefone_api_key: acefone_api_key ?? null,
-        project_id,
-        status: 'active',
-        trunk_direction: trunk_direction ?? 'bidirectional', // inbound / outbound / bidirectional
-      }, { onConflict: 'phone_number' })
-      .select()
-      .single()
+      .select('id')
+      .eq('phone_number', phone_number)
+      .maybeSingle()
+
+    let data, error
+    if (existing?.id) {
+      // Update existing row
+      ;({ data, error } = await supabase
+        .from('pype_voice_phone_numbers')
+        .update(record)
+        .eq('id', existing.id)
+        .select()
+        .single())
+    } else {
+      // Insert new row
+      ;({ data, error } = await supabase
+        .from('pype_voice_phone_numbers')
+        .insert(record)
+        .select()
+        .single())
+    }
 
     if (error) {
       console.error('Error registering phone number:', error)

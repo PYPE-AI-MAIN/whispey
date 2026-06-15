@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        if (typeof config.maxRetries !== 'number' || config.maxRetries < 0 || config.maxRetries > 10) {
+        if (typeof config.maxRetries !== 'number' || config.maxRetries > 10) {
           return NextResponse.json(
             { error: 'maxRetries must be between 0 and 10' },
             { status: 400 }
