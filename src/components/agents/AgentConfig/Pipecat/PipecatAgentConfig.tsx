@@ -531,6 +531,17 @@ export default function PipecatAgentConfig({
     setIsLoaded(true)
   }, [])
 
+  // ── Prod authorization ───────────────────────────────────────────────────
+  const [prodAuthorized, setProdAuthorized] = useState(false)
+  const isProdLocked = environment === 'prod' && !prodAuthorized
+
+  useEffect(() => {
+    fetch('/api/agents/prod-authorized')
+      .then(r => r.ok ? r.json() : { authorized: false })
+      .then(d => setProdAuthorized(d.authorized === true))
+      .catch(() => setProdAuthorized(false))
+  }, [])
+
   // ── Fetch ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -832,7 +843,7 @@ export default function PipecatAgentConfig({
               size="sm"
               className="h-8 text-xs"
               onClick={handleOpenCommitModal}
-              disabled={isSavingVersion || !isDirty || environment === 'prod'}
+              disabled={isSavingVersion || !isDirty || isProdLocked}
             >
               Update Config
             </Button>
@@ -850,7 +861,7 @@ export default function PipecatAgentConfig({
       </div>
 
       {/* Prod read-only banner */}
-      {environment === 'prod' && (
+      {isProdLocked && (
         <div className="px-6 py-2 flex-shrink-0">
           <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -977,10 +988,10 @@ export default function PipecatAgentConfig({
               </div>
               <Textarea
                 value={prompt}
-                onChange={e => { if (environment !== 'prod') setPrompt(e.target.value) }}
-                readOnly={environment === 'prod'}
+                onChange={e => { if (!isProdLocked) setPrompt(e.target.value) }}
+                readOnly={isProdLocked}
                 placeholder="Define your agent's behavior and personality..."
-                className={`flex-1 min-h-0 font-mono text-sm resize-none border-gray-200 dark:border-gray-700 leading-relaxed ${environment === 'prod' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`flex-1 min-h-0 font-mono text-sm resize-none border-gray-200 dark:border-gray-700 leading-relaxed ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
               />
               <div className="mt-2 flex justify-end flex-shrink-0">
                 <span className="text-xs text-gray-400 dark:text-gray-500">

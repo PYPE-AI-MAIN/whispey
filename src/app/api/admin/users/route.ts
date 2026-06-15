@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 export const runtime = 'nodejs'
-
-async function getCallerGlobalRole(userId: string) {
-  const supabase = createServiceRoleClient()
-  const { data } = await supabase
-    .from('pype_voice_users')
-    .select('roles')
-    .eq('clerk_id', userId)
-    .single()
-  return data?.roles?.globalRole ?? 'user'
-}
 
 export async function GET() {
   const { userId } = await auth()

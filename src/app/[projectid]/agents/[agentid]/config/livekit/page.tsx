@@ -304,6 +304,8 @@ export default function AgentConfig() {
   const agentNameHeader = agentDataResponse?.[0]?.name || ''
   const agentNameLegacy = agentDataResponse?.[0]?.name || ''
   const isProd = agentDataResponse?.[0]?.environment === 'prod'
+  const [prodAuthorized, setProdAuthorized] = useState(false)
+  const isProdLocked = isProd && !prodAuthorized
 
   const [resolvedAgentName, setResolvedAgentName] = useState<string>('')
 
@@ -315,6 +317,13 @@ export default function AgentConfig() {
     isFetching: isConfigFetching,
     refetch: refetchConfig 
   } = useAgentConfig(agentNameWithId, agentNameLegacy)
+
+  useEffect(() => {
+    fetch('/api/agents/prod-authorized')
+      .then(r => r.ok ? r.json() : { authorized: false })
+      .then(d => setProdAuthorized(d.authorized === true))
+      .catch(() => setProdAuthorized(false))
+  }, [])
 
   useEffect(() => {
     if (agentConfigData && !isConfigLoading) {
@@ -874,7 +883,7 @@ const unmappedVariablesCount = useMemo(() => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {isProd && (
+      {isProdLocked && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -959,8 +968,8 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 className="h-8 px-3"
                 onClick={handleOpenCommitModal}
-                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProd}
-                title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+                title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
                 <Save className="w-4 h-4" />
               </Button>
@@ -1175,8 +1184,8 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm"
               className="h-8 text-xs"
               onClick={handleOpenCommitModal}
-              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProd}
-              title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+              title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
               Update Config
             </Button>
@@ -1399,7 +1408,8 @@ const unmappedVariablesCount = useMemo(() => {
                       })
                     }
                   }}
-                  className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
+                  className="text-xs resize-none border-gray-200 dark:border-gray-700 overflow-y-auto"
+                  style={{ fieldSizing: 'fixed' as any, height: '60px' }}
                 />
               )}
             </div>
@@ -1487,12 +1497,12 @@ const unmappedVariablesCount = useMemo(() => {
               {/* Variable Textarea - NO overlay, just validation */}
               <VariableTextarea
                 value={formik.values.prompt}
-                onChange={(value) => { if (!isProd) formik.setFieldValue('prompt', value) }}
+                onChange={(value) => { if (!isProdLocked) formik.setFieldValue('prompt', value) }}
                 onValidationChange={setPromptValidation}
                 placeholder="Define your agent's behavior and personality... Use {{variable_name}} for dynamic values."
-                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProd ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                 style={getTextareaStyles()}
-                disabled={isProd}
+                disabled={isProdLocked}
               />
               
               {/* Compact Validation Indicator */}
