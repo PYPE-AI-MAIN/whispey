@@ -194,6 +194,9 @@ export const AGENT_DEFAULT_CONFIG = {
     // Dynamic TTS routing
     dynamic_tts: [],
 
+    // Global fallback on/off switch (does not clear provider values)
+    fallbackGlobalEnabled: false,
+
     // STT Fallback
     fallbackSttEnabled: false,
     fallbackSttProvider: '',

@@ -495,6 +495,10 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       return result
     })(),
     dynamic_tts: assistant.dynamic_tts || [],
+    // Global switch: read from backend; default true if any fallback configured (backward compat)
+    fallbackGlobalEnabled: assistant.fallback_global_enabled !== undefined
+      ? !!assistant.fallback_global_enabled
+      : !!(assistant.stt?.fallback || assistant.tts?.fallback || assistant.llm?.fallback),
     fallbackSttEnabled: !!(assistant.stt?.fallback),
     fallbackSttProvider: assistant.stt?.fallback?.name || '',
     fallbackSttModel: assistant.stt?.fallback?.model || '',

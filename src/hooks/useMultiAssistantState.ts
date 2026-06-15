@@ -207,7 +207,7 @@ export function useMultiAssistantState({
               mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
             }),
             ...extraConfig,
-            ...(formValues.fallbackSttEnabled && formValues.fallbackSttProvider && {
+            ...(formValues.fallbackSttProvider && {
               fallback: {
                 name: formValues.fallbackSttProvider,
                 language: formValues.fallbackSttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
@@ -232,7 +232,7 @@ export function useMultiAssistantState({
           ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
           ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
           ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
-          ...(formValues.fallbackLlmEnabled && formValues.fallbackLlmProvider && {
+          ...(formValues.fallbackLlmProvider && {
             fallback: {
               name: formValues.fallbackLlmProvider,
               provider: formValues.fallbackLlmProvider === 'azure_openai' ? 'azure' : formValues.fallbackLlmProvider,
@@ -255,7 +255,7 @@ export function useMultiAssistantState({
           const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
           const isGoogle = ttsProvider === 'google'
           
-          const fallbackTtsPayload = formValues.fallbackTtsEnabled && formValues.fallbackTtsProvider && formValues.fallbackTtsVoiceId
+          const fallbackTtsPayload = formValues.fallbackTtsProvider && formValues.fallbackTtsVoiceId
             ? { fallback: buildFallbackTtsPayload(formValues) }
             : {}
 
@@ -575,7 +575,8 @@ export function useMultiAssistantState({
         },
         ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
           dynamic_tts: formValues.dynamic_tts
-        })
+        }),
+        fallback_global_enabled: !!formValues.fallbackGlobalEnabled,
       }
 
       return {
@@ -638,7 +639,7 @@ export function useMultiAssistantState({
           ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
           ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
           ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
-          ...(formValues.fallbackLlmEnabled && formValues.fallbackLlmProvider && {
+          ...(formValues.fallbackLlmProvider && {
             fallback: {
               name: formValues.fallbackLlmProvider,
               provider: formValues.fallbackLlmProvider === 'azure_openai' ? 'azure' : formValues.fallbackLlmProvider,
@@ -899,7 +900,8 @@ export function useMultiAssistantState({
         },
         ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
           dynamic_tts: formValues.dynamic_tts
-        })
+        }),
+        fallback_global_enabled: !!formValues.fallbackGlobalEnabled,
       }
     })
 
