@@ -193,7 +193,29 @@ export const AGENT_DEFAULT_CONFIG = {
     silenceTime: 10,
     // Dynamic TTS routing
     dynamic_tts: [],
-  
+
+    // Global fallback on/off switch (does not clear provider values)
+    fallbackGlobalEnabled: false,
+
+    // STT Fallback
+    fallbackSttEnabled: false,
+    fallbackSttProvider: '',
+    fallbackSttModel: '',
+    fallbackSttConfig: {} as any,
+
+    // TTS Fallback
+    fallbackTtsEnabled: false,
+    fallbackTtsProvider: '',
+    fallbackTtsModel: '',
+    fallbackTtsVoiceId: '',
+    fallbackTtsVoiceConfig: {} as any,
+
+    // LLM Fallback
+    fallbackLlmEnabled: false,
+    fallbackLlmProvider: '',
+    fallbackLlmModel: '',
+    fallbackLlmTemperature: 0.3 as number,
+
     // Advanced Settings
     advancedSettings: {
       interruption: {
@@ -201,7 +223,14 @@ export const AGENT_DEFAULT_CONFIG = {
         minInterruptionDuration: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_duration,
         minInterruptionWords: AGENT_DEFAULT_CONFIG.interruptions.min_interruption_words,
         dropFillerWords: AGENT_DEFAULT_CONFIG.interruptions.drop_filler_words,
-        fillerDropList: AGENT_DEFAULT_CONFIG.interruptions.filler_drop_list
+        fillerDropList: AGENT_DEFAULT_CONFIG.interruptions.filler_drop_list,
+        adaptiveMinDuration: 0.5,
+        adaptiveMinWords: 0,
+        adaptiveDiscardAudioIfUninterruptible: true,
+        adaptiveResumeFalseInterruption: true,
+        adaptiveFalseInterruptionTimeout: 2.0,
+        adaptiveBackchannelBoundaryStart: 1.0,
+        adaptiveBackchannelBoundaryEnd: 3.5,
       },
       vad: {
         vadProvider: AGENT_DEFAULT_CONFIG.vad.name,
@@ -257,6 +286,9 @@ export const AGENT_DEFAULT_CONFIG = {
         bugEndCommands: [...AGENT_DEFAULT_CONFIG.bug_reports.bug_end_command],
         initialResponse: AGENT_DEFAULT_CONFIG.bug_reports.response,
         collectionPrompt: AGENT_DEFAULT_CONFIG.bug_reports.collection_prompt
+      },
+      contextMemory: {
+        enabled: AGENT_DEFAULT_CONFIG.context_memory.enabled
       },
       backgroundAudio: {
         mode: 'dual' as 'disabled' | 'single' | 'dual',

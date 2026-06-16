@@ -12,7 +12,6 @@ interface SessionBehaviourSettingsProps {
   min_endpointing_delay?: number
   max_endpointing_delay?: number
   endpointing_mode?: string | null
-  interruption_mode?: string | null
   user_away_timeout?: number
   user_away_timeout_message?: string
   user_away_timeout_max_count?: number
@@ -27,7 +26,6 @@ export default function SessionBehaviourSettings({
   min_endpointing_delay = 0.7,
   max_endpointing_delay = 0.7,
   endpointing_mode,
-  interruption_mode,
   user_away_timeout,
   user_away_timeout_message,
   user_away_timeout_max_count,
@@ -366,42 +364,6 @@ export default function SessionBehaviourSettings({
               <SelectItem value="auto" className="text-xs">Auto (default)</SelectItem>
               <SelectItem value="fixed" className="text-xs">Fixed</SelectItem>
               <SelectItem value="dynamic" className="text-xs">Dynamic</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Interruption Mode */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">
-              Interruption Mode
-            </Label>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-gray-400 cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xs">
-                <p className="text-xs">
-                  <strong>Auto</strong>: let the SDK decide.<br />
-                  <strong>Adaptive</strong>: ML-based — detects backchannels (hmm, okay) and lets agent resume. Best for Hindi/multilingual.<br />
-                  <strong>VAD</strong>: voice activity only — interrupts on any speech.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <Select
-            value={interruption_mode ?? 'auto'}
-            onValueChange={(value) =>
-              onFieldChange('advancedSettings.session.interruption_mode', value === 'auto' ? null : value)
-            }
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto" className="text-xs">Auto (default)</SelectItem>
-              <SelectItem value="adaptive" className="text-xs">Adaptive (ML-based)</SelectItem>
-              <SelectItem value="vad" className="text-xs">VAD only</SelectItem>
             </SelectContent>
           </Select>
         </div>

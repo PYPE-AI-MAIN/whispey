@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Volume2, Sparkles, Settings, RotateCcw } from 'lucide-react'
+import { Volume2, Sparkles, Settings, RotateCcw, AlertTriangle } from 'lucide-react'
 
 import VoiceSelectionPanel from './VoiceSelectionPanel'
 import SettingsPanel from './SettingsPanel'
@@ -473,8 +473,31 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     setIsOpen(false)
   }
 
+  const isElevenLabsProvider = initialProvider === 'elevenlabs' || currentProvider === 'elevenlabs'
+
+  // True when ElevenLabs key is invalid and the configured voice is an ElevenLabs voice
+  // (or the provider is explicitly set to ElevenLabs)
+  const isVoiceInputError = !!(
+    elevenLabsError && (
+      isElevenLabsProvider ||
+      (selectedVoice &&
+        !allSarvamVoices.some(v => v.id === selectedVoice) &&
+        !googleTTSVoices.some(v => v.name === selectedVoice))
+    )
+  )
+
   const getSelectedVoiceName = () => {
-    if (selectedVoice && (!elevenLabsFetched || isLoadingElevenLabs)) {
+    // Check Sarvam first — hardcoded list, never needs ElevenLabs API
+    if (selectedVoice) {
+      const sarvamVoice = allSarvamVoices.find(v => v.id === selectedVoice)
+      if (sarvamVoice) return sarvamVoice.name
+
+      const googleTTSVoice = googleTTSVoices.find(v => v.name === selectedVoice)
+      if (googleTTSVoice) return googleTTSVoice.displayName
+    }
+
+    // ElevenLabs path — requires API key
+    if (isLoadingElevenLabs && selectedVoice) {
       return (
         <div className="flex items-center gap-2">
           <Skeleton className="w-3 h-3" />
@@ -482,15 +505,23 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         </div>
       )
     }
-    
+
+    // API unavailable — if a voice is configured show a stable label so the user
+    // knows there IS a voice stored; only show "No Input" when no voice was selected
+    if (elevenLabsError) {
+      if (selectedVoice) {
+        return "ElevenLabs Voice"
+      }
+      if (isElevenLabsProvider) {
+        return "No Input"
+      }
+    }
+
     if (!selectedVoice) return "Choose Voice"
-    
-    const sarvamVoice = allSarvamVoices.find(v => v.id === selectedVoice)
-    if (sarvamVoice) return sarvamVoice.name
+
     const elevenLabsVoice = elevenLabsVoices.find(v => v.voice_id === selectedVoice)
     if (elevenLabsVoice) return elevenLabsVoice.name
-    const googleTTSVoice = googleTTSVoices.find(v => v.name === selectedVoice)
-    if (googleTTSVoice) return googleTTSVoice.displayName
+
     return "Voice Selected"
   }
 
@@ -498,8 +529,19 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="justify-start text-xs font-normal w-full text-ellipsis overflow-hidden">
-          <Volume2 className="w-3.5 h-3.5 mr-2" />
+        <Button
+          variant="outline"
+          size="sm"
+          className={`justify-start text-xs font-normal w-full text-ellipsis overflow-hidden ${
+            isVoiceInputError
+              ? 'border-amber-400 dark:border-amber-600 text-amber-600 dark:text-amber-400 hover:border-amber-500'
+              : ''
+          }`}
+        >
+          {isVoiceInputError
+            ? <AlertTriangle className="w-3.5 h-3.5 mr-2 text-amber-500 flex-shrink-0" />
+            : <Volume2 className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
+          }
           {getSelectedVoiceName()}
         </Button>
       </DialogTrigger>

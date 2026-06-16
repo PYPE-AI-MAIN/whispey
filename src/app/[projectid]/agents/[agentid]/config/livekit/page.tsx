@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { 
   CopyIcon, 
   CheckIcon, 
@@ -45,6 +46,7 @@ import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import TalkToAssistant from '@/components/agents/TalkToAssistant' 
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
@@ -235,8 +237,12 @@ export default function AgentConfig() {
   const [isCopyConfigDialogOpen, setIsCopyConfigDialogOpen] = useState(false)
   const [isPasteConfigDialogOpen, setIsPasteConfigDialogOpen] = useState(false)
 
-  // Tracks loading across BOTH the deploy call AND the subsequent refetch
-  const [isSaving, setIsSaving] = useState(false)
+  const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
+  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
+  const [commitMessage, setCommitMessage] = useState('')
+  const [isSavingVersion, setIsSavingVersion] = useState(false)
+  const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
+  const [showMergePrompt, setShowMergePrompt] = useState(false)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -260,6 +266,11 @@ export default function AgentConfig() {
     apiVersion: ''
   })
 
+  const [fallbackAzureConfig, setFallbackAzureConfig] = useState<AzureConfig>({
+    endpoint: '',
+    apiVersion: ''
+  })
+
   const [hasExternalChanges, setHasExternalChanges] = useState(false)
 
   const [ttsConfig, setTtsConfig] = useState({
@@ -276,7 +287,7 @@ export default function AgentConfig() {
 
   // Get agent data from Supabase
   const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
-    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted",
+    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, environment",
     filters: [{ column: "id", operator: "eq", value: agentid }],
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
@@ -293,6 +304,9 @@ export default function AgentConfig() {
 
   const agentNameHeader = agentDataResponse?.[0]?.name || ''
   const agentNameLegacy = agentDataResponse?.[0]?.name || ''
+  const isProd = agentDataResponse?.[0]?.environment === 'prod'
+  const [prodAuthorized, setProdAuthorized] = useState(false)
+  const isProdLocked = isProd && !prodAuthorized
 
   const [resolvedAgentName, setResolvedAgentName] = useState<string>('')
 
@@ -304,6 +318,13 @@ export default function AgentConfig() {
     isFetching: isConfigFetching,
     refetch: refetchConfig 
   } = useAgentConfig(agentNameWithId, agentNameLegacy)
+
+  useEffect(() => {
+    fetch('/api/agents/prod-authorized')
+      .then(r => r.ok ? r.json() : { authorized: false })
+      .then(d => setProdAuthorized(d.authorized === true))
+      .catch(() => setProdAuthorized(false))
+  }, [])
 
   useEffect(() => {
     if (agentConfigData && !isConfigLoading) {
@@ -471,7 +492,8 @@ export default function AgentConfig() {
     currentFormik: formik,
     currentTtsConfig: ttsConfig,
     currentSttConfig: sttConfig,
-    currentAzureConfig: azureConfig
+    currentAzureConfig: azureConfig,
+    fallbackAzureConfig: fallbackAzureConfig
   })
 
   // useEffect(() => {
@@ -517,12 +539,22 @@ export default function AgentConfig() {
       }
       
       if (mappedProvider === 'azure_openai' && assistant.llm) {
-        const azureConfigData = {
+        setAzureConfig({
           endpoint: assistant.llm.azure_endpoint || '',
           apiVersion: assistant.llm.api_version || ''
-        }
-        setAzureConfig(azureConfigData)
+        })
       }
+
+      if (assistant.llm?.fallback) {
+        const fbProvider = assistant.llm.fallback.provider || assistant.llm.fallback.name || ''
+        if (fbProvider === 'azure') {
+          setFallbackAzureConfig({
+            endpoint: assistant.llm.fallback.azure_endpoint || '',
+            apiVersion: assistant.llm.fallback.api_version || ''
+          })
+        }
+      }
+
     }
   }, [agentConfigData])
 
@@ -530,30 +562,38 @@ export default function AgentConfig() {
     if (saveAndDeploy.isSuccess) {
       setHasExternalChanges(false)
       resetUnsavedChanges()
-      // Reset with current values as new initialValues so dirty = false immediately
-      formik.resetForm({ values: formik.values })
+      setIsFallbackView(false)
+      // CRITICAL: Store current values and reset to clear dirty flag
+      const currentValues = formik.values
+      formik.resetForm()
+      formik.setValues(currentValues, false) // false = don't validate
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
 
   const handleApplyPastedConfig = (config: DeserializedConfig) => {
     console.log('📋 Applying pasted configuration:', config)
-    
+
     // Apply formik values
     formik.setValues(config.formikValues, false) // false = don't validate immediately
-    
+
     // Apply external state
     setTtsConfig(config.ttsConfig)
     setSTTConfig(config.sttConfig)
     setAzureConfig(config.azureConfig)
-    
+    if (config.fallbackAzureConfig) {
+      setFallbackAzureConfig(config.fallbackAzureConfig)
+    }
+
     // Mark form as dirty to enable save
     setHasExternalChanges(true)
-    
+
     console.log('✅ Configuration applied successfully')
   }
 
 
-  const handleSaveAndDeploy = async () => {
+  // Opens commit modal, capturing the current config first.
+  // Deploy only happens after the commit message is entered — no skip path.
+  const handleOpenCommitModal = () => {
     if (!promptValidation.isValid) {
       console.error('❌ Cannot save: Variable validation errors exist')
       return
@@ -562,12 +602,12 @@ export default function AgentConfig() {
     const payload = buildSavePayload()
 
     const validVariables = Array.from(promptValidation.validVariables)
-    const validVariablesArray = validVariables.map(name => {
+    const validVariablesArray = validVariables.map((name: string) => {
       const existing = formik.values.variables?.find((v: any) => v.name === name)
       return {
         name,
         value: existing?.value || '',
-        description: existing?.description || ''
+        description: existing?.description || '',
       }
     })
 
@@ -580,20 +620,39 @@ export default function AgentConfig() {
 
     const userEmail = user?.primaryEmailAddress?.emailAddress ?? null
     const userId = user?.id ?? null
+    setPendingCheckpoint({ config: payload, userEmail, userId })
+    setCommitMessage('')
+    setVersionSaveError(null)
+    setIsCommitModalOpen(true)
+  }
 
-    setIsSaving(true)
+  const handleSaveVersion = async () => {
+    if (!pendingCheckpoint || !commitMessage.trim()) return
+    setIsSavingVersion(true)
+    setVersionSaveError(null)
     try {
-      await saveAndDeploy.mutateAsync(payload)
-      // Auto-save a version on every deploy (fire-and-forget, retention enforced server-side)
-      fetch(`/api/agents/${agentid}/history`, {
+      // Step 1: Deploy config to backend
+      await saveAndDeploy.mutateAsync(pendingCheckpoint.config)
+      // Step 2: Save version checkpoint
+      const res = await fetch(`/api/agents/${agentid}/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: payload, userEmail, userId }),
-      }).catch((err) => console.error('[checkpoint] Auto-save failed:', err))
-    } catch (error) {
-      console.error('❌ Error during save and deploy:', error)
+        body: JSON.stringify({ ...pendingCheckpoint, commit_message: commitMessage.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setVersionSaveError(err.message ?? 'Failed to save version')
+        return
+      }
+      const data = await res.json()
+      setIsCommitModalOpen(false)
+      setCommitMessage('')
+      setPendingCheckpoint(null)
+      setShowMergePrompt(true)
+    } catch (err: any) {
+      setVersionSaveError(err.message ?? 'Save failed')
     } finally {
-      setIsSaving(false)
+      setIsSavingVersion(false)
     }
   }
 
@@ -624,7 +683,20 @@ export default function AgentConfig() {
     setSTTConfig({ provider, model, config })
     setHasExternalChanges(true)
   }
-  
+
+  const handleFallbackSTTSelect = (provider: string, model: string, config: any) => {
+    formik.setFieldValue('fallbackSttProvider', provider)
+    formik.setFieldValue('fallbackSttModel', model)
+    formik.setFieldValue('fallbackSttConfig', config)
+  }
+
+  const handleFallbackVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
+    formik.setFieldValue('fallbackTtsVoiceId', voiceId)
+    formik.setFieldValue('fallbackTtsProvider', provider)
+    formik.setFieldValue('fallbackTtsModel', model || '')
+    formik.setFieldValue('fallbackTtsVoiceConfig', config || {})
+  }
+
   const handleProviderChange = (provider: string) => {
     formik.setFieldValue('selectedProvider', provider)
   }
@@ -639,6 +711,23 @@ export default function AgentConfig() {
 
   const handleAzureConfigChange = (config: AzureConfig) => {
     setAzureConfig(config)
+    setHasExternalChanges(true)
+  }
+
+  const handleFallbackProviderChange = (provider: string) => {
+    formik.setFieldValue('fallbackLlmProvider', provider)
+  }
+
+  const handleFallbackModelChange = (model: string) => {
+    formik.setFieldValue('fallbackLlmModel', model)
+  }
+
+  const handleFallbackTemperatureChange = (temperature: number) => {
+    formik.setFieldValue('fallbackLlmTemperature', temperature)
+  }
+
+  const handleFallbackAzureConfigChange = (config: AzureConfig) => {
+    setFallbackAzureConfig(config)
     setHasExternalChanges(true)
   }
 
@@ -701,7 +790,22 @@ const unmappedVariablesCount = useMemo(() => {
   return unmapped.length
 }, [promptValidation.validVariables, formik.values.variables])
 
-  const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
+  // View-only toggle: controls which selectors are displayed.
+  // NEVER clears the fallbackXxxEnabled Formik flags — that was the root bug:
+  // clicking "Primary" would set all flags false and the next Save would silently
+  // erase all configured fallbacks from the backend config.
+  const [isFallbackView, setIsFallbackView] = useState(false)
+
+  // showFallback = which panel is currently displayed (alias for readability below)
+  const showFallback = isFallbackView
+
+  const enterPrimaryMode = () => setIsFallbackView(false)
+
+  const enterFallbackMode = () => {
+    setIsFallbackView(true)
+  }
+
+  const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges 
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
   // Loading state
@@ -775,6 +879,15 @@ const unmappedVariablesCount = useMemo(() => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      {isProdLocked && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            <span className="font-semibold">Production agent — read only.</span>{' '}
+            Edit the dev agent and use Merge to Prod to update this prompt.
+          </p>
+        </div>
+      )}
       {agentConfigData?.backendUnavailable && (
         <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertCircle className="text-amber-600 dark:text-amber-400" />
@@ -847,18 +960,14 @@ const unmappedVariablesCount = useMemo(() => {
             )}
 
             {isFormDirty && (
-              <Button 
-                size="sm" 
-                className="h-8 px-3" 
-                onClick={handleSaveAndDeploy}
-                disabled={saveAndDeploy.isPending || isConfigFetching || !promptValidation.isValid || isBackendUnavailable}
-                title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+              <Button
+                size="sm"
+                className="h-8 px-3"
+                onClick={handleOpenCommitModal}
+                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+                title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
+                <Save className="w-4 h-4" />
               </Button>
             )}
 
@@ -1067,21 +1176,14 @@ const unmappedVariablesCount = useMemo(() => {
               </Button>
             )}
             
-            <Button 
-              size="sm" 
-              className="h-8 text-xs" 
-              onClick={handleSaveAndDeploy}
-              disabled={saveAndDeploy.isPending || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable}
-              title={isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+            <Button
+              size="sm"
+              className="h-8 text-xs"
+              onClick={handleOpenCommitModal}
+              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+              title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin inline" />
-                  Updating...
-                </>
-              ) : (
-                'Update Config'
-              )}
+              Update Config
             </Button>
 
             <Button
@@ -1142,38 +1244,114 @@ const unmappedVariablesCount = useMemo(() => {
           <div className="flex-1 min-w-0 flex flex-col space-y-3">
             
             {/* Quick Setup Row */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-              <div className="flex-1 min-w-0">
-                <ModelSelector
-                  selectedProvider={formik.values.selectedProvider}
-                  selectedModel={formik.values.selectedModel}
-                  temperature={formik.values.temperature}
-                  onProviderChange={handleProviderChange}
-                  onModelChange={handleModelChange}
-                  onTemperatureChange={handleTemperatureChange}
-                  azureConfig={azureConfig}
-                  onAzureConfigChange={handleAzureConfigChange}
-                />
+            <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+              {/* Pipeline mode toggle */}
+              <div className="flex items-center justify-between">
+
+                <div className="flex items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={enterPrimaryMode}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
+                      !showFallback
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    Primary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={enterFallbackMode}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
+                      showFallback
+                        ? 'bg-yellow-100 text-black shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    Fallback
+                  </button>
+                </div>
+
+                {/* Global fallback on/off — only visible in fallback panel */}
+                {showFallback && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Enable Fallback</span>
+                    <Switch
+                      checked={!!formik.values.fallbackGlobalEnabled}
+                      onCheckedChange={(checked) => formik.setFieldValue('fallbackGlobalEnabled', checked)}
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="flex-1 min-w-0">
-                <SelectSTT 
-                  selectedProvider={formik.values.sttProvider}
-                  selectedModel={formik.values.sttModel}
-                  selectedLanguage={formik.values.sttConfig?.language}   
-                  initialConfig={formik.values.sttConfig}                
-                  onSTTSelect={handleSTTSelect}
-                />
-              </div>
+              {/* Selectors */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 min-w-0">
+                  {!showFallback ? (
+                    <ModelSelector
+                      selectedProvider={formik.values.selectedProvider}
+                      selectedModel={formik.values.selectedModel}
+                      temperature={formik.values.temperature}
+                      onProviderChange={handleProviderChange}
+                      onModelChange={handleModelChange}
+                      onTemperatureChange={handleTemperatureChange}
+                      azureConfig={azureConfig}
+                      onAzureConfigChange={handleAzureConfigChange}
+                    />
+                  ) : (
+                    <ModelSelector
+                      selectedProvider={formik.values.fallbackLlmProvider}
+                      selectedModel={formik.values.fallbackLlmModel}
+                      temperature={formik.values.fallbackLlmTemperature}
+                      onProviderChange={handleFallbackProviderChange}
+                      onModelChange={handleFallbackModelChange}
+                      onTemperatureChange={handleFallbackTemperatureChange}
+                      azureConfig={fallbackAzureConfig}
+                      onAzureConfigChange={handleFallbackAzureConfigChange}
+                    />
+                  )}
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <SelectTTS 
-                  selectedVoice={formik.values.selectedVoice}
-                  initialProvider={formik.values.ttsProvider}
-                  initialModel={formik.values.ttsModel}
-                  initialConfig={formik.values.ttsVoiceConfig}
-                  onVoiceSelect={handleVoiceSelect}
-                />
+                <div className="flex-1 min-w-0">
+                  {!showFallback ? (
+                    <SelectSTT
+                      selectedProvider={formik.values.sttProvider}
+                      selectedModel={formik.values.sttModel}
+                      selectedLanguage={formik.values.sttConfig?.language}
+                      initialConfig={formik.values.sttConfig}
+                      onSTTSelect={handleSTTSelect}
+                    />
+                  ) : (
+                    <SelectSTT
+                      selectedProvider={formik.values.fallbackSttProvider}
+                      selectedModel={formik.values.fallbackSttModel}
+                      selectedLanguage={formik.values.fallbackSttConfig?.language}
+                      initialConfig={formik.values.fallbackSttConfig}
+                      onSTTSelect={handleFallbackSTTSelect}
+                    />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  {!showFallback ? (
+                    <SelectTTS
+                      selectedVoice={formik.values.selectedVoice}
+                      initialProvider={formik.values.ttsProvider}
+                      initialModel={formik.values.ttsModel}
+                      initialConfig={formik.values.ttsVoiceConfig}
+                      onVoiceSelect={handleVoiceSelect}
+                    />
+                  ) : (
+                    <SelectTTS
+                      selectedVoice={formik.values.fallbackTtsVoiceId}
+                      initialProvider={formik.values.fallbackTtsProvider}
+                      initialModel={formik.values.fallbackTtsModel}
+                      initialConfig={formik.values.fallbackTtsVoiceConfig}
+                      onVoiceSelect={handleFallbackVoiceSelect}
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1237,7 +1415,8 @@ const unmappedVariablesCount = useMemo(() => {
                       })
                     }
                   }}
-                  className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
+                  className="text-xs resize-none border-gray-200 dark:border-gray-700 overflow-y-auto"
+                  style={{ fieldSizing: 'fixed' as any, height: '60px' }}
                 />
               )}
             </div>
@@ -1325,11 +1504,12 @@ const unmappedVariablesCount = useMemo(() => {
               {/* Variable Textarea - NO overlay, just validation */}
               <VariableTextarea
                 value={formik.values.prompt}
-                onChange={(value) => formik.setFieldValue('prompt', value)}
+                onChange={(value) => { if (!isProdLocked) formik.setFieldValue('prompt', value) }}
                 onValidationChange={setPromptValidation}
                 placeholder="Define your agent's behavior and personality... Use {{variable_name}} for dynamic values."
-                className="flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700"
+                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                 style={getTextareaStyles()}
+                disabled={isProdLocked}
               />
               
               {/* Compact Validation Indicator */}
@@ -1465,6 +1645,7 @@ const unmappedVariablesCount = useMemo(() => {
         ttsConfig={ttsConfig}
         sttConfig={sttConfig}
         azureConfig={azureConfig}
+        fallbackAzureConfig={fallbackAzureConfig}
       />
 
       <PasteConfigDialog
@@ -1478,7 +1659,78 @@ const unmappedVariablesCount = useMemo(() => {
         open={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         agentId={agentid}
+        projectId={projectId}
+        agentEnvironment={agentDataResponse?.[0]?.environment ?? 'dev'}
       />
+
+      {/* Commit message dialog */}
+      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Save prompt version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Describe this change</label>
+              <Textarea
+                placeholder="e.g. Fixed greeting for missed calls"
+                value={commitMessage}
+                onChange={e => setCommitMessage(e.target.value)}
+                className="text-sm resize-none"
+                rows={3}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveVersion() }}
+              />
+              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to save quickly.</p>
+            </div>
+            {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline" size="sm" className="h-8 text-xs"
+              onClick={() => setIsCommitModalOpen(false)}
+              disabled={isSavingVersion}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm" className="h-8 text-xs"
+              onClick={handleSaveVersion}
+              disabled={isSavingVersion || !commitMessage.trim()}
+            >
+              {isSavingVersion
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
+                : 'Save & Deploy'
+              }
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Post-save merge suggestion */}
+      {showMergePrompt && (
+        <Dialog open={showMergePrompt} onOpenChange={v => { if (!v) setShowMergePrompt(false) }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-semibold">Version saved! Merge to prod?</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground py-2">
+              Your version was committed. Do you want to merge this to a production agent now?
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowMergePrompt(false)}>
+                Not now
+              </Button>
+              <Button
+                size="sm" className="h-8 text-xs"
+                onClick={() => { setShowMergePrompt(false); setIsHistoryOpen(true) }}
+              >
+                Open History & Merge
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
     </div>
   )

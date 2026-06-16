@@ -23,10 +23,10 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     .min(3, 'Must be at least 3 characters'),
   agentId: Yup.string().required('Please select an agent'),
   agentRuntime: Yup.string()
-    .oneOf(['livekit', 'pipecat'])
+    .oneOf(['livekit', 'pipecat', 'acefone_bridge'])
     .required('Agent runtime is required'),
   fromNumber: Yup.string().when('agentRuntime', {
-    is: 'livekit',
+    is: (val: string) => val === 'livekit' || val === 'acefone_bridge',
     then: (schema) => schema.required('Please select a phone number'),
     otherwise: (schema) => schema.optional(),
   }),
@@ -138,8 +138,10 @@ function CreateCampaign() {
   const initialValues = {
     campaignName: '',
     agentId: '',
-    agentRuntime: 'livekit' as 'livekit' | 'pipecat',
+    agentRuntime: 'livekit' as 'livekit' | 'pipecat' | 'acefone_bridge',
     fromNumber: '',
+    fromNumberE164: '',
+    acefoneApiKey: '',
     sipTrunkId: '',
     provider: '',
     sendType: 'now' as 'now' | 'schedule',
@@ -292,7 +294,9 @@ function CreateCampaign() {
           agentName: agentName,
           sipTrunkId: values.sipTrunkId,
           provider: values.provider || 'Unknown',
-          agentRuntime: values.agentRuntime,
+          agentRuntime: values.acefoneApiKey ? 'acefone_bridge' : values.agentRuntime,
+          fromNumber: values.fromNumberE164 || undefined,
+          acefoneApiKey: values.acefoneApiKey || undefined,
         }),
       })
 

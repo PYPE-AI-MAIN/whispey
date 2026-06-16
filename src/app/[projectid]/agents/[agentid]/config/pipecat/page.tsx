@@ -11,7 +11,7 @@ export default function PipecatConfigPage() {
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
 
   const { data: agentDataResponse, isLoading } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, configuration',
+    select: 'id, name, configuration, environment',
     filters: [{ column: 'id', operator: 'eq', value: agentid }],
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
@@ -41,6 +41,7 @@ export default function PipecatConfigPage() {
       projectId={projectId}
       pipecatAgentId={pipecatAgentId}
       agentName={agent?.name || ''}
+      environment={agent?.environment ?? 'dev'}
     />
   )
 }

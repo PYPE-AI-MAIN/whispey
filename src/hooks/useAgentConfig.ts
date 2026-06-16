@@ -21,11 +21,22 @@ export interface AgentConfigResponse {
         api_version?: string
         azure_deployment?: string
         api_key_env?: string
+        fallback?: {
+          model?: string
+          provider?: string
+          name?: string
+          temperature?: number
+          azure_endpoint?: string
+          api_version?: string
+          azure_deployment?: string
+          api_key_env?: string
+        }
       }
       tts?: {
         name: string
         model: string
         voice_id?: string
+        voice_name?: string
         speaker?: string
         language?: string
         target_language_code?: string
@@ -38,6 +49,29 @@ export interface AgentConfigResponse {
           style: number
           use_speaker_boost: boolean
           speed: number
+          pace?: number
+          loudness?: number
+          enable_preprocessing?: boolean
+          pitch?: number
+        }
+        fallback?: {
+          name: string
+          model?: string
+          voice_id?: string
+          voice_name?: string
+          language?: string
+          target_language_code?: string
+          gender?: string
+          voice_settings?: Record<string, any>
+          pace?: number
+          loudness?: number
+          enable_preprocessing?: boolean
+          pitch?: number
+          similarityBoost?: number
+          stability?: number
+          style?: number
+          useSpeakerBoost?: boolean
+          speed?: number
         }
       }
       stt?: {
@@ -46,6 +80,12 @@ export interface AgentConfigResponse {
         model?: string
         language?: string
         config?: Record<string, any>
+        fallback?: {
+          name: string
+          model?: string
+          language?: string
+          mode?: string
+        }
       }
       vad?: {
         name: string
@@ -455,6 +495,59 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       return result
     })(),
     dynamic_tts: assistant.dynamic_tts || [],
+    // Global switch: read from backend; default true if any fallback configured (backward compat)
+    fallbackGlobalEnabled: assistant.fallback_global_enabled !== undefined
+      ? !!assistant.fallback_global_enabled
+      : !!(assistant.stt?.fallback || assistant.tts?.fallback || assistant.llm?.fallback),
+    fallbackSttEnabled: !!(assistant.stt?.fallback),
+    fallbackSttProvider: assistant.stt?.fallback?.name || '',
+    fallbackSttModel: assistant.stt?.fallback?.model || '',
+    fallbackSttConfig: assistant.stt?.fallback || {},
+    fallbackTtsEnabled: !!(assistant.tts?.fallback),
+    fallbackTtsProvider: assistant.tts?.fallback?.name || '',
+    fallbackTtsModel: assistant.tts?.fallback?.model || '',
+    // Google uses voice_name; ElevenLabs uses voice_id
+    fallbackTtsVoiceId: assistant.tts?.fallback?.voice_id || assistant.tts?.fallback?.voice_name || '',
+    // Normalize to the same camelCase shape that SelectTTS and buildFallbackTtsPayload expect.
+    // Without this, every re-save after a reload would reset all voice settings to defaults.
+    fallbackTtsVoiceConfig: (() => {
+      const fb = assistant.tts?.fallback
+      if (!fb) return {}
+      const name = fb.name
+      if (name === 'sarvam' || name === 'sarvam_tts') {
+        return {
+          target_language_code: fb.target_language_code || fb.language || 'en-IN',
+          pace: fb.voice_settings?.pace ?? fb.pace ?? fb.voice_settings?.speed ?? fb.speed ?? 1.0,
+          loudness: fb.voice_settings?.loudness ?? fb.loudness ?? 1.0,
+          enable_preprocessing: fb.voice_settings?.enable_preprocessing ?? fb.enable_preprocessing ?? true,
+          pitch: fb.voice_settings?.pitch ?? fb.pitch ?? 0.0,
+        }
+      }
+      if (name === 'google') {
+        return {
+          voice_name: fb.voice_name || fb.voice_id || '',
+          gender: fb.gender,
+        }
+      }
+      // ElevenLabs or any other provider
+      return {
+        voiceId: fb.voice_id || '',
+        language: fb.language || 'en',
+        similarityBoost: fb.voice_settings?.similarity_boost ?? fb.similarityBoost ?? 0.75,
+        stability: fb.voice_settings?.stability ?? fb.stability ?? 0.5,
+        style: fb.voice_settings?.style ?? fb.style ?? 0,
+        useSpeakerBoost: fb.voice_settings?.use_speaker_boost ?? fb.useSpeakerBoost ?? true,
+        speed: fb.voice_settings?.speed ?? fb.speed ?? 1.0,
+      }
+    })(),
+    fallbackLlmEnabled: !!(assistant.llm?.fallback),
+    fallbackLlmProvider: (() => {
+      const fp = assistant.llm?.fallback?.provider || assistant.llm?.fallback?.name || ''
+      if (fp === 'azure') return 'azure_openai'
+      return fp
+    })(),
+    fallbackLlmModel: assistant.llm?.fallback?.model || '',
+    fallbackLlmTemperature: assistant.llm?.fallback?.temperature ?? 0.3,
     advancedSettings: {
       interruption: {
         allowInterruptions: assistant.interruptions?.allow_interruptions ?? assistant.allow_interruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
@@ -462,6 +555,13 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         minInterruptionWords: assistant.interruptions?.min_interruption_words ?? assistant.min_interruption_words ?? getFallback(null, 'interruptions.min_interruption_words'),
         dropFillerWords: assistant.interruptions?.drop_filler_words ?? false,
         fillerDropList: assistant.interruptions?.filler_drop_list ?? [],
+        adaptiveMinDuration: assistant.adaptive_min_duration ?? 0.5,
+        adaptiveMinWords: assistant.adaptive_min_words ?? 0,
+        adaptiveDiscardAudioIfUninterruptible: assistant.adaptive_discard_audio_if_uninterruptible ?? true,
+        adaptiveResumeFalseInterruption: assistant.adaptive_resume_false_interruption ?? true,
+        adaptiveFalseInterruptionTimeout: assistant.adaptive_false_interruption_timeout ?? 2.0,
+        adaptiveBackchannelBoundaryStart: assistant.adaptive_backchannel_boundary_start ?? 1.0,
+        adaptiveBackchannelBoundaryEnd: assistant.adaptive_backchannel_boundary_end ?? 3.5,
       },
       vad: {
         vadProvider: assistant.vad?.name || getFallback(null, 'vad.name'),
@@ -486,7 +586,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
         endpointing_mode: sessionBehavior.endpointing_mode ?? null,
-        interruption_mode: sessionBehavior.interruption_mode ?? null,
+        interruption_mode: assistant.interruption_mode ?? sessionBehavior.interruption_mode ?? null,
         user_away_timeout: sessionBehavior.user_away_timeout !== undefined && sessionBehavior.user_away_timeout !== null ? sessionBehavior.user_away_timeout : undefined,
         user_away_timeout_message: sessionBehavior.user_away_timeout_message !== undefined && sessionBehavior.user_away_timeout_message !== null && sessionBehavior.user_away_timeout_message !== '' ? sessionBehavior.user_away_timeout_message : undefined,
         user_away_timeout_max_count: sessionBehavior.user_away_timeout_max_count !== undefined && sessionBehavior.user_away_timeout_max_count !== null ? sessionBehavior.user_away_timeout_max_count : undefined,
@@ -514,6 +614,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
             targetAgent: tool.target_agent || '',
             handoffMessage: tool.handoff_message || '',
             transferNumber: tool.transfer_number || '',
+            acefoneToken: tool.acefone_token || '',
             sipTrunkId: tool.sip_outbound_trunk || '',
             preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
             preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
