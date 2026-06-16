@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Dict, Any
 from whispey.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
 from whispey.metrics_service import setup_usage_collector, create_session_data
-from whispey.send_log import send_to_whispey
+from whispey.send_log import send_to_whispey, send_to_whispey_sync
 
 logger = logging.getLogger("observe_session")
 
@@ -30,6 +30,51 @@ def _import_healthbench_eval():
 
 # Global session storage - store data, not class instances
 _session_data_store = {}
+
+
+def _sync_flush_all_sessions():
+    """Synchronously send all pending sessions. Called on any process exit (atexit/SIGTERM)."""
+    session_ids = list(_session_data_store.keys())
+    if not session_ids:
+        return
+    logger.info(f"🚨 SDK exit flush: sending {len(session_ids)} pending session(s) synchronously")
+    for session_id in session_ids:
+        try:
+            end_session_manually(session_id, "process_exit")
+            data = generate_whispey_data(session_id)
+            apikey = _session_data_store.get(session_id, {}).get("apikey")
+            api_url = _session_data_store.get(session_id, {}).get("api_url")
+            result = send_to_whispey_sync(data, apikey=apikey, api_url=api_url)
+            if result.get("success"):
+                logger.info(f"✅ Exit flush: sent session {session_id}")
+                cleanup_session(session_id)
+            else:
+                logger.error(f"❌ Exit flush: failed for {session_id}: {result}")
+        except Exception as e:
+            logger.error(f"❌ Exit flush error for {session_id}: {e}")
+
+
+def _register_exit_handlers():
+    """Register atexit and SIGTERM handlers once at module load."""
+    import atexit
+    import signal
+    import os
+
+    atexit.register(_sync_flush_all_sessions)
+
+    def _sigterm_handler(signum, frame):
+        _sync_flush_all_sessions()
+        # Re-raise default SIGTERM to let process exit normally
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    try:
+        signal.signal(signal.SIGTERM, _sigterm_handler)
+    except (OSError, ValueError):
+        pass  # Can't set signal handler in non-main thread — atexit still covers it
+
+
+_register_exit_handlers()
 
 
 def _run_healthbench_evaluation(transcript_data: list, eval_config: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -233,6 +278,8 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
                 if participant.identity and not participant.identity.lower().startswith("agent"):
                     if session_id in _session_data_store:
                         session_info = _session_data_store[session_id]
+                        # Clear disconnect marker on reconnect so delayed send is cancelled
+                        session_info.pop('last_participant_disconnect', None)
                         if not session_info['user_connected']:
                             session_info['participant_join_time'] = time.time()
                             session_info['user_connected'] = True
@@ -247,6 +294,26 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
                             session_info['participant_leave_time'] = time.time()
                             duration = int(time.time() - session_info['participant_join_time'])
                             logger.info(f"BEND: User '{participant.identity}' left. Duration: {duration}s")
+
+                        # Record this specific disconnect time and schedule a delayed send.
+                        # If participant reconnects, on_participant_connected clears last_participant_disconnect,
+                        # which cancels the send (timestamp mismatch).
+                        disconnect_time = time.time()
+                        session_info['last_participant_disconnect'] = disconnect_time
+
+                        import asyncio
+                        async def _send_after_participant_leave():
+                            await asyncio.sleep(10)
+                            if (session_id in _session_data_store and
+                                    _session_data_store[session_id].get('last_participant_disconnect') == disconnect_time):
+                                logger.info(f"👤 Participant left and didn't reconnect — sending transcript for {session_id}")
+                                end_session_manually(session_id, "completed")
+                                await send_session_to_whispey(session_id)
+                        try:
+                            loop = asyncio.get_running_loop()
+                            loop.create_task(_send_after_participant_leave())
+                        except RuntimeError:
+                            asyncio.run(_send_after_participant_leave())
         else:
             logger.info(f"⚠️ Room not provided - using transcript-based billing fallback")  # CHANGE 5: Log fallback
         
@@ -254,12 +321,22 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
         if session is not None:
             @session.on("disconnected")
             def on_disconnected(event):
-                end_session_manually(session_id, "disconnected")
-            
+                # Only mark as disconnected — do NOT send transcript here.
+                # If the user reconnects within the session, on_session_close will handle the final send.
+                # Sending here causes a race: premature partial send + cleanup before reconnect completes.
+                if session_id in _session_data_store:
+                    _session_data_store[session_id]['last_disconnect_time'] = time.time()
+
             @session.on("close")
             def on_session_close(event):
                 error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
                 end_session_manually(session_id, "completed", error_msg)
+                import asyncio
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(send_session_to_whispey(session_id))
+                except RuntimeError:
+                    asyncio.run(send_session_to_whispey(session_id))
         try:
             import asyncio
             def _on_done(task):
@@ -1046,10 +1123,15 @@ def get_all_active_sessions():
 
 def cleanup_all_sessions():
     """Clean up all sessions"""
+    import asyncio
     session_ids = list(_session_data_store.keys())
     for session_id in session_ids:
         end_session_manually(session_id, "cleanup")
-        cleanup_session(session_id)
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(send_session_to_whispey(session_id))
+        except RuntimeError:
+            asyncio.run(send_session_to_whispey(session_id))
     logger.info(f"🗑️ Cleaned up {len(session_ids)} sessions")
 
 def debug_session_state(session_id: str = None):
