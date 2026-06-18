@@ -586,27 +586,20 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         # Add bill duration to metadata
         whispey_data["billing_duration_seconds"] = bill_duration_seconds
         
-        # Extract transcript_json from session history if available
-        if hasattr(session_data, 'history'):
-            try:
-                whispey_data["transcript_json"] = session_data.history.to_dict().get("items", [])
-            except Exception as e:
-                logger.debug(f"Could not extract transcript_json from history: {e}")
-        
-        # Try other possible transcript locations
-        if not whispey_data["transcript_json"]:
-            for attr in ['transcript_data', 'conversation_history', 'messages']:
-                if hasattr(session_data, attr):
-                    try:
-                        data = getattr(session_data, attr)
-                        if isinstance(data, list):
-                            whispey_data["transcript_json"] = data
-                            break
-                        elif hasattr(data, 'to_dict'):
-                            whispey_data["transcript_json"] = data.to_dict().get("items", [])
-                            break
-                    except Exception as e:
-                        logger.debug(f"Could not extract transcript from {attr}: {e}")
+        # Build transcript_json from enhanced_transcript (already populated above).
+        # session_data is a plain dict so hasattr-based checks always fail — read keys directly.
+        if not whispey_data["transcript_json"] and enhanced_transcript:
+            transcript_json_items = []
+            for turn in enhanced_transcript:
+                user_text = (turn.get("user_transcript") or "").strip()
+                agent_text = (turn.get("agent_response") or "").strip()
+                if user_text:
+                    transcript_json_items.append({"role": "user", "content": user_text})
+                if agent_text:
+                    transcript_json_items.append({"role": "assistant", "content": agent_text})
+            if transcript_json_items:
+                whispey_data["transcript_json"] = transcript_json_items
+                logger.info(f"✅ transcript_json populated from transcript_with_metrics: {len(transcript_json_items)} messages")
 
         # Add bug report data if available
         if 'bug_reports' in session_data:
