@@ -28,6 +28,13 @@ interface AgentAdvancedSettingsProps {
         minInterruptionWords: number
         dropFillerWords?: boolean
         fillerDropList?: string[]
+        adaptiveMinDuration?: number
+        adaptiveMinWords?: number
+        adaptiveDiscardAudioIfUninterruptible?: boolean
+        adaptiveResumeFalseInterruption?: boolean
+        adaptiveFalseInterruptionTimeout?: number
+        adaptiveBackchannelBoundaryStart?: number
+        adaptiveBackchannelBoundaryEnd?: number
       }
       vad: {
         vadProvider: string
@@ -174,6 +181,14 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               minInterruptionWords={advancedSettings.interruption.minInterruptionWords}
               dropFillerWords={advancedSettings.interruption.dropFillerWords ?? false}
               fillerDropList={advancedSettings.interruption.fillerDropList ?? []}
+              interruption_mode={advancedSettings.session.interruption_mode}
+              adaptiveMinDuration={advancedSettings.interruption.adaptiveMinDuration ?? 0.5}
+              adaptiveMinWords={advancedSettings.interruption.adaptiveMinWords ?? 0}
+              adaptiveDiscardAudioIfUninterruptible={advancedSettings.interruption.adaptiveDiscardAudioIfUninterruptible ?? true}
+              adaptiveResumeFalseInterruption={advancedSettings.interruption.adaptiveResumeFalseInterruption ?? true}
+              adaptiveFalseInterruptionTimeout={advancedSettings.interruption.adaptiveFalseInterruptionTimeout ?? 2.0}
+              adaptiveBackchannelBoundaryStart={advancedSettings.interruption.adaptiveBackchannelBoundaryStart ?? 1.0}
+              adaptiveBackchannelBoundaryEnd={advancedSettings.interruption.adaptiveBackchannelBoundaryEnd ?? 3.5}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
@@ -226,7 +241,6 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               min_endpointing_delay={advancedSettings.session.min_endpointing_delay}
               max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
               endpointing_mode={advancedSettings.session.endpointing_mode}
-              interruption_mode={advancedSettings.session.interruption_mode}
               user_away_timeout={advancedSettings.session.user_away_timeout}
               user_away_timeout_message={advancedSettings.session.user_away_timeout_message}
               user_away_timeout_max_count={advancedSettings.session.user_away_timeout_max_count}

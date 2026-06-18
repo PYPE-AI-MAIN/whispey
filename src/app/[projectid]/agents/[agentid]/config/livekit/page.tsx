@@ -46,6 +46,7 @@ import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import TalkToAssistant from '@/components/agents/TalkToAssistant' 
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
@@ -304,6 +305,8 @@ export default function AgentConfig() {
   const agentNameHeader = agentDataResponse?.[0]?.name || ''
   const agentNameLegacy = agentDataResponse?.[0]?.name || ''
   const isProd = agentDataResponse?.[0]?.environment === 'prod'
+  const [prodAuthorized, setProdAuthorized] = useState(false)
+  const isProdLocked = isProd && !prodAuthorized
 
   const [resolvedAgentName, setResolvedAgentName] = useState<string>('')
 
@@ -315,6 +318,13 @@ export default function AgentConfig() {
     isFetching: isConfigFetching,
     refetch: refetchConfig 
   } = useAgentConfig(agentNameWithId, agentNameLegacy)
+
+  useEffect(() => {
+    fetch('/api/agents/prod-authorized')
+      .then(r => r.ok ? r.json() : { authorized: false })
+      .then(d => setProdAuthorized(d.authorized === true))
+      .catch(() => setProdAuthorized(false))
+  }, [])
 
   useEffect(() => {
     if (agentConfigData && !isConfigLoading) {
@@ -793,14 +803,9 @@ const unmappedVariablesCount = useMemo(() => {
 
   const enterFallbackMode = () => {
     setIsFallbackView(true)
-    // Mark all three enabled so buildSavePayload will include them if a provider is set.
-    // Ones with an empty provider are still excluded by the &&-provider guard in buildSavePayload.
-    formik.setFieldValue('fallbackSttEnabled', true)
-    formik.setFieldValue('fallbackTtsEnabled', true)
-    formik.setFieldValue('fallbackLlmEnabled', true)
   }
 
-  const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges
+  const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges 
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
   // Loading state
@@ -874,7 +879,7 @@ const unmappedVariablesCount = useMemo(() => {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {isProd && (
+      {isProdLocked && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -959,8 +964,8 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 className="h-8 px-3"
                 onClick={handleOpenCommitModal}
-                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProd}
-                title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+                title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
                 <Save className="w-4 h-4" />
               </Button>
@@ -1175,8 +1180,8 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm"
               className="h-8 text-xs"
               onClick={handleOpenCommitModal}
-              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProd}
-              title={isProd ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+              title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
               Update Config
             </Button>
@@ -1242,7 +1247,7 @@ const unmappedVariablesCount = useMemo(() => {
             <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
               {/* Pipeline mode toggle */}
               <div className="flex items-center justify-between">
-                
+
                 <div className="flex items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5 gap-0.5">
                   <button
                     type="button"
@@ -1267,6 +1272,17 @@ const unmappedVariablesCount = useMemo(() => {
                     Fallback
                   </button>
                 </div>
+
+                {/* Global fallback on/off — only visible in fallback panel */}
+                {showFallback && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Enable Fallback</span>
+                    <Switch
+                      checked={!!formik.values.fallbackGlobalEnabled}
+                      onCheckedChange={(checked) => formik.setFieldValue('fallbackGlobalEnabled', checked)}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Selectors */}
@@ -1399,7 +1415,8 @@ const unmappedVariablesCount = useMemo(() => {
                       })
                     }
                   }}
-                  className="min-h-[60px] text-xs resize-none border-gray-200 dark:border-gray-700"
+                  className="text-xs resize-none border-gray-200 dark:border-gray-700 overflow-y-auto"
+                  style={{ fieldSizing: 'fixed' as any, height: '60px' }}
                 />
               )}
             </div>
@@ -1487,12 +1504,12 @@ const unmappedVariablesCount = useMemo(() => {
               {/* Variable Textarea - NO overlay, just validation */}
               <VariableTextarea
                 value={formik.values.prompt}
-                onChange={(value) => { if (!isProd) formik.setFieldValue('prompt', value) }}
+                onChange={(value) => { if (!isProdLocked) formik.setFieldValue('prompt', value) }}
                 onValidationChange={setPromptValidation}
                 placeholder="Define your agent's behavior and personality... Use {{variable_name}} for dynamic values."
-                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProd ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                 style={getTextareaStyles()}
-                disabled={isProd}
+                disabled={isProdLocked}
               />
               
               {/* Compact Validation Indicator */}

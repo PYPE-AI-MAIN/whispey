@@ -495,6 +495,10 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       return result
     })(),
     dynamic_tts: assistant.dynamic_tts || [],
+    // Global switch: read from backend; default true if any fallback configured (backward compat)
+    fallbackGlobalEnabled: assistant.fallback_global_enabled !== undefined
+      ? !!assistant.fallback_global_enabled
+      : !!(assistant.stt?.fallback || assistant.tts?.fallback || assistant.llm?.fallback),
     fallbackSttEnabled: !!(assistant.stt?.fallback),
     fallbackSttProvider: assistant.stt?.fallback?.name || '',
     fallbackSttModel: assistant.stt?.fallback?.model || '',
@@ -551,6 +555,13 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         minInterruptionWords: assistant.interruptions?.min_interruption_words ?? assistant.min_interruption_words ?? getFallback(null, 'interruptions.min_interruption_words'),
         dropFillerWords: assistant.interruptions?.drop_filler_words ?? false,
         fillerDropList: assistant.interruptions?.filler_drop_list ?? [],
+        adaptiveMinDuration: assistant.adaptive_min_duration ?? 0.5,
+        adaptiveMinWords: assistant.adaptive_min_words ?? 0,
+        adaptiveDiscardAudioIfUninterruptible: assistant.adaptive_discard_audio_if_uninterruptible ?? true,
+        adaptiveResumeFalseInterruption: assistant.adaptive_resume_false_interruption ?? true,
+        adaptiveFalseInterruptionTimeout: assistant.adaptive_false_interruption_timeout ?? 2.0,
+        adaptiveBackchannelBoundaryStart: assistant.adaptive_backchannel_boundary_start ?? 1.0,
+        adaptiveBackchannelBoundaryEnd: assistant.adaptive_backchannel_boundary_end ?? 3.5,
       },
       vad: {
         vadProvider: assistant.vad?.name || getFallback(null, 'vad.name'),
@@ -575,7 +586,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
         endpointing_mode: sessionBehavior.endpointing_mode ?? null,
-        interruption_mode: sessionBehavior.interruption_mode ?? null,
+        interruption_mode: assistant.interruption_mode ?? sessionBehavior.interruption_mode ?? null,
         user_away_timeout: sessionBehavior.user_away_timeout !== undefined && sessionBehavior.user_away_timeout !== null ? sessionBehavior.user_away_timeout : undefined,
         user_away_timeout_message: sessionBehavior.user_away_timeout_message !== undefined && sessionBehavior.user_away_timeout_message !== null && sessionBehavior.user_away_timeout_message !== '' ? sessionBehavior.user_away_timeout_message : undefined,
         user_away_timeout_max_count: sessionBehavior.user_away_timeout_max_count !== undefined && sessionBehavior.user_away_timeout_max_count !== null ? sessionBehavior.user_away_timeout_max_count : undefined,
