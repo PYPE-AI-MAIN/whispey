@@ -37,6 +37,9 @@ interface FormState {
   acefone_api_key: string
   assigned_agent_id: string
   assigned_agent_name: string
+  sip_trunk_url: string
+  sip_username: string
+  sip_password: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -46,6 +49,9 @@ const EMPTY_FORM: FormState = {
   acefone_api_key: '',
   assigned_agent_id: '',
   assigned_agent_name: '',
+  sip_trunk_url: '',
+  sip_username: '',
+  sip_password: '',
 }
 
 const PROVIDER_LABELS: Record<Provider, string> = {
@@ -200,6 +206,65 @@ function PhoneNumberForm({
             </div>
           </div>
         )}
+
+        {/* Plivo fields */}
+        {form.provider.toLowerCase() === 'plivo' && (
+          <>
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="text-xs font-medium text-gray-400">Plivo Auth ID</label>
+              <input
+                value={form.sip_username}
+                onChange={e => set('sip_username', e.target.value)}
+                placeholder="MAXXXXXXXXXXXXXXXX"
+                className="h-9 w-full rounded-lg border border-gray-700 bg-gray-800 text-sm text-gray-200 px-3 placeholder:text-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+              />
+            </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="text-xs font-medium text-gray-400">Plivo Auth Token</label>
+              <input
+                type="password"
+                value={form.sip_password}
+                onChange={e => set('sip_password', e.target.value)}
+                placeholder="••••••••••••••••••••"
+                className="h-9 w-full rounded-lg border border-gray-700 bg-gray-800 text-sm text-gray-200 px-3 placeholder:text-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+              />
+            </div>
+          </>
+        )}
+
+        {/* SIP / Other trunk fields */}
+        {form.provider.toLowerCase() === 'other' && (
+          <>
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="text-xs font-medium text-gray-400">SIP Trunk URL</label>
+              <input
+                value={form.sip_trunk_url}
+                onChange={e => set('sip_trunk_url', e.target.value)}
+                placeholder="sip:trunk.example.com"
+                className="h-9 w-full rounded-lg border border-gray-700 bg-gray-800 text-sm text-gray-200 px-3 placeholder:text-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-400">SIP Username</label>
+              <input
+                value={form.sip_username}
+                onChange={e => set('sip_username', e.target.value)}
+                placeholder="username"
+                className="h-9 w-full rounded-lg border border-gray-700 bg-gray-800 text-sm text-gray-200 px-3 placeholder:text-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-400">SIP Password</label>
+              <input
+                type="password"
+                value={form.sip_password}
+                onChange={e => set('sip_password', e.target.value)}
+                placeholder="••••••••"
+                className="h-9 w-full rounded-lg border border-gray-700 bg-gray-800 text-sm text-gray-200 px-3 placeholder:text-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-2 pt-1">
@@ -235,6 +300,13 @@ export default function PhoneNumbersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set())
   const [showDocs, setShowDocs] = useState(false)
+  // Reassign confirm state: holds { numberId, form, conflictNumber } when a conflict is detected
+  const [reassignConfirm, setReassignConfirm] = useState<{
+    numberId: string
+    form: FormState
+    conflictPhone: string
+    conflictNumberId: string
+  } | null>(null)
 
   // ── Queries ──
   const { data: numbers = [], isLoading } = useQuery<PhoneNumber[]>({
@@ -278,6 +350,13 @@ export default function PhoneNumbersPage() {
           ...form,
           trunk_direction: NUMBER_TYPE_TO_TRUNK[form.number_type],
           project_id: projectId,
+          ...(form.provider === 'plivo' || form.provider === 'other' ? {
+            custom_headers: {
+              sip_trunk_url: form.sip_trunk_url || null,
+              sip_username: form.sip_username || null,
+              sip_password: form.sip_password || null,
+            }
+          } : {}),
         }),
       })
       if (!res.ok) {
@@ -292,7 +371,7 @@ export default function PhoneNumbersPage() {
     },
   })
 
-  const editMutation = useMutation({
+  const doEditMutation = useMutation({
     mutationFn: async ({ id, form }: { id: string; form: FormState }) => {
       const res = await fetch(`/api/phone-numbers/${id}`, {
         method: 'PATCH',
@@ -304,6 +383,13 @@ export default function PhoneNumbersPage() {
           assigned_agent_name: form.assigned_agent_name || null,
           trunk_direction: NUMBER_TYPE_TO_TRUNK[form.number_type],
           provider: form.provider,
+          ...(form.provider === 'plivo' || form.provider === 'other' ? {
+            custom_headers: {
+              sip_trunk_url: form.sip_trunk_url || null,
+              sip_username: form.sip_username || null,
+              sip_password: form.sip_password || null,
+            }
+          } : {}),
         }),
       })
       if (!res.ok) {
@@ -315,8 +401,41 @@ export default function PhoneNumbersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['phone-numbers', projectId] })
       setEditingId(null)
+      setReassignConfirm(null)
     },
   })
+
+  // Wrapper that checks for agent conflict before mutating
+  const editMutation = {
+    ...doEditMutation,
+    mutate: ({ id, form }: { id: string; form: FormState }) => {
+      if (form.assigned_agent_id) {
+        const conflict = numbers.find(
+          n => n.id !== id && n.assigned_agent_id === form.assigned_agent_id
+        )
+        if (conflict) {
+          setReassignConfirm({ numberId: id, form, conflictPhone: conflict.phone_number, conflictNumberId: conflict.id })
+          return
+        }
+      }
+      doEditMutation.mutate({ id, form })
+    },
+  }
+
+  const confirmReassign = async () => {
+    if (!reassignConfirm) return
+    // Unassign from old number first
+    await fetch(`/api/phone-numbers/${reassignConfirm.conflictNumberId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: projectId,
+        assigned_agent_id: null,
+        assigned_agent_name: null,
+      }),
+    })
+    doEditMutation.mutate({ id: reassignConfirm.numberId, form: reassignConfirm.form })
+  }
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -353,6 +472,9 @@ export default function PhoneNumbersPage() {
     acefone_api_key: n.acefone_api_key ?? '',
     assigned_agent_id: n.assigned_agent_id ?? '',
     assigned_agent_name: n.assigned_agent_name ?? '',
+    sip_trunk_url: (n as PhoneNumber & { sip_trunk_url?: string }).sip_trunk_url ?? '',
+    sip_username: (n as PhoneNumber & { sip_username?: string }).sip_username ?? '',
+    sip_password: '',
   })
 
   return (
@@ -409,10 +531,36 @@ export default function PhoneNumbersPage() {
             />
           )}
 
+          {/* Reassign confirm banner */}
+          {reassignConfirm && (
+            <div className="rounded-lg border border-yellow-700 bg-yellow-900/20 px-4 py-3 text-xs text-yellow-300 flex items-center justify-between gap-4">
+              <span>
+                This agent is already assigned to <span className="font-mono font-semibold">{reassignConfirm.conflictPhone}</span>.
+                Reassign to this number instead?
+              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={confirmReassign}
+                  disabled={doEditMutation.isPending}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-yellow-600 text-white hover:bg-yellow-500 disabled:opacity-50 transition-colors"
+                >
+                  {doEditMutation.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Yes, reassign
+                </button>
+                <button
+                  onClick={() => setReassignConfirm(null)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-yellow-400 hover:text-yellow-200 hover:bg-yellow-900/40 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Error banner */}
-          {(addMutation.error || editMutation.error || deleteMutation.error) && (
+          {(addMutation.error || doEditMutation.error || deleteMutation.error) && (
             <div className="rounded-lg border border-red-800 bg-red-900/20 px-4 py-2.5 text-xs text-red-400">
-              {((addMutation.error || editMutation.error || deleteMutation.error) as Error).message}
+              {((addMutation.error || doEditMutation.error || deleteMutation.error) as Error).message}
             </div>
           )}
 

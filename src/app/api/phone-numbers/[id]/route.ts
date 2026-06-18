@@ -35,7 +35,7 @@ export async function PATCH(
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await request.json()
-    const { project_id, acefone_api_key, assigned_agent_id, assigned_agent_name, trunk_direction, provider, telephony_type } = body
+    const { project_id, acefone_api_key, assigned_agent_id, assigned_agent_name, trunk_direction, provider, telephony_type, custom_headers } = body
 
     if (!project_id) return NextResponse.json({ error: 'project_id is required' }, { status: 400 })
 
@@ -49,6 +49,7 @@ export async function PATCH(
     if (trunk_direction !== undefined) updates.trunk_direction = trunk_direction
     if (provider !== undefined) updates.provider = provider
     if (telephony_type !== undefined) updates.telephony_type = telephony_type
+    if (custom_headers !== undefined) updates.custom_headers = custom_headers
 
     const { data, error } = await supabase
       .from('pype_voice_phone_numbers')

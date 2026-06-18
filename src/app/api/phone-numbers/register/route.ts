@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { phone_number, trunk_direction, provider, telephony_type, acefone_api_key, project_id } = body
+    const { phone_number, trunk_direction, provider, telephony_type, acefone_api_key, project_id, custom_headers } = body
 
     if (!phone_number || !project_id) {
       return NextResponse.json({ error: 'phone_number and project_id are required' }, { status: 400 })
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       project_id,
       status: 'active',
       trunk_direction: trunk_direction ?? 'bidirectional',
+      custom_headers: custom_headers ?? null,
     }
 
     // Check if this number already exists (avoids needing a unique constraint on prod)
