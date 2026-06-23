@@ -68,6 +68,7 @@ import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowAgentSection } from '@/types/visibility'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { saveSupplementalSettings } from '@/lib/supplementalSettings'
 
 // Agent status service
 const agentStatusService = {
@@ -633,6 +634,20 @@ export default function AgentConfig() {
     try {
       // Step 1: Deploy config to backend
       await saveAndDeploy.mutateAsync(pendingCheckpoint.config)
+      // Step 1b: Save supplemental settings (webhook, drop-off, callback) to Supabase
+      const advSettings = formik.values.advancedSettings as any
+      await saveSupplementalSettings(agentid as string, projectId, {
+        webhook: advSettings?.webhook
+          ? {
+              webhookUrl: advSettings.webhook.webhookUrl,
+              httpMethod: advSettings.webhook.httpMethod,
+              headers: advSettings.webhook.headers,
+              isActive: advSettings.webhook.isActive,
+            }
+          : undefined,
+        dropoff: advSettings?.dropoff,
+        callbackScheduling: advSettings?.callbackScheduling,
+      })
       // Step 2: Save version checkpoint
       const res = await fetch(`/api/agents/${agentid}/history`, {
         method: 'POST',
@@ -1528,9 +1543,12 @@ const unmappedVariablesCount = useMemo(() => {
 
           {/* Right Side - Desktop Only */}
           <div className=" lg:block w-80 flex-shrink-0 min-h-0 flex flex-col gap-3">
-            <AgentAdvancedSettings 
+            <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              onWebhookDataLoaded={(data) => formik.setFieldValue('advancedSettings.webhook', data, false)}
+              onDropoffDataLoaded={(data) => formik.setFieldValue('advancedSettings.dropoff', data, false)}
+              onCallbackDataLoaded={(data) => formik.setFieldValue('advancedSettings.callbackScheduling', data, false)}
               projectId={projectId}
               agentId={agentid}
               dynamicTTSList={formik.values.dynamic_tts || []}
@@ -1539,7 +1557,7 @@ const unmappedVariablesCount = useMemo(() => {
               }}
             />
           </div>
-          
+
         </div>
       </div>
 
@@ -1597,9 +1615,12 @@ const unmappedVariablesCount = useMemo(() => {
             <SheetTitle className="text-sm">Advanced Settings</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto">
-            <AgentAdvancedSettings 
+            <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              onWebhookDataLoaded={(data) => formik.setFieldValue('advancedSettings.webhook', data, false)}
+              onDropoffDataLoaded={(data) => formik.setFieldValue('advancedSettings.dropoff', data, false)}
+              onCallbackDataLoaded={(data) => formik.setFieldValue('advancedSettings.callbackScheduling', data, false)}
               projectId={projectId}
               agentId={agentid}
               dynamicTTSList={formik.values.dynamic_tts || []}

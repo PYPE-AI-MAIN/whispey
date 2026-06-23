@@ -18,6 +18,7 @@ import CallbackSettings from '@/components/projects/CallbackSettings'
 import DynamicTTSSwitch from '../DynamicTTSSwitch'
 import KnowledgeBaseRAGSettings from './ConfigParents/KnowledgeBaseRAGSettings'
 import ContextMemorySettings from './ConfigParents/ContextMemorySettings'
+import { WebhookConfig, DropoffConfig, CallbackConfig } from '@/lib/supplementalSettings'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -116,6 +117,9 @@ interface AgentAdvancedSettingsProps {
       }
     }
     onFieldChange: (field: string, value: any) => void
+    onWebhookDataLoaded?: (data: WebhookConfig) => void
+    onDropoffDataLoaded?: (data: DropoffConfig) => void
+    onCallbackDataLoaded?: (data: CallbackConfig) => void
     projectId?: string
     dynamicTTSList?: any[]
     onDynamicTTSChange?: (dynamicTTSList: any[]) => void
@@ -124,7 +128,7 @@ interface AgentAdvancedSettingsProps {
 const EOD_PROMPT_SNIPPET =
   'When the conversation is fully resolved and you have said your goodbye, append <eod/> at the very end of your response.'
 
-function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: AgentAdvancedSettingsProps) {
+function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataLoaded, onDropoffDataLoaded, onCallbackDataLoaded, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: AgentAdvancedSettingsProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
@@ -318,6 +322,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               tools={advancedSettings.tools.tools}
               onFieldChange={onFieldChange}
               projectId={projectId}
+              kbEnabled={advancedSettings.knowledgeBase?.enabled ?? false}
             />
           </CollapsibleContent>
         </Collapsible>
@@ -424,6 +429,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               headers={advancedSettings.webhook?.headers || {}}
               isActive={advancedSettings.webhook?.isActive || false}
               onFieldChange={onFieldChange}
+              onDataLoaded={onWebhookDataLoaded ?? (() => {})}
               agentId={agentId}
               projectId={projectId}
             />
@@ -446,6 +452,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
             <DropOffCallSettings
               agentId={agentId || ''}
               projectId={projectId}
+              onDataLoaded={onDropoffDataLoaded ?? (() => {})}
+              onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
         </Collapsible>
@@ -464,7 +472,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             {agentId && projectId ? (
-              <CallbackSettings agentId={agentId} projectId={projectId} />
+              <CallbackSettings
+                agentId={agentId}
+                projectId={projectId}
+                onDataLoaded={onCallbackDataLoaded ?? (() => {})}
+                onFieldChange={onFieldChange}
+              />
             ) : (
               <p className="text-xs text-gray-400">Agent / project not available</p>
             )}
