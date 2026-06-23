@@ -6,13 +6,34 @@ import { useState, useEffect } from 'react'
 import {
   ArrowLeft, Search, Shield, Users, ChevronDown, Check,
   Crown, FlaskConical, User, ChevronLeft, ChevronRight,
+  Plus, Trash2, Activity,
 } from 'lucide-react'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 type GlobalRole = 'superadmin' | 'prompter' | 'user'
+type Tab = 'users' | 'metrics'
+
+interface MetricTemplate {
+  metric_id: string
+  name: string
+  description: string
+  default_criteria: string
+  default_scoring_mode: 'continuous' | 'binary'
+  default_threshold: number
+  category: string
+  priority: string
+  is_active: boolean
+}
 
 interface AdminUser {
   id: string
@@ -83,11 +104,245 @@ function pageNums(cur: number, total: number): (number | '…')[] {
   return out
 }
 
+function MetricsTab() {
+  const [templates, setTemplates] = useState<MetricTemplate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [addFormOpen, setAddFormOpen] = useState(false)
+  const [addLoading, setAddLoading] = useState(false)
+  const [addError, setAddError] = useState('')
+  const [addForm, setAddForm] = useState({
+    metric_id: '',
+    name: '',
+    description: '',
+    default_criteria: '',
+    default_scoring_mode: 'continuous' as 'continuous' | 'binary',
+    default_threshold: 0.7,
+    category: '',
+    priority: 'medium',
+  })
+
+  const deriveMetricId = (name: string) =>
+    name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 30)
+
+  const handleNameChange = (name: string) => {
+    const trimmed = name.slice(0, 30)
+    setAddForm(f => ({ ...f, name: trimmed, metric_id: deriveMetricId(trimmed) }))
+  }
+
+  useEffect(() => {
+    fetch('/api/admin/metrics-templates')
+      .then(r => r.json())
+      .then(data => { setTemplates(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/admin/metrics-templates/${confirmDeleteId}`, { method: 'DELETE' })
+      if (res.ok) setTemplates(prev => prev.filter(t => t.metric_id !== confirmDeleteId))
+    } finally {
+      setDeleting(false)
+      setConfirmDeleteId(null)
+    }
+  }
+
+  const handleAdd = async () => {
+    setAddError('')
+    if (!addForm.name || !addForm.default_criteria) {
+      setAddError('Name and default criteria are required.')
+      return
+    }
+    setAddLoading(true)
+    try {
+      const res = await fetch('/api/admin/metrics-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addForm),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAddError(data.error ?? 'Failed to create template.')
+      } else {
+        setTemplates(prev => [...prev, data])
+        setAddForm({ metric_id: '', name: '', description: '', default_criteria: '', default_scoring_mode: 'continuous', default_threshold: 0.7, category: '', priority: 'medium' })
+
+        setAddFormOpen(false)
+      }
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="max-w-5xl mx-auto pt-4 space-y-4">
+
+        {/* Add New Template */}
+        <div className="rounded-xl border border-gray-800 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setAddFormOpen(v => !v)}
+            className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-medium text-gray-300 hover:bg-gray-800 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Plus className="w-4 h-4 text-blue-400" />
+              Add New Template
+            </span>
+            <span className="text-gray-600 text-xs">{addFormOpen ? 'Cancel' : 'Expand'}</span>
+          </button>
+
+          {addFormOpen && (
+            <div className="px-5 pb-5 pt-1 border-t border-gray-800 space-y-3 bg-gray-800/30">
+              {addError && <p className="text-xs text-red-400">{addError}</p>}
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-gray-400">Name *</Label>
+                  <span className="text-[10px] text-gray-600">{addForm.name.length}/30</span>
+                </div>
+                <Input
+                  className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100"
+                  placeholder="e.g. Call Quality"
+                  maxLength={30}
+                  value={addForm.name}
+                  onChange={e => handleNameChange(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-gray-400">Description</Label>
+                <Input className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100" placeholder="Short description" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-gray-400">Default Criteria *</Label>
+                <Textarea className="mt-1 text-xs min-h-[80px] font-mono resize-none bg-gray-800 border-gray-700 text-gray-100" placeholder="Evaluation criteria prompt..." value={addForm.default_criteria} onChange={e => setAddForm(f => ({ ...f, default_criteria: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium text-gray-400">Scoring Mode *</Label>
+                  <Select value={addForm.default_scoring_mode} onValueChange={(v: 'continuous' | 'binary') => setAddForm(f => ({ ...f, default_scoring_mode: v }))}>
+                    <SelectTrigger className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="continuous">Continuous (0–1)</SelectItem>
+                      <SelectItem value="binary">Binary (0 or 1)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-400">Default Threshold</Label>
+                  <Input type="number" step="0.01" min="0" max="1" className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100" value={addForm.default_threshold} onChange={e => setAddForm(f => ({ ...f, default_threshold: parseFloat(e.target.value) || 0 }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium text-gray-400">Category</Label>
+                  <Select value={addForm.category} onValueChange={v => setAddForm(f => ({ ...f, category: v }))}>
+                    <SelectTrigger className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100"><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="effectiveness">Effectiveness</SelectItem>
+                      <SelectItem value="efficiency">Efficiency</SelectItem>
+                      <SelectItem value="reliability">Reliability</SelectItem>
+                      <SelectItem value="quality">Quality</SelectItem>
+                      <SelectItem value="compliance">Compliance</SelectItem>
+                      <SelectItem value="experience">Experience</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-400">Priority</Label>
+                  <Select value={addForm.priority} onValueChange={v => setAddForm(f => ({ ...f, priority: v }))}>
+                    <SelectTrigger className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button size="sm" onClick={handleAdd} disabled={addLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                {addLoading ? 'Creating...' : 'Create Template'}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Templates list */}
+        {loading ? (
+          <div className="rounded-xl border border-gray-800 divide-y divide-gray-800">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="px-5 py-4 animate-pulse flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-3 w-32 bg-gray-800 rounded" />
+                  <div className="h-2.5 w-20 bg-gray-800/60 rounded" />
+                </div>
+                <div className="h-6 w-16 bg-gray-800 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : templates.length === 0 ? (
+          <div className="rounded-xl border border-gray-800 py-16 flex flex-col items-center gap-2 text-gray-600">
+            <Activity className="h-6 w-6" />
+            <span className="text-sm">No metric templates yet</span>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-gray-800 overflow-hidden divide-y divide-gray-800">
+            {templates.map(t => (
+              <div key={t.metric_id} className="flex items-center justify-between px-5 py-4 hover:bg-gray-800/40 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[13px] font-medium text-gray-100">{t.name}</span>
+                    {t.category && <Badge variant="outline" className="text-[10px] border-gray-700 text-gray-400">{t.category}</Badge>}
+                    {t.priority === 'critical' && <Badge variant="destructive" className="text-[10px]">Critical</Badge>}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700">{t.default_scoring_mode}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-600 font-mono mt-0.5">{t.metric_id}</p>
+                  {t.description && <p className="text-[11px] text-gray-500 mt-0.5 truncate max-w-lg">{t.description}</p>}
+                </div>
+                <button
+                  onClick={() => setConfirmDeleteId(t.metric_id)}
+                  className="ml-4 flex-shrink-0 p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Delete confirmation */}
+      <Dialog open={!!confirmDeleteId} onOpenChange={open => { if (!open) setConfirmDeleteId(null) }}>
+        <DialogContent className="max-w-sm bg-gray-900 border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-gray-100">Delete Template</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-400">
+            This template may be in use by agents. Deleting it will not affect current evaluations,
+            but any user who opens and saves that agent&apos;s metrics will lose this metric permanently.
+          </p>
+          <p className="text-sm font-medium text-red-400">This cannot be undone.</p>
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => setConfirmDeleteId(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" className="flex-1" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete Permanently'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 export default function UsersSettingsPage() {
   const { projectid: projectId } = useParams()
   const router = useRouter()
   const queryClient = useQueryClient()
   const { isSuperAdmin, isLoading: roleLoading } = useGlobalRole()
+  const [activeTab, setActiveTab] = useState<Tab>('users')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
 
@@ -171,40 +426,61 @@ export default function UsersSettingsPage() {
               <div className="h-7 w-7 rounded-lg bg-blue-900/40 border border-blue-800/50 flex items-center justify-center">
                 <Users className="h-3.5 w-3.5 text-blue-400" />
               </div>
-              <h1 className="text-sm font-semibold text-gray-100">User Management</h1>
+              <h1 className="text-sm font-semibold text-gray-100">Whispey Admin Dashboard</h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
-              {counts.total} total
-            </span>
-            {counts.superadmin > 0 && (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20">
-                {counts.superadmin} superadmin
-              </span>
-            )}
-            {counts.prompter > 0 && (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-400/10 text-violet-400 border border-violet-400/20">
-                {counts.prompter} prompter
-              </span>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* ── Toolbar ── */}
+      {/* ── Tabs ── */}
+      <div className="flex-shrink-0 border-b border-gray-800">
+        <div className="max-w-5xl mx-auto px-6 flex gap-1 pt-1">
+          {(['users', 'metrics'] as Tab[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-xs font-medium capitalize rounded-t-lg transition-colors border-b-2 -mb-px ${
+                activeTab === tab
+                  ? 'text-blue-400 border-blue-500 bg-blue-500/5'
+                  : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800'
+              }`}
+            >
+              {tab === 'users' ? 'Users' : 'Metrics'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === 'metrics' && <MetricsTab />}
+
+      {/* ── Users tab content ── */}
+      {activeTab === 'users' && <>
       <div className="flex-shrink-0 max-w-5xl w-full mx-auto px-6 pt-4 pb-3 flex items-center justify-between gap-4">
         {/* Native input — avoids shadcn adding w-full */}
-        <div className="relative flex-shrink-0" style={{ width: '200px' }}>
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500 pointer-events-none" />
-          <input
-            placeholder="Search users…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            // Border matches sidebar border-gray-800, bg slightly lighter than bg-gray-900
-            className="w-full pl-8 pr-3 h-8 text-xs rounded-lg border border-gray-700 bg-gray-800 text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-blue-600 focus:bg-gray-800 transition-colors"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-shrink-0" style={{ width: '200px' }}>
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500 pointer-events-none" />
+            <input
+              placeholder="Search users…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-8 pr-3 h-8 text-xs rounded-lg border border-gray-700 bg-gray-800 text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-blue-600 focus:bg-gray-800 transition-colors"
+            />
+          </div>
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
+            {counts.total} total
+          </span>
+          {counts.superadmin > 0 && (
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20">
+              {counts.superadmin} superadmin
+            </span>
+          )}
+          {counts.prompter > 0 && (
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-400/10 text-violet-400 border border-violet-400/20">
+              {counts.prompter} prompter
+            </span>
+          )}
         </div>
 
         {!isLoading && totalPages > 1 && (
@@ -363,6 +639,7 @@ export default function UsersSettingsPage() {
           </table>
         </div>
       </div>
+      </>}
     </div>
   )
 }

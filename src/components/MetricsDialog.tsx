@@ -38,7 +38,7 @@ interface MetricsDialogProps {
   onSave: (metrics: Record<string, MetricConfig>) => void
 }
 
-const MetricsDialog: React.FC<MetricsDialogProps> = ({ 
+const MetricsDialog: React.FC<MetricsDialogProps> = ({
   initialMetrics = {},
   onSave
 }) => {
@@ -46,6 +46,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
   const [metricsTemplates, setMetricsTemplates] = useState<MetricTemplate[]>([])
   const [metrics, setMetrics] = useState<Record<string, MetricConfig>>(initialMetrics)
   const [loadingTemplates, setLoadingTemplates] = useState(false)
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
 
   // Sync metrics state when initialMetrics prop changes (e.g., after refresh)
   useEffect(() => {
@@ -102,8 +103,6 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
   }
 
   const handleSave = () => {
-    // Save metrics with edited criteria, scoring_mode, and threshold
-    // Format: { metric_id: { metric_id, enabled, criteria, scoring_mode, threshold } }
     onSave(metrics)
     setIsOpen(false)
   }
@@ -157,7 +156,102 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                   <div className="space-y-3">
                     {Object.values(metrics).map((metricConfig) => {
                       const template = metricsTemplates.find(t => t.metric_id === metricConfig.metric_id)
-                      if (!template) return null
+
+                      if (!template) return (
+                        <div key={metricConfig.metric_id} className="border rounded-lg p-4 dark:border-gray-700 border-yellow-200 dark:border-yellow-800/50 bg-yellow-50/30 dark:bg-yellow-900/5">
+                          {/* Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-medium text-gray-900 dark:text-gray-100 font-mono text-sm">{metricConfig.metric_id}</h4>
+                                <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700">
+                                  Template deleted
+                                </Badge>
+                                {!metricConfig.enabled && (
+                                  <Badge variant="secondary" className="text-xs">Disabled</Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`enable-${metricConfig.metric_id}`} className="text-xs text-gray-600 dark:text-gray-400">
+                                  {metricConfig.enabled ? 'Enabled' : 'Disabled'}
+                                </Label>
+                                <Switch
+                                  id={`enable-${metricConfig.metric_id}`}
+                                  checked={metricConfig.enabled}
+                                  onCheckedChange={(checked) => updateMetric(metricConfig.metric_id, { enabled: checked })}
+                                />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmRemoveId(metricConfig.metric_id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Warning notice */}
+                          <div className="text-xs text-yellow-700 dark:text-yellow-400 bg-yellow-100/60 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-md px-3 py-2 mb-3">
+                            This template no longer exists in the library. The metric is still being evaluated using the saved criteria below. You can edit or remove it.
+                          </div>
+
+                          {/* Criteria editor — always shown */}
+                          <div className="space-y-3">
+                            <div>
+                              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                Evaluation Criteria
+                              </Label>
+                              <Textarea
+                                value={metricConfig.criteria}
+                                onChange={(e) => updateMetric(metricConfig.metric_id, { criteria: e.target.value })}
+                                className="mt-1 text-xs min-h-[100px] font-mono resize-none"
+                                placeholder="Enter evaluation criteria..."
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                  Scoring Mode
+                                </Label>
+                                <Select
+                                  value={metricConfig.scoring_mode}
+                                  onValueChange={(value: 'continuous' | 'binary') =>
+                                    updateMetric(metricConfig.metric_id, { scoring_mode: value })
+                                  }
+                                >
+                                  <SelectTrigger className="mt-1 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="continuous">Continuous (0-1)</SelectItem>
+                                    <SelectItem value="binary">Binary (0 or 1)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                  Threshold
+                                </Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="1"
+                                  value={metricConfig.threshold}
+                                  onChange={(e) =>
+                                    updateMetric(metricConfig.metric_id, { threshold: parseFloat(e.target.value) || 0 })
+                                  }
+                                  className="mt-1 text-xs"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
 
                       return (
                         <div key={metricConfig.metric_id} className={`border rounded-lg p-4 dark:border-gray-700 transition-all ${
@@ -335,6 +429,43 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      {/* Confirm remove orphaned metric */}
+      <Dialog open={!!confirmRemoveId} onOpenChange={open => { if (!open) setConfirmRemoveId(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-50">
+              Remove Metric
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            This metric&apos;s template has been deleted, but the evaluation criteria and scoring config are still saved on this agent.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Removing it will permanently delete this configuration. If the template is never recreated, this metric cannot be recovered.
+          </p>
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">This cannot be undone.</p>
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setConfirmRemoveId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => {
+                if (confirmRemoveId) removeMetric(confirmRemoveId)
+                setConfirmRemoveId(null)
+              }}
+            >
+              Remove
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
