@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: { 'x-api-key': apiKey },
+      headers: { 'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken() },
     })
 
     console.log(`${LOG_PREFIX} Step 5: Backend responded status=${response.status} ${response.statusText}`)

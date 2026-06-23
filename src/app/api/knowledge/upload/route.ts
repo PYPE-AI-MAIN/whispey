@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/knowledge/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(backendUrl, {
       method: 'POST',
       headers: {
-        'x-api-key': apiKey,
+        'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken(),
       },
       body: backendFormData,
     })

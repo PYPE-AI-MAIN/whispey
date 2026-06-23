@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/sip/delete-trunk/[trunkId]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -16,7 +17,7 @@ export async function DELETE(
     const response = await fetch(`${apiUrl}/delete_sip_trunk/${trunkId}`, {
       method: 'DELETE',
       headers: {
-        'x-api-key': 'pype-api-v1',
+        'x-api-key': 'pype-api-v1', 'Authorization': 'Bearer ' + mintServiceToken(),
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       }

@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/knowledge/search/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
       `${apiBaseUrl}/knowledge/search?${params.toString()}`,
       {
         method: 'GET',
-        headers: { 'x-api-key': apiKey },
+        headers: { 'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken() },
       }
     )
 

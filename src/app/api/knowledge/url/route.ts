@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/knowledge/url/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
+        'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken(),
       },
       body: JSON.stringify({ url: url.trim(), agent_id: agentId.trim() }),
     })
