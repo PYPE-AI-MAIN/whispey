@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // GET method to fetch agent details
@@ -298,7 +299,7 @@ export async function DELETE(
 
           let backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': 'pype-api-v1' },
+            headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
             body: JSON.stringify({ agent_name: agentNameWithId })
           })
 
@@ -306,7 +307,7 @@ export async function DELETE(
             console.log('🔄 First attempt failed, trying with name only:', agentData.name)
             backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
               method: 'DELETE',
-              headers: { 'Content-Type': 'application/json', 'x-api-key': 'pype-api-v1' },
+              headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
               body: JSON.stringify({ agent_name: agentData.name })
             })
           }

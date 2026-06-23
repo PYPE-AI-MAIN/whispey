@@ -1,5 +1,6 @@
 // src/app/api/agents/dispatch-call/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/dispatch_call`, {
       method: 'POST',
       headers: {
-        'x-api-key': 'pype-api-v1',
+        ...serviceAuthHeaders(),
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
