@@ -2,14 +2,14 @@
 import jwt from 'jsonwebtoken';
 
 /**
- * Mint a short-lived service JWT (HS256) signed with the shared JWT_SECRET.
+ * Mint a short-lived service JWT (HS256) signed with the shared PYPE_JWT_SECRET.
  *
  * Sent as `Authorization: Bearer <token>` alongside the existing x-api-key so
  * the voice-agent's dispatch/fetch APIs can authenticate this dashboard as a
  * caller. The voice-agent accepts either credential during the migration.
  */
 export function mintServiceToken(): string {
-  const jwtSecret = process.env.JWT_SECRET || 'default-jwt-secret-change-in-production';
+  const jwtSecret = process.env.PYPE_JWT_SECRET || 'default-jwt-secret-change-in-production';
   return jwt.sign(
     {
       sub: 'pype-analytics-dashboard',
