@@ -101,9 +101,17 @@ export async function saveSupplementalSettings(
   projectId: string,
   settings: SupplementalSettings
 ): Promise<void> {
-  const tasks: Promise<void>[] = []
-  if (settings.webhook) tasks.push(saveWebhook(agentId, projectId, settings.webhook))
-  if (settings.dropoff) tasks.push(saveDropoff(agentId, settings.dropoff))
-  if (settings.callbackScheduling) tasks.push(saveCallback(agentId, settings.callbackScheduling))
-  await Promise.all(tasks)
+  const tasks: Array<{ label: string; promise: Promise<void> }> = []
+  if (settings.webhook) tasks.push({ label: 'webhook', promise: saveWebhook(agentId, projectId, settings.webhook) })
+  if (settings.dropoff) tasks.push({ label: 'drop-off', promise: saveDropoff(agentId, settings.dropoff) })
+  if (settings.callbackScheduling) tasks.push({ label: 'callback scheduling', promise: saveCallback(agentId, settings.callbackScheduling) })
+
+  const results = await Promise.allSettled(tasks.map((t) => t.promise))
+  const failed = results
+    .map((r, i) => (r.status === 'rejected' ? tasks[i].label : null))
+    .filter(Boolean) as string[]
+
+  if (failed.length > 0) {
+    throw new Error(`Failed to save: ${failed.join(', ')}`)
+  }
 }

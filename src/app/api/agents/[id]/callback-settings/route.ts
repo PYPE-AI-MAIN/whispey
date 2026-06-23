@@ -31,6 +31,11 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!SCHEDULER_API_URL) {
+    console.warn('SCHEDULER_API_URL not configured — skipping callback-settings save')
+    return NextResponse.json({ ok: true, skipped: true })
+  }
+
   try {
     const { id } = await params
     const body = await request.json()
@@ -45,8 +50,12 @@ export async function PUT(
     )
 
     if (!response.ok) {
-      const err = await response.text()
-      return NextResponse.json({ error: err }, { status: response.status })
+      const errText = await response.text()
+      console.error('Scheduler PUT callback-settings error:', response.status, errText)
+      return NextResponse.json(
+        { error: `Scheduler returned ${response.status}`, detail: errText },
+        { status: response.status }
+      )
     }
 
     const data = await response.json()
