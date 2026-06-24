@@ -104,7 +104,9 @@ export async function saveSupplementalSettings(
   const tasks: Array<{ label: string; promise: Promise<void> }> = []
   if (settings.webhook) tasks.push({ label: 'webhook', promise: saveWebhook(agentId, projectId, settings.webhook) })
   if (settings.dropoff) tasks.push({ label: 'drop-off', promise: saveDropoff(agentId, settings.dropoff) })
-  if (settings.callbackScheduling) tasks.push({ label: 'callback scheduling', promise: saveCallback(agentId, settings.callbackScheduling) })
+  // Only call the scheduler when callback scheduling is explicitly enabled — avoids
+  // creating records for agents that have never configured this feature.
+  if (settings.callbackScheduling?.enabled) tasks.push({ label: 'callback scheduling', promise: saveCallback(agentId, settings.callbackScheduling) })
 
   const results = await Promise.allSettled(tasks.map((t) => t.promise))
   const failed = results

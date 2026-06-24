@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { mintServiceToken } from '@/lib/serviceToken'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -145,8 +146,6 @@ export async function POST(req: NextRequest) {
 
     console.log('[webhook/github] Deploying via', isPipecat ? 'Pipecat' : 'LiveKit', 'endpoint')
 
-    let deployOk = false
-
     if (isPipecat) {
       const prodPipecatId = prodSnapshot?.config_snapshot?.agent?.whispey_agent_id
       if (!prodPipecatId) {
@@ -158,10 +157,12 @@ export async function POST(req: NextRequest) {
 
       const res = await fetch(`${appUrl}/api/pipecat/agents/${prodPipecatId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${mintServiceToken()}`,
+        },
         body: JSON.stringify(mergedConfig.agent),
       })
-      deployOk = res.ok
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         console.error('[webhook/github] Pipecat deploy failed:', res.status, err)
@@ -170,13 +171,15 @@ export async function POST(req: NextRequest) {
     } else {
       const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${mintServiceToken()}`,
+        },
         body: JSON.stringify({
           agent: mergedConfig.agent,
           metadata: { agentId: targetAgentId, agentName: prodAgentBackendName },
         }),
       })
-      deployOk = res.ok
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         console.error('[webhook/github] LiveKit deploy failed:', res.status, err)
@@ -222,13 +225,13 @@ export async function POST(req: NextRequest) {
 
     // ── Copy ancillary settings from dev agent to prod agent ──────────────────
 
-    // 1. Webhook configs (pype_voice_webhook_configs) — replace semantics
+    // 1. Webhook configs (pype_voice_webhook_configs) — full replace from dev
     try {
       const { data: devWebhooks } = await supabase
         .from('pype_voice_webhook_configs')
         .select('webhook_name, webhook_url, http_method, headers, trigger_events, is_active')
         .eq('agent_id', version.agent_id)
-      // Delete all prod webhook configs first, then re-insert dev's (including empty = cleared)
+      // Always delete prod's webhooks first, then re-insert dev's (empty = cleared)
       await supabase.from('pype_voice_webhook_configs').delete().eq('agent_id', targetAgentId)
       if (devWebhooks?.length) {
         await supabase.from('pype_voice_webhook_configs').insert(
@@ -240,7 +243,7 @@ export async function POST(req: NextRequest) {
       console.error('[webhook/github] Failed to sync webhook configs:', err)
     }
 
-    // 2. Drop-off call settings (pype_voice_agent_dropoff_settings) — replace semantics
+    // 2. Drop-off call settings (pype_voice_agent_dropoff_settings) — full replace from dev
     try {
       const { data: devDropoff } = await supabase
         .from('pype_voice_agent_dropoff_settings')
@@ -248,7 +251,7 @@ export async function POST(req: NextRequest) {
         .eq('agent_id', version.agent_id)
         .eq('is_active', true)
         .maybeSingle()
-      // Delete prod's active dropoff settings first, then re-insert dev's (including empty = cleared)
+      // Always delete prod's active dropoff first, then re-insert dev's (empty = cleared)
       await supabase.from('pype_voice_agent_dropoff_settings').delete().eq('agent_id', targetAgentId).eq('is_active', true)
       if (devDropoff) {
         await supabase.from('pype_voice_agent_dropoff_settings').insert({
@@ -260,12 +263,16 @@ export async function POST(req: NextRequest) {
       console.error('[webhook/github] Failed to sync drop-off settings:', err)
     }
 
-    // 3. Callback scheduling (external scheduler API) — replace semantics
+    // 3. Callback scheduling (external scheduler API) — full replace from dev
     const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+    const schedulerHeaders = {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1',
+    }
     if (schedulerUrl) {
       try {
         const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${version.agent_id}/callback-settings`, {
-          headers: { 'Content-Type': 'application/json' },
+          headers: schedulerHeaders,
         })
         if (cbRes.ok) {
           const cbData = await cbRes.json()
@@ -273,7 +280,7 @@ export async function POST(req: NextRequest) {
             // Dev has settings — push to prod
             await fetch(`${schedulerUrl}/api/v1/agents/${targetAgentId}/callback-settings`, {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
+              headers: schedulerHeaders,
               body: JSON.stringify(cbData),
             })
             console.log('[webhook/github] Synced callback settings to prod')
@@ -281,7 +288,7 @@ export async function POST(req: NextRequest) {
             // Dev has no settings — clear prod's too
             await fetch(`${schedulerUrl}/api/v1/agents/${targetAgentId}/callback-settings`, {
               method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
+              headers: schedulerHeaders,
             })
             console.log('[webhook/github] Cleared callback settings from prod')
           }

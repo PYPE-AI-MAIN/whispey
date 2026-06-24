@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { createMergePR } from '@/lib/github-prompts'
+import { createMergePR, enrichSnapshotForGitHub } from '@/lib/github-prompts'
 
 const supabase = createServiceRoleClient()
 
@@ -93,7 +93,8 @@ export async function POST(
     if (schedulerUrl) {
       try {
         const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${sourceAgentId}/callback-settings`, {
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
+          cache: 'no-store',
         })
         if (cbRes.ok) {
           const cbData = await cbRes.json()
@@ -102,11 +103,8 @@ export async function POST(
       } catch {}
     }
 
-    // Build enriched config: core agent config first, ancillary settings appended at the end
-    const enrichedConfig: any = { ...version.config_snapshot }
-    if (webhookRes.data?.length) enrichedConfig.webhook_configs = webhookRes.data
-    if (dropoffRes.data) enrichedConfig.dropoff_settings = dropoffRes.data
-    if (callbackSettings) enrichedConfig.callback_settings = callbackSettings
+    // Build enriched config: core agent config + ancillary settings for YAML visibility
+    const enrichedConfig = enrichSnapshotForGitHub(version.config_snapshot, webhookRes.data, dropoffRes.data, callbackSettings)
 
     // 6. Create GitHub PR — push enriched config (agent + all settings) as YAML
     const prResult = await createMergePR(

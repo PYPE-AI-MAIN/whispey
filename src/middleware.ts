@@ -1,5 +1,33 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
+// Verify a PYPE_JWT_SECRET-signed Bearer token using the Web Crypto API (Edge-compatible).
+// Used for internal server-to-server calls that have no Clerk session.
+async function hasValidServiceToken(authHeader: string | null): Promise<boolean> {
+  if (!authHeader?.startsWith('Bearer ')) return false
+  const token = authHeader.slice(7)
+  const parts = token.split('.')
+  if (parts.length !== 3) return false
+  const secret = process.env.PYPE_JWT_SECRET
+  if (!secret) return false
+  try {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    )
+    const sigInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
+    const sigBytes = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, sigInput)
+    if (!valid) return false
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return !payload.exp || payload.exp > Math.floor(Date.now() / 1000)
+  } catch {
+    return false
+  }
+}
+
 // Define which routes are public (don't require authentication)
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -32,9 +60,10 @@ export default clerkMiddleware(async (auth, request) => {
     return
   }
   
-  // If it's not a public route and user is not authenticated, redirect to sign-in
+  // If it's not a public route, require either a Clerk session or a valid internal service JWT
   if (!isPublicRoute(request)) {
-    await auth.protect();
+    const isInternalCall = await hasValidServiceToken(request.headers.get('Authorization'))
+    if (!isInternalCall) await auth.protect()
   }
 });
 

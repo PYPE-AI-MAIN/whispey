@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { pushPromptToGitHub, enrichSnapshotForGitHub } from '@/lib/github-prompts'
+import { mintServiceToken } from '@/lib/serviceToken'
 
 const supabase = createServiceRoleClient()
 
@@ -55,8 +57,6 @@ export async function POST(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     const isPipecat = version.config_snapshot?.platform === 'pipecat'
 
-    let deployOk = false
-
     if (isPipecat) {
       const pipecatAgentId = version.config_snapshot?.agent?.whispey_agent_id
       if (!pipecatAgentId) {
@@ -64,31 +64,94 @@ export async function POST(
       }
       const res = await fetch(`${appUrl}/api/pipecat/agents/${pipecatAgentId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${mintServiceToken()}`,
+        },
         body: JSON.stringify(version.config_snapshot.agent),
       })
-      deployOk = res.ok
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        return NextResponse.json({ message: `Restore deploy failed: ${(err as any).error ?? 'unknown'}` }, { status: 502 })
+        const errText = await res.text().catch(() => '')
+        console.error('[restore] Pipecat deploy failed:', res.status, errText)
+        const errJson = (() => { try { return JSON.parse(errText) } catch { return null } })()
+        const detail = errJson?.error ?? errJson?.message ?? errText ?? 'unknown'
+        return NextResponse.json({ message: `Restore deploy failed: ${detail}` }, { status: 502 })
       }
     } else {
       const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${mintServiceToken()}`,
+        },
         body: JSON.stringify({
           agent: version.config_snapshot.agent,
           metadata: { agentId, agentName: agent.name },
         }),
       })
-      deployOk = res.ok
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        return NextResponse.json({ message: `Restore deploy failed: ${(err as any).message ?? 'unknown'}` }, { status: 502 })
+        const errText = await res.text().catch(() => '')
+        console.error('[restore] LiveKit deploy failed:', res.status, errText)
+        const errJson = (() => { try { return JSON.parse(errText) } catch { return null } })()
+        const detail = errJson?.message ?? errJson?.error ?? errText ?? 'unknown'
+        return NextResponse.json({ message: `Restore deploy failed: ${detail}` }, { status: 502 })
       }
     }
 
-    // 4. Save a new version row with the old config and new commit message
+    // 4. Push restored config as YAML to GitHub (same enrichment as regular save)
+    const { data: project } = await supabase
+      .from('pype_voice_projects')
+      .select('name')
+      .eq('id', agent.project_id)
+      .single()
+
+    const projectName = project?.name ?? agent.project_id
+    const agentName = agent.name ?? agentId
+
+    const [webhookRes, dropoffRes] = await Promise.all([
+      supabase
+        .from('pype_voice_webhook_configs')
+        .select('webhook_name, webhook_url, http_method, headers, trigger_events, is_active')
+        .eq('agent_id', agentId),
+      supabase
+        .from('pype_voice_agent_dropoff_settings')
+        .select('enabled, dropoff_message, delay_minutes, max_retries, context_dropoff_prompt, sip_trunk_id, phone_number_id')
+        .eq('agent_id', agentId)
+        .eq('is_active', true)
+        .maybeSingle(),
+    ])
+
+    let callbackSettings: any = null
+    const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+    if (schedulerUrl) {
+      try {
+        const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${agentId}/callback-settings`, {
+          headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
+          cache: 'no-store',
+        })
+        if (cbRes.ok) {
+          const cbData = await cbRes.json()
+          if (cbData && Object.keys(cbData).length > 0) callbackSettings = cbData
+        }
+      } catch {}
+    }
+
+    const githubSnapshot = enrichSnapshotForGitHub(
+      version.config_snapshot,
+      webhookRes.data,
+      dropoffRes.data,
+      callbackSettings,
+    )
+
+    const githubResult = await pushPromptToGitHub(
+      projectName,
+      agentName,
+      githubSnapshot,
+      commit_message.trim(),
+      userEmail ?? 'unknown',
+    )
+
+    // 5. Save a new version row with the old config and new commit message
     const { data: latest } = await supabase
       .from('pype_agent_config_versions')
       .select('version_number')
@@ -111,7 +174,8 @@ export async function POST(
         commit_message: commit_message.trim(),
         created_by_email: userEmail ?? null,
         created_by_user_id: userId ?? null,
-        github_push_ok: false,
+        github_sha: githubResult?.sha ?? null,
+        github_push_ok: githubResult !== null,
       })
       .select('id')
       .single()

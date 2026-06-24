@@ -71,6 +71,24 @@ async function getDefaultBranchSha(): Promise<string | null> {
   }
 }
 
+/**
+ * Appends supplemental settings (webhook, dropoff, callback) to a core agent
+ * config snapshot so the resulting GitHub YAML shows all changed configuration.
+ * Pass null/undefined for settings that are not present.
+ */
+export function enrichSnapshotForGitHub(
+  baseSnapshot: any,
+  webhooks: any[] | null | undefined,
+  dropoff: any | null | undefined,
+  callbackSettings: any | null | undefined,
+): any {
+  const enriched: any = { ...baseSnapshot }
+  if (webhooks?.length) enriched.webhook_configs = webhooks
+  if (dropoff) enriched.dropoff_settings = dropoff
+  if (callbackSettings) enriched.callback_settings = callbackSettings
+  return enriched
+}
+
 export async function pushPromptToGitHub(
   projectName: string,
   agentName: string,
@@ -82,7 +100,7 @@ export async function pushPromptToGitHub(
 
   const path = configFilePath(projectName, agentName)
   const currentSha = await getCurrentSha(path)
-  const yamlContent = yaml.dump(normalizeLineEndings(configSnapshot), { lineWidth: -1, noRefs: true })
+  const yamlContent = yaml.dump(normalizeLineEndings(configSnapshot), { lineWidth: -1, noRefs: true, sortKeys: true })
 
   const authorName = authorEmail.split('@')[0]
   const body: Record<string, unknown> = {
@@ -155,7 +173,7 @@ export async function createMergePR(
 
   // Serialize the full agent config to YAML and push as config.yml
   const path = configFilePath(projectName, agentName)
-  const yamlContent = yaml.dump(normalizeLineEndings(configSnapshot), { lineWidth: -1, noRefs: true })
+  const yamlContent = yaml.dump(normalizeLineEndings(configSnapshot), { lineWidth: -1, noRefs: true, sortKeys: true })
   const existingSha = await getCurrentSha(path, branchName)
 
   const authorName = authorEmail.split('@')[0]

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { pushPromptToGitHub } from '@/lib/github-prompts'
+import { pushPromptToGitHub, enrichSnapshotForGitHub } from '@/lib/github-prompts'
 import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 const supabase = createServiceRoleClient()
@@ -85,11 +85,44 @@ export async function POST(
     const projectName = project?.name ?? agent.project_id
     const agentName = agent.name ?? agentId
 
-    // Push full config as YAML to agents/{project}/{agent}/config.yml (non-blocking on failure)
+    // Fetch supplemental settings to include in the GitHub YAML for visibility
+    const [webhookRes, dropoffRes] = await Promise.all([
+      supabase
+        .from('pype_voice_webhook_configs')
+        .select('webhook_name, webhook_url, http_method, headers, trigger_events, is_active')
+        .eq('agent_id', agentId),
+      supabase
+        .from('pype_voice_agent_dropoff_settings')
+        .select('enabled, dropoff_message, delay_minutes, max_retries, context_dropoff_prompt, sip_trunk_id, phone_number_id')
+        .eq('agent_id', agentId)
+        .eq('is_active', true)
+        .maybeSingle(),
+    ])
+
+    let callbackSettings: any = null
+    const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+    if (schedulerUrl) {
+      try {
+        const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${agentId}/callback-settings`, {
+          headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
+          cache: 'no-store',
+        })
+        if (cbRes.ok) {
+          const cbData = await cbRes.json()
+          if (cbData && Object.keys(cbData).length > 0) callbackSettings = cbData
+        }
+      } catch {}
+    }
+
+    // Enrich snapshot for GitHub YAML — supplemental settings appended for clear diff visibility.
+    // Supabase still stores the clean core snapshot without these extra keys.
+    const githubSnapshot = enrichSnapshotForGitHub(snapshot, webhookRes.data, dropoffRes.data, callbackSettings)
+
+    // Push enriched config as YAML to agents/{project}/{agent}/config.yml (non-blocking on failure)
     const githubResult = await pushPromptToGitHub(
       projectName,
       agentName,
-      snapshot,
+      githubSnapshot,
       commit_message.trim(),
       userEmail ?? 'unknown',
     )

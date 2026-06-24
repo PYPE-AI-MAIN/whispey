@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const SCHEDULER_API_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+const SCHEDULER_HEADERS = {
+  'Content-Type': 'application/json',
+  'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1',
+}
 
 export async function GET(
   _request: NextRequest,
@@ -11,7 +15,7 @@ export async function GET(
     const { id } = await params
     const response = await fetch(
       `${SCHEDULER_API_URL}/api/v1/agents/${id}/callback-settings`,
-      { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }
+      { headers: SCHEDULER_HEADERS, cache: 'no-store' }
     )
 
     if (!response.ok) {
@@ -44,7 +48,7 @@ export async function PUT(
       `${SCHEDULER_API_URL}/api/v1/agents/${id}/callback-settings`,
       {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: SCHEDULER_HEADERS,
         body: JSON.stringify(body),
       }
     )
