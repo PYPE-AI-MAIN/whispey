@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const jwtSecret = process.env.JWT_SECRET || "default-jwt-secret-change-in-production";
+    const jwtSecret = process.env.PYPE_JWT_SECRET || "default-jwt-secret-change-in-production";
 
     // Decode and verify the token
     const payload = jwt.verify(token, jwtSecret) as any;

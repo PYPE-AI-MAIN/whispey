@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + mintServiceToken(),
       },
     })
     

@@ -1,6 +1,7 @@
 // Public API to update agent voice for playground
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 
 const supabase = createServiceRoleClient()
 
@@ -54,7 +55,7 @@ export async function POST(
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'pype-api-v1'
+          ...serviceAuthHeaders()
         }
       })
       
@@ -120,7 +121,7 @@ export async function POST(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': 'pype-api-v1'
+        ...serviceAuthHeaders()
       },
       body: JSON.stringify(agentConfigBody)
     })
