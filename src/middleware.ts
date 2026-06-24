@@ -10,8 +10,16 @@ const isPublicRoute = createRouteMatcher([
   '/docs(.*)',
   '/playground(.*)',
   '/invite(.*)',
-  // '/api/webhooks(.*)', // if you have public API routes
-  '/api(.*)'
+  // Public API routes (external callers — no Clerk session)
+  '/api/webhooks(.*)',
+  '/api/vapi/webhook(.*)',
+  '/api/retell/webhook(.*)',
+  '/api/elevenlabs/webhook(.*)',
+  '/api/validate-sso-token(.*)',
+  '/api/logs/call-logs(.*)',
+  '/api/logs/failure-report(.*)',
+  '/api/send-logs(.*)',
+  '/api/github-stars(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

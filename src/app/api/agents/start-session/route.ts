@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/start-session/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken(),
         },
         body: JSON.stringify({
           user_identity: body.user_identity,

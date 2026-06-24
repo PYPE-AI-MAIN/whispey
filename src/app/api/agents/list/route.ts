@@ -1,5 +1,6 @@
 // src/app/api/agents/list/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const response = await fetch(`${apiUrl}/agents`, {
       method: 'GET',
       headers: {
-        'x-api-key': 'pype-api-v1',
+        ...serviceAuthHeaders(),
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       }

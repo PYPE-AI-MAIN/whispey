@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 import { NextRequest, NextResponse } from "next/server"
 import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
 import {
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": "pype-api-v1",
+          "x-api-key": "pype-api-v1", "Authorization": "Bearer " + mintServiceToken(),
         },
         signal: pypeApiAbortSignal(),
       })

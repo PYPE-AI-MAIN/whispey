@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Server-side Supabase client (prefer service role for row updates)
@@ -72,9 +73,9 @@ async function rollbackAgentCreation(agentId: string, agentName?: string): Promi
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': 'pype-api-v1'
+        ...serviceAuthHeaders()
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         agent_name: agentName
       })
     })
@@ -312,7 +313,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'pype-api-v1'
+          ...serviceAuthHeaders()
         },
         body: JSON.stringify(agentPayload)
       })

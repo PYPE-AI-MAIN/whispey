@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/sip/create-dispatch-rule/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/create_sip_dispatch_rule`, {
       method: 'POST',
       headers: {
-        'x-api-key': 'pype-api-v1',
+        'x-api-key': 'pype-api-v1', 'Authorization': 'Bearer ' + mintServiceToken(),
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },

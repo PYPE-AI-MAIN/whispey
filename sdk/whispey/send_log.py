@@ -358,3 +358,45 @@ async def send_to_whispey(data, apikey=None, api_url=None):
             "success": False,
             "error": error_msg
         }
+
+
+def send_to_whispey_sync(data, apikey=None, api_url=None):
+    """
+    Synchronous version of send_to_whispey using requests.
+    Used for exit handlers (atexit, SIGTERM) where async is not available.
+    """
+    import requests as _requests
+
+    if data.get("wcall_event") != "call_started" and "call_ended_reason" not in data:
+        data["call_ended_reason"] = "completed"
+
+    if "call_started_at" in data:
+        data["call_started_at"] = convert_timestamp(data["call_started_at"])
+    if "call_ended_at" in data:
+        data["call_ended_at"] = convert_timestamp(data["call_ended_at"])
+
+    api_key_to_use = apikey if apikey is not None else os.getenv("WHISPEY_API_KEY") or WHISPEY_API_KEY
+    url_to_use = api_url if api_url else (os.getenv("WHISPEY_API_URL") or WHISPEY_API_URL)
+
+    if not api_key_to_use:
+        logger.error("[WHISPEY] send_to_whispey_sync: API key missing")
+        return {"success": False, "error": "API key missing"}
+
+    if should_compress(data):
+        try:
+            compressed_data = compress_data(data)
+            payload = {"compressed": True, "data": compressed_data}
+        except Exception:
+            payload = data
+    else:
+        payload = data
+
+    headers = {"Content-Type": "application/json", "x-pype-token": api_key_to_use}
+
+    try:
+        response = _requests.post(url_to_use, json=payload, headers=headers, timeout=25)
+        logger.info("[WHISPEY] send_to_whispey_sync: status=%d", response.status_code)
+        return {"success": response.status_code < 400, "status": response.status_code}
+    except Exception as e:
+        logger.error("[WHISPEY] send_to_whispey_sync: failed: %s", e)
+        return {"success": False, "error": str(e)}
