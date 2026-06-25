@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 
@@ -31,12 +32,12 @@ export default async function InvitePage({
           <p className="text-gray-500 dark:text-gray-400">
             This invite link is invalid or has expired. Please ask your admin to send a new invite.
           </p>
-          <a
+          <Link
             href="/sign-in"
             className="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             Go to Sign In
-          </a>
+          </Link>
         </div>
       </div>
     )

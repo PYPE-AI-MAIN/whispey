@@ -184,7 +184,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   // Filter and process data
   const processedTraces = useMemo(() => {
     if (traceData?.length) {
-      let filtered = traceData.filter((item: TraceLog) => 
+      const filtered = traceData.filter((item: TraceLog) => 
         item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
       )
     

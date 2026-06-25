@@ -44,7 +44,7 @@ export async function GET(
     console.log('New API keys found:', apiKeys?.length || 0)
 
     // Format keys from new system
-    let formattedKeys = (apiKeys || []).map((key: any) => ({
+    const formattedKeys = (apiKeys || []).map((key: any) => ({
       id: key.id,
       name: key.name || 'Project API Key',
       masked_key: key.masked_key,
