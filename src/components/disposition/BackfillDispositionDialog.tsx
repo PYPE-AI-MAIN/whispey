@@ -116,11 +116,6 @@ const BackfillDispositionDialog = memo<BackfillDispositionDialogProps>(({
     }
   }
 
-  // If project is not allowed, don't render the button
-  if (!isProjectAllowed()) {
-    return null
-  }
-
   // ==========================================================================
   // State Management
   // ==========================================================================
@@ -130,13 +125,18 @@ const BackfillDispositionDialog = memo<BackfillDispositionDialogProps>(({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [results, setResults] = useState<BackfillResponse | null>(null)
-  const [skipExisting, setSkipExisting] = useState(true) // Default to skipping existing values
+  const [skipExisting, setSkipExisting] = useState(true)
 
   // Date range state - default to last 30 days
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
     to: new Date()
   })
+
+  // If project is not allowed, don't render the button
+  if (!isProjectAllowed()) {
+    return null
+  }
 
   // ==========================================================================
   // Handlers
