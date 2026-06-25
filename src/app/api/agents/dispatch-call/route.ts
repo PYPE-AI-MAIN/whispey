@@ -1,8 +1,16 @@
 // src/app/api/agents/dispatch-call/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const apiUrl = process.env.PYPEAI_API_URL
     
     if (!apiUrl) {
@@ -19,6 +27,14 @@ export async function POST(request: NextRequest) {
 
     if (!agent_name) {
       return NextResponse.json({ error: 'agent_name is required' }, { status: 400 })
+    }
+
+    const projectId = await getProjectIdFromAgentBackendName(agent_name)
+    if (!projectId) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
+    }
+    if (await isViewerForProject(projectId)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     if (!phone_number) {
@@ -86,7 +102,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/dispatch_call`, {
       method: 'POST',
       headers: {
-        'x-api-key': 'pype-api-v1',
+        ...serviceAuthHeaders(),
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },

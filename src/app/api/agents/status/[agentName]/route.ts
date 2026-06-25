@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -52,7 +53,7 @@ export async function GET(
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey
+          'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken()
         },
         signal: pypeApiAbortSignal(),
       })

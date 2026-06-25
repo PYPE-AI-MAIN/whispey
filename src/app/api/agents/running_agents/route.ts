@@ -1,6 +1,7 @@
 // Create: app/api/agents/running_agents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { isPypeUpstreamUnreachable, pypeApiAbortSignal } from '@/lib/pypeApiFetch'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       response = await fetch(`${apiUrl}/running_agents`, {
         method: 'GET',
         headers: {
-          'x-api-key': 'pype-api-v1',
+          ...serviceAuthHeaders(),
           'ngrok-skip-browser-warning': 'true',
           'Accept': 'application/json',
           'Content-Type': 'application/json',

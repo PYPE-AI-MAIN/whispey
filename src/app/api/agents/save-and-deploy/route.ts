@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 import {
   getPypeApiBaseUrlForServer,
   isPypeUpstreamUnreachable,
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'pype-api-v1'
+          ...serviceAuthHeaders()
         },
         body: JSON.stringify(agentConfigBody),
         signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS),
