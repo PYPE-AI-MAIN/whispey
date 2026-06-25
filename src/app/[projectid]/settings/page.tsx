@@ -3,6 +3,7 @@
 
 import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import Link from 'next/link'
 import OrganizationSettings from "@/components/projects/OrganizationSettings"
 import CallbackSettings from "@/components/projects/CallbackSettings"
 import { Loader2 } from 'lucide-react'
@@ -53,12 +54,12 @@ export default function SettingsPage() {
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-2">Organization not found</p>
-          <a 
-            href="/projects" 
+          <Link
+            href="/projects"
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             Back to organizations
-          </a>
+          </Link>
         </div>
       </div>
     )

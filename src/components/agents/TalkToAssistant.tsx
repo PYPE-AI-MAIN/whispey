@@ -86,7 +86,7 @@ export default function TalkToAssistant({
       onFlashEndCallDone?.()
     }
   }, [flashEndCall])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })

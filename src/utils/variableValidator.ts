@@ -74,7 +74,7 @@ export const validateVariables = (text: string): ValidationResult => {
       continue; // Don't add to validVariables
     }
 
-    let varName = rawContent.trim();
+    const varName = rawContent.trim();
 
     // Check for spaces
     if (/\s/.test(varName)) {

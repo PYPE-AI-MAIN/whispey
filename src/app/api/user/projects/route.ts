@@ -104,12 +104,12 @@ export async function GET(request: NextRequest) {
 
     if (userProjects) {
       userProjects.forEach(up => {
-        // @ts-ignore
+        // @ts-expect-error -- supabase join type not inferred
         if (!projectIds.has(up.project.id)) {
           allProjects.push(
             mapProject(up.project, up.role, up.permissions, up.joined_at, 'member')
           )
-          // @ts-ignore
+          // @ts-expect-error -- supabase join type not inferred
 
           projectIds.add(up.project.id)
         }
@@ -118,13 +118,13 @@ export async function GET(request: NextRequest) {
 
     if (emailMappings) {
       emailMappings.forEach(em => {
-        // @ts-ignore
+        // @ts-expect-error -- supabase join type not inferred
 
         if (!projectIds.has(em.project.id)) {
           allProjects.push(
             mapProject(em.project, em.role, em.permissions, em.created_at, 'email_mapped')
           )
-          // @ts-ignore
+          // @ts-expect-error -- supabase join type not inferred
           projectIds.add(em.project.id)
         }
       })

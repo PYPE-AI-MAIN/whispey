@@ -44,9 +44,9 @@ function sanitizeValue(val: unknown): unknown {
 function sanitizeCallLog(log: CallLog): CallLog {
   return {
     ...log,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     transcript_json: sanitizeValue(log.transcript_json) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     metadata: sanitizeValue(log.metadata) as any,
   }
 }
