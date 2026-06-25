@@ -275,7 +275,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
     },
     size: 52,
     minSize: 52,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }), [expandedNumbers, toggleExpand, countsMap])
 
   const columns = useMemo(() => [expandCol, ...dataCols], [expandCol, dataCols])
