@@ -243,7 +243,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                   max="1"
                                   value={metricConfig.threshold}
                                   onChange={(e) =>
-                                    updateMetric(metricConfig.metric_id, { threshold: parseFloat(e.target.value) || 0 })
+                                    updateMetric(metricConfig.metric_id, { threshold: Number.parseFloat(e.target.value) || 0 })
                                   }
                                   className="mt-1 text-xs"
                                 />
@@ -340,7 +340,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                     max="1"
                                     value={metricConfig.threshold}
                                     onChange={(e) => 
-                                      updateMetric(metricConfig.metric_id, { threshold: parseFloat(e.target.value) || 0 })
+                                      updateMetric(metricConfig.metric_id, { threshold: Number.parseFloat(e.target.value) || 0 })
                                     }
                                     className="mt-1 text-xs"
                                   />

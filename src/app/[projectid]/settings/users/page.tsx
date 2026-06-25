@@ -124,7 +124,7 @@ function MetricsTab() {
   })
 
   const deriveMetricId = (name: string) =>
-    name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 30)
+    name.toLowerCase().replaceAll(/\s+/g, '_').replaceAll(/[^a-z0-9_]/g, '').slice(0, 30)
 
   const handleNameChange = (name: string) => {
     const trimmed = name.slice(0, 30)
@@ -164,17 +164,65 @@ function MetricsTab() {
         body: JSON.stringify(addForm),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setAddError(data.error ?? 'Failed to create template.')
-      } else {
+      if (res.ok) {
         setTemplates(prev => [...prev, data])
         setAddForm({ metric_id: '', name: '', description: '', default_criteria: '', default_scoring_mode: 'continuous', default_threshold: 0.7, category: '', priority: 'medium' })
-
         setAddFormOpen(false)
+      } else {
+        setAddError(data.error ?? 'Failed to create template.')
       }
     } finally {
       setAddLoading(false)
     }
+  }
+
+  let templatesSection: React.ReactNode
+  if (loading) {
+    templatesSection = (
+      <div className="rounded-xl border border-gray-800 divide-y divide-gray-800">
+        {['s1', 's2', 's3', 's4'].map(key => (
+          <div key={key} className="px-5 py-4 animate-pulse flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-3 w-32 bg-gray-800 rounded" />
+              <div className="h-2.5 w-20 bg-gray-800/60 rounded" />
+            </div>
+            <div className="h-6 w-16 bg-gray-800 rounded" />
+          </div>
+        ))}
+      </div>
+    )
+  } else if (templates.length === 0) {
+    templatesSection = (
+      <div className="rounded-xl border border-gray-800 py-16 flex flex-col items-center gap-2 text-gray-600">
+        <Activity className="h-6 w-6" />
+        <span className="text-sm">No metric templates yet</span>
+      </div>
+    )
+  } else {
+    templatesSection = (
+      <div className="rounded-xl border border-gray-800 overflow-hidden divide-y divide-gray-800">
+        {templates.map(t => (
+          <div key={t.metric_id} className="flex items-center justify-between px-5 py-4 hover:bg-gray-800/40 transition-colors">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[13px] font-medium text-gray-100">{t.name}</span>
+                {t.category && <Badge variant="outline" className="text-[10px] border-gray-700 text-gray-400">{t.category}</Badge>}
+                {t.priority === 'critical' && <Badge variant="destructive" className="text-[10px]">Critical</Badge>}
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700">{t.default_scoring_mode}</span>
+              </div>
+              <p className="text-[11px] text-gray-600 font-mono mt-0.5">{t.metric_id}</p>
+              {t.description && <p className="text-[11px] text-gray-500 mt-0.5 truncate max-w-lg">{t.description}</p>}
+            </div>
+            <button
+              onClick={() => setConfirmDeleteId(t.metric_id)}
+              className="ml-4 flex-shrink-0 p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -232,7 +280,7 @@ function MetricsTab() {
                 </div>
                 <div>
                   <Label className="text-xs font-medium text-gray-400">Default Threshold</Label>
-                  <Input type="number" step="0.01" min="0" max="1" className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100" value={addForm.default_threshold} onChange={e => setAddForm(f => ({ ...f, default_threshold: parseFloat(e.target.value) || 0 }))} />
+                  <Input type="number" step="0.01" min="0" max="1" className="mt-1 text-xs bg-gray-800 border-gray-700 text-gray-100" value={addForm.default_threshold} onChange={e => setAddForm(f => ({ ...f, default_threshold: Number.parseFloat(e.target.value) || 0 }))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -271,47 +319,7 @@ function MetricsTab() {
         </div>
 
         {/* Templates list */}
-        {loading ? (
-          <div className="rounded-xl border border-gray-800 divide-y divide-gray-800">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="px-5 py-4 animate-pulse flex items-center justify-between">
-                <div className="space-y-2">
-                  <div className="h-3 w-32 bg-gray-800 rounded" />
-                  <div className="h-2.5 w-20 bg-gray-800/60 rounded" />
-                </div>
-                <div className="h-6 w-16 bg-gray-800 rounded" />
-              </div>
-            ))}
-          </div>
-        ) : templates.length === 0 ? (
-          <div className="rounded-xl border border-gray-800 py-16 flex flex-col items-center gap-2 text-gray-600">
-            <Activity className="h-6 w-6" />
-            <span className="text-sm">No metric templates yet</span>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-gray-800 overflow-hidden divide-y divide-gray-800">
-            {templates.map(t => (
-              <div key={t.metric_id} className="flex items-center justify-between px-5 py-4 hover:bg-gray-800/40 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-medium text-gray-100">{t.name}</span>
-                    {t.category && <Badge variant="outline" className="text-[10px] border-gray-700 text-gray-400">{t.category}</Badge>}
-                    {t.priority === 'critical' && <Badge variant="destructive" className="text-[10px]">Critical</Badge>}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700">{t.default_scoring_mode}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-600 font-mono mt-0.5">{t.metric_id}</p>
-                  {t.description && <p className="text-[11px] text-gray-500 mt-0.5 truncate max-w-lg">{t.description}</p>}
-                </div>
-                <button
-                  onClick={() => setConfirmDeleteId(t.metric_id)}
-                  className="ml-4 flex-shrink-0 p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {templatesSection}
       </div>
 
       {/* Delete confirmation */}
