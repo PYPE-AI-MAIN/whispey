@@ -4,11 +4,11 @@ on:
   pull_request:
     branches:
       - main
-      - dev
+      - develop
   push:
     branches:
       - main
-      - dev
+      - develop
 
 # Cancel in-progress runs on the same branch when a new push arrives.
 # This prevents stale PR runs from blocking the queue.
