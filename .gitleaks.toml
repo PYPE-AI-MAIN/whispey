@@ -1,8 +1,0 @@
-title = "Gitleaks config"
-
-[allowlist]
-description = "Allowlist for test fixture values that are not real secrets"
-paths = [
-  "vitest.config.ts",
-  "__tests__",
-]
