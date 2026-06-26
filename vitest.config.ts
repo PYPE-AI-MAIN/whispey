@@ -23,6 +23,7 @@ export default defineConfig({
         'src/lib/transcriptProcessor.ts',
         'src/lib/utils.ts',
         'src/lib/serviceToken.ts',
+        'src/lib/serviceTokenVerifier.ts',
         'src/lib/pypeApiFetch.ts',
         'src/lib/redactCallLogsTagsForViewer.ts',
         'src/lib/vapi-encryption.ts',
