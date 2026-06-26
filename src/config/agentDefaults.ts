@@ -106,11 +106,7 @@ export const AGENT_DEFAULT_CONFIG = {
     },
   
     // Tools Configuration
-    tools: [
-      {
-        type: "end_call"
-      }
-    ],
+    tools: [] as Array<{ type: string }>,
   
     // Filler Words Configuration
     filler_words: {
