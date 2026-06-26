@@ -15,7 +15,7 @@ async function createPipecatAgent(agentData: any, projectId: string, whispeyAgen
     id: whispeyAgentId,              // ✅ use Supabase UUID so both DBs share the same ID
     name: agentData.name,
     prompt: `You are a helpful voice assistant named ${agentData.name}. ${agentData.configuration?.description || 'Assist users with their queries in a friendly and professional manner.'}`,
-    tools: ["end_call", "transfer_call"],
+    tools: ["transfer_call"],
     custom_tools: [],
     stt_language: "en-IN",
     stt_model: "saarika:v2.5",
