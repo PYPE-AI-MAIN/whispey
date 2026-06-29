@@ -79,8 +79,8 @@ async function getDefaultBranchSha(): Promise<string | null> {
 export function enrichSnapshotForGitHub(
   baseSnapshot: any,
   webhooks: any[] | null | undefined,
-  dropoff: any | null | undefined,
-  callbackSettings: any | null | undefined,
+  dropoff: any,
+  callbackSettings: any,
 ): any {
   const enriched: any = { ...baseSnapshot }
   if (webhooks?.length) enriched.webhook_configs = webhooks

@@ -9,6 +9,70 @@ function extractPromptSnapshot(config: any): string | null {
   return config?.agent?.assistant?.[0]?.prompt ?? config?.agent?.prompt ?? null
 }
 
+function parseDeployError(errText: string): string {
+  try {
+    const j = JSON.parse(errText)
+    return j?.error ?? j?.message ?? errText ?? 'unknown'
+  } catch {
+    return errText || 'unknown'
+  }
+}
+
+type DeployError = { message: string; status: number }
+
+async function runDeploy(
+  appUrl: string,
+  isPipecat: boolean,
+  configSnapshot: any,
+  agentId: string,
+  agentName: string,
+): Promise<DeployError | null> {
+  if (isPipecat) {
+    const pipecatAgentId = configSnapshot?.agent?.whispey_agent_id
+    if (!pipecatAgentId) {
+      return { message: 'Cannot determine Pipecat agent ID from snapshot.', status: 400 }
+    }
+    const res = await fetch(`${appUrl}/api/pipecat/agents/${pipecatAgentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mintServiceToken()}` },
+      body: JSON.stringify(configSnapshot.agent),
+    })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error('[restore] Pipecat deploy failed:', res.status, errText)
+      return { message: `Restore deploy failed: ${parseDeployError(errText)}`, status: 502 }
+    }
+  } else {
+    const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mintServiceToken()}` },
+      body: JSON.stringify({ agent: configSnapshot.agent, metadata: { agentId, agentName } }),
+    })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error('[restore] LiveKit deploy failed:', res.status, errText)
+      return { message: `Restore deploy failed: ${parseDeployError(errText)}`, status: 502 }
+    }
+  }
+  return null
+}
+
+async function fetchCallbackSettings(agentId: string): Promise<any> {
+  const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+  if (!schedulerUrl) return null
+  try {
+    const res = await fetch(`${schedulerUrl}/api/v1/agents/${agentId}/callback-settings`, {
+      headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data && Object.keys(data).length > 0 ? data : null
+  } catch {
+    return null
+  }
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -56,47 +120,8 @@ export async function POST(
     // 3. Deploy the old config back to the dev agent
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     const isPipecat = version.config_snapshot?.platform === 'pipecat'
-
-    if (isPipecat) {
-      const pipecatAgentId = version.config_snapshot?.agent?.whispey_agent_id
-      if (!pipecatAgentId) {
-        return NextResponse.json({ message: 'Cannot determine Pipecat agent ID from snapshot.' }, { status: 400 })
-      }
-      const res = await fetch(`${appUrl}/api/pipecat/agents/${pipecatAgentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${mintServiceToken()}`,
-        },
-        body: JSON.stringify(version.config_snapshot.agent),
-      })
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '')
-        console.error('[restore] Pipecat deploy failed:', res.status, errText)
-        const errJson = (() => { try { return JSON.parse(errText) } catch { return null } })()
-        const detail = errJson?.error ?? errJson?.message ?? errText ?? 'unknown'
-        return NextResponse.json({ message: `Restore deploy failed: ${detail}` }, { status: 502 })
-      }
-    } else {
-      const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${mintServiceToken()}`,
-        },
-        body: JSON.stringify({
-          agent: version.config_snapshot.agent,
-          metadata: { agentId, agentName: agent.name },
-        }),
-      })
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '')
-        console.error('[restore] LiveKit deploy failed:', res.status, errText)
-        const errJson = (() => { try { return JSON.parse(errText) } catch { return null } })()
-        const detail = errJson?.message ?? errJson?.error ?? errText ?? 'unknown'
-        return NextResponse.json({ message: `Restore deploy failed: ${detail}` }, { status: 502 })
-      }
-    }
+    const deployErr = await runDeploy(appUrl, isPipecat, version.config_snapshot, agentId, agent.name)
+    if (deployErr) return NextResponse.json({ message: deployErr.message }, { status: deployErr.status })
 
     // 4. Push restored config as YAML to GitHub (same enrichment as regular save)
     const { data: project } = await supabase
@@ -121,20 +146,7 @@ export async function POST(
         .maybeSingle(),
     ])
 
-    let callbackSettings: any = null
-    const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
-    if (schedulerUrl) {
-      try {
-        const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${agentId}/callback-settings`, {
-          headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
-          cache: 'no-store',
-        })
-        if (cbRes.ok) {
-          const cbData = await cbRes.json()
-          if (cbData && Object.keys(cbData).length > 0) callbackSettings = cbData
-        }
-      } catch {}
-    }
+    const callbackSettings = await fetchCallbackSettings(agentId)
 
     const githubSnapshot = enrichSnapshotForGitHub(
       version.config_snapshot,

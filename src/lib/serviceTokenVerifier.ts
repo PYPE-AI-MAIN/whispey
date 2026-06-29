@@ -18,14 +18,14 @@ const EXPECTED_AUD = 'pype-vc-bots'
  * Throws on invalid base64url input.
  */
 function base64UrlToBuffer(input: string): ArrayBuffer {
-  const base64 = input.replace(/-/g, '+').replace(/_/g, '/')
+  const base64 = input.replaceAll('-', '+').replaceAll('_', '/')
   const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
   const binary = atob(padded)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.codePointAt(i) ?? 0
   }
-  return bytes.buffer as ArrayBuffer
+  return bytes.buffer
 }
 
 /** Decode a base64url JWT segment into a plain object. Throws on invalid JSON. */

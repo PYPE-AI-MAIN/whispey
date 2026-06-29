@@ -44,7 +44,7 @@ interface DropOffCallSettingsProps {
   onFieldChange: (field: string, value: any) => void
 }
 
-export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, onFieldChange }: DropOffCallSettingsProps) {
+export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, onFieldChange }: Readonly<DropOffCallSettingsProps>) {
   const [loading, setLoading] = useState(true)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhones, setLoadingPhones] = useState(true)
@@ -296,7 +296,7 @@ export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, 
               type="number"
               min="0"
               value={settings.delay_minutes}
-              onChange={(e) => applyChange({ delay_minutes: parseInt(e.target.value) || 0 })}
+              onChange={(e) => applyChange({ delay_minutes: Number.parseInt(e.target.value) || 0 })}
               className="text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -315,7 +315,7 @@ export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, 
               min="0"
               max="10"
               value={settings.max_retries}
-              onChange={(e) => applyChange({ max_retries: parseInt(e.target.value) || 0 })}
+              onChange={(e) => applyChange({ max_retries: Number.parseInt(e.target.value) || 0 })}
               className="text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">

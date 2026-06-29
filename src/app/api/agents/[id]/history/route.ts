@@ -23,6 +23,22 @@ function extractPromptSnapshot(config: any): string | null {
     ?? null
 }
 
+async function fetchCallbackSettings(agentId: string): Promise<any> {
+  const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
+  if (!schedulerUrl) return null
+  try {
+    const res = await fetch(`${schedulerUrl}/api/v1/agents/${agentId}/callback-settings`, {
+      headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data && Object.keys(data).length > 0 ? data : null
+  } catch {
+    return null
+  }
+}
+
 // POST /api/agents/[id]/history — save a version checkpoint
 export async function POST(
   req: NextRequest,
@@ -99,20 +115,7 @@ export async function POST(
         .maybeSingle(),
     ])
 
-    let callbackSettings: any = null
-    const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
-    if (schedulerUrl) {
-      try {
-        const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${agentId}/callback-settings`, {
-          headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
-          cache: 'no-store',
-        })
-        if (cbRes.ok) {
-          const cbData = await cbRes.json()
-          if (cbData && Object.keys(cbData).length > 0) callbackSettings = cbData
-        }
-      } catch {}
-    }
+    const callbackSettings = await fetchCallbackSettings(agentId)
 
     // Enrich snapshot for GitHub YAML — supplemental settings appended for clear diff visibility.
     // Supabase still stores the clean core snapshot without these extra keys.
@@ -176,8 +179,8 @@ export async function GET(
   try {
     const { id: agentId } = await params
     const { searchParams } = new URL(req.url)
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(50, Math.max(1, Number.parseInt(searchParams.get('limit') || '20')))
     const offset = (page - 1) * limit
 
     const { data, error, count } = await supabase
