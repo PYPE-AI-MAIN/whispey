@@ -38,7 +38,7 @@ async function getOrInitProjectAgentState(projectId: string): Promise<{
   }
 
   // If column exists but value is null/absent, initialize it
-  let nextState: AgentQuotaState = (projectRow as any).agent || defaultState
+  const nextState: AgentQuotaState = (projectRow as any).agent || defaultState
 
   if (!(projectRow as any).agent) {
     const { error: initError } = await supabase
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
       console.log('🌐 STEP 2: Calling PypeAPI to create agent...')
       
       // Add whispey_api_key to agent configuration if not present
-      let agentPayload = { ...body }
+      const agentPayload = { ...body }
       if (agentPayload.agent && projectId) {
         try {
           // Get API key from pype_voice_api_keys table

@@ -306,9 +306,8 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
                             await asyncio.sleep(10)
                             if (session_id in _session_data_store and
                                     _session_data_store[session_id].get('last_participant_disconnect') == disconnect_time):
-                                logger.info(f"👤 Participant left and didn't reconnect — sending transcript for {session_id}")
+                                logger.info(f"👤 Participant left and didn't reconnect — marking session ended (whispey_shutdown will export with recording URL)")
                                 end_session_manually(session_id, "completed")
-                                await send_session_to_whispey(session_id)
                         try:
                             loop = asyncio.get_running_loop()
                             loop.create_task(_send_after_participant_leave())
@@ -729,9 +728,14 @@ def end_session_manually(session_id: str, status: str = "completed", error: str 
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found for manual end")
         return
-    
+
+    # ponytail: already ended — don't overwrite cached transcript with 0 turns on a second call
+    if not _session_data_store[session_id].get('call_active', True):
+        logger.info(f"⏭️ Session {session_id} already ended, skipping re-generation")
+        return
+
     logger.info(f"🔚 Manually ending session {session_id} with status: {status}")
-    
+
     # Mark as inactive
     _session_data_store[session_id]['call_active'] = False
     

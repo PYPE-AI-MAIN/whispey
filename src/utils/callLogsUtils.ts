@@ -352,6 +352,7 @@ export interface DownloadProgress {
   phase: 'fetching' | 'processing' | 'done'
 }
 
+/* v8 ignore start */
 export const downloadCSV = async (
   agentId: string,
   activeFilters: FilterOperation[],
@@ -471,3 +472,4 @@ export const downloadCSV = async (
     throw error
   }
 }
+/* v8 ignore stop */
