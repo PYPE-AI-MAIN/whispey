@@ -322,6 +322,8 @@ class CorrectedTranscriptCollector:
                 if config:
                     self.current_turn.turn_configuration = config
 
+        if not hasattr(event.item, 'role'):
+            return
         if event.item.role == "user":
             original_text = event.item.text_content
             

@@ -331,12 +331,6 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
             def on_session_close(event):
                 error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
                 end_session_manually(session_id, "completed", error_msg)
-                import asyncio
-                try:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(send_session_to_whispey(session_id))
-                except RuntimeError:
-                    asyncio.run(send_session_to_whispey(session_id))
         try:
             import asyncio
             def _on_done(task):
