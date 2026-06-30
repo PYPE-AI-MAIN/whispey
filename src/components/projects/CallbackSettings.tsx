@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Phone, AlertCircle, ArrowRight } from 'lucide-react'
+import { Loader2, Save, Phone, AlertCircle, ArrowRight } from 'lucide-react'
 import { PhoneNumber } from '@/utils/campaigns/constants'
 import toast from 'react-hot-toast'
-import { CallbackConfig } from '@/lib/supplementalSettings'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
 const DAY_LABELS: Record<string, string> = {
@@ -23,7 +23,20 @@ const TIMEZONES = [
   'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney',
 ]
 
-const DEFAULT_SETTINGS: CallbackConfig = {
+interface CallbackSettingsData {
+  enabled: boolean
+  timeWindow: { startTime: string; endTime: string }
+  allowedDays: string[]
+  timezone: string
+  phoneNumberId: string | null
+  sipTrunkId: string | null
+  maxFutureDays: number
+  maxCallbacksPerContact: number
+  defaultDelayMinutes: number
+  minDelayMinutes: number
+}
+
+const DEFAULT_SETTINGS: CallbackSettingsData = {
   enabled: false,
   timeWindow: { startTime: '09:00', endTime: '18:00' },
   allowedDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
@@ -67,14 +80,13 @@ interface CallbackSettingsProps {
   /** When provided, surfaces Pipecat/Acefone numbers attached to this agent. */
   agentRuntime?: 'livekit' | 'pipecat'
   pipecatAgentId?: string
-  onDataLoaded: (data: CallbackConfig) => void
-  onFieldChange: (field: string, value: any) => void
 }
 
-export default function CallbackSettings({ agentId, projectId, agentRuntime, pipecatAgentId, onDataLoaded, onFieldChange }: CallbackSettingsProps) {
-  const [form, setForm] = useState<CallbackConfig>(DEFAULT_SETTINGS)
+export default function CallbackSettings({ agentId, projectId, agentRuntime, pipecatAgentId }: CallbackSettingsProps) {
+  const queryClient = useQueryClient()
+  const [form, setForm] = useState<CallbackSettingsData>(DEFAULT_SETTINGS)
 
-  const { data: settings, isLoading } = useQuery<CallbackConfig>({
+  const { data: settings, isLoading } = useQuery<CallbackSettingsData>({
     queryKey: ['callback-settings', 'agent', agentId],
     queryFn: async () => {
       const res = await fetch(`/api/agents/${agentId}/callback-settings`)
@@ -133,24 +145,64 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
   const loadingPhones = loadingLivekit || (agentRuntime === 'pipecat' && loadingPipecat)
 
   useEffect(() => {
-    if (settings) {
-      const merged = { ...DEFAULT_SETTINGS, ...settings }
-      setForm(merged)
-      onDataLoaded(merged)
-    }
+    if (settings) setForm({ ...DEFAULT_SETTINGS, ...settings })
   }, [settings])
 
-  const applyChange = (patch: Partial<CallbackConfig>) => {
-    const next = { ...form, ...patch }
-    setForm(next)
-    onFieldChange('advancedSettings.callbackScheduling', next)
-  }
+  const mutation = useMutation({
+    mutationFn: async (data: CallbackSettingsData) => {
+      const res = await fetch(`/api/agents/${agentId}/callback-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to save')
+      }
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['callback-settings', 'agent', agentId], data)
+      toast.success('Callback settings saved')
+    },
+    onError: (err: Error) => {
+      toast.error(err.message)
+    },
+  })
 
   const toggleDay = (day: string) => {
-    const newDays = form.allowedDays.includes(day)
-      ? form.allowedDays.filter((d) => d !== day)
-      : [...form.allowedDays, day]
-    applyChange({ allowedDays: newDays })
+    setForm((prev) => ({
+      ...prev,
+      allowedDays: prev.allowedDays.includes(day)
+        ? prev.allowedDays.filter((d) => d !== day)
+        : [...prev.allowedDays, day],
+    }))
+  }
+
+  const handleSave = () => {
+    if (form.enabled) {
+      if (form.allowedDays.length === 0) {
+        toast.error('Select at least one allowed day')
+        return
+      }
+      if (minutesFromTime(form.timeWindow.endTime) <= minutesFromTime(form.timeWindow.startTime)) {
+        toast.error('"To" time must be after "From" time')
+        return
+      }
+      if (form.maxFutureDays < 1 || form.maxFutureDays > 365) {
+        toast.error('Max future days must be between 1 and 365')
+        return
+      }
+      if (form.maxCallbacksPerContact < 1 || form.maxCallbacksPerContact > 20) {
+        toast.error('Max callbacks per contact must be between 1 and 20')
+        return
+      }
+      if (form.defaultDelayMinutes < form.minDelayMinutes) {
+        toast.error('Default delay must be ≥ minimum delay')
+        return
+      }
+    }
+    mutation.mutate(form)
   }
 
   const selectedPhone = phoneNumbers.find((p) => p.id === form.phoneNumberId)
@@ -188,7 +240,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               type="time"
               value={form.timeWindow.startTime}
               onChange={(e) =>
-                applyChange({ timeWindow: { ...form.timeWindow, startTime: e.target.value } })
+                setForm((p) => ({ ...p, timeWindow: { ...p.timeWindow, startTime: e.target.value } }))
               }
               className="text-sm"
             />
@@ -203,7 +255,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               type="time"
               value={form.timeWindow.endTime}
               onChange={(e) =>
-                applyChange({ timeWindow: { ...form.timeWindow, endTime: e.target.value } })
+                setForm((p) => ({ ...p, timeWindow: { ...p.timeWindow, endTime: e.target.value } }))
               }
               className="text-sm"
             />
@@ -229,7 +281,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
           <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Timezone</Label>
           <Select
             value={form.timezone}
-            onValueChange={(v) => applyChange({ timezone: v })}
+            onValueChange={(v) => setForm((p) => ({ ...p, timezone: v }))}
           >
             <SelectTrigger className="text-sm">
               <SelectValue />
@@ -292,11 +344,15 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
             }
             onValueChange={(value) => {
               if (value === 'none') {
-                applyChange({ phoneNumberId: null, sipTrunkId: null })
+                setForm((p) => ({ ...p, phoneNumberId: null, sipTrunkId: null }))
               } else {
                 const [, id] = value.split(':')
                 const sp = phoneNumbers.find((p) => p.id === id)
-                applyChange({ phoneNumberId: id, sipTrunkId: sp?.trunk_id || null })
+                setForm((prev) => ({
+                  ...prev,
+                  phoneNumberId: id,
+                  sipTrunkId: sp?.trunk_id || null,
+                }))
               }
             }}
           >
@@ -356,7 +412,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={365}
               value={form.maxFutureDays}
               onChange={(e) =>
-                applyChange({ maxFutureDays: Number.parseInt(e.target.value) || 7 })
+                setForm((p) => ({ ...p, maxFutureDays: Number.parseInt(e.target.value) || 7 }))
               }
               className="text-sm"
             />
@@ -375,7 +431,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={20}
               value={form.maxCallbacksPerContact}
               onChange={(e) =>
-                applyChange({ maxCallbacksPerContact: Number.parseInt(e.target.value) || 3 })
+                setForm((p) => ({ ...p, maxCallbacksPerContact: Number.parseInt(e.target.value) || 3 }))
               }
               className="text-sm"
             />
@@ -392,7 +448,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={1440}
               value={form.minDelayMinutes}
               onChange={(e) =>
-                applyChange({ minDelayMinutes: Number.parseInt(e.target.value) || 2 })
+                setForm((p) => ({ ...p, minDelayMinutes: Number.parseInt(e.target.value) || 2 }))
               }
               className="text-sm"
             />
@@ -409,7 +465,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={1440}
               value={form.defaultDelayMinutes}
               onChange={(e) =>
-                applyChange({ defaultDelayMinutes: Number.parseInt(e.target.value) || 30 })
+                setForm((p) => ({ ...p, defaultDelayMinutes: Number.parseInt(e.target.value) || 30 }))
               }
               className="text-sm"
             />
@@ -420,8 +476,8 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
         </div>
       </div>
 
-      {/* Enable/Disable Toggle */}
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+      {/* Enable/Disable + Save (matches DropOffCallSettings) */}
+      <div className="pt-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex flex-col">
             <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -433,9 +489,28 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
           </div>
           <Switch
             checked={form.enabled}
-            onCheckedChange={(checked) => applyChange({ enabled: checked })}
+            onCheckedChange={(checked) => setForm((p) => ({ ...p, enabled: checked }))}
           />
         </div>
+
+        <Button
+          onClick={handleSave}
+          disabled={mutation.isPending || !agentId}
+          size="sm"
+          className="w-full"
+        >
+          {mutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving Configuration...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Save Configuration
+            </>
+          )}
+        </Button>
       </div>
     </div>
   )
