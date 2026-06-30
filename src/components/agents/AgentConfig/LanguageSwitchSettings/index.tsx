@@ -77,7 +77,7 @@ const DEFAULT_ENTRY: LanguageSwitchConfig = {
   tts: {},
 }
 
-function validate(entry: LanguageSwitchConfig, allEntries: LanguageSwitchConfig[], editingIndex: number | null, existingToolNames: string[] = []) {
+export function validate(entry: LanguageSwitchConfig, allEntries: LanguageSwitchConfig[], editingIndex: number | null, existingToolNames: string[] = []) {
   const errors: Record<string, string> = {}
   if (!entry.tool_name) {
     errors.tool_name = 'Required'

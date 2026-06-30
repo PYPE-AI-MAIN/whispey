@@ -14,6 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages } from 'lucide-react'
 import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwitchSettings'
 
+export function validateToolName(name: string, allNames: string[]): string | null {
+  if (!name) return 'Tool name is required'
+  if (name.length > 30) return 'Tool name must be 30 characters or less'
+  if (!/^[a-z][a-z0-9_]*$/.test(name)) return 'Must be snake_case (lowercase letters, digits, underscores, no spaces)'
+  if (allNames.includes(name)) return `"${name}" tool already exists`
+  return null
+}
+
 // ── Pre-transfer webhook field options ────────────────────────────────────────
 const WEBHOOK_FIELD_OPTIONS = [
   { key: 'transcript', label: 'Full transcript' },
@@ -211,8 +219,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
     setNewFillerMessage('')
     
     if (toolType === 'end_call') {
-      setFormData({ 
-        name: 'End Call', 
+      setFormData({
+        name: 'end_call',
         description: 'Allow assistant to end the conversation',
         endpoint: '', 
         method: 'POST', 
@@ -246,8 +254,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'handoff') {
-      setFormData({ 
-        name: 'Handoff Agent', 
+      setFormData({
+        name: 'handoff_agent',
         description: 'Transfer conversation to another agent',
         endpoint: '', 
         method: 'POST', 
@@ -281,8 +289,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'transfer_call') {
-      setFormData({ 
-        name: 'Transfer Call', 
+      setFormData({
+        name: 'transfer_call',
         description: 'Transfer the call by creating a conference with another party',
         endpoint: '', 
         method: 'POST', 
@@ -316,8 +324,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'ivr_navigator') {
-      setFormData({ 
-        name: 'Send DTMF', 
+      setFormData({
+        name: 'send_dtmf',
         description: 'Send a DTMF tone to pick IVR menu options',
         endpoint: '', 
         method: 'POST', 
@@ -352,7 +360,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
       })
     } else if (toolType === 'nearby_location_finder') {
       setFormData({
-        name: 'Nearby Hospital Finder',
+        name: 'nearby_hospital_finder',
         description: 'Find the nearest hospital locations based on the patient area (supports geocoding fallback in backend)',
         endpoint: '',
         method: 'POST',
@@ -386,8 +394,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'update_vad_options') {
-      setFormData({ 
-        name: 'Update VAD Options', 
+      setFormData({
+        name: 'update_vad_options',
         description: 'Update Voice Activity Detection (VAD) options dynamically during the conversation',
         endpoint: '', 
         method: 'POST', 
@@ -421,8 +429,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'voicemail_detection') {
-      setFormData({ 
-        name: 'Voicemail Detection', 
+      setFormData({
+        name: 'voicemail_detection',
         description: 'Detect voicemail systems and leave a message',
         endpoint: '', 
         method: 'POST', 
@@ -548,20 +556,16 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
     setIsDialogOpen(true)
   }
 
-  const validateToolName = (name: string): string | null => {
-    if (!name) return 'Tool name is required'
-    if (name.length > 30) return 'Tool name must be 30 characters or less'
-    if (!/^[a-z][a-z0-9_]*$/.test(name)) return 'Must be snake_case (lowercase letters, digits, underscores, no spaces)'
+  const validateToolNameInContext = (name: string): string | null => {
     const allNames = [
       ...tools.filter(t => t.id !== editingTool?.id).map(t => t.name),
       ...languageSwitchTools.map(ls => ls.tool_name),
     ]
-    if (allNames.includes(name)) return `"${name}" tool already exists`
-    return null
+    return validateToolName(name, allNames)
   }
 
   const handleSaveTool = () => {
-    const nameError = validateToolName(formData.name)
+    const nameError = validateToolNameInContext(formData.name)
     if (nameError) { setToolNameError(nameError); return }
     setToolNameError(null)
     // Try to parse headersJsonString one more time before saving
