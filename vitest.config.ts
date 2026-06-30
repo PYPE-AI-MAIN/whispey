@@ -40,7 +40,6 @@ export default defineConfig({
         'src/lib/github-prompts.ts',
         'src/lib/supplementalSettings.ts',
         'src/lib/agentVersionHelpers.ts',
-        'src/hooks/useMultiAssistantState.ts',
         'src/middleware.ts',
       ],
       thresholds: {

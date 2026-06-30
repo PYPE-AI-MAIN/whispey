@@ -169,6 +169,91 @@ describe('enrichSnapshotForGitHub', () => {
     })
   })
 
+  describe('createMergePR', () => {
+    const ENV = { PROMPT_GITHUB_REPO: 'org/repo', PROMPT_GITHUB_TOKEN: 'tok' }
+
+    it('returns null when REPO or TOKEN are not set', async () => {
+      const { createMergePR } = await import('@/lib/github-prompts')
+      const result = await createMergePR('proj', 'agent', {}, 'title', 'body', 'user@x.com', 'ver-001')
+      expect(result).toBeNull()
+    })
+
+    it('returns null when getDefaultBranchSha fails (non-ok response)', async () => {
+      process.env.PROMPT_GITHUB_REPO = ENV.PROMPT_GITHUB_REPO
+      process.env.PROMPT_GITHUB_TOKEN = ENV.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: false, status: 404 }) // getDefaultBranchSha → null
+      )
+      const { createMergePR } = await import('@/lib/github-prompts')
+      const result = await createMergePR('proj', 'agent', {}, 'title', 'body', 'user@x.com', 'ver-001')
+      expect(result).toBeNull()
+      delete process.env.PROMPT_GITHUB_REPO
+      delete process.env.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+    })
+
+    it('returns null when branch creation fails', async () => {
+      process.env.PROMPT_GITHUB_REPO = ENV.PROMPT_GITHUB_REPO
+      process.env.PROMPT_GITHUB_TOKEN = ENV.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ object: { sha: 'main-sha' } }) }) // getDefaultBranchSha
+        .mockResolvedValueOnce({ ok: true }) // DELETE existing branch (catch-ignored)
+        .mockResolvedValueOnce({ ok: false, status: 422, text: async () => 'error' }) // POST branch creation
+      )
+      const { createMergePR } = await import('@/lib/github-prompts')
+      const result = await createMergePR('proj', 'agent', {}, 'title', 'body', 'user@x.com', 'ver-001')
+      expect(result).toBeNull()
+      delete process.env.PROMPT_GITHUB_REPO
+      delete process.env.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+    })
+
+    it('returns null when file push to branch fails', async () => {
+      process.env.PROMPT_GITHUB_REPO = ENV.PROMPT_GITHUB_REPO
+      process.env.PROMPT_GITHUB_TOKEN = ENV.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ object: { sha: 'main-sha' } }) }) // getDefaultBranchSha
+        .mockResolvedValueOnce({ ok: true }) // DELETE branch
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) // POST create branch
+        .mockResolvedValueOnce({ ok: false, status: 404 }) // getCurrentSha (file not found)
+        .mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'err' }) // PUT file fails
+      )
+      const { createMergePR } = await import('@/lib/github-prompts')
+      const result = await createMergePR('proj', 'agent', {}, 'title', 'body', 'user@x.com', 'ver-001')
+      expect(result).toBeNull()
+      delete process.env.PROMPT_GITHUB_REPO
+      delete process.env.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+    })
+
+    it('returns pr_number, pr_url, branch on full success', async () => {
+      process.env.PROMPT_GITHUB_REPO = ENV.PROMPT_GITHUB_REPO
+      process.env.PROMPT_GITHUB_TOKEN = ENV.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ object: { sha: 'main-sha' } }) }) // getDefaultBranchSha
+        .mockResolvedValueOnce({ ok: true }) // DELETE branch
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) // POST create branch
+        .mockResolvedValueOnce({ ok: false, status: 404 }) // getCurrentSha (file not found)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) // PUT file
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ number: 42, html_url: 'https://github.com/org/repo/pull/42' }) }) // POST PR
+      )
+      const { createMergePR } = await import('@/lib/github-prompts')
+      const result = await createMergePR('proj', 'my agent', {}, 'title', 'body', 'user@x.com', 'ver-001')
+      expect(result).toEqual({
+        pr_number: 42,
+        pr_url: 'https://github.com/org/repo/pull/42',
+        branch: 'merge/my_agent-ver-001',
+      })
+      delete process.env.PROMPT_GITHUB_REPO
+      delete process.env.PROMPT_GITHUB_TOKEN
+      vi.resetModules()
+    })
+  })
+
   describe('all settings together', () => {
     it('appends all three supplemental settings when all are provided', () => {
       const result = enrichSnapshotForGitHub(BASE, WEBHOOKS, DROPOFF, CALLBACK)
