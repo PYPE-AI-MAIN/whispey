@@ -32,7 +32,15 @@ jobs:
           tar -xzf gitleaks.tar.gz gitleaks
 
       - name: Detect Secrets
-        run: ./gitleaks detect --source . --redact --exit-code 1
+        run: ./gitleaks detect --source . --redact --exit-code 1 --report-path gitleaks-report.sarif --report-format sarif
+
+      - name: Upload Gitleaks Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.sarif
+          retention-days: 7
 
   # ─── Lint ────────────────────────────────────────────────────────────────────
   lint:

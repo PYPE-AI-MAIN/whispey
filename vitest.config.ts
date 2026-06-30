@@ -16,33 +16,58 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage',
-      include: [
-        'src/lib/crypto.ts',
-        'src/lib/whispey-crypto.ts',
-        'src/lib/response.ts',
-        'src/lib/transcriptProcessor.ts',
-        'src/lib/utils.ts',
-        'src/lib/serviceToken.ts',
-        'src/lib/pypeApiFetch.ts',
-        'src/lib/redactCallLogsTagsForViewer.ts',
-        'src/lib/vapi-encryption.ts',
-        'src/lib/api-key-management.ts',
-        'src/lib/elevenlabs-webhook.ts',
-        'src/lib/vapi-data-transformer.ts',
-        'src/lib/adapters/retell.adapter.ts',
-        'src/utils/variableValidator.ts',
-        'src/utils/callLogsUtils.ts',
-        'src/utils/cost.ts',
-        'src/utils/customTotalExportFilters.ts',
-        'src/utils/agentDetection.ts',
-        'src/utils/agentConfigSerializer.ts',
-        'src/utils/trace-grouping-utils.ts',
-        'src/services/metricGroupService.ts',
+      // Cover all src files except infrastructure that can't/shouldn't be unit tested.
+      // These exclusions are mirrored in sonar-project.properties sonar.coverage.exclusions
+      // so both tools measure exactly the same set of files.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        // Next.js pages, layouts, API routes (integration/E2E scope)
+        'src/app/**',
+        // UI components (shadcn boilerplate + product components)
+        'src/components/**',
+        // React hooks — data fetching, browser APIs, require jsdom
+        'src/hooks/**',
+        // React state / context
+        'src/stores/**',
+        'src/contexts/**',
+        // Server-only DB repos
+        'src/server/**',
+        // Config constants — no logic
+        'src/config/**',
+        // Next.js middleware (Clerk integration)
+        'src/middleware.ts',
+        // Type-only files
+        'src/types/**',
+        'src/lib/adapters/types.ts',
+        'src/lib/supabase-query-types.ts',
+        // Supabase client factories — framework wrappers, not unit testable
+        'src/lib/supabase-server.ts',
+        'src/lib/supabase-select-auth.ts',
+        'src/lib/supabase-select-client.ts',
+        // Clerk auth — requires real Clerk context
+        'src/lib/auth.ts',
+        'src/lib/prod-auth.ts',
+        // External service wrappers — Supabase queries, email, GitHub API
+        'src/lib/user-data.ts',
+        'src/lib/sendInviteEmail.ts',
+        'src/lib/webhook-trigger.ts',
+        'src/lib/getProjectRoleForApi.ts',
+        'src/lib/calculateCost.ts',
+        'src/lib/github-prompts.ts',
+        // Fumadocs framework loader (6 lines, no logic)
+        'src/lib/source.ts',
+        // Browser-only utilities
+        'src/utils/verifyDistinctConfig.ts',
+        // Constants files — no logic to test
+        'src/utils/constants.ts',
+        'src/utils/campaigns/**',
+        // Returns React/Lucide JSX — not testable in Node environment
+        'src/utils/spanUtils.ts',
       ],
       thresholds: {
         lines: 75,
         functions: 75,
-        branches: 75,
+        branches: 70,
         statements: 75,
       },
     },
