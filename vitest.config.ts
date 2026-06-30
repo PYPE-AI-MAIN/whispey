@@ -35,6 +35,9 @@ export default defineConfig({
         'src/utils/cost.ts',
         'src/utils/customTotalExportFilters.ts',
         'src/utils/agentDetection.ts',
+        'src/utils/agentConfigSerializer.ts',
+        'src/utils/trace-grouping-utils.ts',
+        'src/services/metricGroupService.ts',
       ],
       thresholds: {
         lines: 75,
