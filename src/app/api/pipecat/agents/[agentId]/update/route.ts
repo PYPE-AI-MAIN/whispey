@@ -43,7 +43,7 @@ export async function PUT(request: NextRequest) {
       tts_model: tts_model || undefined,
       tts_voice_id: tts_voice_id || undefined,
       tts_provider: tts_provider || undefined,
-      tools: tools || ["end_call", "transfer_call"],
+      tools,
       transfer_number: transfer_number || undefined,
       acefone_token: acefone_token || undefined,
       whispey_api_key: whispey_api_key || "pype-api-v1",
