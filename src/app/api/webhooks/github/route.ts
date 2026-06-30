@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
     const schedulerUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
     const schedulerHeaders = {
       'Content-Type': 'application/json',
-      'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1',
+      'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY ?? '',
     }
     if (schedulerUrl) {
       try {

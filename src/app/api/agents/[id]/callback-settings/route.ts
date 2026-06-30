@@ -4,7 +4,7 @@ const SCHEDULER_API_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
 const SCHEDULER_HEADERS = {
   'Content-Type': 'application/json',
-  'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1',
+  'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY ?? '',
 }
 
 export async function GET(

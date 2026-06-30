@@ -93,7 +93,7 @@ export async function POST(
     if (schedulerUrl) {
       try {
         const cbRes = await fetch(`${schedulerUrl}/api/v1/agents/${sourceAgentId}/callback-settings`, {
-          headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
+          headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY ?? '' },
           cache: 'no-store',
         })
         if (cbRes.ok) {

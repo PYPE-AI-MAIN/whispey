@@ -9,7 +9,7 @@ export async function fetchSchedulerCallbackSettings(agentId: string): Promise<a
   if (!schedulerUrl) return null
   try {
     const res = await fetch(`${schedulerUrl}/api/v1/agents/${agentId}/callback-settings`, {
-      headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1' },
+      headers: { 'x-api-key': process.env.NEXT_PUBLIC_X_API_KEY ?? '' },
       cache: 'no-store',
     })
     if (!res.ok) return null
