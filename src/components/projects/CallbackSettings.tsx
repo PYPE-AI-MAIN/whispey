@@ -52,7 +52,7 @@ const DEFAULT_SETTINGS: CallbackSettingsData = {
 function formatTime12h(t: string): string {
   if (!t || !/^\d{2}:\d{2}$/.test(t)) return t
   const [hStr, m] = t.split(':')
-  const h = parseInt(hStr, 10)
+  const h = Number.parseInt(hStr, 10)
   const period = h >= 12 ? 'PM' : 'AM'
   const h12 = h % 12 === 0 ? 12 : h % 12
   return `${h12}:${m} ${period}`
@@ -60,7 +60,7 @@ function formatTime12h(t: string): string {
 
 function minutesFromTime(t: string): number {
   if (!t || !/^\d{2}:\d{2}$/.test(t)) return 0
-  const [h, m] = t.split(':').map((x) => parseInt(x, 10))
+  const [h, m] = t.split(':').map((x) => Number.parseInt(x, 10))
   return h * 60 + m
 }
 
@@ -412,7 +412,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={365}
               value={form.maxFutureDays}
               onChange={(e) =>
-                setForm((p) => ({ ...p, maxFutureDays: parseInt(e.target.value) || 7 }))
+                setForm((p) => ({ ...p, maxFutureDays: Number.parseInt(e.target.value) || 7 }))
               }
               className="text-sm"
             />
@@ -431,7 +431,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={20}
               value={form.maxCallbacksPerContact}
               onChange={(e) =>
-                setForm((p) => ({ ...p, maxCallbacksPerContact: parseInt(e.target.value) || 3 }))
+                setForm((p) => ({ ...p, maxCallbacksPerContact: Number.parseInt(e.target.value) || 3 }))
               }
               className="text-sm"
             />
@@ -448,7 +448,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={1440}
               value={form.minDelayMinutes}
               onChange={(e) =>
-                setForm((p) => ({ ...p, minDelayMinutes: parseInt(e.target.value) || 2 }))
+                setForm((p) => ({ ...p, minDelayMinutes: Number.parseInt(e.target.value) || 2 }))
               }
               className="text-sm"
             />
@@ -465,7 +465,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               max={1440}
               value={form.defaultDelayMinutes}
               onChange={(e) =>
-                setForm((p) => ({ ...p, defaultDelayMinutes: parseInt(e.target.value) || 30 }))
+                setForm((p) => ({ ...p, defaultDelayMinutes: Number.parseInt(e.target.value) || 30 }))
               }
               className="text-sm"
             />

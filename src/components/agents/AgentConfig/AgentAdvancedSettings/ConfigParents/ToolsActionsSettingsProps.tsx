@@ -903,7 +903,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
                       min="0"
                       max="60"
                       value={formData.cooldown_seconds}
-                      onChange={(e) => setFormData(prev => ({ ...prev, cooldown_seconds: parseInt(e.target.value) || 3 }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cooldown_seconds: Number.parseInt(e.target.value) || 3 }))}
                       className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                       placeholder="3"
                     />
@@ -1161,7 +1161,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
                       min="1"
                       max="120"
                       value={formData.timeout}
-                      onChange={(e) => setFormData(prev => ({ ...prev, timeout: parseInt(e.target.value) || 10 }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, timeout: Number.parseInt(e.target.value) || 10 }))}
                       className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                       placeholder="10"
                     />
@@ -1505,7 +1505,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
                       min="1"
                       max="20"
                       value={formData.max_results}
-                      onChange={(e) => setFormData(prev => ({ ...prev, max_results: parseInt(e.target.value) || 3 }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, max_results: Number.parseInt(e.target.value) || 3 }))}
                       className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                       placeholder="3"
                     />
