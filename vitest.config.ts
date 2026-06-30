@@ -37,6 +37,11 @@ export default defineConfig({
         'src/utils/cost.ts',
         'src/utils/customTotalExportFilters.ts',
         'src/utils/agentDetection.ts',
+        'src/lib/github-prompts.ts',
+        'src/lib/supplementalSettings.ts',
+        'src/lib/agentVersionHelpers.ts',
+        'src/hooks/useMultiAssistantState.ts',
+        'src/middleware.ts',
       ],
       thresholds: {
         lines: 75,

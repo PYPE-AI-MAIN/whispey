@@ -3,7 +3,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import { getFallback } from '@/config/agentDefaults'
 
-function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string) {
+export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string) {
   return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), assistant } }
 }
 
