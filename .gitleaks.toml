@@ -1,0 +1,18 @@
+title = "Whispey Gitleaks Config"
+
+[allowlist]
+  description = "Suppress false positives from test fixtures and documentation"
+
+  # Test directories contain intentionally fake credentials
+  paths = [
+    '''__tests__/''',
+    '''docs/''',
+  ]
+
+  # Placeholder patterns used in docs and test strings
+  regexes = [
+    '''YOUR_API_KEY''',
+    '''sk-abc123''',
+    '''vapi-sk-real-api-key''',
+    '''Bearer eyJhbGciOiJSUzI1NiJ9\.test''',
+  ]
