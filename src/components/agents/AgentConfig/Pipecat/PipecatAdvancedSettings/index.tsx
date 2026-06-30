@@ -385,8 +385,6 @@ export default function PipecatAdvancedSettings({
               projectId={projectId}
               agentRuntime="pipecat"
               pipecatAgentId={pipecatAgentId}
-              onDataLoaded={() => {}}
-              onFieldChange={() => {}}
             />
           ) : (
             <p className="text-xs text-gray-400">Agent / project not available</p>
