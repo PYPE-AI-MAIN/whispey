@@ -1,0 +1,138 @@
+name: Clients Production Deployment
+
+on:
+  push:
+    branches:
+      - ci-cd-testing
+
+permissions:
+  id-token: write
+  contents: read
+
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+
+jobs:
+  docker-build-push:
+    environment: production
+    name: Build and Push Docker Image to ECR
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_uri: ${{ steps.image.outputs.image_uri }}
+      image_tag: ${{ steps.image.outputs.image_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare image details
+        id: image
+        run: |
+          IMAGE_TAG="${GITHUB_SHA}"
+          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
+
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
+
+          echo "Image URI: ${IMAGE_URI}"
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PROD_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "${AWS_REGION}" \
+            | docker login \
+              --username AWS \
+              --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories \
+            --repository-names "${ECR_REPOSITORY}" \
+            --region "${AWS_REGION}" \
+          || aws ecr create-repository \
+            --repository-name "${ECR_REPOSITORY}" \
+            --region "${AWS_REGION}"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f Dockerfile \
+            -t "${IMAGE_URI}" \
+            -t "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}" \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push "${IMAGE_URI}"
+          docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+  deploy:
+    # environment: production
+    name: Deploy to Private EC2 using Blue Green
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+
+    steps:
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PROD_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR on EC2 instance
+        run: |
+          INSTANCE_ID="${{ secrets.PROD_PRIVATE_INSTANCE_ID }}"
+
+          aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "aws ecr get-login-password --region '"${AWS_REGION}"' | docker login --username AWS --password-stdin '"${AWS_ACCOUNT_ID}"'.dkr.ecr.'"${AWS_REGION}"'.amazonaws.com"
+            ]' \
+            --region "${AWS_REGION}"
+
+      - name: Trigger blue green deployment through SSM
+        run: |
+          IMAGE_TAG="${GITHUB_SHA}"
+          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          INSTANCE_ID="${{ secrets.PROD_PRIVATE_INSTANCE_ID }}"
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Frontend blue green deploy - ${IMAGE_TAG}" \
+            --parameters commands='[
+              "set -e",
+              "echo Starting  blue green deployment",
+              "sudo /opt/frontend/deploy.sh '"${IMAGE_URI}"' '"${IMAGE_TAG}"'"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          sleep 120
+
+          RESULT=$(aws ssm get-command-invocation \
+            --command-id "${COMMAND_ID}" \
+            --instance-id "${INSTANCE_ID}")
+
+          STATUS=$(echo "${RESULT}" | jq -r '.StatusDetails')
+
+          echo "Deployment Status: ${STATUS}"
+
+          if [ "${STATUS}" != "Success" ]; then
+            echo "Deployment failed"
+            exit 1
+          fi
+
