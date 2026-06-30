@@ -259,7 +259,8 @@ export const AGENT_DEFAULT_CONFIG = {
           config: {
             description: tool.type === "end_call" ? "Allow assistant to end the conversation" : ""
           }
-        }))
+        })),
+        languageSwitchTools: [] as any[],
       },
       fillers: {
         enableFillerWords: AGENT_DEFAULT_CONFIG.filler_words.enabled,

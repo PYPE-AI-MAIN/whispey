@@ -66,6 +66,7 @@ interface AgentAdvancedSettingsProps {
           name: string
           config: any
         }>
+        languageSwitchTools?: any[]
       }
       fillers: {
         enableFillerWords: boolean
@@ -316,6 +317,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <ToolsActionsSettings
               tools={advancedSettings.tools.tools}
+              languageSwitchTools={advancedSettings.tools.languageSwitchTools || []}
               onFieldChange={onFieldChange}
               projectId={projectId}
             />

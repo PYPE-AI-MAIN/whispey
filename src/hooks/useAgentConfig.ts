@@ -593,7 +593,21 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         user_away_timeout_end_message: sessionBehavior.user_away_timeout_end_message !== undefined && sessionBehavior.user_away_timeout_end_message !== null && sessionBehavior.user_away_timeout_end_message !== '' ? sessionBehavior.user_away_timeout_end_message : undefined,
       },
       tools: {
-        tools: assistant.tools?.map((tool: any) => ({
+        languageSwitchTools: (assistant.tools || [])
+          .filter((tool: any) => tool.type === 'language_switch')
+          .map((tool: any) => ({
+            tool_name: tool.tool_name || '',
+            description: tool.description || '',
+            language_code: tool.language_code || '',
+            system_message: tool.system_message || '',
+            allow_interruptions: tool.allow_interruptions ?? true,
+            ...(tool.allow_interruptions !== false && { interruption: tool.interruption ?? true }),
+            switch_stt: tool.switch_stt ?? true,
+            switch_tts: tool.switch_tts ?? true,
+            stt: tool.stt || { name: 'sarvam', language: 'kn-IN', model: 'saaras:v3', adaptive_stt: true, mode: 'transcribe', flush_signal: true },
+            tts: tool.tts || {},
+          })),
+        tools: (assistant.tools || []).filter((tool: any) => tool.type !== 'language_switch').map((tool: any) => ({
           id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
           type: tool.type,
           name: tool.name || (
@@ -653,7 +667,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
               messages: [],
             },
           }
-        })) || []
+        }))
       },
       fillers: (() => {
         // When the backend has never stored filler config (new agent), filler_words is

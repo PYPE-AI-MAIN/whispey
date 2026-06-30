@@ -11,6 +11,71 @@ import {
 
 const supabase = createServiceRoleClient()
 
+function serializeLanguageSwitchSTTRoute(stt: any): any {
+  if (!stt) return {}
+  const out: any = { name: stt.name }
+  if (stt.name === 'sarvam') {
+    out.language = stt.language
+    out.model = stt.model
+    if (stt.adaptive_stt) out.adaptive_stt = true
+    if (stt.mode) out.mode = stt.mode
+    out.flush_signal = stt.flush_signal ?? true
+  } else if (stt.name === 'deepgram') {
+    out.language = stt.language
+    out.model = stt.model
+    if (stt.model?.startsWith('flux-general')) {
+      if (stt.eot_threshold != null) out.eot_threshold = stt.eot_threshold
+      if (stt.eager_eot_threshold != null) out.eager_eot_threshold = stt.eager_eot_threshold
+      if (stt.eot_timeout_ms != null) out.eot_timeout_ms = stt.eot_timeout_ms
+    } else {
+      if (stt.endpointing_ms != null) out.endpointing_ms = stt.endpointing_ms
+      if (stt.punctuate != null) out.punctuate = stt.punctuate
+      if (stt.smart_format != null) out.smart_format = stt.smart_format
+      if (stt.profanity_filter != null) out.profanity_filter = stt.profanity_filter
+      if (stt.numerals != null) out.numerals = stt.numerals
+      if (stt.keyterm?.length) out.keyterm = stt.keyterm
+    }
+  } else if (stt.name === 'google') {
+    out.language = stt.language
+    if (stt.model) out.model = stt.model
+  }
+  return out
+}
+
+function serializeLanguageSwitchTTSRoute(tts: any): any {
+  if (!tts) return {}
+  const out: any = { name: tts.name }
+  if (tts.name === 'sarvam') {
+    out.language = tts.language
+    out.model = tts.model || 'bulbul:v3-beta'
+    out.speaker = tts.speaker || tts.voice_id || ''
+    if (tts.voice_settings) {
+      out.voice_settings = {
+        pace: tts.voice_settings.pace ?? 1.0,
+        loudness: tts.voice_settings.loudness ?? 1.0,
+        pitch: tts.voice_settings.pitch ?? 0.0,
+        enable_preprocessing: tts.voice_settings.enable_preprocessing ?? false,
+      }
+    }
+  } else if (tts.name === 'elevenlabs') {
+    out.voice_id = tts.voice_id || ''
+    out.model = tts.model || 'eleven_multilingual_v2'
+    if (tts.language) out.language = tts.language
+    if (tts.voice_settings) {
+      out.voice_settings = {
+        similarity_boost: tts.voice_settings.similarity_boost ?? 0.75,
+        stability: tts.voice_settings.stability ?? 0.5,
+        style: tts.voice_settings.style ?? 0,
+        use_speaker_boost: tts.voice_settings.use_speaker_boost ?? true,
+        speed: tts.voice_settings.speed ?? 1.0,
+      }
+    }
+  } else if (tts.name === 'google') {
+    out.voice_name = tts.voice_name || ''
+    if (tts.gender) out.gender = tts.gender
+  }
+  return out
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -350,7 +415,8 @@ function transformFormDataToAgentConfig(formData: any) {
               force_cpu: formikValues.advancedSettings.vad.forceCpu
             })
           },
-          tools: formikValues.advancedSettings.tools.tools.map((tool: any) => ({
+          tools: [
+            ...formikValues.advancedSettings.tools.tools.map((tool: any) => ({
             type: tool.type,
             ...(tool.type !== 'end_call' ? {
               name: tool.name,
@@ -377,6 +443,21 @@ function transformFormDataToAgentConfig(formData: any) {
               } : {})
             } : {})
           })),
+            ...(formikValues.advancedSettings.tools.languageSwitchTools || []).map((ls: any) => {
+              const entry: any = {
+                type: 'language_switch',
+                tool_name: ls.tool_name,
+                description: ls.description,
+                language_code: ls.language_code,
+                system_message: ls.system_message,
+                allow_interruptions: ls.allow_interruptions,
+                stt: serializeLanguageSwitchSTTRoute(ls.stt),
+                tts: serializeLanguageSwitchTTSRoute(ls.tts),
+              }
+              if (ls.allow_interruptions) entry.interruption = ls.interruption ?? true
+              return entry
+            }),
+          ],
           filler_words: {
             enabled: (formikValues.advancedSettings.fillers.enableFillerWords ?? false) && [
               ...(formikValues.advancedSettings.fillers.generalFillers ?? []),

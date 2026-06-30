@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages } from 'lucide-react'
+import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwitchSettings'
 
 // ── Pre-transfer webhook field options ────────────────────────────────────────
 const WEBHOOK_FIELD_OPTIONS = [
@@ -110,12 +111,16 @@ interface Tool {
 
 interface ToolsActionsSettingsProps {
   tools: Tool[]
+  languageSwitchTools?: LanguageSwitchConfig[]
   onFieldChange: (field: string, value: any) => void
   projectId?: string
 }
 
-function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
+function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, projectId }: ToolsActionsSettingsProps) {
+  const [isLSOpen, setIsLSOpen] = useState(false)
+  const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [toolNameError, setToolNameError] = useState<string | null>(null)
   const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
@@ -543,7 +548,22 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     setIsDialogOpen(true)
   }
 
+  const validateToolName = (name: string): string | null => {
+    if (!name) return 'Tool name is required'
+    if (name.length > 30) return 'Tool name must be 30 characters or less'
+    if (!/^[a-z][a-z0-9_]*$/.test(name)) return 'Must be snake_case (lowercase letters, digits, underscores, no spaces)'
+    const allNames = [
+      ...tools.filter(t => t.id !== editingTool?.id).map(t => t.name),
+      ...languageSwitchTools.map(ls => ls.tool_name),
+    ]
+    if (allNames.includes(name)) return `"${name}" tool already exists`
+    return null
+  }
+
   const handleSaveTool = () => {
+    const nameError = validateToolName(formData.name)
+    if (nameError) { setToolNameError(nameError); return }
+    setToolNameError(null)
     // Try to parse headersJsonString one more time before saving
     let finalHeaders = formData.headers
     try {
@@ -715,6 +735,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
             <CodeIcon className="w-3 h-3 mr-2" />
             Custom Tool
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { setEditingLSIndex(null); setIsLSOpen(true) }} className="text-xs">
+            <Languages className="w-3 h-3 mr-2" />
+            Language Switcher
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAddTool('nearby_location_finder')} className="text-xs">
             <Phone className="w-3 h-3 mr-2" />
             Nearby Hospital Finder
@@ -728,52 +752,93 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
             Voicemail Detection
           </DropdownMenuItem>
         </DropdownMenuContent>
+        {/* Language Switcher is managed via its own inline section below */}
       </DropdownMenu>
 
       {/* Tools List */}
       <div className="space-y-2">
-        {tools.length === 0 ? (
+        {tools.length === 0 && languageSwitchTools.length === 0 ? (
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4 bg-gray-50 dark:bg-gray-900 rounded">
             No tools configured
           </div>
         ) : (
-          tools.map((tool) => (
-            <div key={tool.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                {getToolIcon(tool.type)}
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-                  {tool.name}
-                </span>
+          <>
+            {tools.map((tool) => (
+              <div key={tool.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {getToolIcon(tool.type)}
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                    {tool.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditTool(tool)}
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                  >
+                    <EditIcon className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteTool(tool.id)}
+                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                  >
+                    <TrashIcon className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditTool(tool)}
-                  className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
-                >
-                  <EditIcon className="w-3 h-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteTool(tool.id)}
-                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                >
-                  <TrashIcon className="w-3 h-3" />
-                </Button>
+            ))}
+            {languageSwitchTools.map((ls, idx) => (
+              <div key={`ls-${idx}`} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Languages className="w-3 h-3 text-purple-500" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate font-mono">
+                    {ls.tool_name}
+                  </span>
+                  <span className="text-xs text-gray-400">{ls.language_code}</span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setEditingLSIndex(idx); setIsLSOpen(true) }}
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                  >
+                    <EditIcon className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onFieldChange('advancedSettings.tools.languageSwitchTools', languageSwitchTools.filter((_, i) => i !== idx))}
+                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                  >
+                    <TrashIcon className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </>
         )}
       </div>
+
+      <LanguageSwitchSettings
+        entries={languageSwitchTools}
+        onChange={(entries) => onFieldChange('advancedSettings.tools.languageSwitchTools', entries)}
+        existingToolNames={tools.map(t => t.name)}
+        open={isLSOpen}
+        controlledEditingIndex={editingLSIndex}
+        onOpenChange={setIsLSOpen}
+      />
 
       {/* Tool Configuration Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open)
         if (!open) {
-          // Reset headers JSON string when dialog closes
           setHeadersJsonString('{}')
+          setToolNameError(null)
         }
       }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
@@ -798,10 +863,12 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
               <Label className="text-xs text-gray-700 dark:text-gray-300">Tool Name</Label>
               <Input
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                maxLength={30}
+                onChange={(e) => { setFormData(prev => ({ ...prev, name: e.target.value })); setToolNameError(null) }}
+                className={`h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 ${toolNameError ? 'border-red-500' : ''}`}
                 placeholder={selectedToolType === 'ivr_navigator' ? 'Send DTMF' : 'Enter tool name...'}
               />
+              {toolNameError && <p className="text-xs text-red-500 mt-1">{toolNameError}</p>}
             </div>
 
             {/* Description */}
