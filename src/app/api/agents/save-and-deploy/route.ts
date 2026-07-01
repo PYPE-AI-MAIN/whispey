@@ -51,9 +51,9 @@ function serializeLanguageSwitchTTSRoute(tts: any): any {
     out.speaker = tts.speaker || tts.voice_id || ''
     if (tts.voice_settings) {
       out.voice_settings = {
-        pace: tts.voice_settings.pace ?? 1.0,
-        loudness: tts.voice_settings.loudness ?? 1.0,
-        pitch: tts.voice_settings.pitch ?? 0.0,
+        pace: tts.voice_settings.pace ?? 1,
+        loudness: tts.voice_settings.loudness ?? 1,
+        pitch: tts.voice_settings.pitch ?? 0,
         enable_preprocessing: tts.voice_settings.enable_preprocessing ?? false,
       }
     }
@@ -67,7 +67,7 @@ function serializeLanguageSwitchTTSRoute(tts: any): any {
         stability: tts.voice_settings.stability ?? 0.5,
         style: tts.voice_settings.style ?? 0,
         use_speaker_boost: tts.voice_settings.use_speaker_boost ?? true,
-        speed: tts.voice_settings.speed ?? 1.0,
+        speed: tts.voice_settings.speed ?? 1,
       }
     }
   } else if (tts.name === 'google') {

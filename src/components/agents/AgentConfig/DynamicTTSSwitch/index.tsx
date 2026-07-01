@@ -87,7 +87,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
     }
     const name = currentConfig.tool_name
     if (name.length > 30) { setToolNameError('Tool name must be 30 characters or less'); return }
-    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) { setToolNameError('Must be snake_case (letters, digits, underscores, no spaces)'); return }
+    if (!/^[A-Za-z]\w*$/.test(name)) { setToolNameError('Must be snake_case (letters, digits, underscores, no spaces)'); return }
     const dupe = dynamicTTSList.findIndex((c, i) => i !== editingIndex && c.tool_name === name)
     if (dupe !== -1) { setToolNameError(`"${name}" tool already exists`); return }
     setToolNameError(null)

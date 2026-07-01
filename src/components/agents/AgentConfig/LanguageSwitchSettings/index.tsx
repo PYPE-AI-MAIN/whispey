@@ -84,12 +84,12 @@ export function validate(entry: LanguageSwitchConfig, allEntries: LanguageSwitch
     errors.tool_name = 'Required'
   } else if (entry.tool_name.length > 30) {
     errors.tool_name = 'Tool name must be 30 characters or less'
-  } else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(entry.tool_name)) {
-    errors.tool_name = 'Must be snake_case (letters, digits, underscores, no spaces)'
+  } else if (/^[A-Za-z]\w*$/.test(entry.tool_name)) {
+    const isDupe = allEntries.some((e, i) => i !== editingIndex && e.tool_name === entry.tool_name)
+      || existingToolNames.includes(entry.tool_name)
+    if (isDupe) errors.tool_name = `"${entry.tool_name}" tool already exists`
   } else {
-    const dupeInEntries = allEntries.findIndex((e, i) => i !== editingIndex && e.tool_name === entry.tool_name)
-    if (dupeInEntries !== -1) errors.tool_name = `"${entry.tool_name}" tool already exists`
-    else if (existingToolNames.includes(entry.tool_name)) errors.tool_name = `"${entry.tool_name}" tool already exists`
+    errors.tool_name = 'Must be snake_case (letters, digits, underscores, no spaces)'
   }
   if (!entry.description || entry.description.length < 10) errors.description = 'Min 10 characters'
   if (!entry.system_message) errors.system_message = 'Required'
@@ -100,7 +100,7 @@ export function validate(entry: LanguageSwitchConfig, allEntries: LanguageSwitch
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
+const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = ({
   entries = [],
   onChange,
   existingToolNames = [],
@@ -127,7 +127,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
   React.useEffect(() => {
     if (!isControlled || !controlledOpen) return
     if (controlledEditingIndex !== null && controlledEditingIndex !== undefined) {
-      setDraft(JSON.parse(JSON.stringify(entries[controlledEditingIndex])))
+      setDraft(structuredClone(entries[controlledEditingIndex]))
     } else {
       setDraft(DEFAULT_ENTRY)
     }
@@ -151,7 +151,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
   }
 
   const openEdit = (idx: number) => {
-    setDraft(JSON.parse(JSON.stringify(entries[idx])))
+    setDraft(structuredClone(entries[idx]))
     setInternalEditingIndex(idx)
     setTouched(false)
     setIsDialogOpen(true)
@@ -217,9 +217,9 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
         model: model || 'bulbul:v3-beta',
         language: config?.target_language_code || config?.language || 'kn-IN',
         voice_settings: {
-          pace: Math.min(2.0, Math.max(0.5, vs.pace ?? vs.speed ?? 1.0)),
-          loudness: Math.min(2.0, Math.max(0.5, vs.loudness ?? 1.0)),
-          pitch: vs.pitch ?? 0.0,
+          pace: Math.min(2, Math.max(0.5, vs.pace ?? vs.speed ?? 1)),
+          loudness: Math.min(2, Math.max(0.5, vs.loudness ?? 1)),
+          pitch: vs.pitch ?? 0,
           enable_preprocessing: vs.enable_preprocessing ?? false,
         },
       }
@@ -234,7 +234,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
           stability: config?.stability ?? 0.5,
           style: config?.style ?? 0,
           use_speaker_boost: config?.useSpeakerBoost ?? true,
-          speed: config?.speed ?? 1.0,
+          speed: config?.speed ?? 1,
         },
       }
     } else if (normalizedProvider === 'google') {
@@ -254,9 +254,9 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
     if (t.name === 'sarvam') {
       return {
         target_language_code: t.voice_settings?.target_language_code || t.language || 'kn-IN',
-        pace: t.voice_settings?.pace || 1.0,
-        loudness: t.voice_settings?.loudness || 1.0,
-        pitch: t.voice_settings?.pitch || 0.0,
+        pace: t.voice_settings?.pace || 1,
+        loudness: t.voice_settings?.loudness || 1,
+        pitch: t.voice_settings?.pitch || 0,
         enable_preprocessing: t.voice_settings?.enable_preprocessing ?? false,
       }
     } else if (t.name === 'elevenlabs') {
@@ -266,7 +266,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
         stability: t.voice_settings?.stability || 0.5,
         style: t.voice_settings?.style || 0,
         useSpeakerBoost: t.voice_settings?.use_speaker_boost ?? true,
-        speed: t.voice_settings?.speed || 1.0,
+        speed: t.voice_settings?.speed || 1,
       }
     } else if (t.name === 'google') {
       return { voice_name: t.voice_name || '', gender: t.gender }
@@ -413,14 +413,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
                   />
                 </div>
 
-                {!draft.allow_interruptions && (
-                  <div className="flex items-start gap-2 p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
-                    <Info className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-amber-700 dark:text-amber-300">Agent cannot be interrupted after language switch</p>
-                  </div>
-                )}
-
-                {draft.allow_interruptions && (
+                {draft.allow_interruptions ? (
                   <div className="flex items-center justify-between pl-3 border-l-2 border-gray-200 dark:border-gray-700">
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Use adaptive interruption detection</p>
@@ -437,6 +430,11 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
                       }))}
                       className="scale-90"
                     />
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
+                    <Info className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300">Agent cannot be interrupted after language switch</p>
                   </div>
                 )}
 
@@ -506,7 +504,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
         <div className="space-y-2">
           {entries.map((entry, idx) => (
             <div
-              key={idx}
+              key={entry.tool_name}
               className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
             >
               <div className="flex-1 min-w-0">

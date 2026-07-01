@@ -17,7 +17,7 @@ import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwit
 export function validateToolName(name: string, allNames: string[]): string | null {
   if (!name) return 'Tool name is required'
   if (name.length > 30) return 'Tool name must be 30 characters or less'
-  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) return 'Must be snake_case (letters, digits, underscores, no spaces)'
+  if (!/^[A-Za-z]\w*$/.test(name)) return 'Must be snake_case (letters, digits, underscores, no spaces)'
   if (allNames.includes(name)) return `"${name}" tool already exists`
   return null
 }
@@ -806,7 +806,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
               </div>
             ))}
             {languageSwitchTools.map((ls, idx) => (
-              <div key={`ls-${idx}`} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div key={`ls-${ls.tool_name}`} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Languages className="w-3 h-3 text-purple-500" />
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate font-mono">
