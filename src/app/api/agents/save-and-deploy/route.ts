@@ -386,6 +386,72 @@ function serializeRouteTools(formikValues: any): any[] {
   ]
 }
 
+function buildFirstMessageModeConfig(formikValues: any): any {
+  if (typeof formikValues.firstMessageMode === 'object') {
+    // New object format from form
+    return {
+      allow_interruptions: formikValues.firstMessageMode.allow_interruptions,
+      mode: formikValues.firstMessageMode.mode,
+      first_message: formikValues.firstMessageMode.first_message
+    }
+  }
+  // Fallback for old string format - convert to object
+  return {
+    allow_interruptions: true,
+    mode: formikValues.firstMessageMode || 'user_speaks_first',
+    first_message: formikValues.customFirstMessage || ''
+  }
+}
+
+function buildRouteVadPayload(formikValues: any): any {
+  const vad = formikValues.advancedSettings.vad
+  return {
+    name: vad.vadProvider,
+    ...(vad.minSilenceDuration !== undefined && { min_silence_duration: vad.minSilenceDuration }),
+    ...(vad.minSpeechDuration !== undefined && { min_speech_duration: vad.minSpeechDuration }),
+    ...(vad.prefixPaddingDuration !== undefined && { prefix_padding_duration: vad.prefixPaddingDuration }),
+    ...(vad.maxBufferedSpeech !== undefined && { max_buffered_speech: vad.maxBufferedSpeech }),
+    ...(vad.activationThreshold !== undefined && { activation_threshold: vad.activationThreshold }),
+    ...(vad.sampleRate !== undefined && { sample_rate: vad.sampleRate }),
+    ...(vad.forceCpu !== undefined && { force_cpu: vad.forceCpu })
+  }
+}
+
+function buildRouteSessionBehaviorPayload(formikValues: any): any {
+  const session = formikValues.advancedSettings.session
+  return {
+    preemptive_generation: session.preemptiveGeneration || 'disabled',
+    turn_detection: session.turn_detection,
+    unlikely_threshold: session.unlikely_threshold,
+    min_endpointing_delay: session.min_endpointing_delay,
+    max_endpointing_delay: session.max_endpointing_delay,
+    ...(session.endpointing_mode && { endpointing_mode: session.endpointing_mode }),
+    ...(session.interruption_mode && { interruption_mode: session.interruption_mode }),
+    ...(session.user_away_timeout !== undefined && { user_away_timeout: session.user_away_timeout }),
+    ...(session.user_away_timeout_message !== undefined && session.user_away_timeout_message !== null && session.user_away_timeout_message !== '' && {
+      user_away_timeout_message: session.user_away_timeout_message
+    }),
+    ...(session.user_away_timeout_max_count !== undefined && { user_away_timeout_max_count: session.user_away_timeout_max_count }),
+    ...(session.user_away_timeout_end_message !== undefined && session.user_away_timeout_end_message !== null && session.user_away_timeout_end_message !== '' && {
+      user_away_timeout_end_message: session.user_away_timeout_end_message
+    })
+  }
+}
+
+function buildRouteAdaptiveInterruptionPayload(formikValues: any): any {
+  if (formikValues.advancedSettings.session.interruption_mode !== 'adaptive') return {}
+  const interruption = formikValues.advancedSettings.interruption
+  return {
+    adaptive_min_duration: interruption.adaptiveMinDuration ?? 0.5,
+    adaptive_min_words: interruption.adaptiveMinWords ?? 0,
+    adaptive_discard_audio_if_uninterruptible: interruption.adaptiveDiscardAudioIfUninterruptible ?? true,
+    adaptive_resume_false_interruption: interruption.adaptiveResumeFalseInterruption ?? true,
+    adaptive_false_interruption_timeout: interruption.adaptiveFalseInterruptionTimeout ?? 2,
+    adaptive_backchannel_boundary_start: interruption.adaptiveBackchannelBoundaryStart ?? 1,
+    adaptive_backchannel_boundary_end: interruption.adaptiveBackchannelBoundaryEnd ?? 3.5,
+  }
+}
+
 function transformFormDataToAgentConfig(formData: any) {
   const {
     formikValues,
@@ -404,23 +470,7 @@ function transformFormDataToAgentConfig(formData: any) {
     hasLLM: !!llmConfiguration
   })
 
-  // Handle first_message_mode - ensure it's in the correct object format
-  let firstMessageModeConfig
-  if (typeof formikValues.firstMessageMode === 'object') {
-    // New object format from form
-    firstMessageModeConfig = {
-      allow_interruptions: formikValues.firstMessageMode.allow_interruptions,
-      mode: formikValues.firstMessageMode.mode,
-      first_message: formikValues.firstMessageMode.first_message
-    }
-  } else {
-    // Fallback for old string format - convert to object
-    firstMessageModeConfig = {
-      allow_interruptions: true,
-      mode: formikValues.firstMessageMode || 'user_speaks_first',
-      first_message: formikValues.customFirstMessage || ''
-    }
-  }
+  const firstMessageModeConfig = buildFirstMessageModeConfig(formikValues)
 
   return {
     agent: {
@@ -447,30 +497,7 @@ function transformFormDataToAgentConfig(formData: any) {
             temperature: llmConfiguration.temperature,
           },
           tts: serializeRouteTts(ttsConfiguration),
-          vad: {
-            name: formikValues.advancedSettings.vad.vadProvider,
-            ...(formikValues.advancedSettings.vad.minSilenceDuration !== undefined && {
-              min_silence_duration: formikValues.advancedSettings.vad.minSilenceDuration
-            }),
-            ...(formikValues.advancedSettings.vad.minSpeechDuration !== undefined && {
-              min_speech_duration: formikValues.advancedSettings.vad.minSpeechDuration
-            }),
-            ...(formikValues.advancedSettings.vad.prefixPaddingDuration !== undefined && {
-              prefix_padding_duration: formikValues.advancedSettings.vad.prefixPaddingDuration
-            }),
-            ...(formikValues.advancedSettings.vad.maxBufferedSpeech !== undefined && {
-              max_buffered_speech: formikValues.advancedSettings.vad.maxBufferedSpeech
-            }),
-            ...(formikValues.advancedSettings.vad.activationThreshold !== undefined && {
-              activation_threshold: formikValues.advancedSettings.vad.activationThreshold
-            }),
-            ...(formikValues.advancedSettings.vad.sampleRate !== undefined && {
-              sample_rate: formikValues.advancedSettings.vad.sampleRate
-            }),
-            ...(formikValues.advancedSettings.vad.forceCpu !== undefined && {
-              force_cpu: formikValues.advancedSettings.vad.forceCpu
-            })
-          },
+          vad: buildRouteVadPayload(formikValues),
           tools: serializeRouteTools(formikValues),
           filler_words: {
             enabled: (formikValues.advancedSettings.fillers.enableFillerWords ?? false) && [
@@ -501,31 +528,7 @@ function transformFormDataToAgentConfig(formData: any) {
             enabled: formikValues.advancedSettings.contextMemory?.enabled ?? false
           },
           turn_detection: formikValues.advancedSettings.session.turn_detection,
-          session_behavior: {
-            preemptive_generation: formikValues.advancedSettings.session.preemptiveGeneration || 'disabled',
-            turn_detection: formikValues.advancedSettings.session.turn_detection,
-            unlikely_threshold: formikValues.advancedSettings.session.unlikely_threshold,
-            min_endpointing_delay: formikValues.advancedSettings.session.min_endpointing_delay,
-            max_endpointing_delay: formikValues.advancedSettings.session.max_endpointing_delay,
-            ...(formikValues.advancedSettings.session.endpointing_mode && {
-              endpointing_mode: formikValues.advancedSettings.session.endpointing_mode
-            }),
-            ...(formikValues.advancedSettings.session.interruption_mode && {
-              interruption_mode: formikValues.advancedSettings.session.interruption_mode
-            }),
-            ...(formikValues.advancedSettings.session.user_away_timeout !== undefined && {
-              user_away_timeout: formikValues.advancedSettings.session.user_away_timeout
-            }),
-            ...(formikValues.advancedSettings.session.user_away_timeout_message !== undefined && formikValues.advancedSettings.session.user_away_timeout_message !== null && formikValues.advancedSettings.session.user_away_timeout_message !== '' && {
-              user_away_timeout_message: formikValues.advancedSettings.session.user_away_timeout_message
-            }),
-            ...(formikValues.advancedSettings.session.user_away_timeout_max_count !== undefined && {
-              user_away_timeout_max_count: formikValues.advancedSettings.session.user_away_timeout_max_count
-            }),
-            ...(formikValues.advancedSettings.session.user_away_timeout_end_message !== undefined && formikValues.advancedSettings.session.user_away_timeout_end_message !== null && formikValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
-              user_away_timeout_end_message: formikValues.advancedSettings.session.user_away_timeout_end_message
-            })
-          },
+          session_behavior: buildRouteSessionBehaviorPayload(formikValues),
           interruptions: {
             allow_interruptions: formikValues.advancedSettings.interruption.allowInterruptions,
             min_interruption_duration: formikValues.advancedSettings.interruption.minInterruptionDuration,
@@ -535,15 +538,7 @@ function transformFormDataToAgentConfig(formData: any) {
           },
           interruption_mode: formikValues.advancedSettings.session.interruption_mode ?? null,
           adaptive_stt: formikValues.advancedSettings.session.interruption_mode === 'adaptive',
-          ...(formikValues.advancedSettings.session.interruption_mode === 'adaptive' && {
-            adaptive_min_duration: formikValues.advancedSettings.interruption.adaptiveMinDuration ?? 0.5,
-            adaptive_min_words: formikValues.advancedSettings.interruption.adaptiveMinWords ?? 0,
-            adaptive_discard_audio_if_uninterruptible: formikValues.advancedSettings.interruption.adaptiveDiscardAudioIfUninterruptible ?? true,
-            adaptive_resume_false_interruption: formikValues.advancedSettings.interruption.adaptiveResumeFalseInterruption ?? true,
-            adaptive_false_interruption_timeout: formikValues.advancedSettings.interruption.adaptiveFalseInterruptionTimeout ?? 2.0,
-            adaptive_backchannel_boundary_start: formikValues.advancedSettings.interruption.adaptiveBackchannelBoundaryStart ?? 1.0,
-            adaptive_backchannel_boundary_end: formikValues.advancedSettings.interruption.adaptiveBackchannelBoundaryEnd ?? 3.5,
-          }),
+          ...buildRouteAdaptiveInterruptionPayload(formikValues),
           first_message_mode: firstMessageModeConfig
         }
       ],
