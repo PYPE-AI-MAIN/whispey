@@ -374,7 +374,7 @@ export default function PipecatAdvancedSettings({
 
         {/* Webhook */}
         <Section icon={<Webhook className="w-3.5 h-3.5" />} label="Webhook Configuration" open={openSections.webhook} onToggle={() => toggle('webhook')}>
-          <WebhookSettings triggerOnCallLog={false} webhookUrl="" httpMethod="POST" headers={{}} isActive={false} onFieldChange={() => {}} agentId={agentId} projectId={projectId} />
+          <WebhookSettings triggerOnCallLog={false} webhookUrl="" httpMethod="POST" headers={{}} isActive={false} onFieldChange={() => {}} onDataLoaded={() => {}} agentId={agentId} projectId={projectId} />
         </Section>
 
         {/* Callback Scheduling */}

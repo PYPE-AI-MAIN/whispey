@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, BookOpen } from 'lucide-react'
 
 // ── Pre-transfer webhook field options ────────────────────────────────────────
 const WEBHOOK_FIELD_OPTIONS = [
@@ -112,9 +112,10 @@ interface ToolsActionsSettingsProps {
   tools: Tool[]
   onFieldChange: (field: string, value: any) => void
   projectId?: string
+  kbEnabled?: boolean
 }
 
-function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
+function ToolsActionsSettings({ tools, onFieldChange, projectId, kbEnabled = false }: Readonly<ToolsActionsSettingsProps>) { // NOSONAR javascript:S3776
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
@@ -732,7 +733,16 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
 
       {/* Tools List */}
       <div className="space-y-2">
-        {tools.length === 0 ? (
+        {kbEnabled && (
+          <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/40 rounded border border-blue-200 dark:border-blue-700">
+            <BookOpen className="w-3 h-3 text-blue-500" />
+            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 flex-1">
+              Knowledge Search
+            </span>
+            <span className="text-xs text-blue-500 dark:text-blue-400 flex-shrink-0">Managed by RAG Settings</span>
+          </div>
+        )}
+        {tools.length === 0 && !kbEnabled ? (
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4 bg-gray-50 dark:bg-gray-900 rounded">
             No tools configured
           </div>
