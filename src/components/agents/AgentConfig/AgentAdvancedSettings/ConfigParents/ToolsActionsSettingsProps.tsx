@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages, BookOpen } from 'lucide-react'
 import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwitchSettings'
 
 export function validateToolName(name: string, allNames: string[]): string | null {
@@ -123,9 +123,10 @@ interface ToolsActionsSettingsProps {
   turnDetection?: string | null
   onFieldChange: (field: string, value: any) => void
   projectId?: string
+  kbEnabled?: boolean
 }
 
-function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, onFieldChange, projectId }: ToolsActionsSettingsProps) {
+function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, onFieldChange, projectId, kbEnabled = false }: Readonly<ToolsActionsSettingsProps>) { // NOSONAR javascript:S3776
   const [isLSOpen, setIsLSOpen] = useState(false)
   const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -757,12 +758,20 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             Voicemail Detection
           </DropdownMenuItem>
         </DropdownMenuContent>
-        {/* Language Switcher is managed via its own inline section below */}
       </DropdownMenu>
 
       {/* Tools List */}
       <div className="space-y-2">
-        {tools.length === 0 && languageSwitchTools.length === 0 ? (
+        {kbEnabled && (
+          <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/40 rounded border border-blue-200 dark:border-blue-700">
+            <BookOpen className="w-3 h-3 text-blue-500" />
+            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 flex-1">
+              Knowledge Search
+            </span>
+            <span className="text-xs text-blue-500 dark:text-blue-400 flex-shrink-0">Managed by RAG Settings</span>
+          </div>
+        )}
+        {tools.length === 0 && languageSwitchTools.length === 0 && !kbEnabled ? (
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4 bg-gray-50 dark:bg-gray-900 rounded">
             No tools configured
           </div>

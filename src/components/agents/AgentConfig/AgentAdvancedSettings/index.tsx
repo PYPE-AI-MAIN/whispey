@@ -18,6 +18,7 @@ import CallbackSettings from '@/components/projects/CallbackSettings'
 import DynamicTTSSwitch from '../DynamicTTSSwitch'
 import KnowledgeBaseRAGSettings from './ConfigParents/KnowledgeBaseRAGSettings'
 import ContextMemorySettings from './ConfigParents/ContextMemorySettings'
+import { WebhookConfig, DropoffConfig, CallbackConfig } from '@/lib/supplementalSettings'
 
 interface AgentAdvancedSettingsProps {
     agentId?: string
@@ -117,6 +118,9 @@ interface AgentAdvancedSettingsProps {
       }
     }
     onFieldChange: (field: string, value: any) => void
+    onWebhookDataLoaded?: (data: WebhookConfig) => void
+    onDropoffDataLoaded?: (data: DropoffConfig) => void
+    onCallbackDataLoaded?: (data: CallbackConfig) => void
     projectId?: string
     dynamicTTSList?: any[]
     onDynamicTTSChange?: (dynamicTTSList: any[]) => void
@@ -125,7 +129,9 @@ interface AgentAdvancedSettingsProps {
 const EOD_PROMPT_SNIPPET =
   'When the conversation is fully resolved and you have said your goodbye, append <eod/> at the very end of your response.'
 
-function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: AgentAdvancedSettingsProps) {
+const chevronClass = (open: boolean) => open ? 'rotate-180' : ''
+
+function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataLoaded, onDropoffDataLoaded, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: Readonly<AgentAdvancedSettingsProps>) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
@@ -172,7 +178,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <SettingsIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Interruption Configuration</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.interruption ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.interruption)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -205,7 +211,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <MicIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Voice Activity Detection (VAD)</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.vad ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.vad)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -232,7 +238,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <UserIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Behaviour</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.session ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.session)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -261,7 +267,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <Zap className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">EOD Auto-Hangup</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.eod ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.eod)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -312,7 +318,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <WrenchIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tools & Actions</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.tools ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.tools)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -322,6 +328,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               turnDetection={advancedSettings.session.turn_detection}
               onFieldChange={onFieldChange}
               projectId={projectId}
+              kbEnabled={advancedSettings.knowledgeBase?.enabled ?? false}
             />
           </CollapsibleContent>
         </Collapsible>
@@ -335,7 +342,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Fillers Words</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.fillers ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.fillers)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -362,7 +369,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <BugIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bug Report System</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.bugs ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.bugs)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -386,7 +393,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <Volume2 className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Background Audio</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.backgroundAudio ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.backgroundAudio)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -417,7 +424,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <Webhook className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Webhook Configuration</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.webhook ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.webhook)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -428,6 +435,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               headers={advancedSettings.webhook?.headers || {}}
               isActive={advancedSettings.webhook?.isActive || false}
               onFieldChange={onFieldChange}
+              onDataLoaded={onWebhookDataLoaded ?? (() => {})}
               agentId={agentId}
               projectId={projectId}
             />
@@ -443,13 +451,15 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <PhoneOff className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Drop-off Call Configuration</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.dropoff ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.dropoff)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <DropOffCallSettings
               agentId={agentId || ''}
               projectId={projectId}
+              onDataLoaded={onDropoffDataLoaded ?? (() => {})}
+              onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
         </Collapsible>
@@ -463,12 +473,15 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <PhoneCall className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Callback Scheduling</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.callbackScheduling ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.callbackScheduling)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             {agentId && projectId ? (
-              <CallbackSettings agentId={agentId} projectId={projectId} />
+              <CallbackSettings
+                agentId={agentId}
+                projectId={projectId}
+              />
             ) : (
               <p className="text-xs text-gray-400">Agent / project not available</p>
             )}
@@ -484,7 +497,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <ArrowRightLeft className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">TTS Switcher</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.ttsSwitcher ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.ttsSwitcher)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -504,7 +517,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <BookOpen className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">RAG Settings</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.knowledgeBase ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.knowledgeBase)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -525,7 +538,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, projectId, age
               <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Context Memory</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${openSections.contextMemory ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.contextMemory)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">

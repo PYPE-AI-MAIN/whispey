@@ -69,6 +69,10 @@ function serializeLanguageSwitchTTS(tts: any): any {
   return out
 }
 
+export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string) {
+  return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), assistant } }
+}
+
 function buildFallbackTtsPayload(formValues: any) {
   const provider = formValues.fallbackTtsProvider
   // cfg is either already normalized (camelCase from SelectTTS) or raw (snake_case from backend).
@@ -677,14 +681,7 @@ export function useMultiAssistantState({
         fallback_global_enabled: !!formValues.fallbackGlobalEnabled,
       }
 
-      return {
-        agent: {
-          name: agentName,
-          type: agentType,
-          agent_id: agentId,
-          assistant: [assistant]
-        }
-      }
+      return buildAgentEnvelope(agentName, agentType, [assistant], agentId)
     }
 
     // For multiple assistants (future implementation)
@@ -1014,13 +1011,7 @@ export function useMultiAssistantState({
       }
     })
 
-    return {
-      agent: {
-        name: agentName,
-        type: agentType,
-        assistant: assistants
-      }
-    }
+    return buildAgentEnvelope(agentName, agentType, assistants)
   }, [
     assistantNames, 
     assistantsData,
