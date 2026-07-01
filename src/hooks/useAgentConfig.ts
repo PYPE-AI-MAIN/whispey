@@ -556,7 +556,7 @@ function deriveSttConfig(stt: any): any {
     language: stt?.language || getFallback(null, 'stt.language'),
     ...(stt?.mode ? { mode: stt.mode } : {}),
     ...sttExtra,
-    ...(stt?.config || {}),
+    ...stt?.config,
   }
 }
 

@@ -11,70 +11,196 @@ import {
 
 const supabase = createServiceRoleClient()
 
+function serializeSarvamLanguageSwitchSTTRoute(stt: any): any {
+  const out: any = { name: stt.name, language: stt.language, model: stt.model }
+  if (stt.adaptive_stt) out.adaptive_stt = true
+  if (stt.mode) out.mode = stt.mode
+  out.flush_signal = stt.flush_signal ?? true
+  return out
+}
+
+function applyDeepgramFluxFieldsRoute(stt: any, out: any): void {
+  if (stt.eot_threshold != null) out.eot_threshold = stt.eot_threshold
+  if (stt.eager_eot_threshold != null) out.eager_eot_threshold = stt.eager_eot_threshold
+  if (stt.eot_timeout_ms != null) out.eot_timeout_ms = stt.eot_timeout_ms
+}
+
+function applyDeepgramNovaFieldsRoute(stt: any, out: any): void {
+  if (stt.endpointing_ms != null) out.endpointing_ms = stt.endpointing_ms
+  if (stt.punctuate != null) out.punctuate = stt.punctuate
+  if (stt.smart_format != null) out.smart_format = stt.smart_format
+  if (stt.profanity_filter != null) out.profanity_filter = stt.profanity_filter
+  if (stt.numerals != null) out.numerals = stt.numerals
+  if (stt.keyterm?.length) out.keyterm = stt.keyterm
+}
+
+function serializeDeepgramLanguageSwitchSTTRoute(stt: any): any {
+  const out: any = { name: stt.name, language: stt.language, model: stt.model }
+  if (stt.model?.startsWith('flux-general')) {
+    applyDeepgramFluxFieldsRoute(stt, out)
+  } else {
+    applyDeepgramNovaFieldsRoute(stt, out)
+  }
+  return out
+}
+
+function serializeGoogleLanguageSwitchSTTRoute(stt: any): any {
+  const out: any = { name: stt.name, language: stt.language }
+  if (stt.model) out.model = stt.model
+  return out
+}
+
 function serializeLanguageSwitchSTTRoute(stt: any): any {
   if (!stt) return {}
-  const out: any = { name: stt.name }
-  if (stt.name === 'sarvam') {
-    out.language = stt.language
-    out.model = stt.model
-    if (stt.adaptive_stt) out.adaptive_stt = true
-    if (stt.mode) out.mode = stt.mode
-    out.flush_signal = stt.flush_signal ?? true
-  } else if (stt.name === 'deepgram') {
-    out.language = stt.language
-    out.model = stt.model
-    if (stt.model?.startsWith('flux-general')) {
-      if (stt.eot_threshold != null) out.eot_threshold = stt.eot_threshold
-      if (stt.eager_eot_threshold != null) out.eager_eot_threshold = stt.eager_eot_threshold
-      if (stt.eot_timeout_ms != null) out.eot_timeout_ms = stt.eot_timeout_ms
-    } else {
-      if (stt.endpointing_ms != null) out.endpointing_ms = stt.endpointing_ms
-      if (stt.punctuate != null) out.punctuate = stt.punctuate
-      if (stt.smart_format != null) out.smart_format = stt.smart_format
-      if (stt.profanity_filter != null) out.profanity_filter = stt.profanity_filter
-      if (stt.numerals != null) out.numerals = stt.numerals
-      if (stt.keyterm?.length) out.keyterm = stt.keyterm
-    }
-  } else if (stt.name === 'google') {
-    out.language = stt.language
-    if (stt.model) out.model = stt.model
+  if (stt.name === 'sarvam') return serializeSarvamLanguageSwitchSTTRoute(stt)
+  if (stt.name === 'deepgram') return serializeDeepgramLanguageSwitchSTTRoute(stt)
+  if (stt.name === 'google') return serializeGoogleLanguageSwitchSTTRoute(stt)
+  return { name: stt.name }
+}
+
+function serializeSarvamLanguageSwitchTTSRoute(tts: any): any {
+  const out: any = {
+    name: tts.name,
+    language: tts.language,
+    model: tts.model || 'bulbul:v3-beta',
+    speaker: tts.speaker || tts.voice_id || '',
   }
+  if (tts.voice_settings) {
+    out.voice_settings = {
+      pace: tts.voice_settings.pace ?? 1,
+      loudness: tts.voice_settings.loudness ?? 1,
+      pitch: tts.voice_settings.pitch ?? 0,
+      enable_preprocessing: tts.voice_settings.enable_preprocessing ?? false,
+    }
+  }
+  return out
+}
+
+function serializeElevenlabsLanguageSwitchTTSRoute(tts: any): any {
+  const out: any = {
+    name: tts.name,
+    voice_id: tts.voice_id || '',
+    model: tts.model || 'eleven_multilingual_v2',
+  }
+  if (tts.language) out.language = tts.language
+  if (tts.voice_settings) {
+    out.voice_settings = {
+      similarity_boost: tts.voice_settings.similarity_boost ?? 0.75,
+      stability: tts.voice_settings.stability ?? 0.5,
+      style: tts.voice_settings.style ?? 0,
+      use_speaker_boost: tts.voice_settings.use_speaker_boost ?? true,
+      speed: tts.voice_settings.speed ?? 1,
+    }
+  }
+  return out
+}
+
+function serializeGoogleLanguageSwitchTTSRoute(tts: any): any {
+  const out: any = { name: tts.name, voice_name: tts.voice_name || '' }
+  if (tts.gender) out.gender = tts.gender
   return out
 }
 
 function serializeLanguageSwitchTTSRoute(tts: any): any {
   if (!tts) return {}
-  const out: any = { name: tts.name }
-  if (tts.name === 'sarvam') {
-    out.language = tts.language
-    out.model = tts.model || 'bulbul:v3-beta'
-    out.speaker = tts.speaker || tts.voice_id || ''
-    if (tts.voice_settings) {
-      out.voice_settings = {
-        pace: tts.voice_settings.pace ?? 1,
-        loudness: tts.voice_settings.loudness ?? 1,
-        pitch: tts.voice_settings.pitch ?? 0,
-        enable_preprocessing: tts.voice_settings.enable_preprocessing ?? false,
-      }
+  if (tts.name === 'sarvam') return serializeSarvamLanguageSwitchTTSRoute(tts)
+  if (tts.name === 'elevenlabs') return serializeElevenlabsLanguageSwitchTTSRoute(tts)
+  if (tts.name === 'google') return serializeGoogleLanguageSwitchTTSRoute(tts)
+  return { name: tts.name }
+}
+
+async function attachWhispeyApiKey(agentConfigBody: any, agentId: string | null): Promise<void> {
+  if (!agentId) return
+  try {
+    // Get agent record to find project_id
+    const { data: agent, error: agentError } = await supabase
+      .from('pype_voice_agents')
+      .select('project_id, configuration')
+      .eq('id', agentId)
+      .single()
+
+    if (agentError || !agent) return
+    const projectId = agent.project_id
+    if (!projectId) return
+
+    // Get the first API key for this project (most recent)
+    const { data: apiKey, error: keyError } = await supabase
+      .from('pype_voice_api_keys')
+      .select('id, token_hash, token_hash_master')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (keyError || !apiKey || !agentConfigBody.agent) return
+
+    // Store whispey_key_id (the database ID)
+    if (apiKey.id) {
+      agentConfigBody.agent.whispey_key_id = apiKey.id
     }
-  } else if (tts.name === 'elevenlabs') {
-    out.voice_id = tts.voice_id || ''
-    out.model = tts.model || 'eleven_multilingual_v2'
-    if (tts.language) out.language = tts.language
-    if (tts.voice_settings) {
-      out.voice_settings = {
-        similarity_boost: tts.voice_settings.similarity_boost ?? 0.75,
-        stability: tts.voice_settings.stability ?? 0.5,
-        style: tts.voice_settings.style ?? 0,
-        use_speaker_boost: tts.voice_settings.use_speaker_boost ?? true,
-        speed: tts.voice_settings.speed ?? 1,
+
+    // Decrypt and store the API key
+    if (apiKey.token_hash_master) {
+      try {
+        const decryptedKey = decryptWithWhispeyKey(apiKey.token_hash_master)
+        agentConfigBody.agent.whispey_api_key = decryptedKey
+        console.log('✅ Decrypted and stored whispey_api_key in agent config')
+      } catch (decryptError) {
+        console.error('❌ Failed to decrypt API key:', decryptError)
+        // Fallback: store token_hash if decryption fails
+        if (apiKey.token_hash) {
+          agentConfigBody.agent.token_hash = apiKey.token_hash
+        }
       }
+    } else if (apiKey.token_hash) {
+      // Fallback: use token_hash if token_hash_master not available
+      agentConfigBody.agent.token_hash = apiKey.token_hash
     }
-  } else if (tts.name === 'google') {
-    out.voice_name = tts.voice_name || ''
-    if (tts.gender) out.gender = tts.gender
+  } catch (error) {
+    console.error('Error fetching/decrypting API key:', error)
+    // Don't fail the request, just log the error
   }
-  return out
+}
+
+async function callVoiceBackend(apiUrl: string, agentConfigBody: any): Promise<Response | NextResponse> {
+  const fetchStart = Date.now()
+  try {
+    return await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...serviceAuthHeaders()
+      },
+      body: JSON.stringify(agentConfigBody),
+      signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS),
+    })
+  } catch (fetchErr: unknown) {
+    const elapsed = Date.now() - fetchStart
+    const e = fetchErr as any
+    console.error('❌ [save-and-deploy] Fetch threw after', elapsed, 'ms:', {
+      name: e?.name,
+      message: e?.message,
+      causeCode: e?.cause?.code,
+      url: apiUrl,
+    })
+    if (isPypeUpstreamUnreachable(fetchErr)) {
+      return NextResponse.json(
+        {
+          message: 'Voice backend unreachable. The agent config could not be deployed because the voice backend did not respond.',
+          backendUnavailable: true,
+          debug: {
+            url: apiUrl,
+            elapsedMs: elapsed,
+            errorName: e?.name,
+            errorMessage: e?.message,
+            causeCode: e?.cause?.code,
+          },
+        },
+        { status: 503 }
+      )
+    }
+    throw fetchErr
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -84,8 +210,7 @@ export async function POST(request: NextRequest) {
     let agentConfigBody
     let agentName
     let agentId: string | null = null
-    let projectId: string | null = null
-    
+
     // Check if it's the NEW structure (with agent object already built)
     if (body.agent && body.agent.assistant && Array.isArray(body.agent.assistant)) {
       agentName = body.agent.name || body.metadata?.agentName
@@ -126,64 +251,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch and decrypt API key from database
-    if (agentId) {
-      try {
-        // Get agent record to find project_id
-        const { data: agent, error: agentError } = await supabase
-          .from('pype_voice_agents')
-          .select('project_id, configuration')
-          .eq('id', agentId)
-          .single()
-
-        if (!agentError && agent) {
-          projectId = agent.project_id
-
-          // Get API key from pype_voice_api_keys table
-          if (projectId) {
-            // Get the first API key for this project (most recent)
-            const { data: apiKey, error: keyError } = await supabase
-              .from('pype_voice_api_keys')
-              .select('id, token_hash, token_hash_master')
-              .eq('project_id', projectId)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle()
-
-            if (!keyError && apiKey) {
-              // Add to agent configuration
-              if (agentConfigBody.agent) {
-                // Store whispey_key_id (the database ID)
-                if (apiKey.id) {
-                  agentConfigBody.agent.whispey_key_id = apiKey.id
-                }
-
-                // Decrypt and store the API key
-                if (apiKey.token_hash_master) {
-                  try {
-                    const decryptedKey = decryptWithWhispeyKey(apiKey.token_hash_master)
-                    agentConfigBody.agent.whispey_api_key = decryptedKey
-                    console.log('✅ Decrypted and stored whispey_api_key in agent config')
-                  } catch (decryptError) {
-                    console.error('❌ Failed to decrypt API key:', decryptError)
-                    // Fallback: store token_hash if decryption fails
-                    if (apiKey.token_hash) {
-                      agentConfigBody.agent.token_hash = apiKey.token_hash
-                    }
-                  }
-                } else if (apiKey.token_hash) {
-                  // Fallback: use token_hash if token_hash_master not available
-                  agentConfigBody.agent.token_hash = apiKey.token_hash
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching/decrypting API key:', error)
-        // Don't fail the request, just log the error
-      }
-    }
-    
+    await attachWhispeyApiKey(agentConfigBody, agentId)
 
     const baseUrl = getPypeApiBaseUrlForServer()
     if (!baseUrl) {
@@ -205,45 +273,10 @@ export async function POST(request: NextRequest) {
       payloadKeys: Object.keys(agentConfigBody?.agent ?? {}),
     })
 
-    let response: Response
     const fetchStart = Date.now()
-    try {
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...serviceAuthHeaders()
-        },
-        body: JSON.stringify(agentConfigBody),
-        signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS),
-      })
-    } catch (fetchErr: unknown) {
-      const elapsed = Date.now() - fetchStart
-      const e = fetchErr as any
-      console.error('❌ [save-and-deploy] Fetch threw after', elapsed, 'ms:', {
-        name: e?.name,
-        message: e?.message,
-        causeCode: e?.cause?.code,
-        url: apiUrl,
-      })
-      if (isPypeUpstreamUnreachable(fetchErr)) {
-        return NextResponse.json(
-          {
-            message: 'Voice backend unreachable. The agent config could not be deployed because the voice backend did not respond.',
-            backendUnavailable: true,
-            debug: {
-              url: apiUrl,
-              elapsedMs: elapsed,
-              errorName: e?.name,
-              errorMessage: e?.message,
-              causeCode: e?.cause?.code,
-            },
-          },
-          { status: 503 }
-        )
-      }
-      throw fetchErr
-    }
+    const backendResult = await callVoiceBackend(apiUrl, agentConfigBody)
+    if (backendResult instanceof NextResponse) return backendResult
+    const response = backendResult
 
     const elapsed = Date.now() - fetchStart
     console.log('📥 [save-and-deploy] Voice backend responded:', {

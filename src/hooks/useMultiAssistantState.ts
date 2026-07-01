@@ -3,70 +3,102 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import { getFallback } from '@/config/agentDefaults'
 
+function serializeSarvamLanguageSwitchSTT(stt: any): any {
+  const out: any = { name: stt.name, language: stt.language, model: stt.model }
+  if (stt.adaptive_stt) out.adaptive_stt = true
+  if (stt.mode) out.mode = stt.mode
+  out.flush_signal = stt.flush_signal ?? true
+  return out
+}
+
+function applyDeepgramFluxFields(stt: any, out: any): void {
+  if (stt.eot_threshold != null) out.eot_threshold = stt.eot_threshold
+  if (stt.eager_eot_threshold != null) out.eager_eot_threshold = stt.eager_eot_threshold
+  if (stt.eot_timeout_ms != null) out.eot_timeout_ms = stt.eot_timeout_ms
+}
+
+function applyDeepgramNovaFields(stt: any, out: any): void {
+  if (stt.endpointing_ms != null) out.endpointing_ms = stt.endpointing_ms
+  if (stt.punctuate != null) out.punctuate = stt.punctuate
+  if (stt.smart_format != null) out.smart_format = stt.smart_format
+  if (stt.profanity_filter != null) out.profanity_filter = stt.profanity_filter
+  if (stt.numerals != null) out.numerals = stt.numerals
+  if (stt.keyterm?.length) out.keyterm = stt.keyterm
+}
+
+function serializeDeepgramLanguageSwitchSTT(stt: any): any {
+  const out: any = { name: stt.name, language: stt.language, model: stt.model }
+  if (stt.model?.startsWith('flux-general')) {
+    applyDeepgramFluxFields(stt, out)
+  } else {
+    applyDeepgramNovaFields(stt, out)
+  }
+  return out
+}
+
+function serializeGoogleLanguageSwitchSTT(stt: any): any {
+  const out: any = { name: stt.name, language: stt.language }
+  if (stt.model) out.model = stt.model
+  return out
+}
+
 function serializeLanguageSwitchSTT(stt: any): any {
   if (!stt) return {}
-  const out: any = { name: stt.name }
-  if (stt.name === 'sarvam') {
-    out.language = stt.language
-    out.model = stt.model
-    if (stt.adaptive_stt) out.adaptive_stt = true
-    if (stt.mode) out.mode = stt.mode
-    out.flush_signal = stt.flush_signal ?? true
-  } else if (stt.name === 'deepgram') {
-    out.language = stt.language
-    out.model = stt.model
-    if (stt.model?.startsWith('flux-general')) {
-      if (stt.eot_threshold != null) out.eot_threshold = stt.eot_threshold
-      if (stt.eager_eot_threshold != null) out.eager_eot_threshold = stt.eager_eot_threshold
-      if (stt.eot_timeout_ms != null) out.eot_timeout_ms = stt.eot_timeout_ms
-    } else {
-      if (stt.endpointing_ms != null) out.endpointing_ms = stt.endpointing_ms
-      if (stt.punctuate != null) out.punctuate = stt.punctuate
-      if (stt.smart_format != null) out.smart_format = stt.smart_format
-      if (stt.profanity_filter != null) out.profanity_filter = stt.profanity_filter
-      if (stt.numerals != null) out.numerals = stt.numerals
-      if (stt.keyterm?.length) out.keyterm = stt.keyterm
-    }
-  } else if (stt.name === 'google') {
-    out.language = stt.language
-    if (stt.model) out.model = stt.model
+  if (stt.name === 'sarvam') return serializeSarvamLanguageSwitchSTT(stt)
+  if (stt.name === 'deepgram') return serializeDeepgramLanguageSwitchSTT(stt)
+  if (stt.name === 'google') return serializeGoogleLanguageSwitchSTT(stt)
+  return { name: stt.name }
+}
+
+function serializeSarvamLanguageSwitchTTS(tts: any): any {
+  const out: any = {
+    name: tts.name,
+    language: tts.language,
+    model: tts.model || 'bulbul:v3-beta',
+    speaker: tts.speaker || tts.voice_id || '',
   }
+  if (tts.voice_settings) {
+    out.voice_settings = {
+      pace: tts.voice_settings.pace ?? 1,
+      loudness: tts.voice_settings.loudness ?? 1,
+      pitch: tts.voice_settings.pitch ?? 0,
+      enable_preprocessing: tts.voice_settings.enable_preprocessing ?? false,
+    }
+  }
+  return out
+}
+
+function serializeElevenlabsLanguageSwitchTTS(tts: any): any {
+  const out: any = {
+    name: tts.name,
+    voice_id: tts.voice_id || '',
+    model: tts.model || 'eleven_multilingual_v2',
+  }
+  if (tts.language) out.language = tts.language
+  if (tts.voice_settings) {
+    out.voice_settings = {
+      similarity_boost: tts.voice_settings.similarity_boost ?? 0.75,
+      stability: tts.voice_settings.stability ?? 0.5,
+      style: tts.voice_settings.style ?? 0,
+      use_speaker_boost: tts.voice_settings.use_speaker_boost ?? true,
+      speed: tts.voice_settings.speed ?? 1,
+    }
+  }
+  return out
+}
+
+function serializeGoogleLanguageSwitchTTS(tts: any): any {
+  const out: any = { name: tts.name, voice_name: tts.voice_name || '' }
+  if (tts.gender) out.gender = tts.gender
   return out
 }
 
 function serializeLanguageSwitchTTS(tts: any): any {
   if (!tts) return {}
-  const out: any = { name: tts.name }
-  if (tts.name === 'sarvam') {
-    out.language = tts.language
-    out.model = tts.model || 'bulbul:v3-beta'
-    out.speaker = tts.speaker || tts.voice_id || ''
-    if (tts.voice_settings) {
-      out.voice_settings = {
-        pace: tts.voice_settings.pace ?? 1,
-        loudness: tts.voice_settings.loudness ?? 1,
-        pitch: tts.voice_settings.pitch ?? 0,
-        enable_preprocessing: tts.voice_settings.enable_preprocessing ?? false,
-      }
-    }
-  } else if (tts.name === 'elevenlabs') {
-    out.voice_id = tts.voice_id || ''
-    out.model = tts.model || 'eleven_multilingual_v2'
-    if (tts.language) out.language = tts.language
-    if (tts.voice_settings) {
-      out.voice_settings = {
-        similarity_boost: tts.voice_settings.similarity_boost ?? 0.75,
-        stability: tts.voice_settings.stability ?? 0.5,
-        style: tts.voice_settings.style ?? 0,
-        use_speaker_boost: tts.voice_settings.use_speaker_boost ?? true,
-        speed: tts.voice_settings.speed ?? 1,
-      }
-    }
-  } else if (tts.name === 'google') {
-    out.voice_name = tts.voice_name || ''
-    if (tts.gender) out.gender = tts.gender
-  }
-  return out
+  if (tts.name === 'sarvam') return serializeSarvamLanguageSwitchTTS(tts)
+  if (tts.name === 'elevenlabs') return serializeElevenlabsLanguageSwitchTTS(tts)
+  if (tts.name === 'google') return serializeGoogleLanguageSwitchTTS(tts)
+  return { name: tts.name }
 }
 
 export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string) {
@@ -129,7 +161,7 @@ function buildSingleAssistantSttPayload(formValues: any, currentSttConfig: any):
   const rawConfig = formValues.sttConfig || currentSttConfig?.config || {}
   const { language: _l, mode: _m, model: _mo, tier: _t, version: _v,
           redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
-          ...extraConfig } = rawConfig as any
+          ...extraConfig } = rawConfig
   return {
     name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
     language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
