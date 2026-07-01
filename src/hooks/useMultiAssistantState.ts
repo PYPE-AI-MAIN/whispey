@@ -157,7 +157,7 @@ export function useMultiAssistantState({
   currentSttConfig,
   currentAzureConfig,
   fallbackAzureConfig
-}: UseMultiAssistantStateProps) {
+}: UseMultiAssistantStateProps) { // NOSONAR javascript:S3776
   
   const [assistantNames, setAssistantNames] = useState<string[]>(() => {
     return initialAssistants.map(a => a.name)

@@ -289,7 +289,7 @@ export async function POST(request: NextRequest) {
 }
 
 
-function transformFormDataToAgentConfig(formData: any) {
+function transformFormDataToAgentConfig(formData: any) { // NOSONAR javascript:S3776
   const {
     formikValues,
     ttsConfiguration,

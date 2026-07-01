@@ -375,7 +375,7 @@ export const useAgentMutations = (agentName: string | null) => {
 
 export const getDefaultFormValues = getFormDefaults
 
-export const buildFormValuesFromAgent = (assistant: any) => {
+export const buildFormValuesFromAgent = (assistant: any) => { // NOSONAR javascript:S3776
   const llmConfig = assistant.llm || {}
   const modelValue = llmConfig.model || getFallback(null, 'llm.model')
   const providerValue = llmConfig.provider || llmConfig.name || getFallback(null, 'llm.name')

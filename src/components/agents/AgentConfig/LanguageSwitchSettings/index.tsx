@@ -168,12 +168,12 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
       ? (draft.stt.language || '')
       : (draft.tts?.language || draft.stt.language || '')
     const entry = { ...draft, language_code: derived_language_code }
-    if (editingIndex !== null) {
+    if (editingIndex === null) {
+      onChange?.([...entries, entry])
+    } else {
       const updated = [...entries]
       updated[editingIndex] = entry
       onChange?.(updated)
-    } else {
-      onChange?.([...entries, entry])
     }
     setIsDialogOpen(false)
   }
@@ -279,7 +279,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
         <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-gray-100">
-              {editingIndex !== null ? 'Edit' : 'Add'} Language Switch
+              {editingIndex === null ? 'Add' : 'Edit'} Language Switch
             </DialogTitle>
           </DialogHeader>
 
@@ -479,7 +479,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
               onClick={handleSave}
               className="bg-purple-600 hover:bg-purple-700 text-white"
             >
-              {editingIndex !== null ? 'Update' : 'Add'} Language Switch
+              {editingIndex === null ? 'Add' : 'Update'} Language Switch
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -543,7 +543,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
 
 // ── Small section wrapper ──────────────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
