@@ -84,8 +84,8 @@ export function validate(entry: LanguageSwitchConfig, allEntries: LanguageSwitch
     errors.tool_name = 'Required'
   } else if (entry.tool_name.length > 30) {
     errors.tool_name = 'Tool name must be 30 characters or less'
-  } else if (!/^[a-z][a-z0-9_]*$/.test(entry.tool_name)) {
-    errors.tool_name = 'Must be snake_case (lowercase letters, digits, underscores, no spaces)'
+  } else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(entry.tool_name)) {
+    errors.tool_name = 'Must be snake_case (letters, digits, underscores, no spaces)'
   } else {
     const dupeInEntries = allEntries.findIndex((e, i) => i !== editingIndex && e.tool_name === entry.tool_name)
     if (dupeInEntries !== -1) errors.tool_name = `"${entry.tool_name}" tool already exists`

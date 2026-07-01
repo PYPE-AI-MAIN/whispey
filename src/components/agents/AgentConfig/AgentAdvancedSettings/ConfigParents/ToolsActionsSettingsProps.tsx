@@ -17,7 +17,7 @@ import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwit
 export function validateToolName(name: string, allNames: string[]): string | null {
   if (!name) return 'Tool name is required'
   if (name.length > 30) return 'Tool name must be 30 characters or less'
-  if (!/^[a-z][a-z0-9_]*$/.test(name)) return 'Must be snake_case (lowercase letters, digits, underscores, no spaces)'
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) return 'Must be snake_case (letters, digits, underscores, no spaces)'
   if (allNames.includes(name)) return `"${name}" tool already exists`
   return null
 }

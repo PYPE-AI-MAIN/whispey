@@ -25,8 +25,9 @@ describe('validateToolName', () => {
     expect(validateToolName('a'.repeat(30), [])).toBeNull()
   })
 
-  it('errors on uppercase letters', () => {
-    expect(validateToolName('TransferCall', [])).toMatch(/snake_case/)
+  it('accepts uppercase letters', () => {
+    expect(validateToolName('TransferCall', [])).toBeNull()
+    expect(validateToolName('Transfer_Call', [])).toBeNull()
   })
 
   it('errors on spaces', () => {
