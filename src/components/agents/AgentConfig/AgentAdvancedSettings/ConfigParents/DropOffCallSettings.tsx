@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { Loader2, Save, Phone, AlertCircle } from 'lucide-react'
+import { Loader2, Phone, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Switch } from '@/components/ui/switch'
 import { PhoneNumber } from '@/utils/campaigns/constants'
 import toast from 'react-hot-toast'
+import { DropoffConfig } from '@/lib/supplementalSettings'
 
 // Default criteria for call_retry_required metric
 const DEFAULT_CALL_RETRY_CRITERIA = JSON.stringify({
@@ -40,27 +40,16 @@ const DEFAULT_CALL_RETRY_CRITERIA = JSON.stringify({
 interface DropOffCallSettingsProps {
   agentId: string
   projectId?: string
+  onDataLoaded: (data: DropoffConfig) => void
+  onFieldChange: (field: string, value: any) => void
 }
 
-interface DropOffSettings {
-  id?: string
-  enabled: boolean
-  dropoff_message: string
-  delay_minutes: number
-  max_retries: number
-  context_dropoff_prompt: string
-  call_retry_required_criteria: string
-  sip_trunk_id: string | null
-  phone_number_id: string | null
-}
-
-export default function DropOffCallSettings({ agentId, projectId }: DropOffCallSettingsProps) {
+export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, onFieldChange }: Readonly<DropOffCallSettingsProps>) {
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhones, setLoadingPhones] = useState(true)
-  
-  const [settings, setSettings] = useState<DropOffSettings>({
+
+  const [settings, setSettings] = useState<DropoffConfig>({
     enabled: false,
     dropoff_message: '',
     delay_minutes: 5,
@@ -71,6 +60,12 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
     phone_number_id: null,
   })
 
+  const applyChange = (patch: Partial<DropoffConfig>) => {
+    const next = { ...settings, ...patch }
+    setSettings(next)
+    onFieldChange('advancedSettings.dropoff', next)
+  }
+
   // Fetch existing settings and agent metrics
   useEffect(() => {
     const fetchSettings = async () => {
@@ -78,46 +73,46 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
 
       try {
         setLoading(true)
-        
+
         // Fetch drop-off settings
         const settingsResponse = await fetch(`/api/agents/${agentId}/dropoff-settings`)
-        
+
         if (!settingsResponse.ok) {
           throw new Error('Failed to fetch drop-off settings')
         }
 
         const settingsResult = await settingsResponse.json()
-        
+
         // Fetch agent to get metrics - prioritize saved criteria over default
         let callRetryCriteria: string | null = null
-        
+
         try {
           const agentResponse = await fetch(`/api/agents/${agentId}`)
-          
+
           if (agentResponse.ok) {
             const agentData = await agentResponse.json()
-            
-            console.log('Agent data fetched:', { 
+
+            console.log('Agent data fetched:', {
               hasMetrics: !!agentData.metrics,
-              metricsType: typeof agentData.metrics 
+              metricsType: typeof agentData.metrics
             })
-            
+
             if (agentData.metrics) {
               try {
-                const metrics = typeof agentData.metrics === 'string' 
-                  ? JSON.parse(agentData.metrics) 
+                const metrics = typeof agentData.metrics === 'string'
+                  ? JSON.parse(agentData.metrics)
                   : agentData.metrics
-                
+
                 console.log('Parsed metrics:', {
                   hasCallRetryRequired: !!metrics?.call_retry_required,
                   hasCriteria: metrics?.call_retry_required?.criteria !== undefined,
                   criteriaType: typeof metrics?.call_retry_required?.criteria
                 })
-                
+
                 // Check if call_retry_required metric exists and has criteria
                 if (metrics?.call_retry_required?.criteria !== undefined && metrics?.call_retry_required?.criteria !== null) {
                   const criteria = metrics.call_retry_required.criteria
-                  
+
                   // If criteria exists (even if empty string), use it
                   // Convert to string if it's an object
                   if (typeof criteria === 'string') {
@@ -145,31 +140,38 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
           console.error('Error fetching agent metrics:', agentError)
           // If fetch fails, criteria remains null and will use default
         }
-        
+
         console.log('Final callRetryCriteria:', callRetryCriteria ? `Found (${callRetryCriteria.length} chars)` : 'Using default')
-        
-        // Only use default if no criteria was found in agent metrics
-        if (callRetryCriteria === null) {
-          callRetryCriteria = DEFAULT_CALL_RETRY_CRITERIA
-        }
-        
+
+        const resolvedCriteria = callRetryCriteria ?? DEFAULT_CALL_RETRY_CRITERIA
+
         if (settingsResult.data) {
-          setSettings({
+          const loaded: DropoffConfig = {
             enabled: settingsResult.data.enabled !== undefined ? settingsResult.data.enabled : false,
             dropoff_message: settingsResult.data.dropoff_message || '',
             delay_minutes: settingsResult.data.delay_minutes || 5,
             max_retries: settingsResult.data.max_retries !== undefined && settingsResult.data.max_retries !== null ? settingsResult.data.max_retries : 2,
             context_dropoff_prompt: settingsResult.data.context_dropoff_prompt || '',
-            call_retry_required_criteria: callRetryCriteria,
+            call_retry_required_criteria: resolvedCriteria,
             sip_trunk_id: settingsResult.data.sip_trunk_id || null,
             phone_number_id: settingsResult.data.phone_number_id || null,
-          })
+          }
+          setSettings(loaded)
+          onDataLoaded(loaded)
         } else {
-          // If no settings exist, still set the criteria from agent metrics
-          setSettings(prev => ({
-            ...prev,
-            call_retry_required_criteria: callRetryCriteria,
-          }))
+          // No saved settings — use defaults with resolved criteria
+          const loaded: DropoffConfig = {
+            enabled: false,
+            dropoff_message: '',
+            delay_minutes: 5,
+            max_retries: 2,
+            context_dropoff_prompt: '',
+            call_retry_required_criteria: resolvedCriteria,
+            sip_trunk_id: null,
+            phone_number_id: null,
+          }
+          setSettings(loaded)
+          onDataLoaded(loaded)
         }
       } catch (error) {
         console.error('Error fetching drop-off settings:', error)
@@ -190,16 +192,16 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
       try {
         setLoadingPhones(true)
         const response = await fetch(`/api/calls/phone-numbers/?limit=100`)
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch phone numbers')
         }
 
         const data: PhoneNumber[] = await response.json()
-        
+
         // Filter by: project_id matching AND trunk_direction = 'outbound' AND status = 'active'
-        const filteredNumbers = data.filter(phone => 
-          phone.project_id === projectId && 
+        const filteredNumbers = data.filter(phone =>
+          phone.project_id === projectId &&
           phone.trunk_direction === 'outbound' &&
           phone.status === 'active'
         )
@@ -217,62 +219,6 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
       fetchPhoneNumbers()
     }
   }, [projectId])
-
-  const handleSave = async () => {
-    if (!agentId) return
-
-    // Validate delay_minutes
-    if (settings.delay_minutes < 0) {
-      toast.error('Delay minutes must be non-negative')
-      return
-    }
-
-    // Validate max_retries
-    if (settings.max_retries < 0 || settings.max_retries > 10) {
-      toast.error('Max retries must be between 0 and 10')
-      return
-    }
-
-    try {
-      setSaving(true)
-      const response = await fetch(`/api/agents/${agentId}/dropoff-settings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          enabled: settings.enabled,
-          dropoff_message: settings.dropoff_message || null,
-          delay_minutes: settings.delay_minutes,
-          max_retries: settings.max_retries,
-          context_dropoff_prompt: settings.context_dropoff_prompt || null,
-          call_retry_required_criteria: settings.call_retry_required_criteria || null,
-          sip_trunk_id: settings.sip_trunk_id || null,
-          phone_number_id: settings.phone_number_id || null,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save drop-off settings')
-      }
-
-      const result = await response.json()
-      if (result.data) {
-        setSettings({
-          ...settings,
-          id: result.data.id,
-        })
-      }
-
-      toast.success('Drop-off call settings saved successfully')
-    } catch (error: any) {
-      console.error('Error saving drop-off settings:', error)
-      toast.error(error.message || 'Failed to save drop-off settings')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const selectedPhone = phoneNumbers.find(p => p.id === settings.phone_number_id)
 
@@ -303,7 +249,7 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
           <Textarea
             id="dropoff-message"
             value={settings.dropoff_message}
-            onChange={(e) => setSettings({ ...settings, dropoff_message: e.target.value })}
+            onChange={(e) => applyChange({ dropoff_message: e.target.value })}
             placeholder="Enter the message that will be spoken during the drop-off call..."
             className="min-h-[80px] text-sm resize-none"
           />
@@ -320,7 +266,7 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
           <Textarea
             id="context-dropoff-prompt"
             value={settings.context_dropoff_prompt}
-            onChange={(e) => setSettings({ ...settings, context_dropoff_prompt: e.target.value })}
+            onChange={(e) => applyChange({ context_dropoff_prompt: e.target.value })}
             placeholder="Enter the prompt that will generate a context summary for the drop-off call..."
             className="min-h-[100px] text-sm resize-none"
           />
@@ -350,7 +296,7 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
               type="number"
               min="0"
               value={settings.delay_minutes}
-              onChange={(e) => setSettings({ ...settings, delay_minutes: parseInt(e.target.value) || 0 })}
+              onChange={(e) => applyChange({ delay_minutes: Number.parseInt(e.target.value) || 0 })}
               className="text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -369,7 +315,7 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
               min="0"
               max="10"
               value={settings.max_retries}
-              onChange={(e) => setSettings({ ...settings, max_retries: parseInt(e.target.value) || 0 })}
+              onChange={(e) => applyChange({ max_retries: Number.parseInt(e.target.value) || 0 })}
               className="text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -387,7 +333,7 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
             <Textarea
               id="call-retry-criteria"
               value={settings.call_retry_required_criteria}
-              onChange={(e) => setSettings({ ...settings, call_retry_required_criteria: e.target.value })}
+              onChange={(e) => applyChange({ call_retry_required_criteria: e.target.value })}
               placeholder="Enter the prompt for the call_retry_required metric (JSON format)..."
               className="min-h-[150px] max-h-[300px] text-xs resize-none font-mono overflow-y-auto"
             />
@@ -431,18 +377,10 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
               value={settings.phone_number_id || undefined}
               onValueChange={(value) => {
                 if (value === 'none') {
-                  setSettings({
-                    ...settings,
-                    phone_number_id: null,
-                    sip_trunk_id: null,
-                  })
+                  applyChange({ phone_number_id: null, sip_trunk_id: null })
                 } else {
-                  const selectedPhone = phoneNumbers.find(p => p.id === value)
-                  setSettings({
-                    ...settings,
-                    phone_number_id: value || null,
-                    sip_trunk_id: selectedPhone?.trunk_id || null,
-                  })
+                  const phone = phoneNumbers.find(p => p.id === value)
+                  applyChange({ phone_number_id: value || null, sip_trunk_id: phone?.trunk_id || null })
                 }
               }}
             >
@@ -480,8 +418,8 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
         </div>
       </div>
 
-      {/* Enable/Disable Toggle and Save Button */}
-      <div className="pt-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+      {/* Enable/Disable Toggle */}
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex flex-col">
             <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -493,28 +431,9 @@ export default function DropOffCallSettings({ agentId, projectId }: DropOffCallS
           </div>
           <Switch
             checked={settings.enabled}
-            onCheckedChange={(checked) => setSettings({ ...settings, enabled: checked })}
+            onCheckedChange={(checked) => applyChange({ enabled: checked })}
           />
         </div>
-        
-        <Button
-          onClick={handleSave}
-          disabled={saving || !projectId}
-          size="sm"
-          className="w-full"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving Configuration...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save Configuration
-            </>
-          )}
-        </Button>
       </div>
     </div>
   )
