@@ -48,6 +48,7 @@ interface LanguageSwitchSettingsProps {
   entries?: LanguageSwitchConfig[]
   onChange?: (entries: LanguageSwitchConfig[]) => void
   existingToolNames?: string[]
+  turnDetection?: string | null
   // Controlled mode: parent drives open state and which entry to edit
   open?: boolean
   controlledEditingIndex?: number | null
@@ -103,6 +104,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
   entries = [],
   onChange,
   existingToolNames = [],
+  turnDetection,
   open: controlledOpen,
   controlledEditingIndex,
   onOpenChange,
@@ -423,7 +425,7 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Use adaptive interruption detection</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {draft.interruption ? 'Adaptive ML detector (requires AdaptiveSarvamSTT or Deepgram)' : 'VAD only'}
+                        {(draft.interruption ?? true) ? 'Adaptive ML detector (requires AdaptiveSarvamSTT or Deepgram)' : 'VAD only'}
                       </p>
                     </div>
                     <Switch
@@ -443,6 +445,15 @@ const LanguageSwitchSettings: React.FC<LanguageSwitchSettingsProps> = ({
                     <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-yellow-700 dark:text-yellow-300">
                       Adaptive interruption requires Sarvam AdaptiveSarvamSTT. Enable "Adaptive STT" below or the backend will fall back to VAD.
+                    </p>
+                  </div>
+                )}
+
+                {draft.allow_interruptions && (draft.interruption ?? true) && turnDetection !== 'multilingual' && (
+                  <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
+                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                      Adaptive interruption works best with Turn Detection set to "Multilingual" (Session Behaviour section). Current setting may reduce accuracy.
                     </p>
                   </div>
                 )}

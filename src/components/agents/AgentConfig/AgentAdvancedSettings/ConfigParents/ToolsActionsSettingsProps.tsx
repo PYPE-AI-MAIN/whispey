@@ -120,11 +120,12 @@ interface Tool {
 interface ToolsActionsSettingsProps {
   tools: Tool[]
   languageSwitchTools?: LanguageSwitchConfig[]
+  turnDetection?: string | null
   onFieldChange: (field: string, value: any) => void
   projectId?: string
 }
 
-function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, projectId }: ToolsActionsSettingsProps) {
+function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, onFieldChange, projectId }: ToolsActionsSettingsProps) {
   const [isLSOpen, setIsLSOpen] = useState(false)
   const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -832,6 +833,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], onFieldChange, 
         entries={languageSwitchTools}
         onChange={(entries) => onFieldChange('advancedSettings.tools.languageSwitchTools', entries)}
         existingToolNames={tools.map(t => t.name)}
+        turnDetection={turnDetection}
         open={isLSOpen}
         controlledEditingIndex={editingLSIndex}
         onOpenChange={setIsLSOpen}

@@ -451,6 +451,8 @@ function transformFormDataToAgentConfig(formData: any) {
                 language_code: ls.language_code,
                 system_message: ls.system_message,
                 allow_interruptions: ls.allow_interruptions,
+                switch_stt: ls.switch_stt ?? true,
+                switch_tts: ls.switch_tts ?? true,
                 stt: serializeLanguageSwitchSTTRoute(ls.stt),
                 tts: serializeLanguageSwitchTTSRoute(ls.tts),
               }
