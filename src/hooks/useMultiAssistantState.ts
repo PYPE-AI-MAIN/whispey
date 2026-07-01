@@ -336,234 +336,139 @@ function mergeToolsWithKbAndLanguageSwitch(formValues: any, mappedTools: any[]):
 // Used by the single-assistant save path. Includes acefone_token / pre-transfer
 // webhook fields for transfer_call — kept separate from serializeAssistantToolBasic
 // because the multi-assistant path does not (and historically never did) emit these.
+function serializeCustomFunctionTool(tool: any, baseToolConfig: any, commonFields: any): any {
+  let responseMappingObject = {}
+  try {
+    if (tool.config?.responseMapping) {
+      responseMappingObject = JSON.parse(tool.config.responseMapping)
+    }
+  } catch (e) {
+    console.warn('Failed to parse response mapping:', e)
+  }
+
+  return {
+    ...baseToolConfig,
+    ...commonFields,
+    api_url: tool.config?.endpoint || '',
+    http_method: tool.config?.method || 'GET',
+    timeout: tool.config?.timeout || 10,
+    async: tool.config?.asyncExecution || false,
+    headers: tool.config?.headers || {},
+    parameters: tool.config?.parameters?.map((param: any) => ({
+      name: param.name,
+      type: param.type,
+      description: param.description,
+      required: param.required
+    })) || [],
+    custom_payload: tool.config?.body || '',
+    response_mapping: responseMappingObject,
+    response_mapping_raw: tool.config?.responseMapping || '{}',
+    filler_config: tool.config?.filler_config ?? null,
+  }
+}
+
+function serializeHandoffTool(tool: any, baseToolConfig: any, commonFields: any): any {
+  return {
+    ...baseToolConfig,
+    ...commonFields,
+    target_agent: tool.config?.targetAgent || '',
+    handoff_message: tool.config?.handoffMessage || ''
+  }
+}
+
+function serializeTransferCallToolFull(tool: any, baseToolConfig: any, commonFields: any): any {
+  return {
+    ...baseToolConfig,
+    ...commonFields,
+    transfer_number: tool.config?.transferNumber || '',
+    sip_outbound_trunk: tool.config?.sipTrunkId || '',
+    acefone_token: tool.config?.acefoneToken || null,
+    pre_transfer_webhook_url: tool.config?.preTransferWebhookUrl || null,
+    pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null,
+    // Trigger-mode flags. Defaults preserve current behavior.
+    enable_as_tool: tool.config?.enableAsTool !== false,
+    enable_as_tag: tool.config?.enableAsTag === true,
+  }
+}
+
+// Used by the multi-assistant save path. Intentionally omits acefone_token / webhook
+// fields for transfer_call — mirrors the pre-existing behavior at this call site.
+function serializeTransferCallToolBasic(tool: any, baseToolConfig: any, commonFields: any): any {
+  return {
+    ...baseToolConfig,
+    ...commonFields,
+    transfer_number: tool.config?.transferNumber || '',
+    sip_outbound_trunk: tool.config?.sipTrunkId || '',
+    // Trigger-mode flags. Defaults preserve current behavior.
+    enable_as_tool: tool.config?.enableAsTool !== false,
+    enable_as_tag: tool.config?.enableAsTag === true,
+  }
+}
+
+function serializeIvrNavigatorTool(tool: any, baseToolConfig: any, commonFields: any): any {
+  return {
+    ...baseToolConfig,
+    ...commonFields,
+    function_name: tool.config?.function_name || 'send_dtmf_code',
+    docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
+    cooldown_seconds: tool.config?.cooldown_seconds || 3,
+    publish_topic: tool.config?.publish_topic || 'dtmf_code',
+    publish_data: tool.config?.publish_data ?? true,
+    instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
+    default_task: tool.config?.default_task || 'Reach a live support representative',
+    task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+  }
+}
+
+function parseNearbyLocationFinderConfig(tool: any): { hospitals: any[]; areas: Record<string, any>; maxResults: number } {
+  let hospitals: any[] = []
+  let areas: Record<string, any> = {}
+  try {
+    hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
+  } catch (e) {
+    console.warn('Failed to parse hospitals_json:', e)
+  }
+  try {
+    areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
+  } catch (e) {
+    console.warn('Failed to parse areas_json:', e)
+  }
+  const v = tool.config?.max_results
+  const n = typeof v === 'string' ? parseInt(v, 10) : v
+  const maxResults = Number.isFinite(n) && n > 0 ? n : 3
+  return { hospitals, areas, maxResults }
+}
+
+function serializeNearbyLocationFinderTool(tool: any, baseToolConfig: any, commonFields: any): any {
+  const { hospitals, areas, maxResults } = parseNearbyLocationFinderConfig(tool)
+  return { ...baseToolConfig, ...commonFields, max_results: maxResults, hospitals, areas }
+}
+
 function serializeAssistantToolFull(tool: any): any {
-  const baseToolConfig = {
-    type: tool.type
-  }
+  const baseToolConfig = { type: tool.type }
+  if (tool.type === 'end_call') return baseToolConfig
 
-  if (tool.type === 'end_call') {
-    return baseToolConfig
-  }
-
-  const commonFields = {
-    name: tool.name,
-    description: tool.config?.description || ''
-  }
-
-  if (tool.type === 'custom_function') {
-    let responseMappingObject = {}
-    try {
-      if (tool.config?.responseMapping) {
-        responseMappingObject = JSON.parse(tool.config.responseMapping)
-      }
-    } catch (e) {
-      console.warn('Failed to parse response mapping:', e)
-    }
-
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      api_url: tool.config?.endpoint || '',
-      http_method: tool.config?.method || 'GET',
-      timeout: tool.config?.timeout || 10,
-      async: tool.config?.asyncExecution || false,
-      headers: tool.config?.headers || {},
-      parameters: tool.config?.parameters?.map((param: any) => ({
-        name: param.name,
-        type: param.type,
-        description: param.description,
-        required: param.required
-      })) || [],
-      custom_payload: tool.config?.body || '',
-      response_mapping: responseMappingObject,
-      response_mapping_raw: tool.config?.responseMapping || '{}',
-      filler_config: tool.config?.filler_config ?? null,
-    }
-  }
-
-  if (tool.type === 'handoff') {
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      target_agent: tool.config?.targetAgent || '',
-      handoff_message: tool.config?.handoffMessage || ''
-    }
-  }
-
-  if (tool.type === 'transfer_call') {
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      transfer_number: tool.config?.transferNumber || '',
-      sip_outbound_trunk: tool.config?.sipTrunkId || '',
-      acefone_token: tool.config?.acefoneToken || null,
-      pre_transfer_webhook_url: tool.config?.preTransferWebhookUrl || null,
-      pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null,
-      // Trigger-mode flags. Defaults preserve current behavior.
-      enable_as_tool: tool.config?.enableAsTool !== false,
-      enable_as_tag: tool.config?.enableAsTag === true,
-    }
-  }
-
-  if (tool.type === 'ivr_navigator') {
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      function_name: tool.config?.function_name || 'send_dtmf_code',
-      docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
-      cooldown_seconds: tool.config?.cooldown_seconds || 3,
-      publish_topic: tool.config?.publish_topic || 'dtmf_code',
-      publish_data: tool.config?.publish_data ?? true,
-      instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
-      default_task: tool.config?.default_task || 'Reach a live support representative',
-      task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
-    }
-  }
-
-  if (tool.type === 'nearby_location_finder') {
-    let hospitals: any[] = []
-    let areas: Record<string, any> = {}
-    try {
-      hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
-    } catch (e) {
-      console.warn('Failed to parse hospitals_json:', e)
-    }
-    try {
-      areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
-    } catch (e) {
-      console.warn('Failed to parse areas_json:', e)
-    }
-
-    const maxResults = (() => {
-      const v = tool.config?.max_results
-      const n = typeof v === 'string' ? parseInt(v, 10) : v
-      return Number.isFinite(n) && n > 0 ? n : 3
-    })()
-
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      max_results: maxResults,
-      hospitals,
-      areas
-    }
-  }
-
+  const commonFields = { name: tool.name, description: tool.config?.description || '' }
+  if (tool.type === 'custom_function') return serializeCustomFunctionTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'handoff') return serializeHandoffTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'transfer_call') return serializeTransferCallToolFull(tool, baseToolConfig, commonFields)
+  if (tool.type === 'ivr_navigator') return serializeIvrNavigatorTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'nearby_location_finder') return serializeNearbyLocationFinderTool(tool, baseToolConfig, commonFields)
   return baseToolConfig
 }
 
 // Used by the multi-assistant save path. Intentionally omits acefone_token / webhook
 // fields for transfer_call — mirrors the pre-existing behavior at this call site.
 function serializeAssistantToolBasic(tool: any): any {
-  const baseToolConfig = {
-    type: tool.type
-  }
+  const baseToolConfig = { type: tool.type }
+  if (tool.type === 'end_call') return baseToolConfig
 
-  if (tool.type === 'end_call') {
-    return baseToolConfig
-  }
-
-  const commonFields = {
-    name: tool.name,
-    description: tool.config?.description || ''
-  }
-
-  if (tool.type === 'custom_function') {
-    let responseMappingObject = {}
-    try {
-      if (tool.config?.responseMapping) {
-        responseMappingObject = JSON.parse(tool.config.responseMapping)
-      }
-    } catch (e) {
-      console.warn('Failed to parse response mapping:', e)
-    }
-
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      api_url: tool.config?.endpoint || '',
-      http_method: tool.config?.method || 'GET',
-      timeout: tool.config?.timeout || 10,
-      async: tool.config?.asyncExecution || false,
-      headers: tool.config?.headers || {},
-      parameters: tool.config?.parameters?.map((param: any) => ({
-        name: param.name,
-        type: param.type,
-        description: param.description,
-        required: param.required
-      })) || [],
-      custom_payload: tool.config?.body || '',
-      response_mapping: responseMappingObject,
-      response_mapping_raw: tool.config?.responseMapping || '{}',
-      filler_config: tool.config?.filler_config ?? null,
-    }
-  }
-
-  if (tool.type === 'handoff') {
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      target_agent: tool.config?.targetAgent || '',
-      handoff_message: tool.config?.handoffMessage || ''
-    }
-  }
-
-  if (tool.type === 'transfer_call') {
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      transfer_number: tool.config?.transferNumber || '',
-      sip_outbound_trunk: tool.config?.sipTrunkId || '',
-      // Trigger-mode flags. Defaults preserve current behavior.
-      enable_as_tool: tool.config?.enableAsTool !== false,
-      enable_as_tag: tool.config?.enableAsTag === true,
-    }
-  }
-
-  if (tool.type === 'ivr_navigator') {
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      function_name: tool.config?.function_name || 'send_dtmf_code',
-      docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
-      cooldown_seconds: tool.config?.cooldown_seconds || 3,
-      publish_topic: tool.config?.publish_topic || 'dtmf_code',
-      publish_data: tool.config?.publish_data ?? true,
-      instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
-      default_task: tool.config?.default_task || 'Reach a live support representative',
-      task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
-    }
-  }
-
-  if (tool.type === 'nearby_location_finder') {
-    let hospitals: any[] = []
-    let areas: Record<string, any> = {}
-    try {
-      hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
-    } catch (e) {
-      console.warn('Failed to parse hospitals_json:', e)
-    }
-    try {
-      areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
-    } catch (e) {
-      console.warn('Failed to parse areas_json:', e)
-    }
-
-    const maxResults = (() => {
-      const v = tool.config?.max_results
-      const n = typeof v === 'string' ? parseInt(v, 10) : v
-      return Number.isFinite(n) && n > 0 ? n : 3
-    })()
-
-    return {
-      ...baseToolConfig,
-      ...commonFields,
-      max_results: maxResults,
-      hospitals,
-      areas
-    }
-  }
-
+  const commonFields = { name: tool.name, description: tool.config?.description || '' }
+  if (tool.type === 'custom_function') return serializeCustomFunctionTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'handoff') return serializeHandoffTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'transfer_call') return serializeTransferCallToolBasic(tool, baseToolConfig, commonFields)
+  if (tool.type === 'ivr_navigator') return serializeIvrNavigatorTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'nearby_location_finder') return serializeNearbyLocationFinderTool(tool, baseToolConfig, commonFields)
   return baseToolConfig
 }
 
