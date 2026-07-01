@@ -289,7 +289,104 @@ export async function POST(request: NextRequest) {
 }
 
 
-function transformFormDataToAgentConfig(formData: any) { // NOSONAR javascript:S3776
+function serializeRouteTts(ttsConfiguration: any): any {
+  const ttsProvider = ttsConfiguration.provider
+  const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
+
+  if (isSarvam) {
+    // Sarvam TTS configuration - using ElevenLabs format
+    const targetLanguageCode = ttsConfiguration.config.target_language_code || "en-IN"
+    const sarvamSpeed = ttsConfiguration.config.speed ?? 1
+    const sarvamLoudness = ttsConfiguration.config.loudness ?? 1
+
+    return {
+      name: ttsProvider,
+      voice_id: ttsConfiguration.voiceId,
+      model: ttsConfiguration.model,
+      language: targetLanguageCode, // Map target_language_code to language
+      voice_settings: {
+        similarity_boost: 1, // Default for Sarvam
+        stability: 0.8, // Default for Sarvam
+        style: 1, // Default for Sarvam
+        use_speaker_boost: true, // Default for Sarvam
+        speed: sarvamSpeed, // Map speed from Sarvam config
+        loudness: sarvamLoudness, // Include loudness in voice_settings
+        enable_preprocessing: ttsConfiguration.config.enable_preprocessing ?? true
+      }
+    }
+  }
+
+  // ElevenLabs or other TTS configuration
+  return {
+    name: ttsProvider,
+    voice_id: ttsConfiguration.voiceId,
+    model: ttsConfiguration.model,
+    language: ttsConfiguration.config.language || "en",
+    voice_settings: {
+      similarity_boost: ttsConfiguration.config.similarityBoost || 1,
+      stability: ttsConfiguration.config.stability || 0.7,
+      style: ttsConfiguration.config.style || 0.7,
+      use_speaker_boost: ttsConfiguration.config.useSpeakerBoost || false,
+      speed: ttsConfiguration.config.speed || 1.15
+    }
+  }
+}
+
+function serializeRouteTool(tool: any): any {
+  return {
+    type: tool.type,
+    ...(tool.type !== 'end_call' ? {
+      name: tool.name,
+      description: tool.config.description,
+      ...(tool.type === 'custom_function' ? {
+        api_url: tool.config.endpoint,
+        http_method: tool.config.method,
+        timeout: tool.config.timeout,
+        async: tool.config.asyncExecution,
+        headers: tool.config.headers,
+        parameters: tool.config.parameters,
+        filler_config: tool.config.filler_config ?? null,
+      } : tool.type === 'transfer_call' ? {
+        transfer_number: tool.config.transferNumber,
+        sip_outbound_trunk: tool.config.sipTrunkId,
+        acefone_token: tool.config.acefoneToken || null,
+        pre_transfer_webhook_url: tool.config.preTransferWebhookUrl || null,
+        pre_transfer_webhook_fields: tool.config.preTransferWebhookFields || null,
+        // Trigger-mode flags. Defaults preserve old behavior:
+        //   enable_as_tool defaults to true  (current tool-based trigger)
+        //   enable_as_tag  defaults to false (new <transfer/> tag trigger)
+        enable_as_tool: tool.config.enableAsTool !== false,
+        enable_as_tag: tool.config.enableAsTag === true,
+      } : {})
+    } : {})
+  }
+}
+
+function serializeRouteLanguageSwitchTool(ls: any): any {
+  const entry: any = {
+    type: 'language_switch',
+    tool_name: ls.tool_name,
+    description: ls.description,
+    language_code: ls.language_code,
+    system_message: ls.system_message,
+    allow_interruptions: ls.allow_interruptions,
+    switch_stt: ls.switch_stt ?? true,
+    switch_tts: ls.switch_tts ?? true,
+    stt: serializeLanguageSwitchSTTRoute(ls.stt),
+    tts: serializeLanguageSwitchTTSRoute(ls.tts),
+  }
+  if (ls.allow_interruptions) entry.interruption = ls.interruption ?? true
+  return entry
+}
+
+function serializeRouteTools(formikValues: any): any[] {
+  return [
+    ...formikValues.advancedSettings.tools.tools.map(serializeRouteTool),
+    ...(formikValues.advancedSettings.tools.languageSwitchTools || []).map(serializeRouteLanguageSwitchTool),
+  ]
+}
+
+function transformFormDataToAgentConfig(formData: any) {
   const {
     formikValues,
     ttsConfiguration,
@@ -349,48 +446,7 @@ function transformFormDataToAgentConfig(formData: any) { // NOSONAR javascript:S
             model: llmConfiguration.model,
             temperature: llmConfiguration.temperature,
           },
-          tts: (() => {
-            const ttsProvider = ttsConfiguration.provider
-            const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
-            
-            if (isSarvam) {
-              // Sarvam TTS configuration - using ElevenLabs format
-              const targetLanguageCode = ttsConfiguration.config.target_language_code || "en-IN"
-              const sarvamSpeed = ttsConfiguration.config.speed ?? 1.0
-              const sarvamLoudness = ttsConfiguration.config.loudness ?? 1.0
-              
-              return {
-                name: ttsProvider,
-                voice_id: ttsConfiguration.voiceId,
-                model: ttsConfiguration.model,
-                language: targetLanguageCode, // Map target_language_code to language
-                voice_settings: {
-                  similarity_boost: 1, // Default for Sarvam
-                  stability: 0.8, // Default for Sarvam
-                  style: 1, // Default for Sarvam
-                  use_speaker_boost: true, // Default for Sarvam
-                  speed: sarvamSpeed, // Map speed from Sarvam config
-                  loudness: sarvamLoudness, // Include loudness in voice_settings
-                  enable_preprocessing: ttsConfiguration.config.enable_preprocessing ?? true
-                }
-              }
-            } else {
-              // ElevenLabs or other TTS configuration
-              return {
-                name: ttsProvider,
-                voice_id: ttsConfiguration.voiceId,
-                model: ttsConfiguration.model,
-                language: ttsConfiguration.config.language || "en",
-                voice_settings: {
-                  similarity_boost: ttsConfiguration.config.similarityBoost || 1,
-                  stability: ttsConfiguration.config.stability || 0.7,
-                  style: ttsConfiguration.config.style || 0.7,
-                  use_speaker_boost: ttsConfiguration.config.useSpeakerBoost || false,
-                  speed: ttsConfiguration.config.speed || 1.15
-                }
-              }
-            }
-          })(),
+          tts: serializeRouteTts(ttsConfiguration),
           vad: {
             name: formikValues.advancedSettings.vad.vadProvider,
             ...(formikValues.advancedSettings.vad.minSilenceDuration !== undefined && {
@@ -415,51 +471,7 @@ function transformFormDataToAgentConfig(formData: any) { // NOSONAR javascript:S
               force_cpu: formikValues.advancedSettings.vad.forceCpu
             })
           },
-          tools: [
-            ...formikValues.advancedSettings.tools.tools.map((tool: any) => ({
-            type: tool.type,
-            ...(tool.type !== 'end_call' ? {
-              name: tool.name,
-              description: tool.config.description,
-              ...(tool.type === 'custom_function' ? {
-                api_url: tool.config.endpoint,
-                http_method: tool.config.method,
-                timeout: tool.config.timeout,
-                async: tool.config.asyncExecution,
-                headers: tool.config.headers,
-                parameters: tool.config.parameters,
-                filler_config: tool.config.filler_config ?? null,
-              } : tool.type === 'transfer_call' ? {
-                transfer_number: tool.config.transferNumber,
-                sip_outbound_trunk: tool.config.sipTrunkId,
-                acefone_token: tool.config.acefoneToken || null,
-                pre_transfer_webhook_url: tool.config.preTransferWebhookUrl || null,
-                pre_transfer_webhook_fields: tool.config.preTransferWebhookFields || null,
-                // Trigger-mode flags. Defaults preserve old behavior:
-                //   enable_as_tool defaults to true  (current tool-based trigger)
-                //   enable_as_tag  defaults to false (new <transfer/> tag trigger)
-                enable_as_tool: tool.config.enableAsTool !== false,
-                enable_as_tag:  tool.config.enableAsTag === true,
-              } : {})
-            } : {})
-          })),
-            ...(formikValues.advancedSettings.tools.languageSwitchTools || []).map((ls: any) => {
-              const entry: any = {
-                type: 'language_switch',
-                tool_name: ls.tool_name,
-                description: ls.description,
-                language_code: ls.language_code,
-                system_message: ls.system_message,
-                allow_interruptions: ls.allow_interruptions,
-                switch_stt: ls.switch_stt ?? true,
-                switch_tts: ls.switch_tts ?? true,
-                stt: serializeLanguageSwitchSTTRoute(ls.stt),
-                tts: serializeLanguageSwitchTTSRoute(ls.tts),
-              }
-              if (ls.allow_interruptions) entry.interruption = ls.interruption ?? true
-              return entry
-            }),
-          ],
+          tools: serializeRouteTools(formikValues),
           filler_words: {
             enabled: (formikValues.advancedSettings.fillers.enableFillerWords ?? false) && [
               ...(formikValues.advancedSettings.fillers.generalFillers ?? []),

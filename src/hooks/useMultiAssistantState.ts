@@ -125,6 +125,416 @@ function buildFallbackTtsPayload(formValues: any) {
   }
 }
 
+function buildSingleAssistantSttPayload(formValues: any, currentSttConfig: any): any {
+  const rawConfig = formValues.sttConfig || currentSttConfig?.config || {}
+  const { language: _l, mode: _m, model: _mo, tier: _t, version: _v,
+          redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
+          ...extraConfig } = rawConfig as any
+  return {
+    name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
+    language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
+    model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
+    ...((currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
+      mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
+    }),
+    ...extraConfig,
+    ...(formValues.fallbackSttProvider && {
+      fallback: {
+        name: formValues.fallbackSttProvider,
+        language: formValues.fallbackSttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
+        model: formValues.fallbackSttModel,
+        ...(formValues.fallbackSttConfig?.mode && { mode: formValues.fallbackSttConfig.mode }),
+      }
+    }),
+  }
+}
+
+function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any, fallbackAzureConfig: any): any {
+  return {
+    name: formValues.selectedProvider || getFallback(null, 'llm.name'),
+    provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
+    model: formValues.selectedModel || getFallback(null, 'llm.model'),
+    temperature: formValues.temperature ?? getFallback(null, 'llm.temperature'),
+    ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
+      azure_deployment: getFallback(null, 'llm.azure_deployment'),
+      azure_endpoint: currentAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
+      api_version: currentAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
+      api_key_env: getFallback(null, 'llm.api_key_env')
+    }),
+    ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
+    ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
+    ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+    ...(formValues.fallbackLlmProvider && {
+      fallback: {
+        name: formValues.fallbackLlmProvider,
+        provider: formValues.fallbackLlmProvider === 'azure_openai' ? 'azure' : formValues.fallbackLlmProvider,
+        model: formValues.fallbackLlmModel || getFallback(null, 'llm.model'),
+        temperature: formValues.fallbackLlmTemperature ?? getFallback(null, 'llm.temperature'),
+        ...(formValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig && {
+          azure_deployment: getFallback(null, 'llm.azure_deployment'),
+          azure_endpoint: fallbackAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
+          api_version: fallbackAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
+          api_key_env: getFallback(null, 'llm.api_key_env')
+        }),
+        ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
+        ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
+        ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+      }
+    }),
+  }
+}
+
+function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any): any {
+  const ttsProvider = currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name')
+  const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
+  const isGoogle = ttsProvider === 'google'
+
+  const fallbackTtsPayload = formValues.fallbackTtsProvider && formValues.fallbackTtsVoiceId
+    ? { fallback: buildFallbackTtsPayload(formValues) }
+    : {}
+
+  if (isSarvam) {
+    // Sarvam TTS configuration - using ElevenLabs format
+    const targetLanguageCode = currentTtsConfig?.config?.target_language_code || formValues.ttsVoiceConfig?.target_language_code || 'en-IN'
+    const sarvamSpeed = currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? 1
+    const sarvamLoudness = currentTtsConfig?.config?.loudness ?? formValues.ttsVoiceConfig?.loudness ?? 1
+
+    return {
+      name: ttsProvider,
+      voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
+      model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
+      language: targetLanguageCode,
+      voice_settings: {
+        similarity_boost: 1,
+        stability: 0.8,
+        style: 1,
+        use_speaker_boost: true,
+        speed: sarvamSpeed,
+        loudness: sarvamLoudness,
+        enable_preprocessing: currentTtsConfig?.config?.enable_preprocessing ?? formValues.ttsVoiceConfig?.enable_preprocessing ?? true
+      },
+      ...fallbackTtsPayload,
+    }
+  }
+
+  if (isGoogle) {
+    // Google TTS configuration - only send voice_name and gender (lowercase)
+    const googleConfig = currentTtsConfig?.config || formValues.ttsVoiceConfig || {}
+    const result: any = {
+      name: 'google',
+      voice_name: formValues.selectedVoice || googleConfig.voice_name || getFallback(null, 'tts.voice_name'),
+      ...fallbackTtsPayload,
+    }
+
+    // Only add gender if it's specified, and convert to lowercase
+    if (googleConfig.gender && googleConfig.gender !== 'none') {
+      result.gender = googleConfig.gender.toLowerCase()
+    }
+
+    return result
+  }
+
+  // ElevenLabs or other TTS configuration
+  return {
+    name: ttsProvider,
+    voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
+    model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
+    language: currentTtsConfig?.config?.language || formValues.ttsVoiceConfig?.language || getFallback(null, 'tts.language'),
+    voice_settings: {
+      similarity_boost: currentTtsConfig?.config?.similarityBoost ?? formValues.ttsVoiceConfig?.similarityBoost ?? getFallback(null, 'tts.voice_settings.similarity_boost'),
+      stability: currentTtsConfig?.config?.stability ?? formValues.ttsVoiceConfig?.stability ?? getFallback(null, 'tts.voice_settings.stability'),
+      style: currentTtsConfig?.config?.style ?? formValues.ttsVoiceConfig?.style ?? getFallback(null, 'tts.voice_settings.style'),
+      use_speaker_boost: currentTtsConfig?.config?.useSpeakerBoost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
+      speed: currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
+    },
+    ...fallbackTtsPayload,
+  }
+}
+
+// Merges the Knowledge Base (RAG) tool and language_switch tools into the
+// already-serialized tools array. Used only by the single-assistant save path.
+function mergeToolsWithKbAndLanguageSwitch(formValues: any, mappedTools: any[]): any[] {
+  const kb = formValues.advancedSettings?.knowledgeBase
+  const toolsArray = Array.isArray(mappedTools) ? [...mappedTools] : []
+
+  // Filter out knowledge_search tool if RAG is disabled
+  const filteredTools = kb?.enabled === false
+    ? toolsArray.filter((t: any) => t?.type !== 'knowledge_search')
+    : toolsArray
+
+  if (kb?.enabled) {
+    const topK = typeof kb.topK === 'number' && kb.topK >= 1 ? Math.min(50, kb.topK) : 5
+    const existingIdx = filteredTools.findIndex((t: any) => t?.type === 'knowledge_search')
+    const kbEntry = {
+      type: 'knowledge_search' as const,
+      top_k: topK,
+      knowledge_search_options: { top_k: topK }
+    }
+    if (existingIdx >= 0) {
+      filteredTools[existingIdx] = { ...filteredTools[existingIdx], ...kbEntry }
+    } else {
+      filteredTools.push(kbEntry)
+    }
+  }
+
+  // Merge language_switch tools into the tools array
+  const lsTools: any[] = formValues.advancedSettings?.tools?.languageSwitchTools || []
+  lsTools.forEach((ls: any) => {
+    const entry: any = {
+      type: 'language_switch',
+      tool_name: ls.tool_name,
+      description: ls.description,
+      language_code: ls.language_code,
+      system_message: ls.system_message,
+      allow_interruptions: ls.allow_interruptions,
+      switch_stt: ls.switch_stt ?? true,
+      switch_tts: ls.switch_tts ?? true,
+      stt: serializeLanguageSwitchSTT(ls.stt),
+      tts: serializeLanguageSwitchTTS(ls.tts),
+    }
+    if (ls.allow_interruptions) {
+      entry.interruption = ls.interruption ?? true
+    }
+    filteredTools.push(entry)
+  })
+
+  return filteredTools
+}
+
+// Used by the single-assistant save path. Includes acefone_token / pre-transfer
+// webhook fields for transfer_call — kept separate from serializeAssistantToolBasic
+// because the multi-assistant path does not (and historically never did) emit these.
+function serializeAssistantToolFull(tool: any): any {
+  const baseToolConfig = {
+    type: tool.type
+  }
+
+  if (tool.type === 'end_call') {
+    return baseToolConfig
+  }
+
+  const commonFields = {
+    name: tool.name,
+    description: tool.config?.description || ''
+  }
+
+  if (tool.type === 'custom_function') {
+    let responseMappingObject = {}
+    try {
+      if (tool.config?.responseMapping) {
+        responseMappingObject = JSON.parse(tool.config.responseMapping)
+      }
+    } catch (e) {
+      console.warn('Failed to parse response mapping:', e)
+    }
+
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      api_url: tool.config?.endpoint || '',
+      http_method: tool.config?.method || 'GET',
+      timeout: tool.config?.timeout || 10,
+      async: tool.config?.asyncExecution || false,
+      headers: tool.config?.headers || {},
+      parameters: tool.config?.parameters?.map((param: any) => ({
+        name: param.name,
+        type: param.type,
+        description: param.description,
+        required: param.required
+      })) || [],
+      custom_payload: tool.config?.body || '',
+      response_mapping: responseMappingObject,
+      response_mapping_raw: tool.config?.responseMapping || '{}',
+      filler_config: tool.config?.filler_config ?? null,
+    }
+  }
+
+  if (tool.type === 'handoff') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      target_agent: tool.config?.targetAgent || '',
+      handoff_message: tool.config?.handoffMessage || ''
+    }
+  }
+
+  if (tool.type === 'transfer_call') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      transfer_number: tool.config?.transferNumber || '',
+      sip_outbound_trunk: tool.config?.sipTrunkId || '',
+      acefone_token: tool.config?.acefoneToken || null,
+      pre_transfer_webhook_url: tool.config?.preTransferWebhookUrl || null,
+      pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null,
+      // Trigger-mode flags. Defaults preserve current behavior.
+      enable_as_tool: tool.config?.enableAsTool !== false,
+      enable_as_tag: tool.config?.enableAsTag === true,
+    }
+  }
+
+  if (tool.type === 'ivr_navigator') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      function_name: tool.config?.function_name || 'send_dtmf_code',
+      docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
+      cooldown_seconds: tool.config?.cooldown_seconds || 3,
+      publish_topic: tool.config?.publish_topic || 'dtmf_code',
+      publish_data: tool.config?.publish_data ?? true,
+      instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
+      default_task: tool.config?.default_task || 'Reach a live support representative',
+      task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+    }
+  }
+
+  if (tool.type === 'nearby_location_finder') {
+    let hospitals: any[] = []
+    let areas: Record<string, any> = {}
+    try {
+      hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
+    } catch (e) {
+      console.warn('Failed to parse hospitals_json:', e)
+    }
+    try {
+      areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
+    } catch (e) {
+      console.warn('Failed to parse areas_json:', e)
+    }
+
+    const maxResults = (() => {
+      const v = tool.config?.max_results
+      const n = typeof v === 'string' ? parseInt(v, 10) : v
+      return Number.isFinite(n) && n > 0 ? n : 3
+    })()
+
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      max_results: maxResults,
+      hospitals,
+      areas
+    }
+  }
+
+  return baseToolConfig
+}
+
+// Used by the multi-assistant save path. Intentionally omits acefone_token / webhook
+// fields for transfer_call — mirrors the pre-existing behavior at this call site.
+function serializeAssistantToolBasic(tool: any): any {
+  const baseToolConfig = {
+    type: tool.type
+  }
+
+  if (tool.type === 'end_call') {
+    return baseToolConfig
+  }
+
+  const commonFields = {
+    name: tool.name,
+    description: tool.config?.description || ''
+  }
+
+  if (tool.type === 'custom_function') {
+    let responseMappingObject = {}
+    try {
+      if (tool.config?.responseMapping) {
+        responseMappingObject = JSON.parse(tool.config.responseMapping)
+      }
+    } catch (e) {
+      console.warn('Failed to parse response mapping:', e)
+    }
+
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      api_url: tool.config?.endpoint || '',
+      http_method: tool.config?.method || 'GET',
+      timeout: tool.config?.timeout || 10,
+      async: tool.config?.asyncExecution || false,
+      headers: tool.config?.headers || {},
+      parameters: tool.config?.parameters?.map((param: any) => ({
+        name: param.name,
+        type: param.type,
+        description: param.description,
+        required: param.required
+      })) || [],
+      custom_payload: tool.config?.body || '',
+      response_mapping: responseMappingObject,
+      response_mapping_raw: tool.config?.responseMapping || '{}',
+      filler_config: tool.config?.filler_config ?? null,
+    }
+  }
+
+  if (tool.type === 'handoff') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      target_agent: tool.config?.targetAgent || '',
+      handoff_message: tool.config?.handoffMessage || ''
+    }
+  }
+
+  if (tool.type === 'transfer_call') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      transfer_number: tool.config?.transferNumber || '',
+      sip_outbound_trunk: tool.config?.sipTrunkId || '',
+      // Trigger-mode flags. Defaults preserve current behavior.
+      enable_as_tool: tool.config?.enableAsTool !== false,
+      enable_as_tag: tool.config?.enableAsTag === true,
+    }
+  }
+
+  if (tool.type === 'ivr_navigator') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      function_name: tool.config?.function_name || 'send_dtmf_code',
+      docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
+      cooldown_seconds: tool.config?.cooldown_seconds || 3,
+      publish_topic: tool.config?.publish_topic || 'dtmf_code',
+      publish_data: tool.config?.publish_data ?? true,
+      instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
+      default_task: tool.config?.default_task || 'Reach a live support representative',
+      task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
+    }
+  }
+
+  if (tool.type === 'nearby_location_finder') {
+    let hospitals: any[] = []
+    let areas: Record<string, any> = {}
+    try {
+      hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
+    } catch (e) {
+      console.warn('Failed to parse hospitals_json:', e)
+    }
+    try {
+      areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
+    } catch (e) {
+      console.warn('Failed to parse areas_json:', e)
+    }
+
+    const maxResults = (() => {
+      const v = tool.config?.max_results
+      const n = typeof v === 'string' ? parseInt(v, 10) : v
+      return Number.isFinite(n) && n > 0 ? n : 3
+    })()
+
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      max_results: maxResults,
+      hospitals,
+      areas
+    }
+  }
+
+  return baseToolConfig
+}
+
 interface AssistantFormData {
   name: string
   formikRef?: FormikProps<any> | null
@@ -264,126 +674,9 @@ export function useMultiAssistantState({
         name: agentName,
         prompt: formValues.prompt || '',
         variables: variablesObject,
-        stt: (() => {
-          const rawConfig = formValues.sttConfig || currentSttConfig?.config || {}
-          const { language: _l, mode: _m, model: _mo, tier: _t, version: _v,
-                  redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
-                  ...extraConfig } = rawConfig as any
-          const result = {
-            name: currentSttConfig?.provider || formValues.sttProvider || getFallback(null, 'stt.name'),
-            language: currentSttConfig?.config?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-            model: currentSttConfig?.model || formValues.sttModel || getFallback(null, 'stt.model'),
-            ...((currentSttConfig?.config?.mode || formValues.sttConfig?.mode) && {
-              mode: currentSttConfig?.config?.mode || formValues.sttConfig?.mode
-            }),
-            ...extraConfig,
-            ...(formValues.fallbackSttProvider && {
-              fallback: {
-                name: formValues.fallbackSttProvider,
-                language: formValues.fallbackSttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
-                model: formValues.fallbackSttModel,
-                ...(formValues.fallbackSttConfig?.mode && { mode: formValues.fallbackSttConfig.mode }),
-              }
-            }),
-          }
-          return result
-        })(),
-        llm: {
-          name: formValues.selectedProvider || getFallback(null, 'llm.name'),
-          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
-          model: formValues.selectedModel || getFallback(null, 'llm.model'),
-          temperature: formValues.temperature ?? getFallback(null, 'llm.temperature'),
-          ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
-            azure_deployment: getFallback(null, 'llm.azure_deployment'),
-            azure_endpoint: currentAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
-            api_version: currentAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
-            api_key_env: getFallback(null, 'llm.api_key_env')
-          }),
-          ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
-          ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
-          ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
-          ...(formValues.fallbackLlmProvider && {
-            fallback: {
-              name: formValues.fallbackLlmProvider,
-              provider: formValues.fallbackLlmProvider === 'azure_openai' ? 'azure' : formValues.fallbackLlmProvider,
-              model: formValues.fallbackLlmModel || getFallback(null, 'llm.model'),
-              temperature: formValues.fallbackLlmTemperature ?? getFallback(null, 'llm.temperature'),
-              ...(formValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig && {
-                azure_deployment: getFallback(null, 'llm.azure_deployment'),
-                azure_endpoint: fallbackAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
-                api_version: fallbackAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
-                api_key_env: getFallback(null, 'llm.api_key_env')
-              }),
-              ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
-              ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
-              ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
-            }
-          }),
-        },
-        tts: (() => {
-          const ttsProvider = currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name')
-          const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
-          const isGoogle = ttsProvider === 'google'
-          
-          const fallbackTtsPayload = formValues.fallbackTtsProvider && formValues.fallbackTtsVoiceId
-            ? { fallback: buildFallbackTtsPayload(formValues) }
-            : {}
-
-          if (isSarvam) {
-            // Sarvam TTS configuration - using ElevenLabs format
-            const targetLanguageCode = currentTtsConfig?.config?.target_language_code || formValues.ttsVoiceConfig?.target_language_code || 'en-IN'
-            const sarvamSpeed = currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? 1.0
-            const sarvamLoudness = currentTtsConfig?.config?.loudness ?? formValues.ttsVoiceConfig?.loudness ?? 1.0
-
-            return {
-              name: ttsProvider,
-              voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
-              model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
-              language: targetLanguageCode,
-              voice_settings: {
-                similarity_boost: 1,
-                stability: 0.8,
-                style: 1,
-                use_speaker_boost: true,
-                speed: sarvamSpeed,
-                loudness: sarvamLoudness,
-                enable_preprocessing: currentTtsConfig?.config?.enable_preprocessing ?? formValues.ttsVoiceConfig?.enable_preprocessing ?? true
-              },
-              ...fallbackTtsPayload,
-            }
-          } else if (isGoogle) {
-            // Google TTS configuration - only send voice_name and gender (lowercase)
-            const googleConfig = currentTtsConfig?.config || formValues.ttsVoiceConfig || {}
-            const result: any = {
-              name: 'google',
-              voice_name: formValues.selectedVoice || googleConfig.voice_name || getFallback(null, 'tts.voice_name'),
-              ...fallbackTtsPayload,
-            }
-
-            // Only add gender if it's specified, and convert to lowercase
-            if (googleConfig.gender && googleConfig.gender !== 'none') {
-              result.gender = googleConfig.gender.toLowerCase()
-            }
-
-            return result
-          } else {
-            // ElevenLabs or other TTS configuration
-            return {
-              name: ttsProvider,
-              voice_id: formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
-              model: currentTtsConfig?.model || formValues.ttsModel || getFallback(null, 'tts.model'),
-              language: currentTtsConfig?.config?.language || formValues.ttsVoiceConfig?.language || getFallback(null, 'tts.language'),
-              voice_settings: {
-                similarity_boost: currentTtsConfig?.config?.similarityBoost ?? formValues.ttsVoiceConfig?.similarityBoost ?? getFallback(null, 'tts.voice_settings.similarity_boost'),
-                stability: currentTtsConfig?.config?.stability ?? formValues.ttsVoiceConfig?.stability ?? getFallback(null, 'tts.voice_settings.stability'),
-                style: currentTtsConfig?.config?.style ?? formValues.ttsVoiceConfig?.style ?? getFallback(null, 'tts.voice_settings.style'),
-                use_speaker_boost: currentTtsConfig?.config?.useSpeakerBoost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
-                speed: currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
-              },
-              ...fallbackTtsPayload,
-            }
-          }
-        })(),
+        stt: buildSingleAssistantSttPayload(formValues, currentSttConfig),
+        llm: buildSingleAssistantLlmPayload(formValues, currentAzureConfig, fallbackAzureConfig),
+        tts: buildSingleAssistantTtsPayload(formValues, currentTtsConfig),
         vad: {
           name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
           ...(formValues.advancedSettings?.vad?.minSilenceDuration !== undefined && {
@@ -409,173 +702,8 @@ export function useMultiAssistantState({
           })
         },
         tools: (() => {
-          const mappedTools = formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
-            const baseToolConfig = {
-              type: tool.type
-            }
-
-            // end_call has no additional fields
-            if (tool.type === 'end_call') {
-              return baseToolConfig
-            }
-
-            // handoff and custom_function have these common fields
-            const commonFields = {
-              name: tool.name,
-              description: tool.config?.description || ''
-            }
-
-            // custom_function has additional fields
-            if (tool.type === 'custom_function') {
-              // Parse response_mapping_raw to create response_mapping object
-              let responseMappingObject = {}
-              try {
-                if (tool.config?.responseMapping) {
-                  responseMappingObject = JSON.parse(tool.config.responseMapping)
-                }
-              } catch (e) {
-                console.warn('Failed to parse response mapping:', e)
-              }
-
-              return {
-                ...baseToolConfig,
-                ...commonFields,
-                api_url: tool.config?.endpoint || '',
-                http_method: tool.config?.method || 'GET',
-                timeout: tool.config?.timeout || 10,
-                async: tool.config?.asyncExecution || false,
-                headers: tool.config?.headers || {},
-                parameters: tool.config?.parameters?.map((param: any) => ({
-                  name: param.name,
-                  type: param.type,
-                  description: param.description,
-                  required: param.required
-                })) || [],
-                custom_payload: tool.config?.body || '',
-                response_mapping: responseMappingObject,
-                response_mapping_raw: tool.config?.responseMapping || '{}',
-                filler_config: tool.config?.filler_config ?? null,
-              }
-            }
-
-            // handoff specific fields (if needed in future)
-            if (tool.type === 'handoff') {
-              return {
-                ...baseToolConfig,
-                ...commonFields,
-                target_agent: tool.config?.targetAgent || '',
-                handoff_message: tool.config?.handoffMessage || ''
-              }
-            }
-
-            // transfer_call specific fields
-            if (tool.type === 'transfer_call') {
-              return {
-                ...baseToolConfig,
-                ...commonFields,
-                transfer_number: tool.config?.transferNumber || '',
-                sip_outbound_trunk: tool.config?.sipTrunkId || '',
-                acefone_token: tool.config?.acefoneToken || null,
-                pre_transfer_webhook_url: tool.config?.preTransferWebhookUrl || null,
-                pre_transfer_webhook_fields: tool.config?.preTransferWebhookFields || null,
-                // Trigger-mode flags. Defaults preserve current behavior.
-                enable_as_tool: tool.config?.enableAsTool !== false,
-                enable_as_tag:  tool.config?.enableAsTag === true,
-              }
-            }
-
-            if (tool.type === 'ivr_navigator') {
-              return {
-                ...baseToolConfig,
-                ...commonFields,
-                function_name: tool.config?.function_name || 'send_dtmf_code',
-                docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
-                cooldown_seconds: tool.config?.cooldown_seconds || 3,
-                publish_topic: tool.config?.publish_topic || 'dtmf_code',
-                publish_data: tool.config?.publish_data ?? true,
-                instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
-                default_task: tool.config?.default_task || 'Reach a live support representative',
-                task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
-              }
-            }
-
-            if (tool.type === 'nearby_location_finder') {
-              // Parse JSON strings from UI into objects for backend payload
-              let hospitals: any[] = []
-              let areas: Record<string, any> = {}
-              try {
-                hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
-              } catch (e) {
-                console.warn('Failed to parse hospitals_json:', e)
-              }
-              try {
-                areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
-              } catch (e) {
-                console.warn('Failed to parse areas_json:', e)
-              }
-
-              const maxResults = (() => {
-                const v = tool.config?.max_results
-                const n = typeof v === 'string' ? parseInt(v, 10) : v
-                return Number.isFinite(n) && n > 0 ? n : 3
-              })()
-
-              return {
-                ...baseToolConfig,
-                ...commonFields,
-                max_results: maxResults,
-                hospitals,
-                areas
-              }
-            }
-
-            return baseToolConfig
-          }) || getFallback(null, 'tools') || []
-
-          // Merge Knowledge Base (RAG) tool when enabled
-          const kb = formValues.advancedSettings?.knowledgeBase
-          const toolsArray = Array.isArray(mappedTools) ? [...mappedTools] : []
-          
-          // Filter out knowledge_search tool if RAG is disabled
-          const filteredTools = kb?.enabled === false 
-            ? toolsArray.filter((t: any) => t?.type !== 'knowledge_search')
-            : toolsArray
-          
-          if (kb?.enabled) {
-            const topK = typeof kb.topK === 'number' && kb.topK >= 1 ? Math.min(50, kb.topK) : 5
-            const existingIdx = filteredTools.findIndex((t: any) => t?.type === 'knowledge_search')
-            const kbEntry = {
-              type: 'knowledge_search' as const,
-              top_k: topK,
-              knowledge_search_options: { top_k: topK }
-            }
-            if (existingIdx >= 0) {
-              filteredTools[existingIdx] = { ...filteredTools[existingIdx], ...kbEntry }
-            } else {
-              filteredTools.push(kbEntry)
-            }
-          }
-          // Merge language_switch tools into the tools array
-          const lsTools: any[] = formValues.advancedSettings?.tools?.languageSwitchTools || []
-          lsTools.forEach((ls: any) => {
-            const entry: any = {
-              type: 'language_switch',
-              tool_name: ls.tool_name,
-              description: ls.description,
-              language_code: ls.language_code,
-              system_message: ls.system_message,
-              allow_interruptions: ls.allow_interruptions,
-              switch_stt: ls.switch_stt ?? true,
-              switch_tts: ls.switch_tts ?? true,
-              stt: serializeLanguageSwitchSTT(ls.stt),
-              tts: serializeLanguageSwitchTTS(ls.tts),
-            }
-            if (ls.allow_interruptions) {
-              entry.interruption = ls.interruption ?? true
-            }
-            filteredTools.push(entry)
-          })
-
+          const mappedTools = formValues.advancedSettings?.tools?.tools?.map(serializeAssistantToolFull) || getFallback(null, 'tools') || []
+          const filteredTools = mergeToolsWithKbAndLanguageSwitch(formValues, mappedTools)
           return filteredTools.length > 0 ? filteredTools : getFallback(null, 'tools')
         })(),
         filler_words: {
@@ -789,124 +917,7 @@ export function useMultiAssistantState({
             force_cpu: formValues.advancedSettings.vad.forceCpu
           })
         },
-        tools: formValues.advancedSettings?.tools?.tools?.map((tool: any) => {
-          const baseToolConfig = {
-            type: tool.type
-          }
-
-          // end_call has no additional fields
-          if (tool.type === 'end_call') {
-            return baseToolConfig
-          }
-
-          // handoff and custom_function have these common fields
-          const commonFields = {
-            name: tool.name,
-            description: tool.config?.description || ''
-          }
-
-          // custom_function has additional fields
-          if (tool.type === 'custom_function') {
-            // Parse response_mapping_raw to create response_mapping object
-            let responseMappingObject = {}
-            try {
-              if (tool.config?.responseMapping) {
-                responseMappingObject = JSON.parse(tool.config.responseMapping)
-              }
-            } catch (e) {
-              console.warn('Failed to parse response mapping:', e)
-            }
-
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              api_url: tool.config?.endpoint || '',
-              http_method: tool.config?.method || 'GET',
-              timeout: tool.config?.timeout || 10,
-              async: tool.config?.asyncExecution || false,
-              headers: tool.config?.headers || {},
-              parameters: tool.config?.parameters?.map((param: any) => ({
-                name: param.name,
-                type: param.type,
-                description: param.description,
-                required: param.required
-              })) || [],
-              custom_payload: tool.config?.body || '',
-              response_mapping: responseMappingObject,
-              response_mapping_raw: tool.config?.responseMapping || '{}',
-              filler_config: tool.config?.filler_config ?? null,
-            }
-          }
-
-          // handoff specific fields (if needed in future)
-          if (tool.type === 'handoff') {
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              target_agent: tool.config?.targetAgent || '',
-              handoff_message: tool.config?.handoffMessage || ''
-            }
-          }
-
-          // transfer_call specific fields
-          if (tool.type === 'transfer_call') {
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              transfer_number: tool.config?.transferNumber || '',
-              sip_outbound_trunk: tool.config?.sipTrunkId || '',
-              // Trigger-mode flags. Defaults preserve current behavior.
-              enable_as_tool: tool.config?.enableAsTool !== false,
-              enable_as_tag:  tool.config?.enableAsTag === true,
-            }
-          }
-
-          if (tool.type === 'ivr_navigator') {
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              function_name: tool.config?.function_name || 'send_dtmf_code',
-              docstring: tool.config?.docstring || 'Emit a DTMF digit when the IVR menu requests an input.',
-              cooldown_seconds: tool.config?.cooldown_seconds || 3,
-              publish_topic: tool.config?.publish_topic || 'dtmf_code',
-              publish_data: tool.config?.publish_data ?? true,
-              instruction_template: tool.config?.instruction_template || 'Listen carefully and press the most relevant option to accomplish: {task}.',
-              default_task: tool.config?.default_task || 'Reach a live support representative',
-              task_metadata_keys: tool.config?.task_metadata_keys || ['ivr_task', 'navigator_task', 'task']
-            }
-          }
-
-          if (tool.type === 'nearby_location_finder') {
-            let hospitals: any[] = []
-            let areas: Record<string, any> = {}
-            try {
-              hospitals = tool.config?.hospitals_json ? JSON.parse(tool.config.hospitals_json) : []
-            } catch (e) {
-              console.warn('Failed to parse hospitals_json:', e)
-            }
-            try {
-              areas = tool.config?.areas_json ? JSON.parse(tool.config.areas_json) : {}
-            } catch (e) {
-              console.warn('Failed to parse areas_json:', e)
-            }
-
-            const maxResults = (() => {
-              const v = tool.config?.max_results
-              const n = typeof v === 'string' ? parseInt(v, 10) : v
-              return Number.isFinite(n) && n > 0 ? n : 3
-            })()
-
-            return {
-              ...baseToolConfig,
-              ...commonFields,
-              max_results: maxResults,
-              hospitals,
-              areas
-            }
-          }
-
-          return baseToolConfig
-        }) || getFallback(null, 'tools'),
+        tools: formValues.advancedSettings?.tools?.tools?.map(serializeAssistantToolBasic) || getFallback(null, 'tools'),
         filler_words: {
           enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
             ...(formValues.advancedSettings?.fillers?.generalFillers ?? []),

@@ -375,7 +375,95 @@ export const useAgentMutations = (agentName: string | null) => {
 
 export const getDefaultFormValues = getFormDefaults
 
-export const buildFormValuesFromAgent = (assistant: any) => { // NOSONAR javascript:S3776
+const DEFAULT_TOOL_NAMES: Record<string, string> = {
+  end_call: 'End Call',
+  handoff: 'Handoff Agent',
+  transfer_call: 'Transfer Call',
+  ivr_navigator: 'Send DTMF',
+  nearby_location_finder: 'Nearby Hospital Finder',
+  update_vad_options: 'Update VAD Options',
+}
+
+function getDefaultToolName(type: string): string {
+  return DEFAULT_TOOL_NAMES[type] || 'Custom Tool'
+}
+
+function deserializeLanguageSwitchTool(tool: any) {
+  return {
+    tool_name: tool.tool_name || '',
+    description: tool.description || '',
+    language_code: tool.language_code || '',
+    system_message: tool.system_message || '',
+    allow_interruptions: tool.allow_interruptions ?? true,
+    ...(tool.allow_interruptions !== false && { interruption: tool.interruption ?? true }),
+    switch_stt: tool.switch_stt ?? true,
+    switch_tts: tool.switch_tts ?? true,
+    stt: tool.stt || { name: 'sarvam', language: 'kn-IN', model: 'saaras:v3', adaptive_stt: true, mode: 'transcribe', flush_signal: true },
+    tts: tool.tts || {},
+  }
+}
+
+function deserializeToolConfig(tool: any) {
+  return {
+    description: tool.description || '',
+    endpoint: tool.api_url || '',
+    method: tool.http_method || 'GET',
+    headers: tool.headers || {},
+    body: tool.custom_payload || '',
+    targetAgent: tool.target_agent || '',
+    handoffMessage: tool.handoff_message || '',
+    transferNumber: tool.transfer_number || '',
+    acefoneToken: tool.acefone_token || '',
+    sipTrunkId: tool.sip_outbound_trunk || '',
+    preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
+    preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
+    // Backward-compatible defaults when loading old tools that don't have these keys
+    enableAsTool: tool.enable_as_tool !== false,
+    enableAsTag: tool.enable_as_tag === true,
+    timeout: tool.timeout || 10,
+    asyncExecution: tool.async || false,
+    parameters: tool.parameters?.map((param: any) => ({
+      id: `param_${param.name}_${Date.now()}_${Math.random()}`,
+      name: param.name,
+      type: param.type,
+      description: param.description,
+      required: param.required
+    })) || [],
+    responseMapping: tool.response_mapping_raw || '{}',
+    // IVR Navigator fields
+    function_name: tool.function_name || 'send_dtmf_code',
+    docstring: tool.docstring || '',
+    cooldown_seconds: tool.cooldown_seconds || 3,
+    publish_topic: tool.publish_topic || 'dtmf_code',
+    publish_data: tool.publish_data ?? true,
+    instruction_template: tool.instruction_template || '',
+    default_task: tool.default_task || 'Reach a live support representative',
+    task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
+    // Nearby hospital finder fields (kept as JSON strings for editor)
+    max_results: tool.max_results ?? 3,
+    hospitals_json: JSON.stringify(tool.hospitals ?? [], null, 2),
+    areas_json: JSON.stringify(tool.areas ?? {}, null, 2),
+    // Filler words config (custom_function only)
+    filler_config: tool.filler_config ?? {
+      enabled: false,
+      threshold: 2.0,
+      interval: 3.0,
+      mode: 'random',
+      messages: [],
+    },
+  }
+}
+
+function deserializeTool(tool: any) {
+  return {
+    id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
+    type: tool.type,
+    name: tool.name || getDefaultToolName(tool.type),
+    config: deserializeToolConfig(tool),
+  }
+}
+
+export const buildFormValuesFromAgent = (assistant: any) => {
   const llmConfig = assistant.llm || {}
   const modelValue = llmConfig.model || getFallback(null, 'llm.model')
   const providerValue = llmConfig.provider || llmConfig.name || getFallback(null, 'llm.name')
@@ -595,79 +683,10 @@ export const buildFormValuesFromAgent = (assistant: any) => { // NOSONAR javascr
       tools: {
         languageSwitchTools: (assistant.tools || [])
           .filter((tool: any) => tool.type === 'language_switch')
-          .map((tool: any) => ({
-            tool_name: tool.tool_name || '',
-            description: tool.description || '',
-            language_code: tool.language_code || '',
-            system_message: tool.system_message || '',
-            allow_interruptions: tool.allow_interruptions ?? true,
-            ...(tool.allow_interruptions !== false && { interruption: tool.interruption ?? true }),
-            switch_stt: tool.switch_stt ?? true,
-            switch_tts: tool.switch_tts ?? true,
-            stt: tool.stt || { name: 'sarvam', language: 'kn-IN', model: 'saaras:v3', adaptive_stt: true, mode: 'transcribe', flush_signal: true },
-            tts: tool.tts || {},
-          })),
-        tools: (assistant.tools || []).filter((tool: any) => tool.type !== 'language_switch').map((tool: any) => ({
-          id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
-          type: tool.type,
-          name: tool.name || (
-            tool.type === 'end_call' ? 'End Call' : 
-            tool.type === 'handoff' ? 'Handoff Agent' : 
-            tool.type === 'transfer_call' ? 'Transfer Call' : 
-            tool.type === 'ivr_navigator' ? 'Send DTMF' : 
-            tool.type === 'nearby_location_finder' ? 'Nearby Hospital Finder' :
-            tool.type === 'update_vad_options' ? 'Update VAD Options' :
-            'Custom Tool'
-          ),
-          config: {
-            description: tool.description || '',
-            endpoint: tool.api_url || '',
-            method: tool.http_method || 'GET',
-            headers: tool.headers || {},
-            body: tool.custom_payload || '',
-            targetAgent: tool.target_agent || '',
-            handoffMessage: tool.handoff_message || '',
-            transferNumber: tool.transfer_number || '',
-            acefoneToken: tool.acefone_token || '',
-            sipTrunkId: tool.sip_outbound_trunk || '',
-            preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
-            preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
-            // Backward-compatible defaults when loading old tools that don't have these keys
-            enableAsTool: tool.enable_as_tool !== false,
-            enableAsTag: tool.enable_as_tag === true,
-            timeout: tool.timeout || 10,
-            asyncExecution: tool.async || false,
-            parameters: tool.parameters?.map((param: any) => ({
-              id: `param_${param.name}_${Date.now()}_${Math.random()}`,
-              name: param.name,
-              type: param.type,
-              description: param.description,
-              required: param.required
-            })) || [],
-            responseMapping: tool.response_mapping_raw || '{}',
-            // IVR Navigator fields
-            function_name: tool.function_name || 'send_dtmf_code',
-            docstring: tool.docstring || '',
-            cooldown_seconds: tool.cooldown_seconds || 3,
-            publish_topic: tool.publish_topic || 'dtmf_code',
-            publish_data: tool.publish_data ?? true,
-            instruction_template: tool.instruction_template || '',
-            default_task: tool.default_task || 'Reach a live support representative',
-            task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
-            // Nearby hospital finder fields (kept as JSON strings for editor)
-            max_results: tool.max_results ?? 3,
-            hospitals_json: JSON.stringify(tool.hospitals ?? [], null, 2),
-            areas_json: JSON.stringify(tool.areas ?? {}, null, 2),
-            // Filler words config (custom_function only)
-            filler_config: tool.filler_config ?? {
-              enabled: false,
-              threshold: 2.0,
-              interval: 3.0,
-              mode: 'random',
-              messages: [],
-            },
-          }
-        }))
+          .map(deserializeLanguageSwitchTool),
+        tools: (assistant.tools || [])
+          .filter((tool: any) => tool.type !== 'language_switch')
+          .map(deserializeTool)
       },
       fillers: (() => {
         // When the backend has never stored filler config (new agent), filler_words is
