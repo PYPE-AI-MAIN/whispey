@@ -76,7 +76,7 @@ jobs:
         run: |
           docker push "${IMAGE_URI}"
           docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
-      deploy:
+  deploy:
     environment: production
     name: Deploy to Private EC2 using Blue Green
     runs-on: ubuntu-latest
@@ -144,3 +144,24 @@ jobs:
 
             sleep 10
           done
+                    echo "========== FULL SSM RESPONSE =========="
+          echo "${RESULT}"
+          echo "======================================="
+
+          STDOUT=$(echo "${RESULT}" | jq -r '.StandardOutputContent')
+          STDERR=$(echo "${RESULT}" | jq -r '.StandardErrorContent')
+
+          echo "Deployment Status: ${STATUS}"
+
+          echo "========== STDOUT =========="
+          echo "${STDOUT}"
+
+          echo "========== STDERR =========="
+          echo "${STDERR}"
+
+          if [ "${STATUS}" != "Success" ]; then
+            echo "Deployment failed"
+            exit 1
+          fi
+
+          echo "Deployment completed successfully"
