@@ -297,7 +297,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                     type="text"
                     value={draft.tool_name}
                     maxLength={30}
-                    onChange={(e) => setDraft(prev => ({ ...prev, tool_name: e.target.value }))}
+                    onChange={(e) => setDraft(prev => ({ ...prev, tool_name: e.target.value.replace(/\s/g, '_') }))}
                     onBlur={() => setTouched(true)}
                     placeholder="e.g. switch_to_kn"
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono placeholder:text-gray-400 dark:placeholder:text-gray-500"
