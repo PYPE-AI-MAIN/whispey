@@ -67,6 +67,7 @@ interface AgentAdvancedSettingsProps {
           name: string
           config: any
         }>
+        languageSwitchTools?: any[]
       }
       fillers: {
         enableFillerWords: boolean
@@ -188,6 +189,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
               dropFillerWords={advancedSettings.interruption.dropFillerWords ?? false}
               fillerDropList={advancedSettings.interruption.fillerDropList ?? []}
               interruption_mode={advancedSettings.session.interruption_mode}
+              turn_detection={advancedSettings.session.turn_detection}
               adaptiveMinDuration={advancedSettings.interruption.adaptiveMinDuration ?? 0.5}
               adaptiveMinWords={advancedSettings.interruption.adaptiveMinWords ?? 0}
               adaptiveDiscardAudioIfUninterruptible={advancedSettings.interruption.adaptiveDiscardAudioIfUninterruptible ?? true}
@@ -322,6 +324,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <ToolsActionsSettings
               tools={advancedSettings.tools.tools}
+              languageSwitchTools={advancedSettings.tools.languageSwitchTools || []}
+              turnDetection={advancedSettings.session.turn_detection}
               onFieldChange={onFieldChange}
               projectId={projectId}
               kbEnabled={advancedSettings.knowledgeBase?.enabled ?? false}

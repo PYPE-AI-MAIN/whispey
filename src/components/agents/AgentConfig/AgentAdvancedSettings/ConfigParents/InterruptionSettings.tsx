@@ -24,6 +24,7 @@ interface InterruptionSettingsProps {
   dropFillerWords?: boolean
   fillerDropList?: string[]
   interruption_mode?: string | null
+  turn_detection?: string | null
   adaptiveMinDuration?: number
   adaptiveMinWords?: number
   adaptiveDiscardAudioIfUninterruptible?: boolean
@@ -41,6 +42,7 @@ function InterruptionSettings({
   dropFillerWords = false,
   fillerDropList = [],
   interruption_mode,
+  turn_detection,
   adaptiveMinDuration = 0.5,
   adaptiveMinWords = 0,
   adaptiveDiscardAudioIfUninterruptible = true,
@@ -201,6 +203,14 @@ function InterruptionSettings({
           {/* Adaptive settings panel */}
           {isAdaptive && (
             <div className="space-y-3">
+              {turn_detection !== 'multilingual' && (
+                <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
+                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Adaptive interruption works best with Turn Detection set to "Multilingual" (Session Behaviour section). Current setting may reduce accuracy.
+                  </p>
+                </div>
+              )}
               {/* adaptive_min_duration */}
               <AdaptiveField
                 label="Min Interruption Duration"
