@@ -79,7 +79,7 @@ jobs:
           docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
   deploy:
-    # environment: production
+    environment: production
     name: Deploy to Private EC2 using Blue Green
     runs-on: ubuntu-latest
     needs: docker-build-push
@@ -108,7 +108,7 @@ jobs:
           IMAGE_TAG="${GITHUB_SHA}"
           IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
           INSTANCE_ID="${{ secrets.PROD_PRIVATE_INSTANCE_ID }}"
-          SECRET_ID="stage/whispey"
+
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${INSTANCE_ID}" \
@@ -128,15 +128,19 @@ jobs:
             --command-id "${COMMAND_ID}" \
             --instance-id "${INSTANCE_ID}")
 
+          echo "========== FULL SSM RESPONSE =========="
           echo "${RESULT}"
+          echo "======================================="
 
           STATUS=$(echo "${RESULT}" | jq -r '.StatusDetails')
           STDOUT=$(echo "${RESULT}" | jq -r '.StandardOutputContent')
           STDERR=$(echo "${RESULT}" | jq -r '.StandardErrorContent')
 
           echo "Deployment Status: ${STATUS}"
+
           echo "========== STDOUT =========="
           echo "${STDOUT}"
+
           echo "========== STDERR =========="
           echo "${STDERR}"
 
