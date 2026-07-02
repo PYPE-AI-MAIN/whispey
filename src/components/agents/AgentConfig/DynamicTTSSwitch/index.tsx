@@ -306,7 +306,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
                   type="text"
                   value={currentConfig.tool_name || ''}
                   maxLength={30}
-                  onChange={(e) => { setCurrentConfig(prev => ({ ...prev, tool_name: e.target.value.replace(/\s/g, '_') })); setToolNameError(null) }}
+                  onChange={(e) => { setCurrentConfig(prev => ({ ...prev, tool_name: e.target.value.replaceAll(/\s/g, '_') })); setToolNameError(null) }}
                   placeholder="e.g., switch_to_hindi"
                   className={`w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 ${toolNameError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                 />

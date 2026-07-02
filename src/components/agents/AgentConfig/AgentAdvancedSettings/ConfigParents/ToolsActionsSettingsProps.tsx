@@ -879,7 +879,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
               <Input
                 value={formData.name}
                 maxLength={30}
-                onChange={(e) => { setFormData(prev => ({ ...prev, name: e.target.value.replace(/\s/g, '_') })); setToolNameError(null) }}
+                onChange={(e) => { setFormData(prev => ({ ...prev, name: e.target.value.replaceAll(/\s/g, '_') })); setToolNameError(null) }}
                 className={`h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 ${toolNameError ? 'border-red-500' : ''}`}
                 placeholder={selectedToolType === 'ivr_navigator' ? 'Send DTMF' : 'Enter tool name...'}
               />
