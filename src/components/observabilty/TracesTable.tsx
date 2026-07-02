@@ -501,8 +501,28 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
   const copyTranscript = () => {
     if (!enrichedTraces.length) return
     const lines: string[] = []
+
+    const stringifyToolValue = (val: any) => {
+      if (val === undefined || val === null) return ''
+      if (typeof val === 'string') return val
+      try { return JSON.stringify(val) } catch { return String(val) }
+    }
+
     enrichedTraces.forEach((trace: TraceLog) => {
       if (trace.user_transcript?.trim()) lines.push(`User: ${trace.user_transcript.trim()}`)
+
+      // Tool calls sit between the user turn and the agent response, matching the transcript order.
+      if (trace.tool_calls?.length) {
+        trace.tool_calls.forEach((tool: any) => {
+          const name = tool.tool_name || tool.name || 'unknown'
+          const args = stringifyToolValue(tool.arguments)
+          const result = tool.error != null ? stringifyToolValue(tool.error) : stringifyToolValue(tool.result)
+          const ok = tool.success !== false && tool.status !== 'error'
+          const status = ok ? '' : ' [error]'
+          lines.push(`Tool call${status}: ${name}(${args})${result ? ` -> ${result}` : ''}`)
+        })
+      }
+
       if (trace.agent_response?.trim())  lines.push(`Agent: ${trace.agent_response.trim()}`)
     })
     navigator.clipboard.writeText(lines.join('\n\n')).then(() => {

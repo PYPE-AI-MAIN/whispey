@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useMemo, useState } from "react"
+import React, { useCallback, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
@@ -248,6 +248,11 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   const [navigatingCallId, setNavigatingCallId] = React.useState<string | null>(null)
 
+  // Bring the selected row back into view when returning from log detail. We don't store scroll
+  // offsets at all — the selected row is already known + highlighted, so we just find it by id and
+  // scroll it into the middle of the viewport. Naturally robust to new logs shifting rows around.
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
   const handleRowSelect = useCallback((callId: string, callAgentId: string) => {
     if (navigatingCallId) return  // already navigating, ignore double-clicks
     setSelectedCallId(callId)
@@ -259,6 +264,80 @@ const CallLogs: React.FC<CallLogsProps> = ({
       router.push(`/${project?.id}/agents/${callAgentId}/observability?session_id=${callId}`)
     }, 120)
   }, [router, project?.id, sessionKey, navigatingCallId])
+
+  // Which call id we've already settled the scroll for — so we only restore once per return.
+  const scrolledForId = useRef<string | null>(null)
+
+  // Diagnosis (from real DOM state on Back): the scroll container and the highlighted row are both
+  // correct and present, yet scrollTop lands at exactly 0 — i.e. a late render/layout pass snaps the
+  // list back to the top AFTER we scroll. A single scrollIntoView loses that race. So we keep the row
+  // centred across the settling window, and back off the instant the user scrolls so we never fight them.
+  const keepSelectedCentred = useCallback(() => {
+    const wantId = selectedCallId
+    if (!wantId) return
+
+    let userScrolled = false
+    const onUserScroll = () => { userScrolled = true }
+    // Only genuine user gestures count — programmatic scrollIntoView doesn't fire these.
+    const container = scrollContainerRef.current
+    container?.addEventListener('wheel', onUserScroll, { passive: true })
+    container?.addEventListener('touchstart', onUserScroll, { passive: true })
+    window.addEventListener('keydown', onUserScroll)
+
+    const startedAt = performance.now()
+    let rafId = 0
+    const tick = () => {
+      if (userScrolled || selectedCallId !== wantId) return cleanup()
+      const c = scrollContainerRef.current
+      const target = c?.querySelector<HTMLElement>(`[data-call-id="${CSS.escape(wantId)}"]`)
+      if (c && target) {
+        const rowCentre = target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2
+        const viewCentre = c.getBoundingClientRect().top + c.getBoundingClientRect().height / 2
+        if (Math.abs(rowCentre - viewCentre) > 8) {
+          target.scrollIntoView({ block: 'center' })
+          scrolledForId.current = wantId
+        }
+      }
+      // Watch ~1.5s — long enough to outlast the mount/settle resets, short enough to feel instant.
+      if (performance.now() - startedAt < 1500) rafId = requestAnimationFrame(tick)
+      else cleanup()
+    }
+    const cleanup = () => {
+      cancelAnimationFrame(rafId)
+      container?.removeEventListener('wheel', onUserScroll)
+      container?.removeEventListener('touchstart', onUserScroll)
+      window.removeEventListener('keydown', onUserScroll)
+    }
+    rafId = requestAnimationFrame(tick)
+    return cleanup
+  }, [selectedCallId])
+
+  // "First let it load, then scroll." Wait until the list has genuinely finished loading and rows are
+  // on screen, THEN start centring the selected row. Re-runs whenever load state / data / selection
+  // changes, so a Back-triggered refetch or the role-gate resolving both kick it off correctly.
+  React.useEffect(() => {
+    if (isLoading || !selectedCallId || currentPageCalls.length === 0) return
+    if (scrolledForId.current === selectedCallId) return
+    return keepSelectedCentred()
+  }, [isLoading, currentPageCalls, selectedCallId, keepSelectedCentred])
+
+  // Back navigation, two channels:
+  //  • popstate  — the in-app Back button (router.back()) and same-document history pops.
+  //  • pageshow  — the browser's own Back/Forward, which often restores from the bfcache WITHOUT
+  //                firing popstate or remounting; without this, browser-Back wouldn't re-centre.
+  // Both reset the guard and re-run the centring so the row is restored regardless of how we returned.
+  React.useEffect(() => {
+    const handleReturn = () => {
+      scrolledForId.current = null
+      keepSelectedCentred()
+    }
+    window.addEventListener('popstate', handleReturn)
+    window.addEventListener('pageshow', handleReturn)
+    return () => {
+      window.removeEventListener('popstate', handleReturn)
+      window.removeEventListener('pageshow', handleReturn)
+    }
+  }, [keepSelectedCentred])
 
   // ── Pagination items ───────────────────────────────────────────────────────
   // totalPages comes from the hook (null when filters active or count not yet loaded)
@@ -426,6 +505,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
           </div>
 
           <div
+            ref={scrollContainerRef}
             className={cn(
               "absolute inset-0 overflow-auto transition-opacity duration-150",
               (isFetchingNextPage || isRefetching) && "opacity-60 pointer-events-none"
@@ -484,6 +564,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                     return (
                       <tr
                         key={row.id}
+                        data-call-id={row.original.id}
                         style={isSelected ? undefined : isFlagged ? flaggedRowStyle : undefined}
                         className={cn(
                           "cursor-pointer transition-colors border-b border-border/50 h-20",

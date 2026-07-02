@@ -856,7 +856,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
           setToolNameError(null)
         }
       }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <DialogTitle className="text-sm text-gray-900 dark:text-gray-100">
               {editingTool ? 'Edit' : 'Add'} {
@@ -1198,7 +1198,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                   <Textarea
                     value={formData.body}
                     onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder='e.g., {"order": {"customer_id": customer_id, "items": items, "timestamp": "{{timestamp}}"}}'
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1224,7 +1224,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                         // Allow invalid JSON while typing - don't update formData.headers
                       }
                     }}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder={`{
                   "Content-Type": "application/json",
                   "Authorization": "Bearer YOUR_TOKEN",
@@ -1334,7 +1334,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                   <Textarea
                     value={formData.responseMapping}
                     onChange={(e) => setFormData(prev => ({ ...prev, responseMapping: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder="{}"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1532,7 +1532,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                   <Textarea
                     value={formData.hospitals_json}
                     onChange={(e) => setFormData(prev => ({ ...prev, hospitals_json: e.target.value }))}
-                    className="text-xs mt-1 min-h-[120px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder='[{"name":"Sparsh Hospital","location":"Koramangala","address":"...","phone":"+91...","latitude":12.93,"longitude":77.62}]'
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1545,7 +1545,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                   <Textarea
                     value={formData.areas_json}
                     onChange={(e) => setFormData(prev => ({ ...prev, areas_json: e.target.value }))}
-                    className="text-xs mt-1 min-h-[120px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder='{"koramangala":[12.9352,77.6245],"jayanagar":[12.9250,77.5937]}'
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
