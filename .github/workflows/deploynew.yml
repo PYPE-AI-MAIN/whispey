@@ -128,12 +128,21 @@ jobs:
             --command-id "${COMMAND_ID}" \
             --instance-id "${INSTANCE_ID}")
 
+          echo "${RESULT}"
+
           STATUS=$(echo "${RESULT}" | jq -r '.StatusDetails')
+          STDOUT=$(echo "${RESULT}" | jq -r '.StandardOutputContent')
+          STDERR=$(echo "${RESULT}" | jq -r '.StandardErrorContent')
 
           echo "Deployment Status: ${STATUS}"
+          echo "========== STDOUT =========="
+          echo "${STDOUT}"
+          echo "========== STDERR =========="
+          echo "${STDERR}"
 
           if [ "${STATUS}" != "Success" ]; then
             echo "Deployment failed"
             exit 1
           fi
 
+          echo "Deployment completed successfully"
