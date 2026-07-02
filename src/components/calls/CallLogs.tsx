@@ -282,7 +282,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
     const container = scrollContainerRef.current
     container?.addEventListener('wheel', onUserScroll, { passive: true })
     container?.addEventListener('touchstart', onUserScroll, { passive: true })
-    window.addEventListener('keydown', onUserScroll)
+    globalThis.addEventListener('keydown', onUserScroll)
 
     const startedAt = performance.now()
     let rafId = 0
@@ -306,7 +306,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
       cancelAnimationFrame(rafId)
       container?.removeEventListener('wheel', onUserScroll)
       container?.removeEventListener('touchstart', onUserScroll)
-      window.removeEventListener('keydown', onUserScroll)
+      globalThis.removeEventListener('keydown', onUserScroll)
     }
     rafId = requestAnimationFrame(tick)
     return cleanup
@@ -331,11 +331,11 @@ const CallLogs: React.FC<CallLogsProps> = ({
       scrolledForId.current = null
       keepSelectedCentred()
     }
-    window.addEventListener('popstate', handleReturn)
-    window.addEventListener('pageshow', handleReturn)
+    globalThis.addEventListener('popstate', handleReturn)
+    globalThis.addEventListener('pageshow', handleReturn)
     return () => {
-      window.removeEventListener('popstate', handleReturn)
-      window.removeEventListener('pageshow', handleReturn)
+      globalThis.removeEventListener('popstate', handleReturn)
+      globalThis.removeEventListener('pageshow', handleReturn)
     }
   }, [keepSelectedCentred])
 

@@ -516,10 +516,11 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, fi
         trace.tool_calls.forEach((tool: any) => {
           const name = tool.tool_name || tool.name || 'unknown'
           const args = stringifyToolValue(tool.arguments)
-          const result = tool.error != null ? stringifyToolValue(tool.error) : stringifyToolValue(tool.result)
+          const result = tool.error == null ? stringifyToolValue(tool.result) : stringifyToolValue(tool.error)
           const ok = tool.success !== false && tool.status !== 'error'
           const status = ok ? '' : ' [error]'
-          lines.push(`Tool call${status}: ${name}(${args})${result ? ` -> ${result}` : ''}`)
+          const resultSuffix = result ? ` -> ${result}` : ''
+          lines.push(`Tool call${status}: ${name}(${args})${resultSuffix}`)
         })
       }
 
