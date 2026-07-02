@@ -41,7 +41,12 @@ def _sync_flush_all_sessions():
     for session_id in session_ids:
         try:
             end_session_manually(session_id, "process_exit")
-            data = generate_whispey_data(session_id)
+            # Use the cached/finalized data (correct recording_url, real transcript)
+            # if it already exists — session_data may have been wiped by the caller's
+            # own cleanup by the time this atexit flush runs, which would make a
+            # fresh generate_whispey_data() call return an empty, URL-less payload
+            # that overwrites a real send still in flight when the process exited.
+            data = get_session_whispey_data(session_id)
             apikey = _session_data_store.get(session_id, {}).get("apikey")
             api_url = _session_data_store.get(session_id, {}).get("api_url")
             result = send_to_whispey_sync(data, apikey=apikey, api_url=api_url)
@@ -328,8 +333,18 @@ def observe_session(session, agent_id, host_url, room=None, bug_detector=None, e
 
             @session.on("close")
             def on_session_close(event):
-                error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
-                end_session_manually(session_id, "completed", error_msg)
+                # Only record the close reason — do NOT finalize/send here. session.aclose() can
+                # fire mid-call (e.g. the agent leaving after a successful transfer while the
+                # caller and staff stay connected), which would freeze call_active=False and cache
+                # a premature snapshot that a later, correctly-timed export() could never override
+                # (end_session_manually() is a one-way latch once call_active is False). The real
+                # finalize+send happens when the caller calls export()/send_session_to_whispey(),
+                # or via the atexit/SIGTERM safety-net flush if nothing else does.
+                if session_id in _session_data_store:
+                    error_msg = str(event.error) if hasattr(event, 'error') and event.error else None
+                    _session_data_store[session_id]['last_close_time'] = time.time()
+                    if error_msg:
+                        _session_data_store[session_id]['last_close_error'] = error_msg
         try:
             import asyncio
             def _on_done(task):
