@@ -108,6 +108,7 @@ interface AgentAdvancedSettingsProps {
         headers: Record<string, string>
         isActive: boolean
       }
+      dropoff?: DropoffConfig
       knowledgeBase?: {
         enabled: boolean
         topK: number
@@ -454,6 +455,14 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
             <DropOffCallSettings
               agentId={agentId || ''}
               projectId={projectId}
+              enabled={advancedSettings.dropoff?.enabled || false}
+              dropoff_message={advancedSettings.dropoff?.dropoff_message || ''}
+              delay_minutes={advancedSettings.dropoff?.delay_minutes ?? 5}
+              max_retries={advancedSettings.dropoff?.max_retries ?? 2}
+              context_dropoff_prompt={advancedSettings.dropoff?.context_dropoff_prompt || ''}
+              call_retry_required_criteria={advancedSettings.dropoff?.call_retry_required_criteria || ''}
+              sip_trunk_id={advancedSettings.dropoff?.sip_trunk_id ?? null}
+              phone_number_id={advancedSettings.dropoff?.phone_number_id ?? null}
               onDataLoaded={onDropoffDataLoaded ?? (() => {})}
               onFieldChange={onFieldChange}
             />
