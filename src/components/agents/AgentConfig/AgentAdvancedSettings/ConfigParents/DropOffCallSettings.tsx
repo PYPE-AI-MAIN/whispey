@@ -37,33 +37,39 @@ const DEFAULT_CALL_RETRY_CRITERIA = JSON.stringify({
   }
 }, null, 2)
 
-interface DropOffCallSettingsProps {
+interface DropOffCallSettingsProps extends DropoffConfig {
   agentId: string
   projectId?: string
   onDataLoaded: (data: DropoffConfig) => void
   onFieldChange: (field: string, value: any) => void
 }
 
-export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, onFieldChange }: Readonly<DropOffCallSettingsProps>) {
+export default function DropOffCallSettings({
+  agentId,
+  projectId,
+  enabled,
+  dropoff_message,
+  delay_minutes,
+  max_retries,
+  context_dropoff_prompt,
+  call_retry_required_criteria,
+  sip_trunk_id,
+  phone_number_id,
+  onDataLoaded,
+  onFieldChange
+}: Readonly<DropOffCallSettingsProps>) {
   const [loading, setLoading] = useState(true)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhones, setLoadingPhones] = useState(true)
 
-  const [settings, setSettings] = useState<DropoffConfig>({
-    enabled: false,
-    dropoff_message: '',
-    delay_minutes: 5,
-    max_retries: 2,
-    context_dropoff_prompt: '',
-    call_retry_required_criteria: '',
-    sip_trunk_id: null,
-    phone_number_id: null,
-  })
+  // Controlled by parent (formik) props so Discard actually reverts what's on screen.
+  const settings: DropoffConfig = {
+    enabled, dropoff_message, delay_minutes, max_retries,
+    context_dropoff_prompt, call_retry_required_criteria, sip_trunk_id, phone_number_id,
+  }
 
   const applyChange = (patch: Partial<DropoffConfig>) => {
-    const next = { ...settings, ...patch }
-    setSettings(next)
-    onFieldChange('advancedSettings.dropoff', next)
+    onFieldChange('advancedSettings.dropoff', { ...settings, ...patch })
   }
 
   // Fetch existing settings and agent metrics
@@ -156,7 +162,6 @@ export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, 
             sip_trunk_id: settingsResult.data.sip_trunk_id || null,
             phone_number_id: settingsResult.data.phone_number_id || null,
           }
-          setSettings(loaded)
           onDataLoaded(loaded)
         } else {
           // No saved settings — use defaults with resolved criteria
@@ -170,7 +175,6 @@ export default function DropOffCallSettings({ agentId, projectId, onDataLoaded, 
             sip_trunk_id: null,
             phone_number_id: null,
           }
-          setSettings(loaded)
           onDataLoaded(loaded)
         }
       } catch (error) {
