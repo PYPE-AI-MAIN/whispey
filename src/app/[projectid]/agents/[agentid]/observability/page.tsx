@@ -69,7 +69,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
 
   useEffect(() => {
     if (!acefoneCallId || !agent?.name) return
-    const agentName = `${agent.name}_${resolvedParams.agentid.replace(/-/g, '_')}`
+    const agentName = `${agent.name}_${resolvedParams.agentid.replaceAll('-', '_')}`
     fetch(`/api/agent-config/${encodeURIComponent(agentName)}`)
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
