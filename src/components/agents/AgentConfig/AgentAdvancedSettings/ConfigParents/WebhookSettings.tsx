@@ -35,15 +35,15 @@ function WebhookSettings({
   const [headerEntries, setHeaderEntries] = useState<Array<{ key: string; value: string }>>([])
   const [webhookUrlError, setWebhookUrlError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [displayState, setDisplayState] = useState<WebhookConfig | null>(null)
 
   const currentAgentId = agentId || ''
   const currentProjectId = projectId || ''
 
-  const effectiveWebhookUrl = displayState?.webhookUrl ?? webhookUrl
-  const effectiveHttpMethod = displayState?.httpMethod ?? httpMethod
-  const effectiveHeaders = displayState?.headers ?? headers
-  const effectiveIsActive = displayState?.isActive ?? isActive
+  // Controlled by parent (formik) props so Discard actually reverts what's on screen.
+  const effectiveWebhookUrl = webhookUrl
+  const effectiveHttpMethod = httpMethod
+  const effectiveHeaders = headers
+  const effectiveIsActive = isActive
 
   useEffect(() => {
     if (currentAgentId && currentProjectId) {
@@ -76,7 +76,6 @@ function WebhookSettings({
             headers: config.headers || {},
             isActive: config.is_active || false,
           }
-          setDisplayState(loadedState)
           onDataLoaded(loadedState)
         }
       }
@@ -88,15 +87,13 @@ function WebhookSettings({
   }
 
   const applyChange = (patch: Partial<WebhookConfig>) => {
-    const base: WebhookConfig = displayState ?? {
+    const base: WebhookConfig = {
       webhookUrl: webhookUrl || '',
       httpMethod: httpMethod || 'POST',
       headers: headers || {},
       isActive: isActive || false,
     }
-    const next = { ...base, ...patch }
-    setDisplayState(next)
-    onFieldChange('advancedSettings.webhook', next)
+    onFieldChange('advancedSettings.webhook', { ...base, ...patch })
   }
 
   const updateHeaders = (newEntries: Array<{ key: string; value: string }>) => {
