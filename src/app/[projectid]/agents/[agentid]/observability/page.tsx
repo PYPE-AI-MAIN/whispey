@@ -1,11 +1,11 @@
 // src/app/agents/[agentId]/observability/page.tsx
 "use client"
 
-import { ArrowLeft, Badge } from "lucide-react"
+import { ArrowLeft, Badge, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useParams, useRouter } from "next/navigation"
 import TracesTable from "@/components/observabilty/TracesTable"
-import { useState, use } from "react"
+import { useState, useEffect, use } from "react"
 import { extractS3Key } from "@/utils/s3"
 import AudioPlayer from "@/components/AudioPlayer"
 import { FilterOperator, useSupabaseQuery } from "@/hooks/useSupabase"
@@ -60,6 +60,49 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   const isSignedUrl = recordingUrl && recordingUrl.includes('X-Amz-Signature')
   const isUrlExpired = isSignedUrl && recordingUrl.includes('X-Amz-Expires=604800') // 7 days
 
+  // Telephony (Acefone) recording — shown only when the call metadata carries an
+  // acefone call id. The token comes from the agent's Transfer Call tool config.
+  const callMeta = callInfo?.metadata
+  const acefoneCallId = callMeta?.acefone_call_id
+    || (callMeta?.provider === 'acefone' ? (callMeta?.callId || callMeta?.callid || callMeta?.call_id) : null)
+  const [acefoneToken, setAcefoneToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!acefoneCallId || !agent?.name) return
+    const agentName = `${agent.name}_${resolvedParams.agentid.replace(/-/g, '_')}`
+    fetch(`/api/agent-config/${encodeURIComponent(agentName)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const transferTool = d?.agent?.assistant?.[0]?.tools?.find((t: any) => t.type === 'transfer_call')
+        setAcefoneToken(transferTool?.acefone_token || null)
+      })
+      .catch(() => setAcefoneToken(null))
+  }, [acefoneCallId, agent?.name, resolvedParams.agentid])
+
+  // The console recording link needs a per-recording token from Acefone's CDR
+  // API — the JWT itself is not valid on the console page. Resolve it on click.
+  const openTelephonyRecording = async () => {
+    // Open the tab synchronously so popup blockers don't eat it, then navigate.
+    const win = window.open('', '_blank')
+    try {
+      const res = await fetch('/api/acefone-recording', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callId: acefoneCallId, token: acefoneToken }),
+      })
+      const d = res.ok ? await res.json() : null
+      if (d?.recordingUrl && win) {
+        win.location.href = d.recordingUrl
+      } else {
+        win?.close()
+        alert('Telephony recording not found for this call')
+      }
+    } catch {
+      win?.close()
+      alert('Failed to fetch telephony recording')
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       
@@ -91,6 +134,19 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
             url={recordingUrl}
             callId={callInfo?.id}
           />
+        </div>
+      )}
+
+      {/* Telephony (Acefone) recording — opens the Acefone console recording link */}
+      {acefoneCallId && acefoneToken && !callLoading && (
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+          <button
+            onClick={openTelephonyRecording}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Listen to telephony recording
+          </button>
         </div>
       )}
 
