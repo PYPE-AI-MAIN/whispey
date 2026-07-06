@@ -11,7 +11,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages, BookOpen } from 'lucide-react'
+import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwitchSettings'
+
+export function validateToolName(name: string, allNames: string[]): string | null {
+  if (!name) return 'Tool name is required'
+  if (name.length > 30) return 'Tool name must be 30 characters or less'
+  if (!/^[A-Za-z]\w*$/.test(name)) return 'Must be snake_case (letters, digits, underscores, no spaces)'
+  if (allNames.includes(name)) return `"${name}" tool already exists`
+  return null
+}
 
 // ── Pre-transfer webhook field options ────────────────────────────────────────
 const WEBHOOK_FIELD_OPTIONS = [
@@ -110,12 +119,18 @@ interface Tool {
 
 interface ToolsActionsSettingsProps {
   tools: Tool[]
+  languageSwitchTools?: LanguageSwitchConfig[]
+  turnDetection?: string | null
   onFieldChange: (field: string, value: any) => void
   projectId?: string
+  kbEnabled?: boolean
 }
 
-function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsSettingsProps) {
+function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, onFieldChange, projectId, kbEnabled = false }: Readonly<ToolsActionsSettingsProps>) { // NOSONAR javascript:S3776
+  const [isLSOpen, setIsLSOpen] = useState(false)
+  const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [toolNameError, setToolNameError] = useState<string | null>(null)
   const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection' | null>(null)
   const [editingTool, setEditingTool] = useState<Tool | null>(null)
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
@@ -206,8 +221,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     setNewFillerMessage('')
     
     if (toolType === 'end_call') {
-      setFormData({ 
-        name: 'End Call', 
+      setFormData({
+        name: 'end_call',
         description: 'Allow assistant to end the conversation',
         endpoint: '', 
         method: 'POST', 
@@ -241,8 +256,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'handoff') {
-      setFormData({ 
-        name: 'Handoff Agent', 
+      setFormData({
+        name: 'handoff_agent',
         description: 'Transfer conversation to another agent',
         endpoint: '', 
         method: 'POST', 
@@ -276,8 +291,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'transfer_call') {
-      setFormData({ 
-        name: 'Transfer Call', 
+      setFormData({
+        name: 'transfer_call',
         description: 'Transfer the call by creating a conference with another party',
         endpoint: '', 
         method: 'POST', 
@@ -311,8 +326,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'ivr_navigator') {
-      setFormData({ 
-        name: 'Send DTMF', 
+      setFormData({
+        name: 'send_dtmf',
         description: 'Send a DTMF tone to pick IVR menu options',
         endpoint: '', 
         method: 'POST', 
@@ -347,7 +362,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
       })
     } else if (toolType === 'nearby_location_finder') {
       setFormData({
-        name: 'Nearby Hospital Finder',
+        name: 'nearby_hospital_finder',
         description: 'Find the nearest hospital locations based on the patient area (supports geocoding fallback in backend)',
         endpoint: '',
         method: 'POST',
@@ -381,8 +396,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'update_vad_options') {
-      setFormData({ 
-        name: 'Update VAD Options', 
+      setFormData({
+        name: 'update_vad_options',
         description: 'Update Voice Activity Detection (VAD) options dynamically during the conversation',
         endpoint: '', 
         method: 'POST', 
@@ -416,8 +431,8 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'voicemail_detection') {
-      setFormData({ 
-        name: 'Voicemail Detection', 
+      setFormData({
+        name: 'voicemail_detection',
         description: 'Detect voicemail systems and leave a message',
         endpoint: '', 
         method: 'POST', 
@@ -543,7 +558,18 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
     setIsDialogOpen(true)
   }
 
+  const validateToolNameInContext = (name: string): string | null => {
+    const allNames = [
+      ...tools.filter(t => t.id !== editingTool?.id).map(t => t.name),
+      ...languageSwitchTools.map(ls => ls.tool_name),
+    ]
+    return validateToolName(name, allNames)
+  }
+
   const handleSaveTool = () => {
+    const nameError = validateToolNameInContext(formData.name)
+    if (nameError) { setToolNameError(nameError); return }
+    setToolNameError(null)
     // Try to parse headersJsonString one more time before saving
     let finalHeaders = formData.headers
     try {
@@ -715,6 +741,10 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
             <CodeIcon className="w-3 h-3 mr-2" />
             Custom Tool
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { setEditingLSIndex(null); setIsLSOpen(true) }} className="text-xs">
+            <Languages className="w-3 h-3 mr-2" />
+            Language Switcher
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleAddTool('nearby_location_finder')} className="text-xs">
             <Phone className="w-3 h-3 mr-2" />
             Nearby Hospital Finder
@@ -732,51 +762,101 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
 
       {/* Tools List */}
       <div className="space-y-2">
-        {tools.length === 0 ? (
+        {kbEnabled && (
+          <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/40 rounded border border-blue-200 dark:border-blue-700">
+            <BookOpen className="w-3 h-3 text-blue-500" />
+            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 flex-1">
+              Knowledge Search
+            </span>
+            <span className="text-xs text-blue-500 dark:text-blue-400 flex-shrink-0">Managed by RAG Settings</span>
+          </div>
+        )}
+        {tools.length === 0 && languageSwitchTools.length === 0 && !kbEnabled ? (
           <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4 bg-gray-50 dark:bg-gray-900 rounded">
             No tools configured
           </div>
         ) : (
-          tools.map((tool) => (
-            <div key={tool.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                {getToolIcon(tool.type)}
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-                  {tool.name}
-                </span>
+          <>
+            {tools.map((tool) => (
+              <div key={tool.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {getToolIcon(tool.type)}
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                    {tool.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditTool(tool)}
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                  >
+                    <EditIcon className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteTool(tool.id)}
+                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                  >
+                    <TrashIcon className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditTool(tool)}
-                  className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
-                >
-                  <EditIcon className="w-3 h-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteTool(tool.id)}
-                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                >
-                  <TrashIcon className="w-3 h-3" />
-                </Button>
+            ))}
+            {languageSwitchTools.map((ls, idx) => (
+              <div key={`ls-${ls.tool_name}`} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Languages className="w-3 h-3 text-purple-500" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate font-mono">
+                    {ls.tool_name}
+                  </span>
+                  <span className="text-xs text-gray-400">{ls.language_code}</span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setEditingLSIndex(idx); setIsLSOpen(true) }}
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                  >
+                    <EditIcon className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onFieldChange('advancedSettings.tools.languageSwitchTools', languageSwitchTools.filter((_, i) => i !== idx))}
+                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                  >
+                    <TrashIcon className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </>
         )}
       </div>
+
+      <LanguageSwitchSettings
+        entries={languageSwitchTools}
+        onChange={(entries) => onFieldChange('advancedSettings.tools.languageSwitchTools', entries)}
+        existingToolNames={tools.map(t => t.name)}
+        turnDetection={turnDetection}
+        open={isLSOpen}
+        controlledEditingIndex={editingLSIndex}
+        onOpenChange={setIsLSOpen}
+      />
 
       {/* Tool Configuration Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open)
         if (!open) {
-          // Reset headers JSON string when dialog closes
           setHeadersJsonString('{}')
+          setToolNameError(null)
         }
       }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <DialogTitle className="text-sm text-gray-900 dark:text-gray-100">
               {editingTool ? 'Edit' : 'Add'} {
@@ -798,10 +878,12 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
               <Label className="text-xs text-gray-700 dark:text-gray-300">Tool Name</Label>
               <Input
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                maxLength={30}
+                onChange={(e) => { setFormData(prev => ({ ...prev, name: e.target.value.replaceAll(/\s/g, '_') })); setToolNameError(null) }}
+                className={`h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 ${toolNameError ? 'border-red-500' : ''}`}
                 placeholder={selectedToolType === 'ivr_navigator' ? 'Send DTMF' : 'Enter tool name...'}
               />
+              {toolNameError && <p className="text-xs text-red-500 mt-1">{toolNameError}</p>}
             </div>
 
             {/* Description */}
@@ -1116,7 +1198,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   <Textarea
                     value={formData.body}
                     onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder='e.g., {"order": {"customer_id": customer_id, "items": items, "timestamp": "{{timestamp}}"}}'
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1142,7 +1224,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                         // Allow invalid JSON while typing - don't update formData.headers
                       }
                     }}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder={`{
                   "Content-Type": "application/json",
                   "Authorization": "Bearer YOUR_TOKEN",
@@ -1252,7 +1334,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   <Textarea
                     value={formData.responseMapping}
                     onChange={(e) => setFormData(prev => ({ ...prev, responseMapping: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder="{}"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1450,7 +1532,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   <Textarea
                     value={formData.hospitals_json}
                     onChange={(e) => setFormData(prev => ({ ...prev, hospitals_json: e.target.value }))}
-                    className="text-xs mt-1 min-h-[120px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder='[{"name":"Sparsh Hospital","location":"Koramangala","address":"...","phone":"+91...","latitude":12.93,"longitude":77.62}]'
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1463,7 +1545,7 @@ function ToolsActionsSettings({ tools, onFieldChange, projectId }: ToolsActionsS
                   <Textarea
                     value={formData.areas_json}
                     onChange={(e) => setFormData(prev => ({ ...prev, areas_json: e.target.value }))}
-                    className="text-xs mt-1 min-h-[120px] resize-none font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder='{"koramangala":[12.9352,77.6245],"jayanagar":[12.9250,77.5937]}'
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

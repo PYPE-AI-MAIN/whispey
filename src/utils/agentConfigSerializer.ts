@@ -94,6 +94,7 @@ export interface SerializedAgentConfig {
       }
       tools: {
         tools: any[]
+        languageSwitchTools?: any[]
       }
       fillers: {
         enableFillerWords: boolean
@@ -127,6 +128,38 @@ export interface SerializedAgentConfig {
         thinkingProbability?: number
         toolCallTyping?: boolean
         toolCallVolume?: number
+      }
+      webhook?: {
+        webhookUrl: string
+        httpMethod: string
+        headers: Record<string, string>
+        isActive: boolean
+      }
+      dropoff?: {
+        enabled: boolean
+        dropoff_message: string
+        delay_minutes: number
+        max_retries: number
+        context_dropoff_prompt: string
+        call_retry_required_criteria: string
+        sip_trunk_id: string | null
+        phone_number_id: string | null
+      }
+      callbackScheduling?: {
+        enabled: boolean
+        timeWindow: { startTime: string; endTime: string }
+        allowedDays: string[]
+        timezone: string
+        phoneNumberId: string | null
+        sipTrunkId: string | null
+        maxFutureDays: number
+        maxCallbacksPerContact: number
+        defaultDelayMinutes: number
+        minDelayMinutes: number
+      }
+      knowledgeBase?: {
+        enabled: boolean
+        topK: number
       }
     }
   }

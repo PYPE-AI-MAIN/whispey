@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Info } from 'lucide-react'
+import { Info, AlertTriangle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SessionBehaviourSettingsProps {
@@ -208,6 +208,14 @@ export default function SessionBehaviourSettings({
               <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
             </SelectContent>
           </Select>
+          {turn_detection === 'disabled' && (
+            <div className="flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-700 dark:text-red-300">
+                Turn detection is disabled — the agent falls back to VAD-only silence detection with no semantic understanding of speech. Users may get interrupted mid-thought.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Unlikely Threshold - Only show for English and Multilingual */}

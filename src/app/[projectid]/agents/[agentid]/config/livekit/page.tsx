@@ -68,6 +68,8 @@ import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowAgentSection } from '@/types/visibility'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { saveSupplementalSettings } from '@/lib/supplementalSettings'
+import toast from 'react-hot-toast'
 
 // Agent status service
 const agentStatusService = {
@@ -480,6 +482,19 @@ export default function AgentConfig() {
     }
   })
 
+  // Webhook/dropoff/callback config load asynchronously (separate API calls) after the
+  // form is already initialized. Rebase both values AND the dirty-check baseline here so
+  // loading a section's saved config doesn't itself mark the form dirty, and so Discard
+  // reverts to the real loaded config instead of wiping it back to undefined.
+  const loadSupplementalSetting = (field: 'webhook' | 'dropoff' | 'callbackScheduling', data: any) => {
+    formik.resetForm({
+      values: {
+        ...formik.values,
+        advancedSettings: { ...formik.values.advancedSettings, [field]: data }
+      }
+    })
+  }
+
   const {
     buildSavePayload,
     hasUnsavedChanges: hasMultiAssistantChanges,
@@ -563,10 +578,9 @@ export default function AgentConfig() {
       setHasExternalChanges(false)
       resetUnsavedChanges()
       setIsFallbackView(false)
-      // CRITICAL: Store current values and reset to clear dirty flag
-      const currentValues = formik.values
-      formik.resetForm()
-      formik.setValues(currentValues, false) // false = don't validate
+      // Rebase the dirty-check baseline to the just-saved values (resetForm's `values`
+      // option updates initialValues too, unlike setValues which only touches values).
+      formik.resetForm({ values: formik.values })
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
 
@@ -633,6 +647,25 @@ export default function AgentConfig() {
     try {
       // Step 1: Deploy config to backend
       await saveAndDeploy.mutateAsync(pendingCheckpoint.config)
+      // Step 1b: Save supplemental settings (webhook, drop-off, callback) — non-blocking
+      try {
+        const advSettings = formik.values.advancedSettings as any
+        await saveSupplementalSettings(agentid as string, projectId, {
+          webhook: advSettings?.webhook
+            ? {
+                webhookUrl: advSettings.webhook.webhookUrl,
+                httpMethod: advSettings.webhook.httpMethod,
+                headers: advSettings.webhook.headers,
+                isActive: advSettings.webhook.isActive,
+              }
+            : undefined,
+          dropoff: advSettings?.dropoff,
+          callbackScheduling: advSettings?.callbackScheduling,
+        })
+      } catch (suppErr: any) {
+        console.warn('Supplemental settings save failed (config deployed):', suppErr)
+        toast.error(`Config deployed. ${suppErr?.message ?? 'Some settings failed to save.'}`)
+      }
       // Step 2: Save version checkpoint
       const res = await fetch(`/api/agents/${agentid}/history`, {
         method: 'POST',
@@ -1528,9 +1561,12 @@ const unmappedVariablesCount = useMemo(() => {
 
           {/* Right Side - Desktop Only */}
           <div className=" lg:block w-80 flex-shrink-0 min-h-0 flex flex-col gap-3">
-            <AgentAdvancedSettings 
+            <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
+              onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
+              onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}
               projectId={projectId}
               agentId={agentid}
               dynamicTTSList={formik.values.dynamic_tts || []}
@@ -1539,7 +1575,7 @@ const unmappedVariablesCount = useMemo(() => {
               }}
             />
           </div>
-          
+
         </div>
       </div>
 
@@ -1597,9 +1633,12 @@ const unmappedVariablesCount = useMemo(() => {
             <SheetTitle className="text-sm">Advanced Settings</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto">
-            <AgentAdvancedSettings 
+            <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
+              onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
+              onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}
               projectId={projectId}
               agentId={agentid}
               dynamicTTSList={formik.values.dynamic_tts || []}

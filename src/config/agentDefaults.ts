@@ -259,7 +259,8 @@ export const AGENT_DEFAULT_CONFIG = {
           config: {
             description: tool.type === "end_call" ? "Allow assistant to end the conversation" : ""
           }
-        }))
+        })),
+        languageSwitchTools: [] as any[],
       },
       fillers: {
         enableFillerWords: AGENT_DEFAULT_CONFIG.filler_words.enabled,
@@ -305,6 +306,28 @@ export const AGENT_DEFAULT_CONFIG = {
         httpMethod: 'POST',
         headers: {},
         isActive: false
+      },
+      dropoff: {
+        enabled: false,
+        dropoff_message: '',
+        delay_minutes: 0,
+        max_retries: 3,
+        context_dropoff_prompt: '',
+        call_retry_required_criteria: '',
+        sip_trunk_id: null,
+        phone_number_id: null,
+      },
+      callbackScheduling: {
+        enabled: false,
+        timeWindow: { startTime: '09:00', endTime: '18:00' },
+        allowedDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        timezone: 'Asia/Kolkata',
+        phoneNumberId: null,
+        sipTrunkId: null,
+        maxFutureDays: 7,
+        maxCallbacksPerContact: 3,
+        defaultDelayMinutes: 60,
+        minDelayMinutes: 30,
       },
       knowledgeBase: {
         enabled: false,
