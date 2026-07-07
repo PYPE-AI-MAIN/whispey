@@ -33,6 +33,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [toolNameError, setToolNameError] = useState<string | null>(null)
   const [currentConfig, setCurrentConfig] = useState<Partial<DynamicTTSConfig>>({
     tool_name: '',
     description: '',
@@ -82,8 +83,14 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 
   const handleSave = () => {
     if (!currentConfig.tool_name || !currentConfig.description || !currentConfig.name) {
-      return // Validation - tool_name, description, and name are required
+      return
     }
+    const name = currentConfig.tool_name
+    if (name.length > 30) { setToolNameError('Tool name must be 30 characters or less'); return }
+    if (!/^[A-Za-z]\w*$/.test(name)) { setToolNameError('Must be snake_case (letters, digits, underscores, no spaces)'); return }
+    const dupe = dynamicTTSList.findIndex((c, i) => i !== editingIndex && c.tool_name === name)
+    if (dupe !== -1) { setToolNameError(`"${name}" tool already exists`); return }
+    setToolNameError(null)
 
     // Format the config based on provider type
     const normalizedProvider = currentConfig.name === 'sarvam_tts' ? 'sarvam' : currentConfig.name
@@ -280,7 +287,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
       </div>
 
       {/* Add/Edit Dialog */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={(v) => { setIsAddDialogOpen(v); if (!v) setToolNameError(null) }}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <DialogHeader>
               <DialogTitle className="text-gray-900 dark:text-gray-100">
@@ -298,13 +305,15 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
                   id="tool-name"
                   type="text"
                   value={currentConfig.tool_name || ''}
-                  onChange={(e) => setCurrentConfig(prev => ({ ...prev, tool_name: e.target.value }))}
+                  maxLength={30}
+                  onChange={(e) => { setCurrentConfig(prev => ({ ...prev, tool_name: e.target.value.replaceAll(/\s/g, '_') })); setToolNameError(null) }}
                   placeholder="e.g., switch_to_hindi"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className={`w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 ${toolNameError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Unique identifier for this TTS switch (used as tool name)
-                </p>
+                {toolNameError
+                  ? <p className="text-xs text-red-500">{toolNameError}</p>
+                  : <p className="text-xs text-gray-500 dark:text-gray-400">Unique identifier for this TTS switch (used as tool name)</p>
+                }
               </div>
 
               {/* When to Switch - Description */}

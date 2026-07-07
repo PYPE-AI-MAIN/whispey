@@ -67,6 +67,7 @@ interface AgentAdvancedSettingsProps {
           name: string
           config: any
         }>
+        languageSwitchTools?: any[]
       }
       fillers: {
         enableFillerWords: boolean
@@ -108,6 +109,7 @@ interface AgentAdvancedSettingsProps {
         headers: Record<string, string>
         isActive: boolean
       }
+      dropoff?: DropoffConfig
       knowledgeBase?: {
         enabled: boolean
         topK: number
@@ -188,6 +190,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
               dropFillerWords={advancedSettings.interruption.dropFillerWords ?? false}
               fillerDropList={advancedSettings.interruption.fillerDropList ?? []}
               interruption_mode={advancedSettings.session.interruption_mode}
+              turn_detection={advancedSettings.session.turn_detection}
               adaptiveMinDuration={advancedSettings.interruption.adaptiveMinDuration ?? 0.5}
               adaptiveMinWords={advancedSettings.interruption.adaptiveMinWords ?? 0}
               adaptiveDiscardAudioIfUninterruptible={advancedSettings.interruption.adaptiveDiscardAudioIfUninterruptible ?? true}
@@ -322,6 +325,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
             <ToolsActionsSettings
               tools={advancedSettings.tools.tools}
+              languageSwitchTools={advancedSettings.tools.languageSwitchTools || []}
+              turnDetection={advancedSettings.session.turn_detection}
               onFieldChange={onFieldChange}
               projectId={projectId}
               kbEnabled={advancedSettings.knowledgeBase?.enabled ?? false}
@@ -454,6 +459,14 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
             <DropOffCallSettings
               agentId={agentId || ''}
               projectId={projectId}
+              enabled={advancedSettings.dropoff?.enabled || false}
+              dropoff_message={advancedSettings.dropoff?.dropoff_message || ''}
+              delay_minutes={advancedSettings.dropoff?.delay_minutes ?? 5}
+              max_retries={advancedSettings.dropoff?.max_retries ?? 2}
+              context_dropoff_prompt={advancedSettings.dropoff?.context_dropoff_prompt || ''}
+              call_retry_required_criteria={advancedSettings.dropoff?.call_retry_required_criteria || ''}
+              sip_trunk_id={advancedSettings.dropoff?.sip_trunk_id ?? null}
+              phone_number_id={advancedSettings.dropoff?.phone_number_id ?? null}
               onDataLoaded={onDropoffDataLoaded ?? (() => {})}
               onFieldChange={onFieldChange}
             />

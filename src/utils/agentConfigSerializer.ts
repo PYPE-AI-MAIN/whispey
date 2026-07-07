@@ -94,6 +94,7 @@ export interface SerializedAgentConfig {
       }
       tools: {
         tools: any[]
+        languageSwitchTools?: any[]
       }
       fillers: {
         enableFillerWords: boolean

@@ -375,65 +375,281 @@ export const useAgentMutations = (agentName: string | null) => {
 
 export const getDefaultFormValues = getFormDefaults
 
+const DEFAULT_TOOL_NAMES: Record<string, string> = {
+  end_call: 'End Call',
+  handoff: 'Handoff Agent',
+  transfer_call: 'Transfer Call',
+  ivr_navigator: 'Send DTMF',
+  nearby_location_finder: 'Nearby Hospital Finder',
+  update_vad_options: 'Update VAD Options',
+}
+
+function getDefaultToolName(type: string): string {
+  return DEFAULT_TOOL_NAMES[type] || 'Custom Tool'
+}
+
+function deserializeLanguageSwitchTool(tool: any) {
+  return {
+    tool_name: tool.tool_name || '',
+    description: tool.description || '',
+    language_code: tool.language_code || '',
+    system_message: tool.system_message || '',
+    allow_interruptions: tool.allow_interruptions ?? true,
+    ...(tool.allow_interruptions !== false && { interruption: tool.interruption ?? true }),
+    switch_stt: tool.switch_stt ?? true,
+    switch_tts: tool.switch_tts ?? true,
+    stt: tool.stt || { name: 'sarvam', language: 'kn-IN', model: 'saaras:v3', adaptive_stt: true, mode: 'transcribe', flush_signal: true },
+    tts: tool.tts || {},
+  }
+}
+
+function deserializeToolConfig(tool: any) {
+  return {
+    description: tool.description || '',
+    endpoint: tool.api_url || '',
+    method: tool.http_method || 'GET',
+    headers: tool.headers || {},
+    body: tool.custom_payload || '',
+    targetAgent: tool.target_agent || '',
+    handoffMessage: tool.handoff_message || '',
+    transferNumber: tool.transfer_number || '',
+    acefoneToken: tool.acefone_token || '',
+    sipTrunkId: tool.sip_outbound_trunk || '',
+    preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
+    preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
+    // Backward-compatible defaults when loading old tools that don't have these keys
+    enableAsTool: tool.enable_as_tool !== false,
+    enableAsTag: tool.enable_as_tag === true,
+    timeout: tool.timeout || 10,
+    asyncExecution: tool.async || false,
+    parameters: tool.parameters?.map((param: any) => ({
+      id: `param_${param.name}_${Date.now()}_${Math.random()}`,
+      name: param.name,
+      type: param.type,
+      description: param.description,
+      required: param.required
+    })) || [],
+    responseMapping: tool.response_mapping_raw || '{}',
+    // IVR Navigator fields
+    function_name: tool.function_name || 'send_dtmf_code',
+    docstring: tool.docstring || '',
+    cooldown_seconds: tool.cooldown_seconds || 3,
+    publish_topic: tool.publish_topic || 'dtmf_code',
+    publish_data: tool.publish_data ?? true,
+    instruction_template: tool.instruction_template || '',
+    default_task: tool.default_task || 'Reach a live support representative',
+    task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
+    // Nearby hospital finder fields (kept as JSON strings for editor)
+    max_results: tool.max_results ?? 3,
+    hospitals_json: JSON.stringify(tool.hospitals ?? [], null, 2),
+    areas_json: JSON.stringify(tool.areas ?? {}, null, 2),
+    // Filler words config (custom_function only)
+    filler_config: tool.filler_config ?? {
+      enabled: false,
+      threshold: 2.0,
+      interval: 3.0,
+      mode: 'random',
+      messages: [],
+    },
+  }
+}
+
+function deserializeTool(tool: any) {
+  return {
+    id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
+    type: tool.type,
+    name: tool.name || getDefaultToolName(tool.type),
+    config: deserializeToolConfig(tool),
+  }
+}
+
+function mapLlmProvider(providerValue: string, modelValue: string): string {
+  if (providerValue === "groq") return "groq"
+  if (providerValue === "azure") return "azure_openai"
+  if (modelValue.includes("claude")) return "anthropic"
+  if (modelValue.includes("cerebras") || providerValue === "cerebras") return "cerebras"
+  return providerValue
+}
+
+function deriveFirstMessageMode(assistant: any): { firstMessageModeValue: any; customFirstMessageValue: string } {
+  if (!assistant.first_message_mode) {
+    return {
+      firstMessageModeValue: {
+        mode: getFallback(null, 'first_message_mode.mode'),
+        allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions'),
+        first_message: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
+      },
+      customFirstMessageValue: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
+    }
+  }
+
+  if (typeof assistant.first_message_mode === "object") {
+    return {
+      firstMessageModeValue: {
+        mode: assistant.first_message_mode.mode || getFallback(null, 'first_message_mode.mode'),
+        allow_interruptions: assistant.first_message_mode.allow_interruptions ?? getFallback(null, 'first_message_mode.allow_interruptions'),
+        first_message: assistant.first_message_mode.first_message || getFallback(null, 'first_message_mode.first_message'),
+      },
+      customFirstMessageValue: assistant.first_message_mode.first_message || getFallback(null, 'first_message_mode.first_message'),
+    }
+  }
+
+  return {
+    firstMessageModeValue: {
+      mode: assistant.first_message_mode,
+      allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions'),
+      first_message: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
+    },
+    customFirstMessageValue: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
+  }
+}
+
+function deriveBackgroundAudioMode(backgroundAudio: any): 'disabled' | 'single' | 'dual' {
+  if (!backgroundAudio.enabled) return 'disabled'
+  const hasAmbient = backgroundAudio.ambient?.type !== undefined
+  const hasThinking = backgroundAudio.thinking?.type !== undefined
+  if (hasAmbient && hasThinking) return 'dual'
+  if (hasThinking || hasAmbient) return 'single'
+  return 'disabled'
+}
+
+function deriveTtsVoiceConfig(tts: any): any {
+  if (!tts?.name) return {}
+
+  if (tts.name === "sarvam" || tts.name === "sarvam_tts") {
+    // Map language back to target_language_code for Sarvam (since we save in ElevenLabs format)
+    return {
+      target_language_code: tts.target_language_code ?? tts.language ?? "en-IN",
+      loudness: tts.voice_settings?.loudness ?? tts.loudness ?? 1,
+      speed: tts.voice_settings?.speed ?? tts.speed ?? 1,
+      enable_preprocessing: tts.voice_settings?.enable_preprocessing ?? tts.enable_preprocessing ?? true,
+    }
+  }
+
+  if (tts.name === "elevenlabs") {
+    return {
+      voiceId: tts.voice_id ?? getFallback(null, 'tts.voice_id'),
+      language: tts.language ?? getFallback(null, 'tts.language'),
+      similarityBoost: tts.voice_settings?.similarity_boost ?? getFallback(null, 'tts.voice_settings.similarity_boost'),
+      stability: tts.voice_settings?.stability ?? getFallback(null, 'tts.voice_settings.stability'),
+      style: tts.voice_settings?.style ?? getFallback(null, 'tts.voice_settings.style'),
+      useSpeakerBoost: tts.voice_settings?.use_speaker_boost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
+      speed: tts.voice_settings?.speed ?? getFallback(null, 'tts.voice_settings.speed'),
+    }
+  }
+
+  if (tts.name === "google") {
+    return {
+      voice_name: tts.voice_name ?? getFallback(null, 'tts.voice_name'),
+      gender: tts.gender,
+    }
+  }
+
+  return {}
+}
+
+function deriveSttConfig(stt: any): any {
+  const { name: _n, provider: _p, model: _m, language: _l, mode: _mo, config: _c,
+          tier: _t, version: _v, redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
+          ...sttExtra } = stt || {}
+  return {
+    language: stt?.language || getFallback(null, 'stt.language'),
+    ...(stt?.mode ? { mode: stt.mode } : {}),
+    ...sttExtra,
+    ...stt?.config,
+  }
+}
+
+function deriveFallbackTtsVoiceConfig(fb: any): any {
+  if (!fb) return {}
+  const name = fb.name
+  if (name === 'sarvam' || name === 'sarvam_tts') {
+    return {
+      target_language_code: fb.target_language_code || fb.language || 'en-IN',
+      pace: fb.voice_settings?.pace ?? fb.pace ?? fb.voice_settings?.speed ?? fb.speed ?? 1,
+      loudness: fb.voice_settings?.loudness ?? fb.loudness ?? 1,
+      enable_preprocessing: fb.voice_settings?.enable_preprocessing ?? fb.enable_preprocessing ?? true,
+      pitch: fb.voice_settings?.pitch ?? fb.pitch ?? 0,
+    }
+  }
+  if (name === 'google') {
+    return {
+      voice_name: fb.voice_name || fb.voice_id || '',
+      gender: fb.gender,
+    }
+  }
+  // ElevenLabs or any other provider
+  return {
+    voiceId: fb.voice_id || '',
+    language: fb.language || 'en',
+    similarityBoost: fb.voice_settings?.similarity_boost ?? fb.similarityBoost ?? 0.75,
+    stability: fb.voice_settings?.stability ?? fb.stability ?? 0.5,
+    style: fb.voice_settings?.style ?? fb.style ?? 0,
+    useSpeakerBoost: fb.voice_settings?.use_speaker_boost ?? fb.useSpeakerBoost ?? true,
+    speed: fb.voice_settings?.speed ?? fb.speed ?? 1,
+  }
+}
+
+function deriveFallbackLlmProvider(assistant: any): string {
+  const fp = assistant.llm?.fallback?.provider || assistant.llm?.fallback?.name || ''
+  if (fp === 'azure') return 'azure_openai'
+  return fp
+}
+
+function deriveFillerWordsConfig(assistant: any): any {
+  // When the backend has never stored filler config (new agent), filler_words is
+  // absent — fall back to AGENT_DEFAULT_CONFIG so the UI shows correct defaults.
+  // When filler_words IS present (even with empty arrays), the user's saved values
+  // are used as-is so intentionally cleared fields are respected.
+  const fw = assistant.filler_words
+  const hasFillerConfig = fw != null
+  return {
+    enableFillerWords: fw?.enabled ?? AGENT_DEFAULT_CONFIG.filler_words.enabled,
+    language: (fw?.language as 'auto' | 'en' | 'hi') ?? 'auto',
+    questionKeywords: hasFillerConfig
+      ? (fw?.question_keywords?.filter((f: string) => f !== "") || [])
+      : [...AGENT_DEFAULT_CONFIG.filler_words.question_keywords],
+    questionFillers: hasFillerConfig
+      ? (fw?.question_fillers?.filter((f: string) => f !== "") || [])
+      : [...AGENT_DEFAULT_CONFIG.filler_words.question_fillers],
+    ambiguousKeywords: hasFillerConfig
+      ? (fw?.ambiguous_keywords?.filter((f: string) => f !== "") || [])
+      : [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_keywords],
+    ambiguousFillers: hasFillerConfig
+      ? (fw?.ambiguous_fillers?.filter((f: string) => f !== "") || [])
+      : [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_fillers],
+    generalFillers: hasFillerConfig
+      ? (fw?.general_fillers?.filter((f: string) => f !== "") || [])
+      : [...AGENT_DEFAULT_CONFIG.filler_words.general_fillers],
+    fillerCooldownSec: fw?.filler_cooldown_sec ?? 4.0,
+    latencyThreshold: fw?.latency_threshold ?? 1.2,
+    conversationFillers: fw?.conversation_fillers?.filter((f: string) => f !== "") || [],
+    conversationKeywords: fw?.conversation_keywords?.filter((f: string) => f !== "") || [],
+  }
+}
+
+function deriveKnowledgeBaseConfig(assistant: any): any {
+  const tools = assistant.tools ?? []
+  const kbTool = tools.find((t: any) => t?.type === 'knowledge_search')
+  const topK = kbTool?.top_k ?? kbTool?.knowledge_search_options?.top_k ?? 5
+  return {
+    enabled: !!kbTool,
+    topK: typeof topK === 'number' && topK >= 1 ? topK : 5,
+  }
+}
+
 export const buildFormValuesFromAgent = (assistant: any) => {
   const llmConfig = assistant.llm || {}
   const modelValue = llmConfig.model || getFallback(null, 'llm.model')
   const providerValue = llmConfig.provider || llmConfig.name || getFallback(null, 'llm.name')
   const temperatureValue = llmConfig.temperature ?? getFallback(null, 'llm.temperature')
+  const mappedProvider = mapLlmProvider(providerValue, modelValue)
 
-  let mappedProvider = providerValue
-  if (providerValue === "groq") {
-    mappedProvider = "groq"
-  } else if (providerValue === "azure") {
-    mappedProvider = "azure_openai"
-  } else if (modelValue.includes("claude")) {
-    mappedProvider = "anthropic"
-  } else if (modelValue.includes("cerebras") || providerValue === "cerebras") {
-    mappedProvider = "cerebras"
-  }
-
-  let firstMessageModeValue
-  let customFirstMessageValue = ""
-
-  if (assistant.first_message_mode) {
-    if (typeof assistant.first_message_mode === "object") {
-      firstMessageModeValue = {
-        mode: assistant.first_message_mode.mode || getFallback(null, 'first_message_mode.mode'),
-        allow_interruptions: assistant.first_message_mode.allow_interruptions ?? getFallback(null, 'first_message_mode.allow_interruptions'),
-        first_message: assistant.first_message_mode.first_message || getFallback(null, 'first_message_mode.first_message'),
-      }
-      customFirstMessageValue = assistant.first_message_mode.first_message || getFallback(null, 'first_message_mode.first_message')
-    } else {
-      firstMessageModeValue = {
-        mode: assistant.first_message_mode,
-        allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions'),
-        first_message: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
-      }
-      customFirstMessageValue = assistant.first_message || getFallback(null, 'first_message_mode.first_message')
-    }
-  } else {
-    firstMessageModeValue = {
-      mode: getFallback(null, 'first_message_mode.mode'),
-      allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions'),
-      first_message: assistant.first_message || getFallback(null, 'first_message_mode.first_message'),
-    }
-    customFirstMessageValue = assistant.first_message || getFallback(null, 'first_message_mode.first_message')
-  }
+  const { firstMessageModeValue, customFirstMessageValue } = deriveFirstMessageMode(assistant)
 
   const sessionBehavior = assistant.session_behavior || {}
-
   const backgroundAudio = assistant.background_audio || {}
-  const hasAmbient = backgroundAudio.ambient?.type !== undefined
-  const hasThinking = backgroundAudio.thinking?.type !== undefined
-  
-  let backgroundAudioMode: 'disabled' | 'single' | 'dual' = 'disabled'
-  if (backgroundAudio.enabled) {
-    if (hasAmbient && hasThinking) {
-      backgroundAudioMode = 'dual'
-    } else if (hasThinking || hasAmbient) {
-      backgroundAudioMode = 'single'
-    }
-  }
+  const backgroundAudioMode = deriveBackgroundAudioMode(backgroundAudio)
 
   return {
     selectedProvider: mappedProvider,
@@ -455,45 +671,10 @@ export const buildFormValuesFromAgent = (assistant: any) => {
     temperature: temperatureValue,
     ttsProvider: assistant.tts?.name || getFallback(null, 'tts.name'),
     ttsModel: assistant.tts?.model || getFallback(null, 'tts.model'),
-    ttsVoiceConfig:
-      assistant.tts?.name === "sarvam" || assistant.tts?.name === "sarvam_tts"
-        ? {
-            // Map language back to target_language_code for Sarvam (since we save in ElevenLabs format)
-            target_language_code: assistant.tts?.target_language_code ?? assistant.tts?.language ?? "en-IN",
-            loudness: assistant.tts?.voice_settings?.loudness ?? assistant.tts?.loudness ?? 1.0,
-            speed: assistant.tts?.voice_settings?.speed ?? assistant.tts?.speed ?? 1.0,
-            enable_preprocessing: assistant.tts?.voice_settings?.enable_preprocessing ?? assistant.tts?.enable_preprocessing ?? true,
-          }
-        : assistant.tts?.name === "elevenlabs"
-          ? {
-              voiceId: assistant.tts?.voice_id ?? getFallback(null, 'tts.voice_id'),
-              language: assistant.tts?.language ?? getFallback(null, 'tts.language'),
-              similarityBoost: assistant.tts?.voice_settings?.similarity_boost ?? getFallback(null, 'tts.voice_settings.similarity_boost'),
-              stability: assistant.tts?.voice_settings?.stability ?? getFallback(null, 'tts.voice_settings.stability'),
-              style: assistant.tts?.voice_settings?.style ?? getFallback(null, 'tts.voice_settings.style'),
-              useSpeakerBoost: assistant.tts?.voice_settings?.use_speaker_boost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
-              speed: assistant.tts?.voice_settings?.speed ?? getFallback(null, 'tts.voice_settings.speed'),
-            }
-          : assistant.tts?.name === "google"
-            ? {
-                voice_name: assistant.tts?.voice_name ?? getFallback(null, 'tts.voice_name'),
-                gender: assistant.tts?.gender,
-              }
-            : {},
+    ttsVoiceConfig: deriveTtsVoiceConfig(assistant.tts),
     sttProvider: assistant.stt?.provider || assistant.stt?.name || getFallback(null, 'stt.name'),
     sttModel: assistant.stt?.model || getFallback(null, 'stt.model'),
-    sttConfig: (() => {
-      const { name: _n, provider: _p, model: _m, language: _l, mode: _mo, config: _c,
-              tier: _t, version: _v, redact: _r, diarize: _d, utterances: _u, detect_language: _dl,
-              ...sttExtra } = (assistant.stt || {}) as any
-      const result = {
-        language: assistant.stt?.language || getFallback(null, 'stt.language'),
-        ...(assistant.stt?.mode ? { mode: assistant.stt.mode } : {}),
-        ...sttExtra,
-        ...(assistant.stt?.config || {}),
-      }
-      return result
-    })(),
+    sttConfig: deriveSttConfig(assistant.stt),
     dynamic_tts: assistant.dynamic_tts || [],
     // Global switch: read from backend; default true if any fallback configured (backward compat)
     fallbackGlobalEnabled: assistant.fallback_global_enabled !== undefined
@@ -510,42 +691,9 @@ export const buildFormValuesFromAgent = (assistant: any) => {
     fallbackTtsVoiceId: assistant.tts?.fallback?.voice_id || assistant.tts?.fallback?.voice_name || '',
     // Normalize to the same camelCase shape that SelectTTS and buildFallbackTtsPayload expect.
     // Without this, every re-save after a reload would reset all voice settings to defaults.
-    fallbackTtsVoiceConfig: (() => {
-      const fb = assistant.tts?.fallback
-      if (!fb) return {}
-      const name = fb.name
-      if (name === 'sarvam' || name === 'sarvam_tts') {
-        return {
-          target_language_code: fb.target_language_code || fb.language || 'en-IN',
-          pace: fb.voice_settings?.pace ?? fb.pace ?? fb.voice_settings?.speed ?? fb.speed ?? 1.0,
-          loudness: fb.voice_settings?.loudness ?? fb.loudness ?? 1.0,
-          enable_preprocessing: fb.voice_settings?.enable_preprocessing ?? fb.enable_preprocessing ?? true,
-          pitch: fb.voice_settings?.pitch ?? fb.pitch ?? 0.0,
-        }
-      }
-      if (name === 'google') {
-        return {
-          voice_name: fb.voice_name || fb.voice_id || '',
-          gender: fb.gender,
-        }
-      }
-      // ElevenLabs or any other provider
-      return {
-        voiceId: fb.voice_id || '',
-        language: fb.language || 'en',
-        similarityBoost: fb.voice_settings?.similarity_boost ?? fb.similarityBoost ?? 0.75,
-        stability: fb.voice_settings?.stability ?? fb.stability ?? 0.5,
-        style: fb.voice_settings?.style ?? fb.style ?? 0,
-        useSpeakerBoost: fb.voice_settings?.use_speaker_boost ?? fb.useSpeakerBoost ?? true,
-        speed: fb.voice_settings?.speed ?? fb.speed ?? 1.0,
-      }
-    })(),
+    fallbackTtsVoiceConfig: deriveFallbackTtsVoiceConfig(assistant.tts?.fallback),
     fallbackLlmEnabled: !!(assistant.llm?.fallback),
-    fallbackLlmProvider: (() => {
-      const fp = assistant.llm?.fallback?.provider || assistant.llm?.fallback?.name || ''
-      if (fp === 'azure') return 'azure_openai'
-      return fp
-    })(),
+    fallbackLlmProvider: deriveFallbackLlmProvider(assistant),
     fallbackLlmModel: assistant.llm?.fallback?.model || '',
     fallbackLlmTemperature: assistant.llm?.fallback?.temperature ?? 0.3,
     advancedSettings: {
@@ -593,99 +741,14 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         user_away_timeout_end_message: sessionBehavior.user_away_timeout_end_message !== undefined && sessionBehavior.user_away_timeout_end_message !== null && sessionBehavior.user_away_timeout_end_message !== '' ? sessionBehavior.user_away_timeout_end_message : undefined,
       },
       tools: {
-        tools: assistant.tools?.map((tool: any) => ({
-          id: `tool_${tool.type}_${Date.now()}_${Math.random()}`,
-          type: tool.type,
-          name: tool.name || (
-            tool.type === 'end_call' ? 'End Call' : 
-            tool.type === 'handoff' ? 'Handoff Agent' : 
-            tool.type === 'transfer_call' ? 'Transfer Call' : 
-            tool.type === 'ivr_navigator' ? 'Send DTMF' : 
-            tool.type === 'nearby_location_finder' ? 'Nearby Hospital Finder' :
-            tool.type === 'update_vad_options' ? 'Update VAD Options' :
-            'Custom Tool'
-          ),
-          config: {
-            description: tool.description || '',
-            endpoint: tool.api_url || '',
-            method: tool.http_method || 'GET',
-            headers: tool.headers || {},
-            body: tool.custom_payload || '',
-            targetAgent: tool.target_agent || '',
-            handoffMessage: tool.handoff_message || '',
-            transferNumber: tool.transfer_number || '',
-            acefoneToken: tool.acefone_token || '',
-            sipTrunkId: tool.sip_outbound_trunk || '',
-            preTransferWebhookUrl: tool.pre_transfer_webhook_url || '',
-            preTransferWebhookFields: tool.pre_transfer_webhook_fields || null,
-            // Backward-compatible defaults when loading old tools that don't have these keys
-            enableAsTool: tool.enable_as_tool !== false,
-            enableAsTag: tool.enable_as_tag === true,
-            timeout: tool.timeout || 10,
-            asyncExecution: tool.async || false,
-            parameters: tool.parameters?.map((param: any) => ({
-              id: `param_${param.name}_${Date.now()}_${Math.random()}`,
-              name: param.name,
-              type: param.type,
-              description: param.description,
-              required: param.required
-            })) || [],
-            responseMapping: tool.response_mapping_raw || '{}',
-            // IVR Navigator fields
-            function_name: tool.function_name || 'send_dtmf_code',
-            docstring: tool.docstring || '',
-            cooldown_seconds: tool.cooldown_seconds || 3,
-            publish_topic: tool.publish_topic || 'dtmf_code',
-            publish_data: tool.publish_data ?? true,
-            instruction_template: tool.instruction_template || '',
-            default_task: tool.default_task || 'Reach a live support representative',
-            task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
-            // Nearby hospital finder fields (kept as JSON strings for editor)
-            max_results: tool.max_results ?? 3,
-            hospitals_json: JSON.stringify(tool.hospitals ?? [], null, 2),
-            areas_json: JSON.stringify(tool.areas ?? {}, null, 2),
-            // Filler words config (custom_function only)
-            filler_config: tool.filler_config ?? {
-              enabled: false,
-              threshold: 2.0,
-              interval: 3.0,
-              mode: 'random',
-              messages: [],
-            },
-          }
-        })) || []
+        languageSwitchTools: (assistant.tools || [])
+          .filter((tool: any) => tool.type === 'language_switch')
+          .map(deserializeLanguageSwitchTool),
+        tools: (assistant.tools || [])
+          .filter((tool: any) => tool.type !== 'language_switch')
+          .map(deserializeTool)
       },
-      fillers: (() => {
-        // When the backend has never stored filler config (new agent), filler_words is
-        // absent — fall back to AGENT_DEFAULT_CONFIG so the UI shows correct defaults.
-        // When filler_words IS present (even with empty arrays), the user's saved values
-        // are used as-is so intentionally cleared fields are respected.
-        const fw = assistant.filler_words
-        const hasFillerConfig = fw != null
-        return {
-          enableFillerWords: fw?.enabled ?? AGENT_DEFAULT_CONFIG.filler_words.enabled,
-          language: (fw?.language as 'auto' | 'en' | 'hi') ?? 'auto',
-          questionKeywords: hasFillerConfig
-            ? (fw?.question_keywords?.filter((f: string) => f !== "") || [])
-            : [...AGENT_DEFAULT_CONFIG.filler_words.question_keywords],
-          questionFillers: hasFillerConfig
-            ? (fw?.question_fillers?.filter((f: string) => f !== "") || [])
-            : [...AGENT_DEFAULT_CONFIG.filler_words.question_fillers],
-          ambiguousKeywords: hasFillerConfig
-            ? (fw?.ambiguous_keywords?.filter((f: string) => f !== "") || [])
-            : [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_keywords],
-          ambiguousFillers: hasFillerConfig
-            ? (fw?.ambiguous_fillers?.filter((f: string) => f !== "") || [])
-            : [...AGENT_DEFAULT_CONFIG.filler_words.ambiguous_fillers],
-          generalFillers: hasFillerConfig
-            ? (fw?.general_fillers?.filter((f: string) => f !== "") || [])
-            : [...AGENT_DEFAULT_CONFIG.filler_words.general_fillers],
-          fillerCooldownSec: fw?.filler_cooldown_sec ?? 4.0,
-          latencyThreshold: fw?.latency_threshold ?? 1.2,
-          conversationFillers: fw?.conversation_fillers?.filter((f: string) => f !== "") || [],
-          conversationKeywords: fw?.conversation_keywords?.filter((f: string) => f !== "") || [],
-        }
-      })(),
+      fillers: deriveFillerWordsConfig(assistant),
       bugs: {
         enableBugReport: assistant.bug_reports?.enable ?? getFallback(null, 'bug_reports.enable'),
         bugStartCommands: assistant.bug_reports?.bug_start_command || [],
@@ -709,15 +772,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         toolCallTyping: backgroundAudio.tool_call_typing_config?.enabled ?? false,
         toolCallVolume: backgroundAudio.tool_call_typing_config?.volume ?? 0.8,
       },
-      knowledgeBase: (() => {
-        const tools = assistant.tools ?? []
-        const kbTool = tools.find((t: any) => t?.type === 'knowledge_search')
-        const topK = kbTool?.top_k ?? kbTool?.knowledge_search_options?.top_k ?? 5
-        return {
-          enabled: !!kbTool,
-          topK: typeof topK === 'number' && topK >= 1 ? topK : 5,
-        }
-      })(),
+      knowledgeBase: deriveKnowledgeBaseConfig(assistant),
     },
   }
 }
