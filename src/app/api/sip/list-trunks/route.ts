@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/sip/list-trunks/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const response = await fetch(`${apiUrl}/list_sip_inbound_trunks`, {
       method: 'GET',
       headers: {
-        'x-api-key': 'pype-api-v1',
+        'x-api-key': 'pype-api-v1', 'Authorization': 'Bearer ' + mintServiceToken(),
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       }

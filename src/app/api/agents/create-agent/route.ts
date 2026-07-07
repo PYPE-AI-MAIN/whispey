@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 
 // Server-side Supabase client (prefer service role for row updates)
@@ -37,7 +38,7 @@ async function getOrInitProjectAgentState(projectId: string): Promise<{
   }
 
   // If column exists but value is null/absent, initialize it
-  let nextState: AgentQuotaState = (projectRow as any).agent || defaultState
+  const nextState: AgentQuotaState = (projectRow as any).agent || defaultState
 
   if (!(projectRow as any).agent) {
     const { error: initError } = await supabase
@@ -72,9 +73,9 @@ async function rollbackAgentCreation(agentId: string, agentName?: string): Promi
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': 'pype-api-v1'
+        ...serviceAuthHeaders()
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         agent_name: agentName
       })
     })
@@ -267,7 +268,7 @@ export async function POST(request: NextRequest) {
       console.log('🌐 STEP 2: Calling PypeAPI to create agent...')
       
       // Add whispey_api_key to agent configuration if not present
-      let agentPayload = { ...body }
+      const agentPayload = { ...body }
       if (agentPayload.agent && projectId) {
         try {
           // Get API key from pype_voice_api_keys table
@@ -312,7 +313,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'pype-api-v1'
+          ...serviceAuthHeaders()
         },
         body: JSON.stringify(agentPayload)
       })

@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { hasValidServiceToken } from '@/lib/serviceTokenVerifier';
 
 // Define which routes are public (don't require authentication)
 const isPublicRoute = createRouteMatcher([
@@ -10,8 +11,16 @@ const isPublicRoute = createRouteMatcher([
   '/docs(.*)',
   '/playground(.*)',
   '/invite(.*)',
-  // '/api/webhooks(.*)', // if you have public API routes
-  '/api(.*)'
+  // Public API routes (external callers — no Clerk session)
+  '/api/webhooks(.*)',
+  '/api/vapi/webhook(.*)',
+  '/api/retell/webhook(.*)',
+  '/api/elevenlabs/webhook(.*)',
+  '/api/validate-sso-token(.*)',
+  '/api/logs/call-logs(.*)',
+  '/api/logs/failure-report(.*)',
+  '/api/send-logs(.*)',
+  '/api/github-stars(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
@@ -24,16 +33,17 @@ export default clerkMiddleware(async (auth, request) => {
     return
   }
   
-  // If it's not a public route and user is not authenticated, redirect to sign-in
+  // If it's not a public route, require either a Clerk session or a valid internal service JWT
   if (!isPublicRoute(request)) {
-    await auth.protect();
+    const isInternalCall = await hasValidServiceToken(request.headers.get('Authorization'))
+    if (!isInternalCall) await auth.protect()
   }
 });
 
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)', // NOSONAR javascript:S7780 — String.raw breaks Next.js static analysis of config.matcher
     // Always run for API routes
     '/(api|trpc)(.*)',
   ],

@@ -322,6 +322,8 @@ class CorrectedTranscriptCollector:
                 if config:
                     self.current_turn.turn_configuration = config
 
+        if not hasattr(event.item, 'role'):
+            return
         if event.item.role == "user":
             original_text = event.item.text_content
             
@@ -406,7 +408,10 @@ class CorrectedTranscriptCollector:
                 
             # NORMAL PROCESSING: Only if message wasn't intercepted
             if not should_intercept:
-                self.current_turn.user_transcript = original_text
+                if self.current_turn.user_transcript:
+                    self.current_turn.user_transcript += " " + (original_text or "")
+                else:
+                    self.current_turn.user_transcript = original_text or ""
                 self.current_turn.user_turn_complete = True
                 
                 # Apply pending metrics

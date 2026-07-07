@@ -165,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
     const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
     const to   = new Date()
     return { from: subDays(to, days), to }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [quickFilter, isCustomRange, storedDateFilter.dateFrom, storedDateFilter.dateTo])
 
   const activeTab = searchParams.get('tab') || 'overview'

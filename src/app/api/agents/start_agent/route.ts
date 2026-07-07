@@ -1,5 +1,6 @@
 // app/api/agents/start_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
+import { serviceAuthHeaders } from '@/lib/serviceToken'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/run_agent`, {
       method: 'POST',
       headers: {
-        'x-api-key': 'pype-api-v1',
+        ...serviceAuthHeaders(),
         'ngrok-skip-browser-warning': 'true',
         'Accept': 'application/json',
         'Content-Type': 'application/json',

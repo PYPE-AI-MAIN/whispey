@@ -134,7 +134,7 @@ async function fetchCallLogs(
 ): Promise<{ logs: CallLogRow[]; error?: string }> {
   try {
     // Build base query
-    let query = supabase
+    const query = supabase
       .from('pype_voice_call_logs')
       .select('id, agent_id, transcription_metrics, metadata')
       .eq('agent_id', agentId)

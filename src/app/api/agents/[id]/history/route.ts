@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { pushPromptToGitHub } from '@/lib/github-prompts'
+import { pushEnrichedConfigToGitHub } from '@/lib/agentVersionHelpers'
 import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 const supabase = createServiceRoleClient()
@@ -22,6 +22,7 @@ function extractPromptSnapshot(config: any): string | null {
     ?? config?.agent?.prompt
     ?? null
 }
+
 
 // POST /api/agents/[id]/history — save a version checkpoint
 export async function POST(
@@ -85,11 +86,11 @@ export async function POST(
     const projectName = project?.name ?? agent.project_id
     const agentName = agent.name ?? agentId
 
-    // Push full config as YAML to agents/{project}/{agent}/config.yml (non-blocking on failure)
-    const githubResult = await pushPromptToGitHub(
+    const githubResult = await pushEnrichedConfigToGitHub(
+      agentId,
+      snapshot,
       projectName,
       agentName,
-      snapshot,
       commit_message.trim(),
       userEmail ?? 'unknown',
     )
@@ -143,8 +144,8 @@ export async function GET(
   try {
     const { id: agentId } = await params
     const { searchParams } = new URL(req.url)
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20')))
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(50, Math.max(1, Number.parseInt(searchParams.get('limit') || '20')))
     const offset = (page - 1) * limit
 
     const { data, error, count } = await supabase

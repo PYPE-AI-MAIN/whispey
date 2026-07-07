@@ -1,3 +1,4 @@
+import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -40,7 +41,7 @@ export async function DELETE(
 
     const response = await fetch(backendUrl, {
       method: 'DELETE',
-      headers: { 'x-api-key': apiKey },
+      headers: { 'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken() },
     })
 
     console.log(`${LOG_PREFIX} Step 5: Backend responded status=${response.status} ${response.statusText}`)

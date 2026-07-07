@@ -1258,7 +1258,7 @@ export default function PipecatAgentConfig({
                                 <Input
                                   value={name}
                                   onChange={e => {
-                                    let newName = e.target.value.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32)
+                                    const newName = e.target.value.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32)
                                     if (newName === name) return
                                     setVariables(v => {
                                       const next: Record<string, string> = {}

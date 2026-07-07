@@ -1,11 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { pushEnrichedConfigToGitHub } from '@/lib/agentVersionHelpers'
+import { mintServiceToken } from '@/lib/serviceToken'
 
 const supabase = createServiceRoleClient()
 
 function extractPromptSnapshot(config: any): string | null {
   return config?.agent?.assistant?.[0]?.prompt ?? config?.agent?.prompt ?? null
 }
+
+function parseDeployError(errText: string): string {
+  try {
+    const j = JSON.parse(errText)
+    return j?.error ?? j?.message ?? errText ?? 'unknown'
+  } catch {
+    return errText || 'unknown'
+  }
+}
+
+type DeployError = { message: string; status: number }
+
+async function runDeploy(
+  appUrl: string,
+  isPipecat: boolean,
+  configSnapshot: any,
+  agentId: string,
+  agentName: string,
+): Promise<DeployError | null> {
+  if (isPipecat) {
+    const pipecatAgentId = configSnapshot?.agent?.whispey_agent_id
+    if (!pipecatAgentId) {
+      return { message: 'Cannot determine Pipecat agent ID from snapshot.', status: 400 }
+    }
+    const res = await fetch(`${appUrl}/api/pipecat/agents/${pipecatAgentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mintServiceToken()}` },
+      body: JSON.stringify(configSnapshot.agent),
+    })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error('[restore] Pipecat deploy failed:', res.status, errText)
+      return { message: `Restore deploy failed: ${parseDeployError(errText)}`, status: 502 }
+    }
+  } else {
+    const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mintServiceToken()}` },
+      body: JSON.stringify({ agent: configSnapshot.agent, metadata: { agentId, agentName } }),
+    })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error('[restore] LiveKit deploy failed:', res.status, errText)
+      return { message: `Restore deploy failed: ${parseDeployError(errText)}`, status: 502 }
+    }
+  }
+  return null
+}
+
 
 export async function POST(
   req: NextRequest,
@@ -54,41 +105,29 @@ export async function POST(
     // 3. Deploy the old config back to the dev agent
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     const isPipecat = version.config_snapshot?.platform === 'pipecat'
+    const deployErr = await runDeploy(appUrl, isPipecat, version.config_snapshot, agentId, agent.name)
+    if (deployErr) return NextResponse.json({ message: deployErr.message }, { status: deployErr.status })
 
-    let deployOk = false
+    // 4. Push restored config as YAML to GitHub (same enrichment as regular save)
+    const { data: project } = await supabase
+      .from('pype_voice_projects')
+      .select('name')
+      .eq('id', agent.project_id)
+      .single()
 
-    if (isPipecat) {
-      const pipecatAgentId = version.config_snapshot?.agent?.whispey_agent_id
-      if (!pipecatAgentId) {
-        return NextResponse.json({ message: 'Cannot determine Pipecat agent ID from snapshot.' }, { status: 400 })
-      }
-      const res = await fetch(`${appUrl}/api/pipecat/agents/${pipecatAgentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(version.config_snapshot.agent),
-      })
-      deployOk = res.ok
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        return NextResponse.json({ message: `Restore deploy failed: ${(err as any).error ?? 'unknown'}` }, { status: 502 })
-      }
-    } else {
-      const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agent: version.config_snapshot.agent,
-          metadata: { agentId, agentName: agent.name },
-        }),
-      })
-      deployOk = res.ok
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        return NextResponse.json({ message: `Restore deploy failed: ${(err as any).message ?? 'unknown'}` }, { status: 502 })
-      }
-    }
+    const projectName = project?.name ?? agent.project_id
+    const agentName = agent.name ?? agentId
 
-    // 4. Save a new version row with the old config and new commit message
+    const githubResult = await pushEnrichedConfigToGitHub(
+      agentId,
+      version.config_snapshot,
+      projectName,
+      agentName,
+      commit_message.trim(),
+      userEmail ?? 'unknown',
+    )
+
+    // 5. Save a new version row with the old config and new commit message
     const { data: latest } = await supabase
       .from('pype_agent_config_versions')
       .select('version_number')
@@ -111,7 +150,8 @@ export async function POST(
         commit_message: commit_message.trim(),
         created_by_email: userEmail ?? null,
         created_by_user_id: userId ?? null,
-        github_push_ok: false,
+        github_sha: githubResult?.sha ?? null,
+        github_push_ok: githubResult !== null,
       })
       .select('id')
       .single()

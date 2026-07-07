@@ -109,7 +109,7 @@ export const useVirtualization = ({
       resizeObserver.disconnect()
       containerRef.current?.removeEventListener('scroll', handleScroll)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [containerRef, handleScroll])
 
   // Calculate visible range.
