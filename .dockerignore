@@ -13,3 +13,11 @@ yarn-error.log*
 *.pem
 .vscode
 .cursor
+sdk
+venv
+coverage
+*.tsbuildinfo
+sessionmanager-bundle
+sessionmanager-bundle.zip
+AWSCLIV2.pkg
+__tests__

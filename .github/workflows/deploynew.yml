@@ -3,6 +3,7 @@ name: Clients Production Deployment
 on:
   push:
     branches:
+      - develop
       - ci-cd-testing
 
 permissions:

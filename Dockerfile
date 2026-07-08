@@ -4,13 +4,18 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci --ignore-scripts --legacy-peer-deps
 
 # Copy application files
 COPY . .
 
 # Run postinstall
 RUN npm run postinstall
+
+ENV NODE_ENV=production
+
+# Build the production bundle
+RUN npm run build
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -22,7 +27,5 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT=3000
-ENV NODE_ENV=production
 
-# Start the development server (will require env vars at runtime)
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]
