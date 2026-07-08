@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages, BookOpen } from 'lucide-react'
 import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwitchSettings'
@@ -1326,6 +1327,68 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Trigger Mode — how the LLM activates this function */}
+                <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3">
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                    How should the LLM trigger this tool?
+                  </Label>
+                  <RadioGroup
+                    value={formData.enableAsTag ? 'tag' : 'tool'}
+                    onValueChange={(v) => {
+                      if (v === 'tag') {
+                        setFormData(prev => ({
+                          ...prev,
+                          enableAsTag: true,
+                          // Parameterized tools can't carry argument values in a bare tag, so
+                          // tag mode here is a backstop, not a replacement: keep the tool
+                          // callable and let the tag act as a redundant recovery signal.
+                          enableAsTool: prev.parameters.length > 0,
+                        }))
+                      } else {
+                        setFormData(prev => ({ ...prev, enableAsTool: true, enableAsTag: false }))
+                      }
+                    }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem value="tool" id="cf-trigger-tool" className="mt-0.5" />
+                      <div className="flex-1">
+                        <label htmlFor="cf-trigger-tool" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                          Add as Tool
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Exposes <code>{formData.name || 'this tool'}</code> as a function tool the LLM decides to invoke.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem value="tag" id="cf-trigger-tag" className="mt-0.5" />
+                      <div className="flex-1">
+                        <label htmlFor="cf-trigger-tag" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                          Add as Tag
+                        </label>
+                        {formData.parameters.length === 0 ? (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Looks for <code>&lt;{formData.name || 'tool_name'}/&gt;</code> in the LLM's spoken text and
+                            triggers the call (the tag is stripped from TTS so the caller never hears it).
+                            Add this instruction to your system prompt:{' '}
+                            <em>"When calling this tool, append <code>&lt;{formData.name || 'tool_name'}/&gt;</code> to your final response."</em>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            This tool has parameters, so a bare tag can't carry the argument values — this is a{' '}
+                            <strong>backstop, not a replacement</strong>. <code>{formData.name || 'this tool'}</code> will
+                            still be called normally with real arguments; if that organic call doesn't happen, the tag
+                            triggers a forced recovery call. Instruct the LLM to do both in your system prompt:{' '}
+                            <em>"Call {formData.name || 'the tool'} normally with the required arguments, and also append{' '}
+                            <code>&lt;{formData.name || 'tool_name'}/&gt;</code> to your final response."</em>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </RadioGroup>
                 </div>
 
                 {/* Response Mapping */}

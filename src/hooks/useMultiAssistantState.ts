@@ -370,6 +370,9 @@ function serializeCustomFunctionTool(tool: any, baseToolConfig: any, commonField
     response_mapping: responseMappingObject,
     response_mapping_raw: tool.config?.responseMapping || '{}',
     filler_config: tool.config?.filler_config ?? null,
+    // Trigger-mode flags. Defaults preserve current behavior.
+    enable_as_tool: tool.config?.enableAsTool !== false,
+    enable_as_tag: tool.config?.enableAsTag === true,
   }
 }
 

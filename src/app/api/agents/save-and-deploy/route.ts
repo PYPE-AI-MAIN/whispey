@@ -379,6 +379,10 @@ function serializeRouteTool(tool: any): any {
         headers: tool.config.headers,
         parameters: tool.config.parameters,
         filler_config: tool.config.filler_config ?? null,
+        // Trigger-mode flags. Defaults preserve old behavior. Kept in sync with
+        // serializeCustomFunctionTool in useMultiAssistantState.ts.
+        enable_as_tool: tool.config.enableAsTool !== false,
+        enable_as_tag: tool.config.enableAsTag === true,
       } : tool.type === 'transfer_call' ? {
         transfer_number: tool.config.transferNumber,
         sip_outbound_trunk: tool.config.sipTrunkId,
