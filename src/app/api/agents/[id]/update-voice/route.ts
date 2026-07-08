@@ -11,6 +11,74 @@ export const maxDuration = 60
 
 const supabase = createServiceRoleClient()
 
+function elevenLabsTts(voiceId: string) {
+  return {
+    name: 'elevenlabs',
+    voice_id: voiceId,
+    model: 'eleven_flash_v2_5',
+    language: 'en',
+    voice_settings: {
+      similarity_boost: 1,
+      stability: 0.8,
+      style: 1,
+      use_speaker_boost: true,
+      speed: 1.05
+    }
+  }
+}
+
+/**
+ * Load the config to merge the voice into. Prefer the last saved config
+ * version — the exact payload shape the config page deploys successfully.
+ * The backend's GET copy is missing fields (tools, filler_words, variables)
+ * that crash its file generator ("'NoneType' object is not iterable") and
+ * make playground updates fail. Falls back to the backend GET.
+ */
+async function loadExistingConfig(agentId: string, configApiUrl: string): Promise<any | null> {
+  const { data: lastVersion } = await supabase
+    .from('pype_agent_config_versions')
+    .select('config_snapshot')
+    .eq('agent_id', agentId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (lastVersion?.config_snapshot) {
+    try {
+      const snapshot = typeof lastVersion.config_snapshot === 'string'
+        ? JSON.parse(lastVersion.config_snapshot)
+        : lastVersion.config_snapshot
+      if (snapshot?.agent?.assistant?.[0]) return snapshot
+    } catch { /* fall through to backend GET */ }
+  }
+
+  try {
+    const configResponse = await fetch(configApiUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
+      signal: pypeApiAbortSignal()
+    })
+    if (configResponse.ok) return await configResponse.json()
+  } catch (error) {
+    console.warn('Could not fetch existing config, will create new structure:', error)
+  }
+  return null
+}
+
+/** Merge the new voice into the existing config, or create a minimal one. */
+function buildAgentConfigBody(existingConfig: any, agentNameWithId: string, voiceId: string) {
+  const tts = elevenLabsTts(voiceId)
+  if (existingConfig?.agent?.assistant?.[0]) {
+    return {
+      agent: {
+        ...existingConfig.agent,
+        assistant: [{ ...existingConfig.agent.assistant[0], tts }]
+      }
+    }
+  }
+  return { agent: { name: agentNameWithId, assistant: [{ tts }] } }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -62,97 +130,8 @@ export async function POST(
     }
 
     const configApiUrl = `${baseUrl}/agent_config/${agentNameWithId}`
-    let existingConfig: any = null
-
-    // Prefer the last saved config version — the exact payload shape the
-    // config page deploys successfully. The backend's GET copy is missing
-    // fields (tools, filler_words, variables) that crash its file generator
-    // ("'NoneType' object is not iterable") and make playground updates fail.
-    const { data: lastVersion } = await supabase
-      .from('pype_agent_config_versions')
-      .select('config_snapshot')
-      .eq('agent_id', agentId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (lastVersion?.config_snapshot) {
-      try {
-        existingConfig = typeof lastVersion.config_snapshot === 'string'
-          ? JSON.parse(lastVersion.config_snapshot)
-          : lastVersion.config_snapshot
-      } catch { existingConfig = null }
-    }
-
-    // Fallback: read the current config from the backend
-    if (!existingConfig?.agent?.assistant?.[0]) {
-      try {
-        const configResponse = await fetch(configApiUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...serviceAuthHeaders()
-          },
-          signal: pypeApiAbortSignal()
-        })
-
-        if (configResponse.ok) {
-          existingConfig = await configResponse.json()
-        }
-      } catch (error) {
-        console.warn('Could not fetch existing config, will create new structure:', error)
-      }
-    }
-
-    // Build agent config body - merge with existing or create new
-    let agentConfigBody: any
-    
-    if (existingConfig?.agent?.assistant?.[0]) {
-      // Merge with existing config
-      agentConfigBody = {
-        agent: {
-          ...existingConfig.agent,
-          assistant: [{
-            ...existingConfig.agent.assistant[0],
-            tts: {
-              name: 'elevenlabs',
-              voice_id: voiceId,
-              model: 'eleven_flash_v2_5',
-              language: 'en',
-              voice_settings: {
-                similarity_boost: 1,
-                stability: 0.8,
-                style: 1,
-                use_speaker_boost: true,
-                speed: 1.05
-              }
-            }
-          }]
-        }
-      }
-    } else {
-      // Create new structure
-      agentConfigBody = {
-        agent: {
-          name: agentNameWithId,
-          assistant: [{
-            tts: {
-              name: 'elevenlabs',
-              voice_id: voiceId,
-              model: 'eleven_flash_v2_5',
-              language: 'en',
-              voice_settings: {
-                similarity_boost: 1,
-                stability: 0.8,
-                style: 1,
-                use_speaker_boost: true,
-                speed: 1.05
-              }
-            }
-          }]
-        }
-      }
-    }
+    const existingConfig = await loadExistingConfig(agentId, configApiUrl)
+    const agentConfigBody = buildAgentConfigBody(existingConfig, agentNameWithId, voiceId)
 
     // Deploy via the same shared path as save-and-deploy. Do NOT stop the
     // agent first: the backend's stopped-agent update path crashes with
@@ -177,20 +156,7 @@ export async function POST(
     const currentConfig = agent.configuration || {}
     const updatedConfig = {
       ...currentConfig,
-      tts: {
-        name: 'elevenlabs',
-        provider: 'elevenlabs',
-        voice_id: voiceId,
-        model: 'eleven_flash_v2_5',
-        language: 'en',
-        voice_settings: {
-          similarity_boost: 1,
-          stability: 0.8,
-          style: 1,
-          use_speaker_boost: true,
-          speed: 1.05
-        }
-      }
+      tts: { ...elevenLabsTts(voiceId), provider: 'elevenlabs' }
     }
 
     const { error: updateError } = await supabase

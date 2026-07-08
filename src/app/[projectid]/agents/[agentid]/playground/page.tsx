@@ -47,6 +47,52 @@ const PREDEFINED_VOICES = [
   // { id: 'WBPquWcRUrtrI78xLufz', name: 'Laksya', category: 'Male' },
 ]
 
+/** POST the voice change; returns an error message or null on 2xx. */
+async function requestVoiceUpdate(agentId: string, voiceId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/agents/${agentId}/update-voice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        voiceId,
+        voiceName: PREDEFINED_VOICES.find(v => v.id === voiceId)?.name
+      })
+    })
+    if (res.ok) return null
+    const data = await res.json().catch(() => null)
+    return data?.error || `Voice update failed (${res.status})`
+  } catch {
+    return 'Voice update request failed'
+  }
+}
+
+/** Read the currently-deployed voice_id from the agent config, or null. */
+async function fetchConfigVoiceId(connectionName: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/agent-config/${encodeURIComponent(connectionName)}`)
+    if (!res.ok) return null
+    const cfg = await res.json()
+    return cfg?.agent?.assistant?.[0]?.tts?.voice_id ?? null
+  } catch {
+    return null
+  }
+}
+
+/** The update restarts the agent worker — poll until it's back (max ~60s). */
+async function waitForWorker(connectionName: string, onStatus: (s: AgentStatus | null) => void) {
+  for (let i = 0; i < 20; i++) {
+    try {
+      const res = await fetch(`/api/agents/status/${encodeURIComponent(connectionName)}`)
+      if (res.ok) {
+        const status = await res.json()
+        onStatus(status)
+        if (status?.worker_running) return
+      }
+    } catch { /* keep waiting */ }
+    await new Promise(r => setTimeout(r, 3000))
+  }
+}
+
 export default function PlaygroundPage() {
   const params = useParams()
   const agentId = params.agentid as string
@@ -240,50 +286,17 @@ function SessionView({
     setVoiceUpdateStatus('updating')
     setVoiceUpdateError(null)
 
-    let responseError: string | null = null
-    try {
-      const res = await fetch(`/api/agents/${agentId}/update-voice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          voiceId: selectedVoice,
-          voiceName: PREDEFINED_VOICES.find(v => v.id === selectedVoice)?.name
-        })
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        responseError = data?.error || `Voice update failed (${res.status})`
-      }
-    } catch {
-      responseError = 'Voice update request failed'
-    }
+    const responseError = await requestVoiceUpdate(agentId, selectedVoice)
 
     // Poll the agent config until the new voice shows up (up to 90s)
     const deadline = Date.now() + 90_000
     while (Date.now() < deadline) {
-      try {
-        const cfgRes = await fetch(`/api/agent-config/${encodeURIComponent(connectionName)}`)
-        if (cfgRes.ok) {
-          const cfg = await cfgRes.json()
-          if (cfg?.agent?.assistant?.[0]?.tts?.voice_id === selectedVoice) {
-            onConfigVoiceChange(selectedVoice)
-            // The update restarts the agent worker — wait for it to come back
-            for (let i = 0; i < 20; i++) {
-              try {
-                const statusRes = await fetch(`/api/agents/status/${encodeURIComponent(connectionName)}`)
-                if (statusRes.ok) {
-                  const status = await statusRes.json()
-                  onAgentStatusChange(status)
-                  if (status?.worker_running) break
-                }
-              } catch { /* keep waiting */ }
-              await new Promise(r => setTimeout(r, 3000))
-            }
-            setVoiceUpdateStatus('idle')
-            return
-          }
-        }
-      } catch { /* keep polling */ }
+      if ((await fetchConfigVoiceId(connectionName)) === selectedVoice) {
+        onConfigVoiceChange(selectedVoice)
+        await waitForWorker(connectionName, onAgentStatusChange)
+        setVoiceUpdateStatus('idle')
+        return
+      }
       await new Promise(r => setTimeout(r, 3000))
     }
 
