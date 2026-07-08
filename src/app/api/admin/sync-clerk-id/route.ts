@@ -4,13 +4,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 
-const supabase = createServiceRoleClient()
-
 // Parse allowed emails from environment variable
 const ALLOWED_EMAILS = process.env.ALLOWED_SYNC_EMAILS?.split(',').map(email => email.trim()) || []
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createServiceRoleClient()
+
     // Verify we have allowed emails configured
     if (ALLOWED_EMAILS.length === 0) {
       console.error('⚠️ No allowed emails configured in ALLOWED_SYNC_EMAILS')
