@@ -453,7 +453,7 @@ function serializeNearbyLocationFinderTool(tool: any, baseToolConfig: any, commo
   return { ...baseToolConfig, ...commonFields, max_results: maxResults, hospitals, areas }
 }
 
-function serializeAssistantToolFull(tool: any): any {
+export function serializeAssistantToolFull(tool: any): any {
   const baseToolConfig = { type: tool.type }
   if (tool.type === 'end_call') return baseToolConfig
 
@@ -468,7 +468,7 @@ function serializeAssistantToolFull(tool: any): any {
 
 // Used by the multi-assistant save path. Intentionally omits acefone_token / webhook
 // fields for transfer_call — mirrors the pre-existing behavior at this call site.
-function serializeAssistantToolBasic(tool: any): any {
+export function serializeAssistantToolBasic(tool: any): any {
   const baseToolConfig = { type: tool.type }
   if (tool.type === 'end_call') return baseToolConfig
 
