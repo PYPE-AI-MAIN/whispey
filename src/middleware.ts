@@ -21,18 +21,29 @@ const isPublicRoute = createRouteMatcher([
   '/api/logs/failure-report(.*)',
   '/api/send-logs(.*)',
   '/api/github-stars(.*)',
+  // Public playground needs these without a Clerk session
+  '/api/agents/status(.*)',
+  '/api/agent-config(.*)',
+  '/api/agents/:id/update-voice',
 ]);
+
+// GET-only reads the public playground needs (PATCH/DELETE on the same path must stay protected)
+const isPublicPlaygroundGet = createRouteMatcher(['/api/agents/:id']);
 
 export default clerkMiddleware(async (auth, request) => {
   // Check if the pathname includes '/playground' (for nested routes)
   const pathname = request.nextUrl.pathname
   const isPlaygroundRoute = pathname.includes('/playground')
-  
+
   // If it's a playground route, it's public - don't protect
   if (isPlaygroundRoute) {
     return
   }
-  
+
+  if (request.method === 'GET' && isPublicPlaygroundGet(request)) {
+    return
+  }
+
   // If it's not a public route, require either a Clerk session or a valid internal service JWT
   if (!isPublicRoute(request)) {
     const isInternalCall = await hasValidServiceToken(request.headers.get('Authorization'))

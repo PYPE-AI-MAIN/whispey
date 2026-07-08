@@ -482,6 +482,19 @@ export default function AgentConfig() {
     }
   })
 
+  // Webhook/dropoff/callback config load asynchronously (separate API calls) after the
+  // form is already initialized. Rebase both values AND the dirty-check baseline here so
+  // loading a section's saved config doesn't itself mark the form dirty, and so Discard
+  // reverts to the real loaded config instead of wiping it back to undefined.
+  const loadSupplementalSetting = (field: 'webhook' | 'dropoff' | 'callbackScheduling', data: any) => {
+    formik.resetForm({
+      values: {
+        ...formik.values,
+        advancedSettings: { ...formik.values.advancedSettings, [field]: data }
+      }
+    })
+  }
+
   const {
     buildSavePayload,
     hasUnsavedChanges: hasMultiAssistantChanges,
@@ -565,10 +578,9 @@ export default function AgentConfig() {
       setHasExternalChanges(false)
       resetUnsavedChanges()
       setIsFallbackView(false)
-      // CRITICAL: Store current values and reset to clear dirty flag
-      const currentValues = formik.values
-      formik.resetForm()
-      formik.setValues(currentValues, false) // false = don't validate
+      // Rebase the dirty-check baseline to the just-saved values (resetForm's `values`
+      // option updates initialValues too, unlike setValues which only touches values).
+      formik.resetForm({ values: formik.values })
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
 
@@ -1552,9 +1564,9 @@ const unmappedVariablesCount = useMemo(() => {
             <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
-              onWebhookDataLoaded={(data) => formik.setFieldValue('advancedSettings.webhook', data, false)}
-              onDropoffDataLoaded={(data) => formik.setFieldValue('advancedSettings.dropoff', data, false)}
-              onCallbackDataLoaded={(data) => formik.setFieldValue('advancedSettings.callbackScheduling', data, false)}
+              onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
+              onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
+              onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}
               projectId={projectId}
               agentId={agentid}
               dynamicTTSList={formik.values.dynamic_tts || []}
@@ -1624,9 +1636,9 @@ const unmappedVariablesCount = useMemo(() => {
             <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
-              onWebhookDataLoaded={(data) => formik.setFieldValue('advancedSettings.webhook', data, false)}
-              onDropoffDataLoaded={(data) => formik.setFieldValue('advancedSettings.dropoff', data, false)}
-              onCallbackDataLoaded={(data) => formik.setFieldValue('advancedSettings.callbackScheduling', data, false)}
+              onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
+              onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
+              onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}
               projectId={projectId}
               agentId={agentid}
               dynamicTTSList={formik.values.dynamic_tts || []}

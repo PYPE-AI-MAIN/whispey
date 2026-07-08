@@ -1,7 +1,7 @@
 // src/app/agents/[agentId]/observability/page.tsx
 "use client"
 
-import { ArrowLeft, Badge } from "lucide-react"
+import { ArrowLeft, Badge, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useParams, useRouter } from "next/navigation"
 import TracesTable from "@/components/observabilty/TracesTable"
@@ -56,9 +56,35 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   const recordingUrl = callData && callData.length > 0 ? callData[0].recording_url : null
   const callInfo = callData && callData.length > 0 ? callData[0] : null
 
-  // Check if URL might be expired (for signed URLs)
-  const isSignedUrl = recordingUrl && recordingUrl.includes('X-Amz-Signature')
-  const isUrlExpired = isSignedUrl && recordingUrl.includes('X-Amz-Expires=604800') // 7 days
+  // Telephony (Acefone) recording — shown only when the call metadata carries
+  // an acefone call id. The token is resolved server-side by the proxy route.
+  const callMeta = callInfo?.metadata
+  const acefoneCallId = callMeta?.acefone_call_id
+    || (callMeta?.provider === 'acefone' ? (callMeta?.callId || callMeta?.callid || callMeta?.call_id) : null)
+
+  // The console recording link needs a per-recording token from Acefone's CDR
+  // API — resolved fresh on click via our proxy.
+  const openTelephonyRecording = async () => {
+    // Open the tab synchronously so popup blockers don't eat it, then navigate.
+    const win = window.open('', '_blank')
+    try {
+      const res = await fetch('/api/acefone-recording', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callId: acefoneCallId, agentId: resolvedParams.agentid }),
+      })
+      const d = res.ok ? await res.json() : null
+      if (d?.recordingUrl && win) {
+        win.location.href = d.recordingUrl
+      } else {
+        win?.close()
+        alert('Telephony recording not found for this call')
+      }
+    } catch {
+      win?.close()
+      alert('Failed to fetch telephony recording')
+    }
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
@@ -91,6 +117,19 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
             url={recordingUrl}
             callId={callInfo?.id}
           />
+        </div>
+      )}
+
+      {/* Telephony (Acefone) recording — opens the Acefone console recording link */}
+      {acefoneCallId && !callLoading && (
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+          <button
+            onClick={openTelephonyRecording}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Listen to telephony recording
+          </button>
         </div>
       )}
 
