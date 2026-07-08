@@ -27,11 +27,16 @@ interface AgentStatus {
 
 // Predefined voices for playground
 const PREDEFINED_VOICES = [
+  { id: 'OUBnvvuqEKdDWtapoJFn', name: 'Tia Mirza', category: 'Female' },
+  { id: 'CcvwadKSTkja3dbjRwC5', name: 'Rohit', category: 'Male' },
+  { id: 'uYqzKDmOqxa1GrgoORxz', name: 'Pooja', category: 'Female' },
+  { id: 'FZkK3TvQ0pjyDmT8fzIW', name: 'Bunty', category: 'Male' },
+  { id: 'uBy7Ka07RtFbWRbno0s3', name: 'Muthu', category: 'Male' },
+  { id: 'zfNJjrEvrTnshRxs2CUa', name: 'Irina', category: 'Female' },
   // Female voices
   { id: 'H8bdWZHK2OgZwTN7ponr', name: 'Saavi', category: 'Female' },
   // { id: 'UrB5rVw5j9MDZWDZJtOJ', name: 'Reyanshi', category: 'Female' },
   // { id: '2zRM7PkgwBPiau2jvVXc', name: 'Monika', category: 'Female' },
-  { id: 'OUBnvvuqEKdDWtapoJFn', name: 'Tia Mirza', category: 'Female' },
   { id: 'ZeK6O9RfGNGj0cJT2HoJ', name: 'Shanaya', category: 'Female' },
   { id: 'h3vxoHEil3T93VGdTQQu', name: 'Avira', category: 'Female' },
   // { id: 'S3F8rLt9v7twQC170pA5', name: 'Tarini', category: 'Female' },
