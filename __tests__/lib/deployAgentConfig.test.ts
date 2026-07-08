@@ -123,11 +123,11 @@ describe('deployAgentConfig', () => {
       }))
 
     const promise = deployAgentConfig(AGENT, CONFIG_BODY)
-    await vi.advanceTimersByTimeAsync(10_000) // skip the two 3s retry waits
+    await vi.advanceTimersByTimeAsync(35_000) // skip the nine 3s retry waits
     const result = await promise
 
     expect(result).toMatchObject({ ok: false, status: 502 })
-    expect(fetchMock).toHaveBeenCalledTimes(4) // 1 POST + 3 verify GETs
+    expect(fetchMock).toHaveBeenCalledTimes(11) // 1 POST + 10 verify GETs
   })
 
   it('keeps retrying the verify when GETs fail, then succeeds', async () => {

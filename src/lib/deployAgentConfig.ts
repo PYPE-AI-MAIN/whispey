@@ -15,7 +15,9 @@ export type DeployAgentConfigResult =
  * Returns the config when its voice_id matches, null otherwise.
  */
 async function verifyConfigApplied(apiUrl: string, expectedVoiceId: string): Promise<Record<string, any> | null> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // The killed backend worker can finish writing the config well after nginx
+  // returns 502, so keep checking for ~30s before declaring failure.
+  for (let attempt = 0; attempt < 10; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
     try {
       const verifyRes = await fetch(apiUrl, {

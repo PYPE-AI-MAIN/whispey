@@ -61,25 +61,47 @@ export async function POST(
       )
     }
 
-    // Get current agent config from backend to preserve existing structure
     const configApiUrl = `${baseUrl}/agent_config/${agentNameWithId}`
-    let existingConfig = null
+    let existingConfig: any = null
 
-    try {
-      const configResponse = await fetch(configApiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...serviceAuthHeaders()
-        },
-        signal: pypeApiAbortSignal()
-      })
-      
-      if (configResponse.ok) {
-        existingConfig = await configResponse.json()
+    // Prefer the last saved config version — the exact payload shape the
+    // config page deploys successfully. The backend's GET copy is missing
+    // fields (tools, filler_words, variables) that crash its file generator
+    // ("'NoneType' object is not iterable") and make playground updates fail.
+    const { data: lastVersion } = await supabase
+      .from('pype_agent_config_versions')
+      .select('config_snapshot')
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (lastVersion?.config_snapshot) {
+      try {
+        existingConfig = typeof lastVersion.config_snapshot === 'string'
+          ? JSON.parse(lastVersion.config_snapshot)
+          : lastVersion.config_snapshot
+      } catch { existingConfig = null }
+    }
+
+    // Fallback: read the current config from the backend
+    if (!existingConfig?.agent?.assistant?.[0]) {
+      try {
+        const configResponse = await fetch(configApiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...serviceAuthHeaders()
+          },
+          signal: pypeApiAbortSignal()
+        })
+
+        if (configResponse.ok) {
+          existingConfig = await configResponse.json()
+        }
+      } catch (error) {
+        console.warn('Could not fetch existing config, will create new structure:', error)
       }
-    } catch (error) {
-      console.warn('Could not fetch existing config, will create new structure:', error)
     }
 
     // Build agent config body - merge with existing or create new
@@ -132,7 +154,11 @@ export async function POST(
       }
     }
 
-    // Update agent config via backend API first — same shared deploy path as save-and-deploy
+    // Deploy via the same shared path as save-and-deploy. Do NOT stop the
+    // agent first: the backend's stopped-agent update path crashes with
+    // "'NoneType' object is not iterable" and rolls back every time. The
+    // running-agent path 502s (worker killed mid-hot-reload) but the update
+    // often still lands — deployAgentConfig verifies that before failing.
     const deployResult = await deployAgentConfig(agentNameWithId, agentConfigBody)
 
     if (!deployResult.ok) {
@@ -180,9 +206,10 @@ export async function POST(
       // Don't fail - backend update succeeded
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      message: 'Voice updated successfully'
+      message: 'Voice updated successfully',
+      verified_after_error: deployResult.verifiedAfterError ?? false
     })
 
   } catch (error) {

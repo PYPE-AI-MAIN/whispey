@@ -164,10 +164,13 @@ export default function PlaygroundPage() {
         agentActions={agentActions}
         agentName={agentData.displayName}
         agentId={agentId}
+        connectionName={agentData.connectionName}
         selectedVoice={selectedVoice}
         onVoiceSelect={setSelectedVoice}
         currentConfigVoice={currentConfigVoice}
+        onConfigVoiceChange={setCurrentConfigVoice}
         agentStatus={agentStatus}
+        onAgentStatusChange={setAgentStatus}
         checkingStatus={checkingStatus}
       />
     </div>
@@ -179,10 +182,13 @@ interface SessionViewProps {
   agentActions: any
   agentName: string
   agentId: string
+  connectionName: string
   selectedVoice: string | null
   onVoiceSelect: (voiceId: string | null) => void
   currentConfigVoice: string | null
+  onConfigVoiceChange: (voiceId: string | null) => void
   agentStatus: AgentStatus | null
+  onAgentStatusChange: (status: AgentStatus | null) => void
   checkingStatus: boolean
 }
 
@@ -191,10 +197,13 @@ function SessionView({
   agentActions,
   agentName,
   agentId,
+  connectionName,
   selectedVoice,
   onVoiceSelect,
   currentConfigVoice,
+  onConfigVoiceChange,
   agentStatus,
+  onAgentStatusChange,
   checkingStatus
 }: SessionViewProps) {
   const {
@@ -215,42 +224,79 @@ function SessionView({
     setVolume
   } = agentActions
 
-  const [updatingVoice, setUpdatingVoice] = useState(false)
+  const [voiceUpdateStatus, setVoiceUpdateStatus] = useState<'idle' | 'updating' | 'failed'>('idle')
+  const [voiceUpdateError, setVoiceUpdateError] = useState<string | null>(null)
   const [chatOpen, setChatOpen] = useState(true) // Auto-open chat
   const [showSettings, setShowSettings] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
-  const handleStartWithVoice = async () => {
+  const needsVoiceUpdate = !!selectedVoice && selectedVoice !== currentConfigVoice
+
+  // Update the voice, then poll until it's actually applied. The backend's
+  // response can be lost (502) even when the update lands, so the config
+  // content — not the response status — is the source of truth.
+  const handleUpdateVoice = async () => {
     if (!selectedVoice) return
+    setVoiceUpdateStatus('updating')
+    setVoiceUpdateError(null)
 
+    let responseError: string | null = null
     try {
-      setUpdatingVoice(true)
-      
-      // Only update voice if it's different from current config
-      if (selectedVoice !== currentConfigVoice) {
-        const updateResponse = await fetch(`/api/agents/${agentId}/update-voice`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            voiceId: selectedVoice,
-            voiceName: PREDEFINED_VOICES.find(v => v.id === selectedVoice)?.name
-          })
+      const res = await fetch(`/api/agents/${agentId}/update-voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          voiceId: selectedVoice,
+          voiceName: PREDEFINED_VOICES.find(v => v.id === selectedVoice)?.name
         })
-
-        if (!updateResponse.ok) {
-          const errorData = await updateResponse.json()
-          throw new Error(errorData.error || 'Failed to update voice')
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500))
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        responseError = data?.error || `Voice update failed (${res.status})`
       }
-      
+    } catch {
+      responseError = 'Voice update request failed'
+    }
+
+    // Poll the agent config until the new voice shows up (up to 90s)
+    const deadline = Date.now() + 90_000
+    while (Date.now() < deadline) {
+      try {
+        const cfgRes = await fetch(`/api/agent-config/${encodeURIComponent(connectionName)}`)
+        if (cfgRes.ok) {
+          const cfg = await cfgRes.json()
+          if (cfg?.agent?.assistant?.[0]?.tts?.voice_id === selectedVoice) {
+            onConfigVoiceChange(selectedVoice)
+            // The update restarts the agent worker — wait for it to come back
+            for (let i = 0; i < 20; i++) {
+              try {
+                const statusRes = await fetch(`/api/agents/status/${encodeURIComponent(connectionName)}`)
+                if (statusRes.ok) {
+                  const status = await statusRes.json()
+                  onAgentStatusChange(status)
+                  if (status?.worker_running) break
+                }
+              } catch { /* keep waiting */ }
+              await new Promise(r => setTimeout(r, 3000))
+            }
+            setVoiceUpdateStatus('idle')
+            return
+          }
+        }
+      } catch { /* keep polling */ }
+      await new Promise(r => setTimeout(r, 3000))
+    }
+
+    setVoiceUpdateStatus('failed')
+    setVoiceUpdateError(responseError || 'Voice update did not apply — please try again')
+  }
+
+  const handleStartConversation = async () => {
+    try {
       await connect()
     } catch (error) {
-      console.error('Error updating voice and starting:', error)
-      alert(error instanceof Error ? error.message : 'Failed to start with selected voice')
-    } finally {
-      setUpdatingVoice(false)
+      console.error('Error starting conversation:', error)
+      alert(error instanceof Error ? error.message : 'Failed to start conversation')
     }
   }
 
@@ -334,23 +380,42 @@ function SessionView({
             ))}
           </div>
 
-          <div className="flex justify-center pt-4">
+          <div className="flex justify-center items-center gap-3 pt-4">
+            {needsVoiceUpdate && (
+              <Button
+                onClick={handleUpdateVoice}
+                size="lg"
+                disabled={voiceUpdateStatus === 'updating' || !isAgentRunning}
+                variant="outline"
+                className="rounded-full"
+              >
+                {voiceUpdateStatus === 'updating' ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Updating Voice… (can take a minute)
+                  </>
+                ) : (
+                  'Update Voice'
+                )}
+              </Button>
+            )}
             <Button
-              onClick={handleStartWithVoice}
+              onClick={handleStartConversation}
               size="lg"
-              disabled={!selectedVoice || updatingVoice || !isAgentRunning}
+              disabled={!selectedVoice || needsVoiceUpdate || voiceUpdateStatus === 'updating' || !isAgentRunning}
               className="rounded-full"
             >
-              {updatingVoice ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  {selectedVoice !== currentConfigVoice ? 'Updating Voice...' : 'Starting...'}
-                </>
-              ) : (
-                'Start Conversation'
-              )}
+              Start Conversation
             </Button>
           </div>
+          {needsVoiceUpdate && voiceUpdateStatus !== 'updating' && (
+            <p className="text-xs text-center text-muted-foreground">
+              Update the voice first, then start the conversation
+            </p>
+          )}
+          {voiceUpdateStatus === 'failed' && voiceUpdateError && (
+            <p className="text-xs text-center text-red-500">{voiceUpdateError}</p>
+          )}
           {!isAgentRunning && (
             <p className="text-xs text-center text-muted-foreground">
               Agent must be running to start a conversation
