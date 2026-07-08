@@ -2,12 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
-import {
-  getPypeApiBaseUrlForServer,
-  pypeApiAbortSignal,
-  PYPE_API_DEPLOY_TIMEOUT_MS,
-  isPypeUpstreamUnreachable,
-} from '@/lib/pypeApiFetch'
+import { getPypeApiBaseUrlForServer, pypeApiAbortSignal } from '@/lib/pypeApiFetch'
+import { deployAgentConfig } from '@/lib/deployAgentConfig'
+
+// Updating a running agent hot-reloads its worker on the backend (20-30s);
+// don't let Vercel kill this route at the default 10-15s.
+export const maxDuration = 60
 
 const supabase = createServiceRoleClient()
 
@@ -132,35 +132,18 @@ export async function POST(
       }
     }
 
-    // Update agent config via backend API first
-    let backendResponse: Response
-    try {
-      backendResponse = await fetch(configApiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...serviceAuthHeaders()
-        },
-        body: JSON.stringify(agentConfigBody),
-        signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS)
-      })
-    } catch (error) {
-      if (isPypeUpstreamUnreachable(error)) {
-        console.error('Voice-agent backend unreachable:', error)
-        return NextResponse.json(
-          { error: 'Voice agent backend is unreachable, please try again' },
-          { status: 503 }
-        )
-      }
-      throw error
-    }
+    // Update agent config via backend API first — same shared deploy path as save-and-deploy
+    const deployResult = await deployAgentConfig(agentNameWithId, agentConfigBody)
 
-    if (!backendResponse.ok) {
-      const errorText = await backendResponse.text()
-      console.error('Backend API error:', errorText)
+    if (!deployResult.ok) {
       return NextResponse.json(
-        { error: 'Failed to update agent configuration', details: errorText },
-        { status: backendResponse.status }
+        {
+          error: deployResult.unreachable
+            ? 'Voice agent backend is unreachable, please try again'
+            : 'Failed to update agent configuration',
+          details: deployResult.errorText
+        },
+        { status: deployResult.status }
       )
     }
 
