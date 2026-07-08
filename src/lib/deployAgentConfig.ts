@@ -11,6 +11,27 @@ export type DeployAgentConfigResult =
   | { ok: false; status: number; errorText: string; unreachable?: boolean }
 
 /**
+ * Re-read the deployed config to check whether the update actually landed.
+ * Returns the config when its voice_id matches, null otherwise.
+ */
+async function verifyConfigApplied(apiUrl: string, expectedVoiceId: string): Promise<any | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
+    try {
+      const verifyRes = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
+        signal: pypeApiAbortSignal(),
+      })
+      if (!verifyRes.ok) continue
+      const cfg = await verifyRes.json()
+      if (cfg?.agent?.assistant?.[0]?.tts?.voice_id === expectedVoiceId) return cfg
+    } catch { /* retry */ }
+  }
+  return null
+}
+
+/**
  * Deploy an agent config to the voice backend. Shared by save-and-deploy and
  * update-voice so both behave identically.
  *
@@ -76,22 +97,10 @@ export async function deployAgentConfig(
 
   const expectedVoiceId = agentConfigBody?.agent?.assistant?.[0]?.tts?.voice_id
   if ((response.status === 502 || response.status === 504) && expectedVoiceId) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
-      try {
-        const verifyRes = await fetch(apiUrl, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
-          signal: pypeApiAbortSignal(),
-        })
-        if (verifyRes.ok) {
-          const cfg = await verifyRes.json()
-          if (cfg?.agent?.assistant?.[0]?.tts?.voice_id === expectedVoiceId) {
-            console.warn(`⚠️ [deployAgentConfig] Backend returned ${response.status} but the config update was applied — treating as success`)
-            return { ok: true, status: 200, data: cfg, verifiedAfterError: true }
-          }
-        }
-      } catch { /* retry */ }
+    const cfg = await verifyConfigApplied(apiUrl, expectedVoiceId)
+    if (cfg) {
+      console.warn(`⚠️ [deployAgentConfig] Backend returned ${response.status} but the config update was applied — treating as success`)
+      return { ok: true, status: 200, data: cfg, verifiedAfterError: true }
     }
   }
 
