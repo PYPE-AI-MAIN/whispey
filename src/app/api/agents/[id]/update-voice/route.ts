@@ -2,8 +2,82 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
+import { getPypeApiBaseUrlForServer, pypeApiAbortSignal } from '@/lib/pypeApiFetch'
+import { deployAgentConfig } from '@/lib/deployAgentConfig'
+
+// Updating a running agent hot-reloads its worker on the backend (20-30s);
+// don't let Vercel kill this route at the default 10-15s.
+export const maxDuration = 60
 
 const supabase = createServiceRoleClient()
+
+function elevenLabsTts(voiceId: string) {
+  return {
+    name: 'elevenlabs',
+    voice_id: voiceId,
+    model: 'eleven_flash_v2_5',
+    language: 'en',
+    voice_settings: {
+      similarity_boost: 1,
+      stability: 0.8,
+      style: 1,
+      use_speaker_boost: true,
+      speed: 1.05
+    }
+  }
+}
+
+/**
+ * Load the config to merge the voice into. Prefer the last saved config
+ * version — the exact payload shape the config page deploys successfully.
+ * The backend's GET copy is missing fields (tools, filler_words, variables)
+ * that crash its file generator ("'NoneType' object is not iterable") and
+ * make playground updates fail. Falls back to the backend GET.
+ */
+async function loadExistingConfig(agentId: string, configApiUrl: string): Promise<any | null> {
+  const { data: lastVersion } = await supabase
+    .from('pype_agent_config_versions')
+    .select('config_snapshot')
+    .eq('agent_id', agentId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (lastVersion?.config_snapshot) {
+    try {
+      const snapshot = typeof lastVersion.config_snapshot === 'string'
+        ? JSON.parse(lastVersion.config_snapshot)
+        : lastVersion.config_snapshot
+      if (snapshot?.agent?.assistant?.[0]) return snapshot
+    } catch { /* fall through to backend GET */ }
+  }
+
+  try {
+    const configResponse = await fetch(configApiUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
+      signal: pypeApiAbortSignal()
+    })
+    if (configResponse.ok) return await configResponse.json()
+  } catch (error) {
+    console.warn('Could not fetch existing config, will create new structure:', error)
+  }
+  return null
+}
+
+/** Merge the new voice into the existing config, or create a minimal one. */
+function buildAgentConfigBody(existingConfig: any, agentNameWithId: string, voiceId: string) {
+  const tts = elevenLabsTts(voiceId)
+  if (existingConfig?.agent?.assistant?.[0]) {
+    return {
+      agent: {
+        ...existingConfig.agent,
+        assistant: [{ ...existingConfig.agent.assistant[0], tts }]
+      }
+    }
+  }
+  return { agent: { name: agentNameWithId, assistant: [{ tts }] } }
+}
 
 export async function POST(
   request: NextRequest,
@@ -46,92 +120,35 @@ export async function POST(
     const sanitizedAgentId = agentId.replace(/-/g, '_')
     const agentNameWithId = `${agent.name}_${sanitizedAgentId}`
 
-    // Get current agent config from backend to preserve existing structure
-    const configApiUrl = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_config/${agentNameWithId}`
-    let existingConfig = null
-    
-    try {
-      const configResponse = await fetch(configApiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...serviceAuthHeaders()
-        }
-      })
-      
-      if (configResponse.ok) {
-        existingConfig = await configResponse.json()
-      }
-    } catch (error) {
-      console.warn('Could not fetch existing config, will create new structure:', error)
-    }
-
-    // Build agent config body - merge with existing or create new
-    let agentConfigBody: any
-    
-    if (existingConfig?.agent?.assistant?.[0]) {
-      // Merge with existing config
-      agentConfigBody = {
-        agent: {
-          ...existingConfig.agent,
-          assistant: [{
-            ...existingConfig.agent.assistant[0],
-            tts: {
-              name: 'elevenlabs',
-              voice_id: voiceId,
-              model: 'eleven_flash_v2_5',
-              language: 'en',
-              voice_settings: {
-                similarity_boost: 1,
-                stability: 0.8,
-                style: 1,
-                use_speaker_boost: true,
-                speed: 1.05
-              }
-            }
-          }]
-        }
-      }
-    } else {
-      // Create new structure
-      agentConfigBody = {
-        agent: {
-          name: agentNameWithId,
-          assistant: [{
-            tts: {
-              name: 'elevenlabs',
-              voice_id: voiceId,
-              model: 'eleven_flash_v2_5',
-              language: 'en',
-              voice_settings: {
-                similarity_boost: 1,
-                stability: 0.8,
-                style: 1,
-                use_speaker_boost: true,
-                speed: 1.05
-              }
-            }
-          }]
-        }
-      }
-    }
-
-    // Update agent config via backend API first
-    const backendResponse = await fetch(configApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...serviceAuthHeaders()
-      },
-      body: JSON.stringify(agentConfigBody)
-    })
-
-    if (!backendResponse.ok) {
-      const errorText = await backendResponse.text()
-      console.error('Backend API error:', errorText)
+    const baseUrl = getPypeApiBaseUrlForServer()
+    if (!baseUrl) {
+      console.error('❌ [update-voice] No voice backend URL configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.')
       return NextResponse.json(
-        { error: 'Failed to update agent configuration', details: errorText },
-        { status: backendResponse.status }
+        { error: 'Voice backend URL is not configured' },
+        { status: 503 }
+      )
+    }
+
+    const configApiUrl = `${baseUrl}/agent_config/${agentNameWithId}`
+    const existingConfig = await loadExistingConfig(agentId, configApiUrl)
+    const agentConfigBody = buildAgentConfigBody(existingConfig, agentNameWithId, voiceId)
+
+    // Deploy via the same shared path as save-and-deploy. Do NOT stop the
+    // agent first: the backend's stopped-agent update path crashes with
+    // "'NoneType' object is not iterable" and rolls back every time. The
+    // running-agent path 502s (worker killed mid-hot-reload) but the update
+    // often still lands — deployAgentConfig verifies that before failing.
+    const deployResult = await deployAgentConfig(agentNameWithId, agentConfigBody)
+
+    if (!deployResult.ok) {
+      return NextResponse.json(
+        {
+          error: deployResult.unreachable
+            ? 'Voice agent backend is unreachable, please try again'
+            : 'Failed to update agent configuration',
+          details: deployResult.errorText
+        },
+        { status: deployResult.status }
       )
     }
 
@@ -139,20 +156,7 @@ export async function POST(
     const currentConfig = agent.configuration || {}
     const updatedConfig = {
       ...currentConfig,
-      tts: {
-        name: 'elevenlabs',
-        provider: 'elevenlabs',
-        voice_id: voiceId,
-        model: 'eleven_flash_v2_5',
-        language: 'en',
-        voice_settings: {
-          similarity_boost: 1,
-          stability: 0.8,
-          style: 1,
-          use_speaker_boost: true,
-          speed: 1.05
-        }
-      }
+      tts: { ...elevenLabsTts(voiceId), provider: 'elevenlabs' }
     }
 
     const { error: updateError } = await supabase
@@ -168,9 +172,10 @@ export async function POST(
       // Don't fail - backend update succeeded
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      message: 'Voice updated successfully'
+      message: 'Voice updated successfully',
+      verified_after_error: deployResult.verifiedAfterError ?? false
     })
 
   } catch (error) {
