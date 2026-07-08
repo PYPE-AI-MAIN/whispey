@@ -2,6 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
+import {
+  getPypeApiBaseUrlForServer,
+  pypeApiAbortSignal,
+  PYPE_API_DEPLOY_TIMEOUT_MS,
+  isPypeUpstreamUnreachable,
+} from '@/lib/pypeApiFetch'
 
 const supabase = createServiceRoleClient()
 
@@ -46,17 +52,27 @@ export async function POST(
     const sanitizedAgentId = agentId.replace(/-/g, '_')
     const agentNameWithId = `${agent.name}_${sanitizedAgentId}`
 
+    const baseUrl = getPypeApiBaseUrlForServer()
+    if (!baseUrl) {
+      console.error('❌ [update-voice] No voice backend URL configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.')
+      return NextResponse.json(
+        { error: 'Voice backend URL is not configured' },
+        { status: 503 }
+      )
+    }
+
     // Get current agent config from backend to preserve existing structure
-    const configApiUrl = `${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/agent_config/${agentNameWithId}`
+    const configApiUrl = `${baseUrl}/agent_config/${agentNameWithId}`
     let existingConfig = null
-    
+
     try {
       const configResponse = await fetch(configApiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           ...serviceAuthHeaders()
-        }
+        },
+        signal: pypeApiAbortSignal()
       })
       
       if (configResponse.ok) {
@@ -117,14 +133,27 @@ export async function POST(
     }
 
     // Update agent config via backend API first
-    const backendResponse = await fetch(configApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...serviceAuthHeaders()
-      },
-      body: JSON.stringify(agentConfigBody)
-    })
+    let backendResponse: Response
+    try {
+      backendResponse = await fetch(configApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...serviceAuthHeaders()
+        },
+        body: JSON.stringify(agentConfigBody),
+        signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS)
+      })
+    } catch (error) {
+      if (isPypeUpstreamUnreachable(error)) {
+        console.error('Voice-agent backend unreachable:', error)
+        return NextResponse.json(
+          { error: 'Voice agent backend is unreachable, please try again' },
+          { status: 503 }
+        )
+      }
+      throw error
+    }
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text()
