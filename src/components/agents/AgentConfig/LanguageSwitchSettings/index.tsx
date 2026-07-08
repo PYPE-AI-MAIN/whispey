@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit2, Languages, AlertTriangle, Info } from 'lucide-react'
@@ -42,6 +43,12 @@ export interface LanguageSwitchConfig {
   switch_tts: boolean
   stt: LanguageSwitchSTTConfig
   tts: any
+  // How the LLM triggers this switch — mutually exclusive by construction
+  // (radio, not two checkboxes): 'tool' exposes it as a normal @function_tool
+  // the LLM decides to call; 'tag' relies on the LLM emitting <tool_name/> in
+  // its spoken text, detected and dispatched server-side. Defaults to 'tool'
+  // for entries saved before this field existed.
+  triggerMode?: 'tool' | 'tag'
 }
 
 interface LanguageSwitchSettingsProps {
@@ -67,6 +74,7 @@ const DEFAULT_ENTRY: LanguageSwitchConfig = {
   interruption: true,
   switch_stt: true,
   switch_tts: true,
+  triggerMode: 'tool',
   stt: {
     name: 'sarvam',
     language: 'kn-IN',
@@ -338,6 +346,49 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                   {errors.system_message && <p className="text-xs text-red-500">{errors.system_message}</p>}
                   <p className="text-xs text-gray-500">Injected into LLM context after the switch fires</p>
                 </div>
+              </div>
+            </Section>
+
+            {/* ── Trigger Mode ── */}
+            <Section title="Trigger Mode">
+              <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3">
+                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                  How should the LLM trigger this switch?
+                </Label>
+                <RadioGroup
+                  value={draft.triggerMode ?? 'tool'}
+                  onValueChange={(v) => setDraft(prev => ({ ...prev, triggerMode: v as 'tool' | 'tag' }))}
+                  className="space-y-2"
+                >
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="tool" id="ls-trigger-tool" className="mt-0.5" />
+                    <div className="flex-1">
+                      <label htmlFor="ls-trigger-tool" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        Add as Tool
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Exposes <code>{draft.tool_name || 'this switch'}</code> as a function tool the LLM decides to invoke.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="tag" id="ls-trigger-tag" className="mt-0.5" />
+                    <div className="flex-1">
+                      <label htmlFor="ls-trigger-tag" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        Add as Tag
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Looks for <code>&lt;{draft.tool_name || 'tool_name'}/&gt;</code> in the LLM's spoken text and
+                        triggers the switch (the tag is stripped from TTS so the caller never hears it).
+                        Add this instruction to your system prompt:{' '}
+                        <em>"When switching, append <code>&lt;{draft.tool_name || 'tool_name'}/&gt;</code> to your final response."</em>
+                      </p>
+                    </div>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-gray-500 dark:text-gray-400 pt-2">
+                  Exactly one mode is always active — a switch can't be both.
+                </p>
               </div>
             </Section>
 

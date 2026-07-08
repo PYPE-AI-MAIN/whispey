@@ -312,6 +312,10 @@ function mergeToolsWithKbAndLanguageSwitch(formValues: any, mappedTools: any[]):
   // Merge language_switch tools into the tools array
   const lsTools: any[] = formValues.advancedSettings?.tools?.languageSwitchTools || []
   lsTools.forEach((ls: any) => {
+    // triggerMode is a radio (exactly one value), mirroring serializeRouteLanguageSwitchTool
+    // in save-and-deploy/route.ts — keep both in sync, this is the path buildSavePayload
+    // actually uses for the main "Save Version" flow.
+    const isTagMode = ls.triggerMode === 'tag'
     const entry: any = {
       type: 'language_switch',
       tool_name: ls.tool_name,
@@ -323,6 +327,8 @@ function mergeToolsWithKbAndLanguageSwitch(formValues: any, mappedTools: any[]):
       switch_tts: ls.switch_tts ?? true,
       stt: serializeLanguageSwitchSTT(ls.stt),
       tts: serializeLanguageSwitchTTS(ls.tts),
+      enable_as_tool: !isTagMode,
+      enable_as_tag: isTagMode,
     }
     if (ls.allow_interruptions) {
       entry.interruption = ls.interruption ?? true
