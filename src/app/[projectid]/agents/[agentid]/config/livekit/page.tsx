@@ -38,6 +38,8 @@ import {
 import { firstMessageModes } from '@/utils/constants'
 import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
+import { SideBySideDiff } from '@/components/agents/AgentConfig/SideBySideDiff'
+import { sanitizeForDiff, serializeForDiff, extractPrompt, omitPrompt } from '@/lib/configDiff'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
@@ -245,6 +247,10 @@ export default function AgentConfig() {
   const [isSavingVersion, setIsSavingVersion] = useState(false)
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
+  const [publishedSnapshot, setPublishedSnapshot] = useState<any>(null)
+  const [isDiffLoading, setIsDiffLoading] = useState(false)
+  const promptDiffRef = useRef<HTMLDivElement>(null)
+  const settingsDiffRef = useRef<HTMLDivElement>(null)
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -482,11 +488,19 @@ export default function AgentConfig() {
     }
   })
 
-  // Webhook/dropoff/callback config load asynchronously (separate API calls) after the
-  // form is already initialized. Rebase both values AND the dirty-check baseline here so
-  // loading a section's saved config doesn't itself mark the form dirty, and so Discard
-  // reverts to the real loaded config instead of wiping it back to undefined.
+  // Webhook/dropoff/callback settings sections are collapsible and only fetch their own
+  // saved config the first time they're expanded — which can happen *after* a paste has
+  // already set these fields. Without a guard, that late fetch overwrites pasted values
+  // with the target agent's own stale saved settings. First load per field wins; a paste
+  // also counts as establishing the field so a later section-expand can't clobber it.
+  const supplementalEstablishedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    supplementalEstablishedRef.current.clear()
+  }, [agentid])
+
   const loadSupplementalSetting = (field: 'webhook' | 'dropoff' | 'callbackScheduling', data: any) => {
+    if (supplementalEstablishedRef.current.has(field)) return
+    supplementalEstablishedRef.current.add(field)
     formik.resetForm({
       values: {
         ...formik.values,
@@ -590,6 +604,14 @@ export default function AgentConfig() {
     // Apply formik values
     formik.setValues(config.formikValues, false) // false = don't validate immediately
 
+    // If the pasted config specifies webhook/dropoff/callback settings, lock them in as
+    // established so a section expanded later (which fetches its own saved settings on
+    // first mount) doesn't overwrite the pasted values with the target agent's old ones.
+    const pastedAdvanced = config.formikValues.advancedSettings as any
+    for (const field of ['webhook', 'dropoff', 'callbackScheduling'] as const) {
+      if (pastedAdvanced?.[field] !== undefined) supplementalEstablishedRef.current.add(field)
+    }
+
     // Apply external state
     setTtsConfig(config.ttsConfig)
     setSTTConfig(config.sttConfig)
@@ -637,7 +659,20 @@ export default function AgentConfig() {
     setPendingCheckpoint({ config: payload, userEmail, userId })
     setCommitMessage('')
     setVersionSaveError(null)
+    setPublishedSnapshot(null)
     setIsCommitModalOpen(true)
+
+    setIsDiffLoading(true)
+    fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        const latest = data?.history?.[0]
+        if (!latest?.id) return null
+        return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
+      })
+      .then(detail => setPublishedSnapshot(detail?.entry?.config_snapshot ?? null))
+      .catch(() => setPublishedSnapshot(null))
+      .finally(() => setIsDiffLoading(false))
   }
 
   const handleSaveVersion = async () => {
@@ -1702,26 +1737,89 @@ const unmappedVariablesCount = useMemo(() => {
         agentEnvironment={agentDataResponse?.[0]?.environment ?? 'dev'}
       />
 
-      {/* Commit message dialog */}
+      {/* Review changes / commit dialog */}
       <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-5xl max-w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Save prompt version</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">Review Changes</DialogTitle>
           </DialogHeader>
+          <p className="px-3 py-1.5 text-[11px] font-medium text-amber-600 bg-amber-500/15 rounded-md">
+            Seeing changes you didn't make? Refresh the page and try again.
+          </p>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Describe this change</label>
+              <label className="text-xs font-medium text-foreground">Commit message</label>
               <Textarea
                 placeholder="e.g. Fixed greeting for missed calls"
                 value={commitMessage}
                 onChange={e => setCommitMessage(e.target.value)}
                 className="text-sm resize-none"
-                rows={3}
+                rows={2}
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveVersion() }}
               />
-              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to save quickly.</p>
+              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to publish quickly.</p>
             </div>
+
+            {isDiffLoading ? (
+              <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading diff...
+              </div>
+            ) : pendingCheckpoint ? (() => {
+                const publishedFull = publishedSnapshot ? sanitizeForDiff(publishedSnapshot) : {}
+                const currentFull = sanitizeForDiff(pendingCheckpoint.config)
+                const publishedSettings = {
+                  ...omitPrompt(publishedFull),
+                  webhook: (formik.initialValues.advancedSettings as any)?.webhook ?? null,
+                  dropoff: (formik.initialValues.advancedSettings as any)?.dropoff ?? null,
+                  callbackScheduling: (formik.initialValues.advancedSettings as any)?.callbackScheduling ?? null,
+                }
+                const currentSettings = {
+                  ...omitPrompt(currentFull),
+                  webhook: (formik.values.advancedSettings as any)?.webhook ?? null,
+                  dropoff: (formik.values.advancedSettings as any)?.dropoff ?? null,
+                  callbackScheduling: (formik.values.advancedSettings as any)?.callbackScheduling ?? null,
+                }
+                return (
+                  <div className="space-y-3">
+                    <div className="flex gap-2 sticky top-0 z-10 bg-background pb-1">
+                      <Button
+                        type="button" variant="outline" size="sm" className="h-7 text-xs"
+                        onClick={() => promptDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      >
+                        Prompt
+                      </Button>
+                      <Button
+                        type="button" variant="outline" size="sm" className="h-7 text-xs"
+                        onClick={() => settingsDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      >
+                        Settings
+                      </Button>
+                    </div>
+
+                    <div ref={promptDiffRef}>
+                      <p className="text-[11px] font-medium text-muted-foreground mb-1">Prompt</p>
+                      <SideBySideDiff
+                        oldText={extractPrompt(publishedFull)}
+                        newText={extractPrompt(currentFull)}
+                      />
+                    </div>
+
+                    <div ref={settingsDiffRef}>
+                      <p className="text-[11px] font-medium text-muted-foreground mb-1">Settings</p>
+                      <SideBySideDiff
+                        oldText={serializeForDiff(publishedSettings)}
+                        newText={serializeForDiff(currentSettings)}
+                      />
+                    </div>
+                  </div>
+                )
+              })() : null}
+
+            {!isDiffLoading && !publishedSnapshot && (
+              <p className="text-[11px] text-muted-foreground">No prior published version — this will be the first version.</p>
+            )}
+
             {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-1">
@@ -1738,8 +1836,8 @@ const unmappedVariablesCount = useMemo(() => {
               disabled={isSavingVersion || !commitMessage.trim()}
             >
               {isSavingVersion
-                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
-                : 'Save & Deploy'
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                : 'Publish'
               }
             </Button>
           </div>
