@@ -11,7 +11,7 @@ function canonicalize(value: any): any {
   if (Array.isArray(value)) return value.map(canonicalize)
   if (value && typeof value === 'object') {
     const sorted: Record<string, any> = {}
-    for (const key of Object.keys(value).sort()) sorted[key] = canonicalize(value[key])
+    for (const key of Object.keys(value).sort((a, b) => a.localeCompare(b))) sorted[key] = canonicalize(value[key])
     return sorted
   }
   return value
@@ -27,7 +27,7 @@ export function extractPrompt(config: any): string {
 
 export function omitPrompt(config: any): any {
   if (!config) return config
-  const clone = JSON.parse(JSON.stringify(config))
+  const clone = structuredClone(config)
   if (clone?.agent?.assistant?.[0]) delete clone.agent.assistant[0].prompt
   if (clone?.agent) delete clone.agent.prompt
   return clone
@@ -35,7 +35,7 @@ export function omitPrompt(config: any): any {
 
 export function sanitizeForDiff(config: any): any {
   if (!config) return config
-  const clone = JSON.parse(JSON.stringify(config))
+  const clone = structuredClone(config)
   if (clone?.agent) {
     for (const key of DIFF_NOISE_KEYS) delete clone.agent[key]
   }
@@ -55,8 +55,9 @@ export function serializeForDiff(value: any, indent = 0): string {
   if (value === null || value === undefined) return 'null'
 
   if (typeof value === 'string') {
-    if (value.includes('\n')) return `"${value.replace(/\n/g, `\n${childPad}`)}"`
-    return JSON.stringify(value)
+    if (!value.includes('\n')) return JSON.stringify(value)
+    const indented = value.replaceAll('\n', `\n${childPad}`)
+    return `"${indented}"`
   }
 
   if (typeof value !== 'object') return JSON.stringify(value)
@@ -97,13 +98,47 @@ function toLines(text: string): string[] {
   return text.endsWith('\n') ? text.slice(0, -1).split('\n') : text.split('\n')
 }
 
-// Builds a side-by-side (old | new) diff of two texts. Unchanged runs longer
-// than `context` lines on each side of a change are collapsed into a group.
-export function buildSideBySideRows(oldText: string, newText: string, context = 2): DiffRow[] {
+// Consumes one removed/added run (or a removed run immediately followed by
+// an added run) starting at `i`, returning the paired-up "changed" rows and
+// the index to resume scanning from.
+function pairChangeBlock(
+  changes: ReturnType<typeof diffLines>,
+  i: number,
+  counters: { leftNum: number; rightNum: number }
+): { rows: SideBySideRow[]; nextIndex: number } {
+  let removedLines: string[] = []
+  let addedLines: string[] = []
+  let nextIndex = i
+
+  if (changes[nextIndex].removed) {
+    removedLines = toLines(changes[nextIndex].value)
+    nextIndex++
+    if (nextIndex < changes.length && changes[nextIndex].added) {
+      addedLines = toLines(changes[nextIndex].value)
+      nextIndex++
+    }
+  } else {
+    addedLines = toLines(changes[nextIndex].value)
+    nextIndex++
+  }
+
+  const rows: SideBySideRow[] = []
+  const max = Math.max(removedLines.length, addedLines.length)
+  for (let k = 0; k < max; k++) {
+    const left = k < removedLines.length ? { num: counters.leftNum++, content: removedLines[k], changed: true } : null
+    const right = k < addedLines.length ? { num: counters.rightNum++, content: addedLines[k], changed: true } : null
+    rows.push({ type: 'changed', left, right })
+  }
+
+  return { rows, nextIndex }
+}
+
+// Flattens diffLines' output into one row per line, pairing up removed/added
+// runs so they sit side-by-side (a "changed" row per line pair).
+function buildChangeRows(oldText: string, newText: string): SideBySideRow[] {
   const changes = diffLines(oldText ?? '', newText ?? '')
   const rows: SideBySideRow[] = []
-  let leftNum = 1
-  let rightNum = 1
+  const counters = { leftNum: 1, rightNum: 1 }
   let i = 0
 
   while (i < changes.length) {
@@ -113,37 +148,25 @@ export function buildSideBySideRows(oldText: string, newText: string, context = 
       for (const line of toLines(change.value)) {
         rows.push({
           type: 'unchanged',
-          left: { num: leftNum++, content: line, changed: false },
-          right: { num: rightNum++, content: line, changed: false },
+          left: { num: counters.leftNum++, content: line, changed: false },
+          right: { num: counters.rightNum++, content: line, changed: false },
         })
       }
       i++
       continue
     }
 
-    let removedLines: string[] = []
-    let addedLines: string[] = []
-
-    if (change.removed) {
-      removedLines = toLines(change.value)
-      i++
-      if (i < changes.length && changes[i].added) {
-        addedLines = toLines(changes[i].value)
-        i++
-      }
-    } else {
-      addedLines = toLines(change.value)
-      i++
-    }
-
-    const max = Math.max(removedLines.length, addedLines.length)
-    for (let k = 0; k < max; k++) {
-      const left = k < removedLines.length ? { num: leftNum++, content: removedLines[k], changed: true } : null
-      const right = k < addedLines.length ? { num: rightNum++, content: addedLines[k], changed: true } : null
-      rows.push({ type: 'changed', left, right })
-    }
+    const block = pairChangeBlock(changes, i, counters)
+    rows.push(...block.rows)
+    i = block.nextIndex
   }
 
+  return rows
+}
+
+// Collapses unchanged runs longer than `context` lines (on each side of a
+// change) into a single group, keeping the rest of the diff readable.
+function collapseUnchangedRuns(rows: SideBySideRow[], context: number): DiffRow[] {
   const show = new Set<number>()
   rows.forEach((row, idx) => {
     if (row.type === 'changed') {
@@ -154,19 +177,25 @@ export function buildSideBySideRows(oldText: string, newText: string, context = 
   const result: DiffRow[] = []
   let bucket: SideBySideRow[] = []
   rows.forEach((row, idx) => {
-    if (show.has(idx)) {
-      if (bucket.length) {
-        result.push({ type: 'collapsed', rows: bucket })
-        bucket = []
-      }
-      result.push(row)
-    } else {
+    if (!show.has(idx)) {
       bucket.push(row)
+      return
     }
+    if (bucket.length) {
+      result.push({ type: 'collapsed', rows: bucket })
+      bucket = []
+    }
+    result.push(row)
   })
   if (bucket.length) result.push({ type: 'collapsed', rows: bucket })
 
   return result
+}
+
+// Builds a side-by-side (old | new) diff of two texts. Unchanged runs longer
+// than `context` lines on each side of a change are collapsed into a group.
+export function buildSideBySideRows(oldText: string, newText: string, context = 2): DiffRow[] {
+  return collapseUnchangedRuns(buildChangeRows(oldText, newText), context)
 }
 
 export function hasChanges(rows: DiffRow[]): boolean {

@@ -1,32 +1,42 @@
 'use client'
 
 import React, { useState } from 'react'
-import { buildSideBySideRows, hasChanges, type DiffRow } from '@/lib/configDiff'
+import { buildSideBySideRows, hasChanges } from '@/lib/configDiff'
 
-function Cell({ cell, tone }: { cell: { num: number; content: string; changed: boolean } | null; tone: 'left' | 'right' }) {
+const TONE_STYLES = {
+  left: { bg: 'bg-red-500/10', marker: '−', color: 'text-red-500' },
+  right: { bg: 'bg-green-500/10', marker: '+', color: 'text-green-500' },
+} as const
+
+function cellKey(row: { left: { num: number } | null; right: { num: number } | null }, prefix: string): string {
+  return `${prefix}-${row.left?.num ?? '_'}-${row.right?.num ?? '_'}`
+}
+
+function Cell({ cell, tone }: Readonly<{ cell: { num: number; content: string; changed: boolean } | null; tone: 'left' | 'right' }>) {
   if (!cell) {
     return <div className="flex bg-muted/30 min-h-[1.25rem]" />
   }
-  const bg = cell.changed ? (tone === 'left' ? 'bg-red-500/10' : 'bg-green-500/10') : ''
-  const marker = cell.changed ? (tone === 'left' ? '−' : '+') : ' '
-  const markerColor = cell.changed ? (tone === 'left' ? 'text-red-500' : 'text-green-500') : 'text-transparent'
+  const style = TONE_STYLES[tone]
+  const bg = cell.changed ? style.bg : ''
+  const marker = cell.changed ? style.marker : ' '
+  const markerColor = cell.changed ? style.color : 'text-transparent'
   return (
     <div className={`flex ${bg}`}>
       <span className="w-9 shrink-0 text-right pr-2 py-px text-muted-foreground/60 select-none tabular-nums">{cell.num}</span>
       <span className={`w-4 shrink-0 py-px select-none font-semibold ${markerColor}`}>{marker}</span>
-      <span className="flex-1 pr-3 py-px whitespace-pre-wrap break-all text-foreground">{cell.content || ' '}</span>
+      <span className="flex-1 pr-3 py-px whitespace-pre-wrap break-all text-foreground">{cell.content || ' '}</span>
     </div>
   )
 }
 
-function CollapsedRow({ count, onExpand }: { count: number; onExpand: () => void }) {
+function CollapsedRow({ count, onExpand }: Readonly<{ count: number; onExpand: () => void }>) {
   return (
     <div className="col-span-2 grid grid-cols-2 border-y bg-muted/40">
       <button
         onClick={onExpand}
         className="col-span-2 text-left px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors underline underline-offset-2"
       >
-        Expand {count} line{count !== 1 ? 's' : ''} ...
+        Expand {count} {count === 1 ? 'line' : 'lines'} ...
       </button>
     </div>
   )
@@ -37,12 +47,12 @@ export function SideBySideDiff({
   newText,
   leftLabel = 'Published version',
   rightLabel = 'Current changes',
-}: {
+}: Readonly<{
   oldText: string
   newText: string
   leftLabel?: string
   rightLabel?: string
-}) {
+}>) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const rows = buildSideBySideRows(oldText, newText, 0)
 
@@ -68,11 +78,12 @@ export function SideBySideDiff({
       <div className="max-h-[65vh] overflow-y-auto">
         {rows.map((row, idx) => {
           if (row.type === 'collapsed') {
+            const groupKey = cellKey(row.rows[0] ?? { left: null, right: null }, 'collapsed')
             if (expanded.has(idx)) {
               return (
-                <React.Fragment key={idx}>
-                  {row.rows.map((r, j) => (
-                    <div key={j} className="grid grid-cols-2 border-l-0">
+                <React.Fragment key={groupKey}>
+                  {row.rows.map(r => (
+                    <div key={cellKey(r, 'expanded')} className="grid grid-cols-2 border-l-0">
                       <Cell cell={r.left} tone="left" />
                       <div className="border-l">
                         <Cell cell={r.right} tone="right" />
@@ -84,14 +95,14 @@ export function SideBySideDiff({
             }
             return (
               <CollapsedRow
-                key={idx}
+                key={groupKey}
                 count={row.rows.length}
                 onExpand={() => setExpanded(prev => new Set(prev).add(idx))}
               />
             )
           }
           return (
-            <div key={idx} className="grid grid-cols-2">
+            <div key={cellKey(row, 'row')} className="grid grid-cols-2">
               <Cell cell={row.left} tone="left" />
               <div className="border-l">
                 <Cell cell={row.right} tone="right" />
@@ -100,7 +111,6 @@ export function SideBySideDiff({
           )
         })}
       </div>
-
     </div>
   )
 }

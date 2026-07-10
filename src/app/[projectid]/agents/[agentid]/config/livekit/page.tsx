@@ -607,7 +607,7 @@ export default function AgentConfig() {
     // If the pasted config specifies webhook/dropoff/callback settings, lock them in as
     // established so a section expanded later (which fetches its own saved settings on
     // first mount) doesn't overwrite the pasted values with the target agent's old ones.
-    const pastedAdvanced = config.formikValues.advancedSettings as any
+    const pastedAdvanced = config.formikValues.advancedSettings
     for (const field of ['webhook', 'dropoff', 'callbackScheduling'] as const) {
       if (pastedAdvanced?.[field] !== undefined) supplementalEstablishedRef.current.add(field)
     }
@@ -722,6 +722,69 @@ export default function AgentConfig() {
     } finally {
       setIsSavingVersion(false)
     }
+  }
+
+  const renderDiffContent = () => {
+    if (isDiffLoading) {
+      return (
+        <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading diff...
+        </div>
+      )
+    }
+    if (!pendingCheckpoint) return null
+
+    const publishedFull = publishedSnapshot ? sanitizeForDiff(publishedSnapshot) : {}
+    const currentFull = sanitizeForDiff(pendingCheckpoint.config)
+    const publishedAdvanced = formik.initialValues.advancedSettings as any
+    const currentAdvanced = formik.values.advancedSettings as any
+    const publishedSettings = {
+      ...omitPrompt(publishedFull),
+      webhook: publishedAdvanced?.webhook ?? null,
+      dropoff: publishedAdvanced?.dropoff ?? null,
+      callbackScheduling: publishedAdvanced?.callbackScheduling ?? null,
+    }
+    const currentSettings = {
+      ...omitPrompt(currentFull),
+      webhook: currentAdvanced?.webhook ?? null,
+      dropoff: currentAdvanced?.dropoff ?? null,
+      callbackScheduling: currentAdvanced?.callbackScheduling ?? null,
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex gap-2 sticky top-0 z-10 bg-background pb-1">
+          <Button
+            type="button" variant="outline" size="sm" className="h-7 text-xs"
+            onClick={() => promptDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            Prompt
+          </Button>
+          <Button
+            type="button" variant="outline" size="sm" className="h-7 text-xs"
+            onClick={() => settingsDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            Settings
+          </Button>
+        </div>
+
+        <div ref={promptDiffRef}>
+          <p className="text-[11px] font-medium text-muted-foreground mb-1">Prompt</p>
+          <SideBySideDiff
+            oldText={extractPrompt(publishedFull)}
+            newText={extractPrompt(currentFull)}
+          />
+        </div>
+
+        <div ref={settingsDiffRef}>
+          <p className="text-[11px] font-medium text-muted-foreground mb-1">Settings</p>
+          <SideBySideDiff
+            oldText={serializeForDiff(publishedSettings)}
+            newText={serializeForDiff(currentSettings)}
+          />
+        </div>
+      </div>
+    )
   }
 
   const handleCancel = () => {
@@ -1748,8 +1811,9 @@ const unmappedVariablesCount = useMemo(() => {
           </p>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Commit message</label>
+              <label htmlFor="commit-message" className="text-xs font-medium text-foreground">Commit message</label>
               <Textarea
+                id="commit-message"
                 placeholder="e.g. Fixed greeting for missed calls"
                 value={commitMessage}
                 onChange={e => setCommitMessage(e.target.value)}
@@ -1761,60 +1825,7 @@ const unmappedVariablesCount = useMemo(() => {
               <p className="text-[11px] text-muted-foreground">Press ⌘↵ to publish quickly.</p>
             </div>
 
-            {isDiffLoading ? (
-              <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading diff...
-              </div>
-            ) : pendingCheckpoint ? (() => {
-                const publishedFull = publishedSnapshot ? sanitizeForDiff(publishedSnapshot) : {}
-                const currentFull = sanitizeForDiff(pendingCheckpoint.config)
-                const publishedSettings = {
-                  ...omitPrompt(publishedFull),
-                  webhook: (formik.initialValues.advancedSettings as any)?.webhook ?? null,
-                  dropoff: (formik.initialValues.advancedSettings as any)?.dropoff ?? null,
-                  callbackScheduling: (formik.initialValues.advancedSettings as any)?.callbackScheduling ?? null,
-                }
-                const currentSettings = {
-                  ...omitPrompt(currentFull),
-                  webhook: (formik.values.advancedSettings as any)?.webhook ?? null,
-                  dropoff: (formik.values.advancedSettings as any)?.dropoff ?? null,
-                  callbackScheduling: (formik.values.advancedSettings as any)?.callbackScheduling ?? null,
-                }
-                return (
-                  <div className="space-y-3">
-                    <div className="flex gap-2 sticky top-0 z-10 bg-background pb-1">
-                      <Button
-                        type="button" variant="outline" size="sm" className="h-7 text-xs"
-                        onClick={() => promptDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                      >
-                        Prompt
-                      </Button>
-                      <Button
-                        type="button" variant="outline" size="sm" className="h-7 text-xs"
-                        onClick={() => settingsDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                      >
-                        Settings
-                      </Button>
-                    </div>
-
-                    <div ref={promptDiffRef}>
-                      <p className="text-[11px] font-medium text-muted-foreground mb-1">Prompt</p>
-                      <SideBySideDiff
-                        oldText={extractPrompt(publishedFull)}
-                        newText={extractPrompt(currentFull)}
-                      />
-                    </div>
-
-                    <div ref={settingsDiffRef}>
-                      <p className="text-[11px] font-medium text-muted-foreground mb-1">Settings</p>
-                      <SideBySideDiff
-                        oldText={serializeForDiff(publishedSettings)}
-                        newText={serializeForDiff(currentSettings)}
-                      />
-                    </div>
-                  </div>
-                )
-              })() : null}
+            {renderDiffContent()}
 
             {!isDiffLoading && !publishedSnapshot && (
               <p className="text-[11px] text-muted-foreground">No prior published version — this will be the first version.</p>
