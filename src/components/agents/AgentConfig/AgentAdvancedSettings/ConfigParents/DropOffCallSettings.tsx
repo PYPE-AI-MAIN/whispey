@@ -80,8 +80,12 @@ export default function DropOffCallSettings({
       try {
         setLoading(true)
 
-        // Fetch drop-off settings
-        const settingsResponse = await fetch(`/api/agents/${agentId}/dropoff-settings`)
+        // Fetch drop-off settings and agent metrics in parallel — these two requests
+        // are independent, so awaiting them sequentially just doubles the load time.
+        const [settingsResponse, agentResponse] = await Promise.all([
+          fetch(`/api/agents/${agentId}/dropoff-settings`),
+          fetch(`/api/agents/${agentId}`).catch(() => null),
+        ])
 
         if (!settingsResponse.ok) {
           throw new Error('Failed to fetch drop-off settings')
@@ -93,9 +97,7 @@ export default function DropOffCallSettings({
         let callRetryCriteria: string | null = null
 
         try {
-          const agentResponse = await fetch(`/api/agents/${agentId}`)
-
-          if (agentResponse.ok) {
+          if (agentResponse?.ok) {
             const agentData = await agentResponse.json()
 
             console.log('Agent data fetched:', {
@@ -140,7 +142,7 @@ export default function DropOffCallSettings({
               console.log('No metrics field in agent data')
             }
           } else {
-            console.error('Agent response not OK:', agentResponse.status)
+            console.error('Agent response not OK:', agentResponse?.status)
           }
         } catch (agentError) {
           console.error('Error fetching agent metrics:', agentError)
