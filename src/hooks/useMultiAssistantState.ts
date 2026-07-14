@@ -312,6 +312,10 @@ function mergeToolsWithKbAndLanguageSwitch(formValues: any, mappedTools: any[]):
   // Merge language_switch tools into the tools array
   const lsTools: any[] = formValues.advancedSettings?.tools?.languageSwitchTools || []
   lsTools.forEach((ls: any) => {
+    // triggerMode is a radio (exactly one value), mirroring serializeRouteLanguageSwitchTool
+    // in save-and-deploy/route.ts — keep both in sync, this is the path buildSavePayload
+    // actually uses for the main "Save Version" flow.
+    const isTagMode = ls.triggerMode === 'tag'
     const entry: any = {
       type: 'language_switch',
       tool_name: ls.tool_name,
@@ -323,6 +327,8 @@ function mergeToolsWithKbAndLanguageSwitch(formValues: any, mappedTools: any[]):
       switch_tts: ls.switch_tts ?? true,
       stt: serializeLanguageSwitchSTT(ls.stt),
       tts: serializeLanguageSwitchTTS(ls.tts),
+      enable_as_tool: !isTagMode,
+      enable_as_tag: isTagMode,
     }
     if (ls.allow_interruptions) {
       entry.interruption = ls.interruption ?? true
@@ -364,6 +370,9 @@ function serializeCustomFunctionTool(tool: any, baseToolConfig: any, commonField
     response_mapping: responseMappingObject,
     response_mapping_raw: tool.config?.responseMapping || '{}',
     filler_config: tool.config?.filler_config ?? null,
+    // Trigger-mode flags. Defaults preserve current behavior.
+    enable_as_tool: tool.config?.enableAsTool !== false,
+    enable_as_tag: tool.config?.enableAsTag === true,
   }
 }
 
@@ -444,7 +453,7 @@ function serializeNearbyLocationFinderTool(tool: any, baseToolConfig: any, commo
   return { ...baseToolConfig, ...commonFields, max_results: maxResults, hospitals, areas }
 }
 
-function serializeAssistantToolFull(tool: any): any {
+export function serializeAssistantToolFull(tool: any): any {
   const baseToolConfig = { type: tool.type }
   if (tool.type === 'end_call') return baseToolConfig
 
@@ -459,7 +468,7 @@ function serializeAssistantToolFull(tool: any): any {
 
 // Used by the multi-assistant save path. Intentionally omits acefone_token / webhook
 // fields for transfer_call — mirrors the pre-existing behavior at this call site.
-function serializeAssistantToolBasic(tool: any): any {
+export function serializeAssistantToolBasic(tool: any): any {
   const baseToolConfig = { type: tool.type }
   if (tool.type === 'end_call') return baseToolConfig
 

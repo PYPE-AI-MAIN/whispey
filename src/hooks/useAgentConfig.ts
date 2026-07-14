@@ -400,6 +400,9 @@ function deserializeLanguageSwitchTool(tool: any) {
     switch_tts: tool.switch_tts ?? true,
     stt: tool.stt || { name: 'sarvam', language: 'kn-IN', model: 'saaras:v3', adaptive_stt: true, mode: 'transcribe', flush_signal: true },
     tts: tool.tts || {},
+    // Mirror the backend's _resolve_trigger_mode default: tag only if explicitly
+    // saved as true, otherwise tool (covers entries saved before this field existed).
+    triggerMode: tool.enable_as_tag === true ? 'tag' : 'tool',
   }
 }
 

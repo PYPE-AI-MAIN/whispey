@@ -307,6 +307,10 @@ function serializeRouteTool(tool: any): any {
         headers: tool.config.headers,
         parameters: tool.config.parameters,
         filler_config: tool.config.filler_config ?? null,
+        // Trigger-mode flags. Defaults preserve old behavior. Kept in sync with
+        // serializeCustomFunctionTool in useMultiAssistantState.ts.
+        enable_as_tool: tool.config.enableAsTool !== false,
+        enable_as_tag: tool.config.enableAsTag === true,
       } : tool.type === 'transfer_call' ? {
         transfer_number: tool.config.transferNumber,
         sip_outbound_trunk: tool.config.sipTrunkId,
@@ -324,6 +328,11 @@ function serializeRouteTool(tool: any): any {
 }
 
 function serializeRouteLanguageSwitchTool(ls: any): any {
+  // triggerMode is a radio (exactly one value) on the frontend, so this is
+  // always mutually exclusive by construction — no need for the
+  // both-set/neither-set reconciliation transfer_call's checkbox pair needs.
+  // Defaults to 'tool' for entries saved before this field existed.
+  const isTagMode = ls.triggerMode === 'tag'
   const entry: any = {
     type: 'language_switch',
     tool_name: ls.tool_name,
@@ -335,6 +344,8 @@ function serializeRouteLanguageSwitchTool(ls: any): any {
     switch_tts: ls.switch_tts ?? true,
     stt: serializeLanguageSwitchSTTRoute(ls.stt),
     tts: serializeLanguageSwitchTTSRoute(ls.tts),
+    enable_as_tool: !isTagMode,
+    enable_as_tag: isTagMode,
   }
   if (ls.allow_interruptions) entry.interruption = ls.interruption ?? true
   return entry
