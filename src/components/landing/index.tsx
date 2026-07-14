@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Play, BarChart3, Zap, Shield, Clock, Code, Mic, Activity, Github, Star, ExternalLink, Users } from "lucide-react"
+import { ArrowRight, Play, BarChart3, Zap, Shield, Clock, Code, Mic, Activity, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 // import { CompanyMarquee } from "@/components/landing/company-marquee"
@@ -363,10 +363,27 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-4 gap-8">
               <div className="col-span-1">
                 <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-                    <Image src="/logo.png" alt="Logo" width={40} height={40} />
+                  <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" style={{ width: '30px', height: '30px' }} className="flex items-center justify-center">
+                    <Image src="/logo-light.png" alt="Pype Logo" width={30} height={30} style={{ objectFit: 'contain' }} className="dark:hidden" />
+                    <Image src="/logo-dark.png" alt="Pype Logo" width={30} height={30} style={{ objectFit: 'contain' }} className="hidden dark:block" />
+                  </a>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
+                    <span
+                      className="text-[#111827] dark:text-[#F3F4F6]"
+                      style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
+                    >
+                      Whispey
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
+                      <span
+                        className="text-[#6D28D9] dark:text-[#8B7BC9]"
+                        style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
+                      >
+                        by
+                      </span>
+                      <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
+                    </div>
                   </div>
-                  <span className="text-xl font-bold gradient-text tracking-tight">Whispey</span>
                 </div>
                 <p className="text-sm text-muted-foreground">Voice AI observability platform for LiveKit agents.</p>
               </div>
