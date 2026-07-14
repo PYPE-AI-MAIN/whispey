@@ -642,7 +642,10 @@ export const buildFormValuesFromAgent = (assistant: any) => {
   const llmConfig = assistant.llm || {}
   const modelValue = llmConfig.model || getFallback(null, 'llm.model')
   const providerValue = llmConfig.provider || llmConfig.name || getFallback(null, 'llm.name')
-  const temperatureValue = llmConfig.temperature ?? getFallback(null, 'llm.temperature')
+  const GPT5_ONLY_MODELS = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.6-terra', 'gpt-5.6-luna']
+  const temperatureValue = GPT5_ONLY_MODELS.includes(modelValue)
+    ? 1
+    : (llmConfig.temperature ?? getFallback(null, 'llm.temperature'))
   const mappedProvider = mapLlmProvider(providerValue, modelValue)
 
   const { firstMessageModeValue, customFirstMessageValue } = deriveFirstMessageMode(assistant)
