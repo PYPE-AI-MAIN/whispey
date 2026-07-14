@@ -45,7 +45,6 @@ import {
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { GitHubStarsButton } from '../GithubLink'
 import SupportSheet from './SupportPanel'
 import { SidebarConfig } from './SidebarWrapper'
 import OrganizationSwitcher from '../projects/OrganisationSwitcher'
@@ -502,31 +501,61 @@ export default function Sidebar({
         )}
 
         {/* Logo & Context Header */}
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between gap-3">
             {(!isCollapsed || isMobile) && (
-              <Link 
-                href={config.context?.projectId ? `/${config.context.projectId}/agents` : '/'} 
-                className="flex items-center gap-3 group flex-1 min-w-0" 
-                onClick={() => {
-                  if (isMobile && onMobileClose) {
-                    onMobileClose()
-                  }
-                }}
-              >
-                <Image 
-                  src="/logo.png" 
-                  alt="Whispey Logo" 
-                  width={32} 
-                  height={32} 
-                  className="flex-shrink-0 group-hover:scale-105 transition-transform duration-200" 
-                />
-                <div className="min-w-0">
-                  <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                    Whispey
-                  </h1>
-                </div>
-              </Link>
+              <div className="flex items-center gap-3 group flex-1 min-w-0">
+                <a
+                  href="https://pypeai.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0"
+                >
+                  <Image
+                    src="/logo-light.png"
+                    alt="Pype Logo"
+                    width={30}
+                    height={30}
+                    style={{ objectFit: 'contain' }}
+                    className="flex-shrink-0 dark:hidden"
+                  />
+                  <Image
+                    src="/logo-dark.png"
+                    alt="Pype Logo"
+                    width={30}
+                    height={30}
+                    style={{ objectFit: 'contain' }}
+                    className="flex-shrink-0 hidden dark:block"
+                  />
+                </a>
+                <Link
+                  href={config.context?.projectId ? `/${config.context.projectId}/agents` : '/'}
+                  className="min-w-0"
+                  onClick={() => {
+                    if (isMobile && onMobileClose) {
+                      onMobileClose()
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
+                    <span
+                      className="text-[#111827] dark:text-[#F3F4F6]"
+                      style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
+                    >
+                      Whispey
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
+                      <span
+                        className="text-[#6D28D9] dark:text-[#8B7BC9]"
+                        style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
+                      >
+                        by
+                      </span>
+                      <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
+                    </div>
+                  </div>
+                </Link>
+              </div>
             )}
 
             {!isMobile && onToggleCollapse && (
@@ -590,13 +619,6 @@ export default function Sidebar({
             </div>
           ))}
         </nav>
-
-        {/* GitHub Stars */}
-        {(!isCollapsed || isMobile) && (
-          <div className="px-3 mb-3">
-            <GitHubStarsButton />
-          </div>
-        )}
 
         {/* Conditional Pricing Box */}
         {pricingConfig?.showPricingBox && (!isCollapsed || isMobile) && (

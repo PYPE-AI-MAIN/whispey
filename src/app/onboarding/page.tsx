@@ -91,13 +91,22 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <Image 
-              src="/logo.png" 
-              alt="Whispey Logo" 
-              width={48} 
-              height={48}
-              className="animate-bounce"
-            />
+            <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer">
+              <Image
+                src="/logo-light.png"
+                alt="Pype Logo"
+                width={48}
+                height={48}
+                className="animate-bounce dark:hidden"
+              />
+              <Image
+                src="/logo-dark.png"
+                alt="Pype Logo"
+                width={48}
+                height={48}
+                className="animate-bounce hidden dark:block"
+              />
+            </a>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Welcome to Whispey!
             </h1>
