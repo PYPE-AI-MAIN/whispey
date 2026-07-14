@@ -31,7 +31,7 @@ const brandFont = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Whispey by Pype - OSS LiveKit observability platform',
+  title: 'Whispey - OSS LiveKit observability platform',
   description: 'An observability platform for all your agents built on LiveKit.',
   icons: {
     icon: [
