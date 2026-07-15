@@ -593,11 +593,30 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
       {isMobile ? (
         <>
           <div className="fixed top-0 left-0 right-0 h-14 bg-white dark:bg-gray-800 border-b flex items-center justify-between px-4 z-50 md:hidden">
-            <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="Whispey" className="w-6 h-6" />
-              <span className="font-semibold text-sm">Whispey</span>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
+              <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer">
+                <img src="/logo-light.png" alt="Pype" style={{ width: '30px', height: '30px', objectFit: 'contain' }} className="dark:hidden" />
+                <img src="/logo-dark.png" alt="Pype" style={{ width: '30px', height: '30px', objectFit: 'contain' }} className="hidden dark:block" />
+              </a>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
+                <span
+                  className="text-[#111827] dark:text-[#F3F4F6]"
+                  style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
+                >
+                  Whispey
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
+                  <span
+                    className="text-[#6D28D9] dark:text-[#8B7BC9]"
+                    style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
+                  >
+                    by
+                  </span>
+                  <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
+                </div>
+              </div>
             </div>
-            
+
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm" className="p-2">

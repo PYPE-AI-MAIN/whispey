@@ -34,6 +34,7 @@ interface Model {
   value: string
   label: string
   id?: string
+  deploymentName?: string
 }
 
 interface ModelGroup {
@@ -54,6 +55,7 @@ interface Provider {
 interface AzureConfig {
   endpoint: string
   apiVersion: string
+  deploymentName?: string
 }
 
 interface ModelSelectorProps {
@@ -74,6 +76,7 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-emerald-500',
     type: 'direct',
     models: [
+      { value: 'gpt-5.6-luna', label: 'GPT 5.6 Luna' },
       { value: 'gpt-5', label: 'GPT 5' },
       { value: 'gpt-5-mini', label: 'GPT 5 Mini' },
       { value: 'gpt-5-nano', label: 'GPT 5 Nano' },
@@ -105,9 +108,9 @@ const modelProviders: Record<string, Provider> = {
     color: 'bg-blue-500',
     type: 'config',
     models: [
-      { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini' },
-      { value: 'gpt-4o', label: 'GPT 4o' },
-      { value: 'gpt-4o-mini', label: 'GPT 4o Mini' },
+      { value: 'gpt-5.6-terra', label: 'GPT 5.6 Terra', deploymentName: 'gpt-5.6-terra' },
+      { value: 'gpt-5.6-luna', label: 'GPT 5.6 Luna', deploymentName: 'gpt-5.6-luna' },
+      { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini', deploymentName: 'gpt-4.1-mini-2' },
     ]
   },
   groq: {
@@ -206,6 +209,11 @@ export default function ModelSelector({
     ...DEFAULT_AZURE_CONFIG,
     ...azureConfig
   })
+  const [tempAzureModel, setTempAzureModel] = useState<string>(
+    selectedProvider === 'azure_openai' && selectedModel
+      ? selectedModel
+      : modelProviders.azure_openai.models?.[0]?.value ?? 'gpt-4.1-mini'
+  )
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [mobileSelectedProvider, setMobileSelectedProvider] = useState<string | null>(null)
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
@@ -255,7 +263,7 @@ const getFlattenedMenuItems = () => {
   const { isMobile } = useMobile(768)
 
   const isGPT5Model = (modelValue: string): boolean => {
-    return modelValue === 'gpt-5' || modelValue === 'gpt-5-mini' || modelValue === 'gpt-5-nano'
+    return ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.6-terra', 'gpt-5.6-luna'].includes(modelValue)
   }
 
   useEffect(() => {
@@ -287,13 +295,12 @@ const getFlattenedMenuItems = () => {
     
       if (provider.type === 'config' && providerKey === 'azure_openai') {
         onProviderChange(providerKey)
-        // Set a default Azure model when switching to Azure
-        const defaultAzureModel = provider.models?.[0]?.value || 'gpt-4o'
-        onModelChange(defaultAzureModel)
-        // GPT-5 models only support temperature of 1
-        if (isGPT5Model(defaultAzureModel)) {
-          onTemperatureChange(1)
-        }
+        // Pre-fill tempAzureModel with current selection or default
+        const currentAzureModel =
+          selectedProvider === 'azure_openai' && selectedModel
+            ? selectedModel
+            : provider.models?.[0]?.value ?? 'gpt-4.1-mini'
+        setTempAzureModel(currentAzureModel)
         setIsAzureDialogOpen(true)
       } else if (provider.type === 'direct' && provider.models && provider.models.length > 0) {
         const firstModel = provider.models[0].value
@@ -327,8 +334,16 @@ const getFlattenedMenuItems = () => {
 
   const handleAzureConfigSave = () => {
     if (DISABLE_SETTINGS) return
-    
-    onAzureConfigChange(tempAzureConfig)
+
+    const selectedAzureModel = modelProviders.azure_openai.models?.find(m => m.value === tempAzureModel)
+    onAzureConfigChange({
+      ...tempAzureConfig,
+      deploymentName: selectedAzureModel?.deploymentName ?? tempAzureModel,
+    })
+    onModelChange(tempAzureModel)
+    if (isGPT5Model(tempAzureModel)) {
+      onTemperatureChange(1)
+    }
     setIsAzureDialogOpen(false)
   }
 
@@ -614,8 +629,8 @@ const getFlattenedMenuItems = () => {
                 <div>
                   <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Temperature</h4>
                   <p className="text-xs text-gray-500 dark:text-slate-400">
-                    {isGPT5Model(selectedModel) 
-                      ? 'GPT-5 models only support temperature of 1' 
+                    {isGPT5Model(selectedModel)
+                      ? 'Selected model only supports temperature of 1'
                       : 'Controls response creativity'}
                   </p>
                 </div>
@@ -630,15 +645,17 @@ const getFlattenedMenuItems = () => {
                   )}
                 </div>
               </div>
-              <Slider
-                value={[isGPT5Model(selectedModel) ? 1 : temperature]}
-                onValueChange={DISABLE_SETTINGS || isGPT5Model(selectedModel) ? () => {} : (value) => onTemperatureChange(value[0])}
-                max={1}
-                min={0}
-                step={0.01}
-                className={`w-full ${DISABLE_SETTINGS || isGPT5Model(selectedModel) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={DISABLE_SETTINGS || isGPT5Model(selectedModel)}
-              />
+              <div title={isGPT5Model(selectedModel) ? 'Selected model only supports temperature of 1' : undefined}>
+                <Slider
+                  value={[isGPT5Model(selectedModel) ? 1 : temperature]}
+                  onValueChange={DISABLE_SETTINGS || isGPT5Model(selectedModel) ? () => {} : (value) => onTemperatureChange(value[0])}
+                  max={1}
+                  min={0}
+                  step={0.01}
+                  className={`w-full ${DISABLE_SETTINGS || isGPT5Model(selectedModel) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={DISABLE_SETTINGS || isGPT5Model(selectedModel)}
+                />
+              </div>
               <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
                 <span>Focused</span>
                 <span className="hidden sm:inline">Balanced</span>
@@ -680,6 +697,28 @@ const getFlattenedMenuItems = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-gray-700 dark:text-slate-300">Model</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {modelProviders.azure_openai.models?.map((model) => (
+                  <button
+                    key={model.value}
+                    type="button"
+                    onClick={DISABLE_SETTINGS ? undefined : () => setTempAzureModel(model.value)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-colors text-left ${
+                      tempAzureModel === model.value
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300'
+                    } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    {tempAzureModel === model.value && (
+                      <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                    )}
+                    <span className="truncate">{model.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="endpoint" className="text-gray-700 dark:text-slate-300">Azure Endpoint</Label>
               <Input

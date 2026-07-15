@@ -4,10 +4,10 @@ export const PYPE_API_FETCH_TIMEOUT_MS = 8_000
 /**
  * Timeout for agent config deploy — updating a running agent requires restarting
  * its worker process on the backend which takes significantly longer than a read.
- * Must be set via PYPE_DEPLOY_TIMEOUT_SEC env var (in seconds).
+ * Override via PYPE_DEPLOY_TIMEOUT_SEC env var (in seconds); defaults to 60.
  */
 export const PYPE_API_DEPLOY_TIMEOUT_MS =
-  parseInt(process.env.PYPE_DEPLOY_TIMEOUT_SEC || '', 10) * 1_000
+  (parseInt(process.env.PYPE_DEPLOY_TIMEOUT_SEC || '', 10) || 60) * 1_000
 
 /**
  * Base URL for server-side routes that proxy to the voice/inference API.
