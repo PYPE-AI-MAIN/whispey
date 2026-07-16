@@ -4,6 +4,7 @@ import {
   isPypeUpstreamUnreachable,
   pypeApiAbortSignal,
   PYPE_API_DEPLOY_TIMEOUT_MS,
+  type DeploymentTarget,
 } from './pypeApiFetch'
 
 export type DeployAgentConfigResult =
@@ -44,15 +45,17 @@ async function verifyConfigApplied(apiUrl: string, expectedVoiceId: string): Pro
  */
 export async function deployAgentConfig(
   agentName: string,
-  agentConfigBody: any
+  agentConfigBody: any,
+  deploymentTarget: DeploymentTarget = 'classic'
 ): Promise<DeployAgentConfigResult> {
-  const baseUrl = getPypeApiBaseUrlForServer()
+  const baseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
   if (!baseUrl) {
-    console.error('❌ [deployAgentConfig] No voice backend URL configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.')
+    const missingVar = deploymentTarget === 'docker' ? 'PYPEAI_API_URL_DOCKER' : 'PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL'
+    console.error(`❌ [deployAgentConfig] No voice backend URL configured for target '${deploymentTarget}'. Set ${missingVar}.`)
     return {
       ok: false,
       status: 503,
-      errorText: 'Voice backend URL is not configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.',
+      errorText: `Voice backend URL is not configured. Set ${missingVar}.`,
       unreachable: true,
     }
   }

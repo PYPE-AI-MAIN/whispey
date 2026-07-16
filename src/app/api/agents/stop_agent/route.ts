@@ -1,19 +1,12 @@
 // app/api/agents/stop_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
+import { getPypeApiBaseUrlForServer, type DeploymentTarget } from '@/lib/pypeApiFetch'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const apiUrl = process.env.PYPEAI_API_URL
-    
-    if (!apiUrl) {
-      console.error('PYPEAI_API_URL environment variable is not set')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
-
     // Parse the request body to get the agent_name
     const body = await request.json()
     const { agent_name } = body
@@ -22,6 +15,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'agent_name is required' },
         { status: 400 }
+      )
+    }
+
+    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
+    // Only superadmins may target 'docker' — re-checked here server-side.
+    let deploymentTarget: DeploymentTarget = body.deploymentTarget === 'docker' ? 'docker' : 'classic'
+    if (deploymentTarget === 'docker') {
+      const { userId } = await auth()
+      const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
+      if (callerRole !== 'superadmin') {
+        deploymentTarget = 'classic'
+      }
+    }
+
+    const apiUrl = getPypeApiBaseUrlForServer(deploymentTarget)
+
+    if (!apiUrl) {
+      console.error(`Voice backend URL is not configured for target '${deploymentTarget}'`)
+      return NextResponse.json(
+        { error: 'API configuration error' },
+        { status: 500 }
       )
     }
 

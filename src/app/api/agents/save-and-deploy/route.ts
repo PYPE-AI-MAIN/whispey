@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
+import type { DeploymentTarget } from '@/lib/pypeApiFetch'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -218,7 +221,21 @@ export async function POST(request: NextRequest) {
       payloadKeys: Object.keys(agentConfigBody?.agent ?? {}),
     })
 
-    const result = await deployAgentConfig(agentName, agentConfigBody)
+    // POC toggle: which backend to deploy to. Defaults to 'classic' (subprocess,
+    // existing behavior) unless the caller explicitly opts into 'docker'
+    // (dockerized-agent backend, see docker-compose.agents.yml on that VM).
+    // Only superadmins may choose 'docker' — the FE already hides the toggle from
+    // everyone else, but that's bypassable, so it's re-checked here server-side.
+    let deploymentTarget: DeploymentTarget = body.deploymentTarget === 'docker' ? 'docker' : 'classic'
+    if (deploymentTarget === 'docker') {
+      const { userId } = await auth()
+      const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
+      if (callerRole !== 'superadmin') {
+        deploymentTarget = 'classic'
+      }
+    }
+
+    const result = await deployAgentConfig(agentName, agentConfigBody, deploymentTarget)
 
     if (!result.ok) {
       return NextResponse.json(

@@ -9,12 +9,22 @@ export const PYPE_API_FETCH_TIMEOUT_MS = 8_000
 export const PYPE_API_DEPLOY_TIMEOUT_MS =
   (parseInt(process.env.PYPE_DEPLOY_TIMEOUT_SEC || '', 10) || 60) * 1_000
 
+export type DeploymentTarget = 'classic' | 'docker'
+
 /**
  * Base URL for server-side routes that proxy to the voice/inference API.
  * Prefer `PYPEAI_API_URL` (server-only, e.g. http://127.0.0.1:8000) so local dev can
  * override an unreachable `NEXT_PUBLIC_PYPEAI_API_URL` without changing the client bundle.
+ *
+ * `target: 'docker'` points at the dockerized-agent backend instead (set via
+ * PYPEAI_API_URL_DOCKER) — used for the POC letting agents be created/deployed
+ * as Docker containers on a separate VM instead of subprocesses on the classic one.
+ * Defaults to 'classic' so all existing behavior is unchanged unless explicitly opted in.
  */
-export function getPypeApiBaseUrlForServer(): string | undefined {
+export function getPypeApiBaseUrlForServer(target: DeploymentTarget = 'classic'): string | undefined {
+  if (target === 'docker') {
+    return process.env.PYPEAI_API_URL_DOCKER
+  }
   return process.env.PYPEAI_API_URL || process.env.NEXT_PUBLIC_PYPEAI_API_URL
 }
 

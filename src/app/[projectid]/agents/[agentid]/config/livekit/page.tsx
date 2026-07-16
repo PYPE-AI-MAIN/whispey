@@ -46,6 +46,7 @@ import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvanced
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
+import { useGlobalRole } from '@/hooks/useGlobalRole'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -244,6 +245,12 @@ export default function AgentConfig() {
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
+  // Dev-only POC toggle: which voice backend to deploy this agent to. Defaults to
+  // 'classic' (subprocess, existing behavior). Only superadmins can pick 'docker' —
+  // everyone else stays on classic regardless of any client-side state, enforced
+  // again server-side in save-and-deploy/route.ts.
+  const [deploymentTarget, setDeploymentTarget] = useState<'classic' | 'docker'>('classic')
+  const { isSuperAdmin } = useGlobalRole()
   const [isSavingVersion, setIsSavingVersion] = useState(false)
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
@@ -681,7 +688,10 @@ export default function AgentConfig() {
     setVersionSaveError(null)
     try {
       // Step 1: Deploy config to backend
-      await saveAndDeploy.mutateAsync(pendingCheckpoint.config)
+      await saveAndDeploy.mutateAsync({
+        ...pendingCheckpoint.config,
+        deploymentTarget: isSuperAdmin ? deploymentTarget : 'classic',
+      })
       // Step 1b: Save supplemental settings (webhook, drop-off, callback) — non-blocking
       try {
         const advSettings = formik.values.advancedSettings as any
@@ -1824,6 +1834,21 @@ const unmappedVariablesCount = useMemo(() => {
               />
               <p className="text-[11px] text-muted-foreground">Press ⌘↵ to publish quickly.</p>
             </div>
+
+            {isSuperAdmin && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">Deploy target (superadmin only)</label>
+                <Select value={deploymentTarget} onValueChange={v => setDeploymentTarget(v as 'classic' | 'docker')}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classic">Classic (subprocess)</SelectItem>
+                    <SelectItem value="docker">Docker (container)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {renderDiffContent()}
 

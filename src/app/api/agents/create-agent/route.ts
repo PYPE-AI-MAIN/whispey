@@ -4,6 +4,8 @@ import { auth } from '@clerk/nextjs/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getPypeApiBaseUrlForServer, type DeploymentTarget } from '@/lib/pypeApiFetch'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 // Server-side Supabase client (prefer service role for row updates)
 const supabase = createServiceRoleClient()
@@ -55,21 +57,21 @@ async function getOrInitProjectAgentState(projectId: string): Promise<{
 }
 
 // Helper function to rollback agent creation
-async function rollbackAgentCreation(agentId: string, agentName?: string): Promise<void> {
+async function rollbackAgentCreation(agentId: string, agentName?: string, deploymentTarget: DeploymentTarget = 'classic'): Promise<void> {
   try {
     console.log('🔄 ROLLBACK: Starting rollback process')
     console.log('🔄 ROLLBACK: Agent ID:', agentId)
     console.log('🔄 ROLLBACK: Agent Name:', agentName)
-    
+
     if (!agentName) {
       console.error('❌ ROLLBACK: No agent name provided - cannot call delete API')
       return
     }
-    
+
     console.log('🔄 ROLLBACK: Calling backend delete API with agent_name:', agentName)
-    
+
     // Use the internal delete-agent API endpoint that expects agent_name
-    const deleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+    const deleteResponse = await fetch(`${getPypeApiBaseUrlForServer(deploymentTarget)}/delete_agent`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -195,6 +197,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // POC toggle: which backend to create this agent on. Defaults to 'classic'
+    // (subprocess on the old VM, /agent/<name>/ folder structure) unless the
+    // caller opts into 'docker' (new VM, container per agent). Only superadmins
+    // may choose 'docker' — re-checked here server-side since the FE toggle is
+    // client-side state that could be bypassed.
+    let deploymentTarget: DeploymentTarget = body.deploymentTarget === 'docker' ? 'docker' : 'classic'
+    if (deploymentTarget === 'docker') {
+      const callerRole = await getCallerGlobalRole(clerkUserId)
+      if (callerRole !== 'superadmin') {
+        deploymentTarget = 'classic'
+      }
+    }
+
     // Ensure agent quota state exists for the project, and check limits
     const { projectId: projectIdFromState, state, error: stateError } = await getOrInitProjectAgentState(projectId)
     dbProjectId = projectIdFromState
@@ -309,7 +324,7 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/create-agent`, {
+      const response = await fetch(`${getPypeApiBaseUrlForServer(deploymentTarget)}/create-agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,7 +363,7 @@ export async function POST(request: NextRequest) {
       // Rollback Step 2: Delete PypeAPI agent (even though step2Completed is false, PypeAPI might have partially created it)
       if (createdAgentId && createdAgentName) {
         console.log('🔄 Rolling back Step 2 - Deleting PypeAPI agent...')
-        await rollbackAgentCreation(createdAgentId, createdAgentName)
+        await rollbackAgentCreation(createdAgentId, createdAgentName, deploymentTarget)
       } else {
         console.log('🔄 STEP 2 ROLLBACK SKIPPED - createdAgentId:', createdAgentId, 'createdAgentName:', createdAgentName)
       }

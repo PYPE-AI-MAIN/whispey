@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AGENT_DEFAULT_CONFIG } from '@/config/agentDefaults'
+import { useGlobalRole } from '@/hooks/useGlobalRole'
 
 const PLATFORM_OPTIONS = [
   {
@@ -55,6 +56,11 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [createdAgentData, setCreatedAgentData] = useState<any>(null)
   const [copiedId, setCopiedId] = useState(false)
+  // Dev-only POC toggle: which voice backend to create this agent on. Defaults to
+  // 'classic' (old VM, subprocess, /agent/<name>/ structure). Only superadmins can
+  // pick 'docker' — re-enforced server-side in create-agent/route.ts.
+  const [deploymentTarget, setDeploymentTarget] = useState<'classic' | 'docker'>('classic')
+  const { isSuperAdmin } = useGlobalRole()
 
   const fetchProjectApiKey = async (): Promise<string> => {
     try {
@@ -165,6 +171,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
         const pypeAgentPayload = {
           project_id: projectId,
+          deploymentTarget: isSuperAdmin ? deploymentTarget : 'classic',
           agent: {
             name: agentNameWithId,
             type: "OUTBOUND",
@@ -423,6 +430,28 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               {PLATFORM_OPTIONS.find(o => o.value === selectedPlatform)?.description}
             </p>
           </div>
+
+          {/* Deploy Target (superadmin only) */}
+          {isSuperAdmin && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                Deploy target (superadmin only)
+              </label>
+              <Select
+                value={deploymentTarget}
+                onValueChange={v => setDeploymentTarget(v as 'classic' | 'docker')}
+                disabled={currentStep !== 'form'}
+              >
+                <SelectTrigger className="h-10 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">Classic (subprocess)</SelectItem>
+                  <SelectItem value="docker">Docker (container)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Agent Name */}
             <div className="space-y-2">
