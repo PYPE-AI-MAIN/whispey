@@ -157,7 +157,7 @@ export default function Sidebar({
   const { signOut } = useClerk()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -696,10 +696,10 @@ export default function Sidebar({
                   </div>
                   <div className="py-1">
                     <DropdownMenuItem
-                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
                       className="px-3 py-2 text-xs"
                     >
-                      {mounted && theme === 'dark' ? (
+                      {mounted && resolvedTheme === 'dark' ? (
                         <><Sun className="w-4 h-4 mr-2" />Light Mode</>
                       ) : (
                         <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
