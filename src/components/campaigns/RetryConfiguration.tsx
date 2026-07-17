@@ -1,7 +1,7 @@
 // components/campaigns/RetryConfiguration.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -20,15 +20,29 @@ function ChipInput({
   validate,
   formatChip,
   placeholder,
-}: {
+}: Readonly<{
   values: (string | number)[]
   onChange: (next: (string | number)[]) => void
   validate: (raw: string) => { value: string | number; error?: string }
   formatChip: (value: string | number) => string
   placeholder: string
-}) {
+}>) {
   const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  // Stable per-chip ids for React keys — values can repeat (a backoff
+  // schedule of 5, 10, 5 is valid), so the value itself can't be a key and a
+  // plain array index would shift/misattribute chips on removal.
+  const nextId = useRef(0)
+  const [ids, setIds] = useState<number[]>(() => values.map(() => nextId.current++))
+
+  // Resync if `values` changed for a reason other than this component's own
+  // add/remove (e.g. the parent reset the array on a retry-type switch).
+  useEffect(() => {
+    if (ids.length !== values.length) {
+      setIds(values.map(() => nextId.current++))
+    }
+  }, [values.length, ids.length])
 
   const addChip = () => {
     const trimmed = draft.trim()
@@ -40,12 +54,14 @@ function ChipInput({
     }
     // Duplicates are allowed on purpose — e.g. a backoff schedule of
     // 5, 10, 5, 5, 30 is a valid retry sequence, not a mistake.
+    setIds(prev => [...prev, nextId.current++])
     onChange([...values, value])
     setDraft('')
     setError(null)
   }
 
   const removeChip = (removeIndex: number) => {
+    setIds(prev => prev.filter((_, i) => i !== removeIndex))
     onChange(values.filter((_, i) => i !== removeIndex))
   }
 
@@ -54,7 +70,7 @@ function ChipInput({
       <div className="flex flex-wrap gap-1.5 mb-1.5">
         {values.map((value, i) => (
           <span
-            key={i}
+            key={ids[i] ?? i}
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-800 dark:text-gray-200"
           >
             {formatChip(value)}
@@ -97,6 +113,138 @@ function ChipInput({
         </Button>
       </div>
       {error && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>}
+    </div>
+  )
+}
+
+// Renders SIP error codes grouped by backend outcome bucket (pype-voice-agent's
+// map_sip_to_result groups these codes as the same failure type), each with a
+// "select all" for multi-code groups and an info popover explaining every
+// code. Pulled out of RetryConfiguration's per-rule render to keep the JSX
+// nesting shallow.
+function SipCodePicker({
+  errorCodes,
+  groups,
+  isUsedElsewhere,
+  onChange,
+}: Readonly<{
+  errorCodes: string[]
+  groups: { key: string; label: string; codes: string[] }[]
+  isUsedElsewhere: (code: string) => boolean
+  onChange: (next: string[]) => void
+}>) {
+  const toggleCode = (code: string, selected: boolean) => {
+    onChange(selected ? errorCodes.filter((c) => c !== code) : [...errorCodes, code])
+  }
+
+  const selectAllInGroup = (addable: string[]) => {
+    onChange(Array.from(new Set([...errorCodes, ...addable])))
+  }
+
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-1 mb-1.5">
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 block">
+          SIP Error Codes
+        </Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              aria-label="What do these codes mean?"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 text-xs" align="start">
+            <div className="space-y-2">
+              {VALID_SIP_ERROR_CODES.map((c) => (
+                <div key={c.code}>
+                  <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                    {c.code}
+                  </span>{' '}
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                  <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* One section per outcome bucket — codes are toggled once here, not
+          repeated in a separate summary row. "select all" only shows when a
+          group has more than one code. */}
+      <div className="space-y-2">
+        {groups.map((group) => (
+          <SipCodeGroup
+            key={group.key}
+            group={group}
+            errorCodes={errorCodes}
+            isUsedElsewhere={isUsedElsewhere}
+            onToggleCode={toggleCode}
+            onSelectAll={selectAllInGroup}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SipCodeGroup({
+  group,
+  errorCodes,
+  isUsedElsewhere,
+  onToggleCode,
+  onSelectAll,
+}: Readonly<{
+  group: { key: string; label: string; codes: string[] }
+  errorCodes: string[]
+  isUsedElsewhere: (code: string) => boolean
+  onToggleCode: (code: string, selected: boolean) => void
+  onSelectAll: (addable: string[]) => void
+}>) {
+  const groupCodes = VALID_SIP_ERROR_CODES.filter((c) => group.codes.includes(c.code))
+  const addable = group.codes.filter((c) => !errorCodes.includes(c) && !isUsedElsewhere(c))
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{group.label}</span>
+        {group.codes.length > 1 && (
+          <button
+            type="button"
+            disabled={addable.length === 0}
+            onClick={() => onSelectAll(addable)}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+          >
+            select all
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {groupCodes.map((c) => {
+          const selected = errorCodes.includes(c.code)
+          const usedElsewhere = !selected && isUsedElsewhere(c.code)
+          return (
+            <button
+              key={c.code}
+              type="button"
+              disabled={usedElsewhere}
+              title={usedElsewhere ? `${c.code} is already used in another retry rule` : c.description}
+              onClick={() => onToggleCode(c.code, selected)}
+              className={
+                selected
+                  ? 'px-2 py-1 rounded-md border text-xs font-mono bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                  : 'px-2 py-1 rounded-md border text-xs font-mono border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+              }
+            >
+              {c.code} — {c.label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -427,104 +575,12 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
 
               {/* SIP Code Fields - support multiple error codes */}
               {retryType === 'sipCode' && (
-                <div className="mb-3">
-                  <div className="flex items-center gap-1 mb-1.5">
-                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 block">
-                      SIP Error Codes
-                    </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                          aria-label="What do these codes mean?"
-                        >
-                          <Info className="w-3.5 h-3.5" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 text-xs" align="start">
-                        <div className="space-y-2">
-                          {VALID_SIP_ERROR_CODES.map((c) => (
-                            <div key={c.code}>
-                              <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-                                {c.code}
-                              </span>{' '}
-                              <span className="font-medium text-gray-900 dark:text-gray-100">
-                                {c.label}
-                              </span>
-                              <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* One section per outcome bucket (pype-voice-agent's
-                      map_sip_to_result groups these codes as the same failure
-                      type) — codes are toggled once here, not repeated in a
-                      separate summary row. "select all" only shows when a
-                      group has more than one code left to add. */}
-                  <div className="space-y-2">
-                    {sipCodeGroups.map((group) => {
-                      const groupCodes = VALID_SIP_ERROR_CODES.filter(c => group.codes.includes(c.code))
-                      const addable = group.codes.filter(
-                        c => !(config.errorCodes || []).includes(c) && !isSipCodeUsedElsewhere(c, index)
-                      )
-                      return (
-                        <div key={group.key}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
-                              {group.label}
-                            </span>
-                            {group.codes.length > 1 && (
-                              <button
-                                type="button"
-                                disabled={addable.length === 0}
-                                onClick={() => {
-                                  const existing = config.errorCodes || []
-                                  const merged = Array.from(new Set([...existing, ...addable]))
-                                  handleRetryChange(index, 'errorCodes', merged)
-                                }}
-                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
-                              >
-                                select all
-                              </button>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {groupCodes.map((c) => {
-                              const selected = (config.errorCodes || []).includes(c.code)
-                              const usedElsewhere = !selected && isSipCodeUsedElsewhere(c.code, index)
-                              return (
-                                <button
-                                  key={c.code}
-                                  type="button"
-                                  disabled={usedElsewhere}
-                                  title={usedElsewhere ? `${c.code} is already used in another retry rule` : c.description}
-                                  onClick={() => {
-                                    const existing = config.errorCodes || []
-                                    const next = selected
-                                      ? existing.filter((code) => code !== c.code)
-                                      : [...existing, c.code]
-                                    handleRetryChange(index, 'errorCodes', next)
-                                  }}
-                                  className={
-                                    selected
-                                      ? "px-2 py-1 rounded-md border text-xs font-mono bg-blue-600 border-blue-600 text-white hover:bg-blue-700"
-                                      : "px-2 py-1 rounded-md border text-xs font-mono border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                                  }
-                                >
-                                  {c.code} — {c.label}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
+                <SipCodePicker
+                  errorCodes={config.errorCodes || []}
+                  groups={sipCodeGroups}
+                  isUsedElsewhere={(code) => isSipCodeUsedElsewhere(code, index)}
+                  onChange={(codes) => handleRetryChange(index, 'errorCodes', codes)}
+                />
               )}
 
                 {/* Metric Fields */}
@@ -755,7 +811,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             min="0"
                             max="1440"
                             value={config.delayMinutes ?? 0}
-                            onChange={(e) => handleRetryChange(index, 'delayMinutes', parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleRetryChange(index, 'delayMinutes', Number.parseInt(e.target.value) || 0)}
                             className="h-8 text-xs"
                             placeholder="30"
                           />
@@ -773,7 +829,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             min="0"
                             max="10"
                             value={config.maxRetries ?? 0}
-                            onChange={(e) => handleRetryChange(index, 'maxRetries', parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleRetryChange(index, 'maxRetries', Number.parseInt(e.target.value) || 0)}
                             className="h-8 text-xs"
                             placeholder="2"
                           />
@@ -791,7 +847,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           values={config.backoffMinutes || []}
                           onChange={(minutes) => handleRetryChange(index, 'backoffMinutes', minutes)}
                           validate={(raw) => {
-                            const n = parseInt(raw, 10)
+                            const n = Number.parseInt(raw, 10)
                             if (!Number.isFinite(n) || String(n) !== raw) {
                               return { value: n, error: 'Enter a whole number' }
                             }

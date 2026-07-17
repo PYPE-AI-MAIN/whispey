@@ -129,10 +129,11 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     function (configs) {
       if (!Array.isArray(configs)) return true
       const seen = new Set<string>()
-      for (const cfg of configs as any[]) {
+      for (const cfg of configs) {
         const isSipCodeType = !cfg?.type || cfg.type === 'sipCode'
         if (!isSipCodeType || !Array.isArray(cfg.errorCodes)) continue
         for (const code of cfg.errorCodes) {
+          if (!code) continue
           if (seen.has(code)) {
             return this.createError({
               message: `SIP code ${code} is used in more than one retry rule`,
