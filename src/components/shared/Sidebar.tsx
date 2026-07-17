@@ -153,6 +153,16 @@ function getUserDisplayName(user: ReturnType<typeof useUser>['user']): string {
   return 'User'
 }
 
+const GROUP_NAME_OVERRIDES: Record<string, string> = {
+  'logs': 'LOGS',
+  'batch calls': 'Batch Calls',
+  'project settings': 'Project Settings',
+}
+
+function formatGroupDisplayName(groupId: string): string {
+  return GROUP_NAME_OVERRIDES[groupId] ?? (groupId.charAt(0).toUpperCase() + groupId.slice(1))
+}
+
 // Group navigation items
 function groupNavigationItems(navigation: NavigationItem[]): NavigationGroup[] {
   const groups: Record<string, NavigationItem[]> = {}
@@ -190,10 +200,7 @@ function groupNavigationItems(navigation: NavigationItem[]): NavigationGroup[] {
     if (groups[groupId]) {
       result.push({
         id: groupId,
-        name: groupId === 'logs' ? 'LOGS' :
-              groupId === 'batch calls' ? 'Batch Calls' :
-              groupId === 'project settings' ? 'Project Settings' :
-              groupId.charAt(0).toUpperCase() + groupId.slice(1),
+        name: formatGroupDisplayName(groupId),
         items: groups[groupId]
       })
       delete groups[groupId]
@@ -393,7 +400,7 @@ export default function Sidebar({
   onMobileClose,
   isSuperAdmin = false,
   projectId,
-}: SidebarProps) {
+}: Readonly<SidebarProps>) {
   const { user, isLoaded } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
@@ -718,12 +725,12 @@ function PricingBox({
   isCollapsed,
   isMobile,
   onMobileClose
-}: {
+}: Readonly<{
   pricingConfig: typeof PRICING_CONFIGS[string]
   isCollapsed: boolean
   isMobile: boolean
   onMobileClose?: () => void
-}): React.ReactNode {
+}>): React.ReactNode {
   if (!(pricingConfig?.showPricingBox && (!isCollapsed || isMobile))) {
     return null
   }
@@ -772,7 +779,7 @@ function SidebarUserMenu({
   router,
   isSigningOut,
   onSignOut
-}: {
+}: Readonly<{
   mounted: boolean
   isLoaded: boolean
   isCollapsed: boolean
@@ -785,7 +792,7 @@ function SidebarUserMenu({
   router: ReturnType<typeof useRouter>
   isSigningOut: boolean
   onSignOut: () => void
-}): React.ReactNode {
+}>): React.ReactNode {
   return (
     <div className="border-t border-gray-100 dark:border-gray-800 p-3">
       {!mounted || !isLoaded ? (
@@ -830,7 +837,7 @@ function SidebarUserMenu({
   )
 }
 
-function UserMenuSkeleton({ isCollapsed, isMobile }: { isCollapsed: boolean; isMobile: boolean }): React.ReactNode {
+function UserMenuSkeleton({ isCollapsed, isMobile }: Readonly<{ isCollapsed: boolean; isMobile: boolean }>): React.ReactNode {
   return (
     <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? 'justify-center' : ''}`}>
       <Skeleton className="w-8 h-8 rounded-full shrink-0" />
@@ -848,11 +855,11 @@ function UserMenuNameEmail({
   user,
   isCollapsed,
   isMobile
-}: {
+}: Readonly<{
   user: ReturnType<typeof useUser>['user']
   isCollapsed: boolean
   isMobile: boolean
-}): React.ReactNode {
+}>): React.ReactNode {
   if (!(!isCollapsed || isMobile)) {
     return null
   }
@@ -871,11 +878,11 @@ function ThemeToggleMenuItem({
   mounted,
   resolvedTheme,
   setTheme
-}: {
+}: Readonly<{
   mounted: boolean
   resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
   setTheme: ReturnType<typeof useTheme>['setTheme']
-}): React.ReactNode {
+}>): React.ReactNode {
   return (
     <DropdownMenuItem
       onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
@@ -894,11 +901,11 @@ function SuperAdminSettingsMenuItem({
   isSuperAdmin,
   projectId,
   router
-}: {
+}: Readonly<{
   isSuperAdmin: boolean
   projectId?: string
   router: ReturnType<typeof useRouter>
-}): React.ReactNode {
+}>): React.ReactNode {
   if (!(isSuperAdmin && projectId)) {
     return null
   }
@@ -917,10 +924,10 @@ function SuperAdminSettingsMenuItem({
 function SignOutMenuItem({
   isSigningOut,
   onSignOut
-}: {
+}: Readonly<{
   isSigningOut: boolean
   onSignOut: () => void
-}): React.ReactNode {
+}>): React.ReactNode {
   return (
     <DropdownMenuItem
       onClick={onSignOut}
