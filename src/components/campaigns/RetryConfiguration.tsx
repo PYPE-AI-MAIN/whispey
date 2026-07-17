@@ -513,9 +513,12 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     
                     // Clear type-specific fields and set defaults based on new type
                     if (value === 'sipCode') {
+                      // No hardcoded default codes — ['480', '486'] would
+                      // collide with another rule that already claims them,
+                      // since a code can only belong to one rule.
                       updatedConfig[index] = {
                         type: 'sipCode',
-                        errorCodes: config.errorCodes && config.errorCodes.length > 0 ? config.errorCodes : ['480', '486'],
+                        errorCodes: config.errorCodes && config.errorCodes.length > 0 ? config.errorCodes : [],
                         delayMinutes: config.delayMinutes || 5,
                         maxRetries: config.maxRetries || 2,
                       } as unknown as RetryConfig

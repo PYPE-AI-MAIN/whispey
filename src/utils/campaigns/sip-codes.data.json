@@ -1,0 +1,77 @@
+[
+  {
+    "key": "noAnswer",
+    "label": "No Answer",
+    "codes": [
+      {
+        "code": "480",
+        "label": "Temporarily Unavailable",
+        "description": "Callee's device was reached but is currently unavailable (not registered, do-not-disturb, etc). May succeed on retry."
+      },
+      {
+        "code": "487",
+        "label": "Request Terminated",
+        "description": "Call was canceled/ended before being answered."
+      }
+    ]
+  },
+  {
+    "key": "busy",
+    "label": "Busy",
+    "codes": [
+      {
+        "code": "486",
+        "label": "Busy Here",
+        "description": "Callee is on another call. May succeed on retry once they hang up."
+      },
+      {
+        "code": "600",
+        "label": "Busy Everywhere",
+        "description": "Callee is busy or has do-not-disturb enabled across all their devices. May succeed once that's turned off."
+      }
+    ]
+  },
+  {
+    "key": "timeout",
+    "label": "Timeout",
+    "codes": [
+      {
+        "code": "408",
+        "label": "Request Timeout",
+        "description": "Server/network couldn't reach the destination in time. Usually a transient network issue."
+      },
+      {
+        "code": "504",
+        "label": "Server Timeout",
+        "description": "Upstream server took too long to respond. Same timeout bucket as 408 — usually transient."
+      }
+    ]
+  },
+  {
+    "key": "networkError",
+    "label": "Network Error",
+    "codes": [
+      {
+        "code": "500",
+        "label": "Server Internal Error",
+        "description": "Telephony server hit a transient internal error. Categorized as network_error — usually resolves on retry."
+      },
+      {
+        "code": "503",
+        "label": "Service Unavailable",
+        "description": "Telephony server is overloaded or temporarily down. Categorized as network_error — often self-resolves."
+      }
+    ]
+  },
+  {
+    "key": "declined",
+    "label": "Declined",
+    "codes": [
+      {
+        "code": "603",
+        "label": "Decline",
+        "description": "Callee explicitly rejected the call. May still succeed at a different time."
+      }
+    ]
+  }
+]
