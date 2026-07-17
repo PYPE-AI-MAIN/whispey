@@ -482,7 +482,7 @@ export default function Sidebar({
     if (shouldAutoCollapse && !isCollapsed && !hasAutoCollapsed) {
       onToggleCollapse?.()
       setHasAutoCollapsed(true)
-      if (typeof window !== 'undefined') {
+      if (typeof globalThis.window !== 'undefined') {
         localStorage.setItem('whispey-sidebar-collapsed', JSON.stringify(true))
       }
     }
