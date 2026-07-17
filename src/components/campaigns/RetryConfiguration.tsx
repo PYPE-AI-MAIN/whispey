@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, Info, Plus, X, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { RetryConfig, VALID_SIP_ERROR_CODES } from '@/utils/campaigns/constants'
+import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCodeGroup as SipCodeGroupType } from '@/utils/campaigns/constants'
 
 // Chip-style input: type a value, press Enter/Add to append it (after
 // validation), click the X on a chip to remove it. Used for both SIP error
@@ -129,7 +129,7 @@ function SipCodePicker({
   onChange,
 }: Readonly<{
   errorCodes: string[]
-  groups: { key: string; label: string; codes: string[] }[]
+  groups: SipCodeGroupType[]
   isUsedElsewhere: (code: string) => boolean
   onChange: (next: string[]) => void
 }>) {
@@ -199,14 +199,16 @@ function SipCodeGroup({
   onToggleCode,
   onSelectAll,
 }: Readonly<{
-  group: { key: string; label: string; codes: string[] }
+  group: SipCodeGroupType
   errorCodes: string[]
   isUsedElsewhere: (code: string) => boolean
   onToggleCode: (code: string, selected: boolean) => void
   onSelectAll: (addable: string[]) => void
 }>) {
-  const groupCodes = VALID_SIP_ERROR_CODES.filter((c) => group.codes.includes(c.code))
-  const addable = group.codes.filter((c) => !errorCodes.includes(c) && !isUsedElsewhere(c))
+  const groupCodes = group.codes
+  const addable = groupCodes
+    .filter((c) => !errorCodes.includes(c.code) && !isUsedElsewhere(c.code))
+    .map((c) => c.code)
 
   return (
     <div>
@@ -262,21 +264,6 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
   const [availableMetrics, setAvailableMetrics] = useState<string[]>([])
   const [availableFields, setAvailableFields] = useState<string[]>([])
   const [loadingFields, setLoadingFields] = useState(false)
-
-  // Group codes by their backend outcome bucket (e.g. Busy = 486 + 600) for
-  // the "add all" quick-picker, preserving first-seen group order.
-  const sipCodeGroups = VALID_SIP_ERROR_CODES.reduce<{ key: string; label: string; codes: string[] }[]>(
-    (groups, { code, group, groupLabel }) => {
-      const existing = groups.find(g => g.key === group)
-      if (existing) {
-        existing.codes.push(code)
-      } else {
-        groups.push({ key: group, label: groupLabel, codes: [code] })
-      }
-      return groups
-    },
-    []
-  )
 
   // Fetch agent metrics and field extractor fields
   useEffect(() => {
@@ -577,7 +564,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
               {retryType === 'sipCode' && (
                 <SipCodePicker
                   errorCodes={config.errorCodes || []}
-                  groups={sipCodeGroups}
+                  groups={SIP_CODE_GROUPS}
                   isUsedElsewhere={(code) => isSipCodeUsedElsewhere(code, index)}
                   onChange={(codes) => handleRetryChange(index, 'errorCodes', codes)}
                 />

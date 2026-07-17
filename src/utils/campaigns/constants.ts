@@ -68,83 +68,72 @@ export interface PhoneNumber {
   assigned_at: string | null
 }
 
-// SIP codes eligible for retry. Shared by the create-campaign form (client
-// validation + chip picker) and the schedule API route, so the two allow-lists
-// can't drift apart again. 401/403/404 are deliberately excluded — they're
-// permanent/config issues (bad credentials, number doesn't exist) rather than
-// transient failures a retry can fix. 500/503/504 are included per
-// pype-voice-agent's own SIP-code mapping (utils/contact_updater.py), which
-// buckets them as "network_error"/"timeout" — i.e. transient, not permanent.
-// `group`/`groupLabel` mirror pype-voice-agent's own SIP → outcome mapping
+export interface SipCode {
+  code: string
+  label: string
+  description: string
+}
+
+export interface SipCodeGroup {
+  key: string
+  label: string
+  codes: SipCode[]
+}
+
+// SIP codes eligible for retry, grouped by backend outcome bucket. Shared by
+// the create-campaign form (client validation + grouped picker) and the
+// schedule API route, so the two allow-lists can't drift apart again.
+// Grouping mirrors pype-voice-agent's own SIP → outcome mapping
 // (utils/contact_updater.py:map_sip_to_result) — codes in the same group are
-// treated as the same failure type there, so the picker can offer "add all"
+// treated as the same failure type there, so the picker offers "select all"
 // per group to avoid a user covering only one code of an equivalent pair.
-export const VALID_SIP_ERROR_CODES: { code: string; label: string; description: string; group: string; groupLabel: string }[] = [
+// 401/403/404 are deliberately excluded — they're permanent/config issues
+// (bad credentials, number doesn't exist) rather than transient failures a
+// retry can fix. 500/503/504 are included since that same backend mapping
+// buckets them as "network_error"/"timeout" — i.e. transient, not permanent.
+export const SIP_CODE_GROUPS: SipCodeGroup[] = [
   {
-    code: '480',
-    label: 'Temporarily Unavailable',
-    description: "Callee's device was reached but is currently unavailable (not registered, do-not-disturb, etc). May succeed on retry.",
-    group: 'noAnswer',
-    groupLabel: 'No Answer',
+    key: 'noAnswer',
+    label: 'No Answer',
+    codes: [
+      { code: '480', label: 'Temporarily Unavailable', description: "Callee's device was reached but is currently unavailable (not registered, do-not-disturb, etc). May succeed on retry." },
+      { code: '487', label: 'Request Terminated', description: 'Call was canceled/ended before being answered.' },
+    ],
   },
   {
-    code: '487',
-    label: 'Request Terminated',
-    description: 'Call was canceled/ended before being answered.',
-    group: 'noAnswer',
-    groupLabel: 'No Answer',
+    key: 'busy',
+    label: 'Busy',
+    codes: [
+      { code: '486', label: 'Busy Here', description: 'Callee is on another call. May succeed on retry once they hang up.' },
+      { code: '600', label: 'Busy Everywhere', description: "Callee is busy or has do-not-disturb enabled across all their devices. May succeed once that's turned off." },
+    ],
   },
   {
-    code: '486',
-    label: 'Busy Here',
-    description: 'Callee is on another call. May succeed on retry once they hang up.',
-    group: 'busy',
-    groupLabel: 'Busy',
+    key: 'timeout',
+    label: 'Timeout',
+    codes: [
+      { code: '408', label: 'Request Timeout', description: "Server/network couldn't reach the destination in time. Usually a transient network issue." },
+      { code: '504', label: 'Server Timeout', description: 'Upstream server took too long to respond. Same timeout bucket as 408 — usually transient.' },
+    ],
   },
   {
-    code: '600',
-    label: 'Busy Everywhere',
-    description: "Callee is busy or has do-not-disturb enabled across all their devices. May succeed once that's turned off.",
-    group: 'busy',
-    groupLabel: 'Busy',
+    key: 'networkError',
+    label: 'Network Error',
+    codes: [
+      { code: '500', label: 'Server Internal Error', description: 'Telephony server hit a transient internal error. Categorized as network_error — usually resolves on retry.' },
+      { code: '503', label: 'Service Unavailable', description: 'Telephony server is overloaded or temporarily down. Categorized as network_error — often self-resolves.' },
+    ],
   },
   {
-    code: '408',
-    label: 'Request Timeout',
-    description: "Server/network couldn't reach the destination in time. Usually a transient network issue.",
-    group: 'timeout',
-    groupLabel: 'Timeout',
-  },
-  {
-    code: '504',
-    label: 'Server Timeout',
-    description: 'Upstream server took too long to respond. Same timeout bucket as 408 — usually transient.',
-    group: 'timeout',
-    groupLabel: 'Timeout',
-  },
-  {
-    code: '500',
-    label: 'Server Internal Error',
-    description: 'Telephony server hit a transient internal error. Categorized as network_error — usually resolves on retry.',
-    group: 'networkError',
-    groupLabel: 'Network Error',
-  },
-  {
-    code: '503',
-    label: 'Service Unavailable',
-    description: 'Telephony server is overloaded or temporarily down. Categorized as network_error — often self-resolves.',
-    group: 'networkError',
-    groupLabel: 'Network Error',
-  },
-  {
-    code: '603',
-    label: 'Decline',
-    description: 'Callee explicitly rejected the call. May still succeed at a different time.',
-    group: 'declined',
-    groupLabel: 'Declined',
+    key: 'declined',
+    label: 'Declined',
+    codes: [
+      { code: '603', label: 'Decline', description: 'Callee explicitly rejected the call. May still succeed at a different time.' },
+    ],
   },
 ]
 
+export const VALID_SIP_ERROR_CODES: SipCode[] = SIP_CODE_GROUPS.flatMap(g => g.codes)
 export const VALID_SIP_ERROR_CODE_VALUES = VALID_SIP_ERROR_CODES.map(c => c.code)
 
 // Retry Configuration
