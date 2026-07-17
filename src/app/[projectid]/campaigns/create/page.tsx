@@ -9,7 +9,7 @@ import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { RecipientRow, CsvValidationError, RetryConfig } from '@/utils/campaigns/constants'
+import { RecipientRow, CsvValidationError, RetryConfig, VALID_SIP_ERROR_CODE_VALUES } from '@/utils/campaigns/constants'
 import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
@@ -50,7 +50,9 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     Yup.object().shape({
       type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor']).required('Retry type is required'),
       // SIP Code fields (optional, but required if type is sipCode)
-      errorCodes: Yup.array().of(Yup.string()),
+      errorCodes: Yup.array().of(
+        Yup.string().oneOf(VALID_SIP_ERROR_CODE_VALUES, 'Invalid SIP error code')
+      ),
       // Metric fields (optional, but required if type is metric)
       metricName: Yup.string(),
       threshold: Yup.number().min(0, 'Threshold must be at least 0'),
@@ -121,6 +123,26 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
       }
       return true
     })
+  ).test(
+    'no-duplicate-sip-codes',
+    'A SIP code cannot be used in more than one retry rule',
+    function (configs) {
+      if (!Array.isArray(configs)) return true
+      const seen = new Set<string>()
+      for (const cfg of configs as any[]) {
+        const isSipCodeType = !cfg?.type || cfg.type === 'sipCode'
+        if (!isSipCodeType || !Array.isArray(cfg.errorCodes)) continue
+        for (const code of cfg.errorCodes) {
+          if (seen.has(code)) {
+            return this.createError({
+              message: `SIP code ${code} is used in more than one retry rule`,
+            })
+          }
+          seen.add(code)
+        }
+      }
+      return true
+    }
   ),
 })
 
