@@ -41,6 +41,7 @@ interface STTProviders {
   openai: StandardProvider;
   deepgram: DeepgramProvider;
   sarvam: StandardProvider;
+  smallestai: StandardProvider;
 }
 
 // Config interfaces
@@ -76,6 +77,11 @@ interface SarvamConfig {
   domain: string;
   with_timestamps: boolean;
   enable_formatting: boolean;
+}
+
+interface SmallestAIConfig {
+  model: string;
+  language: string;
 }
 
 interface SelectSTTProps {
@@ -320,6 +326,36 @@ const STT_PROVIDERS: STTProviders = {
       { code: 'ta-IN', name: 'Tamil' },
       { code: 'te-IN', name: 'Telugu' },
     ]
+  },
+  smallestai: {
+    name: 'Smallest AI',
+    models: [
+      { id: 'pulse', name: 'Pulse', description: 'Real-time streaming speech-to-text' }
+    ],
+    languages: [
+      { code: 'multi', name: '🌐 Auto-detect' },
+      { code: 'en', name: 'English' },
+      { code: 'hi', name: 'Hindi' },
+      { code: 'de', name: 'German' },
+      { code: 'es', name: 'Spanish' },
+      { code: 'ru', name: 'Russian' },
+      { code: 'it', name: 'Italian' },
+      { code: 'fr', name: 'French' },
+      { code: 'nl', name: 'Dutch' },
+      { code: 'pt', name: 'Portuguese' },
+      { code: 'zh', name: 'Mandarin' },
+      { code: 'yue', name: 'Cantonese' },
+      { code: 'ja', name: 'Japanese' },
+      { code: 'ko', name: 'Korean' },
+      { code: 'gu', name: 'Gujarati' },
+      { code: 'mr', name: 'Marathi' },
+      { code: 'or', name: 'Oriya' },
+      { code: 'bn', name: 'Bengali' },
+      { code: 'ta', name: 'Tamil' },
+      { code: 'te', name: 'Telugu' },
+      { code: 'kn', name: 'Kannada' },
+      { code: 'ml', name: 'Malayalam' },
+    ]
   }
 }
 
@@ -346,6 +382,7 @@ const ProviderCard = ({
       case 'openai': return 'from-green-400 to-green-600'
       case 'deepgram': return 'from-blue-400 to-blue-600'
       case 'sarvam': return 'from-orange-400 to-red-500'
+      case 'smallestai': return 'from-purple-400 to-violet-600'
       default: return 'from-gray-400 to-gray-600'
     }
   }
@@ -355,6 +392,7 @@ const ProviderCard = ({
       case 'openai': return 'border-green-200 dark:border-green-600 bg-green-50 dark:bg-green-900/10'
       case 'deepgram': return 'border-blue-200 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'
       case 'sarvam': return 'border-orange-200 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/10'
+      case 'smallestai': return 'border-purple-200 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/10'
       default: return 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/10'
     }
   }
@@ -448,6 +486,11 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     enable_formatting: initialConfig?.enable_formatting ?? true
   })
 
+  const [smallestaiConfig, setSmallestaiConfig] = useState<SmallestAIConfig>({
+    model: selectedProvider === 'smallestai' ? selectedModel : 'pulse',
+    language: selectedProvider === 'smallestai' ? selectedLanguage : 'en',
+  })
+
   useEffect(() => {
     setShowSettings(!!selectedProvider)
   }, [selectedProvider])
@@ -477,6 +520,13 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             model: selectedModel || prev.model,
             language: selectedLanguage || prev.language,
             mode: initialConfig?.mode || prev.mode || 'transcribe',
+            ...initialConfig
+          }))
+        } else if (selectedProvider === 'smallestai') {
+          setSmallestaiConfig(prev => ({
+            ...prev,
+            model: selectedModel || prev.model,
+            language: selectedLanguage || prev.language,
             ...initialConfig
           }))
         }
@@ -523,12 +573,13 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
       case 'openai': return openaiConfig
       case 'deepgram': return deepgramConfig
       case 'sarvam': return sarvamConfig
+      case 'smallestai': return smallestaiConfig
       default: return {}
     }
   }
 
   const getCurrentModel = () => {
-    const config = getCurrentConfig() as OpenAISTTConfig | DeepgramConfig | SarvamConfig
+    const config = getCurrentConfig() as OpenAISTTConfig | DeepgramConfig | SarvamConfig | SmallestAIConfig
     return config.model || ''
   }
 
@@ -775,6 +826,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   language: value === 'saaras:v2.5' ? 'unknown' : prev.language,
                   mode: 'transcribe'
                 }))
+                else if (activeProvider === 'smallestai') setSmallestaiConfig(prev => ({ ...prev, model: value }))
               }
             }}
             disabled={DISABLE_SETTINGS}
@@ -804,6 +856,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   setShowCustomLanguage(false)
                   if (activeProvider === 'openai') setOpenAIConfig(prev => ({ ...prev, language: value }))
                   else if (activeProvider === 'sarvam') setSarvamConfig(prev => ({ ...prev, language: value }))
+                  else if (activeProvider === 'smallestai') setSmallestaiConfig(prev => ({ ...prev, language: value }))
                 }
               }}
               disabled={DISABLE_SETTINGS}
