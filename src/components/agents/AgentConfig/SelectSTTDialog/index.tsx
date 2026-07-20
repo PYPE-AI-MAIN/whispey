@@ -333,7 +333,8 @@ const STT_PROVIDERS: STTProviders = {
       { id: 'pulse', name: 'Pulse', description: 'Real-time streaming speech-to-text' }
     ],
     languages: [
-      { code: 'multi', name: '🌐 Auto-detect' },
+      { code: 'north_indic', name: '🌐 Auto-detect — North Indic (Hindi, Gujarati, Marathi, Bengali, Oriya, English)' },
+      { code: 'multi-south-indic', name: '🌐 Auto-detect — South Indic (Tamil, Telugu, Kannada, Malayalam, English)' },
       { code: 'en', name: 'English' },
       { code: 'hi', name: 'Hindi' },
       { code: 'de', name: 'German' },
