@@ -1,11 +1,15 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/start-session/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { getPypeApiBaseUrlForServer, type DeploymentTarget } from '@/lib/pypeApiFetch'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 interface StartSessionRequest {
   user_identity: string
   user_name: string
   agent_name: string
+  deploymentTarget?: string
 }
 
 interface StartSessionResponse {
@@ -35,10 +39,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get API base URL from environment
-    const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
+    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
+    // Only superadmins may target 'docker' — re-checked here server-side.
+    let deploymentTarget: DeploymentTarget = body.deploymentTarget === 'docker' ? 'docker' : 'classic'
+    if (deploymentTarget === 'docker') {
+      const { userId } = await auth()
+      const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
+      if (callerRole !== 'superadmin') {
+        deploymentTarget = 'classic'
+      }
+    }
+
+    const apiBaseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
     if (!apiBaseUrl) {
-      console.error('NEXT_PUBLIC_PYPEAI_API_URL is not configured')
+      console.error(`Voice backend URL is not configured for target '${deploymentTarget}'`)
       return NextResponse.json(
         { error: 'API configuration error' },
         { status: 500 }

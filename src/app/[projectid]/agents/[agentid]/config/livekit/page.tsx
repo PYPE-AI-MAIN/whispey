@@ -76,14 +76,14 @@ import toast from 'react-hot-toast'
 
 // Agent status service
 const agentStatusService = {
-  checkAgentStatus: async (agentName: string): Promise<AgentStatus> => {
+  checkAgentStatus: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
     try {
       if (!agentName) {
         console.warn('⚠️ Agent name is empty or undefined')
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
-      const response = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}`, {
+      const response = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}?deploymentTarget=${deploymentTarget}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -125,20 +125,20 @@ const agentStatusService = {
     }
   },
   
-  startAgent: async (agentName: string): Promise<AgentStatus> => {
+  startAgent: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
     try {
       if (!agentName) {
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
       console.log('🚀 Starting agent via API:', agentName)
-      
+
       const response = await fetch('/api/agents/start_agent', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ agent_name: agentName })
+        body: JSON.stringify({ agent_name: agentName, deploymentTarget })
       })
       
       if (response.ok) {
@@ -163,20 +163,20 @@ const agentStatusService = {
     }
   },
   
-  stopAgent: async (agentName: string): Promise<AgentStatus> => {
+  stopAgent: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
     try {
       if (!agentName) {
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
       console.log('🛑 Stopping agent via API:', agentName)
-      
+
       const response = await fetch('/api/agents/stop_agent', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ agent_name: agentName })
+        body: JSON.stringify({ agent_name: agentName, deploymentTarget })
       })
       
       if (response.ok) {
@@ -308,6 +308,20 @@ export default function AgentConfig() {
     auth: agentid ? { agentId: agentid } : undefined,
   })
 
+  // Initialize the deploy-target toggle from whatever this agent was actually
+  // created with, instead of always defaulting to classic — so start/stop and
+  // update calls hit the right backend without the user manually re-toggling
+  // it every time they open this page.
+  const deploymentTargetInitialized = useRef(false)
+  useEffect(() => {
+    if (deploymentTargetInitialized.current) return
+    const persisted = agentDataResponse?.[0]?.configuration?.deployment_target
+    if (persisted === 'docker' || persisted === 'classic') {
+      setDeploymentTarget(persisted)
+      deploymentTargetInitialized.current = true
+    }
+  }, [agentDataResponse])
+
   const agentNameWithId = useMemo(() => {
     if (!agentDataResponse?.[0]?.name || !agentid) {
       return ''
@@ -361,10 +375,10 @@ export default function AgentConfig() {
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
-    
-    const status = await agentStatusService.checkAgentStatus(activeAgentName)
+
+    const status = await agentStatusService.checkAgentStatus(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
     setAgentStatus(status)
-  }, [activeAgentName])
+  }, [activeAgentName, isSuperAdmin, deploymentTarget])
 
   // Check agent status on load
   useEffect(() => {
@@ -381,27 +395,29 @@ export default function AgentConfig() {
     setIsAgentLoading(true)
     setAgentStatus({ status: 'starting' } as AgentStatus)
     
+    const target = isSuperAdmin ? deploymentTarget : 'classic'
+
     try {
       // Step 1: Initiate agent start
-      const startStatus = await agentStatusService.startAgent(activeAgentName)
-      
+      const startStatus = await agentStatusService.startAgent(activeAgentName, target)
+
       if (startStatus.status === 'error') {
         setAgentStatus(startStatus)
         setIsAgentLoading(false)
         return
       }
-      
+
       // Step 2: Poll agent status until it's running or timeout
       const maxAttempts = 30 // Poll for up to 30 seconds (30 attempts * 1 second)
       let attempts = 0
       let isRunning = false
-      
+
       while (attempts < maxAttempts && !isRunning) {
         await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second between checks
-        
-        const status = await agentStatusService.checkAgentStatus(activeAgentName)
+
+        const status = await agentStatusService.checkAgentStatus(activeAgentName, target)
         setAgentStatus(status)
-        
+
         if (status.status === 'running') {
           isRunning = true
           break
@@ -409,13 +425,13 @@ export default function AgentConfig() {
           // Agent failed to start
           break
         }
-        
+
         attempts++
       }
-      
+
       // Final status check
       if (!isRunning) {
-        const finalStatus = await agentStatusService.checkAgentStatus(activeAgentName)
+        const finalStatus = await agentStatusService.checkAgentStatus(activeAgentName, target)
         setAgentStatus(finalStatus)
       }
     } catch (error) {
@@ -425,16 +441,16 @@ export default function AgentConfig() {
       setIsAgentLoading(false)
     }
   }
-  
+
   const stopAgent = async () => {
     if (!activeAgentName) return
-    
+
     setIsAgentLoading(true)
     setAgentStatus({ status: 'stopping' } as AgentStatus)
-    
+
     try {
-      const status = await agentStatusService.stopAgent(activeAgentName)
-      
+      const status = await agentStatusService.stopAgent(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
+
       if (status.status !== 'error') {
         setAgentStatus({ status: 'stopped' })
       } else {
@@ -1307,6 +1323,7 @@ const unmappedVariablesCount = useMemo(() => {
                   flashEndCall={flashEndCall}
                   onFlashEndCallDone={() => setFlashEndCall(false)}
                   onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
+                  deploymentTarget={isSuperAdmin ? deploymentTarget : 'classic'}
                 />
               </SheetContent>
             </Sheet>
@@ -1731,6 +1748,7 @@ const unmappedVariablesCount = useMemo(() => {
             flashEndCall={flashEndCall}
             onFlashEndCallDone={() => setFlashEndCall(false)}
             onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
+            deploymentTarget={isSuperAdmin ? deploymentTarget : 'classic'}
           />
         </SheetContent>
       </Sheet>
@@ -1834,21 +1852,6 @@ const unmappedVariablesCount = useMemo(() => {
               />
               <p className="text-[11px] text-muted-foreground">Press ⌘↵ to publish quickly.</p>
             </div>
-
-            {isSuperAdmin && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Deploy target (superadmin only)</label>
-                <Select value={deploymentTarget} onValueChange={v => setDeploymentTarget(v as 'classic' | 'docker')}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="classic">Classic (subprocess)</SelectItem>
-                    <SelectItem value="docker">Docker (container)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             {renderDiffContent()}
 

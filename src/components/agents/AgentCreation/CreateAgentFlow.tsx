@@ -134,6 +134,10 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform === 'pipecat' ? 'pipecat_agent' : selectedPlatform,
         configuration: {
           description: formData.description.trim() || null,
+          // Persisted so the config page and start/stop/update calls can read
+          // back which backend this agent actually lives on, instead of
+          // always defaulting to classic.
+          deployment_target: isSuperAdmin ? deploymentTarget : 'classic',
         },
         project_id: projectId,
         environment: 'dev',

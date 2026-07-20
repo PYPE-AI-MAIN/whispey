@@ -38,6 +38,7 @@ interface TalkToAssistantProps {
   onFlashEndCallDone?: () => void
   onSessionActiveChange?: (active: boolean) => void
   sessionEndpoint?: string  // override the session API (e.g. /api/pipecat/start-web-session)
+  deploymentTarget?: 'classic' | 'docker'  // which voice backend this agent lives on
 }
 
 export default function TalkToAssistant({
@@ -50,6 +51,7 @@ export default function TalkToAssistant({
   onFlashEndCallDone,
   onSessionActiveChange,
   sessionEndpoint,
+  deploymentTarget = 'classic',
 }: TalkToAssistantProps) {
   const [mode, setMode]                   = useState<AgentTestMode>('voice')
   const [textMessage, setTextMessage]     = useState('')
@@ -60,7 +62,7 @@ export default function TalkToAssistant({
   const endCallRef       = useRef<HTMLButtonElement>(null)
   const inputRef         = useRef<HTMLInputElement>(null)
 
-  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode, sessionEndpoint })
+  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode, sessionEndpoint, deploymentTarget })
 
   const sessionActive = voiceState.isConnected || voiceState.isConnecting
 

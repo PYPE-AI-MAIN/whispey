@@ -1,11 +1,14 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import {
   getPypeApiBaseUrlForServer,
   isPypeUpstreamUnreachable,
   pypeApiAbortSignal,
+  type DeploymentTarget,
 } from '@/lib/pypeApiFetch'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -31,7 +34,18 @@ export async function GET(
       )
     }
 
-    const apiBaseUrl = getPypeApiBaseUrlForServer()
+    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
+    // Only superadmins may target 'docker' — re-checked here server-side.
+    let deploymentTarget: DeploymentTarget = request.nextUrl.searchParams.get('deploymentTarget') === 'docker' ? 'docker' : 'classic'
+    if (deploymentTarget === 'docker') {
+      const { userId } = await auth()
+      const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
+      if (callerRole !== 'superadmin') {
+        deploymentTarget = 'classic'
+      }
+    }
+
+    const apiBaseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
     if (!apiBaseUrl) {
       console.error('PYPEAI_API_URL / NEXT_PUBLIC_PYPEAI_API_URL is not configured')
       return NextResponse.json(
