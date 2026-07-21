@@ -404,7 +404,8 @@ function buildRouteSessionBehaviorPayload(formikValues: any): any {
     min_endpointing_delay: session.min_endpointing_delay,
     max_endpointing_delay: session.max_endpointing_delay,
     ...(session.endpointing_mode && { endpointing_mode: session.endpointing_mode }),
-    ...(session.interruption_mode && { interruption_mode: session.interruption_mode }),
+    // interruption_mode is intentionally omitted here — it's sent at the top level
+    // (see transformFormDataToAgentConfig) and the backend hoists it into session_behavior on save.
     ...(session.user_away_timeout !== undefined && { user_away_timeout: session.user_away_timeout }),
     ...(session.user_away_timeout_message !== undefined && session.user_away_timeout_message !== null && session.user_away_timeout_message !== '' && {
       user_away_timeout_message: session.user_away_timeout_message

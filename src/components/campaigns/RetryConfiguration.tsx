@@ -1,14 +1,255 @@
 // components/campaigns/RetryConfiguration.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RefreshCw, Info, Plus, X, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { RetryConfig } from '@/utils/campaigns/constants'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCodeGroup as SipCodeGroupType } from '@/utils/campaigns/constants'
+
+// Chip-style input: type a value, press Enter/Add to append it (after
+// validation), click the X on a chip to remove it. Used for both SIP error
+// codes and backoff minutes so entries can't be silently mistyped/dropped.
+function ChipInput({
+  values,
+  onChange,
+  validate,
+  formatChip,
+  placeholder,
+}: Readonly<{
+  values: (string | number)[]
+  onChange: (next: (string | number)[]) => void
+  validate: (raw: string) => { value: string | number; error?: string }
+  formatChip: (value: string | number) => string
+  placeholder: string
+}>) {
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  // Stable per-chip ids for React keys — values can repeat (a backoff
+  // schedule of 5, 10, 5 is valid), so the value itself can't be a key and a
+  // plain array index would shift/misattribute chips on removal.
+  const nextId = useRef(0)
+  const [ids, setIds] = useState<number[]>(() => values.map(() => nextId.current++))
+
+  // Resync if `values` changed for a reason other than this component's own
+  // add/remove (e.g. the parent reset the array on a retry-type switch).
+  useEffect(() => {
+    if (ids.length !== values.length) {
+      setIds(values.map(() => nextId.current++))
+    }
+  }, [values.length, ids.length])
+
+  const addChip = () => {
+    const trimmed = draft.trim()
+    if (!trimmed) return
+    const { value, error: validationError } = validate(trimmed)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    // Duplicates are allowed on purpose — e.g. a backoff schedule of
+    // 5, 10, 5, 5, 30 is a valid retry sequence, not a mistake.
+    setIds(prev => [...prev, nextId.current++])
+    onChange([...values, value])
+    setDraft('')
+    setError(null)
+  }
+
+  const removeChip = (removeIndex: number) => {
+    setIds(prev => prev.filter((_, i) => i !== removeIndex))
+    onChange(values.filter((_, i) => i !== removeIndex))
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5 mb-1.5">
+        {values.map((value, i) => (
+          <span
+            key={ids[i] ?? i}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-800 dark:text-gray-200"
+          >
+            {formatChip(value)}
+            <button
+              type="button"
+              onClick={() => removeChip(i)}
+              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          type="text"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            if (error) setError(null)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addChip()
+            }
+          }}
+          className="h-8 text-xs"
+          placeholder={placeholder}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addChip}
+          className="h-8 text-xs shrink-0"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          Add
+        </Button>
+      </div>
+      {error && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>}
+    </div>
+  )
+}
+
+// Renders SIP error codes grouped by backend outcome bucket (pype-voice-agent's
+// map_sip_to_result groups these codes as the same failure type), each with a
+// "select all" for multi-code groups and an info popover explaining every
+// code. Pulled out of RetryConfiguration's per-rule render to keep the JSX
+// nesting shallow.
+function SipCodePicker({
+  errorCodes,
+  groups,
+  isUsedElsewhere,
+  onChange,
+}: Readonly<{
+  errorCodes: string[]
+  groups: SipCodeGroupType[]
+  isUsedElsewhere: (code: string) => boolean
+  onChange: (next: string[]) => void
+}>) {
+  const toggleCode = (code: string, selected: boolean) => {
+    onChange(selected ? errorCodes.filter((c) => c !== code) : [...errorCodes, code])
+  }
+
+  const selectAllInGroup = (addable: string[]) => {
+    onChange(Array.from(new Set([...errorCodes, ...addable])))
+  }
+
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-1 mb-1.5">
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 block">
+          SIP Error Codes
+        </Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              aria-label="What do these codes mean?"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 text-xs" align="start">
+            <div className="space-y-2">
+              {VALID_SIP_ERROR_CODES.map((c) => (
+                <div key={c.code}>
+                  <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                    {c.code}
+                  </span>{' '}
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                  <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* One section per outcome bucket — codes are toggled once here, not
+          repeated in a separate summary row. "select all" only shows when a
+          group has more than one code. */}
+      <div className="space-y-2">
+        {groups.map((group) => (
+          <SipCodeGroup
+            key={group.key}
+            group={group}
+            errorCodes={errorCodes}
+            isUsedElsewhere={isUsedElsewhere}
+            onToggleCode={toggleCode}
+            onSelectAll={selectAllInGroup}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SipCodeGroup({
+  group,
+  errorCodes,
+  isUsedElsewhere,
+  onToggleCode,
+  onSelectAll,
+}: Readonly<{
+  group: SipCodeGroupType
+  errorCodes: string[]
+  isUsedElsewhere: (code: string) => boolean
+  onToggleCode: (code: string, selected: boolean) => void
+  onSelectAll: (addable: string[]) => void
+}>) {
+  const groupCodes = group.codes
+  const addable = groupCodes
+    .filter((c) => !errorCodes.includes(c.code) && !isUsedElsewhere(c.code))
+    .map((c) => c.code)
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{group.label}</span>
+        {group.codes.length > 1 && (
+          <button
+            type="button"
+            disabled={addable.length === 0}
+            onClick={() => onSelectAll(addable)}
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+          >
+            select all
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {groupCodes.map((c) => {
+          const selected = errorCodes.includes(c.code)
+          const usedElsewhere = !selected && isUsedElsewhere(c.code)
+          return (
+            <button
+              key={c.code}
+              type="button"
+              disabled={usedElsewhere}
+              title={usedElsewhere ? `${c.code} is already used in another retry rule` : c.description}
+              onClick={() => onToggleCode(c.code, selected)}
+              className={
+                selected
+                  ? 'px-2 py-1 rounded-md border text-xs font-mono bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                  : 'px-2 py-1 rounded-md border text-xs font-mono border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+              }
+            >
+              {c.code} — {c.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 interface RetryConfigurationProps {
   onFieldChange: (field: string, value: any) => void
@@ -23,11 +264,6 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
   const [availableMetrics, setAvailableMetrics] = useState<string[]>([])
   const [availableFields, setAvailableFields] = useState<string[]>([])
   const [loadingFields, setLoadingFields] = useState(false)
-
-  const errorCodeLabels: { [key: string]: string } = {
-    '480': 'Temporarily Unavailable',
-    '486': 'Busy Here',
-  }
 
   // Fetch agent metrics and field extractor fields
   useEffect(() => {
@@ -171,14 +407,27 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
   }
 
   const addRetryConfig = () => {
+    // Start with no codes rather than a hardcoded default — a default like
+    // ['480', '486'] would immediately collide with an existing rule that
+    // already covers those codes, since a code can only belong to one rule.
     const newConfig: RetryConfig = {
       type: 'sipCode',
-      errorCodes: ['480', '486'],
+      errorCodes: [],
       delayMinutes: 5,
       maxRetries: 2,
     }
     onFieldChange('retryConfig', [...values.retryConfig, newConfig])
   }
+
+  // A SIP code can only belong to one retry rule at a time — otherwise it's
+  // ambiguous which rule's delay/maxRetries/backoff governs a call that hits
+  // that code.
+  const isSipCodeUsedElsewhere = (code: string, currentIndex: number) =>
+    values.retryConfig.some((cfg, i) => {
+      if (i === currentIndex) return false
+      const isSipCode = cfg.type === 'sipCode' || !cfg.type
+      return isSipCode && Array.isArray(cfg.errorCodes) && cfg.errorCodes.includes(code)
+    })
 
   const removeRetryConfig = (index: number) => {
     const updatedConfig = values.retryConfig.filter((_, i) => i !== index)
@@ -233,34 +482,13 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
         {values.retryConfig.map((config, index) => {
           // For backward compatibility: if type is not set, assume it's sipCode
           const retryType = config.type || (config.errorCodes ? 'sipCode' : 'sipCode')
-          const errorCode = config.errorCodes?.[0]
-          const label = errorCode ? errorCodeLabels[errorCode] || errorCode : ''
-          
+
           return (
             <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {retryType === 'sipCode' && errorCode && (
-                    <>
-                      <span className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {errorCode}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {label}
-                      </span>
-                    </>
-                  )}
-                  {retryType === 'metric' && (
-                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      Metric: {config.metricName || 'Not selected'}
-                    </span>
-                  )}
-                  {retryType === 'fieldExtractor' && (
-                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      Field: {config.fieldName || 'Not selected'}
-                    </span>
-                  )}
-                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Retry Config #{index + 1}
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -285,9 +513,12 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     
                     // Clear type-specific fields and set defaults based on new type
                     if (value === 'sipCode') {
+                      // No hardcoded default codes — ['480', '486'] would
+                      // collide with another rule that already claims them,
+                      // since a code can only belong to one rule.
                       updatedConfig[index] = {
                         type: 'sipCode',
-                        errorCodes: config.errorCodes && config.errorCodes.length > 0 ? config.errorCodes : ['480', '486'],
+                        errorCodes: config.errorCodes && config.errorCodes.length > 0 ? config.errorCodes : [],
                         delayMinutes: config.delayMinutes || 5,
                         maxRetries: config.maxRetries || 2,
                       } as unknown as RetryConfig
@@ -334,27 +565,12 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
 
               {/* SIP Code Fields - support multiple error codes */}
               {retryType === 'sipCode' && (
-                <div className="mb-3">
-                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                    SIP Error Codes (comma-separated)
-                  </Label>
-                  <Input
-                    type="text"
-                    value={config.errorCodes?.join(', ') || ''}
-                    onChange={(e) => {
-                      const codes = e.target.value
-                        .split(',')
-                        .map(s => s.trim())
-                        .filter(s => s.length > 0)
-                      handleRetryChange(index, 'errorCodes', codes)
-                    }}
-                    className="h-9 text-sm"
-                    placeholder="480, 486"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Valid codes: 480 (Temporarily Unavailable), 486 (Busy Here)
-                  </p>
-                </div>
+                <SipCodePicker
+                  errorCodes={config.errorCodes || []}
+                  groups={SIP_CODE_GROUPS}
+                  isUsedElsewhere={(code) => isSipCodeUsedElsewhere(code, index)}
+                  onChange={(codes) => handleRetryChange(index, 'errorCodes', codes)}
+                />
               )}
 
                 {/* Metric Fields */}
@@ -585,7 +801,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             min="0"
                             max="1440"
                             value={config.delayMinutes ?? 0}
-                            onChange={(e) => handleRetryChange(index, 'delayMinutes', parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleRetryChange(index, 'delayMinutes', Number.parseInt(e.target.value) || 0)}
                             className="h-8 text-xs"
                             placeholder="30"
                           />
@@ -603,7 +819,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             min="0"
                             max="10"
                             value={config.maxRetries ?? 0}
-                            onChange={(e) => handleRetryChange(index, 'maxRetries', parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleRetryChange(index, 'maxRetries', Number.parseInt(e.target.value) || 0)}
                             className="h-8 text-xs"
                             placeholder="2"
                           />
@@ -615,31 +831,33 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     ) : (
                       <div className="pt-1">
                         <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                          Backoff schedule (comma-separated minutes)
+                          Backoff schedule (minutes)
                         </Label>
-                        <Input
-                          type="text"
-                          value={(config.backoffMinutes || []).join(', ')}
-                          onChange={(e) => {
-                            // Allow free typing; we only persist values that
-                            // satisfy the backend constraints (min 5 min, max
-                            // 1440 min, up to 10 entries).
-                            const parsed = e.target.value
-                              .split(',')
-                              .map(s => s.trim())
-                              .filter(s => s.length > 0)
-                              .map(s => parseInt(s, 10))
-                              .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
-                            handleRetryChange(index, 'backoffMinutes', parsed.slice(0, 10))
+                        <ChipInput
+                          values={config.backoffMinutes || []}
+                          onChange={(minutes) => handleRetryChange(index, 'backoffMinutes', minutes)}
+                          validate={(raw) => {
+                            const n = Number.parseInt(raw, 10)
+                            if (!Number.isFinite(n) || String(n) !== raw) {
+                              return { value: n, error: 'Enter a whole number' }
+                            }
+                            if (n < 5 || n > 1440) {
+                              return { value: n, error: 'Must be between 5 and 1440 minutes' }
+                            }
+                            if ((config.backoffMinutes || []).length >= 10) {
+                              return { value: n, error: 'Backoff schedule cannot have more than 10 entries' }
+                            }
+                            return { value: n }
                           }}
-                          className="h-8 text-xs"
-                          placeholder="5, 10, 30"
+                          formatChip={(n) => `${n} min`}
+                          placeholder="Type minutes, e.g. 30"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Attempt 1 waits {(config.backoffMinutes || [])[0] ?? '?'} min,
+                          Entries are used in the order you add them. Attempt 1 waits{' '}
+                          {(config.backoffMinutes || [])[0] ?? '?'} min,
                           attempt 2 waits {(config.backoffMinutes || [])[1] ?? '?'} min, etc.
                           Total retries = {(config.backoffMinutes || []).length} (max 10).
-                          Minimum 5 minutes per entry.
+                          Minimum 5 minutes per entry. Repeated values are allowed.
                         </p>
                       </div>
                     )}

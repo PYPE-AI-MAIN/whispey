@@ -113,6 +113,15 @@ const modelProviders: Record<string, Provider> = {
       { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini', deploymentName: 'gpt-4.1-mini-2' },
     ]
   },
+  aws: {
+    label: 'AWS Bedrock',
+    icon: 'Aw',
+    color: 'bg-orange-500',
+    type: 'direct',
+    models: [
+      { value: 'zai.glm-5', label: 'Z.ai GLM 5' },
+    ]
+  },
   groq: {
     label: 'Groq',
     icon: 'G',
@@ -180,6 +189,7 @@ const getProviderIcon = (providerKey: string) => {
     groq: <Cpu className="h-3 w-3" />,
     google: <Cloud className="h-3 w-3" />,
     azure_openai: <Cloud className="h-3 w-3" />,
+    aws: <Cloud className="h-3 w-3" />,
     cerebras: <Cpu className="h-3 w-3" />
   }
   return iconMap[providerKey]
