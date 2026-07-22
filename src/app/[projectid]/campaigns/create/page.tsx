@@ -157,6 +157,9 @@ function CreateCampaign() {
   const [validationErrors, setValidationErrors] = useState<CsvValidationError[]>([])
   const [maxConcurrency, setMaxConcurrency] = useState<number>(5) // Default to 5
   const [loadingConfig, setLoadingConfig] = useState<boolean>(true)
+  // Raw phone strings (as they appear in the CSV) that are on the DNC list.
+  const [dncBlocked, setDncBlocked] = useState<Set<string>>(new Set())
+  const [dncChecking, setDncChecking] = useState<boolean>(false)
 
   const initialValues = {
     campaignName: '',
@@ -218,6 +221,41 @@ function CreateCampaign() {
     fetchProjectConfig()
   }, [projectId])
 
+  // Batch-check uploaded numbers against the DNC list whenever recipients change.
+  // Blocked numbers are highlighted in the preview and excluded on submit.
+  useEffect(() => {
+    const phones = csvData.map((r) => r.phone).filter(Boolean)
+    if (phones.length === 0) {
+      setDncBlocked(new Set())
+      return
+    }
+    let cancelled = false
+    setDncChecking(true)
+    ;(async () => {
+      try {
+        const res = await fetch('/api/dnc/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numbers: phones, project_id: projectId }),
+        })
+        const json = await res.json()
+        if (cancelled) return
+        const blocked = new Set<string>(
+          (json.results ?? []).filter((r: any) => r.blocked).map((r: any) => r.input)
+        )
+        setDncBlocked(blocked)
+      } catch (err) {
+        console.error('DNC check failed:', err)
+        if (!cancelled) setDncBlocked(new Set())
+      } finally {
+        if (!cancelled) setDncChecking(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [csvData, projectId])
+
   const handleFileUpload = (file: File, data: RecipientRow[], errors: CsvValidationError[]) => {
     setCsvFile(file)
     setCsvData(data)
@@ -228,6 +266,7 @@ function CreateCampaign() {
     setCsvFile(null)
     setCsvData([])
     setValidationErrors([])
+    setDncBlocked(new Set())
   }
 
   const handleSubmit = async (values: typeof initialValues, { setSubmitting }: any) => {
@@ -247,8 +286,14 @@ function CreateCampaign() {
       // Generate unique campaign ID
       const campaignId = uuidv4()
 
-      // Step 1: Upload CSV to S3
-      const normalizedData = csvData.map(row => {
+      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list.
+      const callableData = csvData.filter(row => !dncBlocked.has(row.phone))
+      if (callableData.length === 0) {
+        alert('Every uploaded number is on the DNC list. Nothing to send.')
+        setSubmitting(false)
+        return
+      }
+      const normalizedData = callableData.map(row => {
         const rowData: any = {}
         Object.keys(row).forEach(key => {
           const value = (row as any)[key]
@@ -537,7 +582,7 @@ function CreateCampaign() {
             </div>
 
             {/* Right Panel - Recipients Preview */}
-            <RecipientsPreview csvData={csvData} />
+            <RecipientsPreview csvData={csvData} dncBlocked={dncBlocked} />
           </div>
         )}
       </Formik>

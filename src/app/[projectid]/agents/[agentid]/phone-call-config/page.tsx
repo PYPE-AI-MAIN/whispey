@@ -252,6 +252,21 @@ export default function PhoneCallConfig() {
     setIsLoading(true); setMessage(''); setMessageType('')
     try {
       const formattedNumber = `${currentCountry.prefix}${cleaned}`
+
+      // DNC gate: block before dispatch if this number is on the Do Not Call list.
+      // (Backend/bridge enforce this too — this is the fast, user-facing check.)
+      const dncRes = await fetch('/api/dnc/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numbers: formattedNumber, project_id: projectId }),
+      })
+      if (dncRes.status === 406) {
+        const msg = `${formattedNumber} is on the Do Not Call (DNC) list — call blocked.`
+        setMessage(msg); setMessageType('error'); toast.error(msg)
+        setIsLoading(false)
+        return
+      }
+
       const response = await fetch('/api/agents/dispatch-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
