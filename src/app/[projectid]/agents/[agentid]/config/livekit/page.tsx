@@ -249,8 +249,16 @@ export default function AgentConfig() {
   const [showMergePrompt, setShowMergePrompt] = useState(false)
   const [publishedSnapshot, setPublishedSnapshot] = useState<any>(null)
   const [isDiffLoading, setIsDiffLoading] = useState(false)
-  const promptDiffRef = useRef<HTMLDivElement>(null)
-  const settingsDiffRef = useRef<HTMLDivElement>(null)
+  const [diffTab, setDiffTab] = useState<'prompt' | 'settings'>('prompt')
+
+  // When the review modal opens, land on whichever section actually changed.
+  useEffect(() => {
+    if (!isCommitModalOpen || !pendingCheckpoint) return
+    const pubFull = publishedSnapshot ? sanitizeForDiff(publishedSnapshot) : {}
+    const curFull = sanitizeForDiff(pendingCheckpoint.config)
+    const promptChanged = extractPrompt(pubFull) !== extractPrompt(curFull)
+    setDiffTab(promptChanged ? 'prompt' : 'settings')
+  }, [isCommitModalOpen, pendingCheckpoint, publishedSnapshot])
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -724,15 +732,10 @@ export default function AgentConfig() {
     }
   }
 
-  const renderDiffContent = () => {
-    if (isDiffLoading) {
-      return (
-        <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading diff...
-        </div>
-      )
-    }
-    if (!pendingCheckpoint) return null
+  // Computes both sides of the diff plus per-section change flags. Returns null while loading
+  // or when there's nothing to compare, so the tab bar and body can share one source of truth.
+  const getDiffModel = () => {
+    if (isDiffLoading || !pendingCheckpoint) return null
 
     const publishedFull = publishedSnapshot ? sanitizeForDiff(publishedSnapshot) : {}
     const currentFull = sanitizeForDiff(pendingCheckpoint.config)
@@ -751,40 +754,61 @@ export default function AgentConfig() {
       callbackScheduling: currentAdvanced?.callbackScheduling ?? null,
     }
 
+    const promptOld = extractPrompt(publishedFull)
+    const promptNew = extractPrompt(currentFull)
+    const settingsOld = serializeForDiff(publishedSettings)
+    const settingsNew = serializeForDiff(currentSettings)
+
+    return {
+      promptOld, promptNew, settingsOld, settingsNew,
+      promptChanged: promptOld !== promptNew,
+      settingsChanged: settingsOld !== settingsNew,
+    }
+  }
+
+  // Pinned tab row — sits outside the scroll area so diff content never peeks above it.
+  const renderDiffTabs = (model: ReturnType<typeof getDiffModel>) => {
+    if (!model) return null
+    const tabs: { key: 'prompt' | 'settings'; label: string; changed: boolean }[] = [
+      { key: 'prompt', label: 'Prompt', changed: model.promptChanged },
+      { key: 'settings', label: 'Settings', changed: model.settingsChanged },
+    ]
     return (
-      <div className="space-y-3">
-        <div className="flex gap-2 sticky top-0 z-10 bg-background pb-1">
-          <Button
-            type="button" variant="outline" size="sm" className="h-7 text-xs"
-            onClick={() => promptDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      <div className="flex items-center gap-1">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setDiffTab(tab.key)}
+            className={`relative -mb-px flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              diffTab === tab.key
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
           >
-            Prompt
-          </Button>
-          <Button
-            type="button" variant="outline" size="sm" className="h-7 text-xs"
-            onClick={() => settingsDiffRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          >
-            Settings
-          </Button>
-        </div>
-
-        <div ref={promptDiffRef}>
-          <p className="text-[11px] font-medium text-muted-foreground mb-1">Prompt</p>
-          <SideBySideDiff
-            oldText={extractPrompt(publishedFull)}
-            newText={extractPrompt(currentFull)}
-          />
-        </div>
-
-        <div ref={settingsDiffRef}>
-          <p className="text-[11px] font-medium text-muted-foreground mb-1">Settings</p>
-          <SideBySideDiff
-            oldText={serializeForDiff(publishedSettings)}
-            newText={serializeForDiff(currentSettings)}
-          />
-        </div>
+            {tab.label}
+            {tab.changed && (
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Has changes" />
+            )}
+          </button>
+        ))}
       </div>
     )
+  }
+
+  // Scrollable diff body for the active tab.
+  const renderDiffBody = (model: ReturnType<typeof getDiffModel>) => {
+    if (isDiffLoading) {
+      return (
+        <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading diff...
+        </div>
+      )
+    }
+    if (!model) return null
+    return diffTab === 'prompt'
+      ? <SideBySideDiff oldText={model.promptOld} newText={model.promptNew} />
+      : <SideBySideDiff oldText={model.settingsOld} newText={model.settingsNew} />
   }
 
   const handleCancel = () => {
@@ -1802,14 +1826,12 @@ const unmappedVariablesCount = useMemo(() => {
 
       {/* Review changes / commit dialog */}
       <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
-        <DialogContent className="sm:max-w-5xl max-w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Review Changes</DialogTitle>
-          </DialogHeader>
-          <p className="px-3 py-1.5 text-[11px] font-medium text-amber-600 bg-amber-500/15 rounded-md">
-            Seeing changes you didn't make? Refresh the page and try again.
-          </p>
-          <div className="space-y-3 py-2">
+        <DialogContent className="sm:max-w-5xl max-w-[calc(100%-2rem)] max-h-[88vh] p-0 gap-0 flex flex-col overflow-hidden">
+          {/* Header — pinned */}
+          <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border space-y-3">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-semibold">Review Changes</DialogTitle>
+            </DialogHeader>
             <div className="space-y-1.5">
               <label htmlFor="commit-message" className="text-xs font-medium text-foreground">Commit message</label>
               <Textarea
@@ -1824,8 +1846,22 @@ const unmappedVariablesCount = useMemo(() => {
               />
               <p className="text-[11px] text-muted-foreground">Press ⌘↵ to publish quickly.</p>
             </div>
+          </div>
 
-            {renderDiffContent()}
+          {/* Tab row — pinned between header and the scrolling diff */}
+          {(() => {
+            const model = getDiffModel()
+            if (!model) return null
+            return (
+              <div className="flex-shrink-0 px-6 border-b border-border">
+                {renderDiffTabs(model)}
+              </div>
+            )
+          })()}
+
+          {/* Body — scrolls; header, tabs & footer stay put */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3">
+            {renderDiffBody(getDiffModel())}
 
             {!isDiffLoading && !publishedSnapshot && (
               <p className="text-[11px] text-muted-foreground">No prior published version — this will be the first version.</p>
@@ -1833,24 +1869,32 @@ const unmappedVariablesCount = useMemo(() => {
 
             {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              variant="outline" size="sm" className="h-8 text-xs"
-              onClick={() => setIsCommitModalOpen(false)}
-              disabled={isSavingVersion}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm" className="h-8 text-xs"
-              onClick={handleSaveVersion}
-              disabled={isSavingVersion || !commitMessage.trim()}
-            >
-              {isSavingVersion
-                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
-                : 'Publish'
-              }
-            </Button>
+
+          {/* Footer — pinned, always visible */}
+          <div className="flex-shrink-0 flex items-center justify-between gap-2 px-6 py-4 border-t border-border">
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3 text-amber-500" />
+              Seeing changes you didn't make? Refresh and try again.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline" size="sm" className="h-8 text-xs"
+                onClick={() => setIsCommitModalOpen(false)}
+                disabled={isSavingVersion}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm" className="h-8 text-xs"
+                onClick={handleSaveVersion}
+                disabled={isSavingVersion || !commitMessage.trim()}
+              >
+                {isSavingVersion
+                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                  : 'Publish'
+                }
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
