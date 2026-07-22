@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb"
 
 const REGION = process.env.AWS_REGION || "ap-south-1"
-const TABLE_NAME = process.env.AGENT_CONFIG_TABLE_NAME || "call-log-agent-config-test"
+const CALL_CONFIG_TABLE = (process.env.CALL_CONFIG_TABLE || `call-log-agent-config-${process.env.STAGE || "dev"}`).trim()
+const CONFIG_VERSIONS_TABLE = (process.env.CONFIG_VERSIONS_TABLE || `config-versions-${process.env.STAGE || "dev"}`).trim()
 const client = new DynamoDBClient({ region: REGION })
 
 export async function GET(
@@ -17,43 +18,56 @@ export async function GET(
       return NextResponse.json({ message: "log_id is required" }, { status: 400 })
     }
 
-    console.log(`📋 Fetching agent config from table: ${TABLE_NAME}, log_id: ${logId}`)
+    console.log(`📋 Fetching call config pointer from table: ${CALL_CONFIG_TABLE}, log_id: ${logId}`)
 
-    const command = new GetItemCommand({
-      TableName: TABLE_NAME,
-      Key: {
-        log_id: { S: logId },
-      },
-    })
+    // Step 1: log_id -> config_hash (tiny pointer row)
+    const pointerResponse = await client.send(new GetItemCommand({
+      TableName: CALL_CONFIG_TABLE,
+      Key: { log_id: { S: logId } },
+    }))
 
-    const response = await client.send(command)
-
-    if (!response.Item) {
+    if (!pointerResponse.Item) {
       return NextResponse.json(
         { message: "Agent config not found for this log_id" },
         { status: 404 }
       )
     }
 
-    // Parse DynamoDB item
-    const item: any = {}
-    for (const [key, value] of Object.entries(response.Item)) {
-      if (value.S) {
-        item[key] = value.S
-      } else if (value.N) {
-        item[key] = parseFloat(value.N)
-      } else if (value.BOOL !== undefined) {
-        item[key] = value.BOOL
-      }
+    const configHash = pointerResponse.Item.config_hash?.S
+    const agentId = pointerResponse.Item.agent_id?.S
+    const projectId = pointerResponse.Item.project_id?.S
+
+    if (!configHash) {
+      return NextResponse.json(
+        { message: "Agent config not found for this log_id" },
+        { status: 404 }
+      )
     }
 
-    // Parse full_config if it exists
-    if (item.full_config) {
-      try {
-        item.full_config = JSON.parse(item.full_config)
-      } catch (e) {
-        console.error("Error parsing full_config:", e)
-      }
+    // Step 2: config_hash -> actual config blob (deduped store)
+    const versionResponse = await client.send(new GetItemCommand({
+      TableName: CONFIG_VERSIONS_TABLE,
+      Key: { config_hash: { S: configHash } },
+    }))
+
+    if (!versionResponse.Item?.full_config?.S) {
+      return NextResponse.json(
+        { message: "Agent config not found for this log_id" },
+        { status: 404 }
+      )
+    }
+
+    const item: any = {
+      log_id: logId,
+      agent_id: agentId,
+      project_id: projectId,
+    }
+
+    try {
+      item.full_config = JSON.parse(versionResponse.Item.full_config.S)
+    } catch (e) {
+      console.error("Error parsing full_config:", e)
+      item.full_config = versionResponse.Item.full_config.S
     }
 
     return NextResponse.json(item, { status: 200 })
@@ -65,4 +79,3 @@ export async function GET(
     )
   }
 }
-
