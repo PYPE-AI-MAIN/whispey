@@ -17,8 +17,7 @@ import { getAgentPlatform } from "@/utils/agentDetection";
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useTranscriptEnglishToggle } from "@/hooks/useTranscriptEnglishToggle"
-import { useMemberVisibility } from "@/hooks/useMemberVisibility"
-import { useGlobalRole } from "@/hooks/useGlobalRole"
+import { useConfigTabAccess } from "@/hooks/useConfigTabAccess"
 
 interface TracesTableProps {
   agentId: string
@@ -70,9 +69,7 @@ export const METRICS_LOGS_SELECT =
 
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, sessionId, filters }) => {
 
-  const { isOwnerOrAdmin } = useMemberVisibility(projectId)
-  const { isSuperAdmin } = useGlobalRole()
-  const canViewConfig = isOwnerOrAdmin || isSuperAdmin
+  const canViewConfig = useConfigTabAccess(projectId)
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("turns");
