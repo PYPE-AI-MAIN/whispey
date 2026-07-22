@@ -158,6 +158,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       <div className="flex-1 min-h-0 overflow-auto">
         <TracesTable
           agentId={resolvedParams.agentid}
+          projectId={Array.isArray(projectid) ? projectid[0] : projectid}
           sessionId={sessionId}
           agent={agent}
           filters={filters}
