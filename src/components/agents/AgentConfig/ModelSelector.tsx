@@ -35,6 +35,7 @@ interface Model {
   label: string
   id?: string
   deploymentName?: string
+  addedAt?: string // ISO date (YYYY-MM-DD); shows a "New" badge for NEW_BADGE_DAYS after this date
 }
 
 interface ModelGroup {
@@ -50,7 +51,25 @@ interface Provider {
   models?: Model[]
   groups?: ModelGroup[]
   description?: string
+  addedAt?: string // ISO date (YYYY-MM-DD); shows a "New" badge for NEW_BADGE_DAYS after this date
 }
+
+// How long a freshly-added provider/model keeps its "New" badge
+const NEW_BADGE_DAYS = 30
+
+// True while `addedAt` is within the last NEW_BADGE_DAYS. Badge disappears automatically afterwards.
+const isNew = (addedAt?: string): boolean => {
+  if (!addedAt) return false
+  const added = new Date(addedAt).getTime()
+  if (Number.isNaN(added)) return false
+  return Date.now() - added < NEW_BADGE_DAYS * 24 * 60 * 60 * 1000
+}
+
+const NewBadge = () => (
+  <span className="ml-1 rounded-full bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-green-700 dark:text-green-300 flex-shrink-0">
+    New
+  </span>
+)
 
 interface AzureConfig {
   endpoint: string
@@ -92,9 +111,12 @@ const modelProviders: Record<string, Provider> = {
     icon: 'G',
     color: 'bg-blue-500',
     type: 'direct',
+    addedAt: '2026-07-22',
     models: [
       { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
+      { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', addedAt: '2026-07-22' },
       { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+      { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-lite', addedAt: '2026-07-22' },
       { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
       { value: 'gemini-2.5-flash-preview-09-2025', label: 'Gemini 2.5 Flash Preview' },
       { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-lite' },
@@ -432,6 +454,7 @@ const getFlattenedMenuItems = () => {
                       {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
                     </div>
                     <span className="font-medium text-sm">{provider.label}</span>
+                    {isNew(provider.addedAt) && <NewBadge />}
                     {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-gray-400" />}
                     {selectedProvider === providerKey && <Check className="h-3 w-3 text-blue-600" />}
                   </div>
@@ -455,7 +478,10 @@ const getFlattenedMenuItems = () => {
                             : 'hover:bg-gray-50 dark:hover:bg-slate-800'
                         }`}
                       >
-                        <span className="text-sm">{model.label}</span>
+                        <span className="flex items-center text-sm">
+                          {model.label}
+                          {isNew(model.addedAt) && <NewBadge />}
+                        </span>
                         {selectedProvider === providerKey && selectedModel === model.value && (
                           <Check className="h-3 w-3 text-blue-600" />
                         )}
@@ -513,6 +539,7 @@ const getFlattenedMenuItems = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm truncate">{provider.label}</span>
+                          {isNew(provider.addedAt) && <NewBadge />}
                           {selectedProvider === providerKey && (
                             <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                           )}
@@ -541,7 +568,10 @@ const getFlattenedMenuItems = () => {
                                 : ''
                             } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            <span className="font-medium text-sm truncate pr-2">{model.label}</span>
+                            <span className="flex items-center font-medium text-sm truncate pr-2">
+                              {model.label}
+                              {isNew(model.addedAt) && <NewBadge />}
+                            </span>
                             {selectedProvider === providerKey && selectedModel === model.value && (
                               <Check className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                             )}
