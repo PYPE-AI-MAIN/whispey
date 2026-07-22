@@ -67,7 +67,7 @@ export const METRICS_LOGS_SELECT =
   "created_at, unix_timestamp, bug_report, " +
   "call_success, lesson_day, lesson_completed, phone_number"
 
-const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, sessionId, filters }) => {
+const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, sessionId, filters }) => { // NOSONAR javascript:S3776
 
   const canViewConfig = useConfigTabAccess(projectId)
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
