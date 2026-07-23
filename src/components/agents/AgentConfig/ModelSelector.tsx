@@ -325,6 +325,43 @@ function GroupModelItems({
   )
 }
 
+// Mobile "expanded provider" model items within a group — extracted to keep the
+// mobile submenu's map callbacks from nesting past 4 levels deep.
+function MobileGroupModelItems({
+  models,
+  providerKey,
+  selectedProvider,
+  selectedModel,
+  onSelect,
+}: Readonly<{
+  models: Model[]
+  providerKey: string
+  selectedProvider: string
+  selectedModel: string
+  onSelect: (providerKey: string, model: string) => void
+}>) {
+  return (
+    <>
+      {models.map((model) => (
+        <DropdownMenuItem
+          key={model.value}
+          onClick={() => onSelect(providerKey, model.value)}
+          className={`flex items-center justify-between px-6 py-2 ${
+            selectedProvider === providerKey && selectedModel === model.value
+              ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+              : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <span className="text-sm">{model.label}</span>
+          {selectedProvider === providerKey && selectedModel === model.value && (
+            <Check className="h-3 w-3 text-blue-600" />
+          )}
+        </DropdownMenuItem>
+      ))}
+    </>
+  )
+}
+
 export default function ModelSelector({
   selectedProvider = 'openai',
   selectedModel = '',
@@ -609,22 +646,13 @@ const getFlattenedMenuItems = () => {
                             {group.name}
                           </h4>
                         </div>
-                        {group.models.map((model) => (
-                          <DropdownMenuItem
-                            key={model.value}
-                            onClick={() => handleModelSelect(providerKey, model.value)}
-                            className={`flex items-center justify-between px-6 py-2 ${
-                              selectedProvider === providerKey && selectedModel === model.value
-                                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-                                : 'hover:bg-gray-50 dark:hover:bg-slate-800'
-                            }`}
-                          >
-                            <span className="text-sm">{model.label}</span>
-                            {selectedProvider === providerKey && selectedModel === model.value && (
-                              <Check className="h-3 w-3 text-blue-600" />
-                            )}
-                          </DropdownMenuItem>
-                        ))}
+                        <MobileGroupModelItems
+                          models={group.models}
+                          providerKey={providerKey}
+                          selectedProvider={selectedProvider}
+                          selectedModel={selectedModel}
+                          onSelect={handleModelSelect}
+                        />
                       </div>
                     ))}
                   </div>
