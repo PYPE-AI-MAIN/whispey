@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, Info, Plus, X, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCodeGroup as SipCodeGroupType } from '@/utils/campaigns/constants'
+import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCode, SipCodeGroup as SipCodeGroupType } from '@/utils/campaigns/constants'
 
 // Chip-style input: type a value, press Enter/Add to append it (after
 // validation), click the X on a chip to remove it. Used for both SIP error
@@ -195,6 +195,12 @@ function SipCodePicker({
   )
 }
 
+function sipCodeButtonTitle(c: SipCode, usedElsewhere: boolean): string {
+  if (c.enabled && usedElsewhere) return `${c.code} is already used in another retry rule`
+  if (c.enabled) return c.description
+  return `${c.code} — coming soon`
+}
+
 function SipCodeGroup({
   group,
   errorCodes,
@@ -236,11 +242,7 @@ function SipCodeGroup({
           const selected = errorCodes.includes(c.code)
           const usedElsewhere = !selected && isUsedElsewhere(c.code)
           const disabled = !c.enabled || usedElsewhere
-          const title = !c.enabled
-            ? `${c.code} — coming soon`
-            : usedElsewhere
-              ? `${c.code} is already used in another retry rule`
-              : c.description
+          const title = sipCodeButtonTitle(c, usedElsewhere)
           return (
             <button
               key={c.code}
