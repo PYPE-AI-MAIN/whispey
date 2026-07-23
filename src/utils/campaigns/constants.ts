@@ -74,6 +74,13 @@ export interface SipCode {
   code: string
   label: string
   description: string
+  // Frontend-only picker gate — does NOT affect what the Yup schema or the
+  // schedule API route accept (VALID_SIP_ERROR_CODE_VALUES is intentionally
+  // left unfiltered). Temporary: while we RCA the retry-count/backoff-order
+  // issues seen with the full 9-code set, the picker only lets a user select
+  // the pre-existing 480/486; the rest render disabled as "Coming soon" so
+  // the groups/UI don't need rebuilding once codes are re-enabled.
+  enabled: boolean
 }
 
 export interface SipCodeGroup {
@@ -108,6 +115,7 @@ const sipCodeSchema = z.object({
   code: z.string().regex(/^\d{3}$/, 'SIP code must be a 3-digit string'),
   label: z.string().min(1),
   description: z.string().min(1),
+  enabled: z.boolean(),
 })
 
 const sipCodeGroupSchema = z.object({

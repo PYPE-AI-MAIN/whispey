@@ -165,6 +165,9 @@ function SipCodePicker({
                     {c.code}
                   </span>{' '}
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                  {!c.enabled && (
+                    <span className="ml-1 text-[10px] italic text-gray-400">(coming soon)</span>
+                  )}
                   <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
                 </div>
               ))}
@@ -206,8 +209,11 @@ function SipCodeGroup({
   onSelectAll: (addable: string[]) => void
 }>) {
   const groupCodes = group.codes
+  // Only enabled, unclaimed codes can be picked up by "select all" — the
+  // rest are temporarily disabled ("Coming soon") while retry-count/backoff
+  // behavior is under RCA. Frontend-only gate; validation still accepts all.
   const addable = groupCodes
-    .filter((c) => !errorCodes.includes(c.code) && !isUsedElsewhere(c.code))
+    .filter((c) => c.enabled && !errorCodes.includes(c.code) && !isUsedElsewhere(c.code))
     .map((c) => c.code)
 
   return (
@@ -229,12 +235,18 @@ function SipCodeGroup({
         {groupCodes.map((c) => {
           const selected = errorCodes.includes(c.code)
           const usedElsewhere = !selected && isUsedElsewhere(c.code)
+          const disabled = !c.enabled || usedElsewhere
+          const title = !c.enabled
+            ? `${c.code} — coming soon`
+            : usedElsewhere
+              ? `${c.code} is already used in another retry rule`
+              : c.description
           return (
             <button
               key={c.code}
               type="button"
-              disabled={usedElsewhere}
-              title={usedElsewhere ? `${c.code} is already used in another retry rule` : c.description}
+              disabled={disabled}
+              title={title}
               onClick={() => onToggleCode(c.code, selected)}
               className={
                 selected
@@ -243,6 +255,7 @@ function SipCodeGroup({
               }
             >
               {c.code} — {c.label}
+              {!c.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
             </button>
           )
         })}
