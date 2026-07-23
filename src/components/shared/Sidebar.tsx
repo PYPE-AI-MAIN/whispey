@@ -743,8 +743,8 @@ function PricingBox({
       </div>
       {pricingConfig.features && pricingConfig.features.length > 0 && (
         <ul className="space-y-1 mb-3">
-          {pricingConfig.features.map((feature: string, index: number) => (
-            <li key={index} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
+          {pricingConfig.features.map((feature: string) => (
+            <li key={feature} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
               <div className="w-1 h-1 bg-purple-400 rounded-full flex-shrink-0" />
               {feature}
             </li>

@@ -557,8 +557,8 @@ const getFlattenedMenuItems = () => {
                       collisionPadding={16}
                     >
                       {/* Direct models */}
-                      {provider.type === 'direct' && provider.models && 
-                        provider.models.map((model) => (
+                      {provider.type === 'direct' &&
+                        provider.models?.map((model) => (
                           <DropdownMenuItem
                             key={model.value}
                             onClick={() => handleModelSelect(providerKey, model.value)}
@@ -580,8 +580,8 @@ const getFlattenedMenuItems = () => {
                       }
                       
                       {/* Grouped models */}
-                      {provider.type === 'grouped' && provider.groups && 
-                        provider.groups.map((group, groupIndex) => (
+                      {provider.type === 'grouped' &&
+                        provider.groups?.map((group, groupIndex) => (
                           <React.Fragment key={group.name}>
                             {groupIndex > 0 && <DropdownMenuSeparator className="bg-gray-200 dark:bg-slate-700" />}
                             <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 sticky top-0 z-10">
