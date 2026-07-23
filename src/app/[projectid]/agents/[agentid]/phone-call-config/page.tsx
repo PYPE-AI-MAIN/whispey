@@ -71,6 +71,61 @@ const STORAGE_KEY = 'phone_call_history'
 const HISTORY_LIMIT_KEY = 'phone_call_history_limit'
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
+type DispatchValidation =
+  | { ok: false; error: string | null }
+  | { ok: true; cleaned: string; selectedPhone: PhoneNumber; agentName: string }
+
+// Validate dispatch inputs. `error: null` means silently no-op (no agent / empty field).
+function validateDispatch(
+  hasAgent: boolean,
+  phoneNumber: string,
+  fromPhoneNumberId: string,
+  phoneNumbers: PhoneNumber[],
+  running: { isRunning: boolean; agentName: string | null },
+): DispatchValidation {
+  if (!hasAgent || !phoneNumber.trim()) return { ok: false, error: null }
+  const cleaned = phoneNumber.replaceAll(/\D/g, '')
+  if (cleaned.length < 10) return { ok: false, error: 'Please enter a valid phone number' }
+  if (!fromPhoneNumberId.trim()) return { ok: false, error: 'Please select a phone number to call from' }
+  const selectedPhone = phoneNumbers.find((p) => p.id === fromPhoneNumberId)
+  if (!selectedPhone) return { ok: false, error: 'Selected phone number not found' }
+  const isBridge = selectedPhone.number_type === 'acefone_bridge' || selectedPhone.number_type === 'plivo_bridge'
+  if (!isBridge && !selectedPhone.trunk_id) return { ok: false, error: 'Selected phone number is missing trunk ID' }
+  if (!running.isRunning || !running.agentName) {
+    return { ok: false, error: 'Agent is not currently running. Please start the agent first.' }
+  }
+  return { ok: true, cleaned, selectedPhone, agentName: running.agentName }
+}
+
+// Turn a failed dispatch response into a user-facing message.
+function extractDispatchError(result: any, status: number): string {
+  if (status === 429) {
+    return result.current_calls === undefined
+      ? 'Rate limit exceeded. Please try again later.'
+      : `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
+  }
+  if (typeof result.error === 'string') return result.error
+  if (result.error?.message) return result.error.message
+  if (typeof result.message === 'string') return result.message
+  return 'Failed to dispatch call'
+}
+
+// Build the {{key: value}} variables object sent with the dispatch request.
+function buildDispatchVariables(variables: { key: string; value: string }[]): Record<string, string> {
+  return Object.fromEntries(
+    variables.filter((v) => v.key.trim()).map((v) => [v.key.trim(), v.value]),
+  )
+}
+
+function touchExistingCall(existing: CallRecord, status: string): CallRecord {
+  return {
+    ...existing,
+    timestamp: Date.now(),
+    status: status || 'dispatched',
+    call_count: (existing.call_count || 1) + 1,
+  }
+}
+
 export default function PhoneCallConfig() {
   const params = useParams()
   const router = useRouter()
@@ -234,24 +289,70 @@ export default function PhoneCallConfig() {
     if (agent && agent.agent_type === 'pype_agent') fetchRunningAgents()
   }, [agent])
 
+  // Record dispatch success in local call history (dedupes on number+country+from).
+  const recordDispatchedCall = (
+    cleaned: string,
+    selectedPhone: PhoneNumber,
+    formattedNumber: string,
+    status: string,
+  ) => {
+    const existingCallIndex = callHistory.findIndex(
+      (call) => call.to_phone_number === cleaned && call.country_code === selectedCountry && call.from_phone_number_id === fromPhoneNumberId,
+    )
+    let updatedHistory: CallRecord[]
+    if (existingCallIndex === -1) {
+      const newCall: CallRecord = {
+        id: crypto.randomUUID(),
+        to_phone_number: cleaned,
+        country_code: selectedCountry,
+        from_phone_number_id: fromPhoneNumberId,
+        from_phone_display: selectedPhone.formatted_number || selectedPhone.phone_number,
+        timestamp: Date.now(),
+        status: status || 'dispatched',
+        formatted_number: formattedNumber,
+        name: callCounter.toString(),
+        call_count: 1,
+      }
+      const nextCounter = callCounter + 1
+      setCallCounter(nextCounter)
+      localStorage.setItem(`phone_call_counter_${agentId}`, nextCounter.toString())
+      updatedHistory = [newCall, ...callHistory].slice(0, historyLimit)
+    } else {
+      const updatedCall = touchExistingCall(callHistory[existingCallIndex], status)
+      const filteredHistory = callHistory.filter((_, index) => index !== existingCallIndex)
+      updatedHistory = [updatedCall, ...filteredHistory].slice(0, historyLimit)
+    }
+    setCallHistory(updatedHistory)
+    localStorage.setItem(`${STORAGE_KEY}_${agentId}`, JSON.stringify(updatedHistory))
+    setPhoneNumber(''); setFromPhoneNumberId(''); setSelectedCallId(null)
+  }
+
   const handleDispatchCall = async () => {
-    if (!agent || !phoneNumber.trim()) return
-    const cleaned = phoneNumber.replace(/\D/g, '')
-    if (cleaned.length < 10) { setMessage('Please enter a valid phone number'); setMessageType('error'); return }
-    if (!fromPhoneNumberId.trim()) { setMessage('Please select a phone number to call from'); setMessageType('error'); return }
-    const selectedPhone = phoneNumbers.find(p => p.id === fromPhoneNumberId)
-    if (!selectedPhone) {
-      setMessage('Selected phone number not found'); setMessageType('error'); return
+    const running = agent ? getRunningAgentName(agent, runningAgents) : { isRunning: false, agentName: null }
+    const v = validateDispatch(!!agent, phoneNumber, fromPhoneNumberId, phoneNumbers, running)
+    if (!v.ok) {
+      if (v.error) { setMessage(v.error); setMessageType('error') }
+      return
     }
-    const isBridge = selectedPhone.number_type === 'acefone_bridge' || selectedPhone.number_type === 'plivo_bridge'
-    if (!isBridge && !selectedPhone.trunk_id) {
-      setMessage('Selected phone number is missing trunk ID'); setMessageType('error'); return
-    }
-    const { isRunning, agentName } = getRunningAgentName(agent, runningAgents)
-    if (!isRunning || !agentName) { setMessage('Agent is not currently running. Please start the agent first.'); setMessageType('error'); return }
+    const { cleaned, selectedPhone, agentName } = v
     setIsLoading(true); setMessage(''); setMessageType('')
     try {
       const formattedNumber = `${currentCountry.prefix}${cleaned}`
+
+      // DNC gate: block before dispatch if this number is on the Do Not Call list.
+      // (Backend/bridge enforce this too — this is the fast, user-facing check.)
+      const dncRes = await fetch('/api/dnc/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numbers: formattedNumber, project_id: projectId }),
+      })
+      if (dncRes.status === 406) {
+        const msg = `${formattedNumber} is on the Do Not Call (DNC) list — call blocked.`
+        setMessage(msg); setMessageType('error'); toast.error(msg)
+        setIsLoading(false)
+        return
+      }
+
       const response = await fetch('/api/agents/dispatch-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,36 +363,16 @@ export default function PhoneCallConfig() {
           provider: selectedPhone.provider,
           number_type: selectedPhone.number_type,
           from_number: selectedPhone.phone_number,
-          ...(variables.length > 0 ? {
-            variables: Object.fromEntries(
-              variables.filter(v => v.key.trim()).map(v => [v.key.trim(), v.value])
-            )
-          } : {}),
+          ...(variables.length > 0 ? { variables: buildDispatchVariables(variables) } : {}),
         }),
       })
       const result = await response.json()
       if (response.ok) {
         const successMessage = `Call dispatched successfully to ${formattedNumber}`
         setMessage(successMessage); setMessageType('success'); toast.success(successMessage)
-        const existingCallIndex = callHistory.findIndex(call => call.to_phone_number === cleaned && call.country_code === selectedCountry && call.from_phone_number_id === fromPhoneNumberId)
-        let updatedHistory: CallRecord[]
-        if (existingCallIndex !== -1) {
-          const existingCall = callHistory[existingCallIndex]
-          const updatedCall: CallRecord = { ...existingCall, timestamp: Date.now(), status: result.status || 'dispatched', call_count: (existingCall.call_count || 1) + 1 }
-          const filteredHistory = callHistory.filter((_, index) => index !== existingCallIndex)
-          updatedHistory = [updatedCall, ...filteredHistory].slice(0, historyLimit)
-        } else {
-          const newCall: CallRecord = { id: `${Date.now()}-${Math.random()}`, to_phone_number: cleaned, country_code: selectedCountry, from_phone_number_id: fromPhoneNumberId, from_phone_display: selectedPhone.formatted_number || selectedPhone.phone_number, timestamp: Date.now(), status: result.status || 'dispatched', formatted_number: formattedNumber, name: callCounter.toString(), call_count: 1 }
-          const nextCounter = callCounter + 1; setCallCounter(nextCounter); localStorage.setItem(`phone_call_counter_${agentId}`, nextCounter.toString())
-          updatedHistory = [newCall, ...callHistory].slice(0, historyLimit)
-        }
-        setCallHistory(updatedHistory); localStorage.setItem(`${STORAGE_KEY}_${agentId}`, JSON.stringify(updatedHistory))
-        setPhoneNumber(''); setFromPhoneNumberId(''); setSelectedCallId(null)
+        recordDispatchedCall(cleaned, selectedPhone, formattedNumber, result.status)
       } else {
-        let errorMessage = 'Failed to dispatch call'
-        if (result.error) errorMessage = typeof result.error === 'string' ? result.error : result.error.message || errorMessage
-        else if (result.message) errorMessage = typeof result.message === 'string' ? result.message : errorMessage
-        if (response.status === 429) errorMessage = result.current_calls !== undefined ? `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.` : 'Rate limit exceeded. Please try again later.'
+        const errorMessage = extractDispatchError(result, response.status)
         setMessage(errorMessage); setMessageType('error'); toast.error(errorMessage)
       }
     } catch (error) {

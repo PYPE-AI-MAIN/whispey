@@ -143,16 +143,7 @@ const sidebarRoutes: SidebarRoute[] = [
     getSidebarConfig: () => ({
       type: 'onboarding',
       context: {},
-      navigation: [
-        { 
-          id: 'docs', 
-          name: 'Documentation', 
-          icon: 'FileText', 
-          path: '/docs', 
-          external: true, 
-          group: 'resources' 
-        }
-      ],
+      navigation: [],
       showBackButton: false
     }),
     priority: 96
@@ -168,6 +159,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/settings' },
       { pattern: '/:projectId/settings/users' },
       { pattern: '/:projectId/settings/phone-numbers' },
+      { pattern: '/:projectId/settings/dnc' },
       { pattern: '/:projectId/campaigns/:campaignId' },
       { pattern: '/:projectId/campaigns/create' },
       { pattern: '/:projectId/analytics' }, 
@@ -408,16 +400,7 @@ const sidebarRoutes: SidebarRoute[] = [
     getSidebarConfig: () => ({
       type: 'organisations',
       context: {},
-      navigation: [
-        { 
-          id: 'docs', 
-          name: 'Documentation', 
-          icon: 'FileText', 
-          path: '/docs', 
-          external: true, 
-          group: 'resources' 
-        }
-      ],
+      navigation: [],
       showBackButton: false
     }),
     priority: 85
@@ -431,22 +414,7 @@ const sidebarRoutes: SidebarRoute[] = [
     getSidebarConfig: () => ({
       type: 'organisations',
       context: {},
-      navigation: [
-        { 
-          id: 'organisations', 
-          name: 'Organisations', 
-          icon: 'Home', 
-          path: '/projects' 
-        },
-        { 
-          id: 'docs', 
-          name: 'Documentation', 
-          icon: 'FileText', 
-          path: '/docs', 
-          external: true, 
-          group: 'resources' 
-        }
-      ],
+      navigation: [],
       showBackButton: false
     }),
     priority: 1

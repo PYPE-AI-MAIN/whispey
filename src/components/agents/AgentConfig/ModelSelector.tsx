@@ -35,6 +35,7 @@ interface Model {
   label: string
   id?: string
   deploymentName?: string
+  addedAt?: string // ISO date (YYYY-MM-DD); shows a "New" badge for NEW_BADGE_DAYS after this date
 }
 
 interface ModelGroup {
@@ -50,7 +51,25 @@ interface Provider {
   models?: Model[]
   groups?: ModelGroup[]
   description?: string
+  addedAt?: string // ISO date (YYYY-MM-DD); shows a "New" badge for NEW_BADGE_DAYS after this date
 }
+
+// How long a freshly-added provider/model keeps its "New" badge
+const NEW_BADGE_DAYS = 30
+
+// True while `addedAt` is within the last NEW_BADGE_DAYS. Badge disappears automatically afterwards.
+const isNew = (addedAt?: string): boolean => {
+  if (!addedAt) return false
+  const added = new Date(addedAt).getTime()
+  if (Number.isNaN(added)) return false
+  return Date.now() - added < NEW_BADGE_DAYS * 24 * 60 * 60 * 1000
+}
+
+const NewBadge = () => (
+  <span className="ml-1 rounded-full bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-green-700 dark:text-green-300 flex-shrink-0">
+    New
+  </span>
+)
 
 interface AzureConfig {
   endpoint: string
@@ -92,9 +111,12 @@ const modelProviders: Record<string, Provider> = {
     icon: 'G',
     color: 'bg-blue-500',
     type: 'direct',
+    addedAt: '2026-07-22',
     models: [
       { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
+      { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash', addedAt: '2026-07-22' },
       { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
+      { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-lite', addedAt: '2026-07-22' },
       { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
       { value: 'gemini-2.5-flash-preview-09-2025', label: 'Gemini 2.5 Flash Preview' },
       { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-lite' },
@@ -111,6 +133,15 @@ const modelProviders: Record<string, Provider> = {
       { value: 'gpt-5.6-terra', label: 'GPT 5.6 Terra', deploymentName: 'gpt-5.6-terra' },
       { value: 'gpt-5.6-luna', label: 'GPT 5.6 Luna', deploymentName: 'gpt-5.6-luna' },
       { value: 'gpt-4.1-mini', label: 'GPT 4.1 Mini', deploymentName: 'gpt-4.1-mini-2' },
+    ]
+  },
+  aws: {
+    label: 'AWS Bedrock',
+    icon: 'Aw',
+    color: 'bg-orange-500',
+    type: 'direct',
+    models: [
+      { value: 'zai.glm-5', label: 'Z.ai GLM 5' },
     ]
   },
   groq: {
@@ -180,9 +211,155 @@ const getProviderIcon = (providerKey: string) => {
     groq: <Cpu className="h-3 w-3" />,
     google: <Cloud className="h-3 w-3" />,
     azure_openai: <Cloud className="h-3 w-3" />,
+    aws: <Cloud className="h-3 w-3" />,
     cerebras: <Cpu className="h-3 w-3" />
   }
   return iconMap[providerKey]
+}
+
+// Renders a provider's model items (direct or grouped) inside its submenu.
+// Extracted to a component so the map callbacks don't nest past 4 levels deep.
+function ProviderModelItems({
+  provider,
+  providerKey,
+  selectedProvider,
+  selectedModel,
+  disabled,
+  onSelect,
+}: Readonly<{
+  provider: Provider
+  providerKey: string
+  selectedProvider: string
+  selectedModel: string
+  disabled: boolean
+  onSelect: (providerKey: string, model: string) => void
+}>) {
+  const itemClass = (modelValue: string, extra: string) =>
+    `flex items-center justify-between ${extra} text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+      selectedProvider === providerKey && selectedModel === modelValue
+        ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+        : ''
+    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`
+
+  if (provider.type === 'direct') {
+    return (
+      <>
+        {provider.models?.map((model) => (
+          <DropdownMenuItem
+            key={model.value}
+            onClick={() => onSelect(providerKey, model.value)}
+            className={itemClass(model.value, 'p-2')}
+          >
+            <span className="flex items-center font-medium text-sm truncate pr-2">
+              {model.label}
+              {isNew(model.addedAt) && <NewBadge />}
+            </span>
+            {selectedProvider === providerKey && selectedModel === model.value && (
+              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </>
+    )
+  }
+
+  if (provider.type === 'grouped') {
+    return (
+      <>
+        {provider.groups?.map((group, groupIndex) => (
+          <React.Fragment key={group.name}>
+            {groupIndex > 0 && <DropdownMenuSeparator className="bg-gray-200 dark:bg-slate-700" />}
+            <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 sticky top-0 z-10">
+              <h4 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide truncate">
+                {group.name}
+              </h4>
+            </div>
+            <GroupModelItems
+              models={group.models}
+              providerKey={providerKey}
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              itemClass={itemClass}
+              onSelect={onSelect}
+            />
+          </React.Fragment>
+        ))}
+      </>
+    )
+  }
+
+  return null
+}
+
+// Model items within a single group — separate component keeps nesting shallow.
+function GroupModelItems({
+  models,
+  providerKey,
+  selectedProvider,
+  selectedModel,
+  itemClass,
+  onSelect,
+}: Readonly<{
+  models: Model[]
+  providerKey: string
+  selectedProvider: string
+  selectedModel: string
+  itemClass: (modelValue: string, extra: string) => string
+  onSelect: (providerKey: string, model: string) => void
+}>) {
+  return (
+    <>
+      {models.map((model) => (
+        <DropdownMenuItem
+          key={model.value}
+          onClick={() => onSelect(providerKey, model.value)}
+          className={itemClass(model.value, 'px-3 sm:px-4 py-2')}
+        >
+          <span className="text-sm truncate pr-2">{model.label}</span>
+          {selectedProvider === providerKey && selectedModel === model.value && (
+            <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+          )}
+        </DropdownMenuItem>
+      ))}
+    </>
+  )
+}
+
+// Mobile "expanded provider" model items within a group — extracted to keep the
+// mobile submenu's map callbacks from nesting past 4 levels deep.
+function MobileGroupModelItems({
+  models,
+  providerKey,
+  selectedProvider,
+  selectedModel,
+  onSelect,
+}: Readonly<{
+  models: Model[]
+  providerKey: string
+  selectedProvider: string
+  selectedModel: string
+  onSelect: (providerKey: string, model: string) => void
+}>) {
+  return (
+    <>
+      {models.map((model) => (
+        <DropdownMenuItem
+          key={model.value}
+          onClick={() => onSelect(providerKey, model.value)}
+          className={`flex items-center justify-between px-6 py-2 ${
+            selectedProvider === providerKey && selectedModel === model.value
+              ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+              : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+          }`}
+        >
+          <span className="text-sm">{model.label}</span>
+          {selectedProvider === providerKey && selectedModel === model.value && (
+            <Check className="h-3 w-3 text-blue-600" />
+          )}
+        </DropdownMenuItem>
+      ))}
+    </>
+  )
 }
 
 export default function ModelSelector({
@@ -422,6 +599,7 @@ const getFlattenedMenuItems = () => {
                       {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
                     </div>
                     <span className="font-medium text-sm">{provider.label}</span>
+                    {isNew(provider.addedAt) && <NewBadge />}
                     {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-gray-400" />}
                     {selectedProvider === providerKey && <Check className="h-3 w-3 text-blue-600" />}
                   </div>
@@ -445,7 +623,10 @@ const getFlattenedMenuItems = () => {
                             : 'hover:bg-gray-50 dark:hover:bg-slate-800'
                         }`}
                       >
-                        <span className="text-sm">{model.label}</span>
+                        <span className="flex items-center text-sm">
+                          {model.label}
+                          {isNew(model.addedAt) && <NewBadge />}
+                        </span>
                         {selectedProvider === providerKey && selectedModel === model.value && (
                           <Check className="h-3 w-3 text-blue-600" />
                         )}
@@ -465,22 +646,13 @@ const getFlattenedMenuItems = () => {
                             {group.name}
                           </h4>
                         </div>
-                        {group.models.map((model) => (
-                          <DropdownMenuItem
-                            key={model.value}
-                            onClick={() => handleModelSelect(providerKey, model.value)}
-                            className={`flex items-center justify-between px-6 py-2 ${
-                              selectedProvider === providerKey && selectedModel === model.value
-                                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-                                : 'hover:bg-gray-50 dark:hover:bg-slate-800'
-                            }`}
-                          >
-                            <span className="text-sm">{model.label}</span>
-                            {selectedProvider === providerKey && selectedModel === model.value && (
-                              <Check className="h-3 w-3 text-blue-600" />
-                            )}
-                          </DropdownMenuItem>
-                        ))}
+                        <MobileGroupModelItems
+                          models={group.models}
+                          providerKey={providerKey}
+                          selectedProvider={selectedProvider}
+                          selectedModel={selectedModel}
+                          onSelect={handleModelSelect}
+                        />
                       </div>
                     ))}
                   </div>
@@ -503,6 +675,7 @@ const getFlattenedMenuItems = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm truncate">{provider.label}</span>
+                          {isNew(provider.addedAt) && <NewBadge />}
                           {selectedProvider === providerKey && (
                             <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                           )}
@@ -519,55 +692,14 @@ const getFlattenedMenuItems = () => {
                       avoidCollisions={true}
                       collisionPadding={16}
                     >
-                      {/* Direct models */}
-                      {provider.type === 'direct' && provider.models && 
-                        provider.models.map((model) => (
-                          <DropdownMenuItem
-                            key={model.value}
-                            onClick={() => handleModelSelect(providerKey, model.value)}
-                            className={`flex items-center justify-between p-2 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
-                              selectedProvider === providerKey && selectedModel === model.value 
-                                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
-                                : ''
-                            } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            <span className="font-medium text-sm truncate pr-2">{model.label}</span>
-                            {selectedProvider === providerKey && selectedModel === model.value && (
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                            )}
-                          </DropdownMenuItem>
-                        ))
-                      }
-                      
-                      {/* Grouped models */}
-                      {provider.type === 'grouped' && provider.groups && 
-                        provider.groups.map((group, groupIndex) => (
-                          <React.Fragment key={group.name}>
-                            {groupIndex > 0 && <DropdownMenuSeparator className="bg-gray-200 dark:bg-slate-700" />}
-                            <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 sticky top-0 z-10">
-                              <h4 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide truncate">
-                                {group.name}
-                              </h4>
-                            </div>
-                            {group.models.map((model) => (
-                              <DropdownMenuItem
-                                key={model.value}
-                                onClick={() => handleModelSelect(providerKey, model.value)}
-                                className={`flex items-center justify-between px-3 sm:px-4 py-2 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
-                                  selectedProvider === providerKey && selectedModel === model.value 
-                                    ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300' 
-                                    : ''
-                                } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                <span className="text-sm truncate pr-2">{model.label}</span>
-                                {selectedProvider === providerKey && selectedModel === model.value && (
-                                  <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                )}
-                              </DropdownMenuItem>
-                            ))}
-                          </React.Fragment>
-                        ))
-                      }
+                      <ProviderModelItems
+                        provider={provider}
+                        providerKey={providerKey}
+                        selectedProvider={selectedProvider}
+                        selectedModel={selectedModel}
+                        disabled={DISABLE_SETTINGS}
+                        onSelect={handleModelSelect}
+                      />
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                 )

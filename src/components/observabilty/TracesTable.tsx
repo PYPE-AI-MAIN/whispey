@@ -17,9 +17,11 @@ import { getAgentPlatform } from "@/utils/agentDetection";
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useTranscriptEnglishToggle } from "@/hooks/useTranscriptEnglishToggle"
+import { useConfigTabAccess } from "@/hooks/useConfigTabAccess"
 
 interface TracesTableProps {
   agentId: string
+  projectId?: string
   sessionId?: string
   agent?: any
   filters: {
@@ -65,8 +67,9 @@ export const METRICS_LOGS_SELECT =
   "created_at, unix_timestamp, bug_report, " +
   "call_success, lesson_day, lesson_completed, phone_number"
 
-const TracesTable: React.FC<TracesTableProps> = ({ agentId, agent, sessionId, filters }) => {
+const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, sessionId, filters }) => { // NOSONAR javascript:S3776
 
+  const canViewConfig = useConfigTabAccess(projectId)
   const [selectedTrace, setSelectedTrace] = useState<TraceLog | null>(null)
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("turns");
@@ -692,17 +695,19 @@ const handleRowClick = (trace: TraceLog) => {
               </button>
             </>
           )}
-          <button 
-            onClick={() => setActiveTab("config")}
-            className={cn(
-              "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
-              activeTab === "config" 
-                ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            )}
-          >
-            Config
-          </button>
+          {canViewConfig && (
+            <button
+              onClick={() => setActiveTab("config")}
+              className={cn(
+                "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
+                activeTab === "config"
+                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              )}
+            >
+              Config
+            </button>
+          )}
           </nav>
           
           {/* Transcript: English toggle + download */}
@@ -998,7 +1003,7 @@ const handleRowClick = (trace: TraceLog) => {
           />
         )}
 
-        {activeTab === "config" && (
+        {activeTab === "config" && canViewConfig && (
           <ConfigTab sessionId={sessionId} />
         )}
       </div>

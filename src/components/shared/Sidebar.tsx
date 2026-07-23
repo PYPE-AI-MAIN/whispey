@@ -143,6 +143,254 @@ const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; f
   }
 } as const
 
+function getUserDisplayName(user: ReturnType<typeof useUser>['user']): string {
+  if (user?.fullName) return user.fullName
+  if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`
+  if (user?.firstName) return user.firstName
+  if (user?.emailAddresses?.[0]?.emailAddress) {
+    return user.emailAddresses[0].emailAddress.split('@')[0]
+  }
+  return 'User'
+}
+
+const GROUP_NAME_OVERRIDES: Record<string, string> = {
+  'logs': 'LOGS',
+  'batch calls': 'Batch Calls',
+  'project settings': 'Project Settings',
+}
+
+function formatGroupDisplayName(groupId: string): string {
+  return GROUP_NAME_OVERRIDES[groupId] ?? (groupId.charAt(0).toUpperCase() + groupId.slice(1))
+}
+
+// Group navigation items
+function groupNavigationItems(navigation: NavigationItem[]): NavigationGroup[] {
+  const groups: Record<string, NavigationItem[]> = {}
+  const ungrouped: NavigationItem[] = []
+
+  navigation.forEach((item: any) => {
+    if (item.group) {
+      const normalizedGroup = item.group.toLowerCase()
+      if (!groups[normalizedGroup]) {
+        groups[normalizedGroup] = []
+      }
+      groups[normalizedGroup].push(item)
+    } else {
+      ungrouped.push(item)
+    }
+  })
+
+  const result: NavigationGroup[] = []
+
+  if (ungrouped.length > 0) {
+    result.push({
+      id: 'ungrouped',
+      name: '',
+      items: ungrouped
+    })
+  }
+
+  const groupOrder = [
+    'logs', 'agents', 'reports', 'analytics', 'integrations',
+    'team', 'settings', 'configuration', 'call configuration', 'batch calls', 'resources',
+    'project settings'
+  ]
+
+  groupOrder.forEach(groupId => {
+    if (groups[groupId]) {
+      result.push({
+        id: groupId,
+        name: formatGroupDisplayName(groupId),
+        items: groups[groupId]
+      })
+      delete groups[groupId]
+    }
+  })
+
+  Object.entries(groups).forEach(([groupId, items]) => {
+    result.push({
+      id: groupId,
+      name: groupId.charAt(0).toUpperCase() + groupId.slice(1),
+      items
+    })
+  })
+
+  return result
+}
+
+// Checks the special-case rule: a nav link with a `tab=logs` query matches the
+// current path when the current path is that link's `/observability` route.
+function matchesObservabilityTab(navPath: string, navQuery: string | undefined, currentBasePath: string): boolean {
+  if (navQuery && navQuery.includes('tab=logs') && currentBasePath === `${navPath}/observability`) {
+    return true
+  }
+  return false
+}
+
+// Compares a nav link's query params against the current search params.
+function matchesQueryParams(navParams: URLSearchParams, currentSearchParams: URLSearchParams): boolean {
+  if (navParams.get('tab') === 'overview' && !currentSearchParams.get('tab')) {
+    return true
+  }
+
+  for (const [key, value] of navParams.entries()) {
+    if (currentSearchParams.get(key) !== value) {
+      return false
+    }
+  }
+
+  return true
+}
+
+// Determines whether a prefix match (current path starts with nav path + '/')
+// should count as active, excluding special sub-routes that require exact matches.
+function matchesPrefixRoute(navPath: string, currentBasePath: string): boolean {
+  if (!currentBasePath.startsWith(navPath + '/')) {
+    return false
+  }
+
+  const specialSubRoutes = [
+    '/api-keys',
+    '/sip-management',
+    '/config',
+    '/config/pipecat',
+    '/config/pipecat/knowledgebase',
+    '/config/livekit',
+    '/observability',
+    '/phone-call-config',
+    '/phone-call-config/pipecat',
+    '/knowledge',
+    '/settings'
+  ]
+
+  // Check if current path contains any special sub-route
+  const hasSpecialSubRoute = specialSubRoutes.some(subRoute =>
+    currentBasePath.includes(subRoute)
+  )
+
+  // If on special sub-route, only activate exact matches
+  if (hasSpecialSubRoute) {
+    return false
+  }
+
+  // Otherwise, allow prefix matching (for dynamic routes like agent details)
+  return true
+}
+
+function isActiveLinkWithSearchParams(path: string, currentPath: string, searchParams: URLSearchParams): boolean {
+  const [navPath, navQuery] = path.split('?')
+  const [currentBasePath] = currentPath.split('?')
+
+  if (navQuery && matchesObservabilityTab(navPath, navQuery, currentBasePath)) {
+    return true
+  }
+
+  if (currentBasePath === navPath) {
+    if (navQuery) {
+      const navParams = new URLSearchParams(navQuery)
+      return matchesQueryParams(navParams, searchParams)
+    }
+    return true
+  }
+
+  if (!navQuery && currentBasePath.startsWith(navPath + '/')) {
+    return matchesPrefixRoute(navPath, currentBasePath)
+  }
+
+  return false
+}
+
+function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobile: boolean, onMobileClose?: () => void): React.ReactNode {
+  if ((!isCollapsed || isMobile) && config.showBackButton) {
+    return (
+      <div className="space-y-2">
+        <Link
+          href={config.backPath || '/'}
+          className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          onClick={() => {
+            if (isMobile && onMobileClose) {
+              onMobileClose()
+            }
+          }}
+        >
+          <ArrowLeft className="w-3 h-3" />
+          {config.backLabel || 'Back'}
+        </Link>
+      </div>
+    )
+  }
+  return null
+}
+
+function renderNavigationItem(
+  item: NavigationItem,
+  opts: {
+    isCollapsed: boolean
+    isMobile: boolean
+    onMobileClose?: () => void
+    currentPath: string
+    searchParams: URLSearchParams
+  }
+): React.ReactNode {
+  const { isCollapsed, isMobile, onMobileClose, currentPath, searchParams } = opts
+  const Icon = ICONS[item.icon]
+  const isActive = isActiveLinkWithSearchParams(item.path, currentPath, searchParams)
+
+  if (!Icon) {
+    console.warn(`Icon "${item.icon}" not found in ICONS mapping`)
+    return null
+  }
+
+  const handleClick = () => {
+    if (isMobile && onMobileClose) {
+      onMobileClose()
+    }
+  }
+
+  const content = (
+    <div className={`
+      flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
+      ${isActive
+        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+      }
+      ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
+    `}>
+      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
+      {(!isCollapsed || isMobile) && (
+        <span className="truncate">{item.name}</span>
+      )}
+    </div>
+  )
+
+  const navItem = item.external ? (
+    <a key={item.id} href={item.path} target="_blank" rel="noopener noreferrer" onClick={handleClick}>
+      {content}
+    </a>
+  ) : (
+    <Link key={item.id} href={item.path} onClick={handleClick}>
+      {content}
+    </Link>
+  )
+
+  if (isCollapsed && !isMobile) {
+    return (
+      <TooltipProvider key={item.id}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {navItem}
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>{item.name}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  return navItem
+}
+
 export default function Sidebar({
   config,
   currentPath,
@@ -152,12 +400,12 @@ export default function Sidebar({
   onMobileClose,
   isSuperAdmin = false,
   projectId,
-}: SidebarProps) {
+}: Readonly<SidebarProps>) {
   const { user, isLoaded } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -234,7 +482,7 @@ export default function Sidebar({
     if (shouldAutoCollapse && !isCollapsed && !hasAutoCollapsed) {
       onToggleCollapse?.()
       setHasAutoCollapsed(true)
-      if (typeof window !== 'undefined') {
+      if (globalThis.window !== undefined) {
         localStorage.setItem('whispey-sidebar-collapsed', JSON.stringify(true))
       }
     }
@@ -244,81 +492,6 @@ export default function Sidebar({
     }
   }, [currentPath, isMobile, mounted, isCollapsed, hasAutoCollapsed, onToggleCollapse])
 
-  const isActiveLinkWithSearchParams = (path: string) => {
-    const [navPath, navQuery] = path.split('?')
-    const [currentBasePath] = currentPath.split('?')
-    
-    if (navQuery && navQuery.includes('tab=logs')) {
-      const baseNavPath = navPath
-      const observabilityPath = `${baseNavPath}/observability`
-      
-      if (currentBasePath === observabilityPath) {
-        return true
-      }
-    }
-    
-    if (currentBasePath === navPath) {
-      if (navQuery) {
-        const navParams = new URLSearchParams(navQuery)
-        
-        if (navParams.get('tab') === 'overview' && !searchParams.get('tab')) {
-          return true
-        }
-        
-        for (const [key, value] of navParams.entries()) {
-          if (searchParams.get(key) !== value) {
-            return false
-          }
-        }
-        
-        return true
-      }
-      
-      return true
-    }
-    
-    if (!navQuery && currentBasePath.startsWith(navPath + '/')) {
-      const specialSubRoutes = [
-        '/api-keys',
-        '/sip-management',
-        '/config',
-        '/config/pipecat',
-        '/config/pipecat/knowledgebase',
-        '/config/livekit',
-        '/observability',
-        '/phone-call-config',
-        '/phone-call-config/pipecat',
-        '/knowledge',
-        '/settings'
-      ]
-      
-      // Check if current path contains any special sub-route
-      const hasSpecialSubRoute = specialSubRoutes.some(subRoute => 
-        currentBasePath.includes(subRoute)
-      )
-      
-      // If on special sub-route, only activate exact matches
-      if (hasSpecialSubRoute) {
-        return false
-      }
-      
-      // Otherwise, allow prefix matching (for dynamic routes like agent details)
-      return true
-    }
-    
-    return false
-  }
-
-  const getUserDisplayName = () => {
-    if (user?.fullName) return user.fullName
-    if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`
-    if (user?.firstName) return user.firstName
-    if (user?.emailAddresses?.[0]?.emailAddress) {
-      return user.emailAddresses[0].emailAddress.split('@')[0]
-    }
-    return 'User'
-  }
-
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true)
@@ -327,145 +500,6 @@ export default function Sidebar({
       console.error('Error signing out:', error)
       setIsSigningOut(false)
     }
-  }
-
-  // Group navigation items
-  const groupedNavigation = (): NavigationGroup[] => {
-    const groups: Record<string, NavigationItem[]> = {}
-    const ungrouped: NavigationItem[] = []
-
-    config.navigation.forEach((item: any) => {
-      if (item.group) {
-        const normalizedGroup = item.group.toLowerCase()
-        if (!groups[normalizedGroup]) {
-          groups[normalizedGroup] = []
-        }
-        groups[normalizedGroup].push(item)
-      } else {
-        ungrouped.push(item)
-      }
-    })
-
-    const result: NavigationGroup[] = []
-    
-    if (ungrouped.length > 0) {
-      result.push({
-        id: 'ungrouped',
-        name: '',
-        items: ungrouped
-      })
-    }
-
-    const groupOrder = [
-      'logs', 'agents', 'reports', 'analytics', 'integrations', 
-      'team', 'settings', 'configuration', 'call configuration', 'batch calls', 'resources',
-      'project settings'
-    ]
-
-    groupOrder.forEach(groupId => {
-      if (groups[groupId]) {
-        result.push({
-          id: groupId,
-          name: groupId === 'logs' ? 'LOGS' : 
-                groupId === 'batch calls' ? 'Batch Calls' :
-                groupId === 'project settings' ? 'Project Settings' :
-                groupId.charAt(0).toUpperCase() + groupId.slice(1),
-          items: groups[groupId]
-        })
-        delete groups[groupId]
-      }
-    })
-
-    Object.entries(groups).forEach(([groupId, items]) => {
-      result.push({
-        id: groupId,
-        name: groupId.charAt(0).toUpperCase() + groupId.slice(1),
-        items
-      })
-    })
-
-    return result
-  }
-
-  const renderNavigationItem = (item: NavigationItem) => {
-    const Icon = ICONS[item.icon]
-    const isActive = isActiveLinkWithSearchParams(item.path)
-    
-    if (!Icon) {
-      console.warn(`Icon "${item.icon}" not found in ICONS mapping`)
-      return null
-    }
-    
-    const handleClick = () => {
-      if (isMobile && onMobileClose) {
-        onMobileClose()
-      }
-    }
-    
-    const content = (
-      <div className={`
-        flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
-        ${isActive 
-          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
-          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-        }
-        ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
-      `}>
-        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
-        {(!isCollapsed || isMobile) && (
-          <span className="truncate">{item.name}</span>
-        )}
-      </div>
-    )
-
-    const navItem = item.external ? (
-      <a key={item.id} href={item.path} target="_blank" rel="noopener noreferrer" onClick={handleClick}>
-        {content}
-      </a>
-    ) : (
-      <Link key={item.id} href={item.path} onClick={handleClick}>
-        {content}
-      </Link>
-    )
-
-    if (isCollapsed && !isMobile) {
-      return (
-        <TooltipProvider key={item.id}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {navItem}
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{item.name}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )
-    }
-
-    return navItem
-  }
-
-  const renderContextHeader = () => {
-    if ((!isCollapsed || isMobile) && config.showBackButton) {
-      return (
-        <div className="space-y-2">
-          <Link 
-            href={config.backPath || '/'} 
-            className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-            onClick={() => {
-              if (isMobile && onMobileClose) {
-                onMobileClose()
-              }
-            }}
-          >
-            <ArrowLeft className="w-3 h-3" />
-            {config.backLabel || 'Back'}
-          </Link>
-        </div>
-      )
-    }
-    return null
   }
 
   const pricingConfig = PRICING_CONFIGS[config.type] || {
@@ -583,7 +617,7 @@ export default function Sidebar({
             )}
           </div>
 
-          {renderContextHeader()}
+          {renderContextHeader(config, isCollapsed, isMobile, onMobileClose)}
         </div>
 
         {/* Navigation with Groups */}
@@ -599,7 +633,7 @@ export default function Sidebar({
             }}
           />
 
-          {groupedNavigation().map((group, groupIndex) => (
+          {groupNavigationItems(config.navigation as NavigationItem[]).map((group, groupIndex) => (
             <div key={group.id}>
               {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
@@ -614,123 +648,35 @@ export default function Sidebar({
               )}
 
               <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
-                {group.items.map(item => renderNavigationItem(item))}
+                {group.items.map(item => renderNavigationItem(item, { isCollapsed, isMobile, onMobileClose, currentPath, searchParams }))}
               </div>
             </div>
           ))}
         </nav>
 
         {/* Conditional Pricing Box */}
-        {pricingConfig?.showPricingBox && (!isCollapsed || isMobile) && (
-          <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">{pricingConfig.plan}</span>
-            </div>
-            {pricingConfig.features && pricingConfig.features.length > 0 && (
-              <ul className="space-y-1 mb-3">
-                {pricingConfig.features.map((feature: string, index: number) => (
-                  <li key={index} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
-                    <div className="w-1 h-1 bg-purple-400 rounded-full flex-shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {pricingConfig.upgradeLink && (
-              <Link href={pricingConfig.upgradeLink} onClick={() => {
-                if (isMobile && onMobileClose) {
-                  onMobileClose()
-                }
-              }}>
-                <Button size="sm" className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white">
-                  {pricingConfig.upgradeText}
-                </Button>
-              </Link>
-            )}
-          </div>
-        )}
+        <PricingBox
+          pricingConfig={pricingConfig}
+          isCollapsed={isCollapsed}
+          isMobile={isMobile}
+          onMobileClose={onMobileClose}
+        />
 
         {/* User Section */}
-        <div className="border-t border-gray-100 dark:border-gray-800 p-3">
-          {!mounted || !isLoaded ? (
-            <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? 'justify-center' : ''}`}>
-              <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-              {(!isCollapsed || isMobile) && (
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Skeleton className="w-16 h-3" />
-                  <Skeleton className="w-12 h-2" />
-                </div>
-              )}
-            </div>
-          ) : (
-            <SignedIn>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                    isCollapsed && !isMobile ? 'justify-center' : ''
-                  }`}>
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                      {getUserDisplayName().charAt(0).toUpperCase()}
-                    </div>
-                    {(!isCollapsed || isMobile) && (
-                      <div className="min-w-0 flex-1 text-left">
-                        <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName()}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {user?.emailAddresses?.[0]?.emailAddress}
-                        </p>
-                      </div>
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align={isCollapsed && !isMobile ? "center" : "start"} 
-                  side={isCollapsed && !isMobile ? "right" : "top"}
-                  className="w-56 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
-                >
-                  <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-                    <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName()}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {user?.emailAddresses?.[0]?.emailAddress}
-                    </p>
-                  </div>
-                  <div className="py-1">
-                    <DropdownMenuItem
-                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                      className="px-3 py-2 text-xs"
-                    >
-                      {mounted && theme === 'dark' ? (
-                        <><Sun className="w-4 h-4 mr-2" />Light Mode</>
-                      ) : (
-                        <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
-                      )}
-                    </DropdownMenuItem>
-                    {isSuperAdmin && projectId && (
-                      <DropdownMenuItem
-                        onClick={() => router.push(`/${projectId}/settings/users`)}
-                        className="px-3 py-2 text-xs"
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Settings
-                      </DropdownMenuItem>
-                    )}
-                  </div>
-                  <DropdownMenuSeparator />
-                  <div className="py-1">
-                    <DropdownMenuItem 
-                      onClick={handleSignOut} 
-                      className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400" 
-                      disabled={isSigningOut}
-                    >
-                      <LogOut className={`w-4 h-4 mr-2 ${isSigningOut ? 'animate-spin' : ''}`} />
-                      {isSigningOut ? 'Signing out...' : 'Sign Out'}
-                    </DropdownMenuItem>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SignedIn>
-          )}
-        </div>
+        <SidebarUserMenu
+          mounted={mounted}
+          isLoaded={isLoaded}
+          isCollapsed={isCollapsed}
+          isMobile={isMobile}
+          user={user}
+          resolvedTheme={resolvedTheme}
+          setTheme={setTheme}
+          isSuperAdmin={isSuperAdmin}
+          projectId={projectId}
+          router={router}
+          isSigningOut={isSigningOut}
+          onSignOut={handleSignOut}
+        />
 
         {/* Help Center */}
         <div className="border-t border-gray-100 dark:border-gray-800 p-3">
@@ -771,5 +717,225 @@ export default function Sidebar({
         }}
       />
     </>
+  )
+}
+
+function PricingBox({
+  pricingConfig,
+  isCollapsed,
+  isMobile,
+  onMobileClose
+}: Readonly<{
+  pricingConfig: typeof PRICING_CONFIGS[string]
+  isCollapsed: boolean
+  isMobile: boolean
+  onMobileClose?: () => void
+}>): React.ReactNode {
+  if (!(pricingConfig?.showPricingBox && (!isCollapsed || isMobile))) {
+    return null
+  }
+
+  return (
+    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+      <div className="flex items-center gap-2 mb-2">
+        <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+        <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">{pricingConfig.plan}</span>
+      </div>
+      {pricingConfig.features && pricingConfig.features.length > 0 && (
+        <ul className="space-y-1 mb-3">
+          {pricingConfig.features.map((feature: string) => (
+            <li key={feature} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
+              <div className="w-1 h-1 bg-purple-400 rounded-full flex-shrink-0" />
+              {feature}
+            </li>
+          ))}
+        </ul>
+      )}
+      {pricingConfig.upgradeLink && (
+        <Link href={pricingConfig.upgradeLink} onClick={() => {
+          if (isMobile && onMobileClose) {
+            onMobileClose()
+          }
+        }}>
+          <Button size="sm" className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white">
+            {pricingConfig.upgradeText}
+          </Button>
+        </Link>
+      )}
+    </div>
+  )
+}
+
+function SidebarUserMenu({
+  mounted,
+  isLoaded,
+  isCollapsed,
+  isMobile,
+  user,
+  resolvedTheme,
+  setTheme,
+  isSuperAdmin,
+  projectId,
+  router,
+  isSigningOut,
+  onSignOut
+}: Readonly<{
+  mounted: boolean
+  isLoaded: boolean
+  isCollapsed: boolean
+  isMobile: boolean
+  user: ReturnType<typeof useUser>['user']
+  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
+  setTheme: ReturnType<typeof useTheme>['setTheme']
+  isSuperAdmin: boolean
+  projectId?: string
+  router: ReturnType<typeof useRouter>
+  isSigningOut: boolean
+  onSignOut: () => void
+}>): React.ReactNode {
+  return (
+    <div className="border-t border-gray-100 dark:border-gray-800 p-3">
+      {!mounted || !isLoaded ? (
+        <UserMenuSkeleton isCollapsed={isCollapsed} isMobile={isMobile} />
+      ) : (
+        <SignedIn>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                isCollapsed && !isMobile ? 'justify-center' : ''
+              }`}>
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                  {getUserDisplayName(user).charAt(0).toUpperCase()}
+                </div>
+                <UserMenuNameEmail user={user} isCollapsed={isCollapsed} isMobile={isMobile} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align={isCollapsed && !isMobile ? "center" : "start"}
+              side={isCollapsed && !isMobile ? "right" : "top"}
+              className="w-56 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
+            >
+              <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {user?.emailAddresses?.[0]?.emailAddress}
+                </p>
+              </div>
+              <div className="py-1">
+                <ThemeToggleMenuItem mounted={mounted} resolvedTheme={resolvedTheme} setTheme={setTheme} />
+                <SuperAdminSettingsMenuItem isSuperAdmin={isSuperAdmin} projectId={projectId} router={router} />
+              </div>
+              <DropdownMenuSeparator />
+              <div className="py-1">
+                <SignOutMenuItem isSigningOut={isSigningOut} onSignOut={onSignOut} />
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SignedIn>
+      )}
+    </div>
+  )
+}
+
+function UserMenuSkeleton({ isCollapsed, isMobile }: Readonly<{ isCollapsed: boolean; isMobile: boolean }>): React.ReactNode {
+  return (
+    <div className={`flex items-center gap-3 ${isCollapsed && !isMobile ? 'justify-center' : ''}`}>
+      <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+      {(!isCollapsed || isMobile) && (
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Skeleton className="w-16 h-3" />
+          <Skeleton className="w-12 h-2" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function UserMenuNameEmail({
+  user,
+  isCollapsed,
+  isMobile
+}: Readonly<{
+  user: ReturnType<typeof useUser>['user']
+  isCollapsed: boolean
+  isMobile: boolean
+}>): React.ReactNode {
+  if (!(!isCollapsed || isMobile)) {
+    return null
+  }
+
+  return (
+    <div className="min-w-0 flex-1 text-left">
+      <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+        {user?.emailAddresses?.[0]?.emailAddress}
+      </p>
+    </div>
+  )
+}
+
+function ThemeToggleMenuItem({
+  mounted,
+  resolvedTheme,
+  setTheme
+}: Readonly<{
+  mounted: boolean
+  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
+  setTheme: ReturnType<typeof useTheme>['setTheme']
+}>): React.ReactNode {
+  return (
+    <DropdownMenuItem
+      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      className="px-3 py-2 text-xs"
+    >
+      {mounted && resolvedTheme === 'dark' ? (
+        <><Sun className="w-4 h-4 mr-2" />Light Mode</>
+      ) : (
+        <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
+      )}
+    </DropdownMenuItem>
+  )
+}
+
+function SuperAdminSettingsMenuItem({
+  isSuperAdmin,
+  projectId,
+  router
+}: Readonly<{
+  isSuperAdmin: boolean
+  projectId?: string
+  router: ReturnType<typeof useRouter>
+}>): React.ReactNode {
+  if (!(isSuperAdmin && projectId)) {
+    return null
+  }
+
+  return (
+    <DropdownMenuItem
+      onClick={() => router.push(`/${projectId}/settings/users`)}
+      className="px-3 py-2 text-xs"
+    >
+      <Settings className="w-4 h-4 mr-2" />
+      Settings
+    </DropdownMenuItem>
+  )
+}
+
+function SignOutMenuItem({
+  isSigningOut,
+  onSignOut
+}: Readonly<{
+  isSigningOut: boolean
+  onSignOut: () => void
+}>): React.ReactNode {
+  return (
+    <DropdownMenuItem
+      onClick={onSignOut}
+      className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+      disabled={isSigningOut}
+    >
+      <LogOut className={`w-4 h-4 mr-2 ${isSigningOut ? 'animate-spin' : ''}`} />
+      {isSigningOut ? 'Signing out...' : 'Sign Out'}
+    </DropdownMenuItem>
   )
 }

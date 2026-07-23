@@ -9,7 +9,7 @@ import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { RecipientRow, CsvValidationError, RetryConfig } from '@/utils/campaigns/constants'
+import { RecipientRow, CsvValidationError, RetryConfig, VALID_SIP_ERROR_CODE_VALUES } from '@/utils/campaigns/constants'
 import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
@@ -50,7 +50,9 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     Yup.object().shape({
       type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor']).required('Retry type is required'),
       // SIP Code fields (optional, but required if type is sipCode)
-      errorCodes: Yup.array().of(Yup.string()),
+      errorCodes: Yup.array().of(
+        Yup.string().oneOf(VALID_SIP_ERROR_CODE_VALUES, 'Invalid SIP error code')
+      ),
       // Metric fields (optional, but required if type is metric)
       metricName: Yup.string(),
       threshold: Yup.number().min(0, 'Threshold must be at least 0'),
@@ -121,8 +123,76 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
       }
       return true
     })
+  ).test(
+    'no-duplicate-sip-codes',
+    'A SIP code cannot be used in more than one retry rule',
+    function (configs) {
+      if (!Array.isArray(configs)) return true
+      const seen = new Set<string>()
+      for (const cfg of configs) {
+        const isSipCodeType = !cfg?.type || cfg.type === 'sipCode'
+        if (!isSipCodeType || !Array.isArray(cfg.errorCodes)) continue
+        for (const code of cfg.errorCodes) {
+          if (!code) continue
+          if (seen.has(code)) {
+            return this.createError({
+              message: `SIP code ${code} is used in more than one retry rule`,
+            })
+          }
+          seen.add(code)
+        }
+      }
+      return true
+    }
   ),
 })
+
+// Batch-check phone numbers against the DNC list; returns the set of raw inputs
+// that are blocked (empty set on any failure — the preview just won't flag them).
+async function fetchDncBlockedSet(phones: string[], projectId: string): Promise<Set<string>> {
+  try {
+    const res = await fetch('/api/dnc/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: phones, project_id: projectId }),
+    })
+    const json = await res.json()
+    return new Set<string>(
+      (json.results ?? []).filter((r: any) => r.blocked).map((r: any) => r.input)
+    )
+  } catch (err) {
+    console.error('DNC check failed:', err)
+    return new Set<string>()
+  }
+}
+
+// Drop empty/null fields from each recipient row before uploading.
+function toNormalizedRows(rows: RecipientRow[]): Record<string, unknown>[] {
+  return rows.map((row) => {
+    const rowData: Record<string, unknown> = {}
+    Object.keys(row).forEach((key) => {
+      const value = (row as any)[key]
+      if (value !== undefined && value !== null && value !== '') rowData[key] = value
+    })
+    return rowData
+  })
+}
+
+// LiveKit campaigns dispatch by "{name}_{uuid}"; other runtimes use the agent id.
+async function resolveCampaignAgentName(agentId: string, agentRuntime: string): Promise<string> {
+  if (agentRuntime !== 'livekit') return agentId
+  try {
+    const agentRes = await fetch(`/api/agents/${agentId}`)
+    const agent = (await agentRes.json()) as { name?: string; id?: string }
+    if (agentRes.ok && agent?.name && agent?.id) {
+      return `${agent.name}_${agent.id.replaceAll('-', '_')}`
+    }
+    if (agent?.name) return agent.name
+  } catch (err) {
+    console.error('Error fetching agent name:', err)
+  }
+  return agentId
+}
 
 function CreateCampaign() {
   const router = useRouter()
@@ -134,6 +204,8 @@ function CreateCampaign() {
   const [validationErrors, setValidationErrors] = useState<CsvValidationError[]>([])
   const [maxConcurrency, setMaxConcurrency] = useState<number>(5) // Default to 5
   const [loadingConfig, setLoadingConfig] = useState<boolean>(true)
+  // Raw phone strings (as they appear in the CSV) that are on the DNC list.
+  const [dncBlocked, setDncBlocked] = useState<Set<string>>(new Set())
 
   const initialValues = {
     campaignName: '',
@@ -195,6 +267,23 @@ function CreateCampaign() {
     fetchProjectConfig()
   }, [projectId])
 
+  // Batch-check uploaded numbers against the DNC list whenever recipients change.
+  // Blocked numbers are highlighted in the preview and excluded on submit.
+  useEffect(() => {
+    const phones = csvData.map((r) => r.phone).filter(Boolean)
+    if (phones.length === 0) {
+      setDncBlocked(new Set())
+      return
+    }
+    let cancelled = false
+    fetchDncBlockedSet(phones, projectId).then((blocked) => {
+      if (!cancelled) setDncBlocked(blocked)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [csvData, projectId])
+
   const handleFileUpload = (file: File, data: RecipientRow[], errors: CsvValidationError[]) => {
     setCsvFile(file)
     setCsvData(data)
@@ -205,6 +294,7 @@ function CreateCampaign() {
     setCsvFile(null)
     setCsvData([])
     setValidationErrors([])
+    setDncBlocked(new Set())
   }
 
   const handleSubmit = async (values: typeof initialValues, { setSubmitting }: any) => {
@@ -224,19 +314,14 @@ function CreateCampaign() {
       // Generate unique campaign ID
       const campaignId = uuidv4()
 
-      // Step 1: Upload CSV to S3
-      const normalizedData = csvData.map(row => {
-        const rowData: any = {}
-        Object.keys(row).forEach(key => {
-          const value = (row as any)[key]
-          if (value !== undefined && value !== null && value !== '') {
-            rowData[key] = value
-          }
-        })
-        return rowData
-      })
-
-      const csvContent = Papa.unparse(normalizedData, {
+      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list.
+      const callableData = csvData.filter(row => !dncBlocked.has(row.phone))
+      if (callableData.length === 0) {
+        alert('Every uploaded number is on the DNC list. Nothing to send.')
+        setSubmitting(false)
+        return
+      }
+      const csvContent = Papa.unparse(toNormalizedRows(callableData), {
         header: true,
         quotes: true,
         quoteChar: '"',
@@ -258,27 +343,8 @@ function CreateCampaign() {
       const uploadData = await uploadResponse.json()
       const s3FileKey = uploadData.s3FileKey || uploadData.fileKey
 
-      // Step 2: Resolve agentName based on runtime
-      let agentName = values.agentId
-
-      if (values.agentRuntime === 'livekit') {
-        // Supabase lookup only for livekit
-        try {
-          const agentRes = await fetch(`/api/agents/${values.agentId}`)
-          const agent = (await agentRes.json()) as { name?: string; id?: string; error?: string }
-
-          if (agentRes.ok && agent?.name && agent?.id) {
-            const sanitizedAgentId = agent.id.replace(/-/g, '_')
-            agentName = `${agent.name}_${sanitizedAgentId}`
-          } else if (agent?.name) {
-            agentName = agent.name
-          }
-        } catch (err) {
-          console.error('Error fetching agent name:', err)
-          // Fallback to agentId
-        }
-      }
-      // For pipecat: agentName = agentId directly (the pipecat agent id from the API)
+      // Step 2: Resolve agentName based on runtime (livekit → "{name}_{uuid}")
+      const agentName = await resolveCampaignAgentName(values.agentId, values.agentRuntime)
 
       // Step 3: Create campaign
       const createResponse = await fetch('/api/campaigns/create', {
@@ -514,7 +580,7 @@ function CreateCampaign() {
             </div>
 
             {/* Right Panel - Recipients Preview */}
-            <RecipientsPreview csvData={csvData} />
+            <RecipientsPreview csvData={csvData} dncBlocked={dncBlocked} />
           </div>
         )}
       </Formik>

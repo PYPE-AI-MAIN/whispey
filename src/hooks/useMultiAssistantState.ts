@@ -701,9 +701,8 @@ export function useMultiAssistantState({
           ...(formValues.advancedSettings?.session?.endpointing_mode && {
             endpointing_mode: formValues.advancedSettings.session.endpointing_mode
           }),
-          ...(formValues.advancedSettings?.session?.interruption_mode && {
-            interruption_mode: formValues.advancedSettings.session.interruption_mode
-          }),
+          // interruption_mode is intentionally omitted here — it's sent at the top level
+          // above and the backend hoists it into session_behavior on save.
           ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
             user_away_timeout: formValues.advancedSettings.session.user_away_timeout
           }),
@@ -913,9 +912,8 @@ export function useMultiAssistantState({
           ...(formValues.advancedSettings?.session?.endpointing_mode && {
             endpointing_mode: formValues.advancedSettings.session.endpointing_mode
           }),
-          ...(formValues.advancedSettings?.session?.interruption_mode && {
-            interruption_mode: formValues.advancedSettings.session.interruption_mode
-          }),
+          // interruption_mode is intentionally omitted here — it's sent at the top level
+          // above and the backend hoists it into session_behavior on save.
           ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
             user_away_timeout: formValues.advancedSettings.session.user_away_timeout
           }),
