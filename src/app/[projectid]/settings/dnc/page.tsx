@@ -112,16 +112,18 @@ export default function DncPage() {
   const projects = projectsData?.projects ?? []
 
   // DNC entries for the active scope filter.
-  const { data: listData, isLoading: listLoading } = useQuery({
+  const { data: listData, isLoading: listLoading, error: listError } = useQuery({
     queryKey: ['dnc-list', scope, scope === 'project' ? selectedProject?.id : null],
     queryFn: async () => {
       const params = new URLSearchParams({ scope })
       if (scope === 'project' && selectedProject) params.set('project_id', selectedProject.id)
       const res = await fetch(`/api/dnc/list?${params.toString()}`)
-      if (!res.ok) throw new Error('Failed to load DNC list')
-      return res.json() as Promise<{ entries: DncEntry[] }>
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Failed to load DNC list')
+      return json as { entries: DncEntry[] }
     },
     enabled: isSuperAdmin && (scope === 'global' || !!selectedProject),
+    retry: false,
   })
   const entries = listData?.entries ?? []
 
@@ -498,7 +500,14 @@ export default function DncPage() {
               </div>
             </div>
 
-            {listLoading ? (
+            {listError ? (
+              <div className="m-4 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+                Couldn’t load the DNC list: {(listError as Error).message}.
+                <span className="block text-xs text-red-600/80 dark:text-red-400/80 mt-1">
+                  If this is the first run, make sure the <code className="font-mono">pype_voice_dnc_list</code> table exists in Supabase.
+                </span>
+              </div>
+            ) : listLoading ? (
               <div className="p-10 flex justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
               </div>

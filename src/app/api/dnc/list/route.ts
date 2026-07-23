@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query.limit(1000)
   if (error) {
     console.error('DNC list error:', error)
-    return NextResponse.json({ error: 'Failed to load DNC list' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to load DNC list' }, { status: 500 })
   }
   return NextResponse.json({ entries: data ?? [] })
 }
