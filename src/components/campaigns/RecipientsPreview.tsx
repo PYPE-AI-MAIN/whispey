@@ -11,7 +11,7 @@ interface RecipientsPreviewProps {
   dncBlocked?: Set<string>
 }
 
-export function RecipientsPreview({ csvData, dncBlocked }: RecipientsPreviewProps) {
+export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPreviewProps>) {
   const blockedCount = dncBlocked ? csvData.filter((r) => dncBlocked.has(r.phone)).length : 0
   if (csvData.length === 0) {
     return (

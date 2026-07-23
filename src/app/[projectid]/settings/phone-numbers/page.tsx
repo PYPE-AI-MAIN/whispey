@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import {
-  ArrowLeft, Phone, Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Loader2, BookOpen, ExternalLink, ShieldBan,
+  ArrowLeft, Phone, Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Loader2, BookOpen, ShieldBan,
 } from 'lucide-react'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
 

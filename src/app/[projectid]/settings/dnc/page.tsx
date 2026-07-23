@@ -60,7 +60,7 @@ const COUNTRIES = [
  */
 function applyPrefix(raw: string, dialCode: string): string {
   const hadPlus = raw.trim().startsWith('+')
-  let digits = raw.replace(/\D/g, '')
+  let digits = raw.replaceAll(/\D/g, '')
   if (!digits) return ''
   // Already international: "+..." or "00..." → trust as-is.
   if (hadPlus) return digits.length >= 8 ? `+${digits}` : ''
@@ -73,6 +73,21 @@ function applyPrefix(raw: string, dialCode: string): string {
   if (digits.length === 10) return `+${dialCode}${digits}`
   // Anything else long enough: assume it already includes a country code.
   return digits.length >= 8 ? `+${digits}` : ''
+}
+
+/** Find the CSV header named "phone" (case-insensitive). */
+function findPhoneHeader(fields: string[] | undefined): string | undefined {
+  return (fields ?? []).find((h) => h.trim().toLowerCase() === 'phone')
+}
+
+/** Normalize + dedupe the phone column of parsed CSV rows. */
+function extractCsvPhones(rows: Record<string, string>[], phoneKey: string, dial: string): string[] {
+  const seen = new Set<string>()
+  for (const row of rows) {
+    const e164 = applyPrefix(String(row[phoneKey] ?? ''), dial)
+    if (e164) seen.add(e164)
+  }
+  return [...seen]
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -125,13 +140,12 @@ export default function DncPage() {
     enabled: isSuperAdmin && (scope === 'global' || !!selectedProject),
     retry: false,
   })
-  const entries = listData?.entries ?? []
-
   const filteredEntries = useMemo(() => {
-    const q = search.replace(/\D/g, '')
+    const entries = listData?.entries ?? []
+    const q = search.replaceAll(/\D/g, '')
     if (!q) return entries
     return entries.filter((e) => e.phone_e164.includes(q))
-  }, [entries, search])
+  }, [listData, search])
 
   // Numbers to submit, from whichever tab is active (already prefixed for CSV).
   const activeNumbers = useMemo(() => {
@@ -140,39 +154,6 @@ export default function DncPage() {
     return single ? [single] : []
   }, [mode, csvNumbers, numbersInput, country.dial])
 
-  // Parse a CSV, pull the `phone` column (case-insensitive), prefix + dedupe.
-  const handleCsvFile = (file: File) => {
-    setCsvError(null)
-    Papa.parse<Record<string, string>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        const headers = result.meta.fields ?? []
-        const phoneKey = headers.find((h) => h.trim().toLowerCase() === 'phone')
-        if (!phoneKey) {
-          setCsvNumbers([])
-          setCsvFileName(null)
-          setCsvError('No "phone" column found. Add a header row with a column named "phone".')
-          return
-        }
-        const seen = new Set<string>()
-        for (const row of result.data) {
-          const e164 = applyPrefix(String(row[phoneKey] ?? ''), country.dial)
-          if (e164) seen.add(e164)
-        }
-        if (seen.size === 0) {
-          setCsvNumbers([])
-          setCsvFileName(null)
-          setCsvError('The "phone" column had no valid numbers.')
-          return
-        }
-        setCsvNumbers([...seen])
-        setCsvFileName(file.name)
-      },
-      error: () => setCsvError('Could not read that file.'),
-    })
-  }
-
   const clearCsv = () => {
     setCsvNumbers([])
     setCsvFileName(null)
@@ -180,11 +161,38 @@ export default function DncPage() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  // Parse a CSV, pull the `phone` column (case-insensitive), prefix + dedupe.
+  const handleCsvFile = (file: File) => {
+    setCsvError(null)
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (result) => {
+        const phoneKey = findPhoneHeader(result.meta.fields)
+        if (!phoneKey) {
+          clearCsv()
+          setCsvError('No "phone" column found. Add a header row with a column named "phone".')
+          return
+        }
+        const phones = extractCsvPhones(result.data, phoneKey, country.dial)
+        if (phones.length === 0) {
+          clearCsv()
+          setCsvError('The "phone" column had no valid numbers.')
+          return
+        }
+        setCsvNumbers(phones)
+        setCsvFileName(file.name)
+      },
+      error: () => setCsvError('Could not read that file.'),
+    })
+  }
+
   // ── Mutations ─────────────────────────────────────────────────────────────
   const addMutation = useMutation({
     mutationFn: async () => {
       const numbers = activeNumbers
       if (numbers.length === 0) throw new Error('Enter at least one number')
+      const source = mode === 'csv' || numbers.length > 1 ? 'csv' : 'manual'
       const res = await fetch('/api/dnc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -193,7 +201,7 @@ export default function DncPage() {
           scope,
           project_id: scope === 'project' ? selectedProject?.id : undefined,
           reason: reason.trim() || undefined,
-          source: mode === 'csv' ? 'csv' : numbers.length > 1 ? 'csv' : 'manual',
+          source,
         }),
       })
       const json = await res.json()
@@ -245,6 +253,78 @@ export default function DncPage() {
   const parsedCount = activeNumbers.length
   const canSubmit = parsedCount > 0 && !needsProject && !addMutation.isPending
 
+  let listScopeLabel = 'Global entries'
+  if (scope === 'project') {
+    listScopeLabel = selectedProject ? `Entries for ${selectedProject.name}` : 'Select a project to view its entries'
+  }
+
+  // The list card body — if/else avoids a deeply nested render ternary.
+  const renderListBody = () => {
+    if (listError) {
+      return (
+        <div className="m-4 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          Couldn’t load the DNC list: {(listError as Error).message}.
+          <span className="block text-xs text-red-600/80 dark:text-red-400/80 mt-1">
+            If this is the first run, make sure the <code className="font-mono">pype_voice_dnc_list</code> table exists in Supabase.
+          </span>
+        </div>
+      )
+    }
+    if (listLoading) {
+      return (
+        <div className="p-10 flex justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
+        </div>
+      )
+    }
+    if (filteredEntries.length === 0) {
+      const emptyMsg = scope === 'project' && !selectedProject ? 'Select a project above.' : 'No numbers on the DNC list.'
+      return <div className="p-10 text-center text-sm text-gray-500 dark:text-gray-400">{emptyMsg}</div>
+    }
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Number</TableHead>
+            <TableHead>Reason</TableHead>
+            <TableHead>Source</TableHead>
+            <TableHead>Added by</TableHead>
+            <TableHead>Added</TableHead>
+            <TableHead className="w-10" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredEntries.map((e) => (
+            <TableRow key={e.id}>
+              <TableCell className="font-mono font-medium text-gray-900 dark:text-gray-100">{e.phone_e164}</TableCell>
+              <TableCell className="text-gray-500 dark:text-gray-400">{e.reason || '—'}</TableCell>
+              <TableCell><Badge variant="outline" className="capitalize">{e.source}</Badge></TableCell>
+              <TableCell className="text-gray-500 dark:text-gray-400 max-w-[180px] truncate" title={e.added_by}>{e.added_by}</TableCell>
+              <TableCell className="text-gray-500 dark:text-gray-400 whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      onClick={() => deleteMutation.mutate(e.id)}
+                      disabled={deleteMutation.isPending}
+                      aria-label="Remove"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Remove from DNC</TooltipContent>
+                </Tooltip>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    )
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <TooltipProvider>
@@ -283,7 +363,7 @@ export default function DncPage() {
               {/* Scope + project */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Scope</label>
+                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Scope</span>
                   <Select value={scope} onValueChange={(v) => { setScope(v as Scope); setSelectedProject(null) }}>
                     <SelectTrigger>
                       <SelectValue />
@@ -301,7 +381,7 @@ export default function DncPage() {
 
                 {scope === 'project' && (
                   <div className="grid gap-1.5">
-                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Project</label>
+                    <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Project</span>
                     <Popover open={projectOpen} onOpenChange={setProjectOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -342,7 +422,7 @@ export default function DncPage() {
               {/* Numbers: manual entry or CSV upload */}
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Phone numbers</label>
+                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Phone numbers</span>
                   {parsedCount > 0 && (
                     <Badge variant="secondary">{parsedCount} ready</Badge>
                   )}
@@ -450,7 +530,7 @@ export default function DncPage() {
               {/* Reason + submit */}
               <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
                 <div className="grid gap-1.5 flex-1">
-                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Reason (optional)</label>
+                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Reason (optional)</span>
                   <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. customer opt-out" />
                 </div>
                 <Button onClick={() => addMutation.mutate()} disabled={!canSubmit} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -478,13 +558,7 @@ export default function DncPage() {
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                 {scope === 'global' ? <Globe className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-                <span>
-                  {scope === 'global'
-                    ? 'Global entries'
-                    : selectedProject
-                      ? `Entries for ${selectedProject.name}`
-                      : 'Select a project to view its entries'}
-                </span>
+                <span>{listScopeLabel}</span>
                 {!listLoading && (scope === 'global' || selectedProject) && (
                   <Badge variant="secondary">{filteredEntries.length}</Badge>
                 )}
@@ -500,63 +574,7 @@ export default function DncPage() {
               </div>
             </div>
 
-            {listError ? (
-              <div className="m-4 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-                Couldn’t load the DNC list: {(listError as Error).message}.
-                <span className="block text-xs text-red-600/80 dark:text-red-400/80 mt-1">
-                  If this is the first run, make sure the <code className="font-mono">pype_voice_dnc_list</code> table exists in Supabase.
-                </span>
-              </div>
-            ) : listLoading ? (
-              <div className="p-10 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
-              </div>
-            ) : filteredEntries.length === 0 ? (
-              <div className="p-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                {scope === 'project' && !selectedProject ? 'Select a project above.' : 'No numbers on the DNC list.'}
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Number</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Added by</TableHead>
-                    <TableHead>Added</TableHead>
-                    <TableHead className="w-10" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEntries.map((e) => (
-                    <TableRow key={e.id}>
-                      <TableCell className="font-mono font-medium text-gray-900 dark:text-gray-100">{e.phone_e164}</TableCell>
-                      <TableCell className="text-gray-500 dark:text-gray-400">{e.reason || '—'}</TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{e.source}</Badge></TableCell>
-                      <TableCell className="text-gray-500 dark:text-gray-400 max-w-[180px] truncate" title={e.added_by}>{e.added_by}</TableCell>
-                      <TableCell className="text-gray-500 dark:text-gray-400 whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                              onClick={() => deleteMutation.mutate(e.id)}
-                              disabled={deleteMutation.isPending}
-                              aria-label="Remove"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Remove from DNC</TooltipContent>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            {renderListBody()}
           </div>
         </div>
       </div>

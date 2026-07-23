@@ -34,12 +34,13 @@ export async function GET() {
   }
 
   type ProjRow = { id: string; name: string; is_active?: boolean }
+  const toRows = (p: ProjRow | ProjRow[] | null): ProjRow[] => {
+    if (Array.isArray(p)) return p
+    return p ? [p] : []
+  }
   const projects = (data ?? [])
     // Supabase types a to-one join as an array — normalize to a single row.
-    .flatMap((m) => {
-      const p = (m as { project: ProjRow | ProjRow[] | null }).project
-      return Array.isArray(p) ? p : p ? [p] : []
-    })
+    .flatMap((m) => toRows((m as { project: ProjRow | ProjRow[] | null }).project))
     .filter((p) => p.is_active !== false)
     .map((p) => ({ id: p.id, name: p.name }))
     .sort((a, b) => a.name.localeCompare(b.name))

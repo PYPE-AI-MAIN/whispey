@@ -14,7 +14,7 @@ export const DNC_TABLE = 'pype_voice_dnc_list'
 export function normalizePhone(raw: string, defaultCountryCode = '91'): string | null {
   if (!raw) return null
   const hadPlus = raw.trim().startsWith('+')
-  let digits = raw.replace(/\D/g, '')
+  let digits = raw.replaceAll(/\D/g, '')
   if (!digits) return null
 
   // International prefix "00xxxx" -> treat the rest as already country-coded.
@@ -41,6 +41,54 @@ export function normalizePhone(raw: string, defaultCountryCode = '91'): string |
 
   // Anything else with enough digits: assume it already includes a country code.
   return digits.length >= 8 ? `+${digits}` : null
+}
+
+/** Coerce a `string | string[]` request field into an array (empty when absent). */
+export function toNumbersArray(raw: string | string[] | null | undefined): string[] {
+  if (Array.isArray(raw)) return raw
+  if (raw === null || raw === undefined) return []
+  return [raw]
+}
+
+export interface DncRowMeta {
+  scope: 'global' | 'project'
+  projectId: string | null
+  reason: string | null
+  source: string
+  addedBy: string
+}
+
+/**
+ * Normalize + dedupe raw inputs into insertable DNC rows.
+ * Returns the rows plus the list of inputs that failed normalization.
+ */
+export function buildDncRows(inputs: string[], meta: DncRowMeta): {
+  rows: Record<string, unknown>[]
+  invalid: string[]
+} {
+  const invalid: string[] = []
+  const seen = new Set<string>()
+  const rows: Record<string, unknown>[] = []
+  for (const input of inputs) {
+    const e164 = normalizePhone(input)
+    if (!e164) {
+      invalid.push(input)
+      continue
+    }
+    if (seen.has(e164)) continue // dedupe within this request
+    seen.add(e164)
+    rows.push({
+      phone_e164: e164,
+      phone_raw: input,
+      scope: meta.scope,
+      project_id: meta.scope === 'project' ? meta.projectId : null,
+      reason: meta.reason,
+      source: meta.source,
+      added_by: meta.addedBy,
+      is_active: true,
+    })
+  }
+  return { rows, invalid }
 }
 
 export interface DncCheckResult {

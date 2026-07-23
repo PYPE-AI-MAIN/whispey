@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { DNC_TABLE, getSuperAdminEmail, normalizePhone } from '@/lib/dnc'
+import { DNC_TABLE, getSuperAdminEmail, toNumbersArray, buildDncRows } from '@/lib/dnc'
 
 export const runtime = 'nodejs'
 
@@ -41,35 +41,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'project_id is required for project scope' }, { status: 400 })
   }
 
-  const raw = body.numbers
-  const inputs = Array.isArray(raw) ? raw : raw != null ? [raw] : []
+  const inputs = toNumbersArray(body.numbers)
   if (inputs.length === 0) {
     return NextResponse.json({ error: '`numbers` is required' }, { status: 400 })
   }
 
-  const source = body.source ?? 'manual'
-  const invalid: string[] = []
-  const seen = new Set<string>()
-  const rows: Record<string, unknown>[] = []
-  for (const input of inputs) {
-    const e164 = normalizePhone(input)
-    if (!e164) {
-      invalid.push(input)
-      continue
-    }
-    if (seen.has(e164)) continue // dedupe within this request
-    seen.add(e164)
-    rows.push({
-      phone_e164: e164,
-      phone_raw: input,
-      scope,
-      project_id: scope === 'project' ? body.project_id : null,
-      reason: body.reason ?? null,
-      source,
-      added_by: admin,
-      is_active: true,
-    })
-  }
+  const { rows, invalid } = buildDncRows(inputs, {
+    scope,
+    projectId: body.project_id ?? null,
+    reason: body.reason ?? null,
+    source: body.source ?? 'manual',
+    addedBy: admin,
+  })
 
   if (rows.length === 0) {
     return NextResponse.json({ error: 'No valid numbers', invalid }, { status: 400 })
@@ -78,16 +61,16 @@ export async function POST(request: NextRequest) {
   const supabase = createServiceRoleClient()
 
   // Skip numbers already active in this scope so we don't trip the unique index.
-  const existingQuery = supabase
+  let existingQuery = supabase
     .from(DNC_TABLE)
     .select('phone_e164')
     .eq('is_active', true)
     .eq('scope', scope)
     .in('phone_e164', rows.map((r) => r.phone_e164 as string))
-  const existing =
-    scope === 'project'
-      ? await existingQuery.eq('project_id', body.project_id!)
-      : await existingQuery
+  if (scope === 'project') {
+    existingQuery = existingQuery.eq('project_id', body.project_id!)
+  }
+  const existing = await existingQuery
   if (existing.error) {
     console.error('DNC add (dupe check) error:', existing.error)
     return NextResponse.json({ error: 'Failed to add numbers' }, { status: 500 })

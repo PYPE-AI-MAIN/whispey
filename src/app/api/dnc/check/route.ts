@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { checkDncNumbers } from '@/lib/dnc'
+import { checkDncNumbers, toNumbersArray } from '@/lib/dnc'
 
 export const runtime = 'nodejs'
 
@@ -24,8 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const raw = body.numbers
-  const numbers = Array.isArray(raw) ? raw : raw != null ? [raw] : []
+  const numbers = toNumbersArray(body.numbers)
   if (numbers.length === 0) {
     return NextResponse.json({ error: '`numbers` is required (string or array)' }, { status: 400 })
   }

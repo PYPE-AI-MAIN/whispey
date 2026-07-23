@@ -147,6 +147,53 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
   ),
 })
 
+// Batch-check phone numbers against the DNC list; returns the set of raw inputs
+// that are blocked (empty set on any failure — the preview just won't flag them).
+async function fetchDncBlockedSet(phones: string[], projectId: string): Promise<Set<string>> {
+  try {
+    const res = await fetch('/api/dnc/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: phones, project_id: projectId }),
+    })
+    const json = await res.json()
+    return new Set<string>(
+      (json.results ?? []).filter((r: any) => r.blocked).map((r: any) => r.input)
+    )
+  } catch (err) {
+    console.error('DNC check failed:', err)
+    return new Set<string>()
+  }
+}
+
+// Drop empty/null fields from each recipient row before uploading.
+function toNormalizedRows(rows: RecipientRow[]): Record<string, unknown>[] {
+  return rows.map((row) => {
+    const rowData: Record<string, unknown> = {}
+    Object.keys(row).forEach((key) => {
+      const value = (row as any)[key]
+      if (value !== undefined && value !== null && value !== '') rowData[key] = value
+    })
+    return rowData
+  })
+}
+
+// LiveKit campaigns dispatch by "{name}_{uuid}"; other runtimes use the agent id.
+async function resolveCampaignAgentName(agentId: string, agentRuntime: string): Promise<string> {
+  if (agentRuntime !== 'livekit') return agentId
+  try {
+    const agentRes = await fetch(`/api/agents/${agentId}`)
+    const agent = (await agentRes.json()) as { name?: string; id?: string }
+    if (agentRes.ok && agent?.name && agent?.id) {
+      return `${agent.name}_${agent.id.replaceAll('-', '_')}`
+    }
+    if (agent?.name) return agent.name
+  } catch (err) {
+    console.error('Error fetching agent name:', err)
+  }
+  return agentId
+}
+
 function CreateCampaign() {
   const router = useRouter()
   const params = useParams()
@@ -159,7 +206,6 @@ function CreateCampaign() {
   const [loadingConfig, setLoadingConfig] = useState<boolean>(true)
   // Raw phone strings (as they appear in the CSV) that are on the DNC list.
   const [dncBlocked, setDncBlocked] = useState<Set<string>>(new Set())
-  const [dncChecking, setDncChecking] = useState<boolean>(false)
 
   const initialValues = {
     campaignName: '',
@@ -230,27 +276,9 @@ function CreateCampaign() {
       return
     }
     let cancelled = false
-    setDncChecking(true)
-    ;(async () => {
-      try {
-        const res = await fetch('/api/dnc/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ numbers: phones, project_id: projectId }),
-        })
-        const json = await res.json()
-        if (cancelled) return
-        const blocked = new Set<string>(
-          (json.results ?? []).filter((r: any) => r.blocked).map((r: any) => r.input)
-        )
-        setDncBlocked(blocked)
-      } catch (err) {
-        console.error('DNC check failed:', err)
-        if (!cancelled) setDncBlocked(new Set())
-      } finally {
-        if (!cancelled) setDncChecking(false)
-      }
-    })()
+    fetchDncBlockedSet(phones, projectId).then((blocked) => {
+      if (!cancelled) setDncBlocked(blocked)
+    })
     return () => {
       cancelled = true
     }
@@ -293,18 +321,7 @@ function CreateCampaign() {
         setSubmitting(false)
         return
       }
-      const normalizedData = callableData.map(row => {
-        const rowData: any = {}
-        Object.keys(row).forEach(key => {
-          const value = (row as any)[key]
-          if (value !== undefined && value !== null && value !== '') {
-            rowData[key] = value
-          }
-        })
-        return rowData
-      })
-
-      const csvContent = Papa.unparse(normalizedData, {
+      const csvContent = Papa.unparse(toNormalizedRows(callableData), {
         header: true,
         quotes: true,
         quoteChar: '"',
@@ -326,27 +343,8 @@ function CreateCampaign() {
       const uploadData = await uploadResponse.json()
       const s3FileKey = uploadData.s3FileKey || uploadData.fileKey
 
-      // Step 2: Resolve agentName based on runtime
-      let agentName = values.agentId
-
-      if (values.agentRuntime === 'livekit') {
-        // Supabase lookup only for livekit
-        try {
-          const agentRes = await fetch(`/api/agents/${values.agentId}`)
-          const agent = (await agentRes.json()) as { name?: string; id?: string; error?: string }
-
-          if (agentRes.ok && agent?.name && agent?.id) {
-            const sanitizedAgentId = agent.id.replace(/-/g, '_')
-            agentName = `${agent.name}_${sanitizedAgentId}`
-          } else if (agent?.name) {
-            agentName = agent.name
-          }
-        } catch (err) {
-          console.error('Error fetching agent name:', err)
-          // Fallback to agentId
-        }
-      }
-      // For pipecat: agentName = agentId directly (the pipecat agent id from the API)
+      // Step 2: Resolve agentName based on runtime (livekit → "{name}_{uuid}")
+      const agentName = await resolveCampaignAgentName(values.agentId, values.agentRuntime)
 
       // Step 3: Create campaign
       const createResponse = await fetch('/api/campaigns/create', {

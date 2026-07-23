@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   if (scope === 'global' || scope === 'project') query = query.eq('scope', scope)
   if (projectId) query = query.eq('project_id', projectId)
-  if (q) query = query.ilike('phone_e164', `%${q.replace(/\D/g, '')}%`)
+  if (q) query = query.ilike('phone_e164', `%${q.replaceAll(/\D/g, '')}%`)
 
   const { data, error } = await query.limit(1000)
   if (error) {
