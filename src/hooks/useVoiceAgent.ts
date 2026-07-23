@@ -103,8 +103,10 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
   const connectionTimeInterval = useRef<NodeJS.Timeout | null>(null)
   const audioElementsRef       = useRef<Set<HTMLAudioElement>>(new Set())
   const roomRef                = useRef<Room | null>(null)
+  const isConnectedRef         = useRef(isConnected)
 
   useEffect(() => { roomRef.current = room }, [room])
+  useEffect(() => { isConnectedRef.current = isConnected }, [isConnected])
 
   useEffect(() => {
     if (isConnected) {
@@ -291,12 +293,20 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
   }, [isConnected, upsertTranscript])
 
   useEffect(() => {
+    // Unmount-only cleanup. `isConnected` is intentionally NOT a dependency —
+    // it used to be, which made this cleanup re-run on every connect/disconnect
+    // transition (not just unmount), calling roomRef.current.disconnect() a
+    // second time right after the disconnect() action already called it,
+    // which is what triggered the "Unknown DataChannel error on lossy" console
+    // error (the browser firing a generic error event on a data channel that's
+    // already mid-teardown). isConnectedRef stays current via the effect above,
+    // so we still only disconnect here if a room was actually left connected.
     return () => {
-      try { if (roomRef.current && isConnected) roomRef.current.disconnect() } catch {}
+      try { if (roomRef.current && isConnectedRef.current) roomRef.current.disconnect() } catch {}
       cleanupAudioElements()
       if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current)
     }
-  }, [isConnected, cleanupAudioElements])
+  }, [cleanupAudioElements])
 
   return [
     { room, isConnected, isConnecting, connectionError, transcripts, agentParticipant, agentState, isMuted, volume, connectionTime, webSession },
