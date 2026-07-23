@@ -74,6 +74,13 @@ export interface SipCode {
   code: string
   label: string
   description: string
+  // Frontend-only picker gate — does NOT affect what the Yup schema or the
+  // schedule API route accept (VALID_SIP_ERROR_CODE_VALUES is intentionally
+  // left unfiltered). Temporary: while we RCA the retry-count/backoff-order
+  // issues seen with the full 9-code set, the picker only lets a user select
+  // the pre-existing 480/486; the rest render disabled as "Coming soon" so
+  // the groups/UI don't need rebuilding once codes are re-enabled.
+  enabled: boolean
 }
 
 export interface SipCodeGroup {
@@ -108,6 +115,7 @@ const sipCodeSchema = z.object({
   code: z.string().regex(/^\d{3}$/, 'SIP code must be a 3-digit string'),
   label: z.string().min(1),
   description: z.string().min(1),
+  enabled: z.boolean(),
 })
 
 const sipCodeGroupSchema = z.object({
@@ -132,8 +140,16 @@ function loadSipCodeGroups(raw: unknown): SipCodeGroup[] {
 
 export const SIP_CODE_GROUPS: SipCodeGroup[] = loadSipCodeGroups(sipCodeGroupsRaw)
 
+// All 9 codes, including disabled ones — used for UI display (grouped
+// picker, info popover) so "coming soon" codes still render with labels.
 export const VALID_SIP_ERROR_CODES: SipCode[] = SIP_CODE_GROUPS.flatMap(g => g.codes)
-export const VALID_SIP_ERROR_CODE_VALUES = VALID_SIP_ERROR_CODES.map(c => c.code)
+
+// Only enabled codes — this is what the Yup schema and schedule/route.ts's
+// backend validator actually accept. Filtered (not the full list above) so a
+// disabled code is rejected even via a direct API call, not just blocked in
+// the picker UI. Temporary, pending RCA on the retry-count/backoff-order
+// issue seen with the full 9-code set (see sip-codes.data.json comments).
+export const VALID_SIP_ERROR_CODE_VALUES = VALID_SIP_ERROR_CODES.filter(c => c.enabled).map(c => c.code)
 
 // Retry Configuration
 export interface RetryConfig {
