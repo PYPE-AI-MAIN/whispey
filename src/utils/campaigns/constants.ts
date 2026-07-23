@@ -140,8 +140,16 @@ function loadSipCodeGroups(raw: unknown): SipCodeGroup[] {
 
 export const SIP_CODE_GROUPS: SipCodeGroup[] = loadSipCodeGroups(sipCodeGroupsRaw)
 
+// All 9 codes, including disabled ones — used for UI display (grouped
+// picker, info popover) so "coming soon" codes still render with labels.
 export const VALID_SIP_ERROR_CODES: SipCode[] = SIP_CODE_GROUPS.flatMap(g => g.codes)
-export const VALID_SIP_ERROR_CODE_VALUES = VALID_SIP_ERROR_CODES.map(c => c.code)
+
+// Only enabled codes — this is what the Yup schema and schedule/route.ts's
+// backend validator actually accept. Filtered (not the full list above) so a
+// disabled code is rejected even via a direct API call, not just blocked in
+// the picker UI. Temporary, pending RCA on the retry-count/backoff-order
+// issue seen with the full 9-code set (see sip-codes.data.json comments).
+export const VALID_SIP_ERROR_CODE_VALUES = VALID_SIP_ERROR_CODES.filter(c => c.enabled).map(c => c.code)
 
 // Retry Configuration
 export interface RetryConfig {
