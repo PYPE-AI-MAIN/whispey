@@ -100,9 +100,9 @@ function validateDispatch(
 // Turn a failed dispatch response into a user-facing message.
 function extractDispatchError(result: any, status: number): string {
   if (status === 429) {
-    return result.current_calls !== undefined
-      ? `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
-      : 'Rate limit exceeded. Please try again later.'
+    return result.current_calls === undefined
+      ? 'Rate limit exceeded. Please try again later.'
+      : `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
   }
   if (typeof result.error === 'string') return result.error
   if (result.error?.message) return result.error.message
@@ -300,13 +300,9 @@ export default function PhoneCallConfig() {
       (call) => call.to_phone_number === cleaned && call.country_code === selectedCountry && call.from_phone_number_id === fromPhoneNumberId,
     )
     let updatedHistory: CallRecord[]
-    if (existingCallIndex !== -1) {
-      const updatedCall = touchExistingCall(callHistory[existingCallIndex], status)
-      const filteredHistory = callHistory.filter((_, index) => index !== existingCallIndex)
-      updatedHistory = [updatedCall, ...filteredHistory].slice(0, historyLimit)
-    } else {
+    if (existingCallIndex === -1) {
       const newCall: CallRecord = {
-        id: `${Date.now()}-${Math.random()}`,
+        id: crypto.randomUUID(),
         to_phone_number: cleaned,
         country_code: selectedCountry,
         from_phone_number_id: fromPhoneNumberId,
@@ -321,6 +317,10 @@ export default function PhoneCallConfig() {
       setCallCounter(nextCounter)
       localStorage.setItem(`phone_call_counter_${agentId}`, nextCounter.toString())
       updatedHistory = [newCall, ...callHistory].slice(0, historyLimit)
+    } else {
+      const updatedCall = touchExistingCall(callHistory[existingCallIndex], status)
+      const filteredHistory = callHistory.filter((_, index) => index !== existingCallIndex)
+      updatedHistory = [updatedCall, ...filteredHistory].slice(0, historyLimit)
     }
     setCallHistory(updatedHistory)
     localStorage.setItem(`${STORAGE_KEY}_${agentId}`, JSON.stringify(updatedHistory))
