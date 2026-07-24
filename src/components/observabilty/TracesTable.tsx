@@ -85,6 +85,9 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   speechmatics: "Speechmatics",
   playht: "PlayHT",
   rime: "Rime",
+  smallestai: "Smallest AI",
+  aws: "AWS",
+  cerebras: "Cerebras",
 }
 
 // Turns a raw class path like "livekit.plugins.deepgram.stt.STT" into "Deepgram".

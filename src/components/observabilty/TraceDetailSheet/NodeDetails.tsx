@@ -151,6 +151,9 @@ function NodeDetails({
       speechmatics: "Speechmatics",
       playht: "PlayHT",
       rime: "Rime",
+      smallestai: "Smallest AI",
+      aws: "AWS",
+      cerebras: "Cerebras",
     }
 
     // Turns "livekit.plugins.deepgram.stt.STT" into "Deepgram".
