@@ -3,8 +3,9 @@ import React from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowDown, Activity, MessageSquare, Wrench, Download } from 'lucide-react'
+import { ArrowDown, Activity, MessageSquare, Wrench, Download, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import AudioPlayer from '@/components/AudioPlayer'
+import { formatProviderLabel } from '@/utils/providerDisplay'
 
 interface NodeDetailsProps {
   pipelineStages: any[]
@@ -134,7 +135,7 @@ function NodeDetails({
           ` ${timeZoneAbbr}`
         )
       }
-    
+
     // Simple Audio Component
     const SimpleAudioPlayer = ({ type, duration }: { type: 'stt' | 'tts', duration: number }) => {
       if (!recordingUrl || !audioSegmentInfo || duration === 0) {
@@ -525,6 +526,116 @@ function NodeDetails({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Fallback Events - provider failover AND recovery for STT/LLM/TTS stages.
+            Recoveries are rendered distinctly (green, no Primary/Fallback/Reason
+            breakdown — there's nothing to explain, the provider just came back). */}
+        {["stt", "llm", "tts"].includes(selectedStage.id) && selectedStage.fallbackEvents && selectedStage.fallbackEvents.length > 0 && (
+          <div className={cn(
+            "border-l-4 rounded-lg p-4",
+            selectedStage.fallbackFailureCount > 0
+              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-500 dark:border-amber-400"
+              : "bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-400"
+          )}>
+            <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              {selectedStage.fallbackFailureCount > 0 ? (
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              ) : (
+                <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+              )}
+              Fallback Events ({selectedStage.fallbackEvents.length})
+            </h4>
+            <div className="space-y-3">
+              {selectedStage.fallbackEvents.map((fb: any, index: number) => {
+                const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${index}`
+                const isRecovery = fb.event_type === 'provider_recovered'
+                if (isRecovery) {
+                  return (
+                    <div key={eventKey} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded bg-green-100 dark:bg-green-800 flex items-center justify-center">
+                            <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400" />
+                          </div>
+                          <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                            Recovered: {fb.provider_label || formatProviderLabel(fb.provider_name)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                          {fb.timestamp ? formatTimestamp(fb.timestamp) : ""}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                }
+                const isTotalFailure = !!fb.all_providers_failed
+                return (
+                  <div key={eventKey} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-6 h-6 rounded flex items-center justify-center",
+                          isTotalFailure ? "bg-red-100 dark:bg-red-900/40" : "bg-amber-100 dark:bg-amber-800"
+                        )}>
+                          {isTotalFailure ? (
+                            <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          )}
+                        </div>
+                        <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {isTotalFailure
+                            ? `${fb.provider_label || formatProviderLabel(fb.provider_name)} — no fallback available`
+                            : <>{fb.provider_label || formatProviderLabel(fb.provider_name)} → {fb.fallback_label || formatProviderLabel(fb.fallback_provider)}</>}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                        {fb.timestamp ? formatTimestamp(fb.timestamp) : ""}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">Primary:</span>
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 break-all">
+                          {fb.provider_name || "unknown"}
+                        </code>
+                      </div>
+                      {!isTotalFailure && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">Fallback:</span>
+                          <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 break-all">
+                            {fb.fallback_provider || "unknown"}
+                          </code>
+                        </div>
+                      )}
+                      {fb.all_providers && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">All configured:</span>
+                          <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 break-all">
+                            {String(fb.all_providers)}
+                          </code>
+                        </div>
+                      )}
+                      {fb.error_reason ? (
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">Reason:</span>
+                          <code className="text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto break-all">
+                            {fb.error_reason}
+                          </code>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 italic">
+                          Exact error reason wasn't captured for this event — check CloudWatch (/aws/vc-bots/errors) around this timestamp for the underlying exception.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

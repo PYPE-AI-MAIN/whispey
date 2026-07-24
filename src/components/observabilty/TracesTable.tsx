@@ -14,6 +14,7 @@ import SessionTraceView from "./SessionTraceView"
 import WaterfallView from "./WaterFallView";
 import ConfigTab from "./ConfigTab";
 import { getAgentPlatform } from "@/utils/agentDetection";
+import { formatProviderLabel } from "@/utils/providerDisplay";
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useTranscriptEnglishToggle } from "@/hooks/useTranscriptEnglishToggle"
@@ -40,6 +41,7 @@ interface TraceLog {
   trace_id?: string
   otel_spans?: OTelSpan[]
   tool_calls?: any[]
+  enhanced_data?: { fallback_events?: any[]; [key: string]: any }
   trace_duration_ms?: number
   trace_cost_usd?: number
   stt_metrics?: any
@@ -63,7 +65,7 @@ interface TraceLog {
 export const METRICS_LOGS_SELECT =
   "id, session_id, turn_id, user_transcript, agent_response, " +
   "stt_metrics, llm_metrics, tts_metrics, eou_metrics, " +
-  "tool_calls, trace_id, trace_duration_ms, trace_cost_usd, " +
+  "tool_calls, enhanced_data, trace_id, trace_duration_ms, trace_cost_usd, " +
   "created_at, unix_timestamp, bug_report, " +
   "call_success, lesson_day, lesson_completed, phone_number"
 
@@ -457,6 +459,10 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
     return { total, successful }
   }
 
+  const getFallbackEvents = (trace: TraceLog): any[] => {
+    return trace.enhanced_data?.fallback_events || []
+  }
+
   const getMetricsInfo = (trace: TraceLog) => {
     const metrics = []
     if (trace.stt_metrics && Object.keys(trace.stt_metrics).length > 0) {
@@ -793,6 +799,8 @@ const handleRowClick = (trace: TraceLog) => {
                     const toolInfo = getToolCallsInfo(trace.tool_calls)
                     const mainOp = getMainOperation(trace)
                     const metrics = getMetricsInfo(trace)
+                    const fallbackEvents = getFallbackEvents(trace)
+                    const fallbackFailureCount = fallbackEvents.filter((fb: any) => fb.event_type !== 'provider_recovered').length
                     const latency = getTotalLatency(trace)
                     const hasBugReport = checkBugReportFlags.has(trace.turn_id.toString())
                     const spansLength = trace.otel_spans?.length || 0
@@ -906,6 +914,44 @@ const handleRowClick = (trace: TraceLog) => {
                               )}
                             </div>
                           )}
+                          {/* Provider fallback events (STT/TTS/LLM failover) — short summary only,
+                              same pattern as tool_calls: full detail lives in the row's detail
+                              sheet (click row → Fallback Events card), not duplicated here. */}
+                          {fallbackEvents.length > 0 && (
+                            <div className="space-y-0.5 pl-1 border-l-2 border-amber-200 dark:border-amber-800 ml-1">
+                              {fallbackEvents.map((fb: any, idx: number) => {
+                                const isRecovery = fb.event_type === 'provider_recovered'
+                                const isTotalFailure = !isRecovery && fb.all_providers_failed
+                                const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
+
+                                let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-amber-500 dark:text-amber-400" />
+                                let textClass = "text-amber-700 dark:text-amber-300"
+                                let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
+                                if (isRecovery) {
+                                  icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-green-500 dark:text-green-400" />
+                                  textClass = "text-green-700 dark:text-green-300"
+                                  summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+                                } else if (isTotalFailure) {
+                                  icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+                                  textClass = "text-red-700 dark:text-red-300"
+                                  summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+                                }
+
+                                return (
+                                  <div key={eventKey} className="flex items-start gap-1 text-xs">
+                                    {icon}
+                                    <span className={textClass}>{summary}</span>
+                                    {!isRecovery && fb.error_reason && (
+                                      <span className="text-gray-400 dark:text-gray-500">
+                                        — {fb.error_reason.length > 50 ? fb.error_reason.slice(0, 50) + '…' : fb.error_reason}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
                           {!trace.user_transcript && !trace.agent_response && (!trace.tool_calls || trace.tool_calls.length === 0) && (
                             <div className="text-xs text-gray-400 dark:text-gray-500 italic">
                               {trace.lesson_day ? `Lesson Day ${trace.lesson_day}` : 'System operation'}
@@ -932,6 +978,12 @@ const handleRowClick = (trace: TraceLog) => {
                                     {metric.type}
                                   </Badge>
                                 ))}
+                              </div>
+                            )}
+                            {fallbackFailureCount > 0 && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <span className="font-medium text-amber-700 dark:text-amber-300">{fallbackFailureCount}</span>
                               </div>
                             )}
                           </div>
