@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { MessageSquare, Wrench } from 'lucide-react'
+import { MessageSquare, Wrench, AlertTriangle } from 'lucide-react'
 import React from 'react'
 
 function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
@@ -40,6 +40,12 @@ function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
                     <div className="flex items-center gap-1">
                       <MessageSquare className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                       <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">{stage.llmRequests.length}</span>
+                    </div>
+                  )}
+                  {stage.fallbackFailureCount > 0 && (
+                    <div className="flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">{stage.fallbackFailureCount}</span>
                     </div>
                   )}
                 </div>
