@@ -1016,8 +1016,20 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found in data store")
         return {"success": False, "error": "Session not found"}
-    
+
     session_info = _session_data_store[session_id]
+
+    # Guard against duplicate sends: multiple independent call paths (transfer,
+    # end_call tool, EOD silence timeout, normal shutdown) can all reach this
+    # function for the same session. Checked+set synchronously (no await in
+    # between) so a concurrent second call sees it immediately and skips
+    # instead of re-sending the same data. Cleared on failure so retries still
+    # work — only a successful send should permanently block re-sends.
+    if session_info.get('_export_in_progress'):
+        logger.info(f"⏭️ Export already in progress/sent for {session_id} — skipping duplicate call")
+        return {"success": True, "skipped": True}
+    session_info['_export_in_progress'] = True
+
     # Use session-stored apikey/api_url if not passed (same as call_started)
     apikey = apikey if apikey is not None else session_info.get("apikey")
     api_url = api_url if api_url is not None else session_info.get("api_url")
@@ -1058,13 +1070,15 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
             cleanup_session(session_id)
         else:
             logger.error(f"❌ Whispey API returned failure: {result}")
-        
+            session_info['_export_in_progress'] = False  # allow a retry
+
         return result
-        
+
     except Exception as e:
         logger.error(f"❌ Exception sending to Whispey: {e}")
         import traceback
         traceback.print_exc()
+        session_info['_export_in_progress'] = False  # allow a retry
         return {"success": False, "error": str(e)}
 
 
