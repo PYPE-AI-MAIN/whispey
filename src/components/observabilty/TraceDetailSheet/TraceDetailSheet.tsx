@@ -51,6 +51,112 @@ interface TraceDetailSheetProps {
 
 const defaultFormatTranscript = (s: string | undefined | null) => s ?? ''
 
+// Extracted out of the component to keep its cognitive complexity down —
+// this is a pure function of `trace`, so it doesn't need to live inline.
+function buildPipelineStages(trace: any) {
+  const sttConfig = trace.turn_configuration?.stt_configuration?.structured_config
+  const llmConfig = trace.turn_configuration?.llm_configuration?.structured_config
+  const ttsConfig = trace.turn_configuration?.tts_configuration?.structured_config
+  const vadConfig = trace.turn_configuration?.vad_configuration?.structured_config
+  const eouConfig = trace.turn_configuration?.eou_configuration?.structured_config
+
+  const enhancedSTT = trace.enhanced_data?.enhanced_stt_data
+  const enhancedLLM = trace.enhanced_data?.enhanced_llm_data
+  const enhancedTTS = trace.enhanced_data?.enhanced_tts_data
+  const llmRequests = trace.enhanced_data?.llm_requests || []
+  const allFallbackEvents = trace.enhanced_data?.fallback_events || []
+  const fallbackEventsFor = (providerType: string) =>
+    allFallbackEvents.filter((fb: any) => fb.provider_type === providerType)
+  // Recoveries are good news, not a problem to warn about — badge counts
+  // (left-panel stage list, row-level warning icon) should reflect failures
+  // only, while the full event list (both types) still renders in the card.
+  const fallbackFailureCountFor = (providerType: string) =>
+    fallbackEventsFor(providerType).filter((fb: any) => fb.event_type !== 'provider_recovered').length
+
+  return [
+    {
+      id: "vad",
+      name: "VAD",
+      icon: <Activity className="w-3 h-3" />,
+      color: "orange",
+      active: !!vadConfig && Object.keys(vadConfig).length > 0 && !!trace.user_transcript && trace.user_transcript.trim() !== "",
+      config: vadConfig,
+      metrics: null,
+      inputType: "Audio Stream",
+      outputType: "Speech Events",
+      status: vadConfig && Object.keys(vadConfig).length > 0 && trace.user_transcript ? "active" : "inactive",
+    },
+    {
+      id: "eou",
+      name: "EOU",
+      icon: <Activity className="w-3 h-3" />,
+      color: "orange",
+      active: !!trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0,
+      config: eouConfig,
+      metrics: trace.eou_metrics,
+      inputType: "Audio Stream",
+      outputType: "Speech Events",
+      status: trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0 ? "success" : "inactive",
+    },
+    {
+      id: "stt",
+      name: "STT",
+      icon: <Mic className="w-3 h-3" />,
+      color: "blue",
+      // A fallback event proves STT ran even when it produced no transcript
+      // (e.g. the opening greeting turn, before any user audio exists) — the
+      // stage must stay visible so that failure is never hidden from the sheet.
+      active: (!!trace.user_transcript && trace.user_transcript.trim() !== "") || fallbackEventsFor("STT").length > 0,
+      config: sttConfig,
+      metrics: trace.stt_metrics,
+      enhanced: enhancedSTT,
+      fallbackEvents: fallbackEventsFor("STT"),
+      fallbackFailureCount: fallbackFailureCountFor("STT"),
+      inputType: "Audio",
+      outputType: "Text",
+      inputData: `${trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s audio`,
+      outputData: trace.user_transcript,
+      status: trace.user_transcript && trace.user_transcript.trim() !== "" ? "success" : "missing",
+    },
+    {
+      id: "llm",
+      name: "LLM",
+      icon: <Brain className="w-3 h-3" />,
+      color: "purple",
+      active: (!!trace.agent_response && trace.agent_response.trim() !== "") || fallbackEventsFor("LLM").length > 0,
+      config: llmConfig,
+      metrics: trace.llm_metrics,
+      enhanced: enhancedLLM,
+      tools: trace.tool_calls || [],
+      llmRequests: llmRequests,
+      fallbackEvents: fallbackEventsFor("LLM"),
+      fallbackFailureCount: fallbackFailureCountFor("LLM"),
+      inputType: "Text",
+      outputType: "Text",
+      inputData: trace.user_transcript,
+      outputData: trace.agent_response,
+      status: trace.agent_response && trace.agent_response.trim() !== "" ? "success" : "missing",
+    },
+    {
+      id: "tts",
+      name: "TTS",
+      icon: <Volume2 className="w-3 h-3" />,
+      color: "green",
+      active: (!!trace.tts_metrics && Object.keys(trace.tts_metrics).length > 0) || fallbackEventsFor("TTS").length > 0,
+      config: ttsConfig,
+      metrics: trace.tts_metrics,
+      enhanced: enhancedTTS,
+      fallbackEvents: fallbackEventsFor("TTS"),
+      fallbackFailureCount: fallbackFailureCountFor("TTS"),
+      inputType: "Text",
+      outputType: "Audio",
+      inputData: trace.agent_response,
+      outputData: `${trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s audio`,
+      status: trace.tts_metrics && Object.keys(trace.tts_metrics).length > 0 ? "success" : "missing",
+    }
+  ].filter(stage => stage.active)
+}
+
 const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({ 
   isOpen, 
   trace, 
@@ -215,111 +321,8 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
     }
   }
 
-  // Extract configuration data
-  const sttConfig = trace.turn_configuration?.stt_configuration?.structured_config
-  const llmConfig = trace.turn_configuration?.llm_configuration?.structured_config
-  const ttsConfig = trace.turn_configuration?.tts_configuration?.structured_config
-  const vadConfig = trace.turn_configuration?.vad_configuration?.structured_config
-  const eouConfig = trace.turn_configuration?.eou_configuration?.structured_config
-
-  // Extract enhanced data
-  const enhancedSTT = trace.enhanced_data?.enhanced_stt_data
-  const enhancedLLM = trace.enhanced_data?.enhanced_llm_data
-  const enhancedTTS = trace.enhanced_data?.enhanced_tts_data
-  const stateEvents = trace.enhanced_data?.state_events || []
-  const llmRequests = trace.enhanced_data?.llm_requests || []
-  const allFallbackEvents = trace.enhanced_data?.fallback_events || []
-  const fallbackEventsFor = (providerType: string) =>
-    allFallbackEvents.filter((fb: any) => fb.provider_type === providerType)
-  // Recoveries are good news, not a problem to warn about — badge counts
-  // (left-panel stage list, row-level warning icon) should reflect failures
-  // only, while the full event list (both types) still renders in the card.
-  const fallbackFailureCountFor = (providerType: string) =>
-    fallbackEventsFor(providerType).filter((fb: any) => fb.event_type !== 'provider_recovered').length
-
   // Pipeline stages with comprehensive data
-  const pipelineStages = [
-    {
-      id: "vad",
-      name: "VAD",
-      icon: <Activity className="w-3 h-3" />,
-      color: "orange",
-      active: !!vadConfig && Object.keys(vadConfig).length > 0 && !!trace.user_transcript && trace.user_transcript.trim() !== "",
-      config: vadConfig,
-      metrics: null,
-      inputType: "Audio Stream",
-      outputType: "Speech Events",
-      status: vadConfig && Object.keys(vadConfig).length > 0 && trace.user_transcript ? "active" : "inactive",
-    },
-    {
-      id: "eou",
-      name: "EOU",
-      icon: <Activity className="w-3 h-3" />,
-      color: "orange",
-      active: !!trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0,
-      config: eouConfig,
-      metrics: trace.eou_metrics,
-      inputType: "Audio Stream",
-      outputType: "Speech Events",
-      status: trace.eou_metrics && Object.keys(trace.eou_metrics).length > 0 ? "success" : "inactive",
-    },
-    {
-      id: "stt",
-      name: "STT",
-      icon: <Mic className="w-3 h-3" />,
-      color: "blue",
-      // A fallback event proves STT ran even when it produced no transcript
-      // (e.g. the opening greeting turn, before any user audio exists) — the
-      // stage must stay visible so that failure is never hidden from the sheet.
-      active: (!!trace.user_transcript && trace.user_transcript.trim() !== "") || fallbackEventsFor("STT").length > 0,
-      config: sttConfig,
-      metrics: trace.stt_metrics,
-      enhanced: enhancedSTT,
-      fallbackEvents: fallbackEventsFor("STT"),
-      fallbackFailureCount: fallbackFailureCountFor("STT"),
-      inputType: "Audio",
-      outputType: "Text",
-      inputData: `${trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s audio`,
-      outputData: trace.user_transcript,
-      status: trace.user_transcript && trace.user_transcript.trim() !== "" ? "success" : "missing",
-    },
-    {
-      id: "llm",
-      name: "LLM",
-      icon: <Brain className="w-3 h-3" />,
-      color: "purple",
-      active: (!!trace.agent_response && trace.agent_response.trim() !== "") || fallbackEventsFor("LLM").length > 0,
-      config: llmConfig,
-      metrics: trace.llm_metrics,
-      enhanced: enhancedLLM,
-      tools: trace.tool_calls || [],
-      llmRequests: llmRequests,
-      fallbackEvents: fallbackEventsFor("LLM"),
-      fallbackFailureCount: fallbackFailureCountFor("LLM"),
-      inputType: "Text",
-      outputType: "Text",
-      inputData: trace.user_transcript,
-      outputData: trace.agent_response,
-      status: trace.agent_response && trace.agent_response.trim() !== "" ? "success" : "missing",
-    },
-    {
-      id: "tts",
-      name: "TTS",
-      icon: <Volume2 className="w-3 h-3" />,
-      color: "green",
-      active: (!!trace.tts_metrics && Object.keys(trace.tts_metrics).length > 0) || fallbackEventsFor("TTS").length > 0,
-      config: ttsConfig,
-      metrics: trace.tts_metrics,
-      enhanced: enhancedTTS,
-      fallbackEvents: fallbackEventsFor("TTS"),
-      fallbackFailureCount: fallbackFailureCountFor("TTS"),
-      inputType: "Text",
-      outputType: "Audio",
-      inputData: trace.agent_response,
-      outputData: `${trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s audio`,
-      status: trace.tts_metrics && Object.keys(trace.tts_metrics).length > 0 ? "success" : "missing",
-    }
-  ].filter(stage => stage.active) 
+  const pipelineStages = buildPipelineStages(trace)
 
   const viewTabs = [
     { id: "pipeline", name: "Pipeline Flow", icon: <Zap className="w-4 h-4" /> },
