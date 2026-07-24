@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ArrowDown, Activity, MessageSquare, Wrench, Download, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import AudioPlayer from '@/components/AudioPlayer'
+import { formatProviderLabel } from '@/utils/providerDisplay'
 
 interface NodeDetailsProps {
   pipelineStages: any[]
@@ -134,37 +135,6 @@ function NodeDetails({
           ` ${timeZoneAbbr}`
         )
       }
-
-    // Known LiveKit plugin module segments -> display name. Falls back to a
-    // capitalized guess for providers not in this list.
-    const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
-      deepgram: "Deepgram",
-      sarvam: "Sarvam",
-      elevenlabs: "ElevenLabs",
-      openai: "OpenAI",
-      anthropic: "Anthropic",
-      cartesia: "Cartesia",
-      groq: "Groq",
-      google: "Google",
-      azure: "Azure",
-      assemblyai: "AssemblyAI",
-      speechmatics: "Speechmatics",
-      playht: "PlayHT",
-      rime: "Rime",
-      smallestai: "Smallest AI",
-      aws: "AWS",
-      cerebras: "Cerebras",
-    }
-
-    // Turns "livekit.plugins.deepgram.stt.STT" into "Deepgram".
-    const formatProviderLabel = (rawLabel?: string): string => {
-      if (!rawLabel) return "unknown"
-      const parts = rawLabel.split(".")
-      const pluginsIdx = parts.indexOf("plugins")
-      const key = pluginsIdx >= 0 ? parts[pluginsIdx + 1] : undefined
-      if (!key) return rawLabel
-      return PROVIDER_DISPLAY_NAMES[key.toLowerCase()] || (key.charAt(0).toUpperCase() + key.slice(1))
-    }
 
     // Simple Audio Component
     const SimpleAudioPlayer = ({ type, duration }: { type: 'stt' | 'tts', duration: number }) => {
@@ -580,10 +550,11 @@ function NodeDetails({
             </h4>
             <div className="space-y-3">
               {selectedStage.fallbackEvents.map((fb: any, index: number) => {
+                const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${index}`
                 const isRecovery = fb.event_type === 'provider_recovered'
                 if (isRecovery) {
                   return (
-                    <div key={index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+                    <div key={eventKey} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded bg-green-100 dark:bg-green-800 flex items-center justify-center">
@@ -602,7 +573,7 @@ function NodeDetails({
                 }
                 const isTotalFailure = !!fb.all_providers_failed
                 return (
-                  <div key={index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+                  <div key={eventKey} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className={cn(

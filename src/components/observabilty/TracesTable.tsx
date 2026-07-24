@@ -14,6 +14,7 @@ import SessionTraceView from "./SessionTraceView"
 import WaterfallView from "./WaterFallView";
 import ConfigTab from "./ConfigTab";
 import { getAgentPlatform } from "@/utils/agentDetection";
+import { formatProviderLabel } from "@/utils/providerDisplay";
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useTranscriptEnglishToggle } from "@/hooks/useTranscriptEnglishToggle"
@@ -67,39 +68,6 @@ export const METRICS_LOGS_SELECT =
   "tool_calls, enhanced_data, trace_id, trace_duration_ms, trace_cost_usd, " +
   "created_at, unix_timestamp, bug_report, " +
   "call_success, lesson_day, lesson_completed, phone_number"
-
-// Known LiveKit plugin module segments -> display name. Falls back to a
-// capitalized guess for providers not in this list, since new plugins ship
-// regularly and we'd rather show a reasonable name than nothing.
-const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
-  deepgram: "Deepgram",
-  sarvam: "Sarvam",
-  elevenlabs: "ElevenLabs",
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  cartesia: "Cartesia",
-  groq: "Groq",
-  google: "Google",
-  azure: "Azure",
-  assemblyai: "AssemblyAI",
-  speechmatics: "Speechmatics",
-  playht: "PlayHT",
-  rime: "Rime",
-  smallestai: "Smallest AI",
-  aws: "AWS",
-  cerebras: "Cerebras",
-}
-
-// Turns a raw class path like "livekit.plugins.deepgram.stt.STT" into "Deepgram".
-// Falls back to the raw label unchanged if it doesn't match the expected shape.
-const formatProviderLabel = (rawLabel?: string): string => {
-  if (!rawLabel) return "unknown"
-  const parts = rawLabel.split(".")
-  const pluginsIdx = parts.indexOf("plugins")
-  const key = pluginsIdx >= 0 ? parts[pluginsIdx + 1] : undefined
-  if (!key) return rawLabel
-  return PROVIDER_DISPLAY_NAMES[key.toLowerCase()] || (key.charAt(0).toUpperCase() + key.slice(1))
-}
 
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, sessionId, filters }) => { // NOSONAR javascript:S3776
 
@@ -832,6 +800,7 @@ const handleRowClick = (trace: TraceLog) => {
                     const mainOp = getMainOperation(trace)
                     const metrics = getMetricsInfo(trace)
                     const fallbackEvents = getFallbackEvents(trace)
+                    const fallbackFailureCount = fallbackEvents.filter((fb: any) => fb.event_type !== 'provider_recovered').length
                     const latency = getTotalLatency(trace)
                     const hasBugReport = checkBugReportFlags.has(trace.turn_id.toString())
                     const spansLength = trace.otel_spans?.length || 0
@@ -953,22 +922,25 @@ const handleRowClick = (trace: TraceLog) => {
                               {fallbackEvents.map((fb: any, idx: number) => {
                                 const isRecovery = fb.event_type === 'provider_recovered'
                                 const isTotalFailure = !isRecovery && fb.all_providers_failed
+                                const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
+
+                                let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-amber-500 dark:text-amber-400" />
+                                let textClass = "text-amber-700 dark:text-amber-300"
+                                let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
+                                if (isRecovery) {
+                                  icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-green-500 dark:text-green-400" />
+                                  textClass = "text-green-700 dark:text-green-300"
+                                  summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+                                } else if (isTotalFailure) {
+                                  icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+                                  textClass = "text-red-700 dark:text-red-300"
+                                  summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+                                }
+
                                 return (
-                                  <div key={idx} className="flex items-start gap-1 text-xs">
-                                    {isRecovery ? (
-                                      <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-green-500 dark:text-green-400" />
-                                    ) : isTotalFailure ? (
-                                      <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
-                                    ) : (
-                                      <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-amber-500 dark:text-amber-400" />
-                                    )}
-                                    <span className={isRecovery ? "text-green-700 dark:text-green-300" : isTotalFailure ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-300"}>
-                                      {isRecovery
-                                        ? `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
-                                        : isTotalFailure
-                                        ? `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
-                                        : `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`}
-                                    </span>
+                                  <div key={eventKey} className="flex items-start gap-1 text-xs">
+                                    {icon}
+                                    <span className={textClass}>{summary}</span>
                                     {!isRecovery && fb.error_reason && (
                                       <span className="text-gray-400 dark:text-gray-500">
                                         — {fb.error_reason.length > 50 ? fb.error_reason.slice(0, 50) + '…' : fb.error_reason}
@@ -1008,10 +980,10 @@ const handleRowClick = (trace: TraceLog) => {
                                 ))}
                               </div>
                             )}
-                            {fallbackEvents.filter((fb: any) => fb.event_type !== 'provider_recovered').length > 0 && (
+                            {fallbackFailureCount > 0 && (
                               <div className="flex items-center gap-1 text-xs">
                                 <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                                <span className="font-medium text-amber-700 dark:text-amber-300">{fallbackEvents.filter((fb: any) => fb.event_type !== 'provider_recovered').length}</span>
+                                <span className="font-medium text-amber-700 dark:text-amber-300">{fallbackFailureCount}</span>
                               </div>
                             )}
                           </div>
