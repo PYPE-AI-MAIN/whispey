@@ -955,7 +955,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                     setSarvamConfig(prev => ({ ...prev, first_turn_min_speech_frames: undefined }))
                     return
                   }
-                  const n = Math.min(15, Math.max(1, parseInt(raw, 10)))
+                  const n = Math.min(15, Math.max(1, Number.parseInt(raw, 10)))
                   setSarvamConfig(prev => ({ ...prev, first_turn_min_speech_frames: n }))
                 }}
                 onBlur={() => setSarvamConfig(prev => ({
