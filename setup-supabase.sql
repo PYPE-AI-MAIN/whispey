@@ -1462,3 +1462,41 @@ CREATE INDEX IF NOT EXISTS idx_agent_config_versions_created_at ON public.pype_a
 -- Access controlled at the API layer (service role key used server-side)
 ALTER TABLE public.pype_agent_config_versions DISABLE ROW LEVEL SECURITY;
 
+-- ========================================
+-- Do Not Call (DNC) List
+-- ========================================
+-- Numbers that must never be dialed. scope='global' applies to every project;
+-- scope='project' applies to one project. A number is blocked for a call when an
+-- ACTIVE row matches its normalized E.164 form AND (scope='global' OR project_id
+-- = the call's project). Deletes are soft (is_active=false) for audit.
+
+CREATE TABLE IF NOT EXISTS public.pype_voice_dnc_list (
+    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone_e164   text NOT NULL,                       -- normalized match key, e.g. +919876543210
+    phone_raw    text,                                -- what was entered
+    scope        text NOT NULL CHECK (scope IN ('global', 'project')),
+    project_id   uuid REFERENCES public.pype_voice_projects(id) ON DELETE CASCADE,
+    reason       text,
+    source       text NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'csv', 'api')),
+    added_by     text NOT NULL,                       -- clerk user email / id
+    is_active    boolean NOT NULL DEFAULT true,       -- soft delete
+    created_at   timestamp with time zone NOT NULL DEFAULT now(),
+    deleted_at   timestamp with time zone,
+    CONSTRAINT dnc_scope_project_id CHECK (
+        (scope = 'project' AND project_id IS NOT NULL) OR
+        (scope = 'global'  AND project_id IS NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_dnc_phone_e164 ON public.pype_voice_dnc_list(phone_e164) WHERE is_active;
+CREATE INDEX IF NOT EXISTS idx_dnc_project ON public.pype_voice_dnc_list(project_id) WHERE is_active;
+
+-- No duplicate ACTIVE entries for the same number within the same scope.
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_dnc_global
+    ON public.pype_voice_dnc_list(phone_e164) WHERE is_active AND scope = 'global';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_dnc_project
+    ON public.pype_voice_dnc_list(phone_e164, project_id) WHERE is_active AND scope = 'project';
+
+-- Access controlled at the API layer (service role key used server-side)
+ALTER TABLE public.pype_voice_dnc_list DISABLE ROW LEVEL SECURITY;
+

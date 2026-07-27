@@ -4,8 +4,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import {
-  ArrowLeft, Phone, Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Loader2, BookOpen, ExternalLink,
+  ArrowLeft, Phone, Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Loader2, BookOpen, ShieldBan,
 } from 'lucide-react'
+import { useGlobalRole } from '@/hooks/useGlobalRole'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -229,6 +230,7 @@ export default function PhoneNumbersPage() {
   const { projectid: projectId } = useParams<{ projectid: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { isSuperAdmin } = useGlobalRole()
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -377,6 +379,14 @@ export default function PhoneNumbersPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <button
+                onClick={() => router.push(`/${projectId}/settings/dnc`)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+              >
+                <ShieldBan className="h-3.5 w-3.5" /> DNC List
+              </button>
+            )}
             <button
               onClick={() => setShowDocs(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"

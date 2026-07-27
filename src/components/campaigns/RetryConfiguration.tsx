@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, Info, Plus, X, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCodeGroup as SipCodeGroupType } from '@/utils/campaigns/constants'
+import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCode, SipCodeGroup as SipCodeGroupType } from '@/utils/campaigns/constants'
 
 // Chip-style input: type a value, press Enter/Add to append it (after
 // validation), click the X on a chip to remove it. Used for both SIP error
@@ -165,6 +165,9 @@ function SipCodePicker({
                     {c.code}
                   </span>{' '}
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                  {!c.enabled && (
+                    <span className="ml-1 text-[10px] italic text-gray-400">(coming soon)</span>
+                  )}
                   <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
                 </div>
               ))}
@@ -192,6 +195,12 @@ function SipCodePicker({
   )
 }
 
+function sipCodeButtonTitle(c: SipCode, usedElsewhere: boolean): string {
+  if (c.enabled && usedElsewhere) return `${c.code} is already used in another retry rule`
+  if (c.enabled) return c.description
+  return `${c.code} — coming soon`
+}
+
 function SipCodeGroup({
   group,
   errorCodes,
@@ -206,8 +215,11 @@ function SipCodeGroup({
   onSelectAll: (addable: string[]) => void
 }>) {
   const groupCodes = group.codes
+  // Only enabled, unclaimed codes can be picked up by "select all" — the
+  // rest are temporarily disabled ("Coming soon") while retry-count/backoff
+  // behavior is under RCA. Frontend-only gate; validation still accepts all.
   const addable = groupCodes
-    .filter((c) => !errorCodes.includes(c.code) && !isUsedElsewhere(c.code))
+    .filter((c) => c.enabled && !errorCodes.includes(c.code) && !isUsedElsewhere(c.code))
     .map((c) => c.code)
 
   return (
@@ -229,12 +241,14 @@ function SipCodeGroup({
         {groupCodes.map((c) => {
           const selected = errorCodes.includes(c.code)
           const usedElsewhere = !selected && isUsedElsewhere(c.code)
+          const disabled = !c.enabled || usedElsewhere
+          const title = sipCodeButtonTitle(c, usedElsewhere)
           return (
             <button
               key={c.code}
               type="button"
-              disabled={usedElsewhere}
-              title={usedElsewhere ? `${c.code} is already used in another retry rule` : c.description}
+              disabled={disabled}
+              title={title}
               onClick={() => onToggleCode(c.code, selected)}
               className={
                 selected
@@ -243,6 +257,7 @@ function SipCodeGroup({
               }
             >
               {c.code} — {c.label}
+              {!c.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
             </button>
           )
         })}

@@ -6,12 +6,14 @@
       {
         "code": "480",
         "label": "Temporarily Unavailable",
-        "description": "Callee's device was reached but is currently unavailable (not registered, do-not-disturb, etc). May succeed on retry."
+        "description": "Callee's device was reached but is currently unavailable (not registered, do-not-disturb, etc). May succeed on retry.",
+        "enabled": true
       },
       {
         "code": "487",
         "label": "Request Terminated",
-        "description": "Call was canceled/ended before being answered."
+        "description": "Call was canceled/ended before being answered.",
+        "enabled": false
       }
     ]
   },
@@ -22,12 +24,14 @@
       {
         "code": "486",
         "label": "Busy Here",
-        "description": "Callee is on another call. May succeed on retry once they hang up."
+        "description": "Callee is on another call. May succeed on retry once they hang up.",
+        "enabled": true
       },
       {
         "code": "600",
         "label": "Busy Everywhere",
-        "description": "Callee is busy or has do-not-disturb enabled across all their devices. May succeed once that's turned off."
+        "description": "Callee is busy or has do-not-disturb enabled across all their devices. May succeed once that's turned off.",
+        "enabled": false
       }
     ]
   },
@@ -38,12 +42,14 @@
       {
         "code": "408",
         "label": "Request Timeout",
-        "description": "Server/network couldn't reach the destination in time. Usually a transient network issue."
+        "description": "Server/network couldn't reach the destination in time. Usually a transient network issue.",
+        "enabled": false
       },
       {
         "code": "504",
         "label": "Server Timeout",
-        "description": "Upstream server took too long to respond. Same timeout bucket as 408 — usually transient."
+        "description": "Upstream server took too long to respond. Same timeout bucket as 408 — usually transient.",
+        "enabled": false
       }
     ]
   },
@@ -54,12 +60,14 @@
       {
         "code": "500",
         "label": "Server Internal Error",
-        "description": "Telephony server hit a transient internal error. Categorized as network_error — usually resolves on retry."
+        "description": "Telephony server hit a transient internal error. Categorized as network_error — usually resolves on retry.",
+        "enabled": false
       },
       {
         "code": "503",
         "label": "Service Unavailable",
-        "description": "Telephony server is overloaded or temporarily down. Categorized as network_error — often self-resolves."
+        "description": "Telephony server is overloaded or temporarily down. Categorized as network_error — often self-resolves.",
+        "enabled": false
       }
     ]
   },
@@ -70,7 +78,8 @@
       {
         "code": "603",
         "label": "Decline",
-        "description": "Callee explicitly rejected the call. May still succeed at a different time."
+        "description": "Callee explicitly rejected the call. May still succeed at a different time.",
+        "enabled": false
       }
     ]
   }
