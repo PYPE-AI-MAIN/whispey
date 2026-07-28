@@ -28,6 +28,29 @@ export function getPypeApiBaseUrlForServer(target: DeploymentTarget = 'classic')
   return process.env.PYPEAI_API_URL || process.env.NEXT_PUBLIC_PYPEAI_API_URL
 }
 
+/**
+ * Resolves the backend base URL for a target, or a ready-to-return 500
+ * response if it's not configured. Callers do:
+ *   const result = requireApiBaseUrl(deploymentTarget)
+ *   if ('errorResponse' in result) return result.errorResponse
+ *   const apiUrl = result.apiUrl
+ */
+export function requireApiBaseUrl(
+  target: DeploymentTarget
+): { apiUrl: string } | { errorResponse: Response } {
+  const apiUrl = getPypeApiBaseUrlForServer(target)
+  if (!apiUrl) {
+    console.error(`Voice backend URL is not configured for target '${target}'`)
+    return {
+      errorResponse: new Response(
+        JSON.stringify({ error: 'API configuration error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      ),
+    }
+  }
+  return { apiUrl }
+}
+
 export function pypeApiAbortSignal(timeoutMs = PYPE_API_FETCH_TIMEOUT_MS): AbortSignal {
   return AbortSignal.timeout(timeoutMs)
 }

@@ -1,7 +1,7 @@
 // app/api/agents/stop_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
-import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 export async function POST(request: NextRequest) {
@@ -20,15 +20,9 @@ export async function POST(request: NextRequest) {
     // POC toggle: which backend this agent lives on. Defaults to 'classic'.
     const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
 
-    const apiUrl = getPypeApiBaseUrlForServer(deploymentTarget)
-
-    if (!apiUrl) {
-      console.error(`Voice backend URL is not configured for target '${deploymentTarget}'`)
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
+    const urlResult = requireApiBaseUrl(deploymentTarget)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl } = urlResult
 
     console.log(`Stopping agent: ${agent_name}`)
     // FIXED: Use the correct backend endpoint /stop_agent (not /api/stop_agent)

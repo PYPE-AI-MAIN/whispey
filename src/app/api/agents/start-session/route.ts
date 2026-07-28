@@ -1,7 +1,7 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/start-session/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 interface StartSessionRequest {
@@ -41,14 +41,9 @@ export async function POST(request: NextRequest) {
     // POC toggle: which backend this agent lives on. Defaults to 'classic'.
     const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
 
-    const apiBaseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
-    if (!apiBaseUrl) {
-      console.error(`Voice backend URL is not configured for target '${deploymentTarget}'`)
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
+    const urlResult = requireApiBaseUrl(deploymentTarget)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl: apiBaseUrl } = urlResult
 
     const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
 
