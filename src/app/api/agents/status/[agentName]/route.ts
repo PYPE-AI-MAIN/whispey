@@ -1,14 +1,12 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import {
   getPypeApiBaseUrlForServer,
   isPypeUpstreamUnreachable,
   pypeApiAbortSignal,
-  type DeploymentTarget,
 } from '@/lib/pypeApiFetch'
-import { getCallerGlobalRole } from '@/lib/prod-auth'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -35,15 +33,7 @@ export async function GET(
     }
 
     // POC toggle: which backend this agent lives on. Defaults to 'classic'.
-    // Only superadmins may target 'docker' — re-checked here server-side.
-    let deploymentTarget: DeploymentTarget = request.nextUrl.searchParams.get('deploymentTarget') === 'docker' ? 'docker' : 'classic'
-    if (deploymentTarget === 'docker') {
-      const { userId } = await auth()
-      const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
-      if (callerRole !== 'superadmin') {
-        deploymentTarget = 'classic'
-      }
-    }
+    const deploymentTarget = await resolveDeploymentTarget(request.nextUrl.searchParams.get('deploymentTarget'))
 
     const apiBaseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
     if (!apiBaseUrl) {

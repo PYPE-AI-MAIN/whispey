@@ -1,9 +1,8 @@
 // app/api/agents/start_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
-import { getPypeApiBaseUrlForServer, type DeploymentTarget } from '@/lib/pypeApiFetch'
-import { getCallerGlobalRole } from '@/lib/prod-auth'
+import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,15 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // POC toggle: which backend this agent lives on. Defaults to 'classic'.
-    // Only superadmins may target 'docker' — re-checked here server-side.
-    let deploymentTarget: DeploymentTarget = body.deploymentTarget === 'docker' ? 'docker' : 'classic'
-    if (deploymentTarget === 'docker') {
-      const { userId } = await auth()
-      const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
-      if (callerRole !== 'superadmin') {
-        deploymentTarget = 'classic'
-      }
-    }
+    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
 
     const apiUrl = getPypeApiBaseUrlForServer(deploymentTarget)
 

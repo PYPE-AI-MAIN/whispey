@@ -11,6 +11,19 @@ export async function resolveDeploymentTarget(requestedTarget: unknown): Promise
   if (requestedTarget !== 'docker') return 'classic'
 
   const { userId } = await auth()
+  return resolveDeploymentTargetForUser(requestedTarget, userId)
+}
+
+/**
+ * Same as resolveDeploymentTarget, but for callers that already resolved the
+ * Clerk userId earlier in the request — avoids a redundant auth() call.
+ */
+export async function resolveDeploymentTargetForUser(
+  requestedTarget: unknown,
+  userId: string | null | undefined
+): Promise<DeploymentTarget> {
+  if (requestedTarget !== 'docker') return 'classic'
+
   const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
   return callerRole === 'superadmin' ? 'docker' : 'classic'
 }

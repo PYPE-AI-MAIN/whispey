@@ -5,7 +5,7 @@ import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getPypeApiBaseUrlForServer, type DeploymentTarget } from '@/lib/pypeApiFetch'
-import { getCallerGlobalRole } from '@/lib/prod-auth'
+import { resolveDeploymentTargetForUser } from '@/lib/resolveDeploymentTarget'
 
 // Server-side Supabase client (prefer service role for row updates)
 const supabase = createServiceRoleClient()
@@ -202,13 +202,7 @@ export async function POST(request: NextRequest) {
     // caller opts into 'docker' (new VM, container per agent). Only superadmins
     // may choose 'docker' — re-checked here server-side since the FE toggle is
     // client-side state that could be bypassed.
-    let deploymentTarget: DeploymentTarget = body.deploymentTarget === 'docker' ? 'docker' : 'classic'
-    if (deploymentTarget === 'docker') {
-      const callerRole = await getCallerGlobalRole(clerkUserId)
-      if (callerRole !== 'superadmin') {
-        deploymentTarget = 'classic'
-      }
-    }
+    const deploymentTarget = await resolveDeploymentTargetForUser(body.deploymentTarget, clerkUserId)
 
     // Ensure agent quota state exists for the project, and check limits
     const { projectId: projectIdFromState, state, error: stateError } = await getOrInitProjectAgentState(projectId)
