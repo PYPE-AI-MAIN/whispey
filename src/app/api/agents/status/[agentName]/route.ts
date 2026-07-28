@@ -2,10 +2,11 @@ import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  getPypeApiBaseUrlForServer,
+  requireApiBaseUrl,
   isPypeUpstreamUnreachable,
   pypeApiAbortSignal,
 } from '@/lib/pypeApiFetch'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -31,14 +32,12 @@ export async function GET(
       )
     }
 
-    const apiBaseUrl = getPypeApiBaseUrlForServer()
-    if (!apiBaseUrl) {
-      console.error('PYPEAI_API_URL / NEXT_PUBLIC_PYPEAI_API_URL is not configured')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
+    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
+    const deploymentTarget = await resolveDeploymentTarget(request.nextUrl.searchParams.get('deploymentTarget'))
+
+    const urlResult = requireApiBaseUrl(deploymentTarget)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl: apiBaseUrl } = urlResult
 
     const apiKey =
       process.env.PYPEAI_X_API_KEY ||
