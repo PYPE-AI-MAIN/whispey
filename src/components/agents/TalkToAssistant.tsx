@@ -52,7 +52,7 @@ export default function TalkToAssistant({
   onSessionActiveChange,
   sessionEndpoint,
   deploymentTarget = 'classic',
-}: TalkToAssistantProps) {
+}: Readonly<TalkToAssistantProps>) {
   const [mode, setMode]                   = useState<AgentTestMode>('voice')
   const [textMessage, setTextMessage]     = useState('')
   const [isSendingText, setIsSendingText] = useState(false)

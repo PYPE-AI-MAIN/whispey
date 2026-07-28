@@ -438,7 +438,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           {/* Deploy Target (superadmin only) */}
           {isSuperAdmin && (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              <label htmlFor="deployment-target-select" className="block text-sm font-medium text-gray-900 dark:text-gray-100">
                 Deploy target (superadmin only)
               </label>
               <Select
@@ -446,7 +446,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 onValueChange={v => setDeploymentTarget(v as 'classic' | 'docker')}
                 disabled={currentStep !== 'form'}
               >
-                <SelectTrigger className="h-10 w-full">
+                <SelectTrigger id="deployment-target-select" className="h-10 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

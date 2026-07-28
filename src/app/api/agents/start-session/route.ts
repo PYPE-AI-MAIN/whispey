@@ -1,9 +1,8 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/start-session/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
-import { getPypeApiBaseUrlForServer, type DeploymentTarget } from '@/lib/pypeApiFetch'
-import { getCallerGlobalRole } from '@/lib/prod-auth'
+import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 interface StartSessionRequest {
   user_identity: string
@@ -40,15 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // POC toggle: which backend this agent lives on. Defaults to 'classic'.
-    // Only superadmins may target 'docker' — re-checked here server-side.
-    let deploymentTarget: DeploymentTarget = body.deploymentTarget === 'docker' ? 'docker' : 'classic'
-    if (deploymentTarget === 'docker') {
-      const { userId } = await auth()
-      const callerRole = userId ? await getCallerGlobalRole(userId) : 'user'
-      if (callerRole !== 'superadmin') {
-        deploymentTarget = 'classic'
-      }
-    }
+    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
 
     const apiBaseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
     if (!apiBaseUrl) {
