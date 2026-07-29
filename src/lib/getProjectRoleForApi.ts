@@ -2,10 +2,12 @@
  * Server-only: get current user's role and visibility for a project. Use in API routes to enforce viewer restrictions.
  * Returns role and effective visibility from pype_voice_email_project_mapping.permissions (Supabase).
  */
+import { NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getEffectiveVisibility } from '@/types/visibility'
 import type { MemberVisibility } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 
 const supabase = createServiceRoleClient()
 
@@ -77,4 +79,34 @@ export async function getDeploymentTargetFromAgentBackendName(agentBackendName: 
     .eq('id', agentId)
     .maybeSingle()
   return row?.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+}
+
+/**
+ * Resolves the backend base URL for whichever target an agent actually lives
+ * on, or a ready-to-return error response if it's not configured. Collapses
+ * the deploymentTarget-lookup + requireApiBaseUrl pair repeated across every
+ * route that proxies to an agent's backend.
+ */
+export async function resolveApiBaseUrlForAgent(
+  agentBackendName: string
+): Promise<{ apiUrl: string } | { errorResponse: Response }> {
+  const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentBackendName)
+  return requireApiBaseUrl(deploymentTarget)
+}
+
+/**
+ * Ready-to-return 403 if the current user is a viewer on the project that
+ * owns this agent, or null to continue. Collapses the
+ * getProjectIdFromAgentBackendName + isViewerForProject pair repeated across
+ * every route that mutates an agent's knowledge base or config.
+ */
+export async function rejectIfViewer(
+  agentBackendName: string,
+  forbiddenMessage: string
+): Promise<NextResponse | null> {
+  const projectId = await getProjectIdFromAgentBackendName(agentBackendName)
+  if (projectId && (await isViewerForProject(projectId))) {
+    return NextResponse.json({ error: forbiddenMessage }, { status: 403 })
+  }
+  return null
 }

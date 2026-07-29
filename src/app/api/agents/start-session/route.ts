@@ -1,8 +1,7 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/start-session/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
-import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
+import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 
 interface StartSessionRequest {
   user_identity: string
@@ -38,10 +37,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
-    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
-
-    const urlResult = requireApiBaseUrl(deploymentTarget)
+    // Which backend this agent actually lives on — resolved from its own
+    // persisted record, not trusted from the client.
+    const urlResult = await resolveApiBaseUrlForAgent(body.agent_name)
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl: apiBaseUrl } = urlResult
 
