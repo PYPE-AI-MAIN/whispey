@@ -537,12 +537,12 @@ function NodeDetails({
           <div className={cn(
             "border-l-4 rounded-lg p-4",
             selectedStage.fallbackFailureCount > 0
-              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-500 dark:border-amber-400"
+              ? "bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-400"
               : "bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-400"
           )}>
             <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
               {selectedStage.fallbackFailureCount > 0 ? (
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
               ) : (
                 <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
               )}
@@ -576,14 +576,11 @@ function NodeDetails({
                   <div key={eventKey} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "w-6 h-6 rounded flex items-center justify-center",
-                          isTotalFailure ? "bg-red-100 dark:bg-red-900/40" : "bg-amber-100 dark:bg-amber-800"
-                        )}>
+                        <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
                           {isTotalFailure ? (
                             <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
                           ) : (
-                            <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                            <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
                           )}
                         </div>
                         <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">

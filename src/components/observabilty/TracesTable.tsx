@@ -918,14 +918,14 @@ const handleRowClick = (trace: TraceLog) => {
                               same pattern as tool_calls: full detail lives in the row's detail
                               sheet (click row → Fallback Events card), not duplicated here. */}
                           {fallbackEvents.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-amber-200 dark:border-amber-800 ml-1">
+                            <div className="space-y-0.5 pl-1 border-l-2 border-red-200 dark:border-red-800 ml-1">
                               {fallbackEvents.map((fb: any, idx: number) => {
                                 const isRecovery = fb.event_type === 'provider_recovered'
                                 const isTotalFailure = !isRecovery && fb.all_providers_failed
                                 const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
 
-                                let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-amber-500 dark:text-amber-400" />
-                                let textClass = "text-amber-700 dark:text-amber-300"
+                                let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+                                let textClass = "text-red-700 dark:text-red-300"
                                 let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
                                 if (isRecovery) {
                                   icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-green-500 dark:text-green-400" />
@@ -933,7 +933,6 @@ const handleRowClick = (trace: TraceLog) => {
                                   summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
                                 } else if (isTotalFailure) {
                                   icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
-                                  textClass = "text-red-700 dark:text-red-300"
                                   summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
                                 }
 
@@ -982,8 +981,8 @@ const handleRowClick = (trace: TraceLog) => {
                             )}
                             {fallbackFailureCount > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                                <span className="font-medium text-amber-700 dark:text-amber-300">{fallbackFailureCount}</span>
+                                <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                <span className="font-medium text-red-700 dark:text-red-300">{fallbackFailureCount}</span>
                               </div>
                             )}
                           </div>

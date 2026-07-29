@@ -44,8 +44,8 @@ function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
                   )}
                   {stage.fallbackFailureCount > 0 && (
                     <div className="flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">{stage.fallbackFailureCount}</span>
+                      <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                      <span className="text-xs text-red-600 dark:text-red-400 font-medium">{stage.fallbackFailureCount}</span>
                     </div>
                   )}
                 </div>
