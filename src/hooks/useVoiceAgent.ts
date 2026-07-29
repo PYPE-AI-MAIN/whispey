@@ -63,6 +63,9 @@ interface VoiceAgentConfig {
   agentName: string
   mode: AgentTestMode
   sessionEndpoint?: string  // defaults to /api/agents/start-session
+  /** Fired for every message on the workflow interpreter's "wf-node" data-channel topic
+   * (node_enter, transition, variables_set, function_call, function_result, error, ended). */
+  onWorkflowEvent?: (event: Record<string, any>) => void
 }
 
 function getSecureRandomInt(max: number): number {
@@ -87,7 +90,7 @@ function isAgentParticipant(identity = '', metadata = '') {
   return id.includes('agent') || id.includes('assistant') || m.includes('agent') || m.includes('assistant')
 }
 
-export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session' }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
+export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session', onWorkflowEvent }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
   const [room, setRoom]                       = useState<Room | null>(null)
   const [isConnected, setIsConnected]         = useState(false)
   const [isConnecting, setIsConnecting]       = useState(false)
@@ -103,8 +106,10 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
   const connectionTimeInterval = useRef<NodeJS.Timeout | null>(null)
   const audioElementsRef       = useRef<Set<HTMLAudioElement>>(new Set())
   const roomRef                = useRef<Room | null>(null)
+  const onWorkflowEventRef     = useRef(onWorkflowEvent)
 
   useEffect(() => { roomRef.current = room }, [room])
+  useEffect(() => { onWorkflowEventRef.current = onWorkflowEvent }, [onWorkflowEvent])
 
   useEffect(() => {
     if (isConnected) {
@@ -195,9 +200,13 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
       })
     }
 
-    liveKitRoom.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
+    liveKitRoom.on(RoomEvent.DataReceived, (payload: Uint8Array, _participant, _kind, topic) => {
       try {
         const data = JSON.parse(new TextDecoder().decode(payload))
+        if (topic === 'wf-node') {
+          onWorkflowEventRef.current?.(data)
+          return
+        }
         if (data.type === 'agent_state' && ['initializing','listening','thinking','speaking'].includes(data.state)) {
           setAgentState(data.state)
         }
