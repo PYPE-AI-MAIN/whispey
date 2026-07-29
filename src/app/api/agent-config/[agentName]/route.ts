@@ -1,6 +1,6 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 import { NextRequest, NextResponse } from "next/server"
-import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { getProjectIdFromAgentBackendName, getDeploymentTargetFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
 import {
   getPypeApiBaseUrlForServer,
   isPypeUpstreamUnreachable,
@@ -29,7 +29,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "Forbidden: viewers cannot access agent config" }, { status: 403 })
     }
 
-    const baseUrl = getPypeApiBaseUrlForServer()
+    // Config lives on whichever backend this agent was actually created on —
+    // classic agents were never registered on the docker backend and vice versa.
+    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentName)
+    const baseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
     if (!baseUrl) {
       return NextResponse.json(
         { message: "Missing PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL" },
