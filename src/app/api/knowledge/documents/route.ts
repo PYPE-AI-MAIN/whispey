@@ -1,7 +1,7 @@
-import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/knowledgeProxy'
 
 /**
  * List RAG knowledge base documents for an agent.
@@ -38,31 +38,19 @@ export async function GET(request: NextRequest) {
 
     console.log(`${LOG_PREFIX} Step 3: agent_id present -> ${agentId.trim()}`)
 
-    const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
     const backendUrl = `${apiBaseUrl}/knowledge/documents?agent_id=${encodeURIComponent(agentId.trim())}`
     console.log(`${LOG_PREFIX} Step 4: Calling backend GET with agent_id=`, agentId.trim())
 
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: { 'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken() },
+      headers: knowledgeBackendHeaders(),
     })
 
-    console.log(`${LOG_PREFIX} Step 5: Backend responded status=${response.status} ${response.statusText}`)
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error')
-      console.error(`${LOG_PREFIX} Step 5 FAILED: Backend error body ->`, errorText)
-      if (response.status === 404 || response.status === 501) {
-        return NextResponse.json(
-          { error: 'Knowledge base not yet implemented on backend', documents: [] },
-          { status: 200 }
-        )
-      }
-      return NextResponse.json(
-        { error: errorText || 'Failed to list documents' },
-        { status: response.status }
-      )
-    }
+    const errorResponse = await handleKnowledgeBackendResponse(
+      response, LOG_PREFIX, 5, 'Failed to list documents',
+      { body: { error: 'Knowledge base not yet implemented on backend', documents: [] }, status: 200 }
+    )
+    if (errorResponse) return errorResponse
 
     const data = await response.json().catch(() => ({ documents: [] }))
     const count = Array.isArray(data?.documents) ? data.documents.length : 0

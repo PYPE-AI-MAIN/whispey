@@ -1,7 +1,7 @@
-import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/knowledge/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/knowledgeProxy'
 
 /**
  * Proxy upload for RAG knowledge base.
@@ -51,34 +51,20 @@ export async function POST(request: NextRequest) {
     backendFormData.append('file', file)
     console.log(`${LOG_PREFIX} Step 4: file present -> name=${file.name}, size=${file.size}, type=${file.type}`)
 
-    const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
     const backendUrl = `${apiBaseUrl}/knowledge/upload`
     console.log(`${LOG_PREFIX} Step 5: Calling backend POST ${backendUrl} with agent_id=${agentId.trim()}`)
 
     const response = await fetch(backendUrl, {
       method: 'POST',
-      headers: {
-        'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken(),
-      },
+      headers: knowledgeBackendHeaders(),
       body: backendFormData,
     })
 
-    console.log(`${LOG_PREFIX} Step 6: Backend responded status=${response.status} ${response.statusText}`)
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error')
-      console.error(`${LOG_PREFIX} Step 6 FAILED: Backend error body ->`, errorText)
-      if (response.status === 404 || response.status === 501) {
-        return NextResponse.json(
-          { error: 'Knowledge base upload not yet implemented on backend' },
-          { status: 503 }
-        )
-      }
-      return NextResponse.json(
-        { error: errorText || 'Upload failed' },
-        { status: response.status }
-      )
-    }
+    const errorResponse = await handleKnowledgeBackendResponse(
+      response, LOG_PREFIX, 6, 'Upload failed',
+      { body: { error: 'Knowledge base upload not yet implemented on backend' }, status: 503 }
+    )
+    if (errorResponse) return errorResponse
 
     const data = await response.json().catch(() => ({}))
     console.log(`${LOG_PREFIX} Step 7: Success, returning backend response`)

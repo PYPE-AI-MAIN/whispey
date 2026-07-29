@@ -1,8 +1,8 @@
-import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/knowledgeProxy'
 
 /**
  * Delete a RAG knowledge base document.
@@ -40,31 +40,19 @@ export async function DELETE(
     const { apiUrl: apiBaseUrl } = urlResult
     console.log(`${LOG_PREFIX} Step 3: API base URL configured -> ${apiBaseUrl}`)
 
-    const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
     const backendUrl = `${apiBaseUrl}/knowledge/documents/${encodeURIComponent(id.trim())}`
     console.log(`${LOG_PREFIX} Step 4: Calling backend DELETE ${backendUrl}`)
 
     const response = await fetch(backendUrl, {
       method: 'DELETE',
-      headers: { 'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken() },
+      headers: knowledgeBackendHeaders(),
     })
 
-    console.log(`${LOG_PREFIX} Step 5: Backend responded status=${response.status} ${response.statusText}`)
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error')
-      console.error(`${LOG_PREFIX} Step 5 FAILED: Backend error body ->`, errorText)
-      if (response.status === 404 || response.status === 501) {
-        return NextResponse.json(
-          { error: 'Knowledge base delete not yet implemented on backend' },
-          { status: 503 }
-        )
-      }
-      return NextResponse.json(
-        { error: errorText || 'Delete failed' },
-        { status: response.status }
-      )
-    }
+    const errorResponse = await handleKnowledgeBackendResponse(
+      response, LOG_PREFIX, 5, 'Delete failed',
+      { body: { error: 'Knowledge base delete not yet implemented on backend' }, status: 503 }
+    )
+    if (errorResponse) return errorResponse
 
     console.log(`${LOG_PREFIX} Step 6: Success`)
     return NextResponse.json({ success: true })
