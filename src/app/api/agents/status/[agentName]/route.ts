@@ -6,7 +6,7 @@ import {
   isPypeUpstreamUnreachable,
   pypeApiAbortSignal,
 } from '@/lib/pypeApiFetch'
-import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
+import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -32,8 +32,9 @@ export async function GET(
       )
     }
 
-    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
-    const deploymentTarget = await resolveDeploymentTarget(request.nextUrl.searchParams.get('deploymentTarget'))
+    // Which backend this agent actually lives on — resolved from its own
+    // persisted record, not trusted from the client.
+    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentName)
 
     const urlResult = requireApiBaseUrl(deploymentTarget)
     if ('errorResponse' in urlResult) return urlResult.errorResponse
