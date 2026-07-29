@@ -1,6 +1,8 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 
 /**
  * Delete a RAG knowledge base document.
@@ -9,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const LOG_PREFIX = '[Knowledge Document Delete]'
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -25,14 +27,18 @@ export async function DELETE(
     }
     console.log(`${LOG_PREFIX} Step 2: document id present -> ${id.trim()}`)
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-    if (!apiBaseUrl) {
-      console.error(`${LOG_PREFIX} Step 3 FAILED: NEXT_PUBLIC_PYPEAI_API_URL not set`)
-      return NextResponse.json(
-        { error: 'Knowledge base API not configured' },
-        { status: 503 }
-      )
-    }
+    const { searchParams } = new URL(request.url)
+    const agentId = searchParams.get('agent_id')
+
+    // Knowledge base lives on whichever backend this agent was actually
+    // created on. Falls back to classic if agent_id wasn't passed (older
+    // clients), matching the previous hardcoded-classic behavior.
+    const deploymentTarget = agentId
+      ? await getDeploymentTargetFromAgentBackendName(agentId.trim())
+      : 'classic'
+    const urlResult = requireApiBaseUrl(deploymentTarget)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl: apiBaseUrl } = urlResult
     console.log(`${LOG_PREFIX} Step 3: API base URL configured -> ${apiBaseUrl}`)
 
     const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'

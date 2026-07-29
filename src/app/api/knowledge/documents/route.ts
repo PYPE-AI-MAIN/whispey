@@ -1,7 +1,8 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { getProjectIdFromAgentBackendName, getDeploymentTargetFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 
 /**
  * List RAG knowledge base documents for an agent.
@@ -29,14 +30,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: viewers cannot access knowledge base' }, { status: 403 })
     }
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-    if (!apiBaseUrl) {
-      console.error(`${LOG_PREFIX} Step 1 FAILED: NEXT_PUBLIC_PYPEAI_API_URL not set`)
-      return NextResponse.json(
-        { error: 'Knowledge base API not configured' },
-        { status: 503 }
-      )
-    }
+    // Knowledge base lives on whichever backend this agent was actually
+    // created on.
+    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentId.trim())
+    const urlResult = requireApiBaseUrl(deploymentTarget)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl: apiBaseUrl } = urlResult
     console.log(`${LOG_PREFIX} Step 2: API base URL configured -> ${apiBaseUrl}`)
 
     console.log(`${LOG_PREFIX} Step 3: agent_id present -> ${agentId.trim()}`)
