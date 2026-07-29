@@ -58,16 +58,38 @@ export function VariablesPanel({ open, onOpenChange }: { open: boolean; onOpenCh
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                placeholder="default"
-                value={v.default ?? ''}
-                onChange={(e) => {
-                  const next = [...variables]
-                  next[i] = { ...v, default: e.target.value }
-                  setVariables(next)
-                }}
-                className="h-8 text-xs w-24"
-              />
+              {v.type === 'boolean' ? (
+                <Select
+                  value={v.default === true ? 'true' : v.default === false ? 'false' : ''}
+                  onValueChange={(val) => {
+                    const next = [...variables]
+                    next[i] = { ...v, default: val === 'true' }
+                    setVariables(next)
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs w-24"><SelectValue placeholder="default" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">true</SelectItem>
+                    <SelectItem value="false">false</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  placeholder="default"
+                  type={v.type === 'number' ? 'number' : 'text'}
+                  value={v.default ?? ''}
+                  onChange={(e) => {
+                    const next = [...variables]
+                    // Keep the declared type: a number-typed variable with a
+                    // string default silently breaks numeric logic-edge
+                    // comparisons like "budget >= 5000" on the backend.
+                    const raw = e.target.value
+                    next[i] = { ...v, default: v.type === 'number' ? (raw === '' ? undefined : Number(raw)) : raw }
+                    setVariables(next)
+                  }}
+                  className="h-8 text-xs w-24"
+                />
+              )}
               <Input
                 placeholder="description"
                 value={v.description ?? ''}

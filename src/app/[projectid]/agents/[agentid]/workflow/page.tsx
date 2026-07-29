@@ -12,13 +12,16 @@ import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { useAgentLifecycle } from '@/hooks/useAgentLifecycle'
 import { useWorkflowStore } from '@/stores/workflowStore'
-import { safeParseWorkflow, parseWorkflow, type Workflow } from '@/lib/workflow/schema'
+import { safeParseWorkflow } from '@/lib/workflow/schema'
 import { hasErrors } from '@/lib/workflow/linter'
+import type { WorkflowTemplate } from '@/lib/workflow/templates'
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
 import { AgentSettingsPanel } from '@/components/workflow/AgentSettingsPanel'
+import { TemplatePicker } from '@/components/workflow/TemplatePicker'
+import { CanvasHintBanner } from '@/components/workflow/CanvasHintBanner'
 import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { KnowledgeBaseUploadZone } from '@/components/knowledge/KnowledgeBaseUploadZone'
 import { KnowledgeBaseDocumentList, type KnowledgeDocument } from '@/components/knowledge/KnowledgeBaseDocumentList'
@@ -42,29 +45,22 @@ function useBackendAgentName(agentId: string | undefined) {
   return { agentRow: agentDataResponse?.[0], backendAgentName, agentLoading: isLoading }
 }
 
-function starterWorkflow(name: string): Workflow {
-  return parseWorkflow({
-    metadata: { name },
-    // ElevenLabs' plugin-side default voice isn't available on every account —
-    // "Sarah" is a real voice_id so a fresh flow can actually speak out of the box.
-    agent: { tts: { name: 'elevenlabs', voice_id: 'EXAVITQu4vr4xnSDxMaL' } },
-    transports: { web: { enabled: true } },
-    start: 'start',
-    nodes: [
-      {
-        id: 'start',
-        type: 'conversation',
-        name: 'Greeting',
-        position: { x: 120, y: 100 },
-        prompt: 'Greet the caller and ask how you can help.',
-      },
-      { id: 'end', type: 'ending', name: 'End call', position: { x: 120, y: 340 }, message: 'Thanks for calling — goodbye!' },
-    ],
-    edges: [{ id: 'edge-start-end', source: 'start', target: 'end' }],
-  })
+/**
+ * Next.js App Router reuses this component instance across
+ * /A/agents/AGENT1/workflow -> /A/agents/AGENT2/workflow navigations — it does
+ * NOT remount just because a dynamic segment changes. Without a remount, the
+ * one-shot init ref/state below would never re-run for the new agent, and the
+ * Zustand workflow store (a module-level singleton) would keep showing —  and
+ * letting you Deploy — the PREVIOUS agent's flow. `key={agentId}` on the inner
+ * component forces a full remount on every agent change, resetting all of it.
+ */
+export default function WorkflowPage() {
+  const params = useParams()
+  const agentId = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
+  return <WorkflowPageInner key={agentId} />
 }
 
-export default function WorkflowPage() {
+function WorkflowPageInner() {
   const params = useParams()
   const router = useRouter()
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
@@ -86,13 +82,28 @@ export default function WorkflowPage() {
   const markClean = useWorkflowStore((s) => s.markClean)
   const setActiveNode = useWorkflowStore((s) => s.setActiveNode)
 
+  const [needsTemplate, setNeedsTemplate] = useState(false)
+  const [agentNotFound, setAgentNotFound] = useState(false)
   const initialized = useRef(false)
   useEffect(() => {
-    if (initialized.current || agentLoading || !agentRow) return
+    if (initialized.current || agentLoading) return
     initialized.current = true
+    if (!agentRow) {
+      setAgentNotFound(true)
+      return
+    }
     const existing = safeParseWorkflow(agentRow.configuration?.workflow)
-    setWorkflow(existing.success ? existing.data : starterWorkflow(agentRow.name ?? ''))
+    if (existing.success) {
+      setWorkflow(existing.data)
+    } else {
+      setNeedsTemplate(true)
+    }
   }, [agentLoading, agentRow, setWorkflow])
+
+  const handlePickTemplate = (template: WorkflowTemplate) => {
+    setWorkflow(template.build(agentRow?.name ?? ''))
+    setNeedsTemplate(false)
+  }
 
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -205,10 +216,35 @@ export default function WorkflowPage() {
     )
   }
 
-  if (agentLoading || !workflow) {
+  if (agentNotFound) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400">This agent could not be found.</p>
+        <Button variant="outline" size="sm" onClick={() => router.push(`/${projectId}/agents`)}>
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back to agents
+        </Button>
+      </div>
+    )
+  }
+
+  if (agentLoading || (!workflow && !needsTemplate)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (needsTemplate) {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3 px-4 py-2.5 shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Workflow</h1>
+        </div>
+        <TemplatePicker onPick={handlePickTemplate} />
       </div>
     )
   }
@@ -268,14 +304,13 @@ export default function WorkflowPage() {
         </Button>
       </div>
 
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 relative">
+        <CanvasHintBanner />
         <ReactFlowProvider>
           <WorkflowPalette />
           <WorkflowCanvas />
         </ReactFlowProvider>
       </div>
-
-      <LiveEventLog events={workflowEvents} onClear={() => setWorkflowEvents([])} />
 
       <Inspector />
       <VariablesPanel open={variablesOpen} onOpenChange={setVariablesOpen} />
@@ -294,18 +329,21 @@ export default function WorkflowPage() {
         <SheetHeader className="sr-only">
           <SheetTitle>Talk to Assistant</SheetTitle>
         </SheetHeader>
-        <SheetContent side="right" className="w-full sm:w-96 p-0">
-          <TalkToAssistant
-            agentName={backendAgentName}
-            isOpen={talkOpen}
-            onClose={() => setTalkOpen(false)}
-            agentStatus={agentLifecycle.status}
-            onAgentStatusChange={agentLifecycle.refresh}
-            flashEndCall={flashEndCall}
-            onFlashEndCallDone={() => setFlashEndCall(false)}
-            onSessionActiveChange={handleTalkSessionActiveChange}
-            onWorkflowEvent={handleWorkflowEvent}
-          />
+        <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col gap-0">
+          <div className="flex-1 min-h-0">
+            <TalkToAssistant
+              agentName={backendAgentName}
+              isOpen={talkOpen}
+              onClose={() => setTalkOpen(false)}
+              agentStatus={agentLifecycle.status}
+              onAgentStatusChange={agentLifecycle.refresh}
+              flashEndCall={flashEndCall}
+              onFlashEndCallDone={() => setFlashEndCall(false)}
+              onSessionActiveChange={handleTalkSessionActiveChange}
+              onWorkflowEvent={handleWorkflowEvent}
+            />
+          </div>
+          <LiveEventLog events={workflowEvents} onClear={() => setWorkflowEvents([])} />
         </SheetContent>
       </Sheet>
 

@@ -7,7 +7,7 @@ import {
   pypeApiAbortSignal,
   PYPE_API_DEPLOY_TIMEOUT_MS,
 } from '@/lib/pypeApiFetch'
-import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { isViewerForProject } from '@/lib/getProjectRoleForApi'
 
 // Deploying hot-reloads the running agent worker on the backend (20-30s).
 export const maxDuration = 60
@@ -37,15 +37,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
     }
 
     const rowId = agentRowIdFromBackendName(agentName)
-    const { data: agentRow } = rowId
-      ? await supabase.from('pype_voice_agents').select('id, project_id, configuration').eq('id', rowId).maybeSingle()
-      : { data: null }
-
-    if (agentRow?.project_id) {
-      const roleInfo = await getProjectRoleForApi(agentRow.project_id)
-      if (roleInfo?.role === 'viewer') {
-        return NextResponse.json({ message: 'Forbidden: viewers cannot deploy workflows' }, { status: 403 })
-      }
+    if (!rowId) {
+      return NextResponse.json({ message: 'Could not resolve agent from name' }, { status: 400 })
+    }
+    const { data: agentRow } = await supabase
+      .from('pype_voice_agents')
+      .select('id, project_id, configuration')
+      .eq('id', rowId)
+      .maybeSingle()
+    if (!agentRow) {
+      return NextResponse.json({ message: 'Agent not found' }, { status: 404 })
+    }
+    // Fail closed: blocks viewers AND anyone with no project membership at all —
+    // do not swap this for an ad-hoc role check that only fires when a mapping exists.
+    if (await isViewerForProject(agentRow.project_id)) {
+      return NextResponse.json({ message: 'Forbidden: you do not have permission to deploy this agent' }, { status: 403 })
     }
 
     const baseUrl = getPypeApiBaseUrlForServer()
@@ -82,12 +88,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
     const data = await response.json().catch(() => ({}))
 
     // Keep Supabase's copy in sync so the dashboard's own config history/diff UI sees it too.
-    if (agentRow) {
-      await supabase
-        .from('pype_voice_agents')
-        .update({ configuration: { ...agentRow.configuration, workflow: body.workflow } })
-        .eq('id', agentRow.id)
-    }
+    await supabase
+      .from('pype_voice_agents')
+      .update({ configuration: { ...agentRow.configuration, workflow: body.workflow } })
+      .eq('id', agentRow.id)
 
     return NextResponse.json({ success: true, data })
   } catch (err: any) {

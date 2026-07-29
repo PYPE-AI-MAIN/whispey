@@ -44,7 +44,7 @@ function relint(wf: Workflow | null): LintIssue[] {
   try { return lintWorkflow(wf) } catch { return [] }
 }
 
-export const useWorkflowStore = create<WorkflowState>((set) => ({
+export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   workflow: null,
   isDirty: false,
   selectedNodeId: null,
@@ -130,8 +130,8 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
       return { workflow, isDirty: true }
     }),
 
-  setSelectedNode: (id) => set({ selectedNodeId: id, selectedEdgeId: id ? null : undefined }),
-  setSelectedEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: id ? null : undefined }),
+  setSelectedNode: (id) => set({ selectedNodeId: id, selectedEdgeId: id ? null : get().selectedEdgeId }),
+  setSelectedEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: id ? null : get().selectedNodeId }),
 
   updateAgentConfig: (patch) =>
     set((s) => {

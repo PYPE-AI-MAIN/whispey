@@ -48,9 +48,7 @@ export function LiveEventLog({ events, onClear }: { events: WorkflowEvent[]; onC
   }, [events.length])
 
   return (
-    // relative + z-[60]: sits above the Talk to Assistant sheet's dimming overlay
-    // (z-50) — otherwise this panel is invisible during the exact call it's showing.
-    <div className="relative z-[60] border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
         <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
           Live workflow events {events.length > 0 && `(${events.length})`}

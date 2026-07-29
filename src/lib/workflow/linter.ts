@@ -5,7 +5,7 @@
  * semantic problems (dangling edges, bad start, unreachable nodes, ...).
  */
 import type { Workflow } from './schema'
-import { NONRUNTIME_NODE_TYPES, TELEPHONY_NODE_TYPES } from './schema'
+import { LLM_NODE_TYPES, NONRUNTIME_NODE_TYPES, TELEPHONY_NODE_TYPES } from './schema'
 
 export type Severity = 'error' | 'warning'
 export interface LintIssue {
@@ -68,6 +68,17 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
       issues.push({ severity: 'error', message: 'condition edge needs condition text', edgeId: e.id })
     if (e.kind === 'logic' && !e.expression?.trim())
       issues.push({ severity: 'error', message: 'logic edge needs an expression', edgeId: e.id })
+    // A condition edge only becomes an LLM handoff tool for LLM_NODE_TYPES
+    // sources (see interpreter.py's _handoff_tools). On any other node type
+    // it's never evaluated — the interpreter's default-target fallback picks
+    // it as the deterministic next hop regardless of the condition text.
+    if (e.kind === 'condition' && idSet.has(e.source) && !LLM_NODE_TYPES.has(nodeMap.get(e.source)!.type)) {
+      issues.push({
+        severity: 'error',
+        message: `condition edges are only meaningful on conversation/extract_variable/subagent nodes (source '${e.source}' is a ${nodeMap.get(e.source)!.type} node and would take this edge unconditionally)`,
+        edgeId: e.id,
+      })
+    }
   }
 
   // 7. reachability + dead-ends

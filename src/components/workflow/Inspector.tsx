@@ -10,8 +10,9 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWorkflowStore } from '@/stores/workflowStore'
-import type { WorkflowNode, Edge, EdgeKind } from '@/lib/workflow/schema'
+import type { WorkflowNode, Edge, EdgeKind, Workflow } from '@/lib/workflow/schema'
 import { NODE_REGISTRY } from './nodeRegistry'
+import { LogicConditionField } from './LogicConditionField'
 
 /** Textarea backed by a JSON-serialized object; keeps raw text while invalid so typing isn't fought. */
 function JsonField({ label, value, onChange }: { label: string; value: unknown; onChange: (v: any) => void }) {
@@ -262,7 +263,7 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
   }
 }
 
-function EdgeFields({ edge, patch }: { edge: Edge; patch: (p: Partial<Edge>) => void }) {
+function EdgeFields({ edge, workflow, patch }: { edge: Edge; workflow: Workflow; patch: (p: Partial<Edge>) => void }) {
   return (
     <>
       <Field label="Kind">
@@ -282,9 +283,7 @@ function EdgeFields({ edge, patch }: { edge: Edge; patch: (p: Partial<Edge>) => 
         </Field>
       )}
       {edge.kind === 'logic' && (
-        <Field label="Expression">
-          <Input value={edge.expression ?? ''} onChange={(e) => patch({ expression: e.target.value })} placeholder="e.g. party_size > 6" />
-        </Field>
+        <LogicConditionField key={edge.id} workflow={workflow} value={edge.expression ?? ''} onChange={(expression) => patch({ expression })} />
       )}
       <Field label="Label (optional)">
         <Input value={edge.label ?? ''} onChange={(e) => patch({ label: e.target.value })} />
@@ -332,7 +331,9 @@ export function Inspector() {
               <Field label="Name">
                 <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
               </Field>
-              <NodeFields node={node} patch={(p) => updateNode(node.id, p)} />
+              {/* key=node.id: JsonField's internal text state must reset when
+                  switching selected nodes, or it shows the previous node's JSON. */}
+              <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} />
             </div>
             <SheetFooter className="flex-row justify-between">
               {node.id !== workflow?.start && (
@@ -352,7 +353,7 @@ export function Inspector() {
               <SheetTitle>Edge</SheetTitle>
             </SheetHeader>
             <div className="px-4 space-y-4">
-              <EdgeFields edge={edge} patch={(p) => updateEdge(edge.id, p)} />
+              <EdgeFields edge={edge} workflow={workflow!} patch={(p) => updateEdge(edge.id, p)} />
             </div>
             <SheetFooter>
               <Button variant="destructive" size="sm" onClick={() => removeEdge(edge.id)}>
