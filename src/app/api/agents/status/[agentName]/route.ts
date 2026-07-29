@@ -2,11 +2,10 @@ import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  requireApiBaseUrl,
   isPypeUpstreamUnreachable,
   pypeApiAbortSignal,
 } from '@/lib/pypeApiFetch'
-import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
+import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -34,9 +33,7 @@ export async function GET(
 
     // Which backend this agent actually lives on — resolved from its own
     // persisted record, not trusted from the client.
-    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentName)
-
-    const urlResult = requireApiBaseUrl(deploymentTarget)
+    const urlResult = await resolveApiBaseUrlForAgent(agentName)
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl: apiBaseUrl } = urlResult
 

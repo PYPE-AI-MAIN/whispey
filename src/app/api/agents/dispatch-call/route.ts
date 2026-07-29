@@ -1,9 +1,8 @@
 // src/app/api/agents/dispatch-call/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getProjectIdFromAgentBackendName, getDeploymentTargetFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
-import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,8 +86,7 @@ export async function POST(request: NextRequest) {
 
     // Which backend this agent actually lives on — resolved from its own
     // persisted record, not trusted from the client.
-    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agent_name)
-    const urlResult = requireApiBaseUrl(deploymentTarget)
+    const urlResult = await resolveApiBaseUrlForAgent(agent_name)
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl } = urlResult
 

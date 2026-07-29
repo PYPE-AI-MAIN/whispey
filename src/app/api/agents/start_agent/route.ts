@@ -1,8 +1,7 @@
 // app/api/agents/start_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
-import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
-import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
+import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,9 +20,7 @@ export async function POST(request: NextRequest) {
     // persisted record, not trusted from the client. This isn't a privileged
     // choice being made here (that only happens at creation time); it's just
     // looking up where an already-existing agent runs.
-    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agent_name)
-
-    const urlResult = requireApiBaseUrl(deploymentTarget)
+    const urlResult = await resolveApiBaseUrlForAgent(agent_name)
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl } = urlResult
 

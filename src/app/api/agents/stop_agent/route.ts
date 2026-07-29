@@ -1,8 +1,7 @@
 // app/api/agents/stop_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
-import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
-import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
+import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,9 +18,7 @@ export async function POST(request: NextRequest) {
 
     // Which backend this agent actually lives on — resolved from its own
     // persisted record, not trusted from the client.
-    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agent_name)
-
-    const urlResult = requireApiBaseUrl(deploymentTarget)
+    const urlResult = await resolveApiBaseUrlForAgent(agent_name)
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl } = urlResult
 

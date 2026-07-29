@@ -1,8 +1,7 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // src/app/api/knowledge/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getProjectIdFromAgentBackendName, getDeploymentTargetFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
-import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
+import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
 
 /**
  * Proxy upload for RAG knowledge base.
@@ -32,8 +31,7 @@ export async function POST(request: NextRequest) {
 
     // Knowledge base lives on whichever backend this agent was actually
     // created on.
-    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentId.trim())
-    const urlResult = requireApiBaseUrl(deploymentTarget)
+    const urlResult = await resolveApiBaseUrlForAgent(agentId.trim())
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl: apiBaseUrl } = urlResult
     console.log(`${LOG_PREFIX} Step 2: API base URL configured -> ${apiBaseUrl}`)

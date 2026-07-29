@@ -6,6 +6,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { getEffectiveVisibility } from '@/types/visibility'
 import type { MemberVisibility } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 
 const supabase = createServiceRoleClient()
 
@@ -77,4 +78,17 @@ export async function getDeploymentTargetFromAgentBackendName(agentBackendName: 
     .eq('id', agentId)
     .maybeSingle()
   return row?.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+}
+
+/**
+ * Resolves the backend base URL for whichever target an agent actually lives
+ * on, or a ready-to-return error response if it's not configured. Collapses
+ * the deploymentTarget-lookup + requireApiBaseUrl pair repeated across every
+ * route that proxies to an agent's backend.
+ */
+export async function resolveApiBaseUrlForAgent(
+  agentBackendName: string
+): Promise<{ apiUrl: string } | { errorResponse: Response }> {
+  const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentBackendName)
+  return requireApiBaseUrl(deploymentTarget)
 }

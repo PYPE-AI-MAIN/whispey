@@ -1,7 +1,7 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
+import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
 
 /**
@@ -33,10 +33,9 @@ export async function DELETE(
     // Knowledge base lives on whichever backend this agent was actually
     // created on. Falls back to classic if agent_id wasn't passed (older
     // clients), matching the previous hardcoded-classic behavior.
-    const deploymentTarget = agentId
-      ? await getDeploymentTargetFromAgentBackendName(agentId.trim())
-      : 'classic'
-    const urlResult = requireApiBaseUrl(deploymentTarget)
+    const urlResult = agentId
+      ? await resolveApiBaseUrlForAgent(agentId.trim())
+      : requireApiBaseUrl('classic')
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl: apiBaseUrl } = urlResult
     console.log(`${LOG_PREFIX} Step 3: API base URL configured -> ${apiBaseUrl}`)
