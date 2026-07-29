@@ -1,6 +1,6 @@
 // src/app/api/knowledge/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { resolveApiBaseUrlForAgent, rejectIfViewer } from '@/lib/getProjectRoleForApi'
 import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeErrorHandling } from '@/lib/knowledgeProxy'
 
 /**
@@ -21,10 +21,8 @@ export const POST = withKnowledgeErrorHandling(LOG_PREFIX, async (request: NextR
       )
     }
 
-    const projectId = await getProjectIdFromAgentBackendName(agentId.trim())
-    if (projectId && (await isViewerForProject(projectId))) {
-      return NextResponse.json({ error: 'Forbidden: viewers cannot upload to knowledge base' }, { status: 403 })
-    }
+    const viewerResponse = await rejectIfViewer(agentId.trim(), 'Forbidden: viewers cannot upload to knowledge base')
+    if (viewerResponse) return viewerResponse
 
     // Knowledge base lives on whichever backend this agent was actually
     // created on.

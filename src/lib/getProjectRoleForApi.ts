@@ -2,6 +2,7 @@
  * Server-only: get current user's role and visibility for a project. Use in API routes to enforce viewer restrictions.
  * Returns role and effective visibility from pype_voice_email_project_mapping.permissions (Supabase).
  */
+import { NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getEffectiveVisibility } from '@/types/visibility'
 import type { MemberVisibility } from '@/types/visibility'
@@ -91,4 +92,21 @@ export async function resolveApiBaseUrlForAgent(
 ): Promise<{ apiUrl: string } | { errorResponse: Response }> {
   const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentBackendName)
   return requireApiBaseUrl(deploymentTarget)
+}
+
+/**
+ * Ready-to-return 403 if the current user is a viewer on the project that
+ * owns this agent, or null to continue. Collapses the
+ * getProjectIdFromAgentBackendName + isViewerForProject pair repeated across
+ * every route that mutates an agent's knowledge base or config.
+ */
+export async function rejectIfViewer(
+  agentBackendName: string,
+  forbiddenMessage: string
+): Promise<NextResponse | null> {
+  const projectId = await getProjectIdFromAgentBackendName(agentBackendName)
+  if (projectId && (await isViewerForProject(projectId))) {
+    return NextResponse.json({ error: forbiddenMessage }, { status: 403 })
+  }
+  return null
 }
