@@ -40,15 +40,41 @@ export async function isViewerForProject(projectId: string): Promise<boolean> {
  * Resolve project_id from agent backend name (e.g. "Test_a2e7a0fa_c64c_4840_a063_dad5a3df685e").
  * Backend name format: {agentName}_{uuid_with_underscores}. We parse UUID and look up agent.
  */
-export async function getProjectIdFromAgentBackendName(agentBackendName: string): Promise<string | null> {
+/**
+ * Backend agent names are `${name}_${id.replace(/-/g, '_')}` — the agent's
+ * UUID with hyphens swapped for underscores, appended to its display name.
+ * Reverses that to recover the original UUID (5 hyphen-separated segments).
+ */
+function extractAgentIdFromBackendName(agentBackendName: string): string | null {
   if (!agentBackendName?.trim()) return null
   const parts = agentBackendName.trim().split('_')
   if (parts.length < 5) return null
-  const uuidPart = parts.slice(-5).join('-')
+  return parts.slice(-5).join('-')
+}
+
+export async function getProjectIdFromAgentBackendName(agentBackendName: string): Promise<string | null> {
+  const agentId = extractAgentIdFromBackendName(agentBackendName)
+  if (!agentId) return null
   const { data: row } = await supabase
     .from('pype_voice_agents')
     .select('project_id')
-    .eq('id', uuidPart)
+    .eq('id', agentId)
     .maybeSingle()
   return row?.project_id ?? null
+}
+
+/**
+ * Which backend a given agent (by its full backend name) actually lives on.
+ * Defaults to 'classic' when unset (agents created before deployment_target
+ * was persisted) or when the agent can't be found at all.
+ */
+export async function getDeploymentTargetFromAgentBackendName(agentBackendName: string): Promise<'classic' | 'docker'> {
+  const agentId = extractAgentIdFromBackendName(agentBackendName)
+  if (!agentId) return 'classic'
+  const { data: row } = await supabase
+    .from('pype_voice_agents')
+    .select('configuration')
+    .eq('id', agentId)
+    .maybeSingle()
+  return row?.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
 }
