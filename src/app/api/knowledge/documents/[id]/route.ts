@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
-import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeErrorHandling } from '@/lib/knowledgeProxy'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeErrorHandlingCtx } from '@/lib/knowledgeProxy'
 
 /**
  * Delete a RAG knowledge base document.
@@ -10,7 +10,7 @@ import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeE
  */
 const LOG_PREFIX = '[Knowledge Document Delete]'
 
-export const DELETE = withKnowledgeErrorHandling<{ params: Promise<{ id: string }> }>(
+export const DELETE = withKnowledgeErrorHandlingCtx<{ params: Promise<{ id: string }> }>(
   LOG_PREFIX,
   async (request, { params }) => {
     const { id } = await params

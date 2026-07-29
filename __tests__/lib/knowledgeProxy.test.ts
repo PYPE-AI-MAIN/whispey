@@ -78,7 +78,7 @@ describe('knowledgeProxy', () => {
         NextResponse.json({ ok: true })
       )
       const request = new NextRequest('http://localhost/api/knowledge/documents')
-      const response = await wrapped(request, undefined)
+      const response = await wrapped(request)
       const body = await response.json()
       expect(body).toEqual({ ok: true })
     })
@@ -89,16 +89,18 @@ describe('knowledgeProxy', () => {
         throw new Error('boom')
       })
       const request = new NextRequest('http://localhost/api/knowledge/documents')
-      const response = await wrapped(request, undefined)
+      const response = await wrapped(request)
       expect(response.status).toBe(500)
       const body = await response.json()
       expect(body.error).toBe('Internal server error')
     })
+  })
 
+  describe('withKnowledgeErrorHandlingCtx', () => {
     it('passes the context object through to the handler', async () => {
-      const { withKnowledgeErrorHandling } = await import('@/lib/knowledgeProxy')
+      const { withKnowledgeErrorHandlingCtx } = await import('@/lib/knowledgeProxy')
       const { NextResponse } = await import('next/server')
-      const wrapped = withKnowledgeErrorHandling<{ params: Promise<{ id: string }> }>(
+      const wrapped = withKnowledgeErrorHandlingCtx<{ params: Promise<{ id: string }> }>(
         '[Test]',
         async (_req, ctx) => {
           const { id } = await ctx.params

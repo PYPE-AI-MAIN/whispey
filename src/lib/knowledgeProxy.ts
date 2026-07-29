@@ -37,11 +37,29 @@ export async function handleKnowledgeBackendResponse(
 }
 
 /**
- * Wraps a knowledge-base route handler with the standard "log request
- * received, catch unexpected errors as a 500" boilerplate shared by every
- * knowledge proxy route.
+ * Wraps a knowledge-base route handler (no dynamic route params) with the
+ * standard "log request received, catch unexpected errors as a 500"
+ * boilerplate shared by every knowledge proxy route. Next.js's route type
+ * checking rejects an exported GET/POST with a second parameter on routes
+ * with no dynamic segment, so this intentionally takes only `request`.
  */
-export function withKnowledgeErrorHandling<Ctx = undefined>(
+export function withKnowledgeErrorHandling(
+  logPrefix: string,
+  handler: (request: NextRequest) => Promise<Response>
+): (request: NextRequest) => Promise<Response> {
+  return async (request) => {
+    try {
+      console.log(`${logPrefix} Step 1: Request received`)
+      return await handler(request)
+    } catch (error) {
+      console.error(`${logPrefix} UNEXPECTED ERROR:`, error)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+  }
+}
+
+/** Same as {@link withKnowledgeErrorHandling}, for routes with a dynamic segment (e.g. `[id]`) that need the route context. */
+export function withKnowledgeErrorHandlingCtx<Ctx>(
   logPrefix: string,
   handler: (request: NextRequest, ctx: Ctx) => Promise<Response>
 ): (request: NextRequest, ctx: Ctx) => Promise<Response> {
