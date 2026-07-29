@@ -1,7 +1,7 @@
 // src/api/knowledge/documents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
-import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/knowledgeProxy'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeErrorHandling } from '@/lib/knowledgeProxy'
 
 /**
  * List RAG knowledge base documents for an agent.
@@ -10,10 +10,7 @@ import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/k
  */
 const LOG_PREFIX = '[Knowledge Documents List]'
 
-export async function GET(request: NextRequest) {
-  try {
-    console.log(`${LOG_PREFIX} Step 1: Request received`)
-
+export const GET = withKnowledgeErrorHandling(LOG_PREFIX, async (request: NextRequest) => {
     const { searchParams } = new URL(request.url)
     const agentId = searchParams.get('agent_id')
     if (!agentId?.trim()) {
@@ -56,11 +53,4 @@ export async function GET(request: NextRequest) {
     const count = Array.isArray(data?.documents) ? data.documents.length : 0
     console.log(`${LOG_PREFIX} Step 6: Success, returning documents count=${count}`, count > 0 ? `(sample ids: ${data.documents.slice(0, 3).map((d: { id?: string }) => d?.id).join(', ')})` : '')
     return NextResponse.json(data)
-  } catch (error) {
-    console.error(`${LOG_PREFIX} UNEXPECTED ERROR:`, error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
+})

@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
-import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/knowledgeProxy'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeErrorHandling } from '@/lib/knowledgeProxy'
 
 /**
  * Delete a RAG knowledge base document.
@@ -10,13 +10,9 @@ import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/k
  */
 const LOG_PREFIX = '[Knowledge Document Delete]'
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    console.log(`${LOG_PREFIX} Step 1: Request received`)
-
+export const DELETE = withKnowledgeErrorHandling<{ params: Promise<{ id: string }> }>(
+  LOG_PREFIX,
+  async (request, { params }) => {
     const { id } = await params
     if (!id?.trim()) {
       console.error(`${LOG_PREFIX} Step 2 FAILED: document id missing`)
@@ -56,11 +52,5 @@ export async function DELETE(
 
     console.log(`${LOG_PREFIX} Step 6: Success`)
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error(`${LOG_PREFIX} UNEXPECTED ERROR:`, error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
   }
-}
+)

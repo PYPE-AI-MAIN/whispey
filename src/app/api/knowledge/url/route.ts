@@ -1,7 +1,7 @@
 // src/app/api/knowledge/url/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
-import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/knowledgeProxy'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeErrorHandling } from '@/lib/knowledgeProxy'
 
 /**
  * Proxy URL ingestion for RAG knowledge base.
@@ -10,10 +10,7 @@ import { knowledgeBackendHeaders, handleKnowledgeBackendResponse } from '@/lib/k
  */
 const LOG_PREFIX = '[Knowledge URL]'
 
-export async function POST(request: NextRequest) {
-  try {
-    console.log(`${LOG_PREFIX} Step 1: Request received`)
-
+export const POST = withKnowledgeErrorHandling(LOG_PREFIX, async (request: NextRequest) => {
     const body = await request.json().catch(() => ({}))
     const { url, agent_id: agentId } = body
     if (!url?.trim() || !agentId?.trim()) {
@@ -56,11 +53,4 @@ export async function POST(request: NextRequest) {
     const data = await response.json().catch(() => ({}))
     console.log(`${LOG_PREFIX} Step 6: Success, returning backend response`)
     return NextResponse.json(data)
-  } catch (error) {
-    console.error(`${LOG_PREFIX} UNEXPECTED ERROR:`, error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
+})

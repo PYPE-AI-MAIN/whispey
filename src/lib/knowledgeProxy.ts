@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { mintServiceToken } from '@/lib/serviceToken'
 
 /** Standard headers for proxying a knowledge-base request to the voice backend. */
@@ -33,4 +34,24 @@ export async function handleKnowledgeBackendResponse(
     return NextResponse.json(notImplemented.body, { status: notImplemented.status })
   }
   return NextResponse.json({ error: errorText || fallbackMessage }, { status: response.status })
+}
+
+/**
+ * Wraps a knowledge-base route handler with the standard "log request
+ * received, catch unexpected errors as a 500" boilerplate shared by every
+ * knowledge proxy route.
+ */
+export function withKnowledgeErrorHandling<Ctx = undefined>(
+  logPrefix: string,
+  handler: (request: NextRequest, ctx: Ctx) => Promise<Response>
+): (request: NextRequest, ctx: Ctx) => Promise<Response> {
+  return async (request, ctx) => {
+    try {
+      console.log(`${logPrefix} Step 1: Request received`)
+      return await handler(request, ctx)
+    } catch (error) {
+      console.error(`${logPrefix} UNEXPECTED ERROR:`, error)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+  }
 }
