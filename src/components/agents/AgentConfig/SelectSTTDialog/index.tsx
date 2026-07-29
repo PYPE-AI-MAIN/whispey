@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Mic, Settings, CheckCircle, ArrowLeft, X, Plus } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -77,6 +78,8 @@ interface SarvamConfig {
   domain: string;
   with_timestamps: boolean;
   enable_formatting: boolean;
+  high_vad_sensitivity: boolean;
+  first_turn_min_speech_frames: number | undefined;
 }
 
 interface SmallestAIConfig {
@@ -484,7 +487,9 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     mode: initialConfig?.mode || 'transcribe',
     domain: initialConfig?.domain || 'general',
     with_timestamps: initialConfig?.with_timestamps ?? true,
-    enable_formatting: initialConfig?.enable_formatting ?? true
+    enable_formatting: initialConfig?.enable_formatting ?? true,
+    high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? true,
+    first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? 2
   })
 
   const [smallestaiConfig, setSmallestaiConfig] = useState<SmallestAIConfig>({
@@ -521,6 +526,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             model: selectedModel || prev.model,
             language: selectedLanguage || prev.language,
             mode: initialConfig?.mode || prev.mode || 'transcribe',
+            high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? prev.high_vad_sensitivity ?? true,
+            first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? prev.first_turn_min_speech_frames ?? 2,
             ...initialConfig
           }))
         } else if (selectedProvider === 'smallestai') {
@@ -917,6 +924,49 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               </SelectContent>
             </Select>
           </div>
+        )}
+
+        {activeProvider === 'sarvam' && currentModel === 'saaras:v3' && (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-sm sm:text-base">High VAD Sensitivity</Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Faster end-of-speech detection for quicker turn-taking</p>
+              </div>
+              <Switch
+                checked={sarvamConfig.high_vad_sensitivity}
+                onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, high_vad_sensitivity: checked }))}
+                disabled={DISABLE_SETTINGS}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm sm:text-base">First Turn Min Speech Frames</Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">Lower catches a quick/soft first reply (e.g. "yes") that the default first-turn threshold can miss</p>
+              <Input
+                type="number"
+                min={1}
+                max={15}
+                step={1}
+                value={sarvamConfig.first_turn_min_speech_frames ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (!raw) {
+                    setSarvamConfig(prev => ({ ...prev, first_turn_min_speech_frames: undefined }))
+                    return
+                  }
+                  const n = Math.min(15, Math.max(1, Number.parseInt(raw, 10)))
+                  setSarvamConfig(prev => ({ ...prev, first_turn_min_speech_frames: n }))
+                }}
+                onBlur={() => setSarvamConfig(prev => ({
+                  ...prev,
+                  first_turn_min_speech_frames: prev.first_turn_min_speech_frames ?? 2
+                }))}
+                disabled={DISABLE_SETTINGS}
+                className="w-24 h-9"
+              />
+            </div>
+          </>
         )}
 
         {/* Show auto-detect message for Saaras */}

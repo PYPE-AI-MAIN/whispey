@@ -1,11 +1,14 @@
 import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/start-session/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 interface StartSessionRequest {
   user_identity: string
   user_name: string
   agent_name: string
+  deploymentTarget?: string
 }
 
 interface StartSessionResponse {
@@ -35,15 +38,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get API base URL from environment
-    const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-    if (!apiBaseUrl) {
-      console.error('NEXT_PUBLIC_PYPEAI_API_URL is not configured')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
+    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
+    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
+
+    const urlResult = requireApiBaseUrl(deploymentTarget)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl: apiBaseUrl } = urlResult
 
     const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
 

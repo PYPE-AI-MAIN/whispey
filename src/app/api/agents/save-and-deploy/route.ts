@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -218,7 +219,12 @@ export async function POST(request: NextRequest) {
       payloadKeys: Object.keys(agentConfigBody?.agent ?? {}),
     })
 
-    const result = await deployAgentConfig(agentName, agentConfigBody)
+    // POC toggle: which backend to deploy to. Defaults to 'classic' (subprocess,
+    // existing behavior) unless the caller explicitly opts into 'docker'
+    // (dockerized-agent backend, see docker-compose.agents.yml on that VM).
+    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
+
+    const result = await deployAgentConfig(agentName, agentConfigBody, deploymentTarget)
 
     if (!result.ok) {
       return NextResponse.json(

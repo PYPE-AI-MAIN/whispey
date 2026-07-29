@@ -1,19 +1,11 @@
 // app/api/agents/stop_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
+import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 export async function POST(request: NextRequest) {
   try {
-    const apiUrl = process.env.PYPEAI_API_URL
-    
-    if (!apiUrl) {
-      console.error('PYPEAI_API_URL environment variable is not set')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
-
     // Parse the request body to get the agent_name
     const body = await request.json()
     const { agent_name } = body
@@ -24,6 +16,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // POC toggle: which backend this agent lives on. Defaults to 'classic'.
+    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
+
+    const urlResult = requireApiBaseUrl(deploymentTarget)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl } = urlResult
 
     console.log(`Stopping agent: ${agent_name}`)
     // FIXED: Use the correct backend endpoint /stop_agent (not /api/stop_agent)
