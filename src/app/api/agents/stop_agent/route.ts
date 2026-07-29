@@ -1,6 +1,6 @@
 // app/api/agents/stop_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
-import { serviceAuthHeaders } from '@/lib/serviceToken'
+import { pypeAgentControlHeaders } from '@/lib/pypeApiFetch'
 import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 
 export async function POST(request: NextRequest) {
@@ -30,10 +30,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/stop_agent`, {
       method: 'POST',
       headers: {
-        ...serviceAuthHeaders(),
-        'ngrok-skip-browser-warning': 'true',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        ...pypeAgentControlHeaders(),
         'User-Agent': 'NextJS-Proxy'
       },
       body: JSON.stringify({ agent_name })

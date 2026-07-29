@@ -1,3 +1,5 @@
+import { serviceAuthHeaders } from '@/lib/serviceToken'
+
 /** Timeout for quick read requests (status checks, config fetches). */
 export const PYPE_API_FETCH_TIMEOUT_MS = 8_000
 
@@ -53,6 +55,20 @@ export function requireApiBaseUrl(
 
 export function pypeApiAbortSignal(timeoutMs = PYPE_API_FETCH_TIMEOUT_MS): AbortSignal {
   return AbortSignal.timeout(timeoutMs)
+}
+
+/**
+ * Standard headers for the agent lifecycle endpoints (start/stop/list) on
+ * the voice backend: service auth plus the ngrok warning bypass used by
+ * local/staging tunnels.
+ */
+export function pypeAgentControlHeaders(): Record<string, string> {
+  return {
+    ...serviceAuthHeaders(),
+    'ngrok-skip-browser-warning': 'true',
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  }
 }
 
 /** True when fetch failed due to timeout, DNS, or refused connection (not HTTP 4xx/5xx). */
