@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import OpenAI from 'openai'
+import OpenAI, { AzureOpenAI } from 'openai'
 
 export const runtime = 'nodejs'
 
@@ -102,18 +102,45 @@ After the JSON block, add 1-2 sentences explaining what you did.
 - Generate valid edge ids (e.g. "e1", "e2", etc.) — they must be unique
 - Wrap variables in {{double_braces}} in prompts and URLs`
 
+function getClient(): { client: OpenAI; model: string } {
+  const azureKey = process.env.AZURE_OPENAI_API_KEY
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT
+  if (azureKey && azureEndpoint) {
+    return {
+      client: new AzureOpenAI({
+        apiKey: azureKey,
+        endpoint: azureEndpoint,
+        apiVersion: process.env.OPENAI_API_VERSION || '2024-12-01-preview',
+        deployment: process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4.1-mini-2',
+      }),
+      model: process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4.1-mini-2',
+    }
+  }
+  const openaiKey = process.env.OPENAI_API_KEY
+  if (openaiKey) {
+    return {
+      client: new OpenAI({ apiKey: openaiKey }),
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    }
+  }
+  throw new Error('No LLM API key configured (set AZURE_OPENAI_API_KEY or OPENAI_API_KEY)')
+}
+
 export async function POST(req: NextRequest) {
   const { messages, workflow } = await req.json()
   if (!messages?.length) {
     return Response.json({ error: 'No messages' }, { status: 400 })
   }
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    return Response.json({ error: 'OPENAI_API_KEY not configured' }, { status: 500 })
+  let client: OpenAI
+  let model: string
+  try {
+    const c = getClient()
+    client = c.client
+    model = c.model
+  } catch (err: any) {
+    return Response.json({ error: err.message }, { status: 500 })
   }
-
-  const client = new OpenAI({ apiKey })
 
   const systemMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -127,7 +154,7 @@ export async function POST(req: NextRequest) {
   }
 
   const stream = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model,
     messages: [...systemMessages, ...messages],
     stream: true,
     temperature: 0.3,
