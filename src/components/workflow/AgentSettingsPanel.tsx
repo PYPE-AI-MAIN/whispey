@@ -2,11 +2,13 @@
 
 import React from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useWorkflowStore } from '@/stores/workflowStore'
+import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
+import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
+import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 
 export function AgentSettingsPanel({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const workflow = useWorkflowStore((s) => s.workflow)
@@ -32,31 +34,55 @@ export function AgentSettingsPanel({ open, onOpenChange }: { open: boolean; onOp
               placeholder="Persona and rules that apply across every node."
             />
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">STT</Label>
-              <Input value={agent.stt.name} onChange={(e) => updateAgentConfig({ stt: { ...agent.stt, name: e.target.value } })} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">LLM</Label>
-              <Input value={agent.llm.name} onChange={(e) => updateAgentConfig({ llm: { ...agent.llm, name: e.target.value } })} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">TTS</Label>
-              <Input value={agent.tts.name} onChange={(e) => updateAgentConfig({ tts: { ...agent.tts, name: e.target.value } })} />
-            </div>
-          </div>
+
+          {/* LLM */}
           <div className="space-y-1">
-            <Label className="text-xs">Voice ID</Label>
-            <Input
-              value={agent.tts.voice_id ?? ''}
-              onChange={(e) => updateAgentConfig({ tts: { ...agent.tts, voice_id: e.target.value } })}
-              placeholder="e.g. EXAVITQu4vr4xnSDxMaL (ElevenLabs voice)"
+            <Label className="text-xs">LLM</Label>
+            <ModelSelector
+              selectedProvider={agent.llm.name}
+              selectedModel={agent.llm.model ?? ''}
+              temperature={agent.llm.temperature ?? undefined}
+              onProviderChange={(provider) => updateAgentConfig({ llm: { ...agent.llm, name: provider } })}
+              onModelChange={(model) => updateAgentConfig({ llm: { ...agent.llm, model } })}
+              onTemperatureChange={(temperature) => updateAgentConfig({ llm: { ...agent.llm, temperature } })}
             />
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Required for ElevenLabs — the plugin&apos;s built-in default voice isn&apos;t available on every account. Leave blank only if you know your account has it.
-            </p>
           </div>
+
+          {/* STT */}
+          <div className="space-y-1">
+            <Label className="text-xs">STT</Label>
+            <SelectSTT
+              selectedProvider={agent.stt.name}
+              selectedModel={agent.stt.model ?? ''}
+              selectedLanguage={agent.stt.language ?? 'en'}
+              onSTTSelect={(provider, model, config) =>
+                updateAgentConfig({ stt: { name: provider, model, language: config?.language ?? agent.stt.language } })
+              }
+            />
+          </div>
+
+          {/* TTS */}
+          <div className="space-y-1">
+            <Label className="text-xs">TTS</Label>
+            <SelectTTS
+              selectedVoice={agent.tts.voice_id ?? ''}
+              initialProvider={agent.tts.name}
+              initialModel={agent.tts.model ?? undefined}
+              initialConfig={agent.tts.voice_settings ?? undefined}
+              onVoiceSelect={(voiceId, provider, model, config) =>
+                updateAgentConfig({
+                  tts: {
+                    ...agent.tts,
+                    name: provider,
+                    voice_id: voiceId,
+                    model: model ?? agent.tts.model,
+                    voice_settings: config,
+                  },
+                })
+              }
+            />
+          </div>
+
           <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Label className="text-xs text-gray-500 dark:text-gray-400">Transports</Label>
             <div className="flex items-center justify-between">
