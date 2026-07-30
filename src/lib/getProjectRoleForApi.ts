@@ -47,7 +47,7 @@ export async function isViewerForProject(projectId: string): Promise<boolean> {
  * UUID with hyphens swapped for underscores, appended to its display name.
  * Reverses that to recover the original UUID (5 hyphen-separated segments).
  */
-function extractAgentIdFromBackendName(agentBackendName: string): string | null {
+export function extractAgentIdFromBackendName(agentBackendName: string): string | null {
   if (!agentBackendName?.trim()) return null
   const parts = agentBackendName.trim().split('_')
   if (parts.length < 5) return null
@@ -87,6 +87,29 @@ export async function getDeploymentTargetFromAgentBackendName(agentBackendName: 
  * the deploymentTarget-lookup + requireApiBaseUrl pair repeated across every
  * route that proxies to an agent's backend.
  */
+/**
+ * Bulk version of getDeploymentTargetFromAgentBackendName — one query for
+ * many agent ids instead of one round-trip per agent. Used by
+ * /api/agents/running_agents to resolve the authoritative backend for every
+ * agent in a single merged status list.
+ */
+export async function getDeploymentTargetsForAgentIds(
+  agentIds: string[]
+): Promise<Map<string, 'classic' | 'docker'>> {
+  const targets = new Map<string, 'classic' | 'docker'>()
+  if (agentIds.length === 0) return targets
+
+  const { data: rows } = await supabase
+    .from('pype_voice_agents')
+    .select('id, configuration')
+    .in('id', agentIds)
+
+  for (const row of rows ?? []) {
+    targets.set(row.id, row.configuration?.deployment_target === 'docker' ? 'docker' : 'classic')
+  }
+  return targets
+}
+
 export async function resolveApiBaseUrlForAgent(
   agentBackendName: string
 ): Promise<{ apiUrl: string } | { errorResponse: Response }> {
