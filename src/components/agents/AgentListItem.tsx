@@ -146,7 +146,7 @@ const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isL
   }
   
   return runningAgent ? {
-    isRunning: !!(runningAgent.pid),
+    isRunning: !!runningAgent.pid || runningAgent.status === 'running',
     pid: runningAgent.pid,
     status: runningAgent.status,
     actualAgentName: runningAgent.agent_name

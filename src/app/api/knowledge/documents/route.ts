@@ -1,7 +1,7 @@
-import { mintServiceToken } from '@/lib/serviceToken';
 // src/api/knowledge/documents/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { resolveApiBaseUrlForAgent, rejectIfViewer } from '@/lib/getProjectRoleForApi'
+import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeErrorHandling } from '@/lib/knowledgeProxy'
 
 /**
  * List RAG knowledge base documents for an agent.
@@ -10,10 +10,7 @@ import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getP
  */
 const LOG_PREFIX = '[Knowledge Documents List]'
 
-export async function GET(request: NextRequest) {
-  try {
-    console.log(`${LOG_PREFIX} Step 1: Request received`)
-
+export const GET = withKnowledgeErrorHandling(LOG_PREFIX, async (request: NextRequest) => {
     const { searchParams } = new URL(request.url)
     const agentId = searchParams.get('agent_id')
     if (!agentId?.trim()) {
@@ -24,58 +21,34 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const projectId = await getProjectIdFromAgentBackendName(agentId.trim())
-    if (projectId && (await isViewerForProject(projectId))) {
-      return NextResponse.json({ error: 'Forbidden: viewers cannot access knowledge base' }, { status: 403 })
-    }
+    const viewerResponse = await rejectIfViewer(agentId.trim(), 'Forbidden: viewers cannot access knowledge base')
+    if (viewerResponse) return viewerResponse
 
-    const apiBaseUrl = process.env.NEXT_PUBLIC_PYPEAI_API_URL
-    if (!apiBaseUrl) {
-      console.error(`${LOG_PREFIX} Step 1 FAILED: NEXT_PUBLIC_PYPEAI_API_URL not set`)
-      return NextResponse.json(
-        { error: 'Knowledge base API not configured' },
-        { status: 503 }
-      )
-    }
+    // Knowledge base lives on whichever backend this agent was actually
+    // created on.
+    const urlResult = await resolveApiBaseUrlForAgent(agentId.trim())
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl: apiBaseUrl } = urlResult
     console.log(`${LOG_PREFIX} Step 2: API base URL configured -> ${apiBaseUrl}`)
 
     console.log(`${LOG_PREFIX} Step 3: agent_id present -> ${agentId.trim()}`)
 
-    const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
     const backendUrl = `${apiBaseUrl}/knowledge/documents?agent_id=${encodeURIComponent(agentId.trim())}`
     console.log(`${LOG_PREFIX} Step 4: Calling backend GET with agent_id=`, agentId.trim())
 
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: { 'x-api-key': apiKey, 'Authorization': 'Bearer ' + mintServiceToken() },
+      headers: knowledgeBackendHeaders(),
     })
 
-    console.log(`${LOG_PREFIX} Step 5: Backend responded status=${response.status} ${response.statusText}`)
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error')
-      console.error(`${LOG_PREFIX} Step 5 FAILED: Backend error body ->`, errorText)
-      if (response.status === 404 || response.status === 501) {
-        return NextResponse.json(
-          { error: 'Knowledge base not yet implemented on backend', documents: [] },
-          { status: 200 }
-        )
-      }
-      return NextResponse.json(
-        { error: errorText || 'Failed to list documents' },
-        { status: response.status }
-      )
-    }
+    const errorResponse = await handleKnowledgeBackendResponse(
+      response, LOG_PREFIX, 5, 'Failed to list documents',
+      { body: { error: 'Knowledge base not yet implemented on backend', documents: [] }, status: 200 }
+    )
+    if (errorResponse) return errorResponse
 
     const data = await response.json().catch(() => ({ documents: [] }))
     const count = Array.isArray(data?.documents) ? data.documents.length : 0
     console.log(`${LOG_PREFIX} Step 6: Success, returning documents count=${count}`, count > 0 ? `(sample ids: ${data.documents.slice(0, 3).map((d: { id?: string }) => d?.id).join(', ')})` : '')
     return NextResponse.json(data)
-  } catch (error) {
-    console.error(`${LOG_PREFIX} UNEXPECTED ERROR:`, error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
+})

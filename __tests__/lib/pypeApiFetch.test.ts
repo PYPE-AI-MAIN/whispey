@@ -162,4 +162,20 @@ describe('pypeApiFetch', () => {
       expect(signal.aborted).toBe(false)
     })
   })
+
+  describe('pypeAgentControlHeaders', () => {
+    it('includes the ngrok bypass and JSON accept/content-type headers', async () => {
+      const { pypeAgentControlHeaders } = await import('@/lib/pypeApiFetch')
+      const headers = pypeAgentControlHeaders()
+      expect(headers['ngrok-skip-browser-warning']).toBe('true')
+      expect(headers.Accept).toBe('application/json')
+      expect(headers['Content-Type']).toBe('application/json')
+    })
+
+    it('includes a Bearer service auth token', async () => {
+      const { pypeAgentControlHeaders } = await import('@/lib/pypeApiFetch')
+      const headers = pypeAgentControlHeaders()
+      expect(headers.Authorization).toMatch(/^Bearer .+/)
+    })
+  })
 })

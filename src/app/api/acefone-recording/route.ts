@@ -14,12 +14,14 @@ const supabase = createServiceRoleClient()
 async function getAgentAcefoneToken(agentId: string): Promise<string | null> {
   const { data: agent } = await supabase
     .from('pype_voice_agents')
-    .select('name')
+    .select('name, configuration')
     .eq('id', agentId)
     .maybeSingle()
   if (!agent?.name) return null
 
-  const baseUrl = getPypeApiBaseUrlForServer()
+  // Config lives on whichever backend this agent was actually created on.
+  const deploymentTarget = agent.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+  const baseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
   if (!baseUrl) return null
 
   const agentName = `${agent.name}_${agentId.replaceAll('-', '_')}`

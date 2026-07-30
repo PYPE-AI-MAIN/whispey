@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
 
 // GET method to fetch agent details
 export async function GET(
@@ -297,7 +298,13 @@ export async function DELETE(
           const sanitizedAgentId = agentId.replace(/-/g, '_')
           const agentNameWithId = `${agentData.name}_${sanitizedAgentId}`
 
-          let backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+          // Delete from whichever backend this agent actually lives on — read
+          // back the target it was created with, since a container-based agent
+          // only exists on the docker VM and deleting against classic is a no-op.
+          const deploymentTarget = agentData.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+          const deleteBaseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
+
+          let backendDeleteResponse = await fetch(`${deleteBaseUrl}/delete_agent`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
             body: JSON.stringify({ agent_name: agentNameWithId })
@@ -305,7 +312,7 @@ export async function DELETE(
 
           if (!backendDeleteResponse.ok) {
             console.log('🔄 First attempt failed, trying with name only:', agentData.name)
-            backendDeleteResponse = await fetch(`${process.env.NEXT_PUBLIC_PYPEAI_API_URL}/delete_agent`, {
+            backendDeleteResponse = await fetch(`${deleteBaseUrl}/delete_agent`, {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
               body: JSON.stringify({ agent_name: agentData.name })

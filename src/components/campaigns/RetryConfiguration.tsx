@@ -165,9 +165,6 @@ function SipCodePicker({
                     {c.code}
                   </span>{' '}
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
-                  {!c.enabled && (
-                    <span className="ml-1 text-[10px] italic text-gray-400">(coming soon)</span>
-                  )}
                   <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
                 </div>
               ))}
@@ -197,8 +194,7 @@ function SipCodePicker({
 
 function sipCodeButtonTitle(c: SipCode, usedElsewhere: boolean): string {
   if (c.enabled && usedElsewhere) return `${c.code} is already used in another retry rule`
-  if (c.enabled) return c.description
-  return `${c.code} — coming soon`
+  return c.description
 }
 
 function SipCodeGroup({
@@ -215,9 +211,9 @@ function SipCodeGroup({
   onSelectAll: (addable: string[]) => void
 }>) {
   const groupCodes = group.codes
-  // Only enabled, unclaimed codes can be picked up by "select all" — the
-  // rest are temporarily disabled ("Coming soon") while retry-count/backoff
-  // behavior is under RCA. Frontend-only gate; validation still accepts all.
+  // Only enabled, unclaimed codes can be picked up by "select all" — 408
+  // stays disabled pending a backend fix (configure-schedule.mjs force-
+  // overwrites its maxRetries to 3 regardless of what's configured).
   const addable = groupCodes
     .filter((c) => c.enabled && !errorCodes.includes(c.code) && !isUsedElsewhere(c.code))
     .map((c) => c.code)
@@ -257,7 +253,6 @@ function SipCodeGroup({
               }
             >
               {c.code} — {c.label}
-              {!c.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
             </button>
           )
         })}
