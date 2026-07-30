@@ -13,6 +13,8 @@ import { useWorkflowStore } from '@/stores/workflowStore'
 import type { WorkflowNode, Edge, EdgeKind, Workflow } from '@/lib/workflow/schema'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
+import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
+import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 
 /** Textarea backed by a JSON-serialized object; keeps raw text while invalid so typing isn't fought. */
 function JsonField({ label, value, onChange }: { label: string; value: unknown; onChange: (v: any) => void }) {
@@ -66,6 +68,30 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
           <div className="flex items-center justify-between">
             <Label className="text-xs">Block interruptions</Label>
             <Switch checked={!!node.blockInterruptions} onCheckedChange={(v) => patch({ blockInterruptions: v } as any)} />
+          </div>
+          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
+            <Field label="LLM override">
+              <ModelSelector
+                selectedProvider={node.model?.name ?? ''}
+                selectedModel={node.model?.model ?? ''}
+                temperature={node.model?.temperature ?? undefined}
+                onProviderChange={(provider) => patch({ model: { ...node.model, name: provider } } as any)}
+                onModelChange={(model) => patch({ model: { ...node.model, name: node.model?.name || 'openai', model } } as any)}
+                onTemperatureChange={(temperature) => patch({ model: { ...node.model, name: node.model?.name || 'openai', temperature } } as any)}
+              />
+            </Field>
+            <Field label="Voice override">
+              <SelectTTS
+                selectedVoice={node.voice?.voice_id ?? ''}
+                initialProvider={node.voice?.name ?? undefined}
+                initialModel={node.voice?.model ?? undefined}
+                initialConfig={node.voice?.voice_settings ?? undefined}
+                onVoiceSelect={(voiceId, provider, model, config) =>
+                  patch({ voice: { name: provider, voice_id: voiceId, model: model ?? node.voice?.model, voice_settings: config } } as any)
+                }
+              />
+            </Field>
           </div>
         </>
       )
@@ -213,14 +239,49 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
         <>
           <Field label="To"><Input value={node.to ?? ''} onChange={(e) => patch({ to: e.target.value } as any)} placeholder="{{phone_number}}" /></Field>
           <Field label="Message"><Textarea value={node.message} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
-          <Field label="Provider"><Input value={node.provider ?? ''} onChange={(e) => patch({ provider: e.target.value } as any)} placeholder="plivo / twilio / webhook" /></Field>
+          <Field label="Provider">
+            <Select value={node.provider ?? ''} onValueChange={(v) => patch({ provider: v } as any)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select provider" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="plivo">Plivo</SelectItem>
+                <SelectItem value="twilio">Twilio</SelectItem>
+                <SelectItem value="webhook">Webhook</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
         </>
       )
     case 'subagent':
       return (
-        <Field label="Prompt">
-          <Textarea value={node.prompt} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[140px]" />
-        </Field>
+        <>
+          <Field label="Prompt">
+            <Textarea value={node.prompt} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[140px]" />
+          </Field>
+          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
+            <Field label="LLM override">
+              <ModelSelector
+                selectedProvider={node.model?.name ?? ''}
+                selectedModel={node.model?.model ?? ''}
+                temperature={node.model?.temperature ?? undefined}
+                onProviderChange={(provider) => patch({ model: { ...node.model, name: provider } } as any)}
+                onModelChange={(model) => patch({ model: { ...node.model, name: node.model?.name || 'openai', model } } as any)}
+                onTemperatureChange={(temperature) => patch({ model: { ...node.model, name: node.model?.name || 'openai', temperature } } as any)}
+              />
+            </Field>
+            <Field label="Voice override">
+              <SelectTTS
+                selectedVoice={node.voice?.voice_id ?? ''}
+                initialProvider={node.voice?.name ?? undefined}
+                initialModel={node.voice?.model ?? undefined}
+                initialConfig={node.voice?.voice_settings ?? undefined}
+                onVoiceSelect={(voiceId, provider, model, config) =>
+                  patch({ voice: { name: provider, voice_id: voiceId, model: model ?? node.voice?.model, voice_settings: config } } as any)
+                }
+              />
+            </Field>
+          </div>
+        </>
       )
     case 'mcp':
       return (

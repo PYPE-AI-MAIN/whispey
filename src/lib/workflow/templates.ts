@@ -55,37 +55,6 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       }),
   },
   {
-    id: 'faq-bot',
-    label: 'FAQ / Support',
-    description: 'Looks up an answer in your knowledge base and escalates when it can\'t help.',
-    build: (name) =>
-      parseWorkflow({
-        metadata: { name },
-        agent: { tts: DEFAULT_TTS },
-        transports: { web: { enabled: true } },
-        start: 'greeting',
-        nodes: [
-          { id: 'greeting', type: 'conversation', name: 'Greeting', position: { x: 100, y: 60 }, prompt: 'Greet the caller and ask what they need help with.' },
-          { id: 'lookup', type: 'knowledge', name: 'Look up answer', position: { x: 100, y: 220 }, topK: 4, saveAs: 'kb_context' },
-          { id: 'answer', type: 'conversation', name: 'Answer', position: { x: 100, y: 380 }, prompt: 'Using {{kb_context}}, answer the caller\'s question. If you are not sure, let them know you\'ll have someone follow up.' },
-          // A real phone transfer needs the telephony transport enabled and a
-          // real destination — neither makes sense to pre-fill in a template,
-          // so escalation here is a soft hand-off. Swap this node for a
-          // call_transfer node once you've enabled telephony and have a number.
-          { id: 'escalate', type: 'conversation', name: 'Escalate', position: { x: 400, y: 540 }, prompt: 'Let them know a team member will follow up with them directly, then say goodbye.', skipUserResponse: true },
-          { id: 'end', type: 'ending', name: 'End call', position: { x: 100, y: 540 }, message: 'Glad I could help — goodbye!' },
-        ],
-        edges: [
-          { id: 'e1', source: 'greeting', target: 'lookup' },
-          { id: 'e2', source: 'lookup', target: 'answer' },
-          { id: 'e3', source: 'answer', target: 'lookup', kind: 'condition', condition: 'the caller has another question' },
-          { id: 'e4', source: 'answer', target: 'escalate', kind: 'condition', condition: 'the caller wants to talk to a human, or you cannot answer' },
-          { id: 'e5', source: 'answer', target: 'end', kind: 'fallback' },
-          { id: 'e6', source: 'escalate', target: 'end' },
-        ],
-      }),
-  },
-  {
     id: 'lead-qualification',
     label: 'Lead Qualification',
     description: 'Collects budget/timeline, then routes $5k+ budgets to a specialist, everyone else to self-serve.',
