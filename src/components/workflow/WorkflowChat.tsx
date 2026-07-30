@@ -14,6 +14,13 @@ interface Message {
   applyError?: string
 }
 
+// Past assistant turns embed a full workflow JSON block. Re-sending those on every
+// request balloons context linearly (the current workflow is already sent separately
+// as a system message), causing slow/hanging generations after a few turns.
+function stripJsonBlocksForHistory(text: string): string {
+  return text.replace(/```json[\s\S]*?```/g, '[workflow JSON omitted — current workflow is provided above]')
+}
+
 function extractWorkflowJson(text: string): object | null {
   const match = text.match(/```json\s*([\s\S]*?)```/)
   if (!match) return null
@@ -60,7 +67,10 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: newMessages.map((m) => ({
+            role: m.role,
+            content: m.role === 'assistant' ? stripJsonBlocksForHistory(m.content) : m.content,
+          })),
           workflow,
         }),
         signal: abort.signal,
@@ -81,7 +91,13 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
 
       let buffer = ''
       while (true) {
-        const { done, value } = await reader.read()
+        const { done, value } = await Promise.race([
+          reader.read(),
+          new Promise<never>((_, reject) => setTimeout(() => {
+            abort.abort()
+            reject(new Error('Response timed out — try a shorter/simpler request'))
+          }, 45000)),
+        ])
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
