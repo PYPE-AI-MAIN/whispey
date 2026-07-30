@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
     messages: [...systemMessages, ...messages],
     stream: true,
     temperature: 0.3,
-    max_tokens: 16000,
+    max_tokens: 32000,
   })
 
   const { readable, writable } = new TransformStream()
@@ -166,11 +166,19 @@ export async function POST(req: NextRequest) {
 
   ;(async () => {
     try {
+      let finishReason: string | null | undefined
       for await (const chunk of stream) {
         const content = chunk.choices?.[0]?.delta?.content
         if (content) {
           await writer.write(sse(JSON.stringify({ content })))
         }
+        if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason
+      }
+      // finish_reason "length" means the model hit max_tokens mid-generation — the
+      // JSON is almost certainly cut off. Surface this explicitly instead of letting
+      // the client silently fail to parse a truncated blob.
+      if (finishReason === 'length') {
+        await writer.write(sse(JSON.stringify({ truncated: true })))
       }
       await writer.write(sse('[DONE]'))
     } catch (err: any) {

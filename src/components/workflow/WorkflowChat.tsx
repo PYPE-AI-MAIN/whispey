@@ -86,6 +86,7 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
 
       const decoder = new TextDecoder()
       let assistantContent = ''
+      let wasTruncated = false
 
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }])
 
@@ -111,6 +112,7 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
           try {
             const parsed = JSON.parse(data)
             if (parsed.error) throw new Error(parsed.error)
+            if (parsed.truncated) wasTruncated = true
             if (parsed.content) {
               assistantContent += parsed.content
               setMessages((prev) => {
@@ -123,6 +125,17 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
             if (e.message && !e.message.includes('Unexpected')) throw e
           }
         }
+      }
+
+      if (wasTruncated) {
+        const err = 'Response was cut off (too long to generate in one reply) — the workflow was NOT applied. Try a shorter request, or build the flow structure via chat and paste large prompts directly into the Global Prompt field instead.'
+        toast.error(err, { duration: 10000 })
+        setMessages((prev) => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...updated[updated.length - 1], applyStatus: 'error', applyError: err }
+          return updated
+        })
+        return
       }
 
       const hasJsonBlock = /```json[\s\S]*?```/.test(assistantContent)
