@@ -214,16 +214,9 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
               }`}
             >
               {msg.role === 'assistant' ? (
-                <AssistantMessage content={msg.content} />
+                <AssistantMessage content={msg.content} streaming={isStreaming && i === messages.length - 1} />
               ) : (
                 <span className="whitespace-pre-wrap">{msg.content}</span>
-              )}
-              {msg.role === 'assistant' && !msg.content && isStreaming && (
-                <span className="inline-flex gap-1 py-1">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </span>
               )}
             </div>
             {msg.role === 'user' && (
@@ -262,8 +255,24 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
   )
 }
 
-function AssistantMessage({ content }: { content: string }) {
-  const parts = content.split(/(```json[\s\S]*?```)/g)
+function AssistantMessage({ content, streaming }: { content: string; streaming?: boolean }) {
+  if (!content && streaming) {
+    return (
+      <span className="inline-flex gap-1 py-1">
+        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+      </span>
+    )
+  }
+
+  const hasOpenJsonBlock = /```json[\s\S]*$/.test(content) && !/```json[\s\S]*?```/.test(content.slice(content.lastIndexOf('```json')))
+  let visibleContent = content
+  if (streaming && hasOpenJsonBlock) {
+    visibleContent = content.slice(0, content.lastIndexOf('```json'))
+  }
+
+  const parts = visibleContent.split(/(```json[\s\S]*?```)/g)
   return (
     <div className="space-y-1.5">
       {parts.map((part, i) => {
@@ -279,6 +288,12 @@ function AssistantMessage({ content }: { content: string }) {
         if (!trimmed) return null
         return <span key={i} className="whitespace-pre-wrap">{trimmed}</span>
       })}
+      {streaming && hasOpenJsonBlock && (
+        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Generating workflow...
+        </div>
+      )}
     </div>
   )
 }

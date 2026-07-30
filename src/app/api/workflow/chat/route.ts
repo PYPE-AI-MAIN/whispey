@@ -160,29 +160,31 @@ export async function POST(req: NextRequest) {
     temperature: 0.3,
   })
 
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const chunk of stream) {
-          const content = chunk.choices?.[0]?.delta?.content
-          if (content) {
-            controller.enqueue(sse(JSON.stringify({ content })))
-          }
+  const { readable, writable } = new TransformStream()
+  const writer = writable.getWriter()
+
+  ;(async () => {
+    try {
+      for await (const chunk of stream) {
+        const content = chunk.choices?.[0]?.delta?.content
+        if (content) {
+          await writer.write(sse(JSON.stringify({ content })))
         }
-        controller.enqueue(sse('[DONE]'))
-        controller.close()
-      } catch (err: any) {
-        controller.enqueue(sse(JSON.stringify({ error: err.message })))
-        controller.close()
       }
-    },
-  })
+      await writer.write(sse('[DONE]'))
+    } catch (err: any) {
+      await writer.write(sse(JSON.stringify({ error: err.message })))
+    } finally {
+      await writer.close()
+    }
+  })()
 
   return new Response(readable, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   })
 }
