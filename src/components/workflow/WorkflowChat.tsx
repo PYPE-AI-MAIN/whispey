@@ -10,6 +10,8 @@ import toast from 'react-hot-toast'
 interface Message {
   role: 'user' | 'assistant'
   content: string
+  applyStatus?: 'success' | 'error' | 'none'
+  applyError?: string
 }
 
 function extractWorkflowJson(text: string): object | null {
@@ -107,16 +109,31 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
         }
       }
 
+      const hasJsonBlock = /```json[\s\S]*?```/.test(assistantContent)
       const json = extractWorkflowJson(assistantContent)
+      let applyStatus: Message['applyStatus'] = 'none'
+      let applyError: string | undefined
       if (json) {
         const parsed = safeParseWorkflow(json)
         if (parsed.success) {
           setWorkflow(parsed.data)
           toast.success('Workflow updated from chat')
+          applyStatus = 'success'
         } else {
-          toast.error('AI returned invalid workflow JSON')
+          applyError = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
+          toast.error(`AI returned invalid workflow JSON: ${applyError}`, { duration: 8000 })
+          applyStatus = 'error'
         }
+      } else if (hasJsonBlock) {
+        applyError = 'Response JSON was malformed (likely cut off — try a shorter/simpler request)'
+        toast.error(applyError, { duration: 8000 })
+        applyStatus = 'error'
       }
+      setMessages((prev) => {
+        const updated = [...prev]
+        updated[updated.length - 1] = { ...updated[updated.length - 1], applyStatus, applyError }
+        return updated
+      })
     } catch (err: any) {
       if (err.name === 'AbortError') return
       toast.error(err.message || 'Chat request failed')
@@ -214,7 +231,12 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
               }`}
             >
               {msg.role === 'assistant' ? (
-                <AssistantMessage content={msg.content} streaming={isStreaming && i === messages.length - 1} />
+                <AssistantMessage
+                  content={msg.content}
+                  streaming={isStreaming && i === messages.length - 1}
+                  applyStatus={msg.applyStatus}
+                  applyError={msg.applyError}
+                />
               ) : (
                 <span className="whitespace-pre-wrap">{msg.content}</span>
               )}
@@ -255,7 +277,17 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
   )
 }
 
-function AssistantMessage({ content, streaming }: { content: string; streaming?: boolean }) {
+function AssistantMessage({
+  content,
+  streaming,
+  applyStatus,
+  applyError,
+}: {
+  content: string
+  streaming?: boolean
+  applyStatus?: Message['applyStatus']
+  applyError?: string
+}) {
   if (!content && streaming) {
     return (
       <span className="inline-flex gap-1 py-1">
@@ -277,6 +309,22 @@ function AssistantMessage({ content, streaming }: { content: string; streaming?:
     <div className="space-y-1.5">
       {parts.map((part, i) => {
         if (part.startsWith('```json')) {
+          if (streaming) {
+            return (
+              <div key={i} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Parsing workflow...
+              </div>
+            )
+          }
+          if (applyStatus === 'error') {
+            return (
+              <div key={i} className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
+                <span>⚠</span>
+                <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
+              </div>
+            )
+          }
           return (
             <div key={i} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium">
               <Sparkles className="w-3 h-3" />

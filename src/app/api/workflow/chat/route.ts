@@ -158,6 +158,7 @@ export async function POST(req: NextRequest) {
     messages: [...systemMessages, ...messages],
     stream: true,
     temperature: 0.3,
+    max_tokens: 16000,
   })
 
   const { readable, writable } = new TransformStream()
