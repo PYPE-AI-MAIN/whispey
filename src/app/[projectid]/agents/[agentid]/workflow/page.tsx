@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, BookOpen, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Square } from 'lucide-react'
+import { ArrowLeft, Braces, BookOpen, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -26,6 +26,7 @@ import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { KnowledgeBaseUploadZone } from '@/components/knowledge/KnowledgeBaseUploadZone'
 import { KnowledgeBaseDocumentList, type KnowledgeDocument } from '@/components/knowledge/KnowledgeBaseDocumentList'
 import { LiveEventLog, type WorkflowEvent } from '@/components/workflow/LiveEventLog'
+import { WorkflowChat } from '@/components/workflow/WorkflowChat'
 
 /**
  * Backend expects agent_id = agent name (e.g. Test_a2e7a0fa_c64c_4840_a063_dad5a3df685e),
@@ -134,6 +135,7 @@ function WorkflowPageInner() {
   )
 
   // Knowledge Base — same upload/list components the classic Knowledge Base page uses.
+  const [chatOpen, setChatOpen] = useState(false)
   const [kbOpen, setKbOpen] = useState(false)
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
@@ -282,6 +284,14 @@ function WorkflowPageInner() {
             Start Agent
           </Button>
         )}
+        <Button
+          variant={chatOpen ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setChatOpen((v) => !v)}
+          className={chatOpen ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''}
+        >
+          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Builder
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setKbOpen(true)}>
           <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Knowledge
         </Button>
@@ -310,6 +320,7 @@ function WorkflowPageInner() {
           <WorkflowPalette />
           <WorkflowCanvas />
         </ReactFlowProvider>
+        <WorkflowChat open={chatOpen} onOpenChange={setChatOpen} />
       </div>
 
       <Inspector />
