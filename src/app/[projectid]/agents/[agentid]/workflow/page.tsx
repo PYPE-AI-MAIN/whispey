@@ -186,7 +186,8 @@ function WorkflowPageInner() {
   const handleDeploy = async () => {
     if (!workflow || !backendAgentName) return
     if (hasErrors(lintIssues)) {
-      toast.error(`Fix ${errorCount} lint error(s) before deploying`)
+      const errors = lintIssues.filter((i) => i.severity === 'error')
+      toast.error(`Fix ${errorCount} error(s):\n${errors.map((e) => `• ${e.message}`).join('\n')}`, { duration: 6000 })
       return
     }
     setDeploying(true)
@@ -263,7 +264,11 @@ function WorkflowPageInner() {
         <div className="flex-1" />
 
         {lintIssues.length > 0 && (
-          <Badge variant={errorCount > 0 ? 'destructive' : 'secondary'} className="text-[10px]">
+          <Badge
+            variant={errorCount > 0 ? 'destructive' : 'secondary'}
+            className="text-[10px] cursor-help"
+            title={lintIssues.map((i) => `[${i.severity}] ${i.message}`).join('\n')}
+          >
             {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
           </Badge>
         )}
