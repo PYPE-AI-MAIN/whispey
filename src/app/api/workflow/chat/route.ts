@@ -100,7 +100,8 @@ After the JSON block, add 1-2 sentences explaining what you did.
 - Use the CURRENT workflow (provided in the conversation) as the base for edits
 - When the user asks to "add a node", keep all existing nodes and edges intact
 - Generate valid edge ids (e.g. "e1", "e2", etc.) — they must be unique
-- Wrap variables in {{double_braces}} in prompts and URLs`
+- Wrap variables in {{double_braces}} in prompts and URLs
+- CRITICAL — never retype large unchanged text: if \`agent.globalPrompt\`, or a node's \`prompt\`/\`staticText\`, is already long (a persona, a script, a big rule set) and the user's request does NOT ask you to change that specific field, output it as the exact literal string "__KEEP__" instead of repeating it. The canvas will restore the original value for any field equal to "__KEEP__". Only output the real full text for a field when the user is actually asking you to write or change it.`
 
 function getClient(): { client: OpenAI; model: string } {
   const azureKey = process.env.AZURE_OPENAI_API_KEY

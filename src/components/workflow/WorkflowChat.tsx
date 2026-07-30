@@ -31,6 +31,29 @@ function extractWorkflowJson(text: string): object | null {
   }
 }
 
+// The system prompt tells the model to write "__KEEP__" instead of retyping a large
+// unchanged prompt/persona field — restore the real value from the current workflow
+// here so the model never has to round-trip huge text through its output.
+const KEEP_MARKER = '__KEEP__'
+function restoreKeptFields(next: any, current: any): any {
+  if (!current) return next
+  if (next?.agent?.globalPrompt === KEEP_MARKER) {
+    next.agent.globalPrompt = current.agent?.globalPrompt ?? ''
+  }
+  if (Array.isArray(next?.nodes)) {
+    const currentNodesById = new Map<string, any>((current.nodes || []).map((n: any) => [n.id, n]))
+    next.nodes = next.nodes.map((n: any) => {
+      const orig = currentNodesById.get(n.id)
+      if (!orig) return n
+      const patched = { ...n }
+      if (patched.prompt === KEEP_MARKER) patched.prompt = orig.prompt ?? ''
+      if (patched.staticText === KEEP_MARKER) patched.staticText = orig.staticText ?? ''
+      return patched
+    })
+  }
+  return next
+}
+
 export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const workflow = useWorkflowStore((s) => s.workflow)
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
@@ -143,7 +166,7 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
       let applyStatus: Message['applyStatus'] = 'none'
       let applyError: string | undefined
       if (json) {
-        const parsed = safeParseWorkflow(json)
+        const parsed = safeParseWorkflow(restoreKeptFields(json, workflow))
         if (parsed.success) {
           setWorkflow(parsed.data)
           toast.success('Workflow updated from chat')
