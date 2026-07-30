@@ -139,6 +139,7 @@ export const pressDigitNode = z.object({
   mode: z.enum(['send', 'collect']).default('send'),
   digits: z.string().nullish(),
   numDigits: z.number().nullish(),
+  timeout: z.number().nullish().default(15),
   saveAs: z.string().nullish(),
 })
 

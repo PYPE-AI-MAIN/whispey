@@ -87,7 +87,7 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
     if (NONRUNTIME_NODE_TYPES.has(n.type)) continue
     if (!reachable.has(n.id))
       issues.push({ severity: 'warning', message: `node '${n.id}' is unreachable from start`, nodeId: n.id })
-    if (n.type !== 'ending' && outEdges(n.id).length === 0)
+    if (n.type !== 'ending' && !TELEPHONY_NODE_TYPES.has(n.type) && outEdges(n.id).length === 0)
       issues.push({ severity: 'warning', message: `node '${n.id}' is a dead-end (no outgoing edges)`, nodeId: n.id })
   }
 

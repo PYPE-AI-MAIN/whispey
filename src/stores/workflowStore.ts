@@ -69,10 +69,12 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((s) => {
       if (!s.workflow) return s
       const undo = pushUndo(s)
+      const remaining = s.workflow.nodes.filter((n) => n.id !== nodeId)
       const workflow = {
         ...s.workflow,
-        nodes: s.workflow.nodes.filter((n) => n.id !== nodeId),
+        nodes: remaining,
         edges: s.workflow.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+        start: s.workflow.start === nodeId ? (remaining[0]?.id ?? '') : s.workflow.start,
       }
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow), selectedNodeId: s.selectedNodeId === nodeId ? null : s.selectedNodeId }
     }),

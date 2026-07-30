@@ -200,7 +200,10 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
           {node.mode === 'send' ? (
             <Field label="Digits to send"><Input value={node.digits ?? ''} onChange={(e) => patch({ digits: e.target.value } as any)} /></Field>
           ) : (
-            <Field label="Number of digits to collect"><Input type="number" value={node.numDigits ?? ''} onChange={(e) => patch({ numDigits: Number(e.target.value) } as any)} /></Field>
+            <>
+              <Field label="Number of digits to collect"><Input type="number" value={node.numDigits ?? ''} onChange={(e) => patch({ numDigits: Number(e.target.value) } as any)} /></Field>
+              <Field label="Timeout (seconds)"><Input type="number" value={node.timeout ?? 15} onChange={(e) => patch({ timeout: Number(e.target.value) } as any)} /></Field>
+            </>
           )}
           <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
