@@ -34,9 +34,10 @@ const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
 
 export function WorkflowCanvas() {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, fitView } = useReactFlow()
 
   const workflow = useWorkflowStore((s) => s.workflow)
+  const replaceCount = useWorkflowStore((s) => s.replaceCount)
   const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId)
   const selectedEdgeId = useWorkflowStore((s) => s.selectedEdgeId)
   const addNode = useWorkflowStore((s) => s.addNode)
@@ -107,6 +108,15 @@ export function WorkflowCanvas() {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
   }, [])
+
+  // Whole-workflow replaces (chat apply, template pick, undo/redo) don't trigger
+  // ReactFlow's own `fitView` (that only runs on mount) — re-fit manually so new
+  // nodes are actually visible instead of sitting outside the current viewport.
+  React.useEffect(() => {
+    if (replaceCount === 0) return
+    const t = setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
+    return () => clearTimeout(t)
+  }, [replaceCount, fitView])
 
   if (!workflow) return null
 

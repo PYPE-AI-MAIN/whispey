@@ -11,6 +11,11 @@ interface WorkflowState {
   future: Workflow[]
   lintIssues: LintIssue[]
   activeNodeId: string | null
+  /** Bumped whenever the whole workflow is swapped (chat apply, template pick,
+   *  undo/redo) so the canvas knows to re-fit the viewport — incremental edits
+   *  (addNode, updateNode, ...) don't touch this, so the camera doesn't jump
+   *  around during normal editing. */
+  replaceCount: number
 
   setWorkflow: (wf: Workflow) => void
   addNode: (node: WorkflowNode) => void
@@ -53,9 +58,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   future: [],
   lintIssues: [],
   activeNodeId: null,
+  replaceCount: 0,
 
   setWorkflow: (wf) =>
-    set({ workflow: wf, isDirty: false, past: [], future: [], lintIssues: relint(wf), selectedNodeId: null, selectedEdgeId: null }),
+    set((s) => ({
+      workflow: wf,
+      isDirty: false,
+      past: [],
+      future: [],
+      lintIssues: relint(wf),
+      selectedNodeId: null,
+      selectedEdgeId: null,
+      replaceCount: s.replaceCount + 1,
+    })),
 
   addNode: (node) =>
     set((s) => {
@@ -169,6 +184,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         future: [structuredClone(s.workflow), ...s.future],
         isDirty: true,
         lintIssues: relint(prev),
+        replaceCount: s.replaceCount + 1,
       }
     }),
 
@@ -182,6 +198,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         future: s.future.slice(1),
         isDirty: true,
         lintIssues: relint(next),
+        replaceCount: s.replaceCount + 1,
       }
     }),
 
