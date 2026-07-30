@@ -45,6 +45,9 @@ function restoreKeptFields(next: any, current: any): any {
     next.nodes = next.nodes.map((n: any) => {
       const orig = currentNodesById.get(n.id)
       if (!orig) return n
+      // Whole-node keep: the model output only { id, __keep__: true } instead of
+      // retyping a large function/mcp node's headers/tokens/body/params.
+      if (n.__keep__ === true) return orig
       const patched = { ...n }
       if (patched.prompt === KEEP_MARKER) patched.prompt = orig.prompt ?? ''
       if (patched.staticText === KEEP_MARKER) patched.staticText = orig.staticText ?? ''
