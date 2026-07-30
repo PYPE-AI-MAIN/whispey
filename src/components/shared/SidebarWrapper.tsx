@@ -304,7 +304,7 @@ const sidebarRoutes: SidebarRoute[] = [
         isPipecatAgent &&
         (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
       const showKnowledgeBase =
-        (agentType === 'pype_agent' && !hasWorkflow || isPipecatAgent) &&
+        (agentType === 'pype_agent' || isPipecatAgent) &&
         canShowAgentSection(visibility, 'knowledgeBase')
       // Phone dispatch (test calls + call history) isn't replicated by the workflow
       // canvas, so it stays available for workflow agents too.
