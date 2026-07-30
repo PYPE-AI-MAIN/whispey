@@ -441,13 +441,15 @@ const ProviderCard = ({
   )
 }
 
+const EMPTY_CONFIG = {} as const
+
 // Main Component
-const SelectSTT: React.FC<SelectSTTProps> = ({ 
-  selectedProvider = '', 
+const SelectSTT: React.FC<SelectSTTProps> = ({
+  selectedProvider = '',
   selectedModel = '',
   selectedLanguage = 'en',
-  initialConfig = {},
-  onSTTSelect 
+  initialConfig = EMPTY_CONFIG,
+  onSTTSelect
 }) => {
   const DISABLE_SETTINGS = false
   const [isOpen, setIsOpen] = useState(false)
