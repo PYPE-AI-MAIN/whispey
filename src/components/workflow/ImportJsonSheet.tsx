@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
@@ -40,23 +40,30 @@ export function ImportJsonSheet({ open, onOpenChange }: { open: boolean; onOpenC
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[540px] flex flex-col gap-3">
-        <SheetHeader>
+      {/* sm:max-w-lg, not a w-[…]: SheetContent defaults to sm:max-w-sm, which
+          silently clamps any wider width. Matches VariablesPanel. */}
+      <SheetContent side="right" className="w-full sm:max-w-lg">
+        {/* pr-10 keeps the description clear of the absolutely-positioned close X */}
+        <SheetHeader className="pr-10">
           <SheetTitle>Paste Workflow JSON</SheetTitle>
+          <SheetDescription>
+            Paste a complete workflow JSON (schemaVersion 1.0). It replaces the current canvas.
+          </SheetDescription>
         </SheetHeader>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Paste a complete workflow JSON (schemaVersion 1.0). It replaces the current canvas.
-        </p>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder='{ "schemaVersion": "1.0", "start": "greeting", "nodes": [ ... ] }'
-          className="flex-1 min-h-[300px] w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-violet-500"
-        />
-        {error && <p className="text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button size="sm" onClick={handleImport} disabled={!text.trim()}>Import to canvas</Button>
+        {/* SheetContent itself has no padding — it lives on the header/footer, so
+            the body needs its own px-4. min-h-0 lets the textarea flex-shrink. */}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder='{ "schemaVersion": "1.0", "start": "greeting", "nodes": [ ... ] }'
+            className="min-h-[240px] w-full flex-1 resize-none rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-violet-500 dark:border-gray-700 dark:bg-gray-900"
+          />
+          {error && <p className="text-xs whitespace-pre-wrap text-red-600 dark:text-red-400">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleImport} disabled={!text.trim()}>Import to canvas</Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
