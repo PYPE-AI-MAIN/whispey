@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, BookOpen, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
+import { ArrowLeft, Braces, BookOpen, Copy, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -112,6 +112,20 @@ function WorkflowPageInner() {
   const [importOpen, setImportOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deploying, setDeploying] = useState(false)
+
+  // Copy the canvas as workflow JSON — the counterpart to ImportJsonSheet.
+  const copyJson = useCallback(async () => {
+    if (!workflow) return
+    const json = JSON.stringify(workflow, null, 2)
+    try {
+      await navigator.clipboard.writeText(json)
+      toast.success(`Copied workflow JSON (${workflow.nodes.length} nodes)`)
+    } catch {
+      // clipboard API needs a secure context + permission; fall back to a prompt
+      // the user can copy out of manually rather than failing silently.
+      window.prompt('Copy the workflow JSON:', json)
+    }
+  }, [workflow])
 
   // Talk to Assistant — same component the classic Agent Config page uses.
   const [talkOpen, setTalkOpen] = useState(false)
@@ -301,6 +315,9 @@ function WorkflowPageInner() {
         </Button>
         <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
           <Braces className="h-3.5 w-3.5 mr-1.5" /> Paste JSON
+        </Button>
+        <Button variant="outline" size="sm" onClick={copyJson}>
+          <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy JSON
         </Button>
         <Button variant="outline" size="sm" onClick={() => setKbOpen(true)}>
           <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Knowledge
