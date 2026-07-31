@@ -170,14 +170,25 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
       let applyError: string | undefined
       if (json) {
         const parsed = safeParseWorkflow(restoreKeptFields(json, workflow))
-        if (parsed.success) {
-          setWorkflow(parsed.data)
-          toast.success('Workflow updated from chat')
-          applyStatus = 'success'
-        } else {
+        // safeParse passes on an empty/graph-less workflow (only `start` is
+        // required, and it isn't checked against node ids). That renders a blank
+        // canvas but shows a misleading "applied" — reject it and say why.
+        if (!parsed.success) {
           applyError = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
           toast.error(`AI returned invalid workflow JSON: ${applyError}`, { duration: 8000 })
           applyStatus = 'error'
+        } else if (
+          parsed.data.nodes.length === 0 ||
+          !parsed.data.nodes.some((n) => n.id === parsed.data.start)
+        ) {
+          applyError =
+            'The AI returned a workflow with no usable nodes — the config is too large to convert in one shot. Ask it to "build the flow step by step" (greeting, then patient lookup, then symptoms, …), or paste the flow in a few smaller messages.'
+          toast.error(applyError, { duration: 10000 })
+          applyStatus = 'error'
+        } else {
+          setWorkflow(parsed.data)
+          toast.success('Workflow updated from chat')
+          applyStatus = 'success'
         }
       } else if (hasJsonBlock) {
         applyError = 'Response JSON was malformed (likely cut off — try a shorter/simpler request)'

@@ -81,13 +81,24 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
     }
   }
 
+  // Tool nodes attached to a conversation/subagent via its `functions` array are
+  // callable actions, not flow steps — they're reached by a tool call, not an
+  // edge, and correctly have no outgoing edge. Exempt them from the edge-based
+  // reachability and dead-end warnings below.
+  const toolNodeIds = new Set<string>()
+  for (const n of wf.nodes) {
+    if ('functions' in n && Array.isArray((n as any).functions)) {
+      for (const fid of (n as any).functions as string[]) toolNodeIds.add(fid)
+    }
+  }
+
   // 7. reachability + dead-ends
   const reachable = reachableSet(wf)
   for (const n of wf.nodes) {
     if (NONRUNTIME_NODE_TYPES.has(n.type)) continue
-    if (!reachable.has(n.id))
+    if (!reachable.has(n.id) && !toolNodeIds.has(n.id))
       issues.push({ severity: 'warning', message: `node '${n.id}' is unreachable from start`, nodeId: n.id })
-    if (n.type !== 'ending' && !TELEPHONY_NODE_TYPES.has(n.type) && outEdges(n.id).length === 0)
+    if (n.type !== 'ending' && !TELEPHONY_NODE_TYPES.has(n.type) && !toolNodeIds.has(n.id) && outEdges(n.id).length === 0)
       issues.push({ severity: 'warning', message: `node '${n.id}' is a dead-end (no outgoing edges)`, nodeId: n.id })
   }
 

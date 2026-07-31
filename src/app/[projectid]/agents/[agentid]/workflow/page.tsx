@@ -27,6 +27,7 @@ import { KnowledgeBaseUploadZone } from '@/components/knowledge/KnowledgeBaseUpl
 import { KnowledgeBaseDocumentList, type KnowledgeDocument } from '@/components/knowledge/KnowledgeBaseDocumentList'
 import { LiveEventLog, type WorkflowEvent } from '@/components/workflow/LiveEventLog'
 import { WorkflowChat } from '@/components/workflow/WorkflowChat'
+import { ImportJsonSheet } from '@/components/workflow/ImportJsonSheet'
 
 /**
  * Backend expects agent_id = agent name (e.g. Test_a2e7a0fa_c64c_4840_a063_dad5a3df685e),
@@ -108,6 +109,7 @@ function WorkflowPageInner() {
 
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deploying, setDeploying] = useState(false)
 
@@ -297,6 +299,9 @@ function WorkflowPageInner() {
         >
           <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Builder
         </Button>
+        <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+          <Braces className="h-3.5 w-3.5 mr-1.5" /> Paste JSON
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setKbOpen(true)}>
           <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Knowledge
         </Button>
@@ -330,6 +335,7 @@ function WorkflowPageInner() {
 
       <Inspector />
       <VariablesPanel open={variablesOpen} onOpenChange={setVariablesOpen} />
+      <ImportJsonSheet open={importOpen} onOpenChange={setImportOpen} />
       <AgentSettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <Sheet
