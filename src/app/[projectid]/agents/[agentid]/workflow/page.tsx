@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, BookOpen, Copy, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
+import { ArrowLeft, Braces, BookOpen, ClipboardPaste, Copy, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -270,7 +270,9 @@ function WorkflowPageInner() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3 px-4 py-2.5 shrink-0">
+      {/* flex-wrap: shadcn Buttons are whitespace-nowrap so they cannot shrink —
+          without it this 10-button row overflows the viewport instead of reflowing. */}
+      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 shrink-0">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -313,11 +315,14 @@ function WorkflowPageInner() {
         >
           <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Builder
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-          <Braces className="h-3.5 w-3.5 mr-1.5" /> Paste JSON
+        {/* icon-only: the toolbar has no room left for two more labels */}
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}
+                title="Paste workflow JSON" aria-label="Paste workflow JSON">
+          <ClipboardPaste className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="outline" size="sm" onClick={copyJson}>
-          <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy JSON
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={copyJson}
+                title="Copy workflow JSON" aria-label="Copy workflow JSON">
+          <Copy className="h-3.5 w-3.5" />
         </Button>
         <Button variant="outline" size="sm" onClick={() => setKbOpen(true)}>
           <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Knowledge
