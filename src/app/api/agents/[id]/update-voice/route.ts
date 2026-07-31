@@ -120,7 +120,10 @@ export async function POST(
     const sanitizedAgentId = agentId.replace(/-/g, '_')
     const agentNameWithId = `${agent.name}_${sanitizedAgentId}`
 
-    const baseUrl = getPypeApiBaseUrlForServer()
+    // This agent's config/backend lives wherever it was actually created —
+    // classic and docker agents are never registered on each other's backend.
+    const deploymentTarget = agent.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+    const baseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
     if (!baseUrl) {
       console.error('❌ [update-voice] No voice backend URL configured. Set PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL.')
       return NextResponse.json(
@@ -138,7 +141,7 @@ export async function POST(
     // "'NoneType' object is not iterable" and rolls back every time. The
     // running-agent path 502s (worker killed mid-hot-reload) but the update
     // often still lands — deployAgentConfig verifies that before failing.
-    const deployResult = await deployAgentConfig(agentNameWithId, agentConfigBody)
+    const deployResult = await deployAgentConfig(agentNameWithId, agentConfigBody, deploymentTarget)
 
     if (!deployResult.ok) {
       return NextResponse.json(

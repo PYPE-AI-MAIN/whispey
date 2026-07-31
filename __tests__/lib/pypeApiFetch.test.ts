@@ -31,6 +31,49 @@ describe('pypeApiFetch', () => {
       const { getPypeApiBaseUrlForServer } = await import('@/lib/pypeApiFetch')
       expect(getPypeApiBaseUrlForServer()).toBeFalsy()
     })
+
+    it("returns PYPEAI_API_URL_DOCKER when target is 'docker'", async () => {
+      vi.stubEnv('PYPEAI_API_URL_DOCKER', 'https://agents.stg.pypeai.com')
+      vi.stubEnv('PYPEAI_API_URL', 'http://127.0.0.1:8000')
+      const { getPypeApiBaseUrlForServer } = await import('@/lib/pypeApiFetch')
+      expect(getPypeApiBaseUrlForServer('docker')).toBe('https://agents.stg.pypeai.com')
+    })
+
+    it("ignores classic env vars when target is 'docker'", async () => {
+      vi.stubEnv('PYPEAI_API_URL_DOCKER', '')
+      vi.stubEnv('PYPEAI_API_URL', 'http://127.0.0.1:8000')
+      const { getPypeApiBaseUrlForServer } = await import('@/lib/pypeApiFetch')
+      expect(getPypeApiBaseUrlForServer('docker')).toBeFalsy()
+    })
+  })
+
+  describe('requireApiBaseUrl', () => {
+    it('returns { apiUrl } when the backend URL is configured', async () => {
+      vi.stubEnv('PYPEAI_API_URL', 'http://127.0.0.1:8000')
+      const { requireApiBaseUrl } = await import('@/lib/pypeApiFetch')
+      const result = requireApiBaseUrl('classic')
+      expect('apiUrl' in result && result.apiUrl).toBe('http://127.0.0.1:8000')
+    })
+
+    it('returns { errorResponse } with a 500 when the backend URL is missing', async () => {
+      vi.stubEnv('PYPEAI_API_URL', '')
+      vi.stubEnv('NEXT_PUBLIC_PYPEAI_API_URL', '')
+      const { requireApiBaseUrl } = await import('@/lib/pypeApiFetch')
+      const result = requireApiBaseUrl('classic')
+      expect('errorResponse' in result).toBe(true)
+      if ('errorResponse' in result) {
+        expect(result.errorResponse.status).toBe(500)
+        const body = await result.errorResponse.json()
+        expect(body.error).toBe('API configuration error')
+      }
+    })
+
+    it('resolves the docker target independently of classic env vars', async () => {
+      vi.stubEnv('PYPEAI_API_URL_DOCKER', 'https://agents.stg.pypeai.com')
+      const { requireApiBaseUrl } = await import('@/lib/pypeApiFetch')
+      const result = requireApiBaseUrl('docker')
+      expect('apiUrl' in result && result.apiUrl).toBe('https://agents.stg.pypeai.com')
+    })
   })
 
   describe('isPypeUpstreamUnreachable', () => {
@@ -117,6 +160,22 @@ describe('pypeApiFetch', () => {
       const { pypeApiAbortSignal } = await import('@/lib/pypeApiFetch')
       const signal = pypeApiAbortSignal(10_000)
       expect(signal.aborted).toBe(false)
+    })
+  })
+
+  describe('pypeAgentControlHeaders', () => {
+    it('includes the ngrok bypass and JSON accept/content-type headers', async () => {
+      const { pypeAgentControlHeaders } = await import('@/lib/pypeApiFetch')
+      const headers = pypeAgentControlHeaders()
+      expect(headers['ngrok-skip-browser-warning']).toBe('true')
+      expect(headers.Accept).toBe('application/json')
+      expect(headers['Content-Type']).toBe('application/json')
+    })
+
+    it('includes a Bearer service auth token', async () => {
+      const { pypeAgentControlHeaders } = await import('@/lib/pypeApiFetch')
+      const headers = pypeAgentControlHeaders()
+      expect(headers.Authorization).toMatch(/^Bearer .+/)
     })
   })
 })

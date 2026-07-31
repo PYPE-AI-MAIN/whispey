@@ -1,7 +1,7 @@
 // src/app/api/agents/dispatch-call/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getProjectIdFromAgentBackendName, isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { getProjectIdFromAgentBackendName, resolveApiBaseUrlForAgent, isViewerForProject } from '@/lib/getProjectRoleForApi'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
 
 export async function POST(request: NextRequest) {
@@ -9,16 +9,6 @@ export async function POST(request: NextRequest) {
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const apiUrl = process.env.PYPEAI_API_URL
-    
-    if (!apiUrl) {
-      console.error('PYPEAI_API_URL environment variable is not set')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
     }
 
     // Parse the request body
@@ -93,6 +83,12 @@ export async function POST(request: NextRequest) {
     if (!provider) {
       return NextResponse.json({ error: 'provider is required' }, { status: 400 })
     }
+
+    // Which backend this agent actually lives on — resolved from its own
+    // persisted record, not trusted from the client.
+    const urlResult = await resolveApiBaseUrlForAgent(agent_name)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl } = urlResult
 
     console.log(`Dispatching call: Agent ${agent_name} to ${phone_number}`)
     console.log(`SIP Trunk ID: ${sip_trunk_id}, Provider: ${provider}`)

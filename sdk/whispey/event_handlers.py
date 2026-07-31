@@ -33,6 +33,7 @@ class ConversationTurn:
     trace_id: Optional[str] = None
     otel_spans: List[Dict[str, Any]] = field(default_factory=list)
     tool_calls: List[Dict[str, Any]] = field(default_factory=list)
+    fallback_events: List[Dict[str, Any]] = field(default_factory=list)
     trace_duration_ms: Optional[int] = None
     trace_cost_usd: Optional[float] = None
     
@@ -71,7 +72,8 @@ class ConversationTurn:
             'enhanced_tts_data': self.enhanced_tts_data,
             'state_events': self.state_events,
             'prompt_data': self.prompt_data,
-            'enhanced_vad_data': self.enhanced_vad_data
+            'enhanced_vad_data': self.enhanced_vad_data,
+            'fallback_events': self.fallback_events
         }
         
         for key, value in enhanced_fields.items():
@@ -104,6 +106,19 @@ class CorrectedTranscriptCollector:
 
         self._stored_telemetry_instance = None
 
+
+    def record_fallback_event(self, event: Dict[str, Any]) -> None:
+        """Attach a provider-fallback event (STT/TTS/LLM) to the in-progress turn, if any.
+
+        Safe to call from outside the normal event-handler flow (e.g. a FallbackAdapter
+        listener) — silently no-ops if there's no active turn, matching how other
+        best-effort enrichment methods on this collector behave.
+        """
+        try:
+            if self.current_turn:
+                self.current_turn.fallback_events.append(event)
+        except Exception as e:
+            logger.error(f"Error recording fallback event: {e}")
 
     def _extract_enhanced_vad_from_metrics(self, metrics_obj):
         """Extract enhanced VAD data from metrics object with complete configuration"""

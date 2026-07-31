@@ -2,10 +2,10 @@ import { mintServiceToken } from '@/lib/serviceToken';
 // app/api/agents/status/[agentName]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  getPypeApiBaseUrlForServer,
   isPypeUpstreamUnreachable,
   pypeApiAbortSignal,
 } from '@/lib/pypeApiFetch'
+import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 
 interface AgentStatusResponse {
   is_active: boolean
@@ -31,14 +31,11 @@ export async function GET(
       )
     }
 
-    const apiBaseUrl = getPypeApiBaseUrlForServer()
-    if (!apiBaseUrl) {
-      console.error('PYPEAI_API_URL / NEXT_PUBLIC_PYPEAI_API_URL is not configured')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
+    // Which backend this agent actually lives on — resolved from its own
+    // persisted record, not trusted from the client.
+    const urlResult = await resolveApiBaseUrlForAgent(agentName)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl: apiBaseUrl } = urlResult
 
     const apiKey =
       process.env.PYPEAI_X_API_KEY ||
