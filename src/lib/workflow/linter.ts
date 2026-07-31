@@ -81,14 +81,18 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
     }
   }
 
-  // Tool nodes attached to a conversation/subagent via its `functions` array are
-  // callable actions, not flow steps — they're reached by a tool call, not an
-  // edge, and correctly have no outgoing edge. Exempt them from the edge-based
-  // reachability and dead-end warnings below.
+  // Function nodes attached to a conversation/subagent via its `functions` array
+  // are callable actions, not flow steps — the interpreter reaches them by tool
+  // call (see `_node_tools`), not by edge, so they correctly have no incoming or
+  // outgoing edge. Exempt them from the checks below. Only `function` nodes
+  // qualify: `_node_tools` ignores every other type, so a knowledge/mcp node
+  // listed in `functions` is silently dead and must still be warned about.
   const toolNodeIds = new Set<string>()
   for (const n of wf.nodes) {
     if ('functions' in n && Array.isArray((n as any).functions)) {
-      for (const fid of (n as any).functions as string[]) toolNodeIds.add(fid)
+      for (const fid of (n as any).functions as string[]) {
+        if (nodeMap.get(fid)?.type === 'function') toolNodeIds.add(fid)
+      }
     }
   }
 
