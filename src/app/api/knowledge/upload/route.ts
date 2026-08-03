@@ -8,6 +8,11 @@ import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeE
  * Viewers get 403. Forwards file to backend; backend should store in vector DB and index by agent_id.
  * Backend contract: POST {base}/knowledge/upload with FormData (file, agent_id).
  */
+// Large files (pdf/doc/csv) can take a while to parse, embed, and index into
+// the vector DB on the backend; don't let Vercel kill this route at the
+// default 10-15s while that's in progress.
+export const maxDuration = 60
+
 const LOG_PREFIX = '[Knowledge Upload]'
 
 export const POST = withKnowledgeErrorHandling(LOG_PREFIX, async (request: NextRequest) => {
