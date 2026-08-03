@@ -8,6 +8,10 @@ import { knowledgeBackendHeaders, handleKnowledgeBackendResponse, withKnowledgeE
  * Viewers get 403.
  * Backend contract: POST {base}/knowledge/url with JSON { url, agent_id }.
  */
+// Scraping and embedding a URL's content can take a while on the backend;
+// don't let Vercel kill this route at the default 10-15s while that's in progress.
+export const maxDuration = 60
+
 const LOG_PREFIX = '[Knowledge URL]'
 
 export const POST = withKnowledgeErrorHandling(LOG_PREFIX, async (request: NextRequest) => {
