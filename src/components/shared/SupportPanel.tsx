@@ -2,13 +2,9 @@
 
 import React from 'react'
 import { Button } from '@/components/ui/button'
-import { 
-  Mail, 
-  Github, 
-  ExternalLink,
+import {
+  Mail,
   FileText,
-  Users,
-  MessageSquare
 } from 'lucide-react'
 import {
   Sheet,
@@ -90,46 +86,6 @@ User`)
             </Button>
           </div>
 
-          {/* Community Section */}
-          <div className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <Users className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
-              </div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Community</h3>
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
-              Join the conversation with the Whispey community.
-            </p>
-            
-            <div className="space-y-2">
-              <Button 
-                variant="ghost"
-                className="w-full justify-start text-xs h-8 px-3 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
-                onClick={() => {
-                  window.open('https://github.com/PYPE-AI-MAIN/whispey', '_blank')
-                  onClose()
-                }}
-              >
-                <Github className="w-3.5 h-3.5 mr-2" />
-                <span className="flex-1 text-left">GitHub</span>
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-
-              <Button 
-                variant="ghost"
-                className="w-full justify-start text-xs h-8 px-3 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
-                onClick={() => {
-                  window.open('https://discord.gg/hrj7H82WQG', '_blank')
-                  onClose()
-                }}
-              >
-                <MessageSquare className="w-3.5 h-3.5 mr-2" />
-                <span className="flex-1 text-left">Discord</span>
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-            </div>
-          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -1,25 +1,74 @@
+import { serviceAuthHeaders } from '@/lib/serviceToken'
+
 /** Timeout for quick read requests (status checks, config fetches). */
 export const PYPE_API_FETCH_TIMEOUT_MS = 8_000
 
 /**
  * Timeout for agent config deploy — updating a running agent requires restarting
  * its worker process on the backend which takes significantly longer than a read.
- * Must be set via PYPE_DEPLOY_TIMEOUT_SEC env var (in seconds).
+ * Override via PYPE_DEPLOY_TIMEOUT_SEC env var (in seconds); defaults to 60.
  */
 export const PYPE_API_DEPLOY_TIMEOUT_MS =
-  parseInt(process.env.PYPE_DEPLOY_TIMEOUT_SEC || '', 10) * 1_000
+  (parseInt(process.env.PYPE_DEPLOY_TIMEOUT_SEC || '', 10) || 60) * 1_000
+
+export type DeploymentTarget = 'classic' | 'docker'
 
 /**
  * Base URL for server-side routes that proxy to the voice/inference API.
  * Prefer `PYPEAI_API_URL` (server-only, e.g. http://127.0.0.1:8000) so local dev can
  * override an unreachable `NEXT_PUBLIC_PYPEAI_API_URL` without changing the client bundle.
+ *
+ * `target: 'docker'` points at the dockerized-agent backend instead (set via
+ * PYPEAI_API_URL_DOCKER) — used for the POC letting agents be created/deployed
+ * as Docker containers on a separate VM instead of subprocesses on the classic one.
+ * Defaults to 'classic' so all existing behavior is unchanged unless explicitly opted in.
  */
-export function getPypeApiBaseUrlForServer(): string | undefined {
+export function getPypeApiBaseUrlForServer(target: DeploymentTarget = 'classic'): string | undefined {
+  if (target === 'docker') {
+    return process.env.PYPEAI_API_URL_DOCKER
+  }
   return process.env.PYPEAI_API_URL || process.env.NEXT_PUBLIC_PYPEAI_API_URL
+}
+
+/**
+ * Resolves the backend base URL for a target, or a ready-to-return 500
+ * response if it's not configured. Callers do:
+ *   const result = requireApiBaseUrl(deploymentTarget)
+ *   if ('errorResponse' in result) return result.errorResponse
+ *   const apiUrl = result.apiUrl
+ */
+export function requireApiBaseUrl(
+  target: DeploymentTarget
+): { apiUrl: string } | { errorResponse: Response } {
+  const apiUrl = getPypeApiBaseUrlForServer(target)
+  if (!apiUrl) {
+    console.error(`Voice backend URL is not configured for target '${target}'`)
+    return {
+      errorResponse: new Response(
+        JSON.stringify({ error: 'API configuration error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      ),
+    }
+  }
+  return { apiUrl }
 }
 
 export function pypeApiAbortSignal(timeoutMs = PYPE_API_FETCH_TIMEOUT_MS): AbortSignal {
   return AbortSignal.timeout(timeoutMs)
+}
+
+/**
+ * Standard headers for the agent lifecycle endpoints (start/stop/list) on
+ * the voice backend: service auth plus the ngrok warning bypass used by
+ * local/staging tunnels.
+ */
+export function pypeAgentControlHeaders(): Record<string, string> {
+  return {
+    ...serviceAuthHeaders(),
+    'ngrok-skip-browser-warning': 'true',
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  }
 }
 
 /** True when fetch failed due to timeout, DNS, or refused connection (not HTTP 4xx/5xx). */

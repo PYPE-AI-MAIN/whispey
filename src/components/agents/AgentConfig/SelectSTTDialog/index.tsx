@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Mic, Settings, CheckCircle, ArrowLeft, X, Plus } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -41,6 +42,7 @@ interface STTProviders {
   openai: StandardProvider;
   deepgram: DeepgramProvider;
   sarvam: StandardProvider;
+  smallestai: StandardProvider;
 }
 
 // Config interfaces
@@ -76,6 +78,13 @@ interface SarvamConfig {
   domain: string;
   with_timestamps: boolean;
   enable_formatting: boolean;
+  high_vad_sensitivity: boolean;
+  first_turn_min_speech_frames: number | undefined;
+}
+
+interface SmallestAIConfig {
+  model: string;
+  language: string;
 }
 
 interface SelectSTTProps {
@@ -320,6 +329,37 @@ const STT_PROVIDERS: STTProviders = {
       { code: 'ta-IN', name: 'Tamil' },
       { code: 'te-IN', name: 'Telugu' },
     ]
+  },
+  smallestai: {
+    name: 'Smallest AI',
+    models: [
+      { id: 'pulse', name: 'Pulse', description: 'Real-time streaming speech-to-text' }
+    ],
+    languages: [
+      { code: 'north_indic', name: '🌐 Auto-detect — North Indic (Hindi, Gujarati, Marathi, Bengali, Oriya, English)' },
+      { code: 'multi-south-indic', name: '🌐 Auto-detect — South Indic (Tamil, Telugu, Kannada, Malayalam, English)' },
+      { code: 'en', name: 'English' },
+      { code: 'hi', name: 'Hindi' },
+      { code: 'de', name: 'German' },
+      { code: 'es', name: 'Spanish' },
+      { code: 'ru', name: 'Russian' },
+      { code: 'it', name: 'Italian' },
+      { code: 'fr', name: 'French' },
+      { code: 'nl', name: 'Dutch' },
+      { code: 'pt', name: 'Portuguese' },
+      { code: 'zh', name: 'Mandarin' },
+      { code: 'yue', name: 'Cantonese' },
+      { code: 'ja', name: 'Japanese' },
+      { code: 'ko', name: 'Korean' },
+      { code: 'gu', name: 'Gujarati' },
+      { code: 'mr', name: 'Marathi' },
+      { code: 'or', name: 'Oriya' },
+      { code: 'bn', name: 'Bengali' },
+      { code: 'ta', name: 'Tamil' },
+      { code: 'te', name: 'Telugu' },
+      { code: 'kn', name: 'Kannada' },
+      { code: 'ml', name: 'Malayalam' },
+    ]
   }
 }
 
@@ -346,6 +386,7 @@ const ProviderCard = ({
       case 'openai': return 'from-green-400 to-green-600'
       case 'deepgram': return 'from-blue-400 to-blue-600'
       case 'sarvam': return 'from-orange-400 to-red-500'
+      case 'smallestai': return 'from-purple-400 to-violet-600'
       default: return 'from-gray-400 to-gray-600'
     }
   }
@@ -355,6 +396,7 @@ const ProviderCard = ({
       case 'openai': return 'border-green-200 dark:border-green-600 bg-green-50 dark:bg-green-900/10'
       case 'deepgram': return 'border-blue-200 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'
       case 'sarvam': return 'border-orange-200 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/10'
+      case 'smallestai': return 'border-purple-200 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/10'
       default: return 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/10'
     }
   }
@@ -445,7 +487,14 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     mode: initialConfig?.mode || 'transcribe',
     domain: initialConfig?.domain || 'general',
     with_timestamps: initialConfig?.with_timestamps ?? true,
-    enable_formatting: initialConfig?.enable_formatting ?? true
+    enable_formatting: initialConfig?.enable_formatting ?? true,
+    high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? false,
+    first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? 8
+  })
+
+  const [smallestaiConfig, setSmallestaiConfig] = useState<SmallestAIConfig>({
+    model: selectedProvider === 'smallestai' ? selectedModel : 'pulse',
+    language: selectedProvider === 'smallestai' ? selectedLanguage : 'en',
   })
 
   useEffect(() => {
@@ -477,6 +526,15 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             model: selectedModel || prev.model,
             language: selectedLanguage || prev.language,
             mode: initialConfig?.mode || prev.mode || 'transcribe',
+            high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? prev.high_vad_sensitivity ?? false,
+            first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? prev.first_turn_min_speech_frames ?? 8,
+            ...initialConfig
+          }))
+        } else if (selectedProvider === 'smallestai') {
+          setSmallestaiConfig(prev => ({
+            ...prev,
+            model: selectedModel || prev.model,
+            language: selectedLanguage || prev.language,
             ...initialConfig
           }))
         }
@@ -523,12 +581,13 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
       case 'openai': return openaiConfig
       case 'deepgram': return deepgramConfig
       case 'sarvam': return sarvamConfig
+      case 'smallestai': return smallestaiConfig
       default: return {}
     }
   }
 
   const getCurrentModel = () => {
-    const config = getCurrentConfig() as OpenAISTTConfig | DeepgramConfig | SarvamConfig
+    const config = getCurrentConfig() as OpenAISTTConfig | DeepgramConfig | SarvamConfig | SmallestAIConfig
     return config.model || ''
   }
 
@@ -775,6 +834,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   language: value === 'saaras:v2.5' ? 'unknown' : prev.language,
                   mode: 'transcribe'
                 }))
+                else if (activeProvider === 'smallestai') setSmallestaiConfig(prev => ({ ...prev, model: value }))
               }
             }}
             disabled={DISABLE_SETTINGS}
@@ -804,6 +864,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   setShowCustomLanguage(false)
                   if (activeProvider === 'openai') setOpenAIConfig(prev => ({ ...prev, language: value }))
                   else if (activeProvider === 'sarvam') setSarvamConfig(prev => ({ ...prev, language: value }))
+                  else if (activeProvider === 'smallestai') setSmallestaiConfig(prev => ({ ...prev, language: value }))
                 }
               }}
               disabled={DISABLE_SETTINGS}
@@ -863,6 +924,49 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               </SelectContent>
             </Select>
           </div>
+        )}
+
+        {activeProvider === 'sarvam' && currentModel === 'saaras:v3' && (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-sm sm:text-base">High VAD Sensitivity</Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Faster end-of-speech detection for quicker turn-taking</p>
+              </div>
+              <Switch
+                checked={sarvamConfig.high_vad_sensitivity}
+                onCheckedChange={(checked) => setSarvamConfig(prev => ({ ...prev, high_vad_sensitivity: checked }))}
+                disabled={DISABLE_SETTINGS}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm sm:text-base">First Turn Min Speech Frames</Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">Lower catches a quick/soft first reply (e.g. "yes") that the default first-turn threshold can miss</p>
+              <Input
+                type="number"
+                min={1}
+                max={15}
+                step={1}
+                value={sarvamConfig.first_turn_min_speech_frames ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (!raw) {
+                    setSarvamConfig(prev => ({ ...prev, first_turn_min_speech_frames: undefined }))
+                    return
+                  }
+                  const n = Math.min(15, Math.max(1, Number.parseInt(raw, 10)))
+                  setSarvamConfig(prev => ({ ...prev, first_turn_min_speech_frames: n }))
+                }}
+                onBlur={() => setSarvamConfig(prev => ({
+                  ...prev,
+                  first_turn_min_speech_frames: prev.first_turn_min_speech_frames ?? 8
+                }))}
+                disabled={DISABLE_SETTINGS}
+                className="w-24 h-9"
+              />
+            </div>
+          </>
         )}
 
         {/* Show auto-detect message for Saaras */}

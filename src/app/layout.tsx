@@ -4,7 +4,7 @@ import {
   SignedIn,
   SignedOut,
 } from '@clerk/nextjs'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Poppins } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import Script from 'next/script'
 import { Toaster } from 'react-hot-toast' // ADD THIS LINE
@@ -24,11 +24,21 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
+const brandFont = Poppins({
+  variable: '--font-brand',
+  weight: ['700', '800'],
+  subsets: ['latin'],
+})
+
 export const metadata: Metadata = {
   title: 'Whispey - OSS LiveKit observability platform',
   description: 'An observability platform for all your agents built on LiveKit.',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-light.ico', media: '(prefers-color-scheme: light)' },
+      { url: '/favicon-dark.ico', media: '(prefers-color-scheme: dark)' },
+    ],
   },
 }
 
@@ -47,7 +57,7 @@ export default function RootLayout({
     >
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} ${brandFont.variable} antialiased`}
         >
           {/* Sonic Linker AI Traffic Monitoring - Only loads if org ID is provided */}
           {sonicLinkerOrgId && (

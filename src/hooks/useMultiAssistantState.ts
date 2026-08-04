@@ -188,7 +188,7 @@ function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any
     model: formValues.selectedModel || getFallback(null, 'llm.model'),
     temperature: formValues.temperature ?? getFallback(null, 'llm.temperature'),
     ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
-      azure_deployment: getFallback(null, 'llm.azure_deployment'),
+      azure_deployment: currentAzureConfig.deploymentName || getFallback(null, 'llm.azure_deployment'),
       azure_endpoint: currentAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
       api_version: currentAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
       api_key_env: getFallback(null, 'llm.api_key_env')
@@ -203,7 +203,7 @@ function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any
         model: formValues.fallbackLlmModel || getFallback(null, 'llm.model'),
         temperature: formValues.fallbackLlmTemperature ?? getFallback(null, 'llm.temperature'),
         ...(formValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig && {
-          azure_deployment: getFallback(null, 'llm.azure_deployment'),
+          azure_deployment: fallbackAzureConfig.deploymentName || getFallback(null, 'llm.azure_deployment'),
           azure_endpoint: fallbackAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
           api_version: fallbackAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
           api_key_env: getFallback(null, 'llm.api_key_env')
@@ -701,9 +701,8 @@ export function useMultiAssistantState({
           ...(formValues.advancedSettings?.session?.endpointing_mode && {
             endpointing_mode: formValues.advancedSettings.session.endpointing_mode
           }),
-          ...(formValues.advancedSettings?.session?.interruption_mode && {
-            interruption_mode: formValues.advancedSettings.session.interruption_mode
-          }),
+          // interruption_mode is intentionally omitted here — it's sent at the top level
+          // above and the backend hoists it into session_behavior on save.
           ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
             user_away_timeout: formValues.advancedSettings.session.user_away_timeout
           }),
@@ -791,7 +790,7 @@ export function useMultiAssistantState({
           model: formValues.selectedModel || getFallback(null, 'llm.model'),
           temperature: formValues.temperature ?? getFallback(null, 'llm.temperature'),
           ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
-            azure_deployment: getFallback(null, 'llm.azure_deployment'),
+            azure_deployment: currentAzureConfig.deploymentName || getFallback(null, 'llm.azure_deployment'),
             azure_endpoint: currentAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
             api_version: currentAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
             api_key_env: getFallback(null, 'llm.api_key_env')
@@ -806,7 +805,7 @@ export function useMultiAssistantState({
               model: formValues.fallbackLlmModel || getFallback(null, 'llm.model'),
               temperature: formValues.fallbackLlmTemperature ?? getFallback(null, 'llm.temperature'),
               ...(formValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig && {
-                azure_deployment: getFallback(null, 'llm.azure_deployment'),
+                azure_deployment: fallbackAzureConfig.deploymentName || getFallback(null, 'llm.azure_deployment'),
                 azure_endpoint: fallbackAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
                 api_version: fallbackAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
                 api_key_env: getFallback(null, 'llm.api_key_env')
@@ -913,9 +912,8 @@ export function useMultiAssistantState({
           ...(formValues.advancedSettings?.session?.endpointing_mode && {
             endpointing_mode: formValues.advancedSettings.session.endpointing_mode
           }),
-          ...(formValues.advancedSettings?.session?.interruption_mode && {
-            interruption_mode: formValues.advancedSettings.session.interruption_mode
-          }),
+          // interruption_mode is intentionally omitted here — it's sent at the top level
+          // above and the backend hoists it into session_behavior on save.
           ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
             user_away_timeout: formValues.advancedSettings.session.user_away_timeout
           }),
@@ -990,9 +988,8 @@ export function useMultiAssistantState({
   }, [updateAssistantData])
 
   const hasUnsavedChanges = useMemo(() => {
-    const mapHasChanges = Array.from(assistantsData.values()).some(data => data.hasUnsavedChanges)
-    return mapHasChanges || (currentFormik?.dirty ?? false)
-  }, [assistantsData, currentFormik])
+    return Array.from(assistantsData.values()).some(data => data.hasUnsavedChanges)
+  }, [assistantsData])
 
   const resetUnsavedChanges = useCallback(() => {
     setAssistantsData(prev => {

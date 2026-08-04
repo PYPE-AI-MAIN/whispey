@@ -786,8 +786,16 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
           userId: user?.id ?? null,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) { setRestoreError(data.message ?? 'Restore failed'); return }
+      // A platform-level timeout/gateway error returns an HTML page, not JSON —
+      // parsing that as JSON would throw before we ever get to show a useful
+      // message, so fall back to the raw response text in that case.
+      const rawText = await res.text()
+      let data: any = null
+      try { data = JSON.parse(rawText) } catch { /* non-JSON response, handled below */ }
+      if (!res.ok) {
+        setRestoreError(data?.message ?? (res.status >= 500 ? `Restore failed (${res.status}): the deploy may still be in progress on the backend — check back before retrying.` : 'Restore failed'))
+        return
+      }
       setRestoreSuccess(`Restored as v${data.version_number}`)
       await fetchHistory(currentPage)
       setTimeout(() => { setRestoreVersionId(null); setRestoreSuccess(null) }, 2000)

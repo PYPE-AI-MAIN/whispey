@@ -417,9 +417,9 @@ export default function TermsOfService() {
               Privacy Policy
             </Link>
             <span className="text-gray-300">•</span>
-            <a 
-              href="https://github.com/PYPE-AI-MAIN/whispey" 
-              target="_blank" 
+            <a
+              href="https://github.com/PYPE-AI-MAIN/whispey"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-gray-600 hover:text-blue-600 transition-colors"
             >

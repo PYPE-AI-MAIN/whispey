@@ -7,10 +7,9 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Bell, Search, Settings, BarChart3, Users, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash, BookOpen, Github } from 'lucide-react';
+import { Mic, Bell, Search, Settings, BarChart3, FileText, Zap, ChevronDown, HelpCircle, Command, ChevronRight, Slash, BookOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from "react";
-import { GitHubStarsButton } from "../GithubLink";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface HeaderProps {
@@ -66,15 +65,22 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
         <div className="flex items-center justify-between max-w-[1600px] mx-auto">
           {/* Logo & Brand Section */}
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-3 group">
-              <Image src="/logo.png" alt="Pype AI Logo" width={48} height={48} className="group-hover:scale-110 transition-transform duration-200" />
-              <div>
-                <h1 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 tracking-tight">
-                  Whispey
-                </h1>
-                <p className="text-xs text-gray-500 -mt-0.5 font-medium">LiveKit Observability Platform</p>
-              </div>
-            </Link>
+            <div className="flex items-center gap-3 group">
+              <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer">
+                <Image src="/logo.png" alt="Pype Logo" width={30} height={30} style={{ objectFit: 'contain' }} />
+              </a>
+              <Link href="/">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start', color: '#111827' }}>
+                    Whispey
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif', color: '#6D28D9' }}>by</span>
+                    <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
+                  </div>
+                </div>
+              </Link>
+            </div>
 
             {/* Apple-Style Clean Breadcrumb with Loading States */}
             {breadcrumbState && (
@@ -143,8 +149,6 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
               </svg>
             </Link>
 
-            <GitHubStarsButton />
-            
             {/* Vertical Separator */}
             <div className="w-px h-5 bg-gray-200"></div>
 
@@ -171,15 +175,6 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                       <div>
                         <p className="font-medium text-gray-900">API Reference</p>
                         <p className="text-xs text-gray-500">Complete API documentation</p>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="https://discord.gg/r2eMeAp6" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
-                      <Users className="w-4 h-4 mr-3 text-green-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">Community</p>
-                        <p className="text-xs text-gray-500">Connect with developers</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>

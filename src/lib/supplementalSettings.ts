@@ -45,7 +45,7 @@ function isValidHttpUrl(url: string): boolean {
 }
 
 async function saveWebhook(agentId: string, projectId: string, cfg: WebhookConfig): Promise<void> {
-  if (!cfg.isActive && !cfg.webhookUrl.trim()) {
+  if (!cfg.webhookUrl.trim()) {
     await fetch(`/api/webhooks/config?agent_id=${agentId}`, { method: 'DELETE' })
     return
   }

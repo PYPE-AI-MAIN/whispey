@@ -3,6 +3,13 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 import { pushEnrichedConfigToGitHub } from '@/lib/agentVersionHelpers'
 import { mintServiceToken } from '@/lib/serviceToken'
 
+// This route calls into /api/agents/save-and-deploy (itself allowed up to 60s
+// for a hot-reload), then pushes to GitHub and writes to Supabase on top of
+// that — the combined time can exceed Vercel's short default timeout even
+// though the inner deploy call is well within its own budget, causing a
+// platform-level 502 that looks like a random failure from the UI.
+export const maxDuration = 90
+
 const supabase = createServiceRoleClient()
 
 function extractPromptSnapshot(config: any): string | null {
@@ -12,7 +19,16 @@ function extractPromptSnapshot(config: any): string | null {
 function parseDeployError(errText: string): string {
   try {
     const j = JSON.parse(errText)
-    return j?.error ?? j?.message ?? errText ?? 'unknown'
+    // j?.error / j?.message can themselves be objects depending on the
+    // upstream error shape (e.g. FastAPI's HTTPException(detail={...}) nests
+    // one level deeper than expected here). Interpolating a non-string into
+    // the "Restore deploy failed: ${...}" template below would silently
+    // stringify it to the literal text "[object Object]" instead of
+    // surfacing anything useful — stringify explicitly so real error detail
+    // is always visible.
+    const candidate = j?.detail?.message ?? j?.detail?.error ?? j?.detail ?? j?.error ?? j?.message ?? errText
+    if (typeof candidate === 'string') return candidate
+    return JSON.stringify(candidate) || errText || 'unknown'
   } catch {
     return errText || 'unknown'
   }

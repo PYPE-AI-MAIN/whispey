@@ -38,12 +38,15 @@ import {
 import { firstMessageModes } from '@/utils/constants'
 import { useFormik } from 'formik'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
+import { SideBySideDiff } from '@/components/agents/AgentConfig/SideBySideDiff'
+import { sanitizeForDiff, serializeForDiff, extractPrompt, omitPrompt } from '@/lib/configDiff'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
+import { useGlobalRole } from '@/hooks/useGlobalRole'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -73,14 +76,14 @@ import toast from 'react-hot-toast'
 
 // Agent status service
 const agentStatusService = {
-  checkAgentStatus: async (agentName: string): Promise<AgentStatus> => {
+  checkAgentStatus: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
     try {
       if (!agentName) {
         console.warn('⚠️ Agent name is empty or undefined')
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
-      const response = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}`, {
+      const response = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}?deploymentTarget=${deploymentTarget}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -122,20 +125,20 @@ const agentStatusService = {
     }
   },
   
-  startAgent: async (agentName: string): Promise<AgentStatus> => {
+  startAgent: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
     try {
       if (!agentName) {
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
       console.log('🚀 Starting agent via API:', agentName)
-      
+
       const response = await fetch('/api/agents/start_agent', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ agent_name: agentName })
+        body: JSON.stringify({ agent_name: agentName, deploymentTarget })
       })
       
       if (response.ok) {
@@ -160,20 +163,20 @@ const agentStatusService = {
     }
   },
   
-  stopAgent: async (agentName: string): Promise<AgentStatus> => {
+  stopAgent: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
     try {
       if (!agentName) {
         return { status: 'error' as const, error: 'Agent name is required' }
       }
 
       console.log('🛑 Stopping agent via API:', agentName)
-      
+
       const response = await fetch('/api/agents/stop_agent', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ agent_name: agentName })
+        body: JSON.stringify({ agent_name: agentName, deploymentTarget })
       })
       
       if (response.ok) {
@@ -242,9 +245,27 @@ export default function AgentConfig() {
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
+  // Dev-only POC toggle: which voice backend to deploy this agent to. Defaults to
+  // 'classic' (subprocess, existing behavior). Only superadmins can pick 'docker' —
+  // everyone else stays on classic regardless of any client-side state, enforced
+  // again server-side in save-and-deploy/route.ts.
+  const [deploymentTarget, setDeploymentTarget] = useState<'classic' | 'docker'>('classic')
+  const { isSuperAdmin } = useGlobalRole()
   const [isSavingVersion, setIsSavingVersion] = useState(false)
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
+  const [publishedSnapshot, setPublishedSnapshot] = useState<any>(null)
+  const [isDiffLoading, setIsDiffLoading] = useState(false)
+  const [diffTab, setDiffTab] = useState<'prompt' | 'settings'>('prompt')
+
+  // When the review modal opens, land on whichever section actually changed.
+  useEffect(() => {
+    if (!isCommitModalOpen || !pendingCheckpoint) return
+    const pubFull = publishedSnapshot ? sanitizeForDiff(publishedSnapshot) : {}
+    const curFull = sanitizeForDiff(pendingCheckpoint.config)
+    const promptChanged = extractPrompt(pubFull) !== extractPrompt(curFull)
+    setDiffTab(promptChanged ? 'prompt' : 'settings')
+  }, [isCommitModalOpen, pendingCheckpoint, publishedSnapshot])
 
   const [flashEndCall, setFlashEndCall] = useState(false)
   const isTalkToAssistantSessionActiveRef = useRef(false)
@@ -294,6 +315,20 @@ export default function AgentConfig() {
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
   })
+
+  // Initialize the deploy-target toggle from whatever this agent was actually
+  // created with, instead of always defaulting to classic — so start/stop and
+  // update calls hit the right backend without the user manually re-toggling
+  // it every time they open this page.
+  const deploymentTargetInitialized = useRef(false)
+  useEffect(() => {
+    if (deploymentTargetInitialized.current) return
+    const persisted = agentDataResponse?.[0]?.configuration?.deployment_target
+    if (persisted === 'docker' || persisted === 'classic') {
+      setDeploymentTarget(persisted)
+      deploymentTargetInitialized.current = true
+    }
+  }, [agentDataResponse])
 
   const agentNameWithId = useMemo(() => {
     if (!agentDataResponse?.[0]?.name || !agentid) {
@@ -348,10 +383,10 @@ export default function AgentConfig() {
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
-    
-    const status = await agentStatusService.checkAgentStatus(activeAgentName)
+
+    const status = await agentStatusService.checkAgentStatus(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
     setAgentStatus(status)
-  }, [activeAgentName])
+  }, [activeAgentName, isSuperAdmin, deploymentTarget])
 
   // Check agent status on load
   useEffect(() => {
@@ -368,27 +403,29 @@ export default function AgentConfig() {
     setIsAgentLoading(true)
     setAgentStatus({ status: 'starting' } as AgentStatus)
     
+    const target = isSuperAdmin ? deploymentTarget : 'classic'
+
     try {
       // Step 1: Initiate agent start
-      const startStatus = await agentStatusService.startAgent(activeAgentName)
-      
+      const startStatus = await agentStatusService.startAgent(activeAgentName, target)
+
       if (startStatus.status === 'error') {
         setAgentStatus(startStatus)
         setIsAgentLoading(false)
         return
       }
-      
+
       // Step 2: Poll agent status until it's running or timeout
       const maxAttempts = 30 // Poll for up to 30 seconds (30 attempts * 1 second)
       let attempts = 0
       let isRunning = false
-      
+
       while (attempts < maxAttempts && !isRunning) {
         await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second between checks
-        
-        const status = await agentStatusService.checkAgentStatus(activeAgentName)
+
+        const status = await agentStatusService.checkAgentStatus(activeAgentName, target)
         setAgentStatus(status)
-        
+
         if (status.status === 'running') {
           isRunning = true
           break
@@ -396,13 +433,13 @@ export default function AgentConfig() {
           // Agent failed to start
           break
         }
-        
+
         attempts++
       }
-      
+
       // Final status check
       if (!isRunning) {
-        const finalStatus = await agentStatusService.checkAgentStatus(activeAgentName)
+        const finalStatus = await agentStatusService.checkAgentStatus(activeAgentName, target)
         setAgentStatus(finalStatus)
       }
     } catch (error) {
@@ -412,16 +449,16 @@ export default function AgentConfig() {
       setIsAgentLoading(false)
     }
   }
-  
+
   const stopAgent = async () => {
     if (!activeAgentName) return
-    
+
     setIsAgentLoading(true)
     setAgentStatus({ status: 'stopping' } as AgentStatus)
-    
+
     try {
-      const status = await agentStatusService.stopAgent(activeAgentName)
-      
+      const status = await agentStatusService.stopAgent(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
+
       if (status.status !== 'error') {
         setAgentStatus({ status: 'stopped' })
       } else {
@@ -482,11 +519,19 @@ export default function AgentConfig() {
     }
   })
 
-  // Webhook/dropoff/callback config load asynchronously (separate API calls) after the
-  // form is already initialized. Rebase both values AND the dirty-check baseline here so
-  // loading a section's saved config doesn't itself mark the form dirty, and so Discard
-  // reverts to the real loaded config instead of wiping it back to undefined.
+  // Webhook/dropoff/callback settings sections are collapsible and only fetch their own
+  // saved config the first time they're expanded — which can happen *after* a paste has
+  // already set these fields. Without a guard, that late fetch overwrites pasted values
+  // with the target agent's own stale saved settings. First load per field wins; a paste
+  // also counts as establishing the field so a later section-expand can't clobber it.
+  const supplementalEstablishedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    supplementalEstablishedRef.current.clear()
+  }, [agentid])
+
   const loadSupplementalSetting = (field: 'webhook' | 'dropoff' | 'callbackScheduling', data: any) => {
+    if (supplementalEstablishedRef.current.has(field)) return
+    supplementalEstablishedRef.current.add(field)
     formik.resetForm({
       values: {
         ...formik.values,
@@ -590,6 +635,14 @@ export default function AgentConfig() {
     // Apply formik values
     formik.setValues(config.formikValues, false) // false = don't validate immediately
 
+    // If the pasted config specifies webhook/dropoff/callback settings, lock them in as
+    // established so a section expanded later (which fetches its own saved settings on
+    // first mount) doesn't overwrite the pasted values with the target agent's old ones.
+    const pastedAdvanced = config.formikValues.advancedSettings
+    for (const field of ['webhook', 'dropoff', 'callbackScheduling'] as const) {
+      if (pastedAdvanced?.[field] !== undefined) supplementalEstablishedRef.current.add(field)
+    }
+
     // Apply external state
     setTtsConfig(config.ttsConfig)
     setSTTConfig(config.sttConfig)
@@ -637,7 +690,20 @@ export default function AgentConfig() {
     setPendingCheckpoint({ config: payload, userEmail, userId })
     setCommitMessage('')
     setVersionSaveError(null)
+    setPublishedSnapshot(null)
     setIsCommitModalOpen(true)
+
+    setIsDiffLoading(true)
+    fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        const latest = data?.history?.[0]
+        if (!latest?.id) return null
+        return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
+      })
+      .then(detail => setPublishedSnapshot(detail?.entry?.config_snapshot ?? null))
+      .catch(() => setPublishedSnapshot(null))
+      .finally(() => setIsDiffLoading(false))
   }
 
   const handleSaveVersion = async () => {
@@ -646,7 +712,10 @@ export default function AgentConfig() {
     setVersionSaveError(null)
     try {
       // Step 1: Deploy config to backend
-      await saveAndDeploy.mutateAsync(pendingCheckpoint.config)
+      await saveAndDeploy.mutateAsync({
+        ...pendingCheckpoint.config,
+        deploymentTarget: isSuperAdmin ? deploymentTarget : 'classic',
+      })
       // Step 1b: Save supplemental settings (webhook, drop-off, callback) — non-blocking
       try {
         const advSettings = formik.values.advancedSettings as any
@@ -687,6 +756,85 @@ export default function AgentConfig() {
     } finally {
       setIsSavingVersion(false)
     }
+  }
+
+  // Computes both sides of the diff plus per-section change flags. Returns null while loading
+  // or when there's nothing to compare, so the tab bar and body can share one source of truth.
+  const getDiffModel = () => {
+    if (isDiffLoading || !pendingCheckpoint) return null
+
+    const publishedFull = publishedSnapshot ? sanitizeForDiff(publishedSnapshot) : {}
+    const currentFull = sanitizeForDiff(pendingCheckpoint.config)
+    const publishedAdvanced = formik.initialValues.advancedSettings as any
+    const currentAdvanced = formik.values.advancedSettings as any
+    const publishedSettings = {
+      ...omitPrompt(publishedFull),
+      webhook: publishedAdvanced?.webhook ?? null,
+      dropoff: publishedAdvanced?.dropoff ?? null,
+      callbackScheduling: publishedAdvanced?.callbackScheduling ?? null,
+    }
+    const currentSettings = {
+      ...omitPrompt(currentFull),
+      webhook: currentAdvanced?.webhook ?? null,
+      dropoff: currentAdvanced?.dropoff ?? null,
+      callbackScheduling: currentAdvanced?.callbackScheduling ?? null,
+    }
+
+    const promptOld = extractPrompt(publishedFull)
+    const promptNew = extractPrompt(currentFull)
+    const settingsOld = serializeForDiff(publishedSettings)
+    const settingsNew = serializeForDiff(currentSettings)
+
+    return {
+      promptOld, promptNew, settingsOld, settingsNew,
+      promptChanged: promptOld !== promptNew,
+      settingsChanged: settingsOld !== settingsNew,
+    }
+  }
+
+  // Pinned tab row — sits outside the scroll area so diff content never peeks above it.
+  const renderDiffTabs = (model: ReturnType<typeof getDiffModel>) => {
+    if (!model) return null
+    const tabs: { key: 'prompt' | 'settings'; label: string; changed: boolean }[] = [
+      { key: 'prompt', label: 'Prompt', changed: model.promptChanged },
+      { key: 'settings', label: 'Settings', changed: model.settingsChanged },
+    ]
+    return (
+      <div className="flex items-center gap-1">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setDiffTab(tab.key)}
+            className={`relative -mb-px flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              diffTab === tab.key
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+            {tab.changed && (
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Has changes" />
+            )}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // Scrollable diff body for the active tab.
+  const renderDiffBody = (model: ReturnType<typeof getDiffModel>) => {
+    if (isDiffLoading) {
+      return (
+        <div className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading diff...
+        </div>
+      )
+    }
+    if (!model) return null
+    return diffTab === 'prompt'
+      ? <SideBySideDiff oldText={model.promptOld} newText={model.promptNew} />
+      : <SideBySideDiff oldText={model.settingsOld} newText={model.settingsNew} />
   }
 
   const handleCancel = () => {
@@ -1199,6 +1347,7 @@ const unmappedVariablesCount = useMemo(() => {
                   flashEndCall={flashEndCall}
                   onFlashEndCallDone={() => setFlashEndCall(false)}
                   onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
+                  deploymentTarget={isSuperAdmin ? deploymentTarget : 'classic'}
                 />
               </SheetContent>
             </Sheet>
@@ -1623,6 +1772,7 @@ const unmappedVariablesCount = useMemo(() => {
             flashEndCall={flashEndCall}
             onFlashEndCallDone={() => setFlashEndCall(false)}
             onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
+            deploymentTarget={isSuperAdmin ? deploymentTarget : 'classic'}
           />
         </SheetContent>
       </Sheet>
@@ -1702,46 +1852,77 @@ const unmappedVariablesCount = useMemo(() => {
         agentEnvironment={agentDataResponse?.[0]?.environment ?? 'dev'}
       />
 
-      {/* Commit message dialog */}
+      {/* Review changes / commit dialog */}
       <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Save prompt version</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+        <DialogContent className="sm:max-w-5xl max-w-[calc(100%-2rem)] max-h-[88vh] p-0 gap-0 flex flex-col overflow-hidden">
+          {/* Header — pinned */}
+          <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border space-y-3">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-semibold">Review Changes</DialogTitle>
+            </DialogHeader>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Describe this change</label>
+              <label htmlFor="commit-message" className="text-xs font-medium text-foreground">Commit message</label>
               <Textarea
+                id="commit-message"
                 placeholder="e.g. Fixed greeting for missed calls"
                 value={commitMessage}
                 onChange={e => setCommitMessage(e.target.value)}
                 className="text-sm resize-none"
-                rows={3}
+                rows={2}
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveVersion() }}
               />
-              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to save quickly.</p>
+              <p className="text-[11px] text-muted-foreground">Press ⌘↵ to publish quickly.</p>
             </div>
+          </div>
+
+          {/* Tab row — pinned between header and the scrolling diff */}
+          {(() => {
+            const model = getDiffModel()
+            if (!model) return null
+            return (
+              <div className="flex-shrink-0 px-6 border-b border-border">
+                {renderDiffTabs(model)}
+              </div>
+            )
+          })()}
+
+          {/* Body — scrolls; header, tabs & footer stay put */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3">
+            {renderDiffBody(getDiffModel())}
+
+            {!isDiffLoading && !publishedSnapshot && (
+              <p className="text-[11px] text-muted-foreground">No prior published version — this will be the first version.</p>
+            )}
+
             {versionSaveError && <p className="text-xs text-destructive">{versionSaveError}</p>}
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              variant="outline" size="sm" className="h-8 text-xs"
-              onClick={() => setIsCommitModalOpen(false)}
-              disabled={isSavingVersion}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm" className="h-8 text-xs"
-              onClick={handleSaveVersion}
-              disabled={isSavingVersion || !commitMessage.trim()}
-            >
-              {isSavingVersion
-                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving...</>
-                : 'Save & Deploy'
-              }
-            </Button>
+
+          {/* Footer — pinned, always visible */}
+          <div className="flex-shrink-0 flex items-center justify-between gap-2 px-6 py-4 border-t border-border">
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3 text-amber-500" />
+              Seeing changes you didn't make? Refresh and try again.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline" size="sm" className="h-8 text-xs"
+                onClick={() => setIsCommitModalOpen(false)}
+                disabled={isSavingVersion}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm" className="h-8 text-xs"
+                onClick={handleSaveVersion}
+                disabled={isSavingVersion || !commitMessage.trim()}
+              >
+                {isSavingVersion
+                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                  : 'Publish'
+                }
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
