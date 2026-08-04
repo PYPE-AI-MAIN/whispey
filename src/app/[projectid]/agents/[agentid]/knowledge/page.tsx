@@ -155,6 +155,7 @@ export default function KnowledgeBasePage() {
               documents={documents}
               loading={loading}
               onRefresh={fetchDocuments}
+              agentId={backendAgentName}
             />
           </section>
         </div>

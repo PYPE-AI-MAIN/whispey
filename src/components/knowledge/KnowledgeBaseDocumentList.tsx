@@ -24,6 +24,7 @@ interface KnowledgeBaseDocumentListProps {
   onDelete?: (id: string) => void
   onRefresh?: () => void
   className?: string
+  agentId?: string
 }
 
 export function KnowledgeBaseDocumentList({
@@ -32,6 +33,7 @@ export function KnowledgeBaseDocumentList({
   onDelete,
   onRefresh,
   className,
+  agentId,
 }: KnowledgeBaseDocumentListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +44,8 @@ export function KnowledgeBaseDocumentList({
       setDeletingId(id)
       setError(null)
       try {
-        const res = await fetch(`/api/knowledge/documents/${encodeURIComponent(id)}`, {
+        const query = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''
+        const res = await fetch(`/api/knowledge/documents/${encodeURIComponent(id)}${query}`, {
           method: 'DELETE',
         })
         if (!res.ok) {
@@ -58,7 +61,7 @@ export function KnowledgeBaseDocumentList({
         setDeletingId(null)
       }
     },
-    [deletingId, onDelete, onRefresh]
+    [deletingId, onDelete, onRefresh, agentId]
   )
 
   const displayName = (doc: KnowledgeDocument) =>
