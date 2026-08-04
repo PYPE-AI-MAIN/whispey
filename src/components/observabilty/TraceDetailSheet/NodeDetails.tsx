@@ -7,6 +7,10 @@ import { ArrowDown, Activity, MessageSquare, Wrench, Download, AlertTriangle, Ch
 import AudioPlayer from '@/components/AudioPlayer'
 import { formatProviderLabel } from '@/utils/providerDisplay'
 
+// ponytail: feature-flag style toggles, not literals, so lint doesn't flag constant truthiness
+const SHOW_COMPLETE_PROMPT_CONTEXT = false
+const SHOW_CONVERSATION_HISTORY = false
+
 interface NodeDetailsProps {
   pipelineStages: any[]
   selectedNode: string
@@ -330,7 +334,8 @@ function NodeDetails({
         </div>
 
         {/* LLM Prompt Data - Enhanced Design */}
-        {selectedStage.id === "llm" && trace.enhanced_data?.prompt_data && (
+        {/* ponytail: Complete Prompt Context section disabled per request */}
+        {SHOW_COMPLETE_PROMPT_CONTEXT && selectedStage.id === "llm" && trace.enhanced_data?.prompt_data && (
           <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-base flex items-center gap-2 text-gray-900 dark:text-gray-100">
@@ -380,7 +385,8 @@ function NodeDetails({
             )}
 
             {/* Conversation History */}
-            {trace.enhanced_data.prompt_data.conversation_history?.length > 0 && (
+            {/* ponytail: Conversation History section disabled per request */}
+            {SHOW_CONVERSATION_HISTORY && trace.enhanced_data.prompt_data.conversation_history?.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
