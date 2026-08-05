@@ -590,6 +590,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                       Pype
                     </Badge>
                   )}
+                  {agent.configuration?.deployment_target === 'docker' && (
+                    <Badge variant="outline" className="text-xs px-2 py-0 h-5">
+                      Dockerized
+                    </Badge>
+                  )}
                 </div>
                 {!isPipecatAgent(agent) && (
                   <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
