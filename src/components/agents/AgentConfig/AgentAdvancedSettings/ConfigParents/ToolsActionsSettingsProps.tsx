@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages, BookOpen } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages, BookOpen, Info } from 'lucide-react'
 import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwitchSettings'
 
 export function validateToolName(name: string, allNames: string[]): string | null {
@@ -1590,6 +1590,13 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             {/* Voicemail Detection specific fields */}
             {selectedToolType === 'voicemail_detection' && (
               <>
+                <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
+                  <Info className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Powered by LiveKit's built-in Answering Machine Detection (AMD). It runs its own dedicated LLM (Azure OpenAI GPT-4.1-mini) and STT (Sarvam saaras:v3, language="unknown" (auto-detect) and mode="transcribe" ) for classification, independent of this agent's configured LLM and STT.
+                  </p>
+                </div>
+
                 <div>
                   <Label className="text-xs text-gray-700 dark:text-gray-300">Voicemail Message</Label>
                   <Textarea
