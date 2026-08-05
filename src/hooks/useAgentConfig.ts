@@ -385,7 +385,7 @@ const DEFAULT_TOOL_NAMES: Record<string, string> = {
   voicemail_detection: 'Voicemail Detection',
 }
 
-function getDefaultToolName(type: string): string {
+export function getDefaultToolName(type: string): string {
   return DEFAULT_TOOL_NAMES[type] || 'Custom Tool'
 }
 
@@ -404,7 +404,7 @@ function deserializeLanguageSwitchTool(tool: any) {
   }
 }
 
-function deserializeToolConfig(tool: any) {
+export function deserializeToolConfig(tool: any) {
   return {
     description: tool.description || '',
     endpoint: tool.api_url || '',
