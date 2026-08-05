@@ -420,6 +420,16 @@ function serializeIvrNavigatorTool(tool: any, baseToolConfig: any, commonFields:
   }
 }
 
+export function serializeVoicemailDetectionTool(tool: any, baseToolConfig: any, commonFields: any): any {
+  return {
+    ...baseToolConfig,
+    ...commonFields,
+    // ?? not || - a blank message / 0 timeout is an intentional config (instant, silent hangup).
+    vm_message: tool.config?.vm_message ?? "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+    vm_wait_timeout: tool.config?.vm_wait_timeout ?? 7,
+  }
+}
+
 function parseNearbyLocationFinderConfig(tool: any): { hospitals: any[]; areas: Record<string, any>; maxResults: number } {
   let hospitals: any[] = []
   let areas: Record<string, any> = {}
@@ -444,7 +454,7 @@ function serializeNearbyLocationFinderTool(tool: any, baseToolConfig: any, commo
   return { ...baseToolConfig, ...commonFields, max_results: maxResults, hospitals, areas }
 }
 
-function serializeAssistantToolFull(tool: any): any {
+export function serializeAssistantToolFull(tool: any): any {
   const baseToolConfig = { type: tool.type }
   if (tool.type === 'end_call') return baseToolConfig
 
@@ -454,12 +464,13 @@ function serializeAssistantToolFull(tool: any): any {
   if (tool.type === 'transfer_call') return serializeTransferCallToolFull(tool, baseToolConfig, commonFields)
   if (tool.type === 'ivr_navigator') return serializeIvrNavigatorTool(tool, baseToolConfig, commonFields)
   if (tool.type === 'nearby_location_finder') return serializeNearbyLocationFinderTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'voicemail_detection') return serializeVoicemailDetectionTool(tool, baseToolConfig, commonFields)
   return baseToolConfig
 }
 
 // Used by the multi-assistant save path. Intentionally omits acefone_token / webhook
 // fields for transfer_call — mirrors the pre-existing behavior at this call site.
-function serializeAssistantToolBasic(tool: any): any {
+export function serializeAssistantToolBasic(tool: any): any {
   const baseToolConfig = { type: tool.type }
   if (tool.type === 'end_call') return baseToolConfig
 
@@ -469,6 +480,7 @@ function serializeAssistantToolBasic(tool: any): any {
   if (tool.type === 'transfer_call') return serializeTransferCallToolBasic(tool, baseToolConfig, commonFields)
   if (tool.type === 'ivr_navigator') return serializeIvrNavigatorTool(tool, baseToolConfig, commonFields)
   if (tool.type === 'nearby_location_finder') return serializeNearbyLocationFinderTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'voicemail_detection') return serializeVoicemailDetectionTool(tool, baseToolConfig, commonFields)
   return baseToolConfig
 }
 

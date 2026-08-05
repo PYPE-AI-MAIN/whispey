@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages, BookOpen } from 'lucide-react'
+import { PlusIcon, EditIcon, TrashIcon, PhoneOffIcon, ArrowRightIcon, CodeIcon, PhoneForwardedIcon, Loader2, Phone, Hash, MicIcon, Voicemail, Languages, BookOpen, Info } from 'lucide-react'
 import LanguageSwitchSettings, { LanguageSwitchConfig } from '../../LanguageSwitchSettings'
 
 export function validateToolName(name: string, allNames: string[]): string | null {
@@ -36,6 +36,11 @@ const WEBHOOK_FIELD_OPTIONS = [
   { key: 'errors', label: 'Errors' },
 ]
 const ALL_WEBHOOK_FIELDS = WEBHOOK_FIELD_OPTIONS.map(f => f.key)
+
+// Voicemail detection fields are irrelevant for every other tool type - shared
+// so the inert reset value isn't repeated verbatim across every handleAddTool
+// branch (was flagged as duplicated code).
+const INERT_VM_FIELDS = { vm_message: '', vm_wait_timeout: 0 }
 
 // ── Filler config ─────────────────────────────────────────────────────────────
 interface FillerConfig {
@@ -112,6 +117,10 @@ interface Tool {
     max_results?: number
     hospitals_json?: string
     areas_json?: string
+    // Voicemail detection fields (spoken via session.say(), not the LLM — so an
+    // empty message is valid and means "don't speak anything, just wait/hang up")
+    vm_message?: string
+    vm_wait_timeout?: number
     // Tool call filler words (custom_function only)
     filler_config?: FillerConfig
   }
@@ -173,6 +182,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     max_results: 3,
     hospitals_json: '[]',
     areas_json: '{}',
+    // Voicemail detection fields
+    ...INERT_VM_FIELDS,
     // Filler words
     filler_config: { ...DEFAULT_FILLER_CONFIG } as FillerConfig,
   })
@@ -253,6 +264,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'handoff') {
@@ -288,6 +300,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'transfer_call') {
@@ -323,6 +336,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'ivr_navigator') {
@@ -358,6 +372,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'nearby_location_finder') {
@@ -393,6 +408,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'update_vad_options') {
@@ -428,6 +444,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'voicemail_detection') {
@@ -463,6 +480,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        vm_message: "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+        vm_wait_timeout: 7,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else {
@@ -498,6 +517,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     }
@@ -552,6 +572,11 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
       max_results: tool.config.max_results ?? 3,
       hospitals_json: tool.config.hospitals_json ?? '[]',
       areas_json: tool.config.areas_json ?? '{}',
+      // ?? (not ||) — a deliberately blank message or 0 timeout is a valid,
+      // intentional value (means "stay silent" / "hang up instantly") and must
+      // not be overwritten by the default when re-opening this tool to edit it.
+      vm_message: tool.config.vm_message ?? "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+      vm_wait_timeout: tool.config.vm_wait_timeout ?? 7,
       filler_config: { ...DEFAULT_FILLER_CONFIG, ...(tool.config.filler_config ?? {}) },
     })
     setNewFillerMessage('')
@@ -618,6 +643,10 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
           max_results: formData.max_results,
           hospitals_json: formData.hospitals_json,
           areas_json: formData.areas_json
+        }),
+        ...(selectedToolType === 'voicemail_detection' && {
+          vm_message: formData.vm_message,
+          vm_wait_timeout: formData.vm_wait_timeout
         }),
         ...(selectedToolType === 'custom_function' && {
           filler_config: formData.filler_config,
@@ -1550,6 +1579,47 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Keys should be lowercase area names. Values are [lat, lng].
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Voicemail Detection specific fields */}
+            {selectedToolType === 'voicemail_detection' && (
+              <>
+                <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
+                  <Info className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Powered by LiveKit's built-in Answering Machine Detection (AMD). It runs its own dedicated LLM (Azure OpenAI GPT-4.1-mini) and STT (Sarvam saaras:v3, language="unknown" (auto-detect) and mode="transcribe" ) for classification, independent of this agent's configured LLM and STT.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Voicemail Message</Label>
+                  <Textarea
+                    value={formData.vm_message}
+                    onChange={(e) => setFormData(prev => ({ ...prev, vm_message: e.target.value }))}
+                    className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye."
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Spoken directly (not generated by the LLM). Leave blank to end the call silently, with no message.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-700 dark:text-gray-300">Reply Wait Timeout (seconds)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={formData.vm_wait_timeout}
+                    onChange={(e) => setFormData(prev => ({ ...prev, vm_wait_timeout: Number.parseFloat(e.target.value) || 0 }))}
+                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    placeholder="7"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    How long to wait for a reply after speaking before hanging up. Set to 0 to hang up immediately.
                   </p>
                 </div>
               </>
