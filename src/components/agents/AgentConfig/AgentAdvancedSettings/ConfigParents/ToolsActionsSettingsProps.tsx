@@ -37,6 +37,11 @@ const WEBHOOK_FIELD_OPTIONS = [
 ]
 const ALL_WEBHOOK_FIELDS = WEBHOOK_FIELD_OPTIONS.map(f => f.key)
 
+// Voicemail detection fields are irrelevant for every other tool type - shared
+// so the inert reset value isn't repeated verbatim across every handleAddTool
+// branch (was flagged as duplicated code).
+const INERT_VM_FIELDS = { vm_message: '', vm_wait_timeout: 0 }
+
 // ── Filler config ─────────────────────────────────────────────────────────────
 interface FillerConfig {
   enabled: boolean
@@ -178,8 +183,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     hospitals_json: '[]',
     areas_json: '{}',
     // Voicemail detection fields
-    vm_message: '',
-    vm_wait_timeout: 0,
+    ...INERT_VM_FIELDS,
     // Filler words
     filler_config: { ...DEFAULT_FILLER_CONFIG } as FillerConfig,
   })
@@ -260,8 +264,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
-        vm_message: '',
-        vm_wait_timeout: 0,
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'handoff') {
@@ -297,8 +300,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
-        vm_message: '',
-        vm_wait_timeout: 0,
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'transfer_call') {
@@ -334,8 +336,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
-        vm_message: '',
-        vm_wait_timeout: 0,
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'ivr_navigator') {
@@ -371,8 +372,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
-        vm_message: '',
-        vm_wait_timeout: 0,
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'nearby_location_finder') {
@@ -408,8 +408,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
-        vm_message: '',
-        vm_wait_timeout: 0,
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'update_vad_options') {
@@ -445,8 +444,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
-        vm_message: '',
-        vm_wait_timeout: 0,
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     } else if (toolType === 'voicemail_detection') {
@@ -519,8 +517,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         max_results: 3,
         hospitals_json: '[]',
         areas_json: '{}',
-        vm_message: '',
-        vm_wait_timeout: 0,
+        ...INERT_VM_FIELDS,
         filler_config: { ...DEFAULT_FILLER_CONFIG },
       })
     }
