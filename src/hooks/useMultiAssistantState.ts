@@ -420,6 +420,16 @@ function serializeIvrNavigatorTool(tool: any, baseToolConfig: any, commonFields:
   }
 }
 
+function serializeVoicemailDetectionTool(tool: any, baseToolConfig: any, commonFields: any): any {
+  return {
+    ...baseToolConfig,
+    ...commonFields,
+    // ?? not || - a blank message / 0 timeout is an intentional config (instant, silent hangup).
+    vm_message: tool.config?.vm_message ?? "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+    vm_wait_timeout: tool.config?.vm_wait_timeout ?? 7,
+  }
+}
+
 function parseNearbyLocationFinderConfig(tool: any): { hospitals: any[]; areas: Record<string, any>; maxResults: number } {
   let hospitals: any[] = []
   let areas: Record<string, any> = {}
@@ -454,6 +464,7 @@ function serializeAssistantToolFull(tool: any): any {
   if (tool.type === 'transfer_call') return serializeTransferCallToolFull(tool, baseToolConfig, commonFields)
   if (tool.type === 'ivr_navigator') return serializeIvrNavigatorTool(tool, baseToolConfig, commonFields)
   if (tool.type === 'nearby_location_finder') return serializeNearbyLocationFinderTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'voicemail_detection') return serializeVoicemailDetectionTool(tool, baseToolConfig, commonFields)
   return baseToolConfig
 }
 
@@ -469,6 +480,7 @@ function serializeAssistantToolBasic(tool: any): any {
   if (tool.type === 'transfer_call') return serializeTransferCallToolBasic(tool, baseToolConfig, commonFields)
   if (tool.type === 'ivr_navigator') return serializeIvrNavigatorTool(tool, baseToolConfig, commonFields)
   if (tool.type === 'nearby_location_finder') return serializeNearbyLocationFinderTool(tool, baseToolConfig, commonFields)
+  if (tool.type === 'voicemail_detection') return serializeVoicemailDetectionTool(tool, baseToolConfig, commonFields)
   return baseToolConfig
 }
 

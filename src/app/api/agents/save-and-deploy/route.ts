@@ -324,6 +324,10 @@ function serializeRouteTool(tool: any): any {
         //   enable_as_tag  defaults to false (new <transfer/> tag trigger)
         enable_as_tool: tool.config.enableAsTool !== false,
         enable_as_tag: tool.config.enableAsTag === true,
+      } : tool.type === 'voicemail_detection' ? {
+        // ?? not || - a blank message / 0 timeout is an intentional config (instant, silent hangup).
+        vm_message: tool.config.vm_message ?? "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+        vm_wait_timeout: tool.config.vm_wait_timeout ?? 7,
       } : {})
     } : {})
   }

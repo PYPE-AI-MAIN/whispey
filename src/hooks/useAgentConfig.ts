@@ -382,6 +382,7 @@ const DEFAULT_TOOL_NAMES: Record<string, string> = {
   ivr_navigator: 'Send DTMF',
   nearby_location_finder: 'Nearby Hospital Finder',
   update_vad_options: 'Update VAD Options',
+  voicemail_detection: 'Voicemail Detection',
 }
 
 function getDefaultToolName(type: string): string {
@@ -439,6 +440,10 @@ function deserializeToolConfig(tool: any) {
     instruction_template: tool.instruction_template || '',
     default_task: tool.default_task || 'Reach a live support representative',
     task_metadata_keys: tool.task_metadata_keys || ['ivr_task', 'navigator_task', 'task'],
+    // Voicemail detection fields. ?? not || - a blank message / 0 timeout is
+    // an intentional config (instant, silent hangup), not "unset".
+    vm_message: tool.vm_message ?? "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+    vm_wait_timeout: tool.vm_wait_timeout ?? 7,
     // Nearby hospital finder fields (kept as JSON strings for editor)
     max_results: tool.max_results ?? 3,
     hospitals_json: JSON.stringify(tool.hospitals ?? [], null, 2),
