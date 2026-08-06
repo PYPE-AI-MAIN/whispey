@@ -37,7 +37,17 @@ def _safe_close(conn):
 
 
 def _connect():
-    conn = sqlite3.connect(_DB_PATH, timeout=5)
+    # timeout=15: how long sqlite3's own busy-handler retries internally
+    # before raising "database is locked". At 100+ concurrent calls sharing
+    # one outbox file, brief lock waits are expected — the previous 5s budget
+    # measurably raised OperationalError under that load; 15 gives the
+    # existing serialization (SQLite allows one writer at a time regardless)
+    # enough room without changing any query logic or caching schema state
+    # across calls, which is a correctness risk not worth taking for an
+    # unconfirmed win (a per-path "already created" cache was tried and
+    # reverted here after it broke a legitimate case: _DB_PATH being pointed
+    # at a different, freshly-created file after the original was deleted).
+    conn = sqlite3.connect(_DB_PATH, timeout=15)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(
         """
@@ -58,17 +68,30 @@ def _connect():
     return conn
 
 
-def write_entry(call_id: str, event_type: str, payload: dict) -> int:
-    """Fast, durable write. Call this before anything risky (network, shutdown)."""
+def write_entry(call_id: str, event_type: str, payload: dict, claim_immediately: bool = False) -> int:
+    """Fast, durable write. Call this before anything risky (network, shutdown).
+
+    claim_immediately: set True when the caller is about to attempt a direct
+    send of this entry itself (the send_session_to_whispey fast path). Without
+    this, the row is claimable the instant it's written (next_attempt_at=now),
+    so a concurrent drain_outbox() sweep — e.g. the per-call startup sweep in
+    entrypoint.py, running for a *different* call dispatched to the same
+    worker process — can claim and resend the same row while the direct send
+    is still in flight, producing a genuine duplicate delivery. Claiming it
+    for the caller up front closes that window; mark_failed()/mark_delivered()
+    already correctly release or clear the claim afterward.
+    """
     conn = _connect()
     try:
         now = time.time()
+        status = "in_progress" if claim_immediately else "pending"
         cur = conn.execute(
-            "INSERT INTO outbox (call_id, event_type, payload, created_at, next_attempt_at) VALUES (?, ?, ?, ?, ?)",
-            (call_id, event_type, json.dumps(payload), now, now),
+            "INSERT INTO outbox (call_id, event_type, payload, status, created_at, next_attempt_at, claimed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (call_id, event_type, json.dumps(payload), status, now, now, now if claim_immediately else None),
         )
         conn.commit()
-        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type}")
+        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type} claimed={claim_immediately}")
         return cur.lastrowid
     finally:
         _safe_close(conn)

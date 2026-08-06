@@ -1082,11 +1082,16 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     
     
     try:
+        # claim_immediately=True: we're about to send this ourselves right below.
+        # Without it the row is claimable the instant it's written, so a
+        # drain_outbox() sweep for a *different* call on this same worker
+        # process can grab and resend it while our own send is still in
+        # flight — a real duplicate delivery, not a hypothetical one.
         outbox_id = outbox_write(session_id, "call_ended", {
             "whispey_data": whispey_data,
             "apikey": apikey,
             "api_url": api_url,
-        })
+        }, claim_immediately=True)
         logger.info(f"[OUTBOX] session {session_id} saved locally as id={outbox_id} before send")
     except Exception as e:
         # Outbox write itself failed — no durable copy exists, so there's
@@ -1119,28 +1124,48 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     try:
         logger.info(f"📤 Sending to Whispey API...")
         result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
-
-        if result.get("success"):
-            logger.info(f"✅ Successfully sent session {session_id} to Whispey")
-            outbox_delivered(outbox_id)
-            cleanup_session(session_id)
-        else:
-            # Don't clear _export_claimed here: the outbox entry (marked
-            # failed below) already owns retrying this send, on its own
-            # backoff schedule. Clearing the claim would let a different
-            # trigger path (e.g. the generic exporter) write a second,
-            # duplicate outbox entry for this same call.
-            logger.error(f"❌ Whispey API returned failure: {result}")
-            outbox_failed(outbox_id, str(result))
-
-        return result
-
     except Exception as e:
+        # The network call itself never completed — outcome genuinely unknown,
+        # so retrying via outbox_failed() is correct here.
         logger.error(f"❌ Exception sending to Whispey: {e}")
         import traceback
         traceback.print_exc()
         outbox_failed(outbox_id, str(e))
         return {"success": False, "error": str(e)}
+
+    # The network call finished — its outcome is authoritative from here on.
+    # Any error past this point is purely local bookkeeping (SQLite writes
+    # under load, e.g. at 100+ concurrent calls, can transiently fail with
+    # "database is locked"). That must NOT fall through to outbox_failed():
+    # doing so would mark an already-delivered call as failed and resend it
+    # within ~2s — a real duplicate send, worse than the alternative. If
+    # mark_delivered()/mark_failed() itself can't complete, the row just sits
+    # until the existing stale-claim recovery (_STALE_CLAIM_SECONDS) picks it
+    # up once more later — a rare, bounded, already-accepted outbox
+    # limitation, not an actively-caused duplicate.
+    if result.get("success"):
+        logger.info(f"✅ Successfully sent session {session_id} to Whispey")
+        try:
+            outbox_delivered(outbox_id)
+            cleanup_session(session_id)
+        except Exception as e:
+            logger.error(
+                f"⚠️ Send succeeded but local outbox bookkeeping failed for {session_id}: {e} — "
+                f"row may resend once more later via stale-claim recovery, not immediately"
+            )
+    else:
+        # Don't clear _export_claimed here: the outbox entry (marked
+        # failed below) already owns retrying this send, on its own
+        # backoff schedule. Clearing the claim would let a different
+        # trigger path (e.g. the generic exporter) write a second,
+        # duplicate outbox entry for this same call.
+        logger.error(f"❌ Whispey API returned failure: {result}")
+        try:
+            outbox_failed(outbox_id, str(result))
+        except Exception as e:
+            logger.error(f"⚠️ Failed to record send failure for {session_id}: {e}")
+
+    return result
 
 
 
