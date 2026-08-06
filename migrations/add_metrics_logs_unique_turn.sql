@@ -19,14 +19,17 @@
 -- Run this once in the Supabase SQL editor (Dashboard -> SQL Editor -> New query).
 
 -- 1. Clean up any duplicates already sitting in the table from past retries,
---    keeping the earliest row per (session_id, turn_id).
+--    keeping the earliest row per (session_id, turn_id). `id` is a UUID, not
+--    a sequential integer, so it carries no insert-order information -- must
+--    tie-break on created_at instead. On an exact created_at tie, `id` is
+--    only used as a final, arbitrary tie-breaker (never as the primary key).
 DELETE FROM public.pype_voice_metrics_logs a
 USING public.pype_voice_metrics_logs b
 WHERE a.session_id IS NOT NULL
   AND a.turn_id IS NOT NULL
   AND a.session_id = b.session_id
   AND a.turn_id = b.turn_id
-  AND a.id > b.id;
+  AND (a.created_at, a.id) > (b.created_at, b.id);
 
 -- 2. Enforce it going forward. NULLs in session_id/turn_id are never considered
 --    equal by a standard unique constraint, so this can't wrongly block rows
