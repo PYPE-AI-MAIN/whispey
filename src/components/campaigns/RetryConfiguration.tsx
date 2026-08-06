@@ -165,6 +165,9 @@ function SipCodePicker({
                     {c.code}
                   </span>{' '}
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                  {!c.enabled && (
+                    <span className="ml-1 text-[10px] italic text-gray-400">(coming soon)</span>
+                  )}
                   <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
                 </div>
               ))}
@@ -253,6 +256,7 @@ function SipCodeGroup({
               }
             >
               {c.code} — {c.label}
+              {!c.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
             </button>
           )
         })}
