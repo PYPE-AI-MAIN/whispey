@@ -37,16 +37,9 @@ def _safe_close(conn):
 
 
 def _connect():
-    # timeout=15: how long sqlite3's own busy-handler retries internally
-    # before raising "database is locked". At 100+ concurrent calls sharing
-    # one outbox file, brief lock waits are expected — the previous 5s budget
-    # measurably raised OperationalError under that load; 15 gives the
-    # existing serialization (SQLite allows one writer at a time regardless)
-    # enough room without changing any query logic or caching schema state
-    # across calls, which is a correctness risk not worth taking for an
-    # unconfirmed win (a per-path "already created" cache was tried and
-    # reverted here after it broke a legitimate case: _DB_PATH being pointed
-    # at a different, freshly-created file after the original was deleted).
+    # timeout=15 (was 5): more room for SQLite's busy-handler at 100+
+    # concurrent calls sharing one outbox file, where 5s measurably raised
+    # "database is locked".
     conn = sqlite3.connect(_DB_PATH, timeout=15)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(
@@ -71,15 +64,10 @@ def _connect():
 def write_entry(call_id: str, event_type: str, payload: dict, claim_immediately: bool = False) -> int:
     """Fast, durable write. Call this before anything risky (network, shutdown).
 
-    claim_immediately: set True when the caller is about to attempt a direct
-    send of this entry itself (the send_session_to_whispey fast path). Without
-    this, the row is claimable the instant it's written (next_attempt_at=now),
-    so a concurrent drain_outbox() sweep — e.g. the per-call startup sweep in
-    entrypoint.py, running for a *different* call dispatched to the same
-    worker process — can claim and resend the same row while the direct send
-    is still in flight, producing a genuine duplicate delivery. Claiming it
-    for the caller up front closes that window; mark_failed()/mark_delivered()
-    already correctly release or clear the claim afterward.
+    claim_immediately: True when the caller (the direct-send fast path) is
+    about to send this itself. Otherwise the row is claimable instantly, and
+    a concurrent drain_outbox() sweep for another call can steal and resend
+    it mid-flight — a real duplicate delivery.
     """
     conn = _connect()
     try:
