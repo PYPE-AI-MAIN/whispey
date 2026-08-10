@@ -37,10 +37,7 @@ def _safe_close(conn):
 
 
 def _connect():
-    # timeout=15 (was 5): more room for SQLite's busy-handler at 100+
-    # concurrent calls sharing one outbox file, where 5s measurably raised
-    # "database is locked".
-    conn = sqlite3.connect(_DB_PATH, timeout=15)
+    conn = sqlite3.connect(_DB_PATH, timeout=5)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(
         """
@@ -61,25 +58,17 @@ def _connect():
     return conn
 
 
-def write_entry(call_id: str, event_type: str, payload: dict, claim_immediately: bool = False) -> int:
-    """Fast, durable write. Call this before anything risky (network, shutdown).
-
-    claim_immediately: True when the caller (the direct-send fast path) is
-    about to send this itself. Otherwise the row is claimable instantly, and
-    a concurrent drain_outbox() sweep for another call can steal and resend
-    it mid-flight — a real duplicate delivery.
-    """
+def write_entry(call_id: str, event_type: str, payload: dict) -> int:
+    """Fast, durable write. Call this before anything risky (network, shutdown)."""
     conn = _connect()
     try:
         now = time.time()
-        status = "in_progress" if claim_immediately else "pending"
         cur = conn.execute(
-            "INSERT INTO outbox (call_id, event_type, payload, status, created_at, next_attempt_at, claimed_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (call_id, event_type, json.dumps(payload), status, now, now, now if claim_immediately else None),
+            "INSERT INTO outbox (call_id, event_type, payload, created_at, next_attempt_at) VALUES (?, ?, ?, ?, ?)",
+            (call_id, event_type, json.dumps(payload), now, now),
         )
         conn.commit()
-        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type} claimed={claim_immediately}")
+        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type}")
         return cur.lastrowid
     finally:
         _safe_close(conn)
