@@ -58,17 +58,26 @@ def _connect():
     return conn
 
 
-def write_entry(call_id: str, event_type: str, payload: dict) -> int:
-    """Fast, durable write. Call this before anything risky (network, shutdown)."""
+def write_entry(call_id: str, event_type: str, payload: dict, claim_immediately: bool = False) -> int:
+    """Fast, durable write. Call this before anything risky (network, shutdown).
+
+    claim_immediately: set True when the caller is about to send this entry
+    itself right after writing it — otherwise a concurrent drain_outbox()
+    sweep for a different call can claim and resend it mid-flight. Caller
+    must release via mark_delivered()/mark_failed() on every exit path;
+    an unreleased claim self-heals after _STALE_CLAIM_SECONDS.
+    """
     conn = _connect()
     try:
         now = time.time()
+        status = "in_progress" if claim_immediately else "pending"
         cur = conn.execute(
-            "INSERT INTO outbox (call_id, event_type, payload, created_at, next_attempt_at) VALUES (?, ?, ?, ?, ?)",
-            (call_id, event_type, json.dumps(payload), now, now),
+            "INSERT INTO outbox (call_id, event_type, payload, status, created_at, next_attempt_at, claimed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (call_id, event_type, json.dumps(payload), status, now, now, now if claim_immediately else None),
         )
         conn.commit()
-        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type}")
+        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type} claimed={claim_immediately}")
         return cur.lastrowid
     finally:
         _safe_close(conn)
@@ -83,7 +92,7 @@ def claim_pending(limit: int = 10):
         now = time.time()
         conn.execute("BEGIN IMMEDIATE")
         rows = conn.execute(
-            "SELECT id, call_id, event_type, payload, attempts FROM outbox "
+            "SELECT id, call_id, event_type, payload, attempts, status FROM outbox "
             "WHERE (status = 'pending' AND next_attempt_at <= ?) "
             "   OR (status = 'in_progress' AND claimed_at <= ?) "
             "ORDER BY created_at LIMIT ?",
@@ -98,6 +107,14 @@ def claim_pending(limit: int = 10):
         conn.commit()
         if ids:
             logger.info(f"[OUTBOX] claimed {len(ids)} entr(ies): ids={ids}")
+            # A row already 'in_progress' here means a previous claim was
+            # abandoned (crash/kill, never called mark_delivered/mark_failed)
+            # and just self-healed past _STALE_CLAIM_SECONDS. Distinct from a
+            # normal pending pickup — worth its own log line to catch a
+            # payload that keeps reclaiming without ever dead-lettering.
+            stale_ids = [r[0] for r in rows if r[5] == "in_progress"]
+            if stale_ids:
+                logger.warning(f"[OUTBOX] stale-claim recovered {len(stale_ids)} entr(ies): ids={stale_ids}")
         return [
             {"id": r[0], "call_id": r[1], "event_type": r[2], "payload": json.loads(r[3]), "attempts": r[4]}
             for r in rows
