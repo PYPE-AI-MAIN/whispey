@@ -265,6 +265,60 @@ function SipCodeGroup({
   )
 }
 
+// Shared "Operator" select + "Expected Value" input — identical shape for
+// Field Extractor and Metadata retry types, only the expected-value
+// placeholder differs.
+function OperatorAndExpectedValueFields({
+  operator,
+  expectedValue,
+  onOperatorChange,
+  onExpectedValueChange,
+  expectedValuePlaceholder,
+}: Readonly<{
+  operator?: string
+  expectedValue?: any
+  onOperatorChange: (value: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains') => void
+  onExpectedValueChange: (value: string) => void
+  expectedValuePlaceholder: string
+}>) {
+  return (
+    <>
+      <div>
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+          Operator
+        </Label>
+        <Select value={operator || 'missing'} onValueChange={onOperatorChange}>
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="missing">Missing</SelectItem>
+            <SelectItem value="equals">Equals</SelectItem>
+            <SelectItem value="not_equals">Not Equals</SelectItem>
+            <SelectItem value="contains">Contains</SelectItem>
+            <SelectItem value="not_contains">Not Contains</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {operator && operator !== 'missing' && (
+        <div>
+          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+            Expected Value
+          </Label>
+          <Input
+            type="text"
+            value={expectedValue || ''}
+            onChange={(e) => onExpectedValueChange(e.target.value)}
+            className="h-9 text-sm"
+            placeholder={expectedValuePlaceholder}
+          />
+        </div>
+      )}
+    </>
+  )
+}
+
 interface RetryConfigurationProps {
   onFieldChange: (field: string, value: any) => void
   values: {
@@ -724,50 +778,18 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     </div>
 
                     {config.fieldName && (
-                      <>
-                        <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                            Operator
-                          </Label>
-                          <Select
-                            value={config.operator || 'missing'}
-                            onValueChange={(value: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains') => {
-                              handleRetryChange(index, 'operator', value)
-                              if (value === 'missing') {
-                                handleRetryChange(index, 'expectedValue', undefined)
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-9 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="missing">Missing</SelectItem>
-                              <SelectItem value="equals">Equals</SelectItem>
-                              <SelectItem value="not_equals">Not Equals</SelectItem>
-                              <SelectItem value="contains">Contains</SelectItem>
-                              <SelectItem value="not_contains">Not Contains</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {config.operator && (config.operator as string) !== 'missing' && (
-                          <div>
-                            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                              Expected Value
-                            </Label>
-                            <Input
-                              type="text"
-                              value={config.expectedValue || ''}
-                              onChange={(e) => {
-                                handleRetryChange(index, 'expectedValue', e.target.value)
-                              }}
-                              className="h-9 text-sm"
-                              placeholder="Enter expected value"
-                            />
-                          </div>
-                        )}
-                      </>
+                      <OperatorAndExpectedValueFields
+                        operator={config.operator}
+                        expectedValue={config.expectedValue}
+                        onOperatorChange={(value) => {
+                          handleRetryChange(index, 'operator', value)
+                          if (value === 'missing') {
+                            handleRetryChange(index, 'expectedValue', undefined)
+                          }
+                        }}
+                        onExpectedValueChange={(value) => handleRetryChange(index, 'expectedValue', value)}
+                        expectedValuePlaceholder="Enter expected value"
+                      />
                     )}
                   </>
                 )}
@@ -801,48 +823,18 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                       </p>
                     </div>
 
-                    <div>
-                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                        Operator
-                      </Label>
-                      <Select
-                        value={config.operator || 'missing'}
-                        onValueChange={(value: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains') => {
-                          handleRetryChange(index, 'operator', value)
-                          if (value === 'missing') {
-                            handleRetryChange(index, 'expectedValue', undefined)
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="missing">Missing</SelectItem>
-                          <SelectItem value="equals">Equals</SelectItem>
-                          <SelectItem value="not_equals">Not Equals</SelectItem>
-                          <SelectItem value="contains">Contains</SelectItem>
-                          <SelectItem value="not_contains">Not Contains</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {config.operator && (config.operator as string) !== 'missing' && (
-                      <div>
-                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                          Expected Value
-                        </Label>
-                        <Input
-                          type="text"
-                          value={config.expectedValue || ''}
-                          onChange={(e) => {
-                            handleRetryChange(index, 'expectedValue', e.target.value)
-                          }}
-                          className="h-9 text-sm"
-                          placeholder="e.g. machine_vm"
-                        />
-                      </div>
-                    )}
+                    <OperatorAndExpectedValueFields
+                      operator={config.operator}
+                      expectedValue={config.expectedValue}
+                      onOperatorChange={(value) => {
+                        handleRetryChange(index, 'operator', value)
+                        if (value === 'missing') {
+                          handleRetryChange(index, 'expectedValue', undefined)
+                        }
+                      }}
+                      onExpectedValueChange={(value) => handleRetryChange(index, 'expectedValue', value)}
+                      expectedValuePlaceholder="e.g. machine_vm"
+                    />
                   </>
                 )}
 

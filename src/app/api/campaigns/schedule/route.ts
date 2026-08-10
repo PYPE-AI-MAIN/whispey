@@ -2,6 +2,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { VALID_SIP_ERROR_CODE_VALUES, CALL_METADATA_FIELDS } from '@/utils/campaigns/constants'
 
+const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 })
+
+const FIELD_LIKE_OPERATORS = ['missing', 'equals', 'not_equals', 'contains', 'not_contains']
+
+// Shared validation for fieldExtractor and metadata retry types: neither
+// allows errorCodes, both use the same operator set, and both require
+// expectedValue whenever the operator isn't 'missing'. Only fieldName
+// validation differs between the two (arbitrary string vs. a fixed list),
+// so that stays in each caller.
+function validateFieldLikeCommon(config: any, retryTypeLabel: string): ReturnType<typeof NextResponse.json> | null {
+  if (config.errorCodes !== undefined) {
+    return badRequest(`Invalid retry configuration: errorCodes should not be present for ${retryTypeLabel} retries`)
+  }
+
+  if (!config.operator || !FIELD_LIKE_OPERATORS.includes(config.operator)) {
+    return badRequest(`Invalid retry configuration: operator must be one of: ${FIELD_LIKE_OPERATORS.join(', ')}`)
+  }
+
+  if (config.operator !== 'missing' && (!config.expectedValue || config.expectedValue === '')) {
+    return badRequest('Invalid retry configuration: expectedValue is required when operator is not "missing"')
+  }
+
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -147,76 +172,26 @@ export async function POST(request: NextRequest) {
             )
           }
         } else if (retryType === 'fieldExtractor') {
-          // Field Extractor retry: errorCodes should NOT be present
-          if (config.errorCodes !== undefined) {
-            return NextResponse.json(
-              { error: 'Invalid retry configuration: errorCodes should not be present for field extractor retries' },
-              { status: 400 }
-            )
-          }
-
           // Validate field extractor-specific fields
           if (!config.fieldName || typeof config.fieldName !== 'string' || config.fieldName.trim() === '') {
-            return NextResponse.json(
-              { error: 'Invalid retry configuration: fieldName is required for field extractor retries' },
-              { status: 400 }
-            )
+            return badRequest('Invalid retry configuration: fieldName is required for field extractor retries')
           }
 
-          const validOperators = ['missing', 'equals', 'not_equals', 'contains', 'not_contains']
-          if (!config.operator || !validOperators.includes(config.operator)) {
-            return NextResponse.json(
-              { error: `Invalid retry configuration: operator must be one of: ${validOperators.join(', ')}` },
-              { status: 400 }
-            )
-          }
-
-          // expectedValue is required if operator is not 'missing'
-          if (config.operator !== 'missing' && (!config.expectedValue || config.expectedValue === '')) {
-            return NextResponse.json(
-              { error: 'Invalid retry configuration: expectedValue is required when operator is not "missing"' },
-              { status: 400 }
-            )
-          }
+          const commonError = validateFieldLikeCommon(config, 'field extractor')
+          if (commonError) return commonError
         } else if (retryType === 'metadata') {
           // Metadata retry: same shape as fieldExtractor, but fieldName must
           // be one of the fixed call-level metadata keys the voice agent
           // actually produces (e.g. amd-verdict) rather than an arbitrary string.
-          if (config.errorCodes !== undefined) {
-            return NextResponse.json(
-              { error: 'Invalid retry configuration: errorCodes should not be present for metadata retries' },
-              { status: 400 }
-            )
-          }
-
           const validFieldNames = CALL_METADATA_FIELDS.map(f => f.key)
           if (!config.fieldName || !validFieldNames.includes(config.fieldName)) {
-            return NextResponse.json(
-              { error: `Invalid retry configuration: fieldName must be one of: ${validFieldNames.join(', ')}` },
-              { status: 400 }
-            )
+            return badRequest(`Invalid retry configuration: fieldName must be one of: ${validFieldNames.join(', ')}`)
           }
 
-          const validOperators = ['missing', 'equals', 'not_equals', 'contains', 'not_contains']
-          if (!config.operator || !validOperators.includes(config.operator)) {
-            return NextResponse.json(
-              { error: `Invalid retry configuration: operator must be one of: ${validOperators.join(', ')}` },
-              { status: 400 }
-            )
-          }
-
-          // expectedValue is required if operator is not 'missing'
-          if (config.operator !== 'missing' && (!config.expectedValue || config.expectedValue === '')) {
-            return NextResponse.json(
-              { error: 'Invalid retry configuration: expectedValue is required when operator is not "missing"' },
-              { status: 400 }
-            )
-          }
+          const commonError = validateFieldLikeCommon(config, 'metadata')
+          if (commonError) return commonError
         } else {
-          return NextResponse.json(
-            { error: `Invalid retry configuration: unknown retry type "${retryType}". Valid types are: sipCode, metric, fieldExtractor, metadata` },
-            { status: 400 }
-          )
+          return badRequest(`Invalid retry configuration: unknown retry type "${retryType}". Valid types are: sipCode, metric, fieldExtractor, metadata`)
         }
       }
     }
