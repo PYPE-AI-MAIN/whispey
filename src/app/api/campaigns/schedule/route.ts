@@ -1,6 +1,6 @@
 // app/api/campaigns/schedule/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { VALID_SIP_ERROR_CODE_VALUES } from '@/utils/campaigns/constants'
+import { VALID_SIP_ERROR_CODE_VALUES, CALL_METADATA_FIELDS } from '@/utils/campaigns/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -178,9 +178,43 @@ export async function POST(request: NextRequest) {
               { status: 400 }
             )
           }
+        } else if (retryType === 'metadata') {
+          // Metadata retry: same shape as fieldExtractor, but fieldName must
+          // be one of the fixed call-level metadata keys the voice agent
+          // actually produces (e.g. amd-verdict) rather than an arbitrary string.
+          if (config.errorCodes !== undefined) {
+            return NextResponse.json(
+              { error: 'Invalid retry configuration: errorCodes should not be present for metadata retries' },
+              { status: 400 }
+            )
+          }
+
+          const validFieldNames = CALL_METADATA_FIELDS.map(f => f.key)
+          if (!config.fieldName || !validFieldNames.includes(config.fieldName)) {
+            return NextResponse.json(
+              { error: `Invalid retry configuration: fieldName must be one of: ${validFieldNames.join(', ')}` },
+              { status: 400 }
+            )
+          }
+
+          const validOperators = ['missing', 'equals', 'not_equals', 'contains', 'not_contains']
+          if (!config.operator || !validOperators.includes(config.operator)) {
+            return NextResponse.json(
+              { error: `Invalid retry configuration: operator must be one of: ${validOperators.join(', ')}` },
+              { status: 400 }
+            )
+          }
+
+          // expectedValue is required if operator is not 'missing'
+          if (config.operator !== 'missing' && (!config.expectedValue || config.expectedValue === '')) {
+            return NextResponse.json(
+              { error: 'Invalid retry configuration: expectedValue is required when operator is not "missing"' },
+              { status: 400 }
+            )
+          }
         } else {
           return NextResponse.json(
-            { error: `Invalid retry configuration: unknown retry type "${retryType}". Valid types are: sipCode, metric, fieldExtractor` },
+            { error: `Invalid retry configuration: unknown retry type "${retryType}". Valid types are: sipCode, metric, fieldExtractor, metadata` },
             { status: 400 }
           )
         }

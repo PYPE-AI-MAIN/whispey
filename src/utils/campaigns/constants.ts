@@ -153,18 +153,18 @@ export const VALID_SIP_ERROR_CODE_VALUES = VALID_SIP_ERROR_CODES.filter(c => c.e
 
 // Retry Configuration
 export interface RetryConfig {
-  type: 'sipCode' | 'metric' | 'fieldExtractor'
+  type: 'sipCode' | 'metric' | 'fieldExtractor' | 'metadata'
   // For sipCode:
   errorCodes?: string[]  // e.g., ['408', '480', '486']
   // For metric:
   metricName?: string  // e.g., 'sentiment', 'intent', 'customer_satisfaction'
   threshold?: number  // e.g., 0.7, 50, 80
-  // For fieldExtractor:
-  fieldName?: string  // e.g., 'customerName', 'orderId', 'email'
+  // For fieldExtractor and metadata:
+  fieldName?: string  // fieldExtractor: e.g. 'customerName', 'orderId'. metadata: e.g. 'amd-verdict', 'hangup_cause'
   expectedValue?: any  // Optional: value to compare against
-  // Operator can be either metric operator or fieldExtractor operator
+  // Operator can be either metric operator or fieldExtractor/metadata operator
   // Metric operators: '<' | '>' | '<=' | '>=' | '==' | '!='
-  // FieldExtractor operators: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains'
+  // FieldExtractor/metadata operators: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains'
   operator?: '<' | '>' | '<=' | '>=' | '==' | '!=' | 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains'
   // Common fields (required for all types):
   delayMinutes: number  // Minutes to wait before retry (0-1440)
@@ -175,6 +175,16 @@ export interface RetryConfig {
   // Length 1-10. Absent / empty = legacy fixed-delay behavior.
   backoffMinutes?: number[]
 }
+
+// Fixed set of call-level metadata keys available for the 'metadata' retry
+// type. Unlike fieldExtractor (whose options come from the agent's
+// field_extractor_prompt), these are produced by the voice agent itself
+// (e.g. LiveKit AMD) and aren't agent-configurable, so the list is static.
+export const CALL_METADATA_FIELDS = [
+  { key: 'amd-verdict', label: 'AMD Verdict (Answering Machine Detection)' },
+  { key: 'hangup_cause', label: 'Hangup Cause' },
+  { key: 'call_ended_reason', label: 'Call Ended Reason' },
+] as const
 
 // Campaign types
 export interface CallStats {

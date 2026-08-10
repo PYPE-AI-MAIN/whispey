@@ -421,6 +421,20 @@ function CreateCampaign() {
           }
           if (backoff) fieldConfig.backoffMinutes = backoff
           return fieldConfig
+        } else if (config.type === 'metadata') {
+          const metadataConfig: any = {
+            type: 'metadata',
+            fieldName: config.fieldName,
+            operator: config.operator,
+            delayMinutes: Number(config.delayMinutes),
+            maxRetries: Number(config.maxRetries),
+          }
+          const metadataOperator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
+          if (metadataOperator && metadataOperator !== 'missing' && config.expectedValue) {
+            metadataConfig.expectedValue = config.expectedValue
+          }
+          if (backoff) metadataConfig.backoffMinutes = backoff
+          return metadataConfig
         }
         return config
       })
