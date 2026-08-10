@@ -198,62 +198,73 @@ async function resolveCampaignAgentName(agentId: string, agentRuntime: string): 
 function sanitizeBackoffMinutes(raw: unknown): number[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined
   const cleaned = raw
-    .map(v => Number(v))
+    .map(Number)
     .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
     .slice(0, 10)
   return cleaned.length > 0 ? cleaned : undefined
 }
 
-// Format a single retryConfig entry according to backend requirements. Each
-// branch explicitly lists its fields, so backoffMinutes MUST be carried
-// through here or it gets silently dropped. fieldExtractor and metadata
-// share identical shape/logic — only the `type` value differs — so they're
-// handled by one branch.
+// sipCode retries accept errorCodes as an array, a single value, or nothing
+// (defaults to ['480']) — one statement per case rather than a nested
+// ternary so each outcome reads plainly.
+function normalizeErrorCodes(errorCodes: unknown): string[] {
+  if (Array.isArray(errorCodes)) {
+    return errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
+  }
+  if (errorCodes) {
+    return [String(errorCodes).trim()]
+  }
+  return ['480']
+}
+
+function buildSipCodeConfig(config: RetryConfig, backoff: number[] | undefined): any {
+  const out: any = {
+    type: 'sipCode',
+    errorCodes: normalizeErrorCodes(config.errorCodes),
+    delayMinutes: Number(config.delayMinutes),
+    maxRetries: Number(config.maxRetries),
+  }
+  if (backoff) out.backoffMinutes = backoff
+  return out
+}
+
+function buildMetricConfig(config: RetryConfig, backoff: number[] | undefined): any {
+  const metricConfig: any = {
+    type: 'metric',
+    metricName: config.metricName,
+    operator: config.operator,
+    threshold: Number(config.threshold),
+    delayMinutes: Number(config.delayMinutes),
+    maxRetries: Number(config.maxRetries),
+  }
+  if (backoff) metricConfig.backoffMinutes = backoff
+  return metricConfig
+}
+
+// Shared shape for fieldExtractor and metadata — only `type` differs.
+function buildFieldOrMetadataConfig(config: RetryConfig, backoff: number[] | undefined): any {
+  const fieldConfig: any = {
+    type: config.type,
+    fieldName: config.fieldName,
+    operator: config.operator,
+    delayMinutes: Number(config.delayMinutes),
+    maxRetries: Number(config.maxRetries),
+  }
+  const operator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
+  if (operator && operator !== 'missing' && config.expectedValue) {
+    fieldConfig.expectedValue = config.expectedValue
+  }
+  if (backoff) fieldConfig.backoffMinutes = backoff
+  return fieldConfig
+}
+
+// Format a single retryConfig entry according to backend requirements — see
+// the per-type builders above for field shapes.
 function formatRetryConfigEntry(config: RetryConfig): any {
   const backoff = sanitizeBackoffMinutes((config as any).backoffMinutes)
-
-  if (config.type === 'sipCode' || !config.type) {
-    const out: any = {
-      type: 'sipCode',
-      errorCodes: Array.isArray(config.errorCodes)
-        ? config.errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
-        : (config.errorCodes ? [String(config.errorCodes).trim()] : ['480']),
-      delayMinutes: Number(config.delayMinutes),
-      maxRetries: Number(config.maxRetries),
-    }
-    if (backoff) out.backoffMinutes = backoff
-    return out
-  }
-
-  if (config.type === 'metric') {
-    const metricConfig: any = {
-      type: 'metric',
-      metricName: config.metricName,
-      operator: config.operator,
-      threshold: Number(config.threshold),
-      delayMinutes: Number(config.delayMinutes),
-      maxRetries: Number(config.maxRetries),
-    }
-    if (backoff) metricConfig.backoffMinutes = backoff
-    return metricConfig
-  }
-
-  if (config.type === 'fieldExtractor' || config.type === 'metadata') {
-    const fieldConfig: any = {
-      type: config.type,
-      fieldName: config.fieldName,
-      operator: config.operator,
-      delayMinutes: Number(config.delayMinutes),
-      maxRetries: Number(config.maxRetries),
-    }
-    const operator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
-    if (operator && operator !== 'missing' && config.expectedValue) {
-      fieldConfig.expectedValue = config.expectedValue
-    }
-    if (backoff) fieldConfig.backoffMinutes = backoff
-    return fieldConfig
-  }
-
+  if (config.type === 'sipCode' || !config.type) return buildSipCodeConfig(config, backoff)
+  if (config.type === 'metric') return buildMetricConfig(config, backoff)
+  if (config.type === 'fieldExtractor' || config.type === 'metadata') return buildFieldOrMetadataConfig(config, backoff)
   return config
 }
 
