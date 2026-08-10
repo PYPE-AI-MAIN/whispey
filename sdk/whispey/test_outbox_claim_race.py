@@ -1,52 +1,80 @@
-"""
-ponytail: minimal regression check for the direct-send-vs-sweep outbox race.
+"""Regression tests for outbox claim_immediately + cancellation handling.
 
-send_session_to_whispey() writes an outbox entry then sends it directly
-itself. Before this fix, the row was claimable the instant it was written,
-so a concurrent drain_outbox() sweep (e.g. entrypoint.py's per-call startup
-sweep, running for a *different* call on the same worker process) could
-claim and resend the same row while the direct send was still in flight —
-producing a real duplicate delivery (confirmed in prod: two Lambda
-invocations ~8s apart for the same call_id).
+Covers the two real incidents this logic exists to prevent:
+1. Without claim_immediately, a row is claimable the instant it's written,
+   so a concurrent drain_outbox() sweep for a *different* call on the same
+   worker process can steal and resend it while the owner's own direct send
+   is still in flight -> duplicate delivery (the original double-transcript
+   bug).
+2. claim_immediately alone isn't enough: if the send gets cancelled
+   (asyncio.CancelledError, e.g. during shutdown), the claim must be
+   released right away -- not left stuck for the full stale-claim window
+   (or forever, on a one-job-per-process worker). Missing this is what
+   made a prior version of this fix ship a regression (call_ended stopped
+   arriving for most calls).
 
-Run: WHISPEY_OUTBOX_PATH=/tmp/test_outbox_race.db python3 test_outbox_claim_race.py
+Run directly: python3 sdk/whispey/test_outbox_claim_race.py
 """
 import os
-import tempfile
+import time
 
-os.environ.setdefault("WHISPEY_OUTBOX_PATH", os.path.join(tempfile.gettempdir(), "test_outbox_race.db"))
-if os.path.exists(os.environ["WHISPEY_OUTBOX_PATH"]):
-    os.remove(os.environ["WHISPEY_OUTBOX_PATH"])
-
-from whispey.outbox import write_entry, claim_pending, mark_delivered, mark_failed
+from whispey import outbox
 
 
-def demo():
-    # Simulates send_session_to_whispey(): write, about to send it ourselves.
-    entry_id = write_entry("call_abc", "call_ended", {"whispey_data": {}}, claim_immediately=True)
+def test_claim_immediately_blocks_concurrent_sweep():
+    outbox._DB_PATH = "/tmp/whispey_outbox_test_race.db"
+    if os.path.exists(outbox._DB_PATH):
+        os.remove(outbox._DB_PATH)
 
-    # A concurrent drain_outbox() sweep, for some other call on the same
-    # worker process, runs right now — before our own send has finished.
-    stolen = claim_pending()
-    assert stolen == [], (
-        f"race NOT closed: a concurrent sweep claimed our in-flight entry: {stolen}"
+    entry_id = outbox.write_entry("call_1", "call_ended", {"x": 1}, claim_immediately=True)
+
+    # A concurrent sweep must find nothing claimable -- the row is already
+    # 'in_progress', not 'pending'.
+    assert outbox.claim_pending() == [], "claim_immediately failed to prevent concurrent claim"
+
+    # Owner's send fails -> release the claim -> now retryable.
+    outbox.mark_failed(entry_id, "simulated failure")
+    conn = outbox._connect()
+    conn.execute("UPDATE outbox SET next_attempt_at = 0 WHERE id = ?", (entry_id,))
+    conn.commit()
+    conn.close()
+    claimed = outbox.claim_pending()
+    assert len(claimed) == 1 and claimed[0]["id"] == entry_id, "released claim was not retryable"
+
+    os.remove(outbox._DB_PATH)
+    print("test_claim_immediately_blocks_concurrent_sweep passed")
+
+
+def test_cancellation_releases_claim_immediately():
+    outbox._DB_PATH = "/tmp/whispey_outbox_test_cancel.db"
+    if os.path.exists(outbox._DB_PATH):
+        os.remove(outbox._DB_PATH)
+
+    entry_id = outbox.write_entry("call_2", "call_ended", {"x": 2}, claim_immediately=True)
+
+    # Simulate whispey.py's `except asyncio.CancelledError` branch: release
+    # the claim instead of leaving it stuck in_progress.
+    outbox.mark_failed(entry_id, "cancelled during send")
+
+    conn = outbox._connect()
+    row = conn.execute("SELECT status, next_attempt_at FROM outbox WHERE id = ?", (entry_id,)).fetchone()
+    conn.close()
+    assert row is not None, "row disappeared"
+    status, next_attempt_at = row
+    assert status == "pending", f"expected 'pending' after release, got {status!r}"
+    # Must be retryable on the normal short backoff, not stuck for the
+    # ~300s stale-claim window -- that gap is exactly what made the prior
+    # fix a regression (rows sat unclaimable until a rare later sweep).
+    assert next_attempt_at - time.time() < 60, (
+        "released claim's retry delay is suspiciously long -- looks like it "
+        "fell through to the stale-claim window instead of a normal backoff"
     )
 
-    # Our own "send" now completes successfully.
-    mark_delivered(entry_id)
-    assert claim_pending() == [], "delivered entry should not be claimable"
-
-    # Second scenario: a genuinely failed direct send must still become
-    # retryable normally (mark_failed resets pending + backoff regardless
-    # of starting status).
-    entry_id_2 = write_entry("call_def", "call_ended", {"whispey_data": {}}, claim_immediately=True)
-    mark_failed(entry_id_2, "network blip")
-    # backoff on attempt 1 is ~2s, so it's not immediately claimable — that's
-    # correct/expected (real retries shouldn't hammer immediately).
-    assert claim_pending() == [], "just-failed entry should respect its own backoff, not be instantly claimable"
-
-    print("OK: direct-send claim closes the race; failure path still retries normally")
+    os.remove(outbox._DB_PATH)
+    print("test_cancellation_releases_claim_immediately passed")
 
 
 if __name__ == "__main__":
-    demo()
+    test_claim_immediately_blocks_concurrent_sweep()
+    test_cancellation_releases_claim_immediately()
+    print("all outbox claim-race regression tests passed")

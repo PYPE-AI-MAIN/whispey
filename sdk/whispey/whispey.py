@@ -542,7 +542,10 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "call_started_at": start_time,
         "call_ended_at": current_time,
         "transcript_type": "agent",
-        "recording_url": "",  # Will be filled by caller
+        # Caller-supplied recording_url (send_session_to_whispey/export) wins;
+        # falls back to set_recording_url()'s stash for paths that never pass
+        # one explicitly, e.g. the atexit/SIGTERM fallback below.
+        "recording_url": session_info.get("recording_url", ""),
         "transcript_json": [],
         "transcript_with_metrics": [],
         "metadata": {
@@ -772,6 +775,20 @@ def end_session_manually(session_id: str, status: str = "completed", error: str 
     _session_data_store[session_id]['whispey_data'] = final_data
     
     logger.info(f"📊 Session {session_id} ended - Whispey data prepared")
+
+def set_recording_url(session_id: str, recording_url: str):
+    """Stash a recording URL on the session so it survives to whichever export
+    path actually fires (session may end via transfer, EOD, shutdown, or the
+    atexit/SIGTERM fallback — most of which don't take recording_url as an
+    argument). Safe to call multiple times; last call wins. No-op if the
+    session isn't tracked."""
+    session_info = _session_data_store.get(session_id)
+    if session_info is None:
+        logger.warning(f"set_recording_url: session {session_id} not found")
+        return
+    session_info["recording_url"] = recording_url
+    logger.info(f"[Whispey] set_recording_url: stashed for session {session_id}: {recording_url}")
+
 
 def cleanup_session(session_id: str):
     """Clean up session data"""
@@ -1082,8 +1099,10 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     
     
     try:
-        # claim_immediately: we send this ourselves right below, so it must
-        # not be stealable by a concurrent drain_outbox() sweep.
+        # claim_immediately=True: we send this ourselves right below, so it must
+        # not be claimable by a concurrent drain_outbox() sweep. The
+        # `except asyncio.CancelledError` below releases the claim if we get
+        # cancelled instead of leaving it stuck for the stale-claim window.
         outbox_id = outbox_write(session_id, "call_ended", {
             "whispey_data": whispey_data,
             "apikey": apikey,
@@ -1118,9 +1137,23 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
             session_info['_export_claimed'] = False
         return result
 
+    import asyncio
     try:
         logger.info(f"📤 Sending to Whispey API...")
         result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
+
+    except asyncio.CancelledError:
+        # CancelledError is a BaseException, so `except Exception` below won't
+        # catch it — that's how a cancelled send used to leave the claim stuck
+        # 'in_progress' for the full stale window. Release it, then re-raise;
+        # never swallow a cancellation.
+        logger.warning(f"⚠️ Send to Whispey cancelled for {session_id} — releasing outbox claim for retry")
+        try:
+            outbox_failed(outbox_id, "cancelled during send")
+        except Exception as _oe:
+            logger.error(f"❌ Failed to release outbox claim after cancellation for {session_id}: {_oe}")
+        raise
+
     except Exception as e:
         # Send never completed — outcome unknown, so retry via outbox_failed().
         logger.error(f"❌ Exception sending to Whispey: {e}")

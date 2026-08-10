@@ -37,10 +37,7 @@ def _safe_close(conn):
 
 
 def _connect():
-    # timeout=15 (was 5): more room for SQLite's busy-handler at 100+
-    # concurrent calls sharing one outbox file, where 5s measurably raised
-    # "database is locked".
-    conn = sqlite3.connect(_DB_PATH, timeout=15)
+    conn = sqlite3.connect(_DB_PATH, timeout=5)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(
         """
@@ -64,10 +61,11 @@ def _connect():
 def write_entry(call_id: str, event_type: str, payload: dict, claim_immediately: bool = False) -> int:
     """Fast, durable write. Call this before anything risky (network, shutdown).
 
-    claim_immediately: True when the caller (the direct-send fast path) is
-    about to send this itself. Otherwise the row is claimable instantly, and
-    a concurrent drain_outbox() sweep for another call can steal and resend
-    it mid-flight — a real duplicate delivery.
+    claim_immediately: set True when the caller is about to send this entry
+    itself right after writing it — otherwise a concurrent drain_outbox()
+    sweep for a different call can claim and resend it mid-flight. Caller
+    must release via mark_delivered()/mark_failed() on every exit path;
+    an unreleased claim self-heals after _STALE_CLAIM_SECONDS.
     """
     conn = _connect()
     try:
@@ -94,7 +92,7 @@ def claim_pending(limit: int = 10):
         now = time.time()
         conn.execute("BEGIN IMMEDIATE")
         rows = conn.execute(
-            "SELECT id, call_id, event_type, payload, attempts FROM outbox "
+            "SELECT id, call_id, event_type, payload, attempts, status FROM outbox "
             "WHERE (status = 'pending' AND next_attempt_at <= ?) "
             "   OR (status = 'in_progress' AND claimed_at <= ?) "
             "ORDER BY created_at LIMIT ?",
@@ -109,6 +107,14 @@ def claim_pending(limit: int = 10):
         conn.commit()
         if ids:
             logger.info(f"[OUTBOX] claimed {len(ids)} entr(ies): ids={ids}")
+            # A row already 'in_progress' here means a previous claim was
+            # abandoned (crash/kill, never called mark_delivered/mark_failed)
+            # and just self-healed past _STALE_CLAIM_SECONDS. Distinct from a
+            # normal pending pickup — worth its own log line to catch a
+            # payload that keeps reclaiming without ever dead-lettering.
+            stale_ids = [r[0] for r in rows if r[5] == "in_progress"]
+            if stale_ids:
+                logger.warning(f"[OUTBOX] stale-claim recovered {len(stale_ids)} entr(ies): ids={stale_ids}")
         return [
             {"id": r[0], "call_id": r[1], "event_type": r[2], "payload": json.loads(r[3]), "attempts": r[4]}
             for r in rows
