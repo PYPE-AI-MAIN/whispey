@@ -194,6 +194,69 @@ async function resolveCampaignAgentName(agentId: string, agentRuntime: string): 
   return agentId
 }
 
+// Sanitize an optional backoffMinutes array: ints in [5, 1440], up to 10.
+function sanitizeBackoffMinutes(raw: unknown): number[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  const cleaned = raw
+    .map(v => Number(v))
+    .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
+    .slice(0, 10)
+  return cleaned.length > 0 ? cleaned : undefined
+}
+
+// Format a single retryConfig entry according to backend requirements. Each
+// branch explicitly lists its fields, so backoffMinutes MUST be carried
+// through here or it gets silently dropped. fieldExtractor and metadata
+// share identical shape/logic — only the `type` value differs — so they're
+// handled by one branch.
+function formatRetryConfigEntry(config: RetryConfig): any {
+  const backoff = sanitizeBackoffMinutes((config as any).backoffMinutes)
+
+  if (config.type === 'sipCode' || !config.type) {
+    const out: any = {
+      type: 'sipCode',
+      errorCodes: Array.isArray(config.errorCodes)
+        ? config.errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
+        : (config.errorCodes ? [String(config.errorCodes).trim()] : ['480']),
+      delayMinutes: Number(config.delayMinutes),
+      maxRetries: Number(config.maxRetries),
+    }
+    if (backoff) out.backoffMinutes = backoff
+    return out
+  }
+
+  if (config.type === 'metric') {
+    const metricConfig: any = {
+      type: 'metric',
+      metricName: config.metricName,
+      operator: config.operator,
+      threshold: Number(config.threshold),
+      delayMinutes: Number(config.delayMinutes),
+      maxRetries: Number(config.maxRetries),
+    }
+    if (backoff) metricConfig.backoffMinutes = backoff
+    return metricConfig
+  }
+
+  if (config.type === 'fieldExtractor' || config.type === 'metadata') {
+    const fieldConfig: any = {
+      type: config.type,
+      fieldName: config.fieldName,
+      operator: config.operator,
+      delayMinutes: Number(config.delayMinutes),
+      maxRetries: Number(config.maxRetries),
+    }
+    const operator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
+    if (operator && operator !== 'missing' && config.expectedValue) {
+      fieldConfig.expectedValue = config.expectedValue
+    }
+    if (backoff) fieldConfig.backoffMinutes = backoff
+    return fieldConfig
+  }
+
+  return config
+}
+
 function CreateCampaign() {
   const router = useRouter()
   const params = useParams()
@@ -370,74 +433,9 @@ function CreateCampaign() {
         ? new Date(values.scheduleDate).toISOString()
         : new Date().toISOString()
 
-      // Sanitize an optional backoffMinutes array: ints in [5, 1440], up to 10.
-      const sanitizeBackoff = (raw: unknown): number[] | undefined => {
-        if (!Array.isArray(raw) || raw.length === 0) return undefined
-        const cleaned = raw
-          .map(v => Number(v))
-          .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
-          .slice(0, 10)
-        return cleaned.length > 0 ? cleaned : undefined
-      }
-
-      // Format retryConfig according to backend requirements. Each branch
-      // explicitly lists its fields, so backoffMinutes MUST be carried
-      // through here or it gets silently dropped.
-      const formattedRetryConfig = values.retryConfig.map(config => {
-        const backoff = sanitizeBackoff((config as any).backoffMinutes)
-        if (config.type === 'sipCode' || !config.type) {
-          const out: any = {
-            type: 'sipCode',
-            errorCodes: Array.isArray(config.errorCodes)
-              ? config.errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
-              : (config.errorCodes ? [String(config.errorCodes).trim()] : ['480']),
-            delayMinutes: Number(config.delayMinutes),
-            maxRetries: Number(config.maxRetries),
-          }
-          if (backoff) out.backoffMinutes = backoff
-          return out
-        } else if (config.type === 'metric') {
-          const metricConfig: any = {
-            type: 'metric',
-            metricName: config.metricName,
-            operator: config.operator,
-            threshold: Number(config.threshold),
-            delayMinutes: Number(config.delayMinutes),
-            maxRetries: Number(config.maxRetries),
-          }
-          if (backoff) metricConfig.backoffMinutes = backoff
-          return metricConfig
-        } else if (config.type === 'fieldExtractor') {
-          const fieldConfig: any = {
-            type: 'fieldExtractor',
-            fieldName: config.fieldName,
-            operator: config.operator,
-            delayMinutes: Number(config.delayMinutes),
-            maxRetries: Number(config.maxRetries),
-          }
-          const fieldOperator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
-          if (fieldOperator && fieldOperator !== 'missing' && config.expectedValue) {
-            fieldConfig.expectedValue = config.expectedValue
-          }
-          if (backoff) fieldConfig.backoffMinutes = backoff
-          return fieldConfig
-        } else if (config.type === 'metadata') {
-          const metadataConfig: any = {
-            type: 'metadata',
-            fieldName: config.fieldName,
-            operator: config.operator,
-            delayMinutes: Number(config.delayMinutes),
-            maxRetries: Number(config.maxRetries),
-          }
-          const metadataOperator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
-          if (metadataOperator && metadataOperator !== 'missing' && config.expectedValue) {
-            metadataConfig.expectedValue = config.expectedValue
-          }
-          if (backoff) metadataConfig.backoffMinutes = backoff
-          return metadataConfig
-        }
-        return config
-      })
+      // Format retryConfig according to backend requirements (see
+      // formatRetryConfigEntry for the per-type field shapes).
+      const formattedRetryConfig = values.retryConfig.map(formatRetryConfigEntry)
 
       const scheduleResponse = await fetch('/api/campaigns/schedule', {
         method: 'POST',
