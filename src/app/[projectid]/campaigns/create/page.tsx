@@ -204,14 +204,16 @@ function sanitizeBackoffMinutes(raw: unknown): number[] | undefined {
   return cleaned.length > 0 ? cleaned : undefined
 }
 
-// sipCode retries accept errorCodes as an array, a single value, or nothing
-// (defaults to ['480']) — one statement per case rather than a nested
-// ternary so each outcome reads plainly.
+// sipCode retries accept errorCodes as an array, a single string/number, or
+// nothing (defaults to ['480']) — one statement per case rather than a
+// nested ternary so each outcome reads plainly. Anything else (e.g. an
+// object) falls through to the default rather than being stringified into
+// "[object Object]".
 function normalizeErrorCodes(errorCodes: unknown): string[] {
   if (Array.isArray(errorCodes)) {
     return errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
   }
-  if (errorCodes) {
+  if (typeof errorCodes === 'string' || typeof errorCodes === 'number') {
     return [String(errorCodes).trim()]
   }
   return ['480']
