@@ -1170,11 +1170,39 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
         raise
 
     except Exception as e:
+        # Send never completed — outcome unknown, so retry via outbox_failed().
         logger.error(f"❌ Exception sending to Whispey: {e}")
         import traceback
         traceback.print_exc()
         outbox_failed(outbox_id, str(e))
         return {"success": False, "error": str(e)}
+
+    # Send already finished — an error past this point is just local
+    # bookkeeping (e.g. SQLite lock under load). Must not fall through to
+    # outbox_failed(), or an already-delivered call gets resent within ~2s.
+    if result.get("success"):
+        logger.info(f"✅ Successfully sent session {session_id} to Whispey")
+        try:
+            outbox_delivered(outbox_id)
+            cleanup_session(session_id)
+        except Exception as e:
+            logger.error(
+                f"⚠️ Send succeeded but local outbox bookkeeping failed for {session_id}: {e} — "
+                f"row may resend once more later via stale-claim recovery, not immediately"
+            )
+    else:
+        # Don't clear _export_claimed here: the outbox entry (marked
+        # failed below) already owns retrying this send, on its own
+        # backoff schedule. Clearing the claim would let a different
+        # trigger path (e.g. the generic exporter) write a second,
+        # duplicate outbox entry for this same call.
+        logger.error(f"❌ Whispey API returned failure: {result}")
+        try:
+            outbox_failed(outbox_id, str(result))
+        except Exception as e:
+            logger.error(f"⚠️ Failed to record send failure for {session_id}: {e}")
+
+    return result
 
 
 
