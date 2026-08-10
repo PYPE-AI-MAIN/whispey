@@ -388,6 +388,9 @@ function serializeTransferCallToolFull(tool: any, baseToolConfig: any, commonFie
     // Trigger-mode flags. Defaults preserve current behavior.
     enable_as_tool: tool.config?.enableAsTool !== false,
     enable_as_tag: tool.config?.enableAsTag === true,
+    // Spoken message when a transfer fails (no answer / SIP error).
+    transfer_failure_message_enabled: tool.config?.transferFailureMessageEnabled !== false,
+    transfer_failure_message: tool.config?.transferFailureMessage || null,
   }
 }
 

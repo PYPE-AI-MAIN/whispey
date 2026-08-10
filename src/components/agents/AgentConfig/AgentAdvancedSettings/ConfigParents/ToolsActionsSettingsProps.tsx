@@ -100,6 +100,10 @@ interface Tool {
     // Both can be enabled together (idempotency guard prevents double-dial).
     enableAsTool?: boolean
     enableAsTag?: boolean
+    // Message spoken to the caller when a transfer fails (no answer / SIP error).
+    // Enabled by default; empty text falls back to the backend's default line.
+    transferFailureMessageEnabled?: boolean
+    transferFailureMessage?: string
     timeout?: number
     asyncExecution?: boolean
     parameters?: ToolParameter[]
@@ -165,6 +169,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     // Transfer trigger mode (defaults preserve current behavior: tool ON, tag OFF)
     enableAsTool: true,
     enableAsTag: false,
+    // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+    transferFailureMessageEnabled: true,
+    transferFailureMessage: '',
     timeout: 10,
     asyncExecution: false,
     parameters: [] as ToolParameter[],
@@ -249,6 +256,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -285,6 +295,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -321,6 +334,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -357,6 +373,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -393,6 +412,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -429,6 +451,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -465,6 +490,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -502,6 +530,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
         enableAsTool: true,
         enableAsTag: false,
+        // Transfer-failure spoken message: enabled by default, custom text optional (falls back to backend default)
+        transferFailureMessageEnabled: true,
+        transferFailureMessage: '',
         timeout: 10,
         asyncExecution: false,
         parameters: [],
@@ -557,6 +588,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
       // (preserves the "tool only" behavior every saved transfer config has today).
       enableAsTool: tool.config.enableAsTool !== false,
       enableAsTag: tool.config.enableAsTag === true,
+      transferFailureMessageEnabled: tool.config.transferFailureMessageEnabled !== false,
+      transferFailureMessage: tool.config.transferFailureMessage || '',
       timeout: tool.config.timeout || 10,
       asyncExecution: tool.config.asyncExecution || false,
       parameters: tool.config.parameters || [],
@@ -625,6 +658,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
         preTransferWebhookFields: formData.preTransferWebhookFields,
         enableAsTool: formData.enableAsTool,
         enableAsTag: formData.enableAsTag,
+        transferFailureMessageEnabled: formData.transferFailureMessageEnabled,
+        transferFailureMessage: formData.transferFailureMessage,
         timeout: formData.timeout,
         asyncExecution: formData.asyncExecution,
         parameters: formData.parameters,
@@ -1163,6 +1198,34 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     </div>
                   </div>
                 )}
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id="transfer-failure-message-enabled"
+                      checked={formData.transferFailureMessageEnabled}
+                      onCheckedChange={(v) =>
+                        setFormData(prev => ({ ...prev, transferFailureMessageEnabled: v === true }))
+                      }
+                    />
+                    <label htmlFor="transfer-failure-message-enabled" className="text-xs text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                      Speak a message if the transfer fails (no answer / SIP error)
+                    </label>
+                  </div>
+                  {formData.transferFailureMessageEnabled && (
+                    <>
+                      <Textarea
+                        value={formData.transferFailureMessage}
+                        onChange={(e) => setFormData(prev => ({ ...prev, transferFailureMessage: e.target.value }))}
+                        className="text-xs mt-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                        rows={2}
+                        placeholder="I'm sorry, no one is picking up the call right now. Please try calling again after some time."
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Spoken to the caller before hanging up if no one picks up. Leave blank to use the default message above.
+                      </p>
+                    </>
+                  )}
+                </div>
               </>
             )}
 
