@@ -70,14 +70,12 @@ def write_entry(call_id: str, event_type: str, payload: dict, claim_immediately:
     conn = _connect()
     try:
         now = time.time()
-        status = "in_progress" if claim_immediately else "pending"
         cur = conn.execute(
-            "INSERT INTO outbox (call_id, event_type, payload, status, created_at, next_attempt_at, claimed_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (call_id, event_type, json.dumps(payload), status, now, now, now if claim_immediately else None),
+            "INSERT INTO outbox (call_id, event_type, payload, created_at, next_attempt_at) VALUES (?, ?, ?, ?, ?)",
+            (call_id, event_type, json.dumps(payload), now, now),
         )
         conn.commit()
-        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type} claimed={claim_immediately}")
+        logger.info(f"[OUTBOX] wrote entry id={cur.lastrowid} call_id={call_id} event={event_type}")
         return cur.lastrowid
     finally:
         _safe_close(conn)
