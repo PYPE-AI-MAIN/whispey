@@ -480,6 +480,15 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     }))
   }
 
+  const toggleWebhookField = (key: string, include: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      preTransferWebhookFields: include
+        ? [...prev.preTransferWebhookFields, key]
+        : prev.preTransferWebhookFields.filter(f => f !== key)
+    }))
+  }
+
   const getToolIcon = (type: string) => {
     switch (type) {
       case 'end_call': return <PhoneOffIcon className="w-3 h-3" />
@@ -906,14 +915,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                             <Checkbox
                               id={`wf-${key}`}
                               checked={checked}
-                              onCheckedChange={(v) => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  preTransferWebhookFields: v
-                                    ? [...prev.preTransferWebhookFields, key]
-                                    : prev.preTransferWebhookFields.filter(f => f !== key)
-                                }))
-                              }}
+                              onCheckedChange={(v) => toggleWebhookField(key, v === true)}
                             />
                             <label htmlFor={`wf-${key}`} className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">{label}</label>
                           </div>
