@@ -142,19 +142,43 @@ interface ToolsActionsSettingsProps {
   kbEnabled?: boolean
 }
 
-function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, onFieldChange, projectId, kbEnabled = false }: Readonly<ToolsActionsSettingsProps>) { // NOSONAR javascript:S3776
-  const [isLSOpen, setIsLSOpen] = useState(false)
-  const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [toolNameError, setToolNameError] = useState<string | null>(null)
-  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection' | null>(null)
-  const [editingTool, setEditingTool] = useState<Tool | null>(null)
-  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
-  const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
-  const [headersJsonString, setHeadersJsonString] = useState<string>('{}')
-  const [newFillerMessage, setNewFillerMessage] = useState('')
+// Per-tool-type text/behavior overrides. Every other reset-form field is
+// identical across tool types (see buildToolFormDefaults) — was previously
+// duplicated verbatim in every handleAddTool branch (flagged by SonarQube).
+const TOOL_TYPE_TEXT_OVERRIDES: Record<string, Record<string, unknown>> = {
+  end_call: { name: 'end_call', description: 'Allow assistant to end the conversation' },
+  handoff: {
+    name: 'handoff_agent',
+    description: 'Transfer conversation to another agent',
+    handoffMessage: 'Transferring you to another agent...',
+  },
+  transfer_call: { name: 'transfer_call', description: 'Transfer the call by creating a conference with another party' },
+  ivr_navigator: {
+    name: 'send_dtmf',
+    description: 'Send a DTMF tone to pick IVR menu options',
+    docstring: 'Emit a DTMF digit when the IVR menu requests an input.',
+    instruction_template: 'Listen carefully and press the most relevant option to accomplish: {task}.',
+  },
+  nearby_location_finder: {
+    name: 'nearby_hospital_finder',
+    description: 'Find the nearest hospital locations based on the patient area (supports geocoding fallback in backend)',
+  },
+  update_vad_options: {
+    name: 'update_vad_options',
+    description: 'Update Voice Activity Detection (VAD) options dynamically during the conversation',
+  },
+  voicemail_detection: {
+    name: 'voicemail_detection',
+    description: 'Detect voicemail systems and leave a message',
+    vm_message: "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+    vm_wait_timeout: 7,
+  },
+  // Falls through for tool types with no dedicated branch (e.g. custom_function)
+  default: { name: '', description: '', method: 'GET' },
+}
 
-  const [formData, setFormData] = useState({
+function buildToolFormDefaults(toolType?: string) {
+  const base = {
     name: '',
     description: '',
     endpoint: '',
@@ -169,7 +193,6 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     acefoneToken: '',
     preTransferWebhookUrl: '',
     preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-    // Transfer trigger mode (defaults preserve current behavior: tool ON, tag OFF)
     enableAsTool: true,
     enableAsTag: false,
     ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
@@ -177,7 +200,6 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     asyncExecution: false,
     parameters: [] as ToolParameter[],
     responseMapping: '{}',
-    // IVR Navigator fields
     function_name: 'send_dtmf_code',
     docstring: '',
     cooldown_seconds: 3,
@@ -186,15 +208,29 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     instruction_template: '',
     default_task: 'Reach a live support representative',
     task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-    // Nearby location finder fields (stored as JSON strings in UI)
     max_results: 3,
     hospitals_json: '[]',
     areas_json: '{}',
-    // Voicemail detection fields
     ...INERT_VM_FIELDS,
-    // Filler words
     filler_config: { ...DEFAULT_FILLER_CONFIG } as FillerConfig,
-  })
+  }
+  if (!toolType) return base
+  return { ...base, ...(TOOL_TYPE_TEXT_OVERRIDES[toolType] ?? TOOL_TYPE_TEXT_OVERRIDES.default) }
+}
+
+function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, onFieldChange, projectId, kbEnabled = false }: Readonly<ToolsActionsSettingsProps>) { // NOSONAR javascript:S3776
+  const [isLSOpen, setIsLSOpen] = useState(false)
+  const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [toolNameError, setToolNameError] = useState<string | null>(null)
+  const [selectedToolType, setSelectedToolType] = useState<'end_call' | 'handoff' | 'transfer_call' | 'ivr_navigator' | 'custom_function' | 'nearby_location_finder' | 'update_vad_options' | 'voicemail_detection' | null>(null)
+  const [editingTool, setEditingTool] = useState<Tool | null>(null)
+  const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
+  const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
+  const [headersJsonString, setHeadersJsonString] = useState<string>('{}')
+  const [newFillerMessage, setNewFillerMessage] = useState('')
+
+  const [formData, setFormData] = useState(buildToolFormDefaults())
 
   // Fetch phone numbers when component mounts
   useEffect(() => {
@@ -239,305 +275,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
     setHeadersJsonString('{}')
     setNewFillerMessage('')
     
-    if (toolType === 'end_call') {
-      setFormData({
-        name: 'end_call',
-        description: 'Allow assistant to end the conversation',
-        endpoint: '', 
-        method: 'POST', 
-        headers: {}, 
-        body: '',
-        targetAgent: '',
-        handoffMessage: '',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: '',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: '',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        ...INERT_VM_FIELDS,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    } else if (toolType === 'handoff') {
-      setFormData({
-        name: 'handoff_agent',
-        description: 'Transfer conversation to another agent',
-        endpoint: '', 
-        method: 'POST', 
-        headers: {}, 
-        body: '',
-        targetAgent: '',
-        handoffMessage: 'Transferring you to another agent...',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: '',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: '',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        ...INERT_VM_FIELDS,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    } else if (toolType === 'transfer_call') {
-      setFormData({
-        name: 'transfer_call',
-        description: 'Transfer the call by creating a conference with another party',
-        endpoint: '', 
-        method: 'POST', 
-        headers: {}, 
-        body: '',
-        targetAgent: '',
-        handoffMessage: '',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: '',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: '',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        ...INERT_VM_FIELDS,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    } else if (toolType === 'ivr_navigator') {
-      setFormData({
-        name: 'send_dtmf',
-        description: 'Send a DTMF tone to pick IVR menu options',
-        endpoint: '', 
-        method: 'POST', 
-        headers: {}, 
-        body: '',
-        targetAgent: '',
-        handoffMessage: '',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: 'Emit a DTMF digit when the IVR menu requests an input.',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: 'Listen carefully and press the most relevant option to accomplish: {task}.',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        ...INERT_VM_FIELDS,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    } else if (toolType === 'nearby_location_finder') {
-      setFormData({
-        name: 'nearby_hospital_finder',
-        description: 'Find the nearest hospital locations based on the patient area (supports geocoding fallback in backend)',
-        endpoint: '',
-        method: 'POST',
-        headers: {},
-        body: '',
-        targetAgent: '',
-        handoffMessage: '',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: '',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: '',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        ...INERT_VM_FIELDS,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    } else if (toolType === 'update_vad_options') {
-      setFormData({
-        name: 'update_vad_options',
-        description: 'Update Voice Activity Detection (VAD) options dynamically during the conversation',
-        endpoint: '', 
-        method: 'POST', 
-        headers: {}, 
-        body: '',
-        targetAgent: '',
-        handoffMessage: '',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: '',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: '',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        ...INERT_VM_FIELDS,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    } else if (toolType === 'voicemail_detection') {
-      setFormData({
-        name: 'voicemail_detection',
-        description: 'Detect voicemail systems and leave a message',
-        endpoint: '', 
-        method: 'POST', 
-        headers: {}, 
-        body: '',
-        targetAgent: '',
-        handoffMessage: '',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: '',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: '',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        vm_message: "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
-        vm_wait_timeout: 7,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    } else {
-      setFormData({ 
-        name: '', 
-        description: '',
-        endpoint: '', 
-        method: 'GET', 
-        headers: {}, 
-        body: '',
-        targetAgent: '',
-        handoffMessage: '',
-        selectedPhoneId: '',
-        transferNumber: '',
-        sipTrunkId: '',
-        acefoneToken: '',
-        preTransferWebhookUrl: '',
-        preTransferWebhookFields: ALL_WEBHOOK_FIELDS,
-        enableAsTool: true,
-        enableAsTag: false,
-        ...DEFAULT_TRANSFER_FAILURE_MESSAGE_FIELDS,
-        timeout: 10,
-        asyncExecution: false,
-        parameters: [],
-        responseMapping: '{}',
-        function_name: 'send_dtmf_code',
-        docstring: '',
-        cooldown_seconds: 3,
-        publish_topic: 'dtmf_code',
-        publish_data: true,
-        instruction_template: '',
-        default_task: 'Reach a live support representative',
-        task_metadata_keys: ['ivr_task', 'navigator_task', 'task'],
-        max_results: 3,
-        hospitals_json: '[]',
-        areas_json: '{}',
-        ...INERT_VM_FIELDS,
-        filler_config: { ...DEFAULT_FILLER_CONFIG },
-      })
-    }
-    
+    setFormData(buildToolFormDefaults(toolType))
+
     setIsDialogOpen(true)
   }
 
