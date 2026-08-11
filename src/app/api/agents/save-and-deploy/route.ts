@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
+import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -218,7 +219,12 @@ export async function POST(request: NextRequest) {
       payloadKeys: Object.keys(agentConfigBody?.agent ?? {}),
     })
 
-    const result = await deployAgentConfig(agentName, agentConfigBody)
+    // POC toggle: which backend to deploy to. Defaults to 'classic' (subprocess,
+    // existing behavior) unless the caller explicitly opts into 'docker'
+    // (dockerized-agent backend, see docker-compose.agents.yml on that VM).
+    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
+
+    const result = await deployAgentConfig(agentName, agentConfigBody, deploymentTarget)
 
     if (!result.ok) {
       return NextResponse.json(
@@ -294,33 +300,53 @@ function serializeRouteTts(ttsConfiguration: any): any {
 }
 
 function serializeRouteTool(tool: any): any {
-  return {
-    type: tool.type,
-    ...(tool.type !== 'end_call' ? {
-      name: tool.name,
-      description: tool.config.description,
-      ...(tool.type === 'custom_function' ? {
-        api_url: tool.config.endpoint,
-        http_method: tool.config.method,
-        timeout: tool.config.timeout,
-        async: tool.config.asyncExecution,
-        headers: tool.config.headers,
-        parameters: tool.config.parameters,
-        filler_config: tool.config.filler_config ?? null,
-      } : tool.type === 'transfer_call' ? {
-        transfer_number: tool.config.transferNumber,
-        sip_outbound_trunk: tool.config.sipTrunkId,
-        acefone_token: tool.config.acefoneToken || null,
-        pre_transfer_webhook_url: tool.config.preTransferWebhookUrl || null,
-        pre_transfer_webhook_fields: tool.config.preTransferWebhookFields || null,
-        // Trigger-mode flags. Defaults preserve old behavior:
-        //   enable_as_tool defaults to true  (current tool-based trigger)
-        //   enable_as_tag  defaults to false (new <transfer/> tag trigger)
-        enable_as_tool: tool.config.enableAsTool !== false,
-        enable_as_tag: tool.config.enableAsTag === true,
-      } : {})
-    } : {})
+  const baseToolConfig = { type: tool.type }
+  if (tool.type === 'end_call') return baseToolConfig
+
+  const commonFields = { name: tool.name, description: tool.config.description }
+
+  if (tool.type === 'custom_function') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      api_url: tool.config.endpoint,
+      http_method: tool.config.method,
+      timeout: tool.config.timeout,
+      async: tool.config.asyncExecution,
+      headers: tool.config.headers,
+      parameters: tool.config.parameters,
+      filler_config: tool.config.filler_config ?? null,
+    }
   }
+
+  if (tool.type === 'transfer_call') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      transfer_number: tool.config.transferNumber,
+      sip_outbound_trunk: tool.config.sipTrunkId,
+      acefone_token: tool.config.acefoneToken || null,
+      pre_transfer_webhook_url: tool.config.preTransferWebhookUrl || null,
+      pre_transfer_webhook_fields: tool.config.preTransferWebhookFields || null,
+      // Trigger-mode flags. Defaults preserve old behavior:
+      //   enable_as_tool defaults to true  (current tool-based trigger)
+      //   enable_as_tag  defaults to false (new <transfer/> tag trigger)
+      enable_as_tool: tool.config.enableAsTool !== false,
+      enable_as_tag: tool.config.enableAsTag === true,
+    }
+  }
+
+  if (tool.type === 'voicemail_detection') {
+    return {
+      ...baseToolConfig,
+      ...commonFields,
+      // ?? not || - a blank message / 0 timeout is an intentional config (instant, silent hangup).
+      vm_message: tool.config.vm_message ?? "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
+      vm_wait_timeout: tool.config.vm_wait_timeout ?? 7,
+    }
+  }
+
+  return { ...baseToolConfig, ...commonFields }
 }
 
 function serializeRouteLanguageSwitchTool(ls: any): any {

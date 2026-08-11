@@ -66,6 +66,7 @@ interface VoiceAgentConfig {
   /** Fired for every message on the workflow interpreter's "wf-node" data-channel topic
    * (node_enter, transition, variables_set, function_call, function_result, error, ended). */
   onWorkflowEvent?: (event: Record<string, any>) => void
+  deploymentTarget?: 'classic' | 'docker'  // which voice backend this agent lives on
 }
 
 function getSecureRandomInt(max: number): number {
@@ -90,7 +91,7 @@ function isAgentParticipant(identity = '', metadata = '') {
   return id.includes('agent') || id.includes('assistant') || m.includes('agent') || m.includes('assistant')
 }
 
-export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session', onWorkflowEvent }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
+export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session', onWorkflowEvent, deploymentTarget = 'classic' }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
   const [room, setRoom]                       = useState<Room | null>(null)
   const [isConnected, setIsConnected]         = useState(false)
   const [isConnecting, setIsConnecting]       = useState(false)
@@ -223,7 +224,7 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     const res = await fetch(sessionEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName }),
+      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName, deploymentTarget }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Unknown error' }))

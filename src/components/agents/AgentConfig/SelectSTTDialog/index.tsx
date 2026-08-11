@@ -490,8 +490,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
     domain: initialConfig?.domain || 'general',
     with_timestamps: initialConfig?.with_timestamps ?? true,
     enable_formatting: initialConfig?.enable_formatting ?? true,
-    high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? true,
-    first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? 2
+    high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? false,
+    first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? 8
   })
 
   const [smallestaiConfig, setSmallestaiConfig] = useState<SmallestAIConfig>({
@@ -528,8 +528,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             model: selectedModel || prev.model,
             language: selectedLanguage || prev.language,
             mode: initialConfig?.mode || prev.mode || 'transcribe',
-            high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? prev.high_vad_sensitivity ?? true,
-            first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? prev.first_turn_min_speech_frames ?? 2,
+            high_vad_sensitivity: initialConfig?.high_vad_sensitivity ?? prev.high_vad_sensitivity ?? false,
+            first_turn_min_speech_frames: initialConfig?.first_turn_min_speech_frames ?? prev.first_turn_min_speech_frames ?? 8,
             ...initialConfig
           }))
         } else if (selectedProvider === 'smallestai') {
@@ -962,7 +962,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 }}
                 onBlur={() => setSarvamConfig(prev => ({
                   ...prev,
-                  first_turn_min_speech_frames: prev.first_turn_min_speech_frames ?? 2
+                  first_turn_min_speech_frames: prev.first_turn_min_speech_frames ?? 8
                 }))}
                 disabled={DISABLE_SETTINGS}
                 className="w-24 h-9"

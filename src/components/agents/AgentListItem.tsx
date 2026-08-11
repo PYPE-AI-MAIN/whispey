@@ -146,7 +146,7 @@ const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isL
   }
   
   return runningAgent ? {
-    isRunning: !!(runningAgent.pid),
+    isRunning: !!runningAgent.pid || runningAgent.status === 'running',
     pid: runningAgent.pid,
     status: runningAgent.status,
     actualAgentName: runningAgent.agent_name
@@ -588,6 +588,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                   {agent.agent_type === 'pype_agent' && (
                     <Badge variant="outline" className="text-xs px-2 py-0 h-5">
                       Pype
+                    </Badge>
+                  )}
+                  {agent.configuration?.deployment_target === 'docker' && (
+                    <Badge variant="outline" className="text-xs px-2 py-0 h-5">
+                      Dockerized
                     </Badge>
                   )}
                 </div>

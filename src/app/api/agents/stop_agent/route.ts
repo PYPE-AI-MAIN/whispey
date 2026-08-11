@@ -1,19 +1,10 @@
 // app/api/agents/stop_agent/route.ts - CORRECTED VERSION
 import { NextRequest, NextResponse } from 'next/server'
-import { serviceAuthHeaders } from '@/lib/serviceToken'
+import { pypeAgentControlHeaders } from '@/lib/pypeApiFetch'
+import { resolveApiBaseUrlForAgent } from '@/lib/getProjectRoleForApi'
 
 export async function POST(request: NextRequest) {
   try {
-    const apiUrl = process.env.PYPEAI_API_URL
-    
-    if (!apiUrl) {
-      console.error('PYPEAI_API_URL environment variable is not set')
-      return NextResponse.json(
-        { error: 'API configuration error' },
-        { status: 500 }
-      )
-    }
-
     // Parse the request body to get the agent_name
     const body = await request.json()
     const { agent_name } = body
@@ -25,6 +16,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Which backend this agent actually lives on — resolved from its own
+    // persisted record, not trusted from the client.
+    const urlResult = await resolveApiBaseUrlForAgent(agent_name)
+    if ('errorResponse' in urlResult) return urlResult.errorResponse
+    const { apiUrl } = urlResult
+
     console.log(`Stopping agent: ${agent_name}`)
     // FIXED: Use the correct backend endpoint /stop_agent (not /api/stop_agent)
     console.log(`Proxying request to: ${apiUrl}/stop_agent`)
@@ -33,10 +30,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/stop_agent`, {
       method: 'POST',
       headers: {
-        ...serviceAuthHeaders(),
-        'ngrok-skip-browser-warning': 'true',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        ...pypeAgentControlHeaders(),
         'User-Agent': 'NextJS-Proxy'
       },
       body: JSON.stringify({ agent_name })

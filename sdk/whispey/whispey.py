@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Dict, Any
 from whispey.event_handlers import setup_session_event_handlers, safe_extract_transcript_data
 from whispey.metrics_service import setup_usage_collector, create_session_data
-from whispey.send_log import send_to_whispey, send_to_whispey_sync
+from whispey.send_log import send_to_whispey
+from whispey.outbox import write_entry as outbox_write, mark_delivered as outbox_delivered, mark_failed as outbox_failed
 
 logger = logging.getLogger("observe_session")
 
@@ -37,24 +38,42 @@ def _sync_flush_all_sessions():
     session_ids = list(_session_data_store.keys())
     if not session_ids:
         return
-    logger.info(f"🚨 SDK exit flush: sending {len(session_ids)} pending session(s) synchronously")
+    logger.info(f"🚨 SDK exit flush: checking {len(session_ids)} pending session(s)")
     for session_id in session_ids:
         try:
+            session_info = _session_data_store.get(session_id)
+            if session_info is None:
+                continue  # cleaned up between the keys() snapshot and now
+
+            # Same atomic claim as send_session_to_whispey(): if an async
+            # export for this session is already in flight (or already
+            # succeeded), don't also fire a second, independent send from
+            # here — this is the exact gap that used to let this fallback
+            # bypass the guard entirely and duplicate-send.
+            if session_info.get('_export_claimed'):
+                logger.info(f"⏭️ Exit flush: {session_id} already claimed by another export path — skipping")
+                continue
+            session_info['_export_claimed'] = True
+
             end_session_manually(session_id, "process_exit")
             # Use the cached/finalized data (correct recording_url, real transcript)
             # if it already exists — session_data may have been wiped by the caller's
             # own cleanup by the time this atexit flush runs, which would make a
-            # fresh generate_whispey_data() call return an empty, URL-less payload
-            # that overwrites a real send still in flight when the process exited.
+            # fresh generate_whispey_data() call return an empty, URL-less payload.
             data = get_session_whispey_data(session_id)
-            apikey = _session_data_store.get(session_id, {}).get("apikey")
-            api_url = _session_data_store.get(session_id, {}).get("api_url")
-            result = send_to_whispey_sync(data, apikey=apikey, api_url=api_url)
-            if result.get("success"):
-                logger.info(f"✅ Exit flush: sent session {session_id}")
-                cleanup_session(session_id)
-            else:
-                logger.error(f"❌ Exit flush: failed for {session_id}: {result}")
+            apikey = session_info.get("apikey")
+            api_url = session_info.get("api_url")
+
+            # No network call here — a dying process can't reliably complete
+            # one. Just make sure this call's data is durably saved; the
+            # delivery worker sends it later, with retries and S3 support.
+            outbox_write(session_id, "call_ended", {
+                "whispey_data": data,
+                "apikey": apikey,
+                "api_url": api_url,
+            })
+            logger.info(f"[OUTBOX] exit flush: saved session {session_id} for later delivery")
+            cleanup_session(session_id)
         except Exception as e:
             logger.error(f"❌ Exit flush error for {session_id}: {e}")
 
@@ -523,7 +542,10 @@ def generate_whispey_data(session_id: str, status: str = "in_progress", error: s
         "call_started_at": start_time,
         "call_ended_at": current_time,
         "transcript_type": "agent",
-        "recording_url": "",  # Will be filled by caller
+        # Caller-supplied recording_url (send_session_to_whispey/export) wins;
+        # falls back to set_recording_url()'s stash for paths that never pass
+        # one explicitly, e.g. the atexit/SIGTERM fallback below.
+        "recording_url": session_info.get("recording_url", ""),
         "transcript_json": [],
         "transcript_with_metrics": [],
         "metadata": {
@@ -753,6 +775,20 @@ def end_session_manually(session_id: str, status: str = "completed", error: str 
     _session_data_store[session_id]['whispey_data'] = final_data
     
     logger.info(f"📊 Session {session_id} ended - Whispey data prepared")
+
+def set_recording_url(session_id: str, recording_url: str):
+    """Stash a recording URL on the session so it survives to whichever export
+    path actually fires (session may end via transfer, EOD, shutdown, or the
+    atexit/SIGTERM fallback — most of which don't take recording_url as an
+    argument). Safe to call multiple times; last call wins. No-op if the
+    session isn't tracked."""
+    session_info = _session_data_store.get(session_id)
+    if session_info is None:
+        logger.warning(f"set_recording_url: session {session_id} not found")
+        return
+    session_info["recording_url"] = recording_url
+    logger.info(f"[Whispey] set_recording_url: stashed for session {session_id}: {recording_url}")
+
 
 def cleanup_session(session_id: str):
     """Clean up session data"""
@@ -1016,8 +1052,21 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     if session_id not in _session_data_store:
         logger.error(f"Session {session_id} not found in data store")
         return {"success": False, "error": "Session not found"}
-    
+
     session_info = _session_data_store[session_id]
+
+    # Atomic claim: multiple independent call paths (transfer, EOD, generic
+    # shutdown, end_call tool, and the atexit/SIGTERM fallback in
+    # _sync_flush_all_sessions) can all reach this function for the same
+    # session. Checked+set synchronously, before any await, so a
+    # concurrent/later caller sees it immediately and skips instead of
+    # re-sending the same data. Cleared on failure so a genuinely failed
+    # send can still be retried by a later caller.
+    if session_info.get('_export_claimed'):
+        logger.info(f"⏭️ Export already claimed for {session_id} — skipping duplicate call")
+        return {"success": True, "skipped": True}
+    session_info['_export_claimed'] = True
+
     # Use session-stored apikey/api_url if not passed (same as call_started)
     apikey = apikey if apikey is not None else session_info.get("apikey")
     api_url = api_url if api_url is not None else session_info.get("api_url")
@@ -1050,22 +1099,95 @@ async def send_session_to_whispey(session_id: str, recording_url: str = "", addi
     
     
     try:
-        logger.info(f"📤 Sending to Whispey API...")
-        result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
-        
+        # claim_immediately=True: we send this ourselves right below, so it must
+        # not be claimable by a concurrent drain_outbox() sweep. The
+        # `except asyncio.CancelledError` below releases the claim if we get
+        # cancelled instead of leaving it stuck for the stale-claim window.
+        outbox_id = outbox_write(session_id, "call_ended", {
+            "whispey_data": whispey_data,
+            "apikey": apikey,
+            "api_url": api_url,
+        }, claim_immediately=True)
+        logger.info(f"[OUTBOX] session {session_id} saved locally as id={outbox_id} before send")
+    except Exception as e:
+        # Outbox write itself failed — no durable copy exists, so there's
+        # nothing for a delivery worker to retry later. Attempt the send
+        # directly, right now, as a last resort instead of giving up.
+        logger.error(f"❌ Outbox write failed for {session_id}: {e} — attempting direct send as fallback")
+        try:
+            result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
+        except Exception as send_e:
+            # Both the durable write and the direct send failed — this call's
+            # data is genuinely at risk of being lost. Log at CRITICAL,
+            # distinct from the routine errors above, so it can be alerted
+            # on separately. Clear the claim so a later trigger (e.g. the
+            # atexit fallback) still gets a chance to try again.
+            logger.critical(
+                f"🚨 [DATA LOSS RISK] Outbox write AND direct send both failed for {session_id}: "
+                f"outbox={e}, send={send_e}"
+            )
+            session_info['_export_claimed'] = False
+            return {"success": False, "error": f"outbox write failed ({e}); direct send also failed ({send_e})"}
+
         if result.get("success"):
-            logger.info(f"✅ Successfully sent session {session_id} to Whispey")
+            logger.info(f"✅ Direct send succeeded for {session_id} despite outbox failure")
             cleanup_session(session_id)
         else:
-            logger.error(f"❌ Whispey API returned failure: {result}")
-        
+            logger.error(f"❌ Direct send also returned failure for {session_id}: {result}")
+            session_info['_export_claimed'] = False
         return result
-        
+
+    import asyncio
+    try:
+        logger.info(f"📤 Sending to Whispey API...")
+        result = await send_to_whispey(whispey_data, apikey=apikey, api_url=api_url)
+
+    except asyncio.CancelledError:
+        # CancelledError is a BaseException, so `except Exception` below won't
+        # catch it — that's how a cancelled send used to leave the claim stuck
+        # 'in_progress' for the full stale window. Release it, then re-raise;
+        # never swallow a cancellation.
+        logger.warning(f"⚠️ Send to Whispey cancelled for {session_id} — releasing outbox claim for retry")
+        try:
+            outbox_failed(outbox_id, "cancelled during send")
+        except Exception as _oe:
+            logger.error(f"❌ Failed to release outbox claim after cancellation for {session_id}: {_oe}")
+        raise
+
     except Exception as e:
+        # Send never completed — outcome unknown, so retry via outbox_failed().
         logger.error(f"❌ Exception sending to Whispey: {e}")
         import traceback
         traceback.print_exc()
+        outbox_failed(outbox_id, str(e))
         return {"success": False, "error": str(e)}
+
+    # Send already finished — an error past this point is just local
+    # bookkeeping (e.g. SQLite lock under load). Must not fall through to
+    # outbox_failed(), or an already-delivered call gets resent within ~2s.
+    if result.get("success"):
+        logger.info(f"✅ Successfully sent session {session_id} to Whispey")
+        try:
+            outbox_delivered(outbox_id)
+            cleanup_session(session_id)
+        except Exception as e:
+            logger.error(
+                f"⚠️ Send succeeded but local outbox bookkeeping failed for {session_id}: {e} — "
+                f"row may resend once more later via stale-claim recovery, not immediately"
+            )
+    else:
+        # Don't clear _export_claimed here: the outbox entry (marked
+        # failed below) already owns retrying this send, on its own
+        # backoff schedule. Clearing the claim would let a different
+        # trigger path (e.g. the generic exporter) write a second,
+        # duplicate outbox entry for this same call.
+        logger.error(f"❌ Whispey API returned failure: {result}")
+        try:
+            outbox_failed(outbox_id, str(result))
+        except Exception as e:
+            logger.error(f"⚠️ Failed to record send failure for {session_id}: {e}")
+
+    return result
 
 
 
