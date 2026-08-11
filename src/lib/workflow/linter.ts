@@ -76,6 +76,23 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
       issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
   }
 
+  // 5b. save_as collisions — two nodes writing the same variable silently
+  // overwrite; usually a copy-paste mistake, so warn (reuse is occasionally
+  // intentional, hence not an error).
+  const writers = new Map<string, string[]>()
+  for (const n of wf.nodes) {
+    const key = (n as { saveAs?: unknown }).saveAs
+    if (typeof key === 'string' && key.trim()) writers.set(key, [...(writers.get(key) ?? []), n.id])
+  }
+  for (const [key, ids] of writers) {
+    if (ids.length > 1)
+      issues.push({
+        severity: 'warning',
+        message: `variable '${key}' is written by ${ids.length} nodes (${ids.join(', ')}) — later writes overwrite earlier ones`,
+        nodeId: ids[ids.length - 1],
+      })
+  }
+
   // 6. edges
   for (const e of wf.edges) {
     if (!idSet.has(e.source)) issues.push({ severity: 'error', message: `edge source '${e.source}' is not a node`, edgeId: e.id })
