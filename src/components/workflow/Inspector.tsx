@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import type { WorkflowNode, Edge, EdgeKind, Workflow } from '@/lib/workflow/schema'
+import { lintWorkflow } from '@/lib/workflow/linter'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -189,8 +190,8 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
     case 'knowledge':
       return (
         <>
-          <Field label="Query"><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} /></Field>
-          <Field label="Knowledge base"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} /></Field>
+          <Field label="Query"><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
+          <Field label="Knowledge base agent ID (blank = this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
           <Field label="Top K"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>
           <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
@@ -371,6 +372,9 @@ export function Inspector() {
   const node = workflow?.nodes.find((n) => n.id === selectedNodeId)
   const edge = workflow?.edges.find((e) => e.id === selectedEdgeId)
   const open = !!node || !!edge
+  // Issues for the selected node, shown inline so the fix is obvious without
+  // hunting the lint popover. Lint is cheap and workflows are small.
+  const nodeIssues = node && workflow ? lintWorkflow(workflow).filter((i) => i.nodeId === node.id) : []
 
   return (
     <Sheet
@@ -392,6 +396,23 @@ export function Inspector() {
               </SheetTitle>
             </SheetHeader>
             <div className="px-4 space-y-4">
+              {nodeIssues.length > 0 && (
+                <div className="space-y-1">
+                  {nodeIssues.map((iss, i) => (
+                    <p
+                      key={i}
+                      className={`text-[11px] rounded-md px-2 py-1.5 ${
+                        iss.severity === 'error'
+                          ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                      }`}
+                    >
+                      {iss.severity === 'error' ? '⛔ ' : '⚠️ '}
+                      {iss.message}
+                    </p>
+                  ))}
+                </div>
+              )}
               <Field label="Name">
                 <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
               </Field>

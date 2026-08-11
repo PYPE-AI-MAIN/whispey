@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, BookOpen, ClipboardPaste, Copy, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
+import { ArrowLeft, Braces, ClipboardPaste, Copy, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -23,8 +23,6 @@ import { AgentSettingsPanel } from '@/components/workflow/AgentSettingsPanel'
 import { TemplatePicker } from '@/components/workflow/TemplatePicker'
 import { CanvasHintBanner } from '@/components/workflow/CanvasHintBanner'
 import TalkToAssistant from '@/components/agents/TalkToAssistant'
-import { KnowledgeBaseUploadZone } from '@/components/knowledge/KnowledgeBaseUploadZone'
-import { KnowledgeBaseDocumentList, type KnowledgeDocument } from '@/components/knowledge/KnowledgeBaseDocumentList'
 import { LiveEventLog, type WorkflowEvent } from '@/components/workflow/LiveEventLog'
 import { WorkflowChat } from '@/components/workflow/WorkflowChat'
 import { ImportJsonSheet } from '@/components/workflow/ImportJsonSheet'
@@ -150,27 +148,7 @@ function WorkflowPageInner() {
     [setActiveNode]
   )
 
-  // Knowledge Base — same upload/list components the classic Knowledge Base page uses.
   const [chatOpen, setChatOpen] = useState(false)
-  const [kbOpen, setKbOpen] = useState(false)
-  const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
-  const [docsLoading, setDocsLoading] = useState(false)
-  const fetchDocuments = useCallback(async () => {
-    if (!backendAgentName) return
-    setDocsLoading(true)
-    try {
-      const res = await fetch(`/api/knowledge/documents?agent_id=${encodeURIComponent(backendAgentName)}`)
-      const data = await res.json().catch(() => ({}))
-      setDocuments(res.ok && Array.isArray(data.documents) ? data.documents : [])
-    } catch {
-      setDocuments([])
-    } finally {
-      setDocsLoading(false)
-    }
-  }, [backendAgentName])
-  useEffect(() => {
-    if (kbOpen) fetchDocuments()
-  }, [kbOpen, fetchDocuments])
 
   const errorCount = useMemo(() => lintIssues.filter((i) => i.severity === 'error').length, [lintIssues])
   const warningCount = lintIssues.length - errorCount
@@ -324,9 +302,6 @@ function WorkflowPageInner() {
                 title="Copy workflow JSON" aria-label="Copy workflow JSON">
           <Copy className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setKbOpen(true)}>
-          <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Knowledge
-        </Button>
         <Button variant="outline" size="sm" onClick={() => setVariablesOpen(true)}>
           <Braces className="h-3.5 w-3.5 mr-1.5" /> Variables
         </Button>
@@ -391,21 +366,6 @@ function WorkflowPageInner() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={kbOpen} onOpenChange={setKbOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Knowledge base</SheetTitle>
-          </SheetHeader>
-          <div className="px-4 space-y-6">
-            <KnowledgeBaseUploadZone
-              agentId={backendAgentName}
-              agentIdForRegenerate={agentId}
-              onUploadSuccess={fetchDocuments}
-            />
-            <KnowledgeBaseDocumentList documents={documents} loading={docsLoading} onRefresh={fetchDocuments} />
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   )
 }

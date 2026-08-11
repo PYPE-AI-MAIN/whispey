@@ -42,20 +42,36 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
     issues.push({ severity: 'error', message: `start '${wf.start}' cannot be a note node`, nodeId: wf.start })
   }
 
-  // 4/5. per-node
+  // 4/5. per-node completeness — a freshly-dropped node is empty by definition,
+  // so these are `warning` (a "finish configuring me" nudge), never `error`.
+  // Errors are reserved for structural graph problems that make the flow invalid;
+  // an unfinished node must not block deploy or turn the canvas red on drop.
   for (const n of wf.nodes) {
     if (n.type === 'conversation' && !n.prompt && !n.staticText)
-      issues.push({ severity: 'error', message: 'conversation node needs a prompt or static text', nodeId: n.id })
+      issues.push({ severity: 'warning', message: 'conversation node needs a prompt or static text', nodeId: n.id })
     if (n.type === 'function' && !n.url)
-      issues.push({ severity: 'error', message: 'function node needs a url', nodeId: n.id })
+      issues.push({ severity: 'warning', message: 'function node needs a url', nodeId: n.id })
     if (n.type === 'call_transfer' && !n.transferTo)
-      issues.push({ severity: 'error', message: 'call_transfer node needs a destination', nodeId: n.id })
+      issues.push({ severity: 'warning', message: 'call_transfer node needs a destination', nodeId: n.id })
     if (n.type === 'extract_variable' && (!n.extractions || n.extractions.length === 0))
       issues.push({ severity: 'warning', message: 'extract_variable node has no extractions', nodeId: n.id })
     if (n.type === 'code' && !n.source)
-      issues.push({ severity: 'error', message: 'code node needs source', nodeId: n.id })
+      issues.push({ severity: 'warning', message: 'code node needs source', nodeId: n.id })
     if (n.type === 'mcp' && (!n.server || !n.tool))
-      issues.push({ severity: 'error', message: 'mcp node needs a server and tool', nodeId: n.id })
+      issues.push({ severity: 'warning', message: 'mcp node needs a server and tool', nodeId: n.id })
+    // Stall guard: an LLM node advances only via handoff tools built from its
+    // edges. If every exit is a `condition` and the live conversation matches
+    // none of them, the node hangs until the caller gives up. An `always`/
+    // `fallback` edge becomes a catch-all escape tool the LLM can always take.
+    if (LLM_NODE_TYPES.has(n.type)) {
+      const outs = outEdges(n.id)
+      if (outs.length > 0 && !outs.some((e) => e.kind === 'always' || e.kind === 'fallback'))
+        issues.push({
+          severity: 'warning',
+          message: `'${n.id}' can stall — every exit is a condition. Add a Fallback (or Always) edge as a catch-all so the call always has a way forward.`,
+          nodeId: n.id,
+        })
+    }
     if (TELEPHONY_NODE_TYPES.has(n.type) && !telOn)
       issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
   }
