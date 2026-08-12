@@ -3,7 +3,6 @@
 import React from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { CATEGORIES, getNodesByCategory } from './nodeRegistry'
-import type { NodeType } from '@/lib/workflow/schema'
 
 /** Drag payload read by WorkflowCanvas's onDrop. */
 export const PALETTE_DND_TYPE = 'application/whispey-node-type'
@@ -24,15 +23,14 @@ export function WorkflowPalette() {
                 {items.map(([type, meta]) => (
                   <Tooltip key={type}>
                     <TooltipTrigger asChild>
-                      <div
+                      <button
+                        type="button"
                         draggable
-                        role="button"
-                        tabIndex={0}
                         onDragStart={(e) => {
                           e.dataTransfer.setData(PALETTE_DND_TYPE, type)
                           e.dataTransfer.effectAllowed = 'move'
                         }}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 cursor-grab active:cursor-grabbing hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 cursor-grab active:cursor-grabbing hover:border-gray-300 dark:hover:border-gray-600 transition-colors text-left"
                       >
                         <div
                           className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
@@ -43,7 +41,7 @@ export function WorkflowPalette() {
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                           {meta.label}
                         </span>
-                      </div>
+                      </button>
                     </TooltipTrigger>
                     {/* side=right so it clears the palette instead of covering the next item */}
                     <TooltipContent side="right" sideOffset={8} className="max-w-[260px]">

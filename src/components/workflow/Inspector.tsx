@@ -18,7 +18,7 @@ import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 
 /** Textarea backed by a JSON-serialized object; keeps raw text while invalid so typing isn't fought. */
-function JsonField({ label, value, onChange }: { label: string; value: unknown; onChange: (v: any) => void }) {
+function JsonField({ label, value, onChange }: Readonly<{ label: string; value: unknown; onChange: (v: any) => void }>) {
   const [text, setText] = useState(() => JSON.stringify(value ?? {}, null, 2))
   const [error, setError] = useState(false)
   return (
@@ -42,7 +42,7 @@ function JsonField({ label, value, onChange }: { label: string; value: unknown; 
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
@@ -51,7 +51,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<WorkflowNode>) => void }) {
+function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: Partial<WorkflowNode>) => void }>) {
   switch (node.type) {
     case 'conversation':
       return (
@@ -116,7 +116,7 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
               </Button>
             </div>
             {extractions.map((ex, i) => (
-              <div key={i} className="flex gap-1 items-start">
+              <div key={`${ex.variable}-${i}`} className="flex gap-1 items-start">
                 <Input
                   placeholder="variable"
                   value={ex.variable}
@@ -162,7 +162,7 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
         <>
           <div className="grid grid-cols-3 gap-2">
             <Field label="Method">
-              <Select value={node.method} onValueChange={(v) => patch({ method: v as any })}>
+              <Select value={node.method} onValueChange={(v) => patch({ method: v as typeof node.method })}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
@@ -201,7 +201,7 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
         <>
           <Field label="Transfer to"><Input value={node.transferTo} onChange={(e) => patch({ transferTo: e.target.value } as any)} placeholder="+1..." /></Field>
           <Field label="Mode">
-            <Select value={node.mode} onValueChange={(v) => patch({ mode: v as any })}>
+            <Select value={node.mode} onValueChange={(v) => patch({ mode: v as typeof node.mode })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="cold">Cold (ends call)</SelectItem>
@@ -216,7 +216,7 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
       return (
         <>
           <Field label="Mode">
-            <Select value={node.mode} onValueChange={(v) => patch({ mode: v as any })}>
+            <Select value={node.mode} onValueChange={(v) => patch({ mode: v as typeof node.mode })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="send">Send digits</SelectItem>
@@ -297,7 +297,7 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
       return (
         <>
           <Field label="Language">
-            <Select value={node.language} onValueChange={(v) => patch({ language: v as any })}>
+            <Select value={node.language} onValueChange={(v) => patch({ language: v as typeof node.language })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="python">Python</SelectItem>
@@ -328,7 +328,7 @@ function NodeFields({ node, patch }: { node: WorkflowNode; patch: (p: Partial<Wo
   }
 }
 
-function EdgeFields({ edge, workflow, patch }: { edge: Edge; workflow: Workflow; patch: (p: Partial<Edge>) => void }) {
+function EdgeFields({ edge, workflow, patch }: Readonly<{ edge: Edge; workflow: Workflow; patch: (p: Partial<Edge>) => void }>) {
   return (
     <>
       <Field label="Kind">
@@ -398,9 +398,9 @@ export function Inspector() {
             <div className="px-4 space-y-4">
               {nodeIssues.length > 0 && (
                 <div className="space-y-1">
-                  {nodeIssues.map((iss, i) => (
+                  {nodeIssues.map((iss) => (
                     <p
-                      key={i}
+                      key={`${iss.severity}-${iss.message}`}
                       className={`text-[11px] rounded-md px-2 py-1.5 ${
                         iss.severity === 'error'
                           ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
@@ -432,13 +432,13 @@ export function Inspector() {
             </SheetFooter>
           </>
         )}
-        {edge && (
+        {edge && workflow && (
           <>
             <SheetHeader>
               <SheetTitle>Edge</SheetTitle>
             </SheetHeader>
             <div className="px-4 space-y-4">
-              <EdgeFields edge={edge} workflow={workflow!} patch={(p) => updateEdge(edge.id, p)} />
+              <EdgeFields edge={edge} workflow={workflow} patch={(p) => updateEdge(edge.id, p)} />
             </div>
             <SheetFooter>
               <Button variant="destructive" size="sm" onClick={() => removeEdge(edge.id)}>

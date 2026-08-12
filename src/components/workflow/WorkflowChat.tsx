@@ -17,15 +17,38 @@ interface Message {
 // Past assistant turns embed a full workflow JSON block. Re-sending those on every
 // request balloons context linearly (the current workflow is already sent separately
 // as a system message), causing slow/hanging generations after a few turns.
+// ponytail: walk ``` fences with indexOf instead of a [\s\S]*? regex — same
+// result, no backtracking-vulnerable pattern for Sonar/CodeQL to flag.
 function stripJsonBlocksForHistory(text: string): string {
-  return text.replace(/```json[\s\S]*?```/g, '[workflow JSON omitted — current workflow is provided above]')
+  const placeholder = '[workflow JSON omitted — current workflow is provided above]'
+  let result = ''
+  let pos = 0
+  while (pos < text.length) {
+    const start = text.indexOf('```json', pos)
+    if (start === -1) {
+      result += text.slice(pos)
+      break
+    }
+    const end = text.indexOf('```', start + 7)
+    if (end === -1) {
+      result += text.slice(pos)
+      break
+    }
+    result += text.slice(pos, start) + placeholder
+    pos = end + 3
+  }
+  return result
 }
 
 function extractWorkflowJson(text: string): object | null {
-  const match = text.match(/```json\s*([\s\S]*?)```/)
-  if (!match) return null
+  const start = text.indexOf('```json')
+  if (start === -1) return null
+  const end = text.indexOf('```', start + 7)
+  if (end === -1) return null
+  const raw = text.slice(start + 7, end).trim()
+  if (!raw) return null
   try {
-    return JSON.parse(match[1])
+    return JSON.parse(raw)
   } catch {
     return null
   }
@@ -57,7 +80,7 @@ function restoreKeptFields(next: any, current: any): any {
   return next
 }
 
-export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
   const workflow = useWorkflowStore((s) => s.workflow)
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
   const [messages, setMessages] = useState<Message[]>([])
@@ -74,6 +97,92 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
+
+  // Reads the SSE stream into `onChunk`, resolving to the full assistant text
+  // and whether the server flagged the response as truncated.
+  const streamAssistantReply = useCallback(
+    async (res: Response, abort: AbortController, onChunk: (content: string) => void) => {
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No response stream')
+
+      const decoder = new TextDecoder()
+      let assistantContent = ''
+      let wasTruncated = false
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await Promise.race([
+          reader.read(),
+          new Promise<never>((_, reject) => setTimeout(() => {
+            abort.abort()
+            reject(new Error('Response timed out — try a shorter/simpler request'))
+          }, 45000)),
+        ])
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(data)
+            if (parsed.error) throw new Error(parsed.error)
+            if (parsed.truncated) wasTruncated = true
+            if (parsed.content) {
+              assistantContent += parsed.content
+              onChunk(assistantContent)
+            }
+          } catch (e: any) {
+            if (e.message && !e.message.includes('Unexpected')) throw e
+          }
+        }
+      }
+
+      return { assistantContent, wasTruncated }
+    },
+    []
+  )
+
+  // Parses the assistant's trailing ```json block (if any) and applies it to
+  // the workflow store, reporting success/failure via toast + message status.
+  const applyAssistantWorkflow = useCallback(
+    (assistantContent: string): { applyStatus: Message['applyStatus']; applyError?: string } => {
+      const jsonBlockStart = assistantContent.indexOf('```json')
+      const hasJsonBlock = jsonBlockStart !== -1 && assistantContent.indexOf('```', jsonBlockStart + 7) !== -1
+      const json = extractWorkflowJson(assistantContent)
+      if (!json) {
+        if (!hasJsonBlock) return { applyStatus: 'none' }
+        const applyError = 'Response JSON was malformed (likely cut off — try a shorter/simpler request)'
+        toast.error(applyError, { duration: 8000 })
+        return { applyStatus: 'error', applyError }
+      }
+
+      const parsed = safeParseWorkflow(restoreKeptFields(json, workflow))
+      // safeParse passes on an empty/graph-less workflow (only `start` is
+      // required, and it isn't checked against node ids). That renders a blank
+      // canvas but shows a misleading "applied" — reject it and say why.
+      if (!parsed.success) {
+        const applyError = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
+        toast.error(`AI returned invalid workflow JSON: ${applyError}`, { duration: 8000 })
+        return { applyStatus: 'error', applyError }
+      }
+      if (parsed.data.nodes.length === 0 || !parsed.data.nodes.some((n) => n.id === parsed.data.start)) {
+        const applyError =
+          'The AI returned a workflow with no usable nodes — the config is too large to convert in one shot. Ask it to "build the flow step by step" (greeting, then patient lookup, then symptoms, …), or paste the flow in a few smaller messages.'
+        toast.error(applyError, { duration: 10000 })
+        return { applyStatus: 'error', applyError }
+      }
+
+      setWorkflow(parsed.data)
+      toast.success('Workflow updated from chat')
+      return { applyStatus: 'success' }
+    },
+    [workflow, setWorkflow]
+  )
 
   const handleSend = useCallback(async () => {
     const text = input.trim()
@@ -107,104 +216,38 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
         throw new Error(err.error || `Request failed (${res.status})`)
       }
 
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No response stream')
-
-      const decoder = new TextDecoder()
-      let assistantContent = ''
-      let wasTruncated = false
-
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }])
 
-      let buffer = ''
-      while (true) {
-        const { done, value } = await Promise.race([
-          reader.read(),
-          new Promise<never>((_, reject) => setTimeout(() => {
-            abort.abort()
-            reject(new Error('Response timed out — try a shorter/simpler request'))
-          }, 45000)),
-        ])
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
-          try {
-            const parsed = JSON.parse(data)
-            if (parsed.error) throw new Error(parsed.error)
-            if (parsed.truncated) wasTruncated = true
-            if (parsed.content) {
-              assistantContent += parsed.content
-              setMessages((prev) => {
-                const updated = [...prev]
-                updated[updated.length - 1] = { role: 'assistant', content: assistantContent }
-                return updated
-              })
-            }
-          } catch (e: any) {
-            if (e.message && !e.message.includes('Unexpected')) throw e
-          }
-        }
-      }
+      const { assistantContent, wasTruncated } = await streamAssistantReply(res, abort, (content) => {
+        setMessages((prev) => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { role: 'assistant', content }
+          return updated
+        })
+      })
 
       if (wasTruncated) {
         const err = 'Response was cut off (too long to generate in one reply) — the workflow was NOT applied. Try a shorter request, or build the flow structure via chat and paste large prompts directly into the Global Prompt field instead.'
         toast.error(err, { duration: 10000 })
         setMessages((prev) => {
           const updated = [...prev]
-          updated[updated.length - 1] = { ...updated[updated.length - 1], applyStatus: 'error', applyError: err }
+          updated[updated.length - 1] = { ...updated.at(-1)!, applyStatus: 'error', applyError: err }
           return updated
         })
         return
       }
 
-      const hasJsonBlock = /```json[\s\S]*?```/.test(assistantContent)
-      const json = extractWorkflowJson(assistantContent)
-      let applyStatus: Message['applyStatus'] = 'none'
-      let applyError: string | undefined
-      if (json) {
-        const parsed = safeParseWorkflow(restoreKeptFields(json, workflow))
-        // safeParse passes on an empty/graph-less workflow (only `start` is
-        // required, and it isn't checked against node ids). That renders a blank
-        // canvas but shows a misleading "applied" — reject it and say why.
-        if (!parsed.success) {
-          applyError = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
-          toast.error(`AI returned invalid workflow JSON: ${applyError}`, { duration: 8000 })
-          applyStatus = 'error'
-        } else if (
-          parsed.data.nodes.length === 0 ||
-          !parsed.data.nodes.some((n) => n.id === parsed.data.start)
-        ) {
-          applyError =
-            'The AI returned a workflow with no usable nodes — the config is too large to convert in one shot. Ask it to "build the flow step by step" (greeting, then patient lookup, then symptoms, …), or paste the flow in a few smaller messages.'
-          toast.error(applyError, { duration: 10000 })
-          applyStatus = 'error'
-        } else {
-          setWorkflow(parsed.data)
-          toast.success('Workflow updated from chat')
-          applyStatus = 'success'
-        }
-      } else if (hasJsonBlock) {
-        applyError = 'Response JSON was malformed (likely cut off — try a shorter/simpler request)'
-        toast.error(applyError, { duration: 8000 })
-        applyStatus = 'error'
-      }
+      const { applyStatus, applyError } = applyAssistantWorkflow(assistantContent)
       setMessages((prev) => {
         const updated = [...prev]
-        updated[updated.length - 1] = { ...updated[updated.length - 1], applyStatus, applyError }
+        updated[updated.length - 1] = { ...updated.at(-1)!, applyStatus, applyError }
         return updated
       })
     } catch (err: any) {
       if (err.name === 'AbortError') return
       toast.error(err.message || 'Chat request failed')
       setMessages((prev) => {
-        if (prev.length && prev[prev.length - 1].role === 'assistant' && !prev[prev.length - 1].content) {
+        if (prev.length && prev.at(-1)?.role === 'assistant' && !prev.at(-1)?.content) {
           return prev.slice(0, -1)
         }
         return prev
@@ -213,7 +256,7 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
       setIsStreaming(false)
       abortRef.current = null
     }
-  }, [input, isStreaming, messages, workflow, setWorkflow])
+  }, [input, isStreaming, messages, workflow, streamAssistantReply, applyAssistantWorkflow])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -283,7 +326,7 @@ export function WorkflowChat({ open, onOpenChange }: { open: boolean; onOpenChan
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div key={`${msg.role}-${i}`} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
               <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
                 <Sparkles className="w-3 h-3 text-violet-600 dark:text-violet-400" />
@@ -348,12 +391,12 @@ function AssistantMessage({
   streaming,
   applyStatus,
   applyError,
-}: {
+}: Readonly<{
   content: string
   streaming?: boolean
   applyStatus?: Message['applyStatus']
   applyError?: string
-}) {
+}>) {
   if (!content && streaming) {
     return (
       <span className="inline-flex gap-1 py-1">
@@ -377,7 +420,7 @@ function AssistantMessage({
         if (part.startsWith('```json')) {
           if (streaming) {
             return (
-              <div key={i} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+              <div key={`json-parsing-${i}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Parsing workflow...
               </div>
@@ -385,14 +428,14 @@ function AssistantMessage({
           }
           if (applyStatus === 'error') {
             return (
-              <div key={i} className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
+              <div key={`json-error-${i}`} className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
                 <span>⚠</span>
                 <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
               </div>
             )
           }
           return (
-            <div key={i} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium">
+            <div key={`json-applied-${i}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium">
               <Sparkles className="w-3 h-3" />
               Workflow JSON applied to canvas
             </div>
@@ -400,7 +443,7 @@ function AssistantMessage({
         }
         const trimmed = part.trim()
         if (!trimmed) return null
-        return <span key={i} className="whitespace-pre-wrap">{trimmed}</span>
+        return <span key={`${i}-${trimmed.slice(0, 20)}`} className="whitespace-pre-wrap">{trimmed}</span>
       })}
       {streaming && hasOpenJsonBlock && (
         <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">

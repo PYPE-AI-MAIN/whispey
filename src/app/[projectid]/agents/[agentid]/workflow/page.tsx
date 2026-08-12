@@ -27,6 +27,51 @@ import { LiveEventLog, type WorkflowEvent } from '@/components/workflow/LiveEven
 import { WorkflowChat } from '@/components/workflow/WorkflowChat'
 import { ImportJsonSheet } from '@/components/workflow/ImportJsonSheet'
 
+/** "3 errors" / "1 warning" label for the lint badge — plural-aware, no nested ternary. */
+function formatLintBadgeLabel(errorCount: number, warningCount: number): string {
+  if (errorCount > 0) return `${errorCount} error${errorCount > 1 ? 's' : ''}`
+  return `${warningCount} warning${warningCount > 1 ? 's' : ''}`
+}
+
+/** Start/Stop/Starting/Stopping button for the agent lifecycle — kept out of the
+ * main render to avoid a nested-ternary pileup for a single button slot. */
+function AgentLifecycleButton({
+  status,
+  isLoading,
+  backendAgentName,
+  onStart,
+  onStop,
+}: Readonly<{
+  status: string
+  isLoading: boolean
+  backendAgentName: string
+  onStart: () => void
+  onStop: () => void
+}>) {
+  if (status === 'running') {
+    return (
+      <Button variant="outline" size="sm" onClick={onStop} disabled={isLoading}>
+        {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Square className="h-3.5 w-3.5 mr-1.5" />}
+        Stop Agent
+      </Button>
+    )
+  }
+  if (status === 'starting' || status === 'stopping') {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+        {status === 'starting' ? 'Starting...' : 'Stopping...'}
+      </Button>
+    )
+  }
+  return (
+    <Button variant="outline" size="sm" onClick={onStart} disabled={isLoading || !backendAgentName}>
+      {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
+      Start Agent
+    </Button>
+  )
+}
+
 /**
  * Backend expects agent_id = agent name (e.g. Test_a2e7a0fa_c64c_4840_a063_dad5a3df685e),
  * same derivation used by the knowledge-base page.
@@ -40,7 +85,7 @@ function useBackendAgentName(agentId: string | undefined) {
   })
   const backendAgentName = useMemo(() => {
     if (!agentDataResponse?.[0]?.name || !agentId) return ''
-    return `${agentDataResponse[0].name}_${agentId.replace(/-/g, '_')}`
+    return `${agentDataResponse[0].name}_${agentId.replaceAll('-', '_')}`
   }, [agentDataResponse, agentId])
   return { agentRow: agentDataResponse?.[0], backendAgentName, agentLoading: isLoading }
 }
@@ -121,7 +166,7 @@ function WorkflowPageInner() {
     } catch {
       // clipboard API needs a secure context + permission; fall back to a prompt
       // the user can copy out of manually rather than failing silently.
-      window.prompt('Copy the workflow JSON:', json)
+      globalThis.prompt('Copy the workflow JSON:', json)
     }
   }, [workflow])
 
@@ -181,7 +226,8 @@ function WorkflowPageInner() {
     if (!workflow || !backendAgentName) return
     if (hasErrors(lintIssues)) {
       const errors = lintIssues.filter((i) => i.severity === 'error')
-      toast.error(`Fix ${errorCount} error(s):\n${errors.map((e) => `• ${e.message}`).join('\n')}`, { duration: 6000 })
+      const errorList = errors.map((e) => `• ${e.message}`).join('\n')
+      toast.error(`Fix ${errorCount} error(s):\n${errorList}`, { duration: 6000 })
       return
     }
     setDeploying(true)
@@ -192,11 +238,11 @@ function WorkflowPageInner() {
         body: JSON.stringify({ workflow }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        toast.error(data?.message || `Deploy failed (${res.status})`)
-      } else {
+      if (res.ok) {
         toast.success('Workflow deployed')
         markClean()
+      } else {
+        toast.error(data?.message || `Deploy failed (${res.status})`)
       }
     } catch {
       toast.error('Could not reach the deploy endpoint')
@@ -265,26 +311,17 @@ function WorkflowPageInner() {
             className="text-[10px] cursor-help"
             title={lintIssues.map((i) => `[${i.severity}] ${i.message}`).join('\n')}
           >
-            {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : `${warningCount} warning${warningCount > 1 ? 's' : ''}`}
+            {formatLintBadgeLabel(errorCount, warningCount)}
           </Badge>
         )}
 
-        {agentLifecycle.status.status === 'running' ? (
-          <Button variant="outline" size="sm" onClick={agentLifecycle.stop} disabled={agentLifecycle.isLoading}>
-            {agentLifecycle.isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Square className="h-3.5 w-3.5 mr-1.5" />}
-            Stop Agent
-          </Button>
-        ) : agentLifecycle.status.status === 'starting' || agentLifecycle.status.status === 'stopping' ? (
-          <Button variant="outline" size="sm" disabled>
-            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-            {agentLifecycle.status.status === 'starting' ? 'Starting...' : 'Stopping...'}
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" onClick={agentLifecycle.start} disabled={agentLifecycle.isLoading || !backendAgentName}>
-            {agentLifecycle.isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
-            Start Agent
-          </Button>
-        )}
+        <AgentLifecycleButton
+          status={agentLifecycle.status.status}
+          isLoading={agentLifecycle.isLoading}
+          backendAgentName={backendAgentName}
+          onStart={agentLifecycle.start}
+          onStop={agentLifecycle.stop}
+        />
         <Button
           variant={chatOpen ? 'default' : 'outline'}
           size="sm"
