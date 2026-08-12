@@ -41,7 +41,8 @@ import {
   PanelRightOpen,
   PanelRightClose,
   BookOpen,
-  FlaskConical
+  FlaskConical,
+  GitBranch
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -75,7 +76,8 @@ const ICONS = {
   Calendar,
   X,
   BookOpen,
-  FlaskConical
+  FlaskConical,
+  GitBranch
 } as const
 
 interface NavigationItem {

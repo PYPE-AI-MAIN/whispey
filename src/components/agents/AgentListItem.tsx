@@ -305,6 +305,8 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
 }) => {
   const [copiedNumber, setCopiedNumber] = useState(false)
   const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoadingRunningAgents)
+  // Workflow agents are flagged either by the create-time `workflowMode` bool or by a stored `workflow` graph.
+  const isWorkflow = !!(agent.configuration?.workflowMode || agent.configuration?.workflow)
 
   // Handler for start/stop actions
   const handleStartStop = (e: React.MouseEvent) => {
@@ -350,6 +352,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                 {agent.agent_type === 'pype_agent' && (
                   <Badge variant="outline" className="text-xs px-2 py-0.5 h-6">
                     Pype
+                  </Badge>
+                )}
+                {isWorkflow && (
+                  <Badge variant="outline" className="text-xs px-2 py-0.5 h-6 border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400">
+                    Workflow
                   </Badge>
                 )}
               </div>
@@ -595,6 +602,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                       Dockerized
                     </Badge>
                   )}
+                  {isWorkflow && (
+                    <Badge variant="outline" className="text-xs px-2 py-0 h-5 border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400">
+                      Workflow
+                    </Badge>
+                  )}
                 </div>
                 {!isPipecatAgent(agent) && (
                   <div className={`text-sm font-medium flex items-center gap-2 ${getStatusColor(agent, runningAgents, isLoadingRunningAgents)}`}>
@@ -754,6 +766,11 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
                   {agent.agent_type === 'pype_agent' && (
                     <Badge variant="outline" className="text-xs px-2 py-0.5 h-5">
                       Pype
+                    </Badge>
+                  )}
+                  {isWorkflow && (
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 h-5 border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400">
+                      Workflow
                     </Badge>
                   )}
                 </div>

@@ -333,6 +333,10 @@ function serializeRouteTool(tool: any): any {
       //   enable_as_tag  defaults to false (new <transfer/> tag trigger)
       enable_as_tool: tool.config.enableAsTool !== false,
       enable_as_tag: tool.config.enableAsTag === true,
+      // Spoken message when a transfer fails (no answer / SIP error). Defaults
+      // to enabled with a backend-provided default text if left blank.
+      transfer_failure_message_enabled: tool.config.transferFailureMessageEnabled !== false,
+      transfer_failure_message: tool.config.transferFailureMessage || null,
     }
   }
 

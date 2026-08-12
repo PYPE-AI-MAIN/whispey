@@ -77,6 +77,11 @@ interface AzureConfig {
   deploymentName?: string
 }
 
+const DEFAULT_AZURE_CONFIG: AzureConfig = {
+  endpoint: 'https://pype-azure-openai.cognitiveservices.azure.com/',
+  apiVersion: '2024-12-01-preview'
+}
+
 interface ModelSelectorProps {
   selectedProvider?: string
   selectedModel?: string
@@ -369,16 +374,11 @@ export default function ModelSelector({
   onProviderChange = () => {},
   onModelChange = () => {},
   onTemperatureChange = () => {},
-  azureConfig = { endpoint: 'https://pype-azure-openai.cognitiveservices.azure.com/', apiVersion: '2024-12-01-preview' },
+  azureConfig = DEFAULT_AZURE_CONFIG,
   onAzureConfigChange = () => {}
-}: ModelSelectorProps) {
+}: Readonly<ModelSelectorProps>) {
   // DISABLE CONTROLS
   const DISABLE_SETTINGS = false
-
-  const DEFAULT_AZURE_CONFIG = {
-    endpoint: 'https://pype-azure-openai.cognitiveservices.azure.com/',
-    apiVersion: '2024-12-01-preview'
-  }
 
   const [isOpen, setIsOpen] = useState(false)
   const [isAzureDialogOpen, setIsAzureDialogOpen] = useState(false)
