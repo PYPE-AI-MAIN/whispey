@@ -20,7 +20,7 @@ import {
  * typing raw Python-ish syntax. Falls back to a raw-text "Custom" mode for anything
  * the builder can't represent (&&, ||, nested expressions, ...). Pass key={edge.id}
  * from the caller so this remounts (and re-detects the right mode) per edge. */
-export function LogicConditionField({ workflow, value, onChange }: { workflow: Workflow; value: string; onChange: (expr: string) => void }) {
+export function LogicConditionField({ workflow, value, onChange }: Readonly<{ workflow: Workflow; value: string; onChange: (expr: string) => void }>) {
   const knownVars = useMemo(() => getKnownVariables(workflow), [workflow])
   const parsed = useMemo(() => parseSimpleExpression(value), [value])
   const [mode, setMode] = useState<'builder' | 'custom'>(parsed || !value ? 'builder' : 'custom')

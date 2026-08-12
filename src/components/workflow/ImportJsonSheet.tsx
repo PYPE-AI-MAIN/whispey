@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 
 // Paste a full workflow JSON and drop it straight onto the canvas — no LLM.
 // Same validation the AI-builder apply path uses, incl. the graphless guard.
-export function ImportJsonSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)

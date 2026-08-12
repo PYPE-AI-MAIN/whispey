@@ -20,7 +20,7 @@ const COLORS: Record<string, string> = {
   'ortho-triage': 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
 }
 
-export function TemplatePicker({ onPick }: { onPick: (template: WorkflowTemplate) => void }) {
+export function TemplatePicker({ onPick }: Readonly<{ onPick: (template: WorkflowTemplate) => void }>) {
   return (
     <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-6 overflow-y-auto">
       <div className="max-w-2xl w-full">

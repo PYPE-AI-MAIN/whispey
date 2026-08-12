@@ -10,7 +10,7 @@ import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 
-export function AgentSettingsPanel({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
   const workflow = useWorkflowStore((s) => s.workflow)
   const updateAgentConfig = useWorkflowStore((s) => s.updateAgentConfig)
   const patchWorkflow = useWorkflowStore((s) => s.patchWorkflow)
