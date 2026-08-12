@@ -98,6 +98,26 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
+  // Applies one `data: {...}` SSE line to the running assistant text, returning
+  // the updated content/truncated state. Mutating a plain object here (instead
+  // of threading 4 separate return values) is what keeps the caller's loop simple.
+  const applySSELine = useCallback((line: string, state: { content: string; truncated: boolean }, onChunk: (content: string) => void) => {
+    if (!line.startsWith('data: ')) return
+    const data = line.slice(6).trim()
+    if (data === '[DONE]') return
+    try {
+      const parsed = JSON.parse(data)
+      if (parsed.error) throw new Error(parsed.error)
+      if (parsed.truncated) state.truncated = true
+      if (parsed.content) {
+        state.content += parsed.content
+        onChunk(state.content)
+      }
+    } catch (e: any) {
+      if (e.message && !e.message.includes('Unexpected')) throw e
+    }
+  }, [])
+
   // Reads the SSE stream into `onChunk`, resolving to the full assistant text
   // and whether the server flagged the response as truncated.
   const streamAssistantReply = useCallback(
@@ -106,8 +126,7 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
       if (!reader) throw new Error('No response stream')
 
       const decoder = new TextDecoder()
-      let assistantContent = ''
-      let wasTruncated = false
+      const state = { content: '', truncated: false }
       let buffer = ''
 
       while (true) {
@@ -124,27 +143,12 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
-          try {
-            const parsed = JSON.parse(data)
-            if (parsed.error) throw new Error(parsed.error)
-            if (parsed.truncated) wasTruncated = true
-            if (parsed.content) {
-              assistantContent += parsed.content
-              onChunk(assistantContent)
-            }
-          } catch (e: any) {
-            if (e.message && !e.message.includes('Unexpected')) throw e
-          }
-        }
+        for (const line of lines) applySSELine(line, state, onChunk)
       }
 
-      return { assistantContent, wasTruncated }
+      return { assistantContent: state.content, wasTruncated: state.truncated }
     },
-    []
+    [applySSELine]
   )
 
   // Parses the assistant's trailing ```json block (if any) and applies it to
@@ -152,7 +156,7 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
   const applyAssistantWorkflow = useCallback(
     (assistantContent: string): { applyStatus: Message['applyStatus']; applyError?: string } => {
       const jsonBlockStart = assistantContent.indexOf('```json')
-      const hasJsonBlock = jsonBlockStart !== -1 && assistantContent.indexOf('```', jsonBlockStart + 7) !== -1
+      const hasJsonBlock = jsonBlockStart !== -1 && assistantContent.slice(jsonBlockStart + 7).includes('```')
       const json = extractWorkflowJson(assistantContent)
       if (!json) {
         if (!hasJsonBlock) return { applyStatus: 'none' }
@@ -414,13 +418,22 @@ function AssistantMessage({
   }
 
   const parts = visibleContent.split(/(```json[\s\S]*?```)/g)
+  // Key off each part's running character offset in visibleContent rather than
+  // its array index — the split is deterministic per render, so the offset is
+  // a stable, content-derived id (and sidesteps the array-index-as-key rule).
+  let offset = 0
+  const partsWithOffset = parts.map((part) => {
+    const at = offset
+    offset += part.length
+    return { part, at }
+  })
   return (
     <div className="space-y-1.5">
-      {parts.map((part, i) => {
+      {partsWithOffset.map(({ part, at }) => {
         if (part.startsWith('```json')) {
           if (streaming) {
             return (
-              <div key={`json-parsing-${i}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+              <div key={`json-parsing-${at}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Parsing workflow...
               </div>
@@ -428,14 +441,14 @@ function AssistantMessage({
           }
           if (applyStatus === 'error') {
             return (
-              <div key={`json-error-${i}`} className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
+              <div key={`json-error-${at}`} className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
                 <span>⚠</span>
                 <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
               </div>
             )
           }
           return (
-            <div key={`json-applied-${i}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium">
+            <div key={`json-applied-${at}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium">
               <Sparkles className="w-3 h-3" />
               Workflow JSON applied to canvas
             </div>
@@ -443,7 +456,7 @@ function AssistantMessage({
         }
         const trimmed = part.trim()
         if (!trimmed) return null
-        return <span key={`${i}-${trimmed.slice(0, 20)}`} className="whitespace-pre-wrap">{trimmed}</span>
+        return <span key={`text-${at}`} className="whitespace-pre-wrap">{trimmed}</span>
       })}
       {streaming && hasOpenJsonBlock && (
         <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
