@@ -66,7 +66,7 @@ export function WorkflowCanvas() {
         source: e.source,
         target: e.target,
         selected: e.id === selectedEdgeId,
-        label: e.label || (e.kind !== 'always' ? e.kind : undefined),
+        label: e.label || (e.kind === 'always' ? undefined : e.kind),
         animated: e.kind === 'condition' || e.kind === 'logic',
         style: { stroke: style.stroke, strokeDasharray: style.dashed ? '5 5' : undefined },
       }
@@ -121,7 +121,7 @@ export function WorkflowCanvas() {
   if (!workflow) return null
 
   return (
-    <div ref={wrapperRef} className="flex-1 h-full" onDrop={onDrop} onDragOver={onDragOver}>
+    <div ref={wrapperRef} role="application" className="flex-1 h-full" onDrop={onDrop} onDragOver={onDragOver}>
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}

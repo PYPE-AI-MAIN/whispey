@@ -232,8 +232,10 @@ export async function POST(req: NextRequest) {
         }
         if (finishReason !== 'length') break
         // Cut off mid-generation — ask it to resume without repeating.
-        convo.push({ role: 'assistant', content: roundContent })
-        convo.push({ role: 'user', content: 'Continue the previous response exactly where it stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.' })
+        convo.push(
+          { role: 'assistant', content: roundContent },
+          { role: 'user', content: 'Continue the previous response exactly where it stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.' },
+        )
       } while (++round < MAX_ROUNDS)
 
       // Still cut off after MAX_ROUNDS — the JSON is unusable; tell the client.

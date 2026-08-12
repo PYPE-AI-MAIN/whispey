@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useWorkflowStore } from '@/stores/workflowStore'
 import type { VarType } from '@/lib/workflow/schema'
 
-export function VariablesPanel({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
   const variables = useWorkflowStore((s) => s.workflow?.variables ?? [])
   const patchWorkflow = useWorkflowStore((s) => s.patchWorkflow)
 
@@ -31,8 +31,12 @@ export function VariablesPanel({ open, onOpenChange }: { open: boolean; onOpenCh
               + Add variable
             </Button>
           </div>
-          {variables.map((v, i) => (
-            <div key={i} className="flex gap-1.5 items-start border-b border-gray-100 dark:border-gray-800 pb-2">
+          {variables.map((v, i) => {
+            let boolDefault = ''
+            if (v.default === true) boolDefault = 'true'
+            else if (v.default === false) boolDefault = 'false'
+            return (
+            <div key={v.key} className="flex gap-1.5 items-start border-b border-gray-100 dark:border-gray-800 pb-2">
               <Input
                 placeholder="key"
                 value={v.key}
@@ -60,7 +64,7 @@ export function VariablesPanel({ open, onOpenChange }: { open: boolean; onOpenCh
               </Select>
               {v.type === 'boolean' ? (
                 <Select
-                  value={v.default === true ? 'true' : v.default === false ? 'false' : ''}
+                  value={boolDefault}
                   onValueChange={(val) => {
                     const next = [...variables]
                     next[i] = { ...v, default: val === 'true' }
@@ -84,7 +88,9 @@ export function VariablesPanel({ open, onOpenChange }: { open: boolean; onOpenCh
                     // string default silently breaks numeric logic-edge
                     // comparisons like "budget >= 5000" on the backend.
                     const raw = e.target.value
-                    next[i] = { ...v, default: v.type === 'number' ? (raw === '' ? undefined : Number(raw)) : raw }
+                    let nextDefault: string | number | undefined = raw
+                    if (v.type === 'number') nextDefault = raw === '' ? undefined : Number(raw)
+                    next[i] = { ...v, default: nextDefault }
                     setVariables(next)
                   }}
                   className="h-8 text-xs w-24"
@@ -104,7 +110,8 @@ export function VariablesPanel({ open, onOpenChange }: { open: boolean; onOpenCh
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
-          ))}
+            )
+          })}
           {!variables.length && (
             <p className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
               No variables yet. Nodes reference these by <code>{'{{key}}'}</code>.

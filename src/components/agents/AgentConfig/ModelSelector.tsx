@@ -376,7 +376,7 @@ export default function ModelSelector({
   onTemperatureChange = () => {},
   azureConfig = DEFAULT_AZURE_CONFIG,
   onAzureConfigChange = () => {}
-}: ModelSelectorProps) {
+}: Readonly<ModelSelectorProps>) {
   // DISABLE CONTROLS
   const DISABLE_SETTINGS = false
 

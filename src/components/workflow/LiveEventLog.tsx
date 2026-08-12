@@ -24,8 +24,10 @@ function summarize(e: WorkflowEvent): string {
   switch (e.type) {
     case 'node_enter':
       return `→ entered "${e.node_name || e.node_id}" (${e.node_type})`
-    case 'transition':
-      return `${e.from_node} → ${e.to_node}${e.edge_kind ? ` (${e.edge_kind})` : ''}`
+    case 'transition': {
+      const kind = e.edge_kind ? ` (${e.edge_kind})` : ''
+      return `${e.from_node} → ${e.to_node}${kind}`
+    }
     case 'variables_set':
       return `variables set: ${Object.keys(e.variables || {}).join(', ')}`
     case 'function_call':
@@ -41,7 +43,7 @@ function summarize(e: WorkflowEvent): string {
   }
 }
 
-export function LiveEventLog({ events, onClear }: { events: WorkflowEvent[]; onClear: () => void }) {
+export function LiveEventLog({ events, onClear }: Readonly<{ events: WorkflowEvent[]; onClear: () => void }>) {
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -63,12 +65,12 @@ export function LiveEventLog({ events, onClear }: { events: WorkflowEvent[]; onC
             No activity yet — start a Talk to Assistant call to watch node transitions and tool calls live.
           </p>
         )}
-        {events.map((e, i) => {
+        {events.map((e) => {
           const Icon = ICONS[e.type] || ListTree
           const isError = e.type === 'error'
           return (
             <div
-              key={i}
+              key={e._ts}
               className={`flex items-start gap-1.5 ${isError ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}
             >
               <Icon className="h-3 w-3 mt-0.5 shrink-0" />

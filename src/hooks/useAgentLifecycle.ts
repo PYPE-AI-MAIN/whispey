@@ -18,11 +18,12 @@ async function checkAgentStatus(agentName: string): Promise<AgentStatus> {
     }
     const data = await res.json()
     if (data.backend_unavailable) return { status: 'stopped', error: 'Voice backend unreachable' }
-    return {
-      status: data.is_active && data.worker_running ? 'running' : 'stopped',
-      pid: data.worker_pid,
-      error: !data.is_active ? 'Agent not active' : !data.worker_running ? 'Worker not running' : undefined,
-    }
+    const running = data.is_active && data.worker_running
+    let error: string | undefined
+    if (running) error = undefined
+    else if (data.is_active) error = 'Worker not running'
+    else error = 'Agent not active'
+    return { status: running ? 'running' : 'stopped', pid: data.worker_pid, error }
   } catch {
     return { status: 'error', error: 'Connection error' }
   }
