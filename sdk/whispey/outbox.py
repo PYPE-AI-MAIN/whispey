@@ -37,6 +37,14 @@ def _safe_close(conn):
 
 
 def _connect():
+    # sqlite3.connect() auto-creates the DB file but NOT missing parent
+    # directories -- WHISPEY_OUTBOX_PATH pointed at a not-yet-existing dir
+    # (e.g. a fresh persistent-volume mount on a new VM) used to require a
+    # manual mkdir before the first write; self-provision it instead so a
+    # new VM never needs that manual step.
+    _db_dir = os.path.dirname(_DB_PATH)
+    if _db_dir:
+        os.makedirs(_db_dir, exist_ok=True)
     conn = sqlite3.connect(_DB_PATH, timeout=5)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(
