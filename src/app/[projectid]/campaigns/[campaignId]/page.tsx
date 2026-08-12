@@ -7,6 +7,8 @@ import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users, Pause, Pl
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Contact, RetryConfig } from '@/utils/campaigns/constants'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
+import { resolveStoredAgentName } from '@/lib/agentDisplayName'
 
 interface CampaignDetails {
   campaignId: string
@@ -59,7 +61,10 @@ function ViewCampaign() {
 
 
 
-  const sanitizedCampaignAgentName = (campaignDetails?.callConfig.agentName.split('_')[0] || '').replace(/[^a-zA-Z0-9]/g, '')
+  const { data: agents = [] } = useProjectAgents(projectId)
+  const displayCampaignAgentName = campaignDetails
+    ? resolveStoredAgentName(agents, campaignDetails.callConfig.agentName)
+    : ''
 
   // Fetch campaign details
   const fetchCampaignDetails = async () => {
@@ -839,7 +844,7 @@ function ViewCampaign() {
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Agent</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {sanitizedCampaignAgentName}
+                  {displayCampaignAgentName}
                 </p>
               </div>
               <div>

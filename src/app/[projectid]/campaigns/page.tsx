@@ -27,6 +27,8 @@ import {
 import { Campaign } from '@/utils/campaigns/constants'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { useQueryClient } from '@tanstack/react-query'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
+import { resolveStoredAgentName } from '@/lib/agentDisplayName'
 
 const PAGE_SIZE = 10
 
@@ -163,6 +165,7 @@ function Campaigns() {
   const router   = useRouter()
   const params   = useParams()
   const projectId = params.projectid as string
+  const { data: agents = [] } = useProjectAgents(projectId)
   const queryClient = useQueryClient()
 
   const [page, setPage]               = useState(1)
@@ -460,7 +463,7 @@ function Campaigns() {
                       </div>
                       <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                         <User className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{campaign.callConfig.agentName}</span>
+                        <span className="truncate">{resolveStoredAgentName(agents, campaign.callConfig.agentName)}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                         <Calendar className="w-3 h-3 flex-shrink-0" />
@@ -589,7 +592,7 @@ function Campaigns() {
               {/* Agent */}
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                 <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4">Agent Details</h4>
-                <InfoRow label="Agent Name"  value={selectedCampaign.callConfig.agentName} />
+                <InfoRow label="Agent Name"  value={resolveStoredAgentName(agents, selectedCampaign.callConfig.agentName)} />
                 <InfoRow label="SIP Trunk"   value={<span className="font-mono">{selectedCampaign.callConfig.sipTrunkId}</span>} />
               </div>
 

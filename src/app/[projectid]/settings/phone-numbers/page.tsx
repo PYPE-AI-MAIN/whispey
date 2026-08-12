@@ -7,6 +7,8 @@ import {
   ArrowLeft, Phone, Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Loader2, BookOpen, ShieldBan,
 } from 'lucide-react'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
+import { agentDisplayName } from '@/lib/agentDisplayName'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +28,7 @@ interface PhoneNumber {
 interface Agent {
   id: string
   name: string
+  display_name?: string | null
 }
 
 type NumberType = 'inbound_only' | 'outbound_only' | 'both'
@@ -174,7 +177,7 @@ function PhoneNumberForm({
           <NativeSelect value={form.assigned_agent_id} onChange={handleAgentChange}>
             <option value="">— Unassigned —</option>
             {agents.map(a => (
-              <option key={a.id} value={a.id}>{a.name}</option>
+              <option key={a.id} value={a.id}>{agentDisplayName(a)}</option>
             ))}
           </NativeSelect>
         </div>
@@ -258,17 +261,7 @@ export default function PhoneNumbersPage() {
     staleTime: 15_000,
   })
 
-  const { data: agents = [] } = useQuery<Agent[]>({
-    queryKey: ['agents', projectId],
-    queryFn: async () => {
-      const res = await fetch(`/api/agents?project_id=${projectId}`)
-      if (!res.ok) throw new Error('Failed to fetch agents')
-      const data = await res.json()
-      // API returns { agents: [...] }
-      return Array.isArray(data) ? data : (data.agents ?? [])
-    },
-    staleTime: 30_000,
-  })
+  const { data: agents = [] } = useProjectAgents(projectId)
 
   // ── Mutations ──
   const addMutation = useMutation({
@@ -518,7 +511,9 @@ export default function PhoneNumbersPage() {
                           {/* Assigned Agent */}
                           <td className="px-4 py-3 text-sm text-gray-400 truncate">
                             {n.assigned_agent_name
-                              ? <span className="text-gray-200">{n.assigned_agent_name}</span>
+                              ? <span className="text-gray-200">
+                                  {agentDisplayName(agents.find(a => a.id === n.assigned_agent_id)) || n.assigned_agent_name}
+                                </span>
                               : <span className="text-gray-600 text-xs italic">Unassigned</span>
                             }
                           </td>

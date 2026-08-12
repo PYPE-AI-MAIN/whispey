@@ -16,6 +16,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useUserPermissions } from '@/contexts/UserPermissionsContext'
 import { PhoneNumber } from '@/utils/campaigns/constants'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface CampaignFormFieldsProps {
   onFieldChange: (field: string, value: any) => void
@@ -42,6 +44,11 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
   const [loadingPipecatAgents, setLoadingPipecatAgents] = useState(false)
 
   const agents = permissions?.agent?.agents || []
+  const { data: projectAgents = [] } = useProjectAgents(projectId)
+  const pipecatAgentDisplayName = (pipecatAgentId: string, fallbackName: string) =>
+    agentDisplayName(
+      projectAgents.find(a => a.id === pipecatAgentId || a.configuration?.pipecat_agent_id === pipecatAgentId)
+    ) || fallbackName
 
   // Fetch phone numbers
   useEffect(() => {
@@ -162,7 +169,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
               <SelectContent>
                 {pipecatAgents.map((agent) => (
                   <SelectItem key={agent.id} value={agent.id}>
-                    {agent.name}
+                    {pipecatAgentDisplayName(agent.id, agent.name)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -192,7 +199,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                       {agents.map((agent) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           <div className="flex items-center gap-2">
-                            <span>{agent.name}</span>
+                            <span>{agentDisplayName(projectAgents.find(a => a.id === agent.id)) || agent.name}</span>
                             <Badge
                               variant="outline"
                               className={`text-xs ${

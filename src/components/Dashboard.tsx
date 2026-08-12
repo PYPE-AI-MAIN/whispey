@@ -908,7 +908,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 <PhoneNumbersPanel
                   agentId={agentId}
                   pipecatAgentId={agent?.configuration?.pipecat_agent_id}
-                  agentName={agent?.name}
+                  agentName={agentDisplayName(agent)}
+                  projectId={project?.id}
                 />
               </div>
             )}
