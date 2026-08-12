@@ -42,20 +42,28 @@ export interface ParsedCondition {
 // The value must be ONE token — quoted string, number, true/false, or a bare
 // identifier — anchored to end-of-string, so "x > 1 && y == true" cannot match
 // (there's no valid single-token value that also consumes the trailing "&& ...").
-const SIMPLE_RE = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(==|!=|>=|<=|>|<)\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?|true|false|[a-zA-Z_][a-zA-Z0-9_]*)\s*$/
+// Built from named pieces to keep each sub-pattern simple and readable.
+const IDENT = String.raw`[a-zA-Z_]\w*`
+const OPERATOR = String.raw`==|!=|>=|<=|>|<`
+const QUOTED = String.raw`'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"`
+const NUMBER = String.raw`-?\d+(?:\.\d+)?`
+const VALUE = `${QUOTED}|${NUMBER}|true|false|${IDENT}`
+const SIMPLE_RE = new RegExp(String.raw`^\s*(${IDENT})\s*(${OPERATOR})\s*(${VALUE})\s*$`)
+const SINGLE_QUOTED = /^'(.*)'$/
+const DOUBLE_QUOTED = /^"(.*)"$/
 
 /** Best-effort parse of a single "variable OP value" expression for the builder UI.
  * Returns null for anything more complex (&&, ||, nested calls, ...) — those stay in Custom mode. */
 export function parseSimpleExpression(expr: string): ParsedCondition | null {
-  const m = expr.match(SIMPLE_RE)
+  const m = SIMPLE_RE.exec(expr)
   if (!m) return null
   const [, variable, operator, rawValue] = m
-  const quoted = rawValue.match(/^'(.*)'$/) || rawValue.match(/^"(.*)"$/)
+  const quoted = SINGLE_QUOTED.exec(rawValue) ?? DOUBLE_QUOTED.exec(rawValue)
   const value = quoted ? quoted[1] : rawValue
   return { variable, operator, value }
 }
 
 export function buildSimpleExpression(c: ParsedCondition, valueType: VarType): string {
-  const val = valueType === 'string' ? `'${c.value.replace(/'/g, "\\'")}'` : c.value
+  const val = valueType === 'string' ? `'${c.value.replaceAll("'", String.raw`\'`)}'` : c.value
   return `${c.variable} ${c.operator} ${val}`
 }

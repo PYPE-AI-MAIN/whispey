@@ -15,121 +15,99 @@ export interface LintIssue {
   edgeId?: string
 }
 
-export function lintWorkflow(wf: Workflow): LintIssue[] {
+type Node = Workflow['nodes'][number]
+type Edge = Workflow['edges'][number]
+
+// Per-node completeness: type → (has-required-value predicate, warning message).
+// A freshly-dropped node is empty by definition, so a miss is a `warning`
+// nudge, never an `error` that blocks deploy or turns the canvas red on drop.
+const REQUIRED: ReadonlyArray<{ type: string; ok: (n: Node) => unknown; msg: string }> = [
+  { type: 'conversation', ok: (n) => (n as { prompt?: string; staticText?: string }).prompt || (n as { staticText?: string }).staticText, msg: 'conversation node needs a prompt or static text' },
+  { type: 'function', ok: (n) => (n as { url?: string }).url, msg: 'function node needs a url' },
+  { type: 'call_transfer', ok: (n) => (n as { transferTo?: string }).transferTo, msg: 'call_transfer node needs a destination' },
+  { type: 'extract_variable', ok: (n) => (n as { extractions?: unknown[] }).extractions?.length, msg: 'extract_variable node has no extractions' },
+  { type: 'code', ok: (n) => (n as { source?: string }).source, msg: 'code node needs source' },
+  { type: 'mcp', ok: (n) => (n as { server?: string; tool?: string }).server && (n as { tool?: string }).tool, msg: 'mcp node needs a server and tool' },
+]
+
+function lintIds(nodes: readonly Node[]): LintIssue[] {
   const issues: LintIssue[] = []
-  const nodeIds = wf.nodes.map((n) => n.id)
-  const idSet = new Set(nodeIds)
-  const nodeMap = new Map(wf.nodes.map((n) => [n.id, n]))
-  const outEdges = (id: string) => wf.edges.filter((e) => e.source === id)
-
-  // 1. duplicate ids
   const seen = new Set<string>()
-  for (const id of nodeIds) {
-    if (seen.has(id)) issues.push({ severity: 'error', message: `Duplicate node id '${id}'`, nodeId: id })
-    seen.add(id)
+  for (const n of nodes) {
+    if (seen.has(n.id)) issues.push({ severity: 'error', message: `Duplicate node id '${n.id}'`, nodeId: n.id })
+    seen.add(n.id)
   }
+  return issues
+}
 
-  // 2. transport enabled
-  const webOn = !!wf.transports.web?.enabled
-  const telOn = !!wf.transports.telephony?.enabled
-  if (!webOn && !telOn)
-    issues.push({ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' })
+function lintStart(wf: Workflow, idSet: Set<string>, nodeMap: Map<string, Node>): LintIssue[] {
+  if (!idSet.has(wf.start)) return [{ severity: 'error', message: `start '${wf.start}' is not a node id` }]
+  if (NONRUNTIME_NODE_TYPES.has(nodeMap.get(wf.start)!.type))
+    return [{ severity: 'error', message: `start '${wf.start}' cannot be a note node`, nodeId: wf.start }]
+  return []
+}
 
-  // 3. valid start
-  if (!idSet.has(wf.start)) {
-    issues.push({ severity: 'error', message: `start '${wf.start}' is not a node id` })
-  } else if (NONRUNTIME_NODE_TYPES.has(nodeMap.get(wf.start)!.type)) {
-    issues.push({ severity: 'error', message: `start '${wf.start}' cannot be a note node`, nodeId: wf.start })
+function lintNode(wf: Workflow, n: Node, telOn: boolean, outEdges: (id: string) => Edge[]): LintIssue[] {
+  const issues: LintIssue[] = []
+  const req = REQUIRED.find((r) => r.type === n.type)
+  if (req && !req.ok(n)) issues.push({ severity: 'warning', message: req.msg, nodeId: n.id })
+  // Stall guard: an LLM node advances only via handoff tools built from its
+  // edges. If every exit is a `condition` and the conversation matches none, the
+  // node hangs. An `always`/`fallback` edge is a catch-all escape tool.
+  if (LLM_NODE_TYPES.has(n.type)) {
+    const outs = outEdges(n.id)
+    if (outs.length > 0 && !outs.some((e) => e.kind === 'always' || e.kind === 'fallback'))
+      issues.push({
+        severity: 'warning',
+        message: `'${n.id}' can stall — every exit is a condition. Add a Fallback (or Always) edge as a catch-all so the call always has a way forward.`,
+        nodeId: n.id,
+      })
   }
+  if (TELEPHONY_NODE_TYPES.has(n.type) && !telOn)
+    issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
+  return issues
+}
 
-  // 4/5. per-node completeness — a freshly-dropped node is empty by definition,
-  // so these are `warning` (a "finish configuring me" nudge), never `error`.
-  // Errors are reserved for structural graph problems that make the flow invalid;
-  // an unfinished node must not block deploy or turn the canvas red on drop.
-  for (const n of wf.nodes) {
-    if (n.type === 'conversation' && !n.prompt && !n.staticText)
-      issues.push({ severity: 'warning', message: 'conversation node needs a prompt or static text', nodeId: n.id })
-    if (n.type === 'function' && !n.url)
-      issues.push({ severity: 'warning', message: 'function node needs a url', nodeId: n.id })
-    if (n.type === 'call_transfer' && !n.transferTo)
-      issues.push({ severity: 'warning', message: 'call_transfer node needs a destination', nodeId: n.id })
-    if (n.type === 'extract_variable' && (!n.extractions || n.extractions.length === 0))
-      issues.push({ severity: 'warning', message: 'extract_variable node has no extractions', nodeId: n.id })
-    if (n.type === 'code' && !n.source)
-      issues.push({ severity: 'warning', message: 'code node needs source', nodeId: n.id })
-    if (n.type === 'mcp' && (!n.server || !n.tool))
-      issues.push({ severity: 'warning', message: 'mcp node needs a server and tool', nodeId: n.id })
-    // Stall guard: an LLM node advances only via handoff tools built from its
-    // edges. If every exit is a `condition` and the live conversation matches
-    // none of them, the node hangs until the caller gives up. An `always`/
-    // `fallback` edge becomes a catch-all escape tool the LLM can always take.
-    if (LLM_NODE_TYPES.has(n.type)) {
-      const outs = outEdges(n.id)
-      if (outs.length > 0 && !outs.some((e) => e.kind === 'always' || e.kind === 'fallback'))
-        issues.push({
-          severity: 'warning',
-          message: `'${n.id}' can stall — every exit is a condition. Add a Fallback (or Always) edge as a catch-all so the call always has a way forward.`,
-          nodeId: n.id,
-        })
-    }
-    if (TELEPHONY_NODE_TYPES.has(n.type) && !telOn)
-      issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
-  }
-
-  // 5b. save_as collisions — two nodes writing the same variable silently
-  // overwrite; usually a copy-paste mistake, so warn (reuse is occasionally
-  // intentional, hence not an error).
+function lintSaveAs(nodes: readonly Node[]): LintIssue[] {
   const writers = new Map<string, string[]>()
-  for (const n of wf.nodes) {
+  for (const n of nodes) {
     const key = (n as { saveAs?: unknown }).saveAs
     if (typeof key === 'string' && key.trim()) writers.set(key, [...(writers.get(key) ?? []), n.id])
   }
+  const issues: LintIssue[] = []
   for (const [key, ids] of writers) {
     if (ids.length > 1)
       issues.push({
         severity: 'warning',
         message: `variable '${key}' is written by ${ids.length} nodes (${ids.join(', ')}) — later writes overwrite earlier ones`,
-        nodeId: ids[ids.length - 1],
+        nodeId: ids.at(-1),
       })
   }
+  return issues
+}
 
-  // 6. edges
-  for (const e of wf.edges) {
-    if (!idSet.has(e.source)) issues.push({ severity: 'error', message: `edge source '${e.source}' is not a node`, edgeId: e.id })
-    if (!idSet.has(e.target)) issues.push({ severity: 'error', message: `edge target '${e.target}' is not a node`, edgeId: e.id })
-    if (e.kind === 'condition' && !e.condition?.trim())
-      issues.push({ severity: 'error', message: 'condition edge needs condition text', edgeId: e.id })
-    if (e.kind === 'logic' && !e.expression?.trim())
-      issues.push({ severity: 'error', message: 'logic edge needs an expression', edgeId: e.id })
-    // A condition edge only becomes an LLM handoff tool for LLM_NODE_TYPES
-    // sources (see interpreter.py's _handoff_tools). On any other node type
-    // it's never evaluated — the interpreter's default-target fallback picks
-    // it as the deterministic next hop regardless of the condition text.
-    if (e.kind === 'condition' && idSet.has(e.source) && !LLM_NODE_TYPES.has(nodeMap.get(e.source)!.type)) {
-      issues.push({
-        severity: 'error',
-        message: `condition edges are only meaningful on conversation/extract_variable/subagent nodes (source '${e.source}' is a ${nodeMap.get(e.source)!.type} node and would take this edge unconditionally)`,
-        edgeId: e.id,
-      })
-    }
-  }
+function lintEdge(e: Edge, idSet: Set<string>, nodeMap: Map<string, Node>): LintIssue[] {
+  const issues: LintIssue[] = []
+  if (!idSet.has(e.source)) issues.push({ severity: 'error', message: `edge source '${e.source}' is not a node`, edgeId: e.id })
+  if (!idSet.has(e.target)) issues.push({ severity: 'error', message: `edge target '${e.target}' is not a node`, edgeId: e.id })
+  if (e.kind === 'condition' && !e.condition?.trim())
+    issues.push({ severity: 'error', message: 'condition edge needs condition text', edgeId: e.id })
+  if (e.kind === 'logic' && !e.expression?.trim())
+    issues.push({ severity: 'error', message: 'logic edge needs an expression', edgeId: e.id })
+  // A condition edge only becomes an LLM handoff tool for LLM_NODE_TYPES sources
+  // (see interpreter._handoff_tools). On any other node type it's never
+  // evaluated — the default-target fallback picks it regardless of the text.
+  if (e.kind === 'condition' && idSet.has(e.source) && !LLM_NODE_TYPES.has(nodeMap.get(e.source)!.type))
+    issues.push({
+      severity: 'error',
+      message: `condition edges are only meaningful on conversation/extract_variable/subagent nodes (source '${e.source}' is a ${nodeMap.get(e.source)!.type} node and would take this edge unconditionally)`,
+      edgeId: e.id,
+    })
+  return issues
+}
 
-  // Function nodes attached to a conversation/subagent via its `functions` array
-  // are callable actions, not flow steps — the interpreter reaches them by tool
-  // call (see `_node_tools`), not by edge, so they correctly have no incoming or
-  // outgoing edge. Exempt them from the checks below. Only `function` nodes
-  // qualify: `_node_tools` ignores every other type, so a knowledge/mcp node
-  // listed in `functions` is silently dead and must still be warned about.
-  const toolNodeIds = new Set<string>()
-  for (const n of wf.nodes) {
-    if ('functions' in n && Array.isArray((n as any).functions)) {
-      for (const fid of (n as any).functions as string[]) {
-        if (nodeMap.get(fid)?.type === 'function') toolNodeIds.add(fid)
-      }
-    }
-  }
-
-  // 7. reachability + dead-ends
+function lintReachability(wf: Workflow, toolNodeIds: Set<string>, outEdges: (id: string) => Edge[]): LintIssue[] {
+  const issues: LintIssue[] = []
   const reachable = reachableSet(wf)
   for (const n of wf.nodes) {
     if (NONRUNTIME_NODE_TYPES.has(n.type)) continue
@@ -138,7 +116,40 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
     if (n.type !== 'ending' && !TELEPHONY_NODE_TYPES.has(n.type) && !toolNodeIds.has(n.id) && outEdges(n.id).length === 0)
       issues.push({ severity: 'warning', message: `node '${n.id}' is a dead-end (no outgoing edges)`, nodeId: n.id })
   }
+  return issues
+}
 
+function collectToolNodeIds(wf: Workflow, nodeMap: Map<string, Node>): Set<string> {
+  // Function nodes attached to a conversation/subagent via its `functions` array
+  // are callable actions, not flow steps — reached by tool call, not by edge — so
+  // they're exempt from reachability/dead-end checks. Only `function` nodes qualify.
+  const toolNodeIds = new Set<string>()
+  for (const n of wf.nodes) {
+    const fns = (n as { functions?: unknown }).functions
+    if (Array.isArray(fns)) {
+      for (const fid of fns as string[]) {
+        if (nodeMap.get(fid)?.type === 'function') toolNodeIds.add(fid)
+      }
+    }
+  }
+  return toolNodeIds
+}
+
+export function lintWorkflow(wf: Workflow): LintIssue[] {
+  const idSet = new Set(wf.nodes.map((n) => n.id))
+  const nodeMap = new Map(wf.nodes.map((n) => [n.id, n]))
+  const outEdges = (id: string) => wf.edges.filter((e) => e.source === id)
+  const webOn = !!wf.transports.web?.enabled
+  const telOn = !!wf.transports.telephony?.enabled
+  const toolNodeIds = collectToolNodeIds(wf, nodeMap)
+
+  const issues: LintIssue[] = [...lintIds(wf.nodes)]
+  if (!webOn && !telOn) issues.push({ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' })
+  issues.push(...lintStart(wf, idSet, nodeMap))
+  for (const n of wf.nodes) issues.push(...lintNode(wf, n, telOn, outEdges))
+  issues.push(...lintSaveAs(wf.nodes))
+  for (const e of wf.edges) issues.push(...lintEdge(e, idSet, nodeMap))
+  issues.push(...lintReachability(wf, toolNodeIds, outEdges))
   return issues
 }
 
