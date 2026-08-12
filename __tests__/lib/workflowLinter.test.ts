@@ -110,6 +110,8 @@ describe('logicExpression', () => {
   it('builds expressions, quoting + escaping string values', () => {
     expect(buildSimpleExpression({ variable: 'n', operator: '>', value: '5' }, 'number')).toBe('n > 5')
     expect(buildSimpleExpression({ variable: 's', operator: '==', value: "O'Brien" }, 'string')).toBe("s == 'O\\'Brien'")
+    // backslashes are escaped before quotes so a value can't break out
+    expect(buildSimpleExpression({ variable: 's', operator: '==', value: "a\\'b" }, 'string')).toBe("s == 'a\\\\\\'b'")
   })
 
   it('collects known variables from globals, extractions and saveAs', () => {

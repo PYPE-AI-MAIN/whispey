@@ -64,6 +64,9 @@ export function parseSimpleExpression(expr: string): ParsedCondition | null {
 }
 
 export function buildSimpleExpression(c: ParsedCondition, valueType: VarType): string {
-  const val = valueType === 'string' ? `'${c.value.replaceAll("'", String.raw`\'`)}'` : c.value
+  // Escape backslashes FIRST, then single quotes, so a value like  a'b\c  can't
+  // break out of the surrounding quotes when embedded in the logic expression.
+  const escaped = c.value.replaceAll('\\', String.raw`\\`).replaceAll("'", String.raw`\'`)
+  const val = valueType === 'string' ? `'${escaped}'` : c.value
   return `${c.variable} ${c.operator} ${val}`
 }

@@ -9,7 +9,7 @@ export function CanvasHintBanner() {
   const [dismissed, setDismissed] = useState(true) // default hidden until we check localStorage, to avoid a flash
 
   useEffect(() => {
-    setDismissed(typeof window !== 'undefined' && window.localStorage.getItem(STORAGE_KEY) === '1')
+    setDismissed(typeof globalThis !== 'undefined' && globalThis.localStorage.getItem(STORAGE_KEY) === '1')
   }, [])
 
   if (dismissed) return null
@@ -17,7 +17,7 @@ export function CanvasHintBanner() {
   const dismiss = () => {
     setDismissed(true)
     try {
-      window.localStorage.setItem(STORAGE_KEY, '1')
+      globalThis.localStorage.setItem(STORAGE_KEY, '1')
     } catch {}
   }
 
