@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, CheckCircle, AlertCircle, Zap, Activity, Info, Copy, ArrowRight, Radio } from 'lucide-react'
+import { Loader2, CheckCircle, AlertCircle, Zap, Activity, Info, Copy, ArrowRight, Radio, GitBranch, Bot } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -46,7 +47,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   onLoadingChange,
   isPypeAgent
 }) => {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState<'form' | 'creating' | 'success'>('form')
+  const [creationMode, setCreationMode] = useState<'single' | 'flow'>('single')
   const [selectedPlatform, setSelectedPlatform] = useState('livekit')
   const [nameError, setNameError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -134,6 +137,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform === 'pipecat' ? 'pipecat_agent' : selectedPlatform,
         configuration: {
           description: formData.description.trim() || null,
+          ...(creationMode === 'flow' ? { workflowMode: true } : {}),
           // Persisted so the config page and start/stop/update calls can read
           // back which backend this agent actually lives on, instead of
           // always defaulting to classic.
@@ -158,7 +162,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       const localAgent = await agentResponse.json()
 
       // LiveKit agents need the PypeAI backend call; skip for pipecat (handled by /api/agents)
-      if (isPypeAgent && selectedPlatform !== 'pipecat') {
+      // and skip for conversation flows (they're deployed from the workflow builder instead).
+      if (isPypeAgent && selectedPlatform !== 'pipecat' && creationMode !== 'flow') {
         const projectApiKey = await fetchProjectApiKey()
 
         const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
@@ -240,6 +245,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   const handleFinish = () => {
     onAgentCreated(createdAgentData)
     onClose()
+    if (creationMode === 'flow' && createdAgentData?.id) {
+      router.push(`/${projectId}/agents/${createdAgentData.id}/workflow`)
+    }
   }
 
   if (currentStep === 'creating') {
@@ -296,7 +304,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                {selectedPlatform === 'vapi' ? (
+                {creationMode === 'flow' ? (
+                  <GitBranch className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                ) : selectedPlatform === 'vapi' ? (
                   <Zap className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                 ) : selectedPlatform === 'pipecat' ? (
                   <Radio className="w-5 h-5 text-orange-600 dark:text-orange-400" />
@@ -310,13 +320,15 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className={`text-xs ${
-                    selectedPlatform === 'vapi' 
-                      ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800' 
+                    creationMode === 'flow'
+                      ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800'
+                      : selectedPlatform === 'vapi'
+                      ? 'bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800'
                       : selectedPlatform === 'pipecat'
                       ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800'
                       : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
                   }`}>
-                    {selectedPlatform === 'vapi' ? 'Vapi Agent' : selectedPlatform === 'pipecat' ? 'Pipecat Agent' : 'LiveKit Agent'}
+                    {creationMode === 'flow' ? 'Conversation Flow' : selectedPlatform === 'vapi' ? 'Vapi Agent' : selectedPlatform === 'pipecat' ? 'Pipecat Agent' : 'LiveKit Agent'}
                   </Badge>
                   <Badge variant="outline" className="text-xs bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                     Ready
@@ -360,7 +372,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               onClick={handleFinish}
               className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium"
             >
-              View Agent
+              {creationMode === 'flow' ? 'Open Flow Builder' : 'View Agent'}
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
@@ -391,11 +403,58 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       {/* Form Content */}
       <div className="flex-1 overflow-y-auto px-6">
         <div className="space-y-5 pb-6">
+          {/* Creation Mode */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              What are you building?
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setCreationMode('single')}
+                className={`text-left p-3 rounded-lg border transition-all ${
+                  creationMode === 'single'
+                    ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-500/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Single Agent</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">One prompt, one persona.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreationMode('flow')
+                  setSelectedPlatform('livekit')
+                }}
+                className={`text-left p-3 rounded-lg border transition-all ${
+                  creationMode === 'flow'
+                    ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-500/20'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <GitBranch className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Conversation Flow</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Multi-step canvas: branches, tools, transfers.</p>
+              </button>
+            </div>
+          </div>
+
           {/* Platform Selection */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
               Agent Platform
             </label>
+            {creationMode === 'flow' ? (
+              <p className="h-10 flex items-center px-3 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400">
+                <Activity className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" /> LiveKit Agent (required for conversation flows)
+              </p>
+            ) : (
             <Select
               value={selectedPlatform}
               onValueChange={setSelectedPlatform}
@@ -430,9 +489,12 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 })}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {PLATFORM_OPTIONS.find(o => o.value === selectedPlatform)?.description}
-            </p>
+            )}
+            {creationMode === 'single' && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {PLATFORM_OPTIONS.find(o => o.value === selectedPlatform)?.description}
+              </p>
+            )}
           </div>
 
           {/* Deploy Target (superadmin only) */}
@@ -546,7 +608,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             disabled={!formData.name.trim() || nameError !== null}
             className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create Agent
+            {creationMode === 'flow' ? 'Create Flow' : 'Create Agent'}
           </Button>
         </div>
       </div>

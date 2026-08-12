@@ -36,9 +36,13 @@ export async function GET(
       agentType = 'pipecat_agent'
     }
 
+    const configuration = agent.configuration as any
+    const hasWorkflow = !!(configuration?.workflowMode || configuration?.workflow)
+
     return NextResponse.json({
       id: agent.id,
       agent_type: agentType,
+      hasWorkflow,
     })
 
   } catch (error) {

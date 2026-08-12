@@ -38,6 +38,8 @@ interface TalkToAssistantProps {
   onFlashEndCallDone?: () => void
   onSessionActiveChange?: (active: boolean) => void
   sessionEndpoint?: string  // override the session API (e.g. /api/pipecat/start-web-session)
+  /** Workflow interpreter's live "wf-node" events (node_enter, function_call, ...) — workflow agents only. */
+  onWorkflowEvent?: (event: Record<string, any>) => void
   deploymentTarget?: 'classic' | 'docker'  // which voice backend this agent lives on
 }
 
@@ -51,6 +53,7 @@ export default function TalkToAssistant({
   onFlashEndCallDone,
   onSessionActiveChange,
   sessionEndpoint,
+  onWorkflowEvent,
   deploymentTarget = 'classic',
 }: Readonly<TalkToAssistantProps>) {
   const [mode, setMode]                   = useState<AgentTestMode>('voice')
@@ -62,7 +65,7 @@ export default function TalkToAssistant({
   const endCallRef       = useRef<HTMLButtonElement>(null)
   const inputRef         = useRef<HTMLInputElement>(null)
 
-  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode, sessionEndpoint, deploymentTarget })
+  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode, sessionEndpoint, onWorkflowEvent, deploymentTarget })
 
   const sessionActive = voiceState.isConnected || voiceState.isConnecting
 
