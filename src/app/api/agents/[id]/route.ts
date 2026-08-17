@@ -65,6 +65,7 @@ export async function GET(
       agentResponse.field_extractor_prompt = agent.field_extractor_prompt
       agentResponse.field_extractor_keys = agent.field_extractor_keys
       agentResponse.field_extractor_variables = agent.field_extractor_variables || {}
+      agentResponse.flag_rules = agent.flag_rules || null
     }
     if (allowMetrics) {
       agentResponse.metrics = agent.metrics ?? null
@@ -85,8 +86,91 @@ const PATCHABLE_AGENT_FIELDS = [
   'field_extractor_prompt',
   'field_extractor',
   'field_extractor_variables',
+  'flag_rules',
   'metrics',
 ] as const
+
+// Mirrors utils/flagRulesEngine.mjs in the analytics lambda — keep both in sync.
+const FLAG_SOURCES = new Set(['field_extractor', 'call_log'])
+const FLAG_MATCH_TYPES = new Set(['exact', 'starts_with', 'ends_with', 'contains'])
+const FLAG_OPERATORS = new Set(['equals', 'not_equals', 'greater_than', 'less_than'])
+const CALL_LOG_FIELD_ALLOWLIST = new Set([
+  'duration_seconds',
+  'customer_number',
+  'call_status',
+  'metadata.transfer_call_initiated',
+])
+const MAX_RULES = 50
+const MAX_CONDITIONS_PER_RULE = 20
+
+function parseExtractorKeys(raw: unknown): Set<string> {
+  if (typeof raw !== 'string' || !raw) return new Set()
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(
+      parsed.map((f: any) => f?.key).filter((k: unknown): k is string => typeof k === 'string' && k.length > 0)
+    )
+  } catch {
+    return new Set()
+  }
+}
+
+// Returns an error message, or null if valid. `extractorKeys` cross-checks exact
+// field_extractor references so a typo'd field name is rejected at save time.
+function validateFlagRules(flagRules: unknown, extractorKeys: Set<string>): string | null {
+  if (flagRules === null) return null // clearing the config is allowed
+  if (typeof flagRules !== 'object' || Array.isArray(flagRules)) return 'flag_rules must be an object'
+  const cfg = flagRules as Record<string, unknown>
+
+  if (typeof cfg.enabled !== 'boolean') return 'flag_rules.enabled must be a boolean'
+  if (!Array.isArray(cfg.rules)) return 'flag_rules.rules must be an array'
+  if (cfg.rules.length > MAX_RULES) return `flag_rules.rules cannot exceed ${MAX_RULES} rules`
+
+  for (const [i, rule] of cfg.rules.entries()) {
+    if (typeof rule !== 'object' || rule === null) return `rule ${i + 1} must be an object`
+    const r = rule as Record<string, unknown>
+    if (typeof r.id !== 'string' || !r.id) return `rule ${i + 1} is missing an id`
+    if (r.reason !== undefined && r.reason !== null && typeof r.reason !== 'string') {
+      return `rule ${i + 1} has an invalid reason`
+    }
+    if (!Array.isArray(r.conditions) || r.conditions.length === 0) {
+      return `rule ${i + 1} must have at least one condition`
+    }
+    if (r.conditions.length > MAX_CONDITIONS_PER_RULE) {
+      return `rule ${i + 1} cannot exceed ${MAX_CONDITIONS_PER_RULE} conditions`
+    }
+
+    for (const [j, condition] of r.conditions.entries()) {
+      if (typeof condition !== 'object' || condition === null) return `rule ${i + 1}, condition ${j + 1} must be an object`
+      const c = condition as Record<string, unknown>
+      const source = (c.source as string) ?? 'field_extractor'
+      const matchType = (c.matchType as string) ?? 'exact'
+      const operator = (c.operator as string) ?? 'equals'
+
+      if (!FLAG_SOURCES.has(source)) return `rule ${i + 1}, condition ${j + 1} has an invalid source`
+      if (!FLAG_MATCH_TYPES.has(matchType)) return `rule ${i + 1}, condition ${j + 1} has an invalid matchType`
+      if (!FLAG_OPERATORS.has(operator)) return `rule ${i + 1}, condition ${j + 1} has an invalid operator`
+      if (typeof c.field !== 'string' || !c.field) return `rule ${i + 1}, condition ${j + 1} is missing a field`
+      if (c.value === undefined || c.value === null || c.value === '') {
+        return `rule ${i + 1}, condition ${j + 1} is missing a value`
+      }
+
+      if (source === 'call_log') {
+        if (matchType !== 'exact') return `rule ${i + 1}, condition ${j + 1}: call_log fields only support exact matching`
+        if (!CALL_LOG_FIELD_ALLOWLIST.has(c.field)) {
+          return `rule ${i + 1}, condition ${j + 1}: "${c.field}" is not an allowed call log field`
+        }
+        if ((operator === 'greater_than' || operator === 'less_than') && Number.isNaN(Number(c.value))) {
+          return `rule ${i + 1}, condition ${j + 1}: value must be numeric for ${operator}`
+        }
+      } else if (matchType === 'exact' && extractorKeys.size > 0 && !extractorKeys.has(c.field)) {
+        return `rule ${i + 1}, condition ${j + 1}: "${c.field}" is not a defined field extractor key`
+      }
+    }
+  }
+  return null
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -108,7 +192,7 @@ export async function PATCH(
 
     const { data: agent, error: fetchErr } = await supabase
       .from('pype_voice_agents')
-      .select('project_id')
+      .select('project_id, field_extractor_prompt')
       .eq('id', agentId)
       .single()
 
@@ -130,7 +214,7 @@ export async function PATCH(
     const updatePayload: Record<string, unknown> = {}
     for (const key of PATCHABLE_AGENT_FIELDS) {
       if (key in body) {
-        if (key === 'field_extractor_prompt' || key === 'field_extractor' || key === 'field_extractor_variables') {
+        if (key === 'field_extractor_prompt' || key === 'field_extractor' || key === 'field_extractor_variables' || key === 'flag_rules') {
           if (!allowFieldExtractor) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
           }
@@ -138,6 +222,17 @@ export async function PATCH(
         if (key === 'metrics') {
           if (!allowMetrics) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+          }
+        }
+        if (key === 'flag_rules') {
+          // Cross-check against whatever field_extractor_prompt this same request submits,
+          // falling back to the agent's existing one — catches a rule referencing a field
+          // that doesn't (or no longer) exists before it ever reaches the database.
+          const extractorSource = 'field_extractor_prompt' in body ? body.field_extractor_prompt : agent.field_extractor_prompt
+          const extractorKeys = parseExtractorKeys(extractorSource)
+          const validationError = validateFlagRules(body.flag_rules, extractorKeys)
+          if (validationError) {
+            return NextResponse.json({ error: `Invalid flag_rules: ${validationError}` }, { status: 400 })
           }
         }
         updatePayload[key] = body[key]

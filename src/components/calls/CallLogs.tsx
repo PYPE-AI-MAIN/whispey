@@ -24,6 +24,7 @@ import {
   ReanalyzeDialogWrapper
 } from './sub-components'
 import BackfillDispositionDialog from '@/components/disposition/BackfillDispositionDialog'
+import FlagRulesDialog from '@/components/FlagRulesDialog'
 import { CampaignSelector } from './CampaignSelector'
 import type { Campaign } from './CampaignSelector'
 import CampaignCallLogs from './CampaignCallLogs'
@@ -128,6 +129,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   const { visibility } = useMemberVisibility(project?.id ?? undefined)
   const canReanalyze = canShowOrgSection(visibility, 'reanalyze')
+  // Flag rules expose the same kind of internal QA criteria as field extractor config — same gate.
+  const canManageFlagRules = canShowOrgSection(visibility, 'fieldExtractor')
 
   const { distinctConfigByAgent, setDistinctConfigForAgent } = useCallLogsStore()
   const distinctConfig = agent?.id ? distinctConfigByAgent[agent.id] : undefined
@@ -418,6 +421,13 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
           <div className="flex items-center gap-2">
             {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
+            {canManageFlagRules && agent?.id && (
+              <FlagRulesDialog
+                agentId={agent.id}
+                fieldExtractorPrompt={agent?.field_extractor_prompt}
+                initialFlagRules={agent?.flag_rules}
+              />
+            )}
             <BackfillDispositionDialog
               projectId={project?.id} agentId={agent?.id}
               agentName={agent?.name} projectName={project?.name}
