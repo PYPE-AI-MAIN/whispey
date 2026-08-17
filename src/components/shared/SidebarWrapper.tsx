@@ -45,6 +45,7 @@ interface SidebarContext {
   userCanViewApiKeys: boolean
   projectId?: string
   agentType?: string
+  hasWorkflow?: boolean
   canAccessPhoneCalls: boolean
   canAccessPhoneSettings: boolean
   canCreatePypeAgent: boolean
@@ -261,12 +262,13 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
+      { pattern: '/:projectId/agents/:agentId/workflow' },
       { pattern: '/:projectId/agents/:agentId/prompt-forge' },
       { pattern: '/:projectId/agents/:agentId/prompt-forge/:sessionId' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin } = context
+      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -292,8 +294,11 @@ const sidebarRoutes: SidebarRoute[] = [
 
       const configItems = []
       const isPipecatAgent = agentType === 'pipecat_agent'
+      // Workflow agents get everything (config, knowledge, testing) inside the
+      // Workflow canvas itself — the classic per-page nav is only for agents
+      // that don't have a workflow.
       const showAgentConfig =
-        agentType === 'pype_agent' &&
+        agentType === 'pype_agent' && !hasWorkflow &&
         (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
       const showPipecatConfig =
         isPipecatAgent &&
@@ -301,9 +306,26 @@ const sidebarRoutes: SidebarRoute[] = [
       const showKnowledgeBase =
         (agentType === 'pype_agent' || isPipecatAgent) &&
         canShowAgentSection(visibility, 'knowledgeBase')
+      // Phone dispatch (test calls + call history) isn't replicated by the workflow
+      // canvas, so it stays available for workflow agents too.
       const showPhoneCalls =
         (agentType === 'pype_agent' || isPipecatAgent) &&
         canShowAgentSection(visibility, 'phoneCalls')
+      // Workflow nav item only for agents that actually have a workflow — classic
+      // single agents keep working exactly as they did before.
+      const showWorkflow =
+        agentType === 'pype_agent' && hasWorkflow &&
+        (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
+
+      if (showWorkflow) {
+        configItems.push({
+          id: 'workflow',
+          name: 'Workflow',
+          icon: 'GitBranch',
+          path: `/${projectId}/agents/${agentId}/workflow`,
+          group: 'configuration'
+        })
+      }
 
       if (showAgentConfig) {
         configItems.push({ 
@@ -541,6 +563,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     userCanViewApiKeys,
     projectId,
     agentType: agent?.agent_type,
+    hasWorkflow: !!agent?.hasWorkflow,
     canAccessPhoneCalls,
     canAccessPhoneSettings,
     canCreatePypeAgent,
