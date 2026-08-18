@@ -48,7 +48,7 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     
   retryConfig: Yup.array().of(
     Yup.object().shape({
-      type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor']).required('Retry type is required'),
+      type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor', 'metadata']).required('Retry type is required'),
       // SIP Code fields (optional, but required if type is sipCode)
       errorCodes: Yup.array().of(
         Yup.string().oneOf(VALID_SIP_ERROR_CODE_VALUES, 'Invalid SIP error code')
@@ -119,6 +119,19 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
         // Only require fieldName if operator is set (meaning user is configuring)
         if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
           return this.createError({ message: 'Field name is required' })
+        }
+      } else if (value.type === 'metadata') {
+        // fieldName comes from a fixed dropdown (CALL_METADATA_FIELDS), so
+        // it's always present once the row exists — same operator/expectedValue
+        // rules as fieldExtractor.
+        if (!value.operator || !['missing', 'equals', 'not_equals', 'contains', 'not_contains'].includes(value.operator)) {
+          return this.createError({ message: 'Operator is required' })
+        }
+        if (value.operator !== 'missing' && (!value.expectedValue || value.expectedValue === '')) {
+          return this.createError({ message: 'Expected value is required when operator is not "missing"' })
+        }
+        if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
+          return this.createError({ message: 'Metadata field is required' })
         }
       }
       return true

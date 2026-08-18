@@ -900,6 +900,8 @@ function ViewCampaign() {
                       displayLabel = `Metric: ${config.metricName} ${config.operator || ''} ${config.threshold ?? ''}`
                     } else if (config.type === 'fieldExtractor' && config.fieldName) {
                       displayLabel = `Field: ${config.fieldName} ${config.operator || ''}`
+                    } else if (config.type === 'metadata' && config.fieldName) {
+                      displayLabel = `Metadata: ${config.fieldName} ${config.operator || ''}`
                     } else {
                       displayLabel = 'Unknown retry type'
                     }
