@@ -421,6 +421,8 @@ export function deserializeToolConfig(tool: any) {
     // Backward-compatible defaults when loading old tools that don't have these keys
     enableAsTool: tool.enable_as_tool !== false,
     enableAsTag: tool.enable_as_tag === true,
+    transferFailureMessageEnabled: tool.transfer_failure_message_enabled !== false,
+    transferFailureMessage: tool.transfer_failure_message || '',
     timeout: tool.timeout || 10,
     asyncExecution: tool.async || false,
     parameters: tool.parameters?.map((param: any) => ({
