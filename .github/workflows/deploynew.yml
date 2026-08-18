@@ -19,11 +19,22 @@ env:
 
 jobs:
   test-gate:
-    name: Lint & Test Gate
+    name: Lint, Test, Secret Scan & Sonar Gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          curl -sSfL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum -c
+          tar -xzf gitleaks.tar.gz gitleaks
+
+      - name: Detect Secrets
+        run: ./gitleaks detect --source . --redact --exit-code 1
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -40,9 +51,22 @@ jobs:
       - name: Run tests
         run: npm run test:coverage
 
+      - name: Run SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Check SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        with:
+          scanMetadataReportFile: .scannerwork/report-task.txt
+          pollingTimeoutSec: 300
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   docker-build-push:
     needs: test-gate
-    environment: ${{ (github.ref_name == 'main' || github.ref_name == 'ci-cd-testing') && 'production' || 'develop' }}
     name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
 
