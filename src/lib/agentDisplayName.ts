@@ -46,9 +46,9 @@ export const AGENT_NAME_PREFIX_MAX = 10
 export function deriveAgentName(displayName: string): string {
   const derived = (displayName || '')
     .trim()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z_]/g, '')
-    .replace(/_+/g, '_')
+    .replaceAll(/\s+/g, '_')
+    .replaceAll(/[^a-zA-Z_]/g, '')
+    .replaceAll(/_+/g, '_')
     .replace(/^_+/, '')
     .slice(0, AGENT_NAME_PREFIX_MAX)
     .replace(/_+$/, '')

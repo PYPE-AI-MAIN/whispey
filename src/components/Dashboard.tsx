@@ -225,7 +225,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
-  const { isOwnerOrAdmin, isViewer, visibility } = useMemberVisibility(project?.id)
+  const { isViewer, visibility } = useMemberVisibility(project?.id)
   // Show when permissions.visibility allows (Supabase); viewers can see if DB grants it.
   const canSeeFieldExtractor = canShowOrgSection(visibility, 'fieldExtractor')
   const canSeeMetrics = canShowOrgSection(visibility, 'metrics')
@@ -478,6 +478,37 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     )
   }
 
+  // Three-way: loading / found / not found. Kept as statements — a nested
+  // ternary in the JSX trips Sonar's S3358.
+  let agentHeaderIdentity: React.ReactNode
+  if (agentLoading) {
+    agentHeaderIdentity = <AgentHeaderSkeleton isMobile={isMobile} />
+  } else if (agent) {
+    agentHeaderIdentity = (
+      <>
+        <AgentNameEditor
+          agent={agent}
+          canEdit={!isViewer}
+          isMobile={isMobile}
+          onSaved={refetchAgent}
+        />
+        <div className="flex items-center gap-2">
+          <Badge className={`${isMobile ? 'text-xs px-2 py-0.5' : 'text-xs px-3 py-1'} font-medium rounded-full ${getEnvironmentColor(agent.environment)}`}>
+            {agent.environment}
+          </Badge>
+        </div>
+      </>
+    )
+  } else {
+    agentHeaderIdentity = (
+      <div className={`${isMobile ? 'h-7' : 'h-8'} bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 rounded-lg flex items-center`}>
+        <AlertCircle className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
+        <span className={isMobile ? 'text-xs' : 'text-sm'}>Agent not found</span>
+      </div>
+    )
+  }
+
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header - Mobile optimized */}
@@ -495,28 +526,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               
               <div className="flex items-center gap-3">
                 {/* Agent name and badge - skeleton while loading */}
-                {agentLoading ? (
-                  <AgentHeaderSkeleton isMobile={isMobile} />
-                ) : agent ? (
-                  <>
-                    <AgentNameEditor
-                      agent={agent}
-                      canEdit={!isViewer}
-                      isMobile={isMobile}
-                      onSaved={refetchAgent}
-                    />
-                    <div className="flex items-center gap-2">
-                      <Badge className={`${isMobile ? 'text-xs px-2 py-0.5' : 'text-xs px-3 py-1'} font-medium rounded-full ${getEnvironmentColor(agent.environment)}`}>
-                        {agent.environment}
-                      </Badge>
-                    </div>
-                  </>
-                ) : (
-                  <div className={`${isMobile ? 'h-7' : 'h-8'} bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 rounded-lg flex items-center`}>
-                    <AlertCircle className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
-                    <span className={isMobile ? 'text-xs' : 'text-sm'}>Agent not found</span>
-                  </div>
-                )}
+                {agentHeaderIdentity}
               </div>
 
               {/* Tab Navigation — header pills only for extra tabs (e.g. Campaign Logs) */}

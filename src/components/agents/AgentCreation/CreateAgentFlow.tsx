@@ -129,14 +129,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   // Free text now — this is the label users see. The immutable backend `name`
   // is derived from it (first 10 sanitized chars) and reserved server-side.
   const handleNameChange = (value: string) => {
-    if (!value.trim()) {
-      setNameError(null)
-    } else if (!/[a-zA-Z]/.test(value)) {
-      setNameError('Agent name must contain at least one letter')
-    } else {
-      setNameError(null)
-    }
-
+    // A label with no letters at all can't produce a backend name, so flag it.
+    const needsLetter = value.trim().length > 0 && !/[a-zA-Z]/.test(value)
+    setNameError(needsLetter ? 'Agent name must contain at least one letter' : null)
     setFormData({ ...formData, name: value })
   }
 

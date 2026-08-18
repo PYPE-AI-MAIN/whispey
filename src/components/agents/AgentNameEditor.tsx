@@ -28,7 +28,7 @@ export default function AgentNameEditor({
   canEdit = false,
   isMobile = false,
   onSaved,
-}: AgentNameEditorProps) {
+}: Readonly<AgentNameEditorProps>) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState('')
   const [saving, setSaving] = useState(false)

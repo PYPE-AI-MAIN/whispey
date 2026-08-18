@@ -134,6 +134,106 @@ async function resolveAgentIdentity(
   return { ok: true, name: rawName.trim(), display_name: null }
 }
 
+/** Returns an error message if the platform's config block is incomplete, else null. */
+function validatePlatformConfig(platform: string, configuration: any): string | null {
+  if (platform === 'vapi') {
+    const v = configuration?.vapi
+    if (!v?.apiKey || !v?.assistantId || !v?.projectApiKey) {
+      return 'Vapi configuration is incomplete. Required: apiKey, assistantId, projectApiKey'
+    }
+  }
+  if (platform === 'retell') {
+    const r = configuration?.retell
+    if (!r?.apiKey || !r?.agentId) {
+      return 'Retell configuration is incomplete. Required: apiKey, agentId'
+    }
+  }
+  return null
+}
+
+/** Encrypt vapi/retell secrets into agentData and strip them from the stored config. */
+function applyPlatformCredentials(agentData: any, platform: string, configuration: any, projectId: string): void {
+  if (platform === 'vapi' && configuration?.vapi) {
+    agentData.vapi_api_key_encrypted = encryptApiKey(configuration.vapi.apiKey, projectId)
+    agentData.vapi_project_key_encrypted = encryptApiKey(configuration.vapi.projectApiKey, projectId)
+    const cleanConfiguration = { ...configuration }
+    if (cleanConfiguration.vapi) {
+      delete cleanConfiguration.vapi.apiKey
+      delete cleanConfiguration.vapi.projectApiKey
+      agentData.configuration = cleanConfiguration
+    }
+    console.log('🔐 Vapi API keys encrypted and stored securely')
+  }
+
+  if (platform === 'retell' && configuration?.retell) {
+    agentData.retell_api_key_encrypted = encryptApiKey(configuration.retell.apiKey, projectId)
+    agentData.configuration = {
+      ...configuration,
+      retell: {
+        agentId:    configuration.retell.agentId,
+        agentName:  configuration.retell.agentName,
+        voiceId:    configuration.retell.voiceId,
+        language:   configuration.retell.language,
+        xPypeToken: configuration.retell.projectApiKey,
+      },
+    }
+    console.log('🔐 Retell API key encrypted and stored securely')
+  }
+}
+
+/** Resolve the project's whispey API key for Pipecat, falling back to the default. */
+async function resolveWhispeyApiKey(projectId: string): Promise<string> {
+  const { data: apiKeyRow, error: keyError } = await supabase
+    .from('pype_voice_api_keys')
+    .select('id, token_hash, token_hash_master')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!keyError && apiKeyRow?.token_hash_master) {
+    try {
+      const { decryptWithWhispeyKey } = await import('@/lib/whispey-crypto')
+      return decryptWithWhispeyKey(apiKeyRow.token_hash_master)
+    } catch (decryptError) {
+      console.error('❌ Failed to decrypt API key, using fallback:', decryptError)
+    }
+  } else {
+    console.log('🔍 Using fallback API key - keyError:', !!keyError, 'hasTokenHashMaster:', !!apiKeyRow?.token_hash_master)
+  }
+  return 'pype-api-v1'
+}
+
+/**
+ * Create the Pipecat agent for an already-inserted Supabase row and store its id
+ * back on the config. Returns an error message (caller responds 500) or null on
+ * success. On failure the Supabase row is rolled back so we never leave an orphan.
+ */
+async function provisionPipecatAgent(agent: any, projectId: string): Promise<string | null> {
+  try {
+    const whispeyApiKey = await resolveWhispeyApiKey(projectId)
+    const pipecatAgent = await createPipecatAgent(agent, projectId, agent.id, whispeyApiKey)
+
+    const { error: updateError } = await supabase
+      .from('pype_voice_agents')
+      .update({ configuration: { ...agent.configuration, pipecat_agent_id: pipecatAgent.id } })
+      .eq('id', agent.id)
+
+    if (updateError) {
+      // Non-fatal — agent is created, just log it
+      console.error('❌ Failed to store pipecat_agent_id in Supabase:', updateError)
+    } else {
+      agent.configuration.pipecat_agent_id = pipecatAgent.id
+      console.log('✅ pipecat_agent_id stored in Supabase configuration')
+    }
+    return null
+  } catch (pipecatError) {
+    console.error('❌ Failed to create Pipecat agent, rolling back Supabase record:', pipecatError)
+    await supabase.from('pype_voice_agents').delete().eq('id', agent.id)
+    return `Failed to create Pipecat agent: ${pipecatError instanceof Error ? pipecatError.message : 'Unknown error'}`
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -151,22 +251,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 })
     }
 
-    if (platform === 'vapi') {
-      if (!configuration?.vapi?.apiKey || !configuration?.vapi?.assistantId || !configuration?.vapi?.projectApiKey) {
-        return NextResponse.json(
-          { error: 'Vapi configuration is incomplete. Required: apiKey, assistantId, projectApiKey' },
-          { status: 400 }
-        )
-      }
-    }
-
-    if (platform === 'retell') {
-      if (!configuration?.retell?.apiKey || !configuration?.retell?.agentId) {
-        return NextResponse.json(
-          { error: 'Retell configuration is incomplete. Required: apiKey, agentId' },
-          { status: 400 }
-        )
-      }
+    const configError = validatePlatformConfig(platform, configuration)
+    if (configError) {
+      return NextResponse.json({ error: configError }, { status: 400 })
     }
 
     const { data: project, error: projectError } = await supabase
@@ -195,33 +282,7 @@ export async function POST(request: NextRequest) {
       is_active: true
     }
 
-    if (platform === 'vapi' && configuration?.vapi) {
-      agentData.vapi_api_key_encrypted = encryptApiKey(configuration.vapi.apiKey, project_id)
-      agentData.vapi_project_key_encrypted = encryptApiKey(configuration.vapi.projectApiKey, project_id)
-      const cleanConfiguration = { ...configuration }
-      if (cleanConfiguration.vapi) {
-        delete cleanConfiguration.vapi.apiKey
-        delete cleanConfiguration.vapi.projectApiKey
-        agentData.configuration = cleanConfiguration
-      }
-      console.log('🔐 Vapi API keys encrypted and stored securely')
-    }
-
-    if (platform === 'retell' && configuration?.retell) {
-      agentData.retell_api_key_encrypted = encryptApiKey(configuration.retell.apiKey, project_id)
-      const cleanConfiguration = {
-        ...configuration,
-        retell: {
-          agentId:    configuration.retell.agentId,
-          agentName:  configuration.retell.agentName,
-          voiceId:    configuration.retell.voiceId,
-          language:   configuration.retell.language,
-          xPypeToken: configuration.retell.projectApiKey,
-        },
-      }
-      agentData.configuration = cleanConfiguration
-      console.log('🔐 Retell API key encrypted and stored securely')
-    }
+    applyPlatformCredentials(agentData, platform, configuration, project_id)
 
     // ✅ Step 1: Insert into Supabase first to get agent.id
     console.log('💾 Inserting agent data:', {
@@ -244,61 +305,9 @@ export async function POST(request: NextRequest) {
 
     // ✅ Step 2: Create Pipecat agent with real agent.id and project API key
     if (platform === 'pipecat') {
-      try {
-        // Fetch project API key to pass to Pipecat
-        const { data: apiKeyRow, error: keyError } = await supabase
-          .from('pype_voice_api_keys')
-          .select('id, token_hash, token_hash_master')
-          .eq('project_id', project_id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        let whispeyApiKey = 'pype-api-v1' // fallback
-
-        if (!keyError && apiKeyRow?.token_hash_master) {
-          try {
-            const { decryptWithWhispeyKey } = await import('@/lib/whispey-crypto')
-            whispeyApiKey = decryptWithWhispeyKey(apiKeyRow.token_hash_master)
-            console.log('✅ Decrypted project API key for Pipecat:', whispeyApiKey)
-          } catch (decryptError) {
-            console.error('❌ Failed to decrypt API key, using fallback:', decryptError)
-          }
-        } else {
-          console.log('🔍 Using fallback API key - keyError:', !!keyError, 'hasTokenHashMaster:', !!apiKeyRow?.token_hash_master)
-        }
-
-        const pipecatAgent = await createPipecatAgent(agent, project_id, agent.id, whispeyApiKey)
-
-        // ✅ Store pipecat_agent_id back into Supabase configuration
-        const { error: updateError } = await supabase
-          .from('pype_voice_agents')
-          .update({
-            configuration: {
-              ...agent.configuration,
-              pipecat_agent_id: pipecatAgent.id
-            }
-          })
-          .eq('id', agent.id)
-
-        if (updateError) {
-          console.error('❌ Failed to store pipecat_agent_id in Supabase:', updateError)
-          // Non-fatal — agent is created, just log it
-        } else {
-          console.log('✅ pipecat_agent_id stored in Supabase configuration')
-          agent.configuration.pipecat_agent_id = pipecatAgent.id
-        }
-
-      } catch (pipecatError) {
-        console.error('❌ Failed to create Pipecat agent, rolling back Supabase record:', pipecatError)
-        
-        // Rollback: delete the Supabase record since Pipecat failed
-        await supabase.from('pype_voice_agents').delete().eq('id', agent.id)
-        
-        return NextResponse.json(
-          { error: `Failed to create Pipecat agent: ${pipecatError instanceof Error ? pipecatError.message : 'Unknown error'}` },
-          { status: 500 }
-        )
+      const pipecatError = await provisionPipecatAgent(agent, project_id)
+      if (pipecatError) {
+        return NextResponse.json({ error: pipecatError }, { status: 500 })
       }
     }
 
