@@ -83,55 +83,52 @@ export async function GET(
   }
 }
 
-const PATCHABLE_AGENT_FIELDS = [
-  'field_extractor_prompt',
-  'field_extractor',
-  'field_extractor_variables',
-  'metrics',
-  'display_name',
-] as const
+// Gated fields → the visibility flag a viewer needs set to `true` to edit them.
+// `name` is deliberately absent (immutable); `display_name` is handled separately.
+const GATED_FIELDS = {
+  field_extractor_prompt: 'fieldExtractor',
+  field_extractor: 'fieldExtractor',
+  field_extractor_variables: 'fieldExtractor',
+  metrics: 'metrics',
+} as const
 
 type RoleResult = NonNullable<Awaited<ReturnType<typeof getProjectRoleForApi>>>
 type BuildResult =
   | { ok: true; payload: Record<string, unknown> }
   | { ok: false; error: string; status: number }
 
-/** Which visibility flag, if any, a viewer needs set to `true` to edit a field. */
-const FIELD_VISIBILITY_GATE: Partial<Record<(typeof PATCHABLE_AGENT_FIELDS)[number], 'fieldExtractor' | 'metrics'>> = {
-  field_extractor_prompt: 'fieldExtractor',
-  field_extractor: 'fieldExtractor',
-  field_extractor_variables: 'fieldExtractor',
-  metrics: 'metrics',
+/** Normalize display_name; returns the value to store or an error result. */
+function resolveDisplayNameField(
+  body: Record<string, unknown>,
+  isViewer: boolean
+): { value: string | null } | { error: string; status: number } {
+  if (isViewer) return { error: 'Forbidden', status: 403 }
+  try {
+    return { value: normalizeAgentDisplayName(body.display_name) }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Invalid display_name', status: 400 }
+  }
 }
 
 /**
- * Build the validated PATCH payload from the request body, enforcing per-field
- * role/visibility rules. Extracted from PATCH so the handler stays readable;
- * `display_name` is normalized here and `name` is intentionally not patchable.
+ * Build the validated PATCH payload, enforcing per-field role/visibility rules.
+ * `display_name` is handled outside the loop (it needs normalization); `name`
+ * is intentionally not patchable — the backend identity is derived from it.
  */
 function buildAgentUpdatePayload(body: Record<string, unknown>, roleResult: RoleResult): BuildResult {
   const isViewer = roleResult.role === 'viewer'
   const org = roleResult.visibility?.org
-  const canEditField = (field: (typeof PATCHABLE_AGENT_FIELDS)[number]): boolean => {
-    const gate = FIELD_VISIBILITY_GATE[field]
-    return !isViewer || (gate ? org?.[gate] === true : false)
+  const payload: Record<string, unknown> = {}
+
+  if ('display_name' in body) {
+    const r = resolveDisplayNameField(body, isViewer)
+    if ('error' in r) return { ok: false, error: r.error, status: r.status }
+    payload.display_name = r.value
   }
 
-  const payload: Record<string, unknown> = {}
-  for (const key of PATCHABLE_AGENT_FIELDS) {
+  for (const [key, gate] of Object.entries(GATED_FIELDS)) {
     if (!(key in body)) continue
-
-    if (key === 'display_name') {
-      if (isViewer) return { ok: false, error: 'Forbidden', status: 403 }
-      try {
-        payload[key] = normalizeAgentDisplayName(body[key])
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : 'Invalid display_name', status: 400 }
-      }
-      continue
-    }
-
-    if (!canEditField(key)) return { ok: false, error: 'Forbidden', status: 403 }
+    if (isViewer && org?.[gate] !== true) return { ok: false, error: 'Forbidden', status: 403 }
     payload[key] = body[key]
   }
 

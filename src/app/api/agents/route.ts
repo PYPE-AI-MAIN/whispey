@@ -134,6 +134,14 @@ async function resolveAgentIdentity(
   return { ok: true, name: rawName.trim(), display_name: null }
 }
 
+/** Returns an error message if a required top-level field is missing, else null. */
+function validateRequiredFields(f: { name?: string; agent_type?: string; project_id?: string }): string | null {
+  if (!f.name || !f.name.trim()) return 'Agent name is required'
+  if (!f.agent_type) return 'Agent type is required'
+  if (!f.project_id) return 'Project ID is required'
+  return null
+}
+
 /** Returns an error message if the platform's config block is incomplete, else null. */
 function validatePlatformConfig(platform: string, configuration: any): string | null {
   if (platform === 'vapi') {
@@ -239,16 +247,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, display_name, agent_type, configuration, project_id, environment, platform } = body
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Agent name is required' }, { status: 400 })
-    }
-
-    if (!agent_type) {
-      return NextResponse.json({ error: 'Agent type is required' }, { status: 400 })
-    }
-
-    if (!project_id) {
-      return NextResponse.json({ error: 'Project ID is required' }, { status: 400 })
+    const requiredError = validateRequiredFields({ name, agent_type, project_id })
+    if (requiredError) {
+      return NextResponse.json({ error: requiredError }, { status: 400 })
     }
 
     const configError = validatePlatformConfig(platform, configuration)

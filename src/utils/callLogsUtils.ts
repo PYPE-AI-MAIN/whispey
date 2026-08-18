@@ -56,7 +56,7 @@ export const isViewerRole = (role: string | null | undefined): boolean =>
  * can't reintroduce the leak.
  */
 export const isRowFlaggedForRole = (
-  call: { transcription_metrics?: { flag?: { text?: string } | unknown } | null } | null | undefined,
+  call: { transcription_metrics?: { flag?: unknown } | null } | null | undefined,
   role: string | null
 ): boolean => {
   if (isViewerRole(role)) return false
