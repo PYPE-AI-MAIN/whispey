@@ -13,6 +13,7 @@ const isPublicRoute = createRouteMatcher([
   '/invite(.*)',
   // Public API routes (external callers — no Clerk session)
   '/api/webhooks(.*)',
+  '/api/health(.*)',
   '/api/vapi/webhook(.*)',
   '/api/retell/webhook(.*)',
   '/api/elevenlabs/webhook(.*)',
