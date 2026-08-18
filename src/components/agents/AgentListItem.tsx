@@ -20,10 +20,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface Agent {
   id: string
+  /** Immutable backend identity — the label users see is `display_name`. */
   name: string
+  display_name?: string | null
   agent_type: string
   configuration: any
   environment: string
@@ -347,7 +350,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 truncate">
-                  {agent.name}
+                  {agentDisplayName(agent)}
                 </h3>
                 {agent.agent_type === 'pype_agent' && (
                   <Badge variant="outline" className="text-xs px-2 py-0.5 h-6">
@@ -587,7 +590,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                    {agent.name}
+                    {agentDisplayName(agent)}
                   </h3>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
                     {agent.environment}
@@ -762,7 +765,7 @@ const AgentListItem: React.FC<AgentListItemProps> = ({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{agent.name}</h3>
+                  <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{agentDisplayName(agent)}</h3>
                   {agent.agent_type === 'pype_agent' && (
                     <Badge variant="outline" className="text-xs px-2 py-0.5 h-5">
                       Pype

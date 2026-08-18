@@ -5,6 +5,7 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
+import { normalizeAgentDisplayName } from '@/lib/agentDisplayName'
 
 // GET method to fetch agent details
 export async function GET(
@@ -48,6 +49,7 @@ export async function GET(
     const agentResponse: Record<string, unknown> = {
       id: agent.id,
       name: agent.name,
+      display_name: agent.display_name ?? null,
       agent_type: agent.agent_type,
       configuration: agent.configuration,
       project_id: agent.project_id,
@@ -81,12 +83,60 @@ export async function GET(
   }
 }
 
-const PATCHABLE_AGENT_FIELDS = [
-  'field_extractor_prompt',
-  'field_extractor',
-  'field_extractor_variables',
-  'metrics',
-] as const
+// Gated fields → the visibility flag a viewer needs set to `true` to edit them.
+// `name` is deliberately absent (immutable); `display_name` is handled separately.
+const GATED_FIELDS = {
+  field_extractor_prompt: 'fieldExtractor',
+  field_extractor: 'fieldExtractor',
+  field_extractor_variables: 'fieldExtractor',
+  metrics: 'metrics',
+} as const
+
+type RoleResult = NonNullable<Awaited<ReturnType<typeof getProjectRoleForApi>>>
+type BuildResult =
+  | { ok: true; payload: Record<string, unknown> }
+  | { ok: false; error: string; status: number }
+
+/** Normalize display_name; returns the value to store or an error result. */
+function resolveDisplayNameField(
+  body: Record<string, unknown>,
+  isViewer: boolean
+): { value: string | null } | { error: string; status: number } {
+  if (isViewer) return { error: 'Forbidden', status: 403 }
+  try {
+    return { value: normalizeAgentDisplayName(body.display_name) }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Invalid display_name', status: 400 }
+  }
+}
+
+/**
+ * Build the validated PATCH payload, enforcing per-field role/visibility rules.
+ * `display_name` is handled outside the loop (it needs normalization); `name`
+ * is intentionally not patchable — the backend identity is derived from it.
+ */
+function buildAgentUpdatePayload(body: Record<string, unknown>, roleResult: RoleResult): BuildResult {
+  const isViewer = roleResult.role === 'viewer'
+  const org = roleResult.visibility?.org
+  const payload: Record<string, unknown> = {}
+
+  if ('display_name' in body) {
+    const r = resolveDisplayNameField(body, isViewer)
+    if ('error' in r) return { ok: false, error: r.error, status: r.status }
+    payload.display_name = r.value
+  }
+
+  for (const [key, gate] of Object.entries(GATED_FIELDS)) {
+    if (!(key in body)) continue
+    if (isViewer && org?.[gate] !== true) return { ok: false, error: 'Forbidden', status: 403 }
+    payload[key] = body[key]
+  }
+
+  if (Object.keys(payload).length === 0) {
+    return { ok: false, error: 'No valid fields to update', status: 400 }
+  }
+  return { ok: true, payload }
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -122,32 +172,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const isViewer = roleResult.role === 'viewer'
-    const visibility = roleResult.visibility
-    const allowFieldExtractor = !isViewer || visibility?.org?.fieldExtractor === true
-    const allowMetrics = !isViewer || visibility?.org?.metrics === true
-
-    const updatePayload: Record<string, unknown> = {}
-    for (const key of PATCHABLE_AGENT_FIELDS) {
-      if (key in body) {
-        if (key === 'field_extractor_prompt' || key === 'field_extractor' || key === 'field_extractor_variables') {
-          if (!allowFieldExtractor) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-          }
-        }
-        if (key === 'metrics') {
-          if (!allowMetrics) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-          }
-        }
-        updatePayload[key] = body[key]
-      }
+    const built = buildAgentUpdatePayload(body, roleResult)
+    if (!built.ok) {
+      return NextResponse.json({ error: built.error }, { status: built.status })
     }
-
-    if (Object.keys(updatePayload).length === 0) {
-      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
-    }
-
+    const updatePayload = built.payload
     updatePayload.updated_at = new Date().toISOString()
 
     const { error: updateErr } = await supabase
