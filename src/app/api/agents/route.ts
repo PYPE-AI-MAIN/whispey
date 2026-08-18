@@ -136,7 +136,7 @@ async function resolveAgentIdentity(
 
 /** Returns an error message if a required top-level field is missing, else null. */
 function validateRequiredFields(f: { name?: string; agent_type?: string; project_id?: string }): string | null {
-  if (!f.name || !f.name.trim()) return 'Agent name is required'
+  if (!f.name?.trim()) return 'Agent name is required'
   if (!f.agent_type) return 'Agent type is required'
   if (!f.project_id) return 'Project ID is required'
   return null
