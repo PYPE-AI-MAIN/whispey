@@ -12,7 +12,7 @@ import type { CallLog } from '@/types/logs'
 import { createTableColumns } from './tableColumns'
 import { useCampaignGroupedLogs, CAMPAIGN_PAGE_SIZE } from '@/hooks/useCampaignGroupedLogs'
 import { flattenCallLogForCSV, DownloadProgress } from '@/utils/callLogsUtils'
-import { downloadCSV } from '@/utils/callLogsUtils'
+import { downloadCSV, isRowFlaggedForRole } from '@/utils/callLogsUtils'
 import type { FilterOperation } from '@/components/CallFilter'
 import Papa from 'papaparse'
 import type { Campaign } from './CampaignSelector'
@@ -23,10 +23,11 @@ interface ContactCallsRowsProps {
   dataCols: ColumnDef<CallLog>[]
   colCount: number
   onNavigate: (callId: string, agentId: string) => void
+  role: string | null
 }
 
 const ContactCallsRows: React.FC<ContactCallsRowsProps> = ({
-  subRows, dataCols, colCount, onNavigate,
+  subRows, dataCols, colCount, onNavigate, role,
 }) => {
   const subTable = useReactTable({
     data: subRows,
@@ -64,7 +65,7 @@ const ContactCallsRows: React.FC<ContactCallsRowsProps> = ({
         </td>
       </tr>
       {subTable.getRowModel().rows.map(row => {
-        const isFlagged = Boolean(row.original.transcription_metrics?.flag?.text)
+        const isFlagged = isRowFlaggedForRole(row.original, role)
         return (
           <tr
             key={row.id}
@@ -383,7 +384,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                 </tr>
               ) : (
                 table.getRowModel().rows.map((row, rowIndex) => {
-                  const isFlagged = Boolean(row.original.transcription_metrics?.flag?.text)
+                  const isFlagged = isRowFlaggedForRole(row.original, role)
                   const isNavigating = navigatingCallId === row.original.id
                   const isExpanded = expandedNumbers.has(row.original.customer_number)
 
@@ -425,6 +426,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                       {isExpanded && (
                         <ContactCallsRows
                           subRows={row.original.sub_rows ?? []}
+                          role={role}
                           dataCols={dataCols}
                           colCount={colCount}
                           onNavigate={handleNavigate}

@@ -16,6 +16,7 @@ import {
   convertToSupabaseFilters,
   getSelectColumns,
   flattenCallLogForCSV,
+  isRowFlaggedForRole,
 } from '@/utils/callLogsUtils'
 
 describe('callLogsUtils', () => {
@@ -430,5 +431,50 @@ describe('callLogsUtils', () => {
       const result = flattenCallLogForCSV(row, [], [], ['sentiment'])
       expect(result.transcription_sentiment).toBe('')
     })
+  })
+})
+
+describe('viewers never see flag state', () => {
+  const flagged = { transcription_metrics: { flag: { text: 'emergency' } } }
+  const plain = { transcription_metrics: { flag: null } }
+
+  // 'user' and 'member' normalize to 'viewer' — all three must be blocked
+  const viewerRoles = ['viewer', 'user', 'member']
+  const privilegedRoles = ['owner', 'admin']
+
+  it('hides the Flag column from every viewer-equivalent role', () => {
+    for (const role of viewerRoles) {
+      expect(isColumnVisibleForRole('flag', role), role).toBe(false)
+    }
+  })
+
+  it('keeps the Flag column for owner/admin', () => {
+    for (const role of privilegedRoles) {
+      expect(isColumnVisibleForRole('flag', role), role).toBe(true)
+    }
+  })
+
+  it('suppresses flagged row styling for viewers even when the call is flagged', () => {
+    for (const role of viewerRoles) {
+      expect(isRowFlaggedForRole(flagged, role), role).toBe(false)
+    }
+  })
+
+  it('still styles flagged rows for owner/admin', () => {
+    for (const role of privilegedRoles) {
+      expect(isRowFlaggedForRole(flagged, role), role).toBe(true)
+      expect(isRowFlaggedForRole(plain, role), role).toBe(false)
+    }
+  })
+
+  it('is safe on missing data and unknown roles', () => {
+    expect(isRowFlaggedForRole(null, 'admin')).toBe(false)
+    expect(isRowFlaggedForRole(undefined, 'admin')).toBe(false)
+    expect(isRowFlaggedForRole({}, 'admin')).toBe(false)
+    expect(isRowFlaggedForRole({ transcription_metrics: {} }, 'admin')).toBe(false)
+    // empty flag text is not a flag
+    expect(isRowFlaggedForRole({ transcription_metrics: { flag: { text: '' } } }, 'admin')).toBe(false)
+    // unknown role is not a viewer, so styling applies (matches isColumnVisibleForRole)
+    expect(isRowFlaggedForRole(flagged, 'somethingelse')).toBe(true)
   })
 })
