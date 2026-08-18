@@ -7,8 +7,8 @@ import { useMobile } from '@/hooks/use-mobile'
 
 interface MetricGroupTabsProps {
   readonly groups: MetricGroup[]
-  readonly activeGroupId: string | 'all'
-  readonly onGroupChange: (groupId: string | 'all') => void
+  readonly activeGroupId: string
+  readonly onGroupChange: (groupId: string) => void
   readonly onManageGroups: () => void
   readonly customTotalsCount: number
   /** When false, hide create/manage group controls (viewers). Default true. */
