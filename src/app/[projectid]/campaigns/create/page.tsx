@@ -16,6 +16,81 @@ import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
 import { RecipientsPreview } from '@/components/campaigns/RecipientsPreview'
 import { RetryConfiguration } from '@/components/campaigns/RetryConfiguration'
 
+// Per-type retryConfig validators — each returns an error message or null.
+// Extracted so the Yup .test() callback below is a flat dispatcher instead
+// of one deeply-branched function.
+function validateSipCodeRetry(value: any): string | null {
+  if (!value.errorCodes || !Array.isArray(value.errorCodes) || value.errorCodes.length === 0) {
+    return 'At least one error code is required for SIP code retries'
+  }
+  return null
+}
+
+function validateMetricRetry(value: any): string | null {
+  // Allow undefined metricName if no options available, but require it if it exists
+  if (value.metricName?.trim() === '') {
+    return 'Metric name cannot be empty if provided'
+  }
+  if (!value.operator || !['<', '>', '<=', '>=', '==', '!='].includes(value.operator)) {
+    return 'Operator is required and must be one of: <, >, <=, >=, ==, !='
+  }
+  if (value.threshold === undefined || value.threshold === null) {
+    return 'Threshold is required'
+  }
+  // Only require metricName if operator and threshold are set (meaning user is configuring)
+  if (value.operator && value.threshold !== undefined && (!value.metricName || value.metricName.trim() === '')) {
+    return 'Metric name is required'
+  }
+  return null
+}
+
+// Shared operator/expectedValue rules for fieldExtractor and metadata — both
+// use the same operator set and the same "expectedValue required unless
+// missing" rule. Only fieldName presence differs, so each caller checks that.
+function validateFieldLikeOperator(value: any): string | null {
+  if (!value.operator || !['missing', 'equals', 'not_equals', 'contains', 'not_contains'].includes(value.operator)) {
+    return 'Operator is required'
+  }
+  if (value.operator !== 'missing' && (!value.expectedValue || value.expectedValue === '')) {
+    return 'Expected value is required when operator is not "missing"'
+  }
+  return null
+}
+
+function validateFieldExtractorRetry(value: any): string | null {
+  // Allow undefined fieldName if no options available, but require it if it exists
+  if (value.fieldName?.trim() === '') {
+    return 'Field name cannot be empty if provided'
+  }
+  const operatorError = validateFieldLikeOperator(value)
+  if (operatorError) return operatorError
+  // Only require fieldName if operator is set (meaning user is configuring)
+  if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
+    return 'Field name is required'
+  }
+  return null
+}
+
+function validateMetadataRetry(value: any): string | null {
+  // fieldName comes from a fixed dropdown (CALL_METADATA_FIELDS), so it's
+  // always present once the row exists — no "empty if provided" check needed.
+  const operatorError = validateFieldLikeOperator(value)
+  if (operatorError) return operatorError
+  if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
+    return 'Metadata field is required'
+  }
+  return null
+}
+
+function validateRetryConfigEntry(value: any): string | null {
+  if (!value?.type) return null // Let required() handle this
+  if (value.type === 'sipCode') return validateSipCodeRetry(value)
+  if (value.type === 'metric') return validateMetricRetry(value)
+  if (value.type === 'fieldExtractor') return validateFieldExtractorRetry(value)
+  if (value.type === 'metadata') return validateMetadataRetry(value)
+  return null
+}
+
 // Create validation schema with dynamic max concurrency
 const createValidationSchema = (maxConcurrency: number) => Yup.object({
   campaignName: Yup.string()
@@ -48,7 +123,7 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     
   retryConfig: Yup.array().of(
     Yup.object().shape({
-      type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor']).required('Retry type is required'),
+      type: Yup.string().oneOf(['sipCode', 'metric', 'fieldExtractor', 'metadata']).required('Retry type is required'),
       // SIP Code fields (optional, but required if type is sipCode)
       errorCodes: Yup.array().of(
         Yup.string().oneOf(VALID_SIP_ERROR_CODE_VALUES, 'Invalid SIP error code')
@@ -84,44 +159,8 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
         .nullable()
         .optional(),
     }).test('validate-retry-config', 'Invalid retry configuration', function(value) {
-      if (!value || !value.type) return true // Let required() handle this
-      
-      if (value.type === 'sipCode') {
-        if (!value.errorCodes || !Array.isArray(value.errorCodes) || value.errorCodes.length === 0) {
-          return this.createError({ message: 'At least one error code is required for SIP code retries' })
-        }
-      } else if (value.type === 'metric') {
-        // Allow undefined metricName if no options available, but require it if it exists
-        if (value.metricName !== undefined && value.metricName !== null && value.metricName.trim() === '') {
-          return this.createError({ message: 'Metric name cannot be empty if provided' })
-        }
-        if (!value.operator || !['<', '>', '<=', '>=', '==', '!='].includes(value.operator)) {
-          return this.createError({ message: 'Operator is required and must be one of: <, >, <=, >=, ==, !=' })
-        }
-        if (value.threshold === undefined || value.threshold === null) {
-          return this.createError({ message: 'Threshold is required' })
-        }
-        // Only require metricName if operator and threshold are set (meaning user is configuring)
-        if (value.operator && value.threshold !== undefined && (!value.metricName || value.metricName.trim() === '')) {
-          return this.createError({ message: 'Metric name is required' })
-        }
-      } else if (value.type === 'fieldExtractor') {
-        // Allow undefined fieldName if no options available, but require it if it exists
-        if (value.fieldName !== undefined && value.fieldName !== null && value.fieldName.trim() === '') {
-          return this.createError({ message: 'Field name cannot be empty if provided' })
-        }
-        if (!value.operator || !['missing', 'equals', 'not_equals', 'contains', 'not_contains'].includes(value.operator)) {
-          return this.createError({ message: 'Operator is required' })
-        }
-        if (value.operator !== 'missing' && (!value.expectedValue || value.expectedValue === '')) {
-          return this.createError({ message: 'Expected value is required when operator is not "missing"' })
-        }
-        // Only require fieldName if operator is set (meaning user is configuring)
-        if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
-          return this.createError({ message: 'Field name is required' })
-        }
-      }
-      return true
+      const errorMessage = validateRetryConfigEntry(value)
+      return errorMessage ? this.createError({ message: errorMessage }) : true
     })
   ).test(
     'no-duplicate-sip-codes',
@@ -192,6 +231,82 @@ async function resolveCampaignAgentName(agentId: string, agentRuntime: string): 
     console.error('Error fetching agent name:', err)
   }
   return agentId
+}
+
+// Sanitize an optional backoffMinutes array: ints in [5, 1440], up to 10.
+function sanitizeBackoffMinutes(raw: unknown): number[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  const cleaned = raw
+    .map(Number)
+    .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
+    .slice(0, 10)
+  return cleaned.length > 0 ? cleaned : undefined
+}
+
+// sipCode retries accept errorCodes as an array, a single string/number, or
+// nothing (defaults to ['480']) — one statement per case rather than a
+// nested ternary so each outcome reads plainly. Anything else (e.g. an
+// object) falls through to the default rather than being stringified into
+// "[object Object]".
+function normalizeErrorCodes(errorCodes: unknown): string[] {
+  if (Array.isArray(errorCodes)) {
+    return errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
+  }
+  if (typeof errorCodes === 'string' || typeof errorCodes === 'number') {
+    return [String(errorCodes).trim()]
+  }
+  return ['480']
+}
+
+function buildSipCodeConfig(config: RetryConfig, backoff: number[] | undefined): any {
+  const out: any = {
+    type: 'sipCode',
+    errorCodes: normalizeErrorCodes(config.errorCodes),
+    delayMinutes: Number(config.delayMinutes),
+    maxRetries: Number(config.maxRetries),
+  }
+  if (backoff) out.backoffMinutes = backoff
+  return out
+}
+
+function buildMetricConfig(config: RetryConfig, backoff: number[] | undefined): any {
+  const metricConfig: any = {
+    type: 'metric',
+    metricName: config.metricName,
+    operator: config.operator,
+    threshold: Number(config.threshold),
+    delayMinutes: Number(config.delayMinutes),
+    maxRetries: Number(config.maxRetries),
+  }
+  if (backoff) metricConfig.backoffMinutes = backoff
+  return metricConfig
+}
+
+// Shared shape for fieldExtractor and metadata — only `type` differs.
+function buildFieldOrMetadataConfig(config: RetryConfig, backoff: number[] | undefined): any {
+  const fieldConfig: any = {
+    type: config.type,
+    fieldName: config.fieldName,
+    operator: config.operator,
+    delayMinutes: Number(config.delayMinutes),
+    maxRetries: Number(config.maxRetries),
+  }
+  const operator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
+  if (operator && operator !== 'missing' && config.expectedValue) {
+    fieldConfig.expectedValue = config.expectedValue
+  }
+  if (backoff) fieldConfig.backoffMinutes = backoff
+  return fieldConfig
+}
+
+// Format a single retryConfig entry according to backend requirements — see
+// the per-type builders above for field shapes.
+function formatRetryConfigEntry(config: RetryConfig): any {
+  const backoff = sanitizeBackoffMinutes((config as any).backoffMinutes)
+  if (config.type === 'sipCode' || !config.type) return buildSipCodeConfig(config, backoff)
+  if (config.type === 'metric') return buildMetricConfig(config, backoff)
+  if (config.type === 'fieldExtractor' || config.type === 'metadata') return buildFieldOrMetadataConfig(config, backoff)
+  return config
 }
 
 function CreateCampaign() {
@@ -370,60 +485,9 @@ function CreateCampaign() {
         ? new Date(values.scheduleDate).toISOString()
         : new Date().toISOString()
 
-      // Sanitize an optional backoffMinutes array: ints in [5, 1440], up to 10.
-      const sanitizeBackoff = (raw: unknown): number[] | undefined => {
-        if (!Array.isArray(raw) || raw.length === 0) return undefined
-        const cleaned = raw
-          .map(v => Number(v))
-          .filter(n => Number.isFinite(n) && n >= 5 && n <= 1440)
-          .slice(0, 10)
-        return cleaned.length > 0 ? cleaned : undefined
-      }
-
-      // Format retryConfig according to backend requirements. Each branch
-      // explicitly lists its fields, so backoffMinutes MUST be carried
-      // through here or it gets silently dropped.
-      const formattedRetryConfig = values.retryConfig.map(config => {
-        const backoff = sanitizeBackoff((config as any).backoffMinutes)
-        if (config.type === 'sipCode' || !config.type) {
-          const out: any = {
-            type: 'sipCode',
-            errorCodes: Array.isArray(config.errorCodes)
-              ? config.errorCodes.map(code => String(code).trim()).filter(code => code.length > 0)
-              : (config.errorCodes ? [String(config.errorCodes).trim()] : ['480']),
-            delayMinutes: Number(config.delayMinutes),
-            maxRetries: Number(config.maxRetries),
-          }
-          if (backoff) out.backoffMinutes = backoff
-          return out
-        } else if (config.type === 'metric') {
-          const metricConfig: any = {
-            type: 'metric',
-            metricName: config.metricName,
-            operator: config.operator,
-            threshold: Number(config.threshold),
-            delayMinutes: Number(config.delayMinutes),
-            maxRetries: Number(config.maxRetries),
-          }
-          if (backoff) metricConfig.backoffMinutes = backoff
-          return metricConfig
-        } else if (config.type === 'fieldExtractor') {
-          const fieldConfig: any = {
-            type: 'fieldExtractor',
-            fieldName: config.fieldName,
-            operator: config.operator,
-            delayMinutes: Number(config.delayMinutes),
-            maxRetries: Number(config.maxRetries),
-          }
-          const fieldOperator = config.operator as 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains' | undefined
-          if (fieldOperator && fieldOperator !== 'missing' && config.expectedValue) {
-            fieldConfig.expectedValue = config.expectedValue
-          }
-          if (backoff) fieldConfig.backoffMinutes = backoff
-          return fieldConfig
-        }
-        return config
-      })
+      // Format retryConfig according to backend requirements (see
+      // formatRetryConfigEntry for the per-type field shapes).
+      const formattedRetryConfig = values.retryConfig.map(formatRetryConfigEntry)
 
       const scheduleResponse = await fetch('/api/campaigns/schedule', {
         method: 'POST',

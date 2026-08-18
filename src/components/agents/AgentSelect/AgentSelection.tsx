@@ -18,10 +18,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { useMobile } from '@/hooks/use-mobile'
 import { UserPermissionsProvider, useInvalidateUserPermissions } from '@/contexts/UserPermissionsContext'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface Agent {
   id: string
+  /** Immutable backend identity — the label users see is `display_name`. */
   name: string
+  display_name?: string | null
   agent_type: string
   configuration: any
   environment: string
@@ -82,7 +85,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
 
   // Fetch agents data
   const { data: agents, isLoading: agentsLoading, error: agentsError, refetch } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration, environment, created_at, is_active, project_id',
+    select: 'id, name, display_name, agent_type, configuration, environment, created_at, is_active, project_id',
     filters: [
       { column: 'project_id', operator: 'eq', value: projectId }
     ],
@@ -162,6 +165,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   // All users can see the agents in their project (backend enforces access controls)
   const filteredAgents = (agents || []).filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      agentDisplayName(agent).toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.agent_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.id.toLowerCase().includes(searchQuery.toLowerCase())
     
