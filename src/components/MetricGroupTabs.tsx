@@ -6,20 +6,20 @@ import { MetricGroup } from '@/types/metricGroups'
 import { useMobile } from '@/hooks/use-mobile'
 
 interface MetricGroupTabsProps {
-  groups: MetricGroup[]
-  activeGroupId: string | 'all'
-  onGroupChange: (groupId: string | 'all') => void
-  onManageGroups: () => void
-  customTotalsCount: number
+  readonly groups: MetricGroup[]
+  readonly activeGroupId: string | 'all'
+  readonly onGroupChange: (groupId: string | 'all') => void
+  readonly onManageGroups: () => void
+  readonly customTotalsCount: number
   /** When false, hide create/manage group controls (viewers). Default true. */
-  canManageGroups?: boolean
+  readonly canManageGroups?: boolean
   /** Opens the custom chart builder dialog (overview). */
-  onAddChart?: () => void
+  readonly onAddChart?: () => void
   /** When true, show Add chart at the end of the row (desktop overview). */
-  showAddChart?: boolean
+  readonly showAddChart?: boolean
   /** Rebuilds call_summary_daily for this agent from full call history. */
-  onRecalculate?: () => void
-  recalculating?: boolean
+  readonly onRecalculate?: () => void
+  readonly recalculating?: boolean
 }
 
 export function MetricGroupTabs({
