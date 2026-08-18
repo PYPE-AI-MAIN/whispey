@@ -16,6 +16,81 @@ import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
 import { RecipientsPreview } from '@/components/campaigns/RecipientsPreview'
 import { RetryConfiguration } from '@/components/campaigns/RetryConfiguration'
 
+// Per-type retryConfig validators — each returns an error message or null.
+// Extracted so the Yup .test() callback below is a flat dispatcher instead
+// of one deeply-branched function.
+function validateSipCodeRetry(value: any): string | null {
+  if (!value.errorCodes || !Array.isArray(value.errorCodes) || value.errorCodes.length === 0) {
+    return 'At least one error code is required for SIP code retries'
+  }
+  return null
+}
+
+function validateMetricRetry(value: any): string | null {
+  // Allow undefined metricName if no options available, but require it if it exists
+  if (value.metricName !== undefined && value.metricName !== null && value.metricName.trim() === '') {
+    return 'Metric name cannot be empty if provided'
+  }
+  if (!value.operator || !['<', '>', '<=', '>=', '==', '!='].includes(value.operator)) {
+    return 'Operator is required and must be one of: <, >, <=, >=, ==, !='
+  }
+  if (value.threshold === undefined || value.threshold === null) {
+    return 'Threshold is required'
+  }
+  // Only require metricName if operator and threshold are set (meaning user is configuring)
+  if (value.operator && value.threshold !== undefined && (!value.metricName || value.metricName.trim() === '')) {
+    return 'Metric name is required'
+  }
+  return null
+}
+
+// Shared operator/expectedValue rules for fieldExtractor and metadata — both
+// use the same operator set and the same "expectedValue required unless
+// missing" rule. Only fieldName presence differs, so each caller checks that.
+function validateFieldLikeOperator(value: any): string | null {
+  if (!value.operator || !['missing', 'equals', 'not_equals', 'contains', 'not_contains'].includes(value.operator)) {
+    return 'Operator is required'
+  }
+  if (value.operator !== 'missing' && (!value.expectedValue || value.expectedValue === '')) {
+    return 'Expected value is required when operator is not "missing"'
+  }
+  return null
+}
+
+function validateFieldExtractorRetry(value: any): string | null {
+  // Allow undefined fieldName if no options available, but require it if it exists
+  if (value.fieldName !== undefined && value.fieldName !== null && value.fieldName.trim() === '') {
+    return 'Field name cannot be empty if provided'
+  }
+  const operatorError = validateFieldLikeOperator(value)
+  if (operatorError) return operatorError
+  // Only require fieldName if operator is set (meaning user is configuring)
+  if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
+    return 'Field name is required'
+  }
+  return null
+}
+
+function validateMetadataRetry(value: any): string | null {
+  // fieldName comes from a fixed dropdown (CALL_METADATA_FIELDS), so it's
+  // always present once the row exists — no "empty if provided" check needed.
+  const operatorError = validateFieldLikeOperator(value)
+  if (operatorError) return operatorError
+  if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
+    return 'Metadata field is required'
+  }
+  return null
+}
+
+function validateRetryConfigEntry(value: any): string | null {
+  if (!value || !value.type) return null // Let required() handle this
+  if (value.type === 'sipCode') return validateSipCodeRetry(value)
+  if (value.type === 'metric') return validateMetricRetry(value)
+  if (value.type === 'fieldExtractor') return validateFieldExtractorRetry(value)
+  if (value.type === 'metadata') return validateMetadataRetry(value)
+  return null
+}
+
 // Create validation schema with dynamic max concurrency
 const createValidationSchema = (maxConcurrency: number) => Yup.object({
   campaignName: Yup.string()
@@ -84,57 +159,8 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
         .nullable()
         .optional(),
     }).test('validate-retry-config', 'Invalid retry configuration', function(value) {
-      if (!value || !value.type) return true // Let required() handle this
-      
-      if (value.type === 'sipCode') {
-        if (!value.errorCodes || !Array.isArray(value.errorCodes) || value.errorCodes.length === 0) {
-          return this.createError({ message: 'At least one error code is required for SIP code retries' })
-        }
-      } else if (value.type === 'metric') {
-        // Allow undefined metricName if no options available, but require it if it exists
-        if (value.metricName !== undefined && value.metricName !== null && value.metricName.trim() === '') {
-          return this.createError({ message: 'Metric name cannot be empty if provided' })
-        }
-        if (!value.operator || !['<', '>', '<=', '>=', '==', '!='].includes(value.operator)) {
-          return this.createError({ message: 'Operator is required and must be one of: <, >, <=, >=, ==, !=' })
-        }
-        if (value.threshold === undefined || value.threshold === null) {
-          return this.createError({ message: 'Threshold is required' })
-        }
-        // Only require metricName if operator and threshold are set (meaning user is configuring)
-        if (value.operator && value.threshold !== undefined && (!value.metricName || value.metricName.trim() === '')) {
-          return this.createError({ message: 'Metric name is required' })
-        }
-      } else if (value.type === 'fieldExtractor') {
-        // Allow undefined fieldName if no options available, but require it if it exists
-        if (value.fieldName !== undefined && value.fieldName !== null && value.fieldName.trim() === '') {
-          return this.createError({ message: 'Field name cannot be empty if provided' })
-        }
-        if (!value.operator || !['missing', 'equals', 'not_equals', 'contains', 'not_contains'].includes(value.operator)) {
-          return this.createError({ message: 'Operator is required' })
-        }
-        if (value.operator !== 'missing' && (!value.expectedValue || value.expectedValue === '')) {
-          return this.createError({ message: 'Expected value is required when operator is not "missing"' })
-        }
-        // Only require fieldName if operator is set (meaning user is configuring)
-        if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
-          return this.createError({ message: 'Field name is required' })
-        }
-      } else if (value.type === 'metadata') {
-        // fieldName comes from a fixed dropdown (CALL_METADATA_FIELDS), so
-        // it's always present once the row exists — same operator/expectedValue
-        // rules as fieldExtractor.
-        if (!value.operator || !['missing', 'equals', 'not_equals', 'contains', 'not_contains'].includes(value.operator)) {
-          return this.createError({ message: 'Operator is required' })
-        }
-        if (value.operator !== 'missing' && (!value.expectedValue || value.expectedValue === '')) {
-          return this.createError({ message: 'Expected value is required when operator is not "missing"' })
-        }
-        if (value.operator && (!value.fieldName || value.fieldName.trim() === '')) {
-          return this.createError({ message: 'Metadata field is required' })
-        }
-      }
-      return true
+      const errorMessage = validateRetryConfigEntry(value)
+      return errorMessage ? this.createError({ message: errorMessage }) : true
     })
   ).test(
     'no-duplicate-sip-codes',
