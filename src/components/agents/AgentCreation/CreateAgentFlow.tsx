@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AGENT_DEFAULT_CONFIG } from '@/config/agentDefaults'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
+import { deriveAgentName, AGENT_DISPLAY_NAME_MAX } from '@/lib/agentDisplayName'
 
 const PLATFORM_OPTIONS = [
   {
@@ -47,9 +48,9 @@ function getResultBadgeLabel(creationMode: 'single' | 'flow', selectedPlatform: 
 }
 
 function getNamePlaceholder(selectedPlatform: string): string {
-  if (selectedPlatform === 'pipecat') return 'PipecatAgent'
-  if (selectedPlatform === 'vapi') return 'SupportAgent'
-  return 'VoiceHelper'
+  if (selectedPlatform === 'pipecat') return 'Pipecat Assistant'
+  if (selectedPlatform === 'vapi') return 'Support Desk'
+  return 'Front Desk — Riya'
 }
 
 interface CreateAgentFlowProps {
@@ -120,30 +121,26 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     }
   }
   
+  // Free text now — this is the label users see. The immutable backend `name`
+  // is derived from it (first 10 sanitized chars) and reserved server-side.
   const handleNameChange = (value: string) => {
-    let sanitized = value.replace(/\s+/g, '_')
-    
-    sanitized = sanitized.replace(/[^a-zA-Z0-9_]/g, '')
-    
-    if (!sanitized) {
+    if (!value.trim()) {
       setNameError(null)
-    } else if (!/^[a-zA-Z]/.test(sanitized)) {
-      setNameError('Agent name must start with a letter')
-    } else if (/\d/.test(sanitized)) {
-      setNameError('Agent name cannot contain numbers')
-    } else if (sanitized.endsWith('_')) {
-      setNameError('Agent name cannot end with a space')
+    } else if (!/[a-zA-Z]/.test(value)) {
+      setNameError('Agent name must contain at least one letter')
     } else {
       setNameError(null)
     }
-    
-    setFormData({ ...formData, name: sanitized })
+
+    setFormData({ ...formData, name: value })
   }
 
   // Creates the local Whispey agent record — backend handles Pipecat creation too.
   const createLocalAgent = async () => {
     const agentPayload = {
-      name: formData.name.trim(),
+      // `name` is a hint only — the API re-derives and reserves it server-side.
+      name: deriveAgentName(formData.name),
+      display_name: formData.name.trim(),
       agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform === 'pipecat' ? 'pipecat_agent' : selectedPlatform,
       configuration: {
         description: formData.description.trim() || null,
@@ -188,7 +185,11 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
     const { encrypted: encryptedApiKey } = await encryptResponse.json()
     const sanitizedAgentId = localAgent.id.replaceAll('-', '_')
-    const agentNameWithId = `${formData.name.trim()}_${sanitizedAgentId}`
+    // MUST use the name the API actually stored, not formData — the server
+    // derives it from the label and may append a suffix to dodge a collision.
+    // Using the form value here would name the VM agent something that no
+    // longer matches `${agent.name}_${id}`, orphaning every backend lookup.
+    const agentNameWithId = `${localAgent.name}_${sanitizedAgentId}`
 
     const pypeAgentPayload = {
       project_id: projectId,
@@ -554,13 +555,13 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>This will be the name of your voice agent</p>
+                        <p>The name shown everywhere in the dashboard. You can change it later.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
                 <span className="text-xs italic text-gray-400 dark:text-gray-500">
-                  {formData.name.length}/14
+                  {formData.name.length}/{AGENT_DISPLAY_NAME_MAX}
                 </span>
               </div>
               
@@ -568,7 +569,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 placeholder={getNamePlaceholder(selectedPlatform)}
                 value={formData.name}
                 autoComplete="off"
-                maxLength={14}
+                maxLength={AGENT_DISPLAY_NAME_MAX}
                 onChange={(e) => handleNameChange(e.target.value)}
                 className={`h-10 px-3 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all ${
                   nameError ? 'border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/20' : ''
@@ -577,9 +578,15 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
               {nameError ? (
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{nameError}</p>
+              ) : formData.name.trim() ? (
+                <p className="text-[11px] italic text-gray-400 dark:text-gray-500">
+                  Permanent internal name:{' '}
+                  <span className="font-mono not-italic">{deriveAgentName(formData.name)}</span>
+                  {' '}— derived once, never changes even if you rename the agent.
+                </p>
               ) : (
                 <p className="text-[11px] italic text-gray-400 dark:text-gray-500">
-                  *max 14 characters
+                  Spaces and punctuation are fine — you can rename this later.
                 </p>
               )}
 

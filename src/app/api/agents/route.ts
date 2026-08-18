@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { encryptApiKey } from '@/lib/vapi-encryption'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { deriveAgentName, normalizeAgentDisplayName } from '@/lib/agentDisplayName'
 
 const supabase = createServiceRoleClient()
 
@@ -14,7 +15,7 @@ async function createPipecatAgent(agentData: any, projectId: string, whispeyAgen
   const pipecatPayload = {
     id: whispeyAgentId,              // ✅ use Supabase UUID so both DBs share the same ID
     name: agentData.name,
-    prompt: `You are a helpful voice assistant named ${agentData.name}. ${agentData.configuration?.description || 'Assist users with their queries in a friendly and professional manner.'}`,
+    prompt: `You are a helpful voice assistant named ${agentData.display_name || agentData.name}. ${agentData.configuration?.description || 'Assist users with their queries in a friendly and professional manner.'}`,
     tools: ["transfer_call"],
     custom_tools: [],
     stt_language: "en-IN",
@@ -47,10 +48,39 @@ async function createPipecatAgent(agentData: any, projectId: string, whispeyAgen
   return pipecatAgent
 }
 
+/**
+ * Pick a free `name` for this project, starting from the label-derived prefix.
+ * `name` collides easily once it is only the first 10 chars of a label, and the
+ * caller-facing 409 ("Agent with name Front_Desk already exists") would be
+ * baffling for someone who typed "Front Desk Reception" — so resolve it here.
+ *
+ * Digits can't be used as the suffix (backend agent names reject them), hence
+ * letters. ponytail: fetches every name in the project rather than filtering in
+ * SQL — projects are capped at a handful of agents, and a LIKE pattern would
+ * have to escape the `_` that derived names are full of. No DB unique constraint
+ * to race against either: a concurrent double-create can still land the same
+ * prefix, which is harmless because the backend name carries the agent UUID.
+ * Widen the suffix if a project ever needs >26 agents sharing a 10-char prefix.
+ */
+async function reserveAgentName(projectId: string, base: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('pype_voice_agents')
+    .select('name')
+    .eq('project_id', projectId)
+
+  const taken = new Set((data ?? []).map((row: { name: string }) => row.name))
+  if (!taken.has(base)) return base
+  for (const suffix of 'bcdefghijklmnopqrstuvwxyz') {
+    const candidate = `${base}_${suffix}`
+    if (!taken.has(candidate)) return candidate
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, agent_type, configuration, project_id, environment, platform } = body
+    const { name, display_name, agent_type, configuration, project_id, environment, platform } = body
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Agent name is required' }, { status: 400 })
@@ -93,27 +123,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
     }
 
-    const { data: existingAgent, error: checkError } = await supabase
-      .from('pype_voice_agents')
-      .select('id, name')
-      .eq('project_id', project_id)
-      .eq('name', name.trim())
-      .maybeSingle()
-
-    if (checkError) {
-      console.error('❌ Error checking existing agent:', checkError)
-      return NextResponse.json({ error: 'Failed to validate agent name' }, { status: 500 })
-    }
-
-    if (existingAgent) {
+    // Callers that send a free-text `display_name` (the create form) get `name`
+    // derived from it server-side, so the immutable backend identity is always
+    // authoritative here rather than whatever the client computed. Callers that
+    // send only `name` (the connect flows) keep the original behaviour.
+    let label: string | null = null
+    try {
+      label = normalizeAgentDisplayName(display_name)
+    } catch (e) {
       return NextResponse.json(
-        { error: `Agent with name "${name.trim()}" already exists in this project. Please choose a different name.` },
-        { status: 409 }
+        { error: e instanceof Error ? e.message : 'Invalid display_name' },
+        { status: 400 }
       )
     }
 
+    let resolvedName: string
+    if (label) {
+      const reserved = await reserveAgentName(project_id, deriveAgentName(label))
+      if (!reserved) {
+        return NextResponse.json(
+          { error: `Too many agents named like "${label}" in this project. Please pick a different name.` },
+          { status: 409 }
+        )
+      }
+      resolvedName = reserved
+    } else {
+      const { data: existingAgent, error: checkError } = await supabase
+        .from('pype_voice_agents')
+        .select('id, name')
+        .eq('project_id', project_id)
+        .eq('name', name.trim())
+        .maybeSingle()
+
+      if (checkError) {
+        console.error('❌ Error checking existing agent:', checkError)
+        return NextResponse.json({ error: 'Failed to validate agent name' }, { status: 500 })
+      }
+
+      if (existingAgent) {
+        return NextResponse.json(
+          { error: `Agent with name "${name.trim()}" already exists in this project. Please choose a different name.` },
+          { status: 409 }
+        )
+      }
+      resolvedName = name.trim()
+    }
+
     const agentData: any = {
-      name: name.trim(),
+      name: resolvedName,
+      display_name: label,
       agent_type,
       configuration: configuration || {},
       project_id,

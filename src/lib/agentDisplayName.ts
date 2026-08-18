@@ -30,3 +30,29 @@ export function normalizeAgentDisplayName(value: unknown): string | null {
   }
   return trimmed
 }
+
+/** How many characters of the label become the `name` prefix. */
+export const AGENT_NAME_PREFIX_MAX = 10
+
+/**
+ * Derive the immutable `name` from a human label: first 10 sanitized chars.
+ * The backend agent is then `${name}_${id.replace(/-/g, '_')}` as always.
+ *
+ * Constraints come from what the PypeAPI VM accepts as an agent folder name and
+ * from what extractAgentIdFromBackendName() can still parse back out — letters
+ * and underscores only, must start with a letter, no trailing underscore.
+ * Digits are stripped rather than rejected so any label can produce a name.
+ */
+export function deriveAgentName(displayName: string): string {
+  const derived = (displayName || '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_+/, '')
+    .slice(0, AGENT_NAME_PREFIX_MAX)
+    .replace(/_+$/, '')
+  // ponytail: labels with no letters at all ("24x7", "★") fall back to a
+  // constant — the agent UUID in the backend name is what makes it unique.
+  return derived || 'agent'
+}
