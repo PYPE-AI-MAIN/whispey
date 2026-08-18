@@ -2,10 +2,12 @@ import React from 'react'
 import { Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface Agent {
   id: string
   name: string
+  display_name?: string | null
   agent_type: string
   configuration: any
   environment: string
@@ -35,7 +37,7 @@ const AgentDeleteDialog: React.FC<AgentDeleteDialogProps> = ({
             Remove Monitoring
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1.5">
-            Are you sure you want to stop monitoring "{agent?.name}"? This will remove all observability for this agent and cannot be undone.
+            Are you sure you want to stop monitoring "{agentDisplayName(agent)}"? This will remove all observability for this agent and cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-3 pt-5">
