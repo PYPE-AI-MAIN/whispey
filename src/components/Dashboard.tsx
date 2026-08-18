@@ -38,17 +38,13 @@ import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
 import MetricsDialog from './MetricsDialog'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import QuickStartGuide from './QuickStartGuide'
 import { useMobile } from '@/hooks/use-mobile'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
+import AgentNameEditor from './agents/AgentNameEditor'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useCallLogsStore, DEFAULT_DATE_FILTER } from '@/stores/callLogsStore'
 
 interface DashboardProps {
@@ -229,7 +225,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
-  const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
+  const { isOwnerOrAdmin, isViewer, visibility } = useMemberVisibility(project?.id)
   // Show when permissions.visibility allows (Supabase); viewers can see if DB grants it.
   const canSeeFieldExtractor = canShowOrgSection(visibility, 'fieldExtractor')
   const canSeeMetrics = canShowOrgSection(visibility, 'metrics')
@@ -245,21 +241,21 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     if (agent && project) {
       return {
         project: project.name,
-        item: agent.name
+        item: agentDisplayName(agent)
       }
     }
     
     if (agent && !agent.project_id) {
       return {
         project: 'No Project',
-        item: agent.name
+        item: agentDisplayName(agent)
       }
     }
     
     if (agent && !project) {
       return {
         project: 'Unknown Project',
-        item: agent.name
+        item: agentDisplayName(agent)
       }
     }
     
@@ -503,18 +499,12 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   <AgentHeaderSkeleton isMobile={isMobile} />
                 ) : agent ? (
                   <>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <h1 className={`${isMobile ? 'text-lg max-w-[180px]' : 'text-2xl max-w-[250px]'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight truncate cursor-default`}>
-                            {agent.name}
-                          </h1>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{agent.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <AgentNameEditor
+                      agent={agent}
+                      canEdit={!isViewer}
+                      isMobile={isMobile}
+                      onSaved={refetchAgent}
+                    />
                     <div className="flex items-center gap-2">
                       <Badge className={`${isMobile ? 'text-xs px-2 py-0.5' : 'text-xs px-3 py-1'} font-medium rounded-full ${getEnvironmentColor(agent.environment)}`}>
                         {agent.environment}

@@ -5,6 +5,7 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
+import { normalizeAgentDisplayName } from '@/lib/agentDisplayName'
 
 // GET method to fetch agent details
 export async function GET(
@@ -48,6 +49,7 @@ export async function GET(
     const agentResponse: Record<string, unknown> = {
       id: agent.id,
       name: agent.name,
+      display_name: agent.display_name ?? null,
       agent_type: agent.agent_type,
       configuration: agent.configuration,
       project_id: agent.project_id,
@@ -86,6 +88,7 @@ const PATCHABLE_AGENT_FIELDS = [
   'field_extractor',
   'field_extractor_variables',
   'metrics',
+  'display_name',
 ] as const
 
 export async function PATCH(
@@ -139,6 +142,22 @@ export async function PATCH(
           if (!allowMetrics) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
           }
+        }
+        // display_name is the human label only — `name` stays immutable because
+        // the backend agent identity is derived from it. Viewers can't rename.
+        if (key === 'display_name') {
+          if (isViewer) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+          }
+          try {
+            updatePayload[key] = normalizeAgentDisplayName(body[key])
+          } catch (e) {
+            return NextResponse.json(
+              { error: e instanceof Error ? e.message : 'Invalid display_name' },
+              { status: 400 }
+            )
+          }
+          continue
         }
         updatePayload[key] = body[key]
       }
