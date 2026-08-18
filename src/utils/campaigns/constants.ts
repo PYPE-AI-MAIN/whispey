@@ -180,11 +180,20 @@ export interface RetryConfig {
 // type. Unlike fieldExtractor (whose options come from the agent's
 // field_extractor_prompt), these are produced by the voice agent itself
 // (e.g. LiveKit AMD) and aren't agent-configurable, so the list is static.
+//
+// `enabled: false` mirrors the SIP-code "coming soon" pattern below —
+// hangup_cause/call_ended_reason are listed for visibility but disabled
+// because nothing currently writes those keys to contact.callMetadata
+// (only amd-verdict is live), so a rule on them would silently never fire.
 export const CALL_METADATA_FIELDS = [
-  { key: 'amd-verdict', label: 'AMD Verdict (Answering Machine Detection)' },
-  { key: 'hangup_cause', label: 'Hangup Cause' },
-  { key: 'call_ended_reason', label: 'Call Ended Reason' },
+  { key: 'amd-verdict', label: 'AMD Verdict (Answering Machine Detection)', enabled: true },
+  { key: 'hangup_cause', label: 'Hangup Cause', enabled: false },
+  { key: 'call_ended_reason', label: 'Call Ended Reason', enabled: false },
 ] as const
+
+// Only enabled keys — this is what the backend validator (schedule/route.ts)
+// actually accepts, same rationale as VALID_SIP_ERROR_CODE_VALUES above.
+export const VALID_CALL_METADATA_FIELD_KEYS = CALL_METADATA_FIELDS.filter(f => f.enabled).map(f => f.key)
 
 // Campaign types
 export interface CallStats {

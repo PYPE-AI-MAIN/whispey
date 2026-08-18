@@ -618,9 +618,11 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     } else if (value === 'metadata') {
                       // Call-level metadata (e.g. AMD verdict) — fixed field
                       // list, not agent-specific, so always has a default.
+                      // Default to the first ENABLED field — hangup_cause/
+                      // call_ended_reason are listed but disabled for now.
                       const newConfig: any = {
                         type: 'metadata',
-                        fieldName: CALL_METADATA_FIELDS[0].key,
+                        fieldName: (CALL_METADATA_FIELDS.find(f => f.enabled) || CALL_METADATA_FIELDS[0]).key,
                         operator: 'missing',
                         delayMinutes: config.delayMinutes || 5,
                         maxRetries: config.maxRetries || 2,
@@ -802,7 +804,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         Metadata Field
                       </Label>
                       <Select
-                        value={config.fieldName || CALL_METADATA_FIELDS[0].key}
+                        value={config.fieldName || (CALL_METADATA_FIELDS.find(f => f.enabled) || CALL_METADATA_FIELDS[0]).key}
                         onValueChange={(value) => {
                           handleRetryChange(index, 'fieldName', value)
                         }}
@@ -812,8 +814,9 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         </SelectTrigger>
                         <SelectContent>
                           {CALL_METADATA_FIELDS.map((field) => (
-                            <SelectItem key={field.key} value={field.key}>
+                            <SelectItem key={field.key} value={field.key} disabled={!field.enabled}>
                               {field.label}
+                              {!field.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
                             </SelectItem>
                           ))}
                         </SelectContent>

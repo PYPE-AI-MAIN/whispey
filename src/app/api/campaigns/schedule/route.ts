@@ -1,6 +1,6 @@
 // app/api/campaigns/schedule/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { VALID_SIP_ERROR_CODE_VALUES, CALL_METADATA_FIELDS } from '@/utils/campaigns/constants'
+import { VALID_SIP_ERROR_CODE_VALUES, VALID_CALL_METADATA_FIELD_KEYS } from '@/utils/campaigns/constants'
 
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 })
 
@@ -183,9 +183,10 @@ export async function POST(request: NextRequest) {
           // Metadata retry: same shape as fieldExtractor, but fieldName must
           // be one of the fixed call-level metadata keys the voice agent
           // actually produces (e.g. amd-verdict) rather than an arbitrary string.
-          const validFieldNames = CALL_METADATA_FIELDS.map(f => f.key)
-          if (!config.fieldName || !validFieldNames.includes(config.fieldName)) {
-            return badRequest(`Invalid retry configuration: fieldName must be one of: ${validFieldNames.join(', ')}`)
+          // Only enabled keys are accepted — hangup_cause/call_ended_reason
+          // are disabled until something actually writes them.
+          if (!config.fieldName || !VALID_CALL_METADATA_FIELD_KEYS.includes(config.fieldName)) {
+            return badRequest(`Invalid retry configuration: fieldName must be one of: ${VALID_CALL_METADATA_FIELD_KEYS.join(', ')}`)
           }
 
           const commonError = validateFieldLikeCommon(config, 'metadata')
