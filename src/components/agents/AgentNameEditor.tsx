@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AGENT_DISPLAY_NAME_MAX, agentDisplayName } from '@/lib/agentDisplayName'
 
+const ICON_BUTTON = { size: 'icon', variant: 'ghost' } as const
+
 interface AgentNameEditorProps {
   agent: { id: string; name?: string | null; display_name?: string | null }
   /** Hide the pencil for viewers / read-only contexts. */
@@ -67,12 +69,13 @@ export default function AgentNameEditor({
         <div className="flex flex-col gap-1">
           <Input
             autoFocus
+            aria-label="Agent name"
             value={value}
             maxLength={AGENT_DISPLAY_NAME_MAX}
             disabled={saving}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') save()
+              if (e.key === 'Enter') void save()
               if (e.key === 'Escape') setEditing(false)
             }}
             placeholder={agent.name ?? 'Agent name'}
@@ -80,11 +83,18 @@ export default function AgentNameEditor({
           />
           {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
         </div>
-        <Button size="icon" variant="ghost" className="h-8 w-8" disabled={saving} onClick={save} aria-label="Save name">
+        <Button
+          {...ICON_BUTTON}
+          className="h-8 w-8"
+          disabled={saving}
+          onClick={() => void save()}
+          aria-label="Save name"
+        >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
         </Button>
         <Button
-          size="icon" variant="ghost" className="h-8 w-8"
+          {...ICON_BUTTON}
+          className="h-8 w-8"
           disabled={saving}
           onClick={() => setEditing(false)}
           aria-label="Cancel rename"
@@ -116,7 +126,7 @@ export default function AgentNameEditor({
       </TooltipProvider>
       {canEdit && (
         <Button
-          size="icon" variant="ghost"
+          {...ICON_BUTTON}
           className="h-7 w-7 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
           onClick={startEditing}
           aria-label="Rename agent"

@@ -121,6 +121,11 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     }
   }
   
+  // Shown under the input: the permanent internal name this label will produce.
+  const nameHint = formData.name.trim()
+    ? `Permanent internal name: ${deriveAgentName(formData.name)} — derived once, never changes even if you rename the agent.`
+    : 'Spaces and punctuation are fine — you can rename this later.'
+
   // Free text now — this is the label users see. The immutable backend `name`
   // is derived from it (first 10 sanitized chars) and reserved server-side.
   const handleNameChange = (value: string) => {
@@ -578,16 +583,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
               {nameError ? (
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{nameError}</p>
-              ) : formData.name.trim() ? (
-                <p className="text-[11px] italic text-gray-400 dark:text-gray-500">
-                  Permanent internal name:{' '}
-                  <span className="font-mono not-italic">{deriveAgentName(formData.name)}</span>
-                  {' '}— derived once, never changes even if you rename the agent.
-                </p>
               ) : (
-                <p className="text-[11px] italic text-gray-400 dark:text-gray-500">
-                  Spaces and punctuation are fine — you can rename this later.
-                </p>
+                <p className="text-[11px] italic text-gray-400 dark:text-gray-500">{nameHint}</p>
               )}
 
             </div>

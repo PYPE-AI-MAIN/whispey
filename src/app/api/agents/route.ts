@@ -77,6 +77,63 @@ async function reserveAgentName(projectId: string, base: string): Promise<string
   return null
 }
 
+type AgentIdentity =
+  | { ok: true; name: string; display_name: string | null }
+  | { ok: false; error: string; status: number }
+
+/**
+ * Decide the immutable `name` and the human `display_name` for a new agent.
+ *
+ * Callers that send a free-text `display_name` (the create form) get `name`
+ * derived from it here, so the stored backend identity is authoritative rather
+ * than whatever the client computed. Callers that send only `name` (the connect
+ * flows, and the voice backend registering itself) keep the original behaviour.
+ */
+async function resolveAgentIdentity(
+  projectId: string,
+  rawName: string,
+  rawDisplayName: unknown
+): Promise<AgentIdentity> {
+  let label: string | null
+  try {
+    label = normalizeAgentDisplayName(rawDisplayName)
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Invalid display_name', status: 400 }
+  }
+
+  if (label) {
+    const reserved = await reserveAgentName(projectId, deriveAgentName(label))
+    if (!reserved) {
+      return {
+        ok: false,
+        error: `Too many agents named like "${label}" in this project. Please pick a different name.`,
+        status: 409,
+      }
+    }
+    return { ok: true, name: reserved, display_name: label }
+  }
+
+  const { data: existingAgent, error: checkError } = await supabase
+    .from('pype_voice_agents')
+    .select('id, name')
+    .eq('project_id', projectId)
+    .eq('name', rawName.trim())
+    .maybeSingle()
+
+  if (checkError) {
+    console.error('❌ Error checking existing agent:', checkError)
+    return { ok: false, error: 'Failed to validate agent name', status: 500 }
+  }
+  if (existingAgent) {
+    return {
+      ok: false,
+      error: `Agent with name "${rawName.trim()}" already exists in this project. Please choose a different name.`,
+      status: 409,
+    }
+  }
+  return { ok: true, name: rawName.trim(), display_name: null }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -123,55 +180,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
     }
 
-    // Callers that send a free-text `display_name` (the create form) get `name`
-    // derived from it server-side, so the immutable backend identity is always
-    // authoritative here rather than whatever the client computed. Callers that
-    // send only `name` (the connect flows) keep the original behaviour.
-    let label: string | null = null
-    try {
-      label = normalizeAgentDisplayName(display_name)
-    } catch (e) {
-      return NextResponse.json(
-        { error: e instanceof Error ? e.message : 'Invalid display_name' },
-        { status: 400 }
-      )
-    }
-
-    let resolvedName: string
-    if (label) {
-      const reserved = await reserveAgentName(project_id, deriveAgentName(label))
-      if (!reserved) {
-        return NextResponse.json(
-          { error: `Too many agents named like "${label}" in this project. Please pick a different name.` },
-          { status: 409 }
-        )
-      }
-      resolvedName = reserved
-    } else {
-      const { data: existingAgent, error: checkError } = await supabase
-        .from('pype_voice_agents')
-        .select('id, name')
-        .eq('project_id', project_id)
-        .eq('name', name.trim())
-        .maybeSingle()
-
-      if (checkError) {
-        console.error('❌ Error checking existing agent:', checkError)
-        return NextResponse.json({ error: 'Failed to validate agent name' }, { status: 500 })
-      }
-
-      if (existingAgent) {
-        return NextResponse.json(
-          { error: `Agent with name "${name.trim()}" already exists in this project. Please choose a different name.` },
-          { status: 409 }
-        )
-      }
-      resolvedName = name.trim()
+    const identity = await resolveAgentIdentity(project_id, name, display_name)
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error }, { status: identity.status })
     }
 
     const agentData: any = {
-      name: resolvedName,
-      display_name: label,
+      name: identity.name,
+      display_name: identity.display_name,
       agent_type,
       configuration: configuration || {},
       project_id,
