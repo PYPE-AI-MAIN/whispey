@@ -28,7 +28,7 @@ function validateSipCodeRetry(value: any): string | null {
 
 function validateMetricRetry(value: any): string | null {
   // Allow undefined metricName if no options available, but require it if it exists
-  if (value.metricName !== undefined && value.metricName !== null && value.metricName.trim() === '') {
+  if (value.metricName?.trim() === '') {
     return 'Metric name cannot be empty if provided'
   }
   if (!value.operator || !['<', '>', '<=', '>=', '==', '!='].includes(value.operator)) {
@@ -59,7 +59,7 @@ function validateFieldLikeOperator(value: any): string | null {
 
 function validateFieldExtractorRetry(value: any): string | null {
   // Allow undefined fieldName if no options available, but require it if it exists
-  if (value.fieldName !== undefined && value.fieldName !== null && value.fieldName.trim() === '') {
+  if (value.fieldName?.trim() === '') {
     return 'Field name cannot be empty if provided'
   }
   const operatorError = validateFieldLikeOperator(value)
@@ -83,7 +83,7 @@ function validateMetadataRetry(value: any): string | null {
 }
 
 function validateRetryConfigEntry(value: any): string | null {
-  if (!value || !value.type) return null // Let required() handle this
+  if (!value?.type) return null // Let required() handle this
   if (value.type === 'sipCode') return validateSipCodeRetry(value)
   if (value.type === 'metric') return validateMetricRetry(value)
   if (value.type === 'fieldExtractor') return validateFieldExtractorRetry(value)
