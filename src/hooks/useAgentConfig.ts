@@ -1,4 +1,5 @@
 // hooks/useAgentConfig.ts
+import { useState, useEffect } from "react"
 import { AGENT_DEFAULT_CONFIG, getFallback, getFormDefaults } from "@/config/agentDefaults"
 import { languageOptions } from "@/utils/constants"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -321,6 +322,44 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
   throw new Error("Timed out waiting for agent update to complete")
 }
 
+function extractAgentName(data: any): string | undefined {
+  return data?.agent?.name || data?.metadata?.agentName
+}
+
+const NON_TERMINAL_UPDATE_STATUSES = new Set(["pending", "validating", "stopping", "updating", "starting", "verifying"])
+
+/**
+ * A hard refresh (or a second tab) wipes any in-memory "Publishing..." state,
+ * but the backend update it was tracking may still be running. On mount, ask
+ * the backend once whether an update is actually in progress for this agent —
+ * if so, resume polling so the UI reflects reality instead of quietly forgetting.
+ */
+export function useResumeInProgressUpdate(agentName: string | null | undefined) {
+  const [isResuming, setIsResuming] = useState(false)
+
+  useEffect(() => {
+    if (!agentName) return
+    let cancelled = false
+
+    fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((status) => {
+        if (cancelled || !status) return
+        if (!NON_TERMINAL_UPDATE_STATUSES.has(status.status)) return
+
+        setIsResuming(true)
+        pollUpdateStatus(agentName)
+          .catch(() => {}) // surfaced state is enough; caller doesn't need the result
+          .finally(() => { if (!cancelled) setIsResuming(false) })
+      })
+      .catch(() => {}) // transient — next mount/poll will catch a genuinely stuck update
+
+    return () => { cancelled = true }
+  }, [agentName])
+
+  return isResuming
+}
+
 const saveAndDeployAgent = async (data: any) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
@@ -329,7 +368,19 @@ const saveAndDeployAgent = async (data: any) => {
   })
 
   if (!response.ok) {
-    const errorData = await response.json()
+    const errorData = await response.json().catch(() => ({}))
+
+    // A 409 means the backend's own update lock says a redeploy for this
+    // agent is already running (started by an earlier click, another tab,
+    // etc). That's not a failure — poll the existing update instead of
+    // surfacing a dead-end error, so the UI reflects the real in-flight work.
+    if (response.status === 409) {
+      const agentName = extractAgentName(data)
+      if (agentName) {
+        return pollUpdateStatus(agentName)
+      }
+    }
+
     throw new Error(errorData.message || "Failed to save and deploy")
   }
 
@@ -338,8 +389,10 @@ const saveAndDeployAgent = async (data: any) => {
   // Backend now kicks off the actual redeploy in the background and returns
   // right away — poll until it actually finishes so callers (and the
   // isPending-driven loader) see the real completion, not just "request sent".
-  const agentName: string | undefined = data?.agent?.name || data?.metadata?.agentName
-  if (result?.status === "update_started" && agentName) {
+  // The backend's own response (status/agent_name) is nested under `data` —
+  // save-and-deploy/route.ts wraps it as { success, message, data: <backend response> }.
+  const agentName = result?.data?.agent_name || extractAgentName(data)
+  if (result?.data?.status === "update_started" && agentName) {
     return pollUpdateStatus(agentName)
   }
 

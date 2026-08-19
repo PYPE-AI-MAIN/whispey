@@ -45,7 +45,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate } from '@/hooks/useAgentConfig'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
@@ -380,6 +380,10 @@ export default function AgentConfig() {
   
   // Use mutations for save operations
   const { saveAndDeploy } = useAgentMutations(activeAgentName)
+  // Recovers "Publishing..." state after a hard refresh (or a second tab) if
+  // the backend update this page kicked off is genuinely still in progress.
+  const isResumingUpdate = useResumeInProgressUpdate(activeAgentName)
+  const isPublishing = isSavingVersion || isResumingUpdate
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
@@ -1107,7 +1111,7 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 className="h-8"
                 onClick={startAgent}
-                disabled={isAgentLoading || !activeAgentName}
+                disabled={isAgentLoading || !activeAgentName || isPublishing}
               >
                 {isAgentLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1121,7 +1125,7 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 className="h-8"
                 onClick={stopAgent}
-                disabled={isAgentLoading}
+                disabled={isAgentLoading || isPublishing}
               >
                 {isAgentLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1145,10 +1149,14 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 className="h-8 px-3"
                 onClick={handleOpenCommitModal}
-                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+                disabled={isPublishing || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
                 title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
-                <Save className="w-4 h-4" />
+                {isPublishing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
               </Button>
             )}
 
@@ -1257,7 +1265,7 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 className="h-8 text-xs"
                 onClick={startAgent}
-                disabled={isAgentLoading || !activeAgentName}
+                disabled={isAgentLoading || !activeAgentName || isPublishing}
               >
                 {isAgentLoading ? (
                   <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -1272,7 +1280,7 @@ const unmappedVariablesCount = useMemo(() => {
                 size="sm"
                 className="h-8 text-xs"
                 onClick={stopAgent}
-                disabled={isAgentLoading}
+                disabled={isAgentLoading || isPublishing}
               >
                 {isAgentLoading ? (
                   <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -1362,10 +1370,13 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm"
               className="h-8 text-xs"
               onClick={handleOpenCommitModal}
-              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+              disabled={isPublishing || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
               title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
-              Update Config
+              {isPublishing
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                : 'Update Config'
+              }
             </Button>
 
             <Button
@@ -1853,7 +1864,7 @@ const unmappedVariablesCount = useMemo(() => {
       />
 
       {/* Review changes / commit dialog */}
-      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
+      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isPublishing) setIsCommitModalOpen(false) }}>
         <DialogContent className="sm:max-w-5xl max-w-[calc(100%-2rem)] max-h-[88vh] p-0 gap-0 flex flex-col overflow-hidden">
           {/* Header — pinned */}
           <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border space-y-3">
@@ -1908,16 +1919,16 @@ const unmappedVariablesCount = useMemo(() => {
               <Button
                 variant="outline" size="sm" className="h-8 text-xs"
                 onClick={() => setIsCommitModalOpen(false)}
-                disabled={isSavingVersion}
+                disabled={isPublishing}
               >
                 Cancel
               </Button>
               <Button
                 size="sm" className="h-8 text-xs"
                 onClick={handleSaveVersion}
-                disabled={isSavingVersion || !commitMessage.trim()}
+                disabled={isPublishing || !commitMessage.trim()}
               >
-                {isSavingVersion
+                {isPublishing
                   ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
                   : 'Publish'
                 }
