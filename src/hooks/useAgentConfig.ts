@@ -333,12 +333,20 @@ const NON_TERMINAL_UPDATE_STATUSES = new Set(["pending", "validating", "stopping
  * but the backend update it was tracking may still be running. On mount, ask
  * the backend once whether an update is actually in progress for this agent —
  * if so, resume polling so the UI reflects reality instead of quietly forgetting.
+ *
+ * Docker-only: the update_status/background-update mechanism only exists on
+ * the dockerized-agent backend (server.py on the docker VM). Classic agents
+ * are a separate, unrelated service that deploys synchronously and has no
+ * such endpoint — polling it would just 404/time out for no reason.
  */
-export function useResumeInProgressUpdate(agentName: string | null | undefined) {
+export function useResumeInProgressUpdate(
+  agentName: string | null | undefined,
+  deploymentTarget: 'classic' | 'docker' = 'classic'
+) {
   const [isResuming, setIsResuming] = useState(false)
 
   useEffect(() => {
-    if (!agentName) return
+    if (!agentName || deploymentTarget !== 'docker') return
     let cancelled = false
 
     fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
@@ -355,7 +363,7 @@ export function useResumeInProgressUpdate(agentName: string | null | undefined) 
       .catch(() => {}) // transient — next mount/poll will catch a genuinely stuck update
 
     return () => { cancelled = true }
-  }, [agentName])
+  }, [agentName, deploymentTarget])
 
   return isResuming
 }
@@ -374,7 +382,8 @@ const saveAndDeployAgent = async (data: any) => {
     // agent is already running (started by an earlier click, another tab,
     // etc). That's not a failure — poll the existing update instead of
     // surfacing a dead-end error, so the UI reflects the real in-flight work.
-    if (response.status === 409) {
+    // Docker-only: classic's synchronous backend never returns 409 for this.
+    if (response.status === 409 && data?.deploymentTarget === 'docker') {
       const agentName = extractAgentName(data)
       if (agentName) {
         return pollUpdateStatus(agentName)
@@ -391,8 +400,10 @@ const saveAndDeployAgent = async (data: any) => {
   // isPending-driven loader) see the real completion, not just "request sent".
   // The backend's own response (status/agent_name) is nested under `data` —
   // save-and-deploy/route.ts wraps it as { success, message, data: <backend response> }.
+  // Docker-only: this "update_started" shape only exists on the dockerized
+  // backend; classic deploys synchronously and returns the final result directly.
   const agentName = result?.data?.agent_name || extractAgentName(data)
-  if (result?.data?.status === "update_started" && agentName) {
+  if (data?.deploymentTarget === 'docker' && result?.data?.status === "update_started" && agentName) {
     return pollUpdateStatus(agentName)
   }
 

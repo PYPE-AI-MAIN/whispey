@@ -382,7 +382,7 @@ export default function AgentConfig() {
   const { saveAndDeploy } = useAgentMutations(activeAgentName)
   // Recovers "Publishing..." state after a hard refresh (or a second tab) if
   // the backend update this page kicked off is genuinely still in progress.
-  const isResumingUpdate = useResumeInProgressUpdate(activeAgentName)
+  const isResumingUpdate = useResumeInProgressUpdate(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
   const isPublishing = isSavingVersion || isResumingUpdate
 
   const checkAgentStatus = useCallback(async () => {
