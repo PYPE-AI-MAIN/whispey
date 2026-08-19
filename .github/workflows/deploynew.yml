@@ -69,6 +69,7 @@ jobs:
     needs: test-gate
     name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
 
     outputs:
       image_uri: ${{ steps.image.outputs.image_uri }}
