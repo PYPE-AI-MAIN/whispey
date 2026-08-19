@@ -214,6 +214,15 @@ export interface AgentConfigResponse {
   backendUnavailableMessage?: string
 }
 
+// A 404 on the primary (full, ID-suffixed) name can be a genuine transient
+// blip — e.g. hitting this right as an update/restore is mid-flight — not
+// proof the agent never had a full name. Retrying a couple of times before
+// falling back avoids permanently poisoning the session onto the legacy
+// short name (which then breaks polling, deploys, start/stop — everything
+// downstream keys off whichever name this function decides was "used").
+const PRIMARY_NAME_RETRY_COUNT = 2
+const PRIMARY_NAME_RETRY_DELAY_MS = 1000
+
 const fetchAgentConfigWithFallback = async (
   primaryAgentName: string,
   fallbackAgentName?: string
@@ -224,13 +233,18 @@ const fetchAgentConfigWithFallback = async (
 
   // Try primary name first (new format with ID)
   try {
-    const response = await fetch(`/api/agent-config/${primaryAgentName}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    })
+    let response: Response
+    for (let attempt = 0; ; attempt++) {
+      response = await fetch(`/api/agent-config/${primaryAgentName}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      })
+      if (response.status !== 404 || attempt >= PRIMARY_NAME_RETRY_COUNT) break
+      await new Promise((r) => setTimeout(r, PRIMARY_NAME_RETRY_DELAY_MS))
+    }
 
     if (response.ok) {
       const contentType = response.headers.get("content-type")

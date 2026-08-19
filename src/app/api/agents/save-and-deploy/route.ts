@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
-import { resolveDeploymentTarget } from '@/lib/resolveDeploymentTarget'
+import { resolveDeploymentTargetForUser } from '@/lib/resolveDeploymentTarget'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -222,7 +223,19 @@ export async function POST(request: NextRequest) {
     // POC toggle: which backend to deploy to. Defaults to 'classic' (subprocess,
     // existing behavior) unless the caller explicitly opts into 'docker'
     // (dockerized-agent backend, see docker-compose.agents.yml on that VM).
-    const deploymentTarget = await resolveDeploymentTarget(body.deploymentTarget)
+    //
+    // This route can be reached two ways: directly from the browser (a real
+    // Clerk session), or server-to-server from another route (e.g. restore)
+    // authenticated only by a service token, with no Clerk session at all.
+    // In the second case `auth()` sees no session and would silently downgrade
+    // any requested 'docker' target to 'classic' — so a trusted caller can
+    // forward an already-verified `callerUserId` from ITS own session to use
+    // instead. A real session always wins over that field, so a browser call
+    // can't use it to spoof a role it doesn't have.
+    const { userId: sessionUserId } = await auth()
+    const deploymentTarget = sessionUserId
+      ? await resolveDeploymentTargetForUser(body.deploymentTarget, sessionUserId)
+      : await resolveDeploymentTargetForUser(body.deploymentTarget, body.callerUserId ?? null)
 
     const result = await deployAgentConfig(agentName, agentConfigBody, deploymentTarget)
 
