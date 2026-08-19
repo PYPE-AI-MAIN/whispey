@@ -3,6 +3,7 @@ import { CallLog } from "@/types/logs"
 import { toCamelCase, isColumnVisibleForRole } from '@/utils/callLogsUtils'
 import { FilterRule } from '@/components/CallFilter'
 import { useCallLogsStore } from '@/stores/callLogsStore'
+import { EXCLUDED_METADATA_COLUMNS } from '@/lib/metadataColumnDenylist'
 
 
 export const BASIC_COLUMNS = [
@@ -21,20 +22,6 @@ export const BASIC_COLUMNS = [
   { key: "total_tts_cost", label: "TTS Cost (₹)", hidden: true },
   { key: "total_stt_cost", label: "STT Cost (₹)", hidden: true }
 ] as const
-
-// Metadata columns to exclude from Dynamic Columns (never show apikey/api_url; they are for API auth only)
-const EXCLUDED_METADATA_COLUMNS = [
-  'complete_configuration',
-  'usage',
-  'sip_trunk_id',
-  'campaignId',
-  'contactId',
-  'agent_name',
-  'metadata',
-  'retry_config',
-  'apikey',
-  'api_url'
-]
 
 // transcription_metrics keys managed as first-class BASIC_COLUMNS — skip auto-discovery
 const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = ['tags', 'tagComments', 'flag']

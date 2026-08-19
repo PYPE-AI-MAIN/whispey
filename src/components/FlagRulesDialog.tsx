@@ -16,7 +16,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type FlagSource = "field_extractor" | "call_log"
 type FlagMatchType = "exact" | "starts_with" | "ends_with" | "contains"
-type FlagOperator = "equals" | "not_equals" | "greater_than" | "less_than"
+type FlagOperator =
+  | "equals" | "not_equals" | "greater_than" | "less_than" | "greater_than_or_equal" | "less_than_or_equal"
+  | "in" | "not_in" | "is_empty" | "is_not_empty" | "invalid_phone_format"
+
+// Operators that don't compare against a value at all — the value input is hidden for these.
+const NO_VALUE_OPERATORS = new Set<FlagOperator>(["is_empty", "is_not_empty", "invalid_phone_format"])
 
 interface FlagCondition {
   source: FlagSource
@@ -37,13 +42,25 @@ interface FlagRulesConfig {
   rules: FlagRule[]
 }
 
-// Same allowlist as the API route and the lambda engine.
-const CALL_LOG_FIELDS = [
+// Raw call_log columns — the small, fixed, exact part of the tiered allowlist. Metadata
+// keys and metric ids are dynamic per-agent (see metadataKeys/metricKeys props below),
+// not hardcoded here — they're discovered the same way the Columns picker already does.
+const CALL_LOG_INFO_FIELDS = [
   { value: "duration_seconds", label: "Call duration (seconds)" },
   { value: "customer_number", label: "Customer phone number" },
   { value: "call_status", label: "Call status" },
-  { value: "metadata.transfer_call_initiated", label: "Transfer initiated" },
 ]
+
+const METADATA_PREFIX = "metadata."
+const METRIC_SCORE_SUFFIX = ".score"
+const METRIC_SCORE_PATH = /^metrics\.[^.]+\.score$/
+
+type CallLogFieldMode = "call_info" | "call_metadata" | "metric_score"
+function callLogFieldMode(field: string): CallLogFieldMode {
+  if (field.startsWith(METADATA_PREFIX)) return "call_metadata"
+  if (METRIC_SCORE_PATH.test(field)) return "metric_score"
+  return "call_info"
+}
 
 function newId() {
   return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `rule-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -55,9 +72,13 @@ interface FlagRulesDialogProps {
   agentId?: string
   fieldExtractorPrompt?: string // raw JSON string of [{key, description}], same as agent.field_extractor_prompt
   initialFlagRules?: FlagRulesConfig | null
+  metadataKeys?: string[] // discovered call_log.metadata keys (same list the Columns picker uses — already denylist-filtered)
+  metricKeys?: string[]   // discovered pype_voice_call_logs.metrics keys (configured Metrics — score only)
 }
 
-const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({ agentId, fieldExtractorPrompt, initialFlagRules }) => {
+const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
+  agentId, fieldExtractorPrompt, initialFlagRules, metadataKeys = [], metricKeys = [],
+}) => {
   const extractorKeys = useMemo(() => {
     try {
       const parsed = JSON.parse(fieldExtractorPrompt || "[]")
@@ -89,9 +110,13 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({ agentId, fieldExtract
     if (!agentId) return
     setError(null)
 
-    // drop rows nobody filled in — same shape the API validates
+    // drop rows nobody filled in — same shape the API validates. Value is optional
+    // for is_empty/is_not_empty/invalid_phone_format, which don't compare against one.
     const validRules = rules
-      .map((r) => ({ ...r, conditions: r.conditions.filter((c) => c.field.trim() !== "" && c.value.trim() !== "") }))
+      .map((r) => ({
+        ...r,
+        conditions: r.conditions.filter((c) => c.field.trim() !== "" && (NO_VALUE_OPERATORS.has(c.operator) || c.value.trim() !== "")),
+      }))
       .filter((r) => r.conditions.length > 0)
 
     setIsSaving(true)
@@ -178,6 +203,8 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({ agentId, fieldExtract
                       <ConditionRow
                         condition={condition}
                         extractorKeys={extractorKeys}
+                        metadataKeys={metadataKeys}
+                        metricKeys={metricKeys}
                         onChange={(patch) => updateCondition(ruleIndex, conditionIndex, patch)}
                         onRemove={rule.conditions.length > 1 ? () => removeCondition(ruleIndex, conditionIndex) : undefined}
                       />
@@ -219,26 +246,34 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({ agentId, fieldExtract
   )
 }
 
-// One condition row: [which field(s)] [comparison] [value]. The first select controls both
-// the source (field_extractor vs call_log) and the matchType (exact vs a name pattern) at
-// once, since that's the single choice a person is actually making.
+// One condition row: [which field(s)] [comparison] [value]. The first select controls
+// the source (field_extractor vs call_log), the matchType (exact vs a name pattern), and
+// — for call_log — which of the three field categories (raw call info / metadata / metric
+// score) all at once, since that's the single choice a person is actually making.
+type FieldModeChoice = "exact" | "pattern:starts_with" | "pattern:ends_with" | "pattern:contains" | "call_info" | "call_metadata" | "metric_score"
+
 function ConditionRow({
-  condition, extractorKeys, onChange, onRemove,
+  condition, extractorKeys, metadataKeys, metricKeys, onChange, onRemove,
 }: {
   condition: FlagCondition
   extractorKeys: string[]
+  metadataKeys: string[]
+  metricKeys: string[]
   onChange: (patch: Partial<FlagCondition>) => void
   onRemove?: () => void
 }) {
-  const fieldMode = condition.source === "call_log" ? "call_log" : condition.matchType === "exact" ? "exact" : `pattern:${condition.matchType}`
+  const fieldMode: FieldModeChoice =
+    condition.source === "call_log" ? callLogFieldMode(condition.field)
+    : condition.matchType === "exact" ? "exact"
+    : (`pattern:${condition.matchType}` as FieldModeChoice)
 
   return (
     <div className="grid grid-cols-12 gap-2 items-center">
       <div className="col-span-3">
         <Select
           value={fieldMode}
-          onValueChange={(v) => {
-            if (v === "call_log") onChange({ source: "call_log", matchType: "exact", field: "" })
+          onValueChange={(v: FieldModeChoice) => {
+            if (v === "call_info" || v === "call_metadata" || v === "metric_score") onChange({ source: "call_log", matchType: "exact", field: "" })
             else if (v === "exact") onChange({ source: "field_extractor", matchType: "exact", field: "" })
             else onChange({ source: "field_extractor", matchType: v.replace("pattern:", "") as FlagMatchType, field: "" })
           }}
@@ -249,22 +284,48 @@ function ConditionRow({
             <SelectItem value="pattern:ends_with">Field name ends with</SelectItem>
             <SelectItem value="pattern:starts_with">Field name starts with</SelectItem>
             <SelectItem value="pattern:contains">Field name contains</SelectItem>
-            <SelectItem value="call_log">Call metadata</SelectItem>
+            <SelectItem value="call_info">Call info</SelectItem>
+            <SelectItem value="call_metadata">Call metadata</SelectItem>
+            <SelectItem value="metric_score">Metric score</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="col-span-3">
-        {condition.source === "call_log" ? (
+        {fieldMode === "call_info" ? (
           <Select value={condition.field} onValueChange={(v) => onChange({ field: v })}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select field" /></SelectTrigger>
             <SelectContent>
-              {CALL_LOG_FIELDS.map((f) => (
+              {CALL_LOG_INFO_FIELDS.map((f) => (
                 <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        ) : condition.matchType === "exact" ? (
+        ) : fieldMode === "call_metadata" ? (
+          <Select
+            value={condition.field.startsWith(METADATA_PREFIX) ? condition.field.slice(METADATA_PREFIX.length) : ""}
+            onValueChange={(v) => onChange({ field: `${METADATA_PREFIX}${v}` })}
+          >
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={metadataKeys.length ? "Select field" : "No metadata fields yet"} /></SelectTrigger>
+            <SelectContent>
+              {metadataKeys.map((k) => (
+                <SelectItem key={k} value={k}>{k}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : fieldMode === "metric_score" ? (
+          <Select
+            value={condition.field.endsWith(METRIC_SCORE_SUFFIX) ? condition.field.slice("metrics.".length, -METRIC_SCORE_SUFFIX.length) : ""}
+            onValueChange={(v) => onChange({ field: `metrics.${v}${METRIC_SCORE_SUFFIX}` })}
+          >
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={metricKeys.length ? "Select metric" : "No metrics configured yet"} /></SelectTrigger>
+            <SelectContent>
+              {metricKeys.map((k) => (
+                <SelectItem key={k} value={k}>{k} score</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : fieldMode === "exact" ? (
           <Select value={condition.field} onValueChange={(v) => onChange({ field: v })}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select field" /></SelectTrigger>
             <SelectContent>
@@ -284,23 +345,34 @@ function ConditionRow({
       </div>
 
       <div className="col-span-3">
-        <Select value={condition.operator} onValueChange={(v) => onChange({ operator: v as FlagOperator })}>
+        <Select value={condition.operator} onValueChange={(v) => onChange({ operator: v as FlagOperator, value: NO_VALUE_OPERATORS.has(v as FlagOperator) ? "" : condition.value })}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="equals">equals</SelectItem>
             <SelectItem value="not_equals">not equals</SelectItem>
-            {condition.source === "call_log" && (
-              <>
-                <SelectItem value="greater_than">greater than</SelectItem>
-                <SelectItem value="less_than">less than</SelectItem>
-              </>
-            )}
+            <SelectItem value="in">is any of</SelectItem>
+            <SelectItem value="not_in">is none of</SelectItem>
+            <SelectItem value="is_empty">is empty</SelectItem>
+            <SelectItem value="is_not_empty">is not empty</SelectItem>
+            <SelectItem value="invalid_phone_format">is an invalid phone number</SelectItem>
+            {/* Numeric — works on field extractor values (e.g. a pain_score field) as well as call metadata */}
+            <SelectItem value="greater_than">greater than</SelectItem>
+            <SelectItem value="greater_than_or_equal">greater than or equal to</SelectItem>
+            <SelectItem value="less_than">less than</SelectItem>
+            <SelectItem value="less_than_or_equal">less than or equal to</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="col-span-2">
-        <Input placeholder="value" value={condition.value} onChange={(e) => onChange({ value: e.target.value })} className="h-8 text-xs" />
+        {!NO_VALUE_OPERATORS.has(condition.operator) && (
+          <Input
+            placeholder={condition.operator === "in" || condition.operator === "not_in" ? "a, b, c" : "value"}
+            value={condition.value}
+            onChange={(e) => onChange({ value: e.target.value })}
+            className="h-8 text-xs"
+          />
+        )}
       </div>
 
       <div className="col-span-1 flex justify-center">

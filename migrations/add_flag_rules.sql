@@ -19,14 +19,17 @@ COMMENT ON COLUMN public.pype_voice_agents.flag_rules IS
           "source": "field_extractor" | "call_log",  -- default "field_extractor"
           "matchType": "exact" | "starts_with" | "ends_with" | "contains",  -- default "exact"
           "field": string,              -- exact key name, or the prefix/suffix/substring text when matchType != "exact"
-          "operator": "equals" | "not_equals" | "greater_than" | "less_than",  -- default "equals"
-          "value": string | number
+          "operator": "equals" | "not_equals" | "greater_than" | "less_than" |
+                      "greater_than_or_equal" | "less_than_or_equal" |
+                      "in" | "not_in" | "is_empty" | "is_not_empty" | "invalid_phone_format",  -- default "equals"
+          "value": string | number       -- numeric ops work on field_extractor values too (e.g. pain_score); comma-separated for in/not_in; not required for is_empty/is_not_empty/invalid_phone_format
         }
       ]
     }
   ]                                     -- rules are ORed together
 }
-"call_log" source fields are restricted to an explicit allowlist enforced in the API layer.';
+"call_log" source fields are restricted to an explicit allowlist enforced in the API layer.
+"invalid_phone_format" is a fixed, ported preset (not user-supplied regex — ReDoS avoidance).';
 
 -- Example: replicating SH_Inbound''s current hardcoded "task_incomplete" check
 -- {

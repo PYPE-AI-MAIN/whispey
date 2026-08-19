@@ -426,6 +426,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 agentId={agent.id}
                 fieldExtractorPrompt={agent?.field_extractor_prompt}
                 initialFlagRules={agent?.flag_rules}
+                metadataKeys={dynamicColumns.metadata}
+                metricKeys={dynamicColumns.metrics}
               />
             )}
             <BackfillDispositionDialog
