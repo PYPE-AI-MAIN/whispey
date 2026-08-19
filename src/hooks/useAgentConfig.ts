@@ -290,6 +290,37 @@ const saveAgentDraft = async (data: any) => {
   return response.json()
 }
 
+// Poll interval and max wait for the background update to finish. The
+// backend runs the actual stop/start cycle in a thread and returns progress
+// immediately on each poll, so this loop just waits for a terminal state —
+// it never risks a request timeout the way the old single blocking call did.
+const UPDATE_POLL_INTERVAL_MS = 2000
+const UPDATE_POLL_MAX_MS = 3 * 60 * 1000
+
+const TERMINAL_UPDATE_STATUSES = new Set(["completed", "failed", "rolled_back"])
+
+async function pollUpdateStatus(agentName: string): Promise<any> {
+  const deadline = Date.now() + UPDATE_POLL_MAX_MS
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, UPDATE_POLL_INTERVAL_MS))
+
+    const res = await fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
+    if (!res.ok) continue // transient — keep polling until the deadline
+
+    const status = await res.json()
+    if (status.status === "no_update_found" || status.status === "unreachable") continue
+    if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
+      if (status.status !== "completed" || status.success === false) {
+        throw new Error(status.error || `Agent update ended with status: ${status.status}`)
+      }
+      return status
+    }
+  }
+
+  throw new Error("Timed out waiting for agent update to complete")
+}
+
 const saveAndDeployAgent = async (data: any) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
@@ -302,7 +333,17 @@ const saveAndDeployAgent = async (data: any) => {
     throw new Error(errorData.message || "Failed to save and deploy")
   }
 
-  return response.json()
+  const result = await response.json()
+
+  // Backend now kicks off the actual redeploy in the background and returns
+  // right away — poll until it actually finishes so callers (and the
+  // isPending-driven loader) see the real completion, not just "request sent".
+  const agentName: string | undefined = data?.agent?.name || data?.metadata?.agentName
+  if (result?.status === "update_started" && agentName) {
+    return pollUpdateStatus(agentName)
+  }
+
+  return result
 }
 
 // Hook to fetch agent config
