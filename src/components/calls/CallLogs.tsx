@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table'
 
-import { downloadCSV, DownloadProgress } from '@/utils/callLogsUtils'
+import { downloadCSV, DownloadProgress, isRowFlaggedForRole } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
@@ -568,7 +568,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                   </tr>
                 ) : (
                   rows.map((row, rowIndex) => {
-                    const isFlagged = Boolean(row.original.transcription_metrics?.flag?.text)
+                    const isFlagged = isRowFlaggedForRole(row.original, role)
                     const isSelected = selectedCallId === row.original.id
                     const isNavigatingRow = navigatingCallId === row.original.id
                     return (

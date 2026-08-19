@@ -1,22 +1,25 @@
 'use client'
 import React from 'react'
-import { Plus, Settings2, BarChart3 } from 'lucide-react'
+import { Plus, Settings2, BarChart3, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MetricGroup } from '@/types/metricGroups'
 import { useMobile } from '@/hooks/use-mobile'
 
 interface MetricGroupTabsProps {
-  groups: MetricGroup[]
-  activeGroupId: string | 'all'
-  onGroupChange: (groupId: string | 'all') => void
-  onManageGroups: () => void
-  customTotalsCount: number
+  readonly groups: MetricGroup[]
+  readonly activeGroupId: string
+  readonly onGroupChange: (groupId: string) => void
+  readonly onManageGroups: () => void
+  readonly customTotalsCount: number
   /** When false, hide create/manage group controls (viewers). Default true. */
-  canManageGroups?: boolean
+  readonly canManageGroups?: boolean
   /** Opens the custom chart builder dialog (overview). */
-  onAddChart?: () => void
+  readonly onAddChart?: () => void
   /** When true, show Add chart at the end of the row (desktop overview). */
-  showAddChart?: boolean
+  readonly showAddChart?: boolean
+  /** Rebuilds call_summary_daily for this agent from full call history. */
+  readonly onRecalculate?: () => void
+  readonly recalculating?: boolean
 }
 
 export function MetricGroupTabs({
@@ -28,10 +31,13 @@ export function MetricGroupTabs({
   canManageGroups = true,
   onAddChart,
   showAddChart = false,
+  onRecalculate,
+  recalculating = false,
 }: MetricGroupTabsProps) {
   const { isMobile } = useMobile(768)
   const showAddChartButton = Boolean(!isMobile && showAddChart && onAddChart)
-  const showRightCluster = canManageGroups || showAddChartButton
+  const showRecalculateButton = Boolean(!isMobile && onRecalculate)
+  const showRightCluster = canManageGroups || showAddChartButton || showRecalculateButton
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
@@ -112,6 +118,20 @@ export function MetricGroupTabs({
               >
                 <BarChart3 className="h-4 w-4" />
                 Add chart
+              </Button>
+            )}
+            {showRecalculateButton && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={recalculating}
+                onClick={onRecalculate}
+                title="Rebuild summary data for this agent from full call history"
+                className="shrink-0 gap-1.5 border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700/50"
+              >
+                <RefreshCw className={`h-4 w-4 ${recalculating ? 'animate-spin' : ''}`} />
+                {recalculating ? 'Recalculating…' : 'Recalculate'}
               </Button>
             )}
           </div>

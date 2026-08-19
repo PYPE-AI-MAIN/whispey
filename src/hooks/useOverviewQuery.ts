@@ -28,7 +28,7 @@ interface UseOverviewQueryProps {
 }
 
 export const useOverviewQuery = ({ agentId, dateFrom, dateTo, enabled = true }: UseOverviewQueryProps) => {
-  const { data, isLoading, error } = useQuery<OverviewData>({
+  const { data, isLoading, error, refetch } = useQuery<OverviewData>({
     queryKey: ['overview', agentId, dateFrom, dateTo],
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams({ dateFrom, dateTo })
@@ -53,5 +53,6 @@ export const useOverviewQuery = ({ agentId, dateFrom, dateTo, enabled = true }: 
     data: data ?? null,
     loading: isLoading,
     error: error ? (error as Error).message : null,
+    refetch,
   }
 }
