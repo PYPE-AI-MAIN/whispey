@@ -46,10 +46,38 @@ interface FlagRulesConfig {
 // keys and metric ids are dynamic per-agent (see metadataKeys/metricKeys props below),
 // not hardcoded here — they're discovered the same way the Columns picker already does.
 const CALL_LOG_INFO_FIELDS = [
-  { value: "duration_seconds", label: "Call duration (seconds)" },
-  { value: "customer_number", label: "Customer phone number" },
-  { value: "call_status", label: "Call status" },
+  { value: "duration_seconds", label: "Call duration (seconds)", type: "numeric" as const },
+  { value: "customer_number", label: "Customer phone number", type: "string" as const },
+  { value: "call_ended_reason", label: "Call status", type: "string" as const },
 ]
+
+// Operators grouped by value type, plus the always-available no-value ones (is_empty etc).
+const STRING_OPERATORS: FlagOperator[] = ["equals", "not_equals", "in", "not_in"]
+const NUMERIC_OPERATORS: FlagOperator[] = ["equals", "not_equals", "greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal"]
+const NO_VALUE_OPERATOR_LIST: FlagOperator[] = ["is_empty", "is_not_empty", "invalid_phone_format"]
+const OPERATOR_LABELS: Record<FlagOperator, string> = {
+  equals: "equals", not_equals: "not equals",
+  greater_than: "greater than", greater_than_or_equal: "greater than or equal to",
+  less_than: "less than", less_than_or_equal: "less than or equal to",
+  in: "is any of", not_in: "is none of",
+  is_empty: "is empty", is_not_empty: "is not empty",
+  invalid_phone_format: "is an invalid phone number",
+}
+
+// Known-type fields (call_info columns, metric scores) restrict the operator list to what
+// actually makes sense for that type. Field extractor / metadata values have no declared
+// type (any agent can put a number or a string in an LLM-extracted field), so those keep
+// the full operator list — the engine already handles a mismatched value safely at eval time.
+function operatorsForCondition(fieldMode: FieldModeChoice, field: string): FlagOperator[] {
+  if (fieldMode === "metric_score") return [...NUMERIC_OPERATORS, "is_empty", "is_not_empty"]
+  if (fieldMode === "call_info") {
+    const known = CALL_LOG_INFO_FIELDS.find((f) => f.value === field)
+    if (known?.type === "numeric") return [...NUMERIC_OPERATORS, "is_empty", "is_not_empty"]
+    const ops: FlagOperator[] = [...STRING_OPERATORS, "is_empty", "is_not_empty"]
+    return field === "customer_number" ? [...ops, "invalid_phone_format"] : ops
+  }
+  return [...STRING_OPERATORS, ...NUMERIC_OPERATORS.filter((o) => !STRING_OPERATORS.includes(o)), ...NO_VALUE_OPERATOR_LIST]
+}
 
 const METADATA_PREFIX = "metadata."
 const METRIC_SCORE_SUFFIX = ".score"
@@ -74,10 +102,11 @@ interface FlagRulesDialogProps {
   initialFlagRules?: FlagRulesConfig | null
   metadataKeys?: string[] // discovered call_log.metadata keys (same list the Columns picker uses — already denylist-filtered)
   metricKeys?: string[]   // discovered pype_voice_call_logs.metrics keys (configured Metrics — score only)
+  onSaved?: () => void    // refetch the agent after a successful save, so reopening this dialog shows the just-saved config, not a stale cache
 }
 
 const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
-  agentId, fieldExtractorPrompt, initialFlagRules, metadataKeys = [], metricKeys = [],
+  agentId, fieldExtractorPrompt, initialFlagRules, metadataKeys = [], metricKeys = [], onSaved,
 }) => {
   const extractorKeys = useMemo(() => {
     try {
@@ -129,6 +158,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
       const j = (await res.json()) as { error?: string }
       if (res.ok) {
         setIsOpen(false)
+        onSaved?.()
       } else {
         setError(j.error || res.statusText)
       }
@@ -165,6 +195,9 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
               No field extractor fields configured yet — set those up first so there's something to flag on.
             </p>
           )}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Values vary by agent — some use <code>0</code>/<code>1</code>, others <code>pass</code>/<code>fail</code>/<code>not_applicable</code>, or <code>yes</code>/<code>no</code>. Check a real call's actual values before assuming a convention.
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
@@ -267,18 +300,24 @@ function ConditionRow({
     : condition.matchType === "exact" ? "exact"
     : (`pattern:${condition.matchType}` as FieldModeChoice)
 
+  // Include the condition's current operator even if it falls outside the type-restricted
+  // list — e.g. a rule saved before this field existed, or before restricting by type — so
+  // an existing saved rule never silently loses its value in the dropdown.
+  const baseOperators = operatorsForCondition(fieldMode, condition.field)
+  const availableOperators = baseOperators.includes(condition.operator) ? baseOperators : [condition.operator, ...baseOperators]
+
   return (
     <div className="grid grid-cols-12 gap-2 items-center">
-      <div className="col-span-3">
+      <div className="col-span-3 min-w-0">
         <Select
           value={fieldMode}
           onValueChange={(v: FieldModeChoice) => {
-            if (v === "call_info" || v === "call_metadata" || v === "metric_score") onChange({ source: "call_log", matchType: "exact", field: "" })
-            else if (v === "exact") onChange({ source: "field_extractor", matchType: "exact", field: "" })
-            else onChange({ source: "field_extractor", matchType: v.replace("pattern:", "") as FlagMatchType, field: "" })
+            if (v === "call_info" || v === "call_metadata" || v === "metric_score") onChange({ source: "call_log", matchType: "exact", field: "", operator: "equals", value: "" })
+            else if (v === "exact") onChange({ source: "field_extractor", matchType: "exact", field: "", operator: "equals", value: "" })
+            else onChange({ source: "field_extractor", matchType: v.replace("pattern:", "") as FlagMatchType, field: "", operator: "equals", value: "" })
           }}
         >
-          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs"><SelectValue className="truncate" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="exact">Field extractor value</SelectItem>
             <SelectItem value="pattern:ends_with">Field name ends with</SelectItem>
@@ -291,7 +330,7 @@ function ConditionRow({
         </Select>
       </div>
 
-      <div className="col-span-3">
+      <div className="col-span-3 min-w-0">
         {fieldMode === "call_info" ? (
           <Select value={condition.field} onValueChange={(v) => onChange({ field: v })}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select field" /></SelectTrigger>
@@ -344,27 +383,18 @@ function ConditionRow({
         )}
       </div>
 
-      <div className="col-span-3">
+      <div className="col-span-3 min-w-0">
         <Select value={condition.operator} onValueChange={(v) => onChange({ operator: v as FlagOperator, value: NO_VALUE_OPERATORS.has(v as FlagOperator) ? "" : condition.value })}>
-          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs"><SelectValue className="truncate" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="equals">equals</SelectItem>
-            <SelectItem value="not_equals">not equals</SelectItem>
-            <SelectItem value="in">is any of</SelectItem>
-            <SelectItem value="not_in">is none of</SelectItem>
-            <SelectItem value="is_empty">is empty</SelectItem>
-            <SelectItem value="is_not_empty">is not empty</SelectItem>
-            <SelectItem value="invalid_phone_format">is an invalid phone number</SelectItem>
-            {/* Numeric — works on field extractor values (e.g. a pain_score field) as well as call metadata */}
-            <SelectItem value="greater_than">greater than</SelectItem>
-            <SelectItem value="greater_than_or_equal">greater than or equal to</SelectItem>
-            <SelectItem value="less_than">less than</SelectItem>
-            <SelectItem value="less_than_or_equal">less than or equal to</SelectItem>
+            {availableOperators.map((op) => (
+              <SelectItem key={op} value={op}>{OPERATOR_LABELS[op]}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div className="col-span-2">
+      <div className="col-span-2 min-w-0">
         {!NO_VALUE_OPERATORS.has(condition.operator) && (
           <Input
             placeholder={condition.operator === "in" || condition.operator === "not_in" ? "a, b, c" : "value"}

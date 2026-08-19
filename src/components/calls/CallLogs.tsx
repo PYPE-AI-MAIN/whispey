@@ -35,6 +35,7 @@ interface CallLogsProps {
   onBack: () => void
   isLoading?: boolean
   dateRange?: { from: string; to: string }
+  onAgentUpdated?: () => void // refetch the agent (e.g. after saving Flag Rules) so this dialog reopens with fresh data
 }
 
 // ── Smart pagination range ─────────────────────────────────────────────────
@@ -92,7 +93,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
   agent,
   onBack,
   isLoading: parentLoading,
-  dateRange
+  dateRange,
+  onAgentUpdated
 }) => {
   const router = useRouter()
   const { user } = useUser()
@@ -428,6 +430,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 initialFlagRules={agent?.flag_rules}
                 metadataKeys={dynamicColumns.metadata}
                 metricKeys={dynamicColumns.metrics}
+                onSaved={onAgentUpdated}
               />
             )}
             <BackfillDispositionDialog

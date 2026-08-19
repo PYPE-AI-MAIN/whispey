@@ -882,12 +882,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
             
             <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
               {agent && (
-                <CallLogs 
-                  project={project} 
+                <CallLogs
+                  project={project}
                   agent={agent}
                   onBack={handleBack}
                   dateRange={apiDateRange}
                   isLoading={agentLoading || projectLoading || callsCheckLoading}
+                  onAgentUpdated={refetchAgent}
                 />
               )}
             </div>

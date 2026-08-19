@@ -24,7 +24,7 @@ export const FLAG_NUMERIC_OPERATORS = new Set(['greater_than', 'less_than', 'gre
 export const CALL_LOG_FIELD_ALLOWLIST = new Set([
   'duration_seconds',
   'customer_number',
-  'call_status',
+  'call_ended_reason',
   'metadata.transfer_call_initiated',
 ])
 const METRIC_SCORE_PATH = /^metrics\.[^.]+\.score$/
