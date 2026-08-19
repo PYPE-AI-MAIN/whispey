@@ -646,7 +646,9 @@ const Overview: React.FC<OverviewProps> = ({
   const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
 
   // Data fetching
-  const { data: analytics, loading: analyticsLoading, error } = useOverviewQuery({
+  const [recalculating, setRecalculating] = useState(false)
+
+  const { data: analytics, loading: analyticsLoading, error, refetch } = useOverviewQuery({
     agentId: agent?.id,
     dateFrom: dateRange.from,
     dateTo: dateRange.to,
@@ -844,6 +846,23 @@ const Overview: React.FC<OverviewProps> = ({
     return noMetrics && noCharts
   }, [visibleMetricIds, visibleChartIds, isMetricVisible, isChartVisible])
 
+  const handleRecalculate = useCallback(async () => {
+    if (!agent?.id || recalculating) return
+    setRecalculating(true)
+    try {
+      const res = await fetch(`/api/agents/${agent.id}/overview/recalculate`, { method: 'POST' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || res.statusText)
+      }
+      await refetch()
+    } catch (err) {
+      console.error('Failed to recalculate call summary:', err)
+    } finally {
+      setRecalculating(false)
+    }
+  }, [agent?.id, recalculating, refetch])
+
   const handleDownloadCustomTotal = async (config: CustomTotalConfig) => {
     if (!agent?.id) return
     try {
@@ -1027,6 +1046,8 @@ const Overview: React.FC<OverviewProps> = ({
         canManageGroups={isOwnerOrAdmin}
         showAddChart={visibility?.agent?.overview.charts === true}
         onAddChart={() => setChartCreateDialogOpen(true)}
+        onRecalculate={isOwnerOrAdmin ? handleRecalculate : undefined}
+        recalculating={recalculating}
       />
 
       <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-8 space-y-8'}`}>

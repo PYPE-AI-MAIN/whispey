@@ -37,7 +37,7 @@ export async function GET(
   }
 
   const { data: dailyStats, error: queryError } = await supabase
-    .from('call_summary_materialized')
+    .from('call_summary_daily')
     .select(
       `
       call_date,

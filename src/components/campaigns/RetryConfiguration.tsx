@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, Info, Plus, X, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCode, SipCodeGroup as SipCodeGroupType } from '@/utils/campaigns/constants'
+import { RetryConfig, VALID_SIP_ERROR_CODES, SIP_CODE_GROUPS, SipCode, SipCodeGroup as SipCodeGroupType, CALL_METADATA_FIELDS } from '@/utils/campaigns/constants'
 
 // Chip-style input: type a value, press Enter/Add to append it (after
 // validation), click the X on a chip to remove it. Used for both SIP error
@@ -262,6 +262,60 @@ function SipCodeGroup({
         })}
       </div>
     </div>
+  )
+}
+
+// Shared "Operator" select + "Expected Value" input — identical shape for
+// Field Extractor and Metadata retry types, only the expected-value
+// placeholder differs.
+function OperatorAndExpectedValueFields({
+  operator,
+  expectedValue,
+  onOperatorChange,
+  onExpectedValueChange,
+  expectedValuePlaceholder,
+}: Readonly<{
+  operator?: string
+  expectedValue?: any
+  onOperatorChange: (value: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains') => void
+  onExpectedValueChange: (value: string) => void
+  expectedValuePlaceholder: string
+}>) {
+  return (
+    <>
+      <div>
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+          Operator
+        </Label>
+        <Select value={operator || 'missing'} onValueChange={onOperatorChange}>
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="missing">Missing</SelectItem>
+            <SelectItem value="equals">Equals</SelectItem>
+            <SelectItem value="not_equals">Not Equals</SelectItem>
+            <SelectItem value="contains">Contains</SelectItem>
+            <SelectItem value="not_contains">Not Contains</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {operator && operator !== 'missing' && (
+        <div>
+          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+            Expected Value
+          </Label>
+          <Input
+            type="text"
+            value={expectedValue || ''}
+            onChange={(e) => onExpectedValueChange(e.target.value)}
+            className="h-9 text-sm"
+            placeholder={expectedValuePlaceholder}
+          />
+        </div>
+      )}
+    </>
   )
 }
 
@@ -521,7 +575,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 </Label>
                 <Select
                   value={retryType}
-                  onValueChange={(value: 'sipCode' | 'metric' | 'fieldExtractor') => {
+                  onValueChange={(value: 'sipCode' | 'metric' | 'fieldExtractor' | 'metadata') => {
                     // Create a new config based on the selected type, preserving common fields
                     const updatedConfig = [...values.retryConfig]
                     
@@ -561,8 +615,21 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         newConfig.fieldName = availableFields[0]
                       }
                       updatedConfig[index] = newConfig as unknown as RetryConfig
+                    } else if (value === 'metadata') {
+                      // Call-level metadata (e.g. AMD verdict) — fixed field
+                      // list, not agent-specific, so always has a default.
+                      // Default to the first ENABLED field — hangup_cause/
+                      // call_ended_reason are listed but disabled for now.
+                      const newConfig: any = {
+                        type: 'metadata',
+                        fieldName: (CALL_METADATA_FIELDS.find(f => f.enabled) || CALL_METADATA_FIELDS[0]).key,
+                        operator: 'missing',
+                        delayMinutes: config.delayMinutes || 5,
+                        maxRetries: config.maxRetries || 2,
+                      }
+                      updatedConfig[index] = newConfig as unknown as RetryConfig
                     }
-                    
+
                     onFieldChange('retryConfig', updatedConfig)
                   }}
                 >
@@ -573,6 +640,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     <SelectItem value="sipCode">SIP Code</SelectItem>
                     <SelectItem value="metric">Metric</SelectItem>
                     <SelectItem value="fieldExtractor">Field Extractor</SelectItem>
+                    <SelectItem value="metadata">Metadata</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -712,51 +780,64 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     </div>
 
                     {config.fieldName && (
-                      <>
-                        <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                            Operator
-                          </Label>
-                          <Select
-                            value={config.operator || 'missing'}
-                            onValueChange={(value: 'missing' | 'equals' | 'not_equals' | 'contains' | 'not_contains') => {
-                              handleRetryChange(index, 'operator', value)
-                              if (value === 'missing') {
-                                handleRetryChange(index, 'expectedValue', undefined)
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-9 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="missing">Missing</SelectItem>
-                              <SelectItem value="equals">Equals</SelectItem>
-                              <SelectItem value="not_equals">Not Equals</SelectItem>
-                              <SelectItem value="contains">Contains</SelectItem>
-                              <SelectItem value="not_contains">Not Contains</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {config.operator && (config.operator as string) !== 'missing' && (
-                          <div>
-                            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                              Expected Value
-                            </Label>
-                            <Input
-                              type="text"
-                              value={config.expectedValue || ''}
-                              onChange={(e) => {
-                                handleRetryChange(index, 'expectedValue', e.target.value)
-                              }}
-                              className="h-9 text-sm"
-                              placeholder="Enter expected value"
-                            />
-                          </div>
-                        )}
-                      </>
+                      <OperatorAndExpectedValueFields
+                        operator={config.operator}
+                        expectedValue={config.expectedValue}
+                        onOperatorChange={(value) => {
+                          handleRetryChange(index, 'operator', value)
+                          if (value === 'missing') {
+                            handleRetryChange(index, 'expectedValue', undefined)
+                          }
+                        }}
+                        onExpectedValueChange={(value) => handleRetryChange(index, 'expectedValue', value)}
+                        expectedValuePlaceholder="Enter expected value"
+                      />
                     )}
+                  </>
+                )}
+
+                {/* Metadata Fields (call-level metadata, e.g. AMD verdict) */}
+                {config.type === 'metadata' && (
+                  <>
+                    <div>
+                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                        Metadata Field
+                      </Label>
+                      <Select
+                        value={config.fieldName || (CALL_METADATA_FIELDS.find(f => f.enabled) || CALL_METADATA_FIELDS[0]).key}
+                        onValueChange={(value) => {
+                          handleRetryChange(index, 'fieldName', value)
+                        }}
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CALL_METADATA_FIELDS.map((field) => (
+                            <SelectItem key={field.key} value={field.key} disabled={!field.enabled}>
+                              {field.label}
+                              {!field.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Call-level metadata produced by the voice agent (not agent-configurable, unlike Field Extractor).
+                      </p>
+                    </div>
+
+                    <OperatorAndExpectedValueFields
+                      operator={config.operator}
+                      expectedValue={config.expectedValue}
+                      onOperatorChange={(value) => {
+                        handleRetryChange(index, 'operator', value)
+                        if (value === 'missing') {
+                          handleRetryChange(index, 'expectedValue', undefined)
+                        }
+                      }}
+                      onExpectedValueChange={(value) => handleRetryChange(index, 'expectedValue', value)}
+                      expectedValuePlaceholder="e.g. machine_vm"
+                    />
                   </>
                 )}
 

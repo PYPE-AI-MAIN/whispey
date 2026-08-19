@@ -7,7 +7,9 @@ type MonitoringRegistrationState = 'unknown' | 'registered' | 'missing'
 
 interface Agent {
   id: string
+  /** Immutable backend identity — the label users see is `display_name`. */
   name: string
+  display_name?: string | null
   agent_type: string
   configuration: any
   environment: string
