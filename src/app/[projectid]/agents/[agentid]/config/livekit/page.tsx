@@ -716,9 +716,16 @@ export default function AgentConfig() {
     setVersionSaveError(null)
     try {
       // Step 1: Deploy config to backend
+      // Read the agent's REAL persisted target directly from loaded data instead of
+      // the `deploymentTarget` state var — that state defaults to 'classic' on mount
+      // and only gets corrected once deploymentTargetInitialized's effect resolves.
+      // Saving before that effect finishes would silently deploy a docker agent to
+      // classic instead, spinning up a stray subprocess alongside the real container.
+      const persistedTarget = agentDataResponse?.[0]?.configuration?.deployment_target
+      const actualDeploymentTarget: 'classic' | 'docker' = persistedTarget === 'docker' ? 'docker' : 'classic'
       await saveAndDeploy.mutateAsync({
         ...pendingCheckpoint.config,
-        deploymentTarget: isSuperAdmin ? deploymentTarget : 'classic',
+        deploymentTarget: isSuperAdmin ? actualDeploymentTarget : 'classic',
       })
       // Step 1b: Save supplemental settings (webhook, drop-off, callback) — non-blocking
       try {
