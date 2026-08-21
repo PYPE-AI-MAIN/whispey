@@ -3,6 +3,7 @@
 
 import { useParams } from 'next/navigation'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 import { Loader2 } from 'lucide-react'
 import PipecatPhoneCallConfig from '@/components/agents/PipecatPhoneCallConfig'
 
@@ -12,7 +13,7 @@ export default function PipecatPhoneCallConfigPage() {
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
 
   const { data: agentDataResponse, isLoading } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, configuration',
+    select: 'id, name, display_name, configuration',
     filters: [{ column: 'id', operator: 'eq', value: agentId }],
     limit: 1,
     auth: agentId ? { agentId } : undefined,
@@ -42,7 +43,7 @@ export default function PipecatPhoneCallConfigPage() {
       agentId={agentId}
       projectId={projectId}
       pipecatAgentId={pipecatAgentId}
-      agentName={agent?.name || ''}
+      agentName={agentDisplayName(agent)}
     />
   )
 }
