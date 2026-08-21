@@ -38,7 +38,7 @@ function base64UrlToBuffer(input: string): Uint8Array {
 
 /** Decode a base64url JWT segment into a plain object. Throws on invalid JSON. */
 function decodeSegment(segment: string): Record<string, unknown> {
-  return JSON.parse(new TextDecoder().decode(base64UrlToBuffer(segment)))
+  return JSON.parse(new TextDecoder().decode(base64UrlToBuffer(segment) as BufferSource))
 }
 
 /**
@@ -94,7 +94,11 @@ export async function hasValidServiceToken(authHeader: string | null): Promise<b
     // reason documented on base64UrlToBuffer above.
     const sigInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
     const sigBytes = base64UrlToBuffer(parts[2])
-    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, sigInput)
+    // Cast: TS's DOM lib types Uint8Array generically over ArrayBufferLike
+    // (which includes SharedArrayBuffer), so it doesn't structurally satisfy
+    // BufferSource even though these are always plain, non-shared buffers
+    // at runtime — Web Crypto itself accepts any TypedArray view.
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes as BufferSource, sigInput as BufferSource)
     if (!valid) {
       console.log('[serviceTokenVerifier] fail: signature invalid', {
         secretLen: secret.length,
