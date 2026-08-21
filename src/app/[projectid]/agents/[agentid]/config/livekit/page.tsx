@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -310,7 +311,7 @@ export default function AgentConfig() {
 
   // Get agent data from Supabase
   const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
-    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, environment",
+    select: "id, name, display_name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, environment",
     filters: [{ column: "id", operator: "eq", value: agentid }],
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
@@ -339,7 +340,7 @@ export default function AgentConfig() {
     return `${agentDataResponse[0].name}_${sanitizedAgentId}`
   }, [agentDataResponse, agentid])
 
-  const agentNameHeader = agentDataResponse?.[0]?.name || ''
+  const agentNameHeader = agentDisplayName(agentDataResponse?.[0]) || ''
   const agentNameLegacy = agentDataResponse?.[0]?.name || ''
   const isProd = agentDataResponse?.[0]?.environment === 'prod'
   const [prodAuthorized, setProdAuthorized] = useState(false)

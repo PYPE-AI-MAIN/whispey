@@ -142,6 +142,11 @@ export default function SimplifiedSipManagement() {
     return name
   }
 
+  // Display label for a phone-agent row: prefer the agent's display_name,
+  // fall back to the UUID-stripped technical name.
+  const displayNameFor = (phoneAgent: PhoneAgent) =>
+    agentDisplayName(agents.find(a => a.id === phoneAgent.id)) || cleanAgentName(phoneAgent.name)
+
   const handleRequestPhone = (agentId: string, agentName: string) => {
     setSelectedAgent({ id: agentId, name: agentName })
     setShowPhoneRequest(true)
@@ -300,8 +305,8 @@ export default function SimplifiedSipManagement() {
                         {phoneAgent.name ? (
                           <div className="flex items-center gap-2">
                             <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                            <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]" title={phoneAgent.name}>
-                              {agentDisplayName(agents.find(a => a.id === phoneAgent.id)) || cleanAgentName(phoneAgent.name)}
+                            <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]" title={displayNameFor(phoneAgent)}>
+                              {displayNameFor(phoneAgent)}
                             </span>
                           </div>
                         ) : (
@@ -327,7 +332,7 @@ export default function SimplifiedSipManagement() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleRequestPhone(phoneAgent.id, phoneAgent.name)}
+                            onClick={() => handleRequestPhone(phoneAgent.id, displayNameFor(phoneAgent))}
                             className="h-7 text-xs"
                           >
                             <Phone className="w-3 h-3 mr-1" />
