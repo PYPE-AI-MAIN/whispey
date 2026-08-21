@@ -352,10 +352,10 @@ export default function PhoneNumbersPage() {
 
   const renderTableRows = () => {
     if (isLoading) {
-      return Array.from({ length: 4 }).map((_, i) => (
-        <tr key={i} className="animate-pulse">
-          {Array.from({ length: 6 }).map((__, j) => (
-            <td key={j} className="px-4 py-3">
+      return Array.from({ length: 4 }, (_, i) => `skeleton-row-${i}`).map(rowKey => (
+        <tr key={rowKey} className="animate-pulse">
+          {Array.from({ length: 6 }, (__, j) => `${rowKey}-cell-${j}`).map(cellKey => (
+            <td key={cellKey} className="px-4 py-3">
               <div className="h-3 bg-gray-800 rounded w-3/4" />
             </td>
           ))}
