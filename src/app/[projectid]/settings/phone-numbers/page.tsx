@@ -350,6 +350,159 @@ export default function PhoneNumbersPage() {
     assigned_agent_name: n.assigned_agent_name ?? '',
   })
 
+  const renderTableRows = () => {
+    if (isLoading) {
+      return Array.from({ length: 4 }).map((_, i) => (
+        <tr key={i} className="animate-pulse">
+          {Array.from({ length: 6 }).map((__, j) => (
+            <td key={j} className="px-4 py-3">
+              <div className="h-3 bg-gray-800 rounded w-3/4" />
+            </td>
+          ))}
+        </tr>
+      ))
+    }
+
+    if (numbers.length === 0) {
+      return (
+        <tr>
+          <td colSpan={6} className="py-16 text-center">
+            <div className="flex flex-col items-center gap-2 text-gray-600">
+              <Phone className="h-6 w-6" />
+              <span className="text-sm">No phone numbers yet</span>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+              >
+                Add your first number
+              </button>
+            </div>
+          </td>
+        </tr>
+      )
+    }
+
+    return numbers.map(n => {
+      const isEditing = editingId === n.id
+      const isDeleting = deletingId === n.id
+      const keyRevealed = revealedKeys.has(n.id)
+
+      if (isEditing) {
+        return (
+          <tr key={n.id}>
+            <td colSpan={6} className="px-4 py-3">
+              <PhoneNumberForm
+                initial={numberToForm(n)}
+                agents={agents}
+                onSubmit={form => editMutation.mutate({ id: n.id, form })}
+                onCancel={() => setEditingId(null)}
+                isPending={editMutation.isPending}
+                isEdit
+              />
+            </td>
+          </tr>
+        )
+      }
+
+      return (
+        <tr key={n.id} className="transition-colors hover:bg-gray-800/50">
+          {/* Phone Number */}
+          <td className="px-4 py-3 text-sm text-gray-200 font-mono truncate">
+            {n.phone_number}
+          </td>
+
+          {/* Provider */}
+          <td className="px-4 py-3">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-700 text-gray-300 border border-gray-600">
+              {PROVIDER_LABELS[(n.provider as Provider)] ?? n.provider}
+            </span>
+          </td>
+
+          {/* Type */}
+          <td className="px-4 py-3 text-[11px] text-gray-400">
+            {NUMBER_TYPE_LABELS[(n.number_type as NumberType)] ?? n.number_type}
+          </td>
+
+          {/* Assigned Agent */}
+          <td className="px-4 py-3 text-sm text-gray-400 truncate">
+            {n.assigned_agent_name
+              ? <span className="text-gray-200">
+                  {agentDisplayName(agents.find(a => a.id === n.assigned_agent_id)) || n.assigned_agent_name}
+                </span>
+              : <span className="text-gray-600 text-xs italic">Unassigned</span>
+            }
+          </td>
+
+          {/* API Key */}
+          <td className="px-4 py-3">
+            {n.acefone_api_key ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-mono text-gray-400 truncate max-w-[100px]">
+                  {keyRevealed ? n.acefone_api_key : '••••••••'}
+                </span>
+                <button
+                  onClick={() => toggleKeyReveal(n.id)}
+                  className="text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
+                >
+                  {keyRevealed
+                    ? <EyeOff className="h-3.5 w-3.5" />
+                    : <Eye className="h-3.5 w-3.5" />
+                  }
+                </button>
+              </div>
+            ) : (
+              <span className="text-gray-700 text-xs">—</span>
+            )}
+          </td>
+
+          {/* Actions */}
+          <td className="px-4 py-3">
+            {isDeleting ? (
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-gray-500 mr-1">Delete?</span>
+                <button
+                  onClick={() => deleteMutation.mutate(n.id)}
+                  disabled={deleteMutation.isPending}
+                  className="w-6 h-6 flex items-center justify-center rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-40"
+                >
+                  {deleteMutation.isPending
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Check className="h-3.5 w-3.5" />
+                  }
+                </button>
+                <button
+                  onClick={() => setDeletingId(null)}
+                  className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:bg-gray-700 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                {n.provider?.toLowerCase() === 'acefone' && (
+                  <button
+                    onClick={() => { setEditingId(n.id); setShowAddForm(false) }}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-200 hover:bg-gray-700 transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setDeletingId(n.id)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </td>
+        </tr>
+      )
+    })
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-gray-900">
 
@@ -440,153 +593,7 @@ export default function PhoneNumbersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {isLoading
-                  ? Array.from({ length: 4 }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        {Array.from({ length: 6 }).map((__, j) => (
-                          <td key={j} className="px-4 py-3">
-                            <div className="h-3 bg-gray-800 rounded w-3/4" />
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  : numbers.length === 0
-                  ? (
-                      <tr>
-                        <td colSpan={6} className="py-16 text-center">
-                          <div className="flex flex-col items-center gap-2 text-gray-600">
-                            <Phone className="h-6 w-6" />
-                            <span className="text-sm">No phone numbers yet</span>
-                            <button
-                              onClick={() => setShowAddForm(true)}
-                              className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
-                            >
-                              Add your first number
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  : numbers.map(n => {
-                      const isEditing = editingId === n.id
-                      const isDeleting = deletingId === n.id
-                      const keyRevealed = revealedKeys.has(n.id)
-
-                      if (isEditing) {
-                        return (
-                          <tr key={n.id}>
-                            <td colSpan={6} className="px-4 py-3">
-                              <PhoneNumberForm
-                                initial={numberToForm(n)}
-                                agents={agents}
-                                onSubmit={form => editMutation.mutate({ id: n.id, form })}
-                                onCancel={() => setEditingId(null)}
-                                isPending={editMutation.isPending}
-                                isEdit
-                              />
-                            </td>
-                          </tr>
-                        )
-                      }
-
-                      return (
-                        <tr key={n.id} className="transition-colors hover:bg-gray-800/50">
-                          {/* Phone Number */}
-                          <td className="px-4 py-3 text-sm text-gray-200 font-mono truncate">
-                            {n.phone_number}
-                          </td>
-
-                          {/* Provider */}
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-700 text-gray-300 border border-gray-600">
-                              {PROVIDER_LABELS[(n.provider as Provider)] ?? n.provider}
-                            </span>
-                          </td>
-
-                          {/* Type */}
-                          <td className="px-4 py-3 text-[11px] text-gray-400">
-                            {NUMBER_TYPE_LABELS[(n.number_type as NumberType)] ?? n.number_type}
-                          </td>
-
-                          {/* Assigned Agent */}
-                          <td className="px-4 py-3 text-sm text-gray-400 truncate">
-                            {n.assigned_agent_name
-                              ? <span className="text-gray-200">
-                                  {agentDisplayName(agents.find(a => a.id === n.assigned_agent_id)) || n.assigned_agent_name}
-                                </span>
-                              : <span className="text-gray-600 text-xs italic">Unassigned</span>
-                            }
-                          </td>
-
-                          {/* API Key */}
-                          <td className="px-4 py-3">
-                            {n.acefone_api_key ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-mono text-gray-400 truncate max-w-[100px]">
-                                  {keyRevealed ? n.acefone_api_key : '••••••••'}
-                                </span>
-                                <button
-                                  onClick={() => toggleKeyReveal(n.id)}
-                                  className="text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
-                                >
-                                  {keyRevealed
-                                    ? <EyeOff className="h-3.5 w-3.5" />
-                                    : <Eye className="h-3.5 w-3.5" />
-                                  }
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-gray-700 text-xs">—</span>
-                            )}
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-4 py-3">
-                            {isDeleting ? (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[11px] text-gray-500 mr-1">Delete?</span>
-                                <button
-                                  onClick={() => deleteMutation.mutate(n.id)}
-                                  disabled={deleteMutation.isPending}
-                                  className="w-6 h-6 flex items-center justify-center rounded text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-40"
-                                >
-                                  {deleteMutation.isPending
-                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    : <Check className="h-3.5 w-3.5" />
-                                  }
-                                </button>
-                                <button
-                                  onClick={() => setDeletingId(null)}
-                                  className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:bg-gray-700 transition-colors"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                {n.provider?.toLowerCase() === 'acefone' && (
-                                  <button
-                                    onClick={() => { setEditingId(n.id); setShowAddForm(false) }}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-200 hover:bg-gray-700 transition-colors"
-                                    title="Edit"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => setDeletingId(n.id)}
-                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })
-                }
+                {renderTableRows()}
               </tbody>
             </table>
           </div>

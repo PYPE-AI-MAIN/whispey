@@ -94,6 +94,86 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
     }
   }, [values.agentRuntime])
 
+  const renderPipecatAgentSelect = () => {
+    if (loadingPipecatAgents) {
+      return (
+        <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        </div>
+      )
+    }
+    if (pipecatAgents.length === 0) {
+      return (
+        <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+          <span className="text-xs text-gray-500 dark:text-gray-400">No Pipecat agents found</span>
+        </div>
+      )
+    }
+    return (
+      <Select
+        value={values.agentId}
+        onValueChange={(value) => onFieldChange('agentId', value)}
+      >
+        <SelectTrigger className="w-full h-8 text-sm">
+          <SelectValue placeholder="Choose a Pipecat agent" />
+        </SelectTrigger>
+        <SelectContent>
+          {pipecatAgents.map((agent) => (
+            <SelectItem key={agent.id} value={agent.id}>
+              {pipecatAgentDisplayName(agent.id, agent.name)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )
+  }
+
+  const renderLivekitAgentSelect = (field: any) => {
+    if (permissionsLoading) {
+      return (
+        <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        </div>
+      )
+    }
+    if (agents.length === 0) {
+      return (
+        <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
+          <span className="text-xs text-gray-500 dark:text-gray-400">No agents available</span>
+        </div>
+      )
+    }
+    return (
+      <Select
+        value={field.value}
+        onValueChange={(value) => onFieldChange('agentId', value)}
+      >
+        <SelectTrigger className="w-full h-8 text-sm">
+          <SelectValue placeholder="Choose an agent" />
+        </SelectTrigger>
+        <SelectContent>
+          {agents.map((agent) => (
+            <SelectItem key={agent.id} value={agent.id}>
+              <div className="flex items-center gap-2">
+                <span>{agentDisplayName(projectAgents.find(a => a.id === agent.id)) || agent.name}</span>
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${
+                    agent.status === 'active'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  }`}
+                >
+                  {agent.status}
+                </Badge>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )
+  }
+
   return (
     <>
       {/* Batch Call Name */}
@@ -150,74 +230,10 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
         </Label>
 
         {values.agentRuntime === 'pipecat' ? (
-          loadingPipecatAgents ? (
-            <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-            </div>
-          ) : pipecatAgents.length === 0 ? (
-            <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-              <span className="text-xs text-gray-500 dark:text-gray-400">No Pipecat agents found</span>
-            </div>
-          ) : (
-            <Select
-              value={values.agentId}
-              onValueChange={(value) => onFieldChange('agentId', value)}
-            >
-              <SelectTrigger className="w-full h-8 text-sm">
-                <SelectValue placeholder="Choose a Pipecat agent" />
-              </SelectTrigger>
-              <SelectContent>
-                {pipecatAgents.map((agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    {pipecatAgentDisplayName(agent.id, agent.name)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )
+          renderPipecatAgentSelect()
         ) : (
           <Field name="agentId">
-            {({ field }: any) => (
-              <>
-                {permissionsLoading ? (
-                  <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                  </div>
-                ) : agents.length === 0 ? (
-                  <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">No agents available</span>
-                  </div>
-                ) : (
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => onFieldChange('agentId', value)}
-                  >
-                    <SelectTrigger className="w-full h-8 text-sm">
-                      <SelectValue placeholder="Choose an agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          <div className="flex items-center gap-2">
-                            <span>{agentDisplayName(projectAgents.find(a => a.id === agent.id)) || agent.name}</span>
-                            <Badge
-                              variant="outline"
-                              className={`text-xs ${
-                                agent.status === 'active'
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                  : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                              }`}
-                            >
-                              {agent.status}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </>
-            )}
+            {({ field }: any) => renderLivekitAgentSelect(field)}
           </Field>
         )}
         <ErrorMessage name="agentId" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />

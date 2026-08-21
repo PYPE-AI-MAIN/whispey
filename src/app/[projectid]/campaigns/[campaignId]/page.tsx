@@ -678,100 +678,104 @@ function ViewCampaign() {
     )
   }
 
-  return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/${projectId}/campaigns`)}
-              className="h-7 w-7 p-0"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-            </Button>
-            <div>
-              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                {campaignDetails.campaignName}
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Campaign ID: {campaignDetails.campaignId}
-              </p>
-            </div>
+  const renderHeader = () => (
+    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/${projectId}/campaigns`)}
+            className="h-7 w-7 p-0"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+          </Button>
+          <div>
+            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              {campaignDetails.campaignName}
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Campaign ID: {campaignDetails.campaignId}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            {(campaignDetails?.status === 'scheduled' || campaignDetails?.status === 'running') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePauseCampaign}
-                disabled={actionLoading}
-                className="h-7 text-xs gap-1.5"
-              >
-                <Pause className="w-3 h-3" />
-                {actionLoading ? 'Pausing...' : 'Pause'}
-              </Button>
-            )}
-            {campaignDetails?.status === 'paused' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResumeCampaign}
-                disabled={actionLoading}
-                className="h-7 text-xs gap-1.5"
-              >
-                <Play className="w-3 h-3" />
-                {actionLoading ? 'Resuming...' : 'Resume'}
-              </Button>
-            )}
-            {/* Download Section with Status Filter */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-              <Filter className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-              <select
-                value={downloadStatusFilter}
-                onChange={(e) => setDownloadStatusFilter(e.target.value)}
-                disabled={isDownloading}
-                className="h-6 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="completed">Completed</option>
-                <option value="failed">Failed</option>
-                <option value="in_progress">In Progress</option>
-              </select>
-              <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
-              <button
-                onClick={handleDownloadContacts}
-                disabled={isDownloading || logs.length === 0}
-                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isDownloading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Downloading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download CSV</span>
-                  </>
-                )}
-              </button>
-            </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {(campaignDetails?.status === 'scheduled' || campaignDetails?.status === 'running') && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleRefresh}
+              onClick={handlePauseCampaign}
+              disabled={actionLoading}
               className="h-7 text-xs gap-1.5"
             >
-              <RefreshCw className="w-3 h-3" />
-              Refresh
+              <Pause className="w-3 h-3" />
+              {actionLoading ? 'Pausing...' : 'Pause'}
             </Button>
+          )}
+          {campaignDetails?.status === 'paused' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResumeCampaign}
+              disabled={actionLoading}
+              className="h-7 text-xs gap-1.5"
+            >
+              <Play className="w-3 h-3" />
+              {actionLoading ? 'Resuming...' : 'Resume'}
+            </Button>
+          )}
+          {/* Download Section with Status Filter */}
+          <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <Filter className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <select
+              value={downloadStatusFilter}
+              onChange={(e) => setDownloadStatusFilter(e.target.value)}
+              disabled={isDownloading}
+              className="h-6 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="in_progress">In Progress</option>
+            </select>
+            <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <button
+              onClick={handleDownloadContacts}
+              disabled={isDownloading || logs.length === 0}
+              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Downloading...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download CSV</span>
+                </>
+              )}
+            </button>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            className="h-7 text-xs gap-1.5"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Refresh
+          </Button>
         </div>
       </div>
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+      {/* Header */}
+      {renderHeader()}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">

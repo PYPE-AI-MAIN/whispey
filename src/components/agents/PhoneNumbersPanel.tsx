@@ -32,11 +32,11 @@ interface Agent {
 
 interface PhoneNumbersPanelProps {
   /** The Supabase dashboard agent ID — used for fetching numbers */
-  agentId: string
+  readonly agentId: string
   /** The DynamoDB pipecat agent ID — used to pre-fill the assign form dropdown */
-  pipecatAgentId?: string
-  agentName?: string
-  projectId?: string
+  readonly pipecatAgentId?: string
+  readonly agentName?: string
+  readonly projectId?: string
 }
 
 const PROVIDERS   = ['acefone', 'plivo', 'other'] as const
