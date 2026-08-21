@@ -20,7 +20,7 @@ export async function GET(
   try {
     const { agentName } = await params
 
-    if (!agentName || !agentName.trim()) {
+    if (!agentName?.trim()) {
       return NextResponse.json({ error: 'Agent name is required' }, { status: 400 })
     }
 

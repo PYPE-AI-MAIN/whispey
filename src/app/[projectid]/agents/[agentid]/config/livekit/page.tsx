@@ -956,6 +956,46 @@ export default function AgentConfig() {
     }
   }
 
+  // Start/Stop toggle button, shared by the mobile-compact and desktop header
+  // layouts — a chained ternary here reads as ambiguous nesting to lint tools
+  // and to a future reader, so this renders it as a plain if/else instead.
+  const renderAgentToggleButton = (compact: boolean) => {
+    const className = compact ? 'h-8' : 'h-8 text-xs'
+    const iconClassName = compact ? 'w-4 h-4' : 'w-3 h-3 mr-1'
+
+    if (agentStatus.status === 'stopped' || agentStatus.status === 'error') {
+      return (
+        <Button
+          variant="outline" size="sm" className={className}
+          onClick={startAgent} disabled={isAgentLoading || !activeAgentName || isPublishing}
+        >
+          {isAgentLoading ? <Loader2 className={`${iconClassName} animate-spin`} /> : <Play className={iconClassName} />}
+          {!compact && 'Start Agent'}
+        </Button>
+      )
+    }
+
+    if (agentStatus.status === 'running') {
+      return (
+        <Button
+          variant="outline" size="sm" className={className}
+          onClick={stopAgent} disabled={isAgentLoading || isPublishing}
+        >
+          {isAgentLoading ? <Loader2 className={`${iconClassName} animate-spin`} /> : <Square className={iconClassName} />}
+          {!compact && 'Stop Agent'}
+        </Button>
+      )
+    }
+
+    // 'starting' or 'stopping' — always disabled, spinner-only on mobile.
+    return (
+      <Button variant="outline" size="sm" className={className} disabled>
+        <Loader2 className={`${iconClassName} animate-spin`} />
+        {!compact && (agentStatus.status === 'starting' ? 'Starting...' : 'Stopping...')}
+      </Button>
+    )
+  }
+
 // Predefined system variables (same as PromptSettingsSheet). These are always "mapped" by the
 // system, so we must never count them as unmapped—otherwise the Settings indicator stays red.
 const PREDEFINED_VARIABLE_NAMES = new Set(['wcalling_number', 'wcurrent_time', 'wcurrent_date', 'wcontext_dropoff'])
@@ -1112,44 +1152,7 @@ const unmappedVariablesCount = useMemo(() => {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={startAgent}
-                disabled={isAgentLoading || !activeAgentName || isPublishing}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                )}
-              </Button>
-            ) : agentStatus.status === 'running' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={stopAgent}
-                disabled={isAgentLoading || isPublishing}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Square className="w-4 h-4" />
-                )}
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                disabled
-              >
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </Button>
-            )}
+            {renderAgentToggleButton(true)}
 
             {isFormDirty && (
               <Button
@@ -1266,47 +1269,7 @@ const unmappedVariablesCount = useMemo(() => {
           </div>
           
           <div className="flex items-center gap-3">
-            {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={startAgent}
-                disabled={isAgentLoading || !activeAgentName || isPublishing}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                ) : (
-                  <Play className="w-3 h-3 mr-1" />
-                )}
-                Start Agent
-              </Button>
-            ) : agentStatus.status === 'running' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={stopAgent}
-                disabled={isAgentLoading || isPublishing}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                ) : (
-                  <Square className="w-3 h-3 mr-1" />
-                )}
-                Stop Agent
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled
-              >
-                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                {agentStatus.status === 'starting' ? 'Starting...' : 'Stopping...'}
-              </Button>
-            )}
+            {renderAgentToggleButton(false)}
 
             <Sheet
               open={isTalkToAssistantOpen}

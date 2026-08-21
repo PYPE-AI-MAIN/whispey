@@ -60,7 +60,8 @@ async function pollDeployStatus(appUrl: string, agentName: string): Promise<Depl
     if (!status || status.status === 'no_update_found' || status.status === 'unreachable') continue
     if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
       if (status.status !== 'completed' || status.success === false) {
-        return { message: `Restore deploy failed: ${status.error || `update ended with status: ${status.status}`}`, status: 502 }
+        const failureDetail = status.error || `update ended with status: ${status.status}`
+        return { message: `Restore deploy failed: ${failureDetail}`, status: 502 }
       }
       return null
     }
