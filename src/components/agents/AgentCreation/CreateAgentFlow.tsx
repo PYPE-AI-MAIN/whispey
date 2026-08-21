@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AGENT_DEFAULT_CONFIG } from '@/config/agentDefaults'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
-import { deriveAgentName, AGENT_DISPLAY_NAME_MAX } from '@/lib/agentDisplayName'
+import { agentDisplayName, deriveAgentName, AGENT_DISPLAY_NAME_MAX } from '@/lib/agentDisplayName'
 
 const PLATFORM_OPTIONS = [
   {
@@ -230,95 +230,6 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     }
   }
 
-  // Creates the local Whispey agent record — backend handles Pipecat creation too.
-  const createLocalAgent = async () => {
-    const agentPayload = {
-      name: formData.name.trim(),
-      agent_type: isPypeAgent ? 'pype_agent' : selectedPlatform === 'pipecat' ? 'pipecat_agent' : selectedPlatform,
-      configuration: {
-        description: formData.description.trim() || null,
-        ...(creationMode === 'flow' ? { workflowMode: true } : {}),
-        // Persisted so the config page and start/stop/update calls can read
-        // back which backend this agent actually lives on, instead of
-        // always defaulting to classic.
-        deployment_target: isSuperAdmin ? deploymentTarget : 'classic',
-      },
-      project_id: projectId,
-      environment: 'dev',
-      platform: selectedPlatform
-    }
-
-    const agentResponse = await fetch('/api/agents', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(agentPayload),
-    })
-
-    if (!agentResponse.ok) {
-      const errorData = await agentResponse.json()
-      throw new Error(errorData.error || 'Failed to create agent')
-    }
-
-    return agentResponse.json()
-  }
-
-  // LiveKit agents also need a PypeAI backend agent created; skip for pipecat
-  // (handled by /api/agents) and for conversation flows (deployed from the
-  // workflow builder instead).
-  const createPypeBackendAgent = async (localAgent: any) => {
-    const projectApiKey = await fetchProjectApiKey()
-
-    const encryptResponse = await fetch(`/api/projects/${projectId}/api-keys/encrypt`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: 'pype-api-v1' })
-    })
-
-    if (!encryptResponse.ok) throw new Error('Failed to encrypt API key')
-
-    const { encrypted: encryptedApiKey } = await encryptResponse.json()
-    const sanitizedAgentId = localAgent.id.replaceAll('-', '_')
-    const agentNameWithId = `${formData.name.trim()}_${sanitizedAgentId}`
-
-    const pypeAgentPayload = {
-      project_id: projectId,
-      deploymentTarget: isSuperAdmin ? deploymentTarget : 'classic',
-      agent: {
-        name: agentNameWithId,
-        type: "OUTBOUND",
-        assistant: [{
-          name: agentNameWithId,
-          prompt: `You are a helpful voice assistant named ${formData.name.trim()}. ${formData.description || 'Assist users with their queries in a friendly and professional manner.'}`,
-          variables: {},
-          stt: AGENT_DEFAULT_CONFIG.stt,
-          llm: AGENT_DEFAULT_CONFIG.llm,
-          tts: AGENT_DEFAULT_CONFIG.tts,
-          vad: AGENT_DEFAULT_CONFIG.vad,
-          tools: AGENT_DEFAULT_CONFIG.tools,
-          interruptions: AGENT_DEFAULT_CONFIG.interruptions,
-          first_message_mode: AGENT_DEFAULT_CONFIG.first_message_mode,
-          session_behavior: AGENT_DEFAULT_CONFIG.session_behavior,
-          background_audio: AGENT_DEFAULT_CONFIG.background_audio,
-          filler_words: AGENT_DEFAULT_CONFIG.filler_words,
-          bug_reports: AGENT_DEFAULT_CONFIG.bug_reports
-        }],
-        agent_id: localAgent.id,
-        whispey_key_id: projectApiKey
-      }
-    }
-
-    const createResponse = await fetch('/api/agents/create-agent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': encryptedApiKey },
-      body: JSON.stringify(pypeAgentPayload)
-    })
-
-    if (!createResponse.ok) {
-      const createErrorData = await createResponse.json()
-      throw new Error(createErrorData.error || createErrorData.detail || `PypeAI API error: ${createResponse.status}`)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -417,7 +328,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             Agent Created Successfully!
           </DialogTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            "{createdAgentData?.name}" is ready for use
+            "{agentDisplayName(createdAgentData)}" is ready for use
           </p>
         </DialogHeader>
 
@@ -434,7 +345,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                  {createdAgentData?.name}
+                  {agentDisplayName(createdAgentData)}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className={`text-xs ${getResultBadgeClass(creationMode, selectedPlatform)}`}>
