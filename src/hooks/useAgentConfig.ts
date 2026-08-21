@@ -409,6 +409,13 @@ const saveAndDeployAgent = async (data: any) => {
 
   const result = await response.json()
 
+  // Backend now kicks off the actual redeploy in the background and returns
+  // right away — poll until it actually finishes so callers (and the
+  // isPending-driven loader) see the real completion, not just "request sent".
+  // The backend's own response (status/agent_name) is nested under `data` —
+  // save-and-deploy/route.ts wraps it as { success, message, data: <backend response> }.
+  // Docker-only: this "update_started" shape only exists on the dockerized
+  // backend; classic deploys synchronously and returns the final result directly.
   const agentName = result?.data?.agent_name || extractAgentName(data)
   if (data?.deploymentTarget === 'docker' && result?.data?.status === "update_started" && agentName) {
     return pollUpdateStatus(agentName)
