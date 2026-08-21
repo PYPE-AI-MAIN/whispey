@@ -120,6 +120,19 @@ jobs:
           docker build \
             -f Dockerfile \
             --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
+            --build-arg NEXT_PUBLIC_AGENT_CREATION_WHITELIST="${{ secrets.NEXT_PUBLIC_AGENT_CREATION_WHITELIST }}" \
+            --build-arg NEXT_PUBLIC_POSTHOG_BLACKLIST="${{ secrets.NEXT_PUBLIC_POSTHOG_BLACKLIST }}" \
+            --build-arg NEXT_PUBLIC_POSTHOG_KEY="${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}" \
+            --build-arg NEXT_PUBLIC_POSTHOG_HOST="${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}" \
+            --build-arg NEXT_PUBLIC_SONIC_LINKER_ORG_ID="${{ secrets.NEXT_PUBLIC_SONIC_LINKER_ORG_ID }}" \
+            --build-arg NEXT_PUBLIC_APP_URL="${{ secrets.NEXT_PUBLIC_APP_URL }}" \
+            --build-arg NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL="${{ secrets.NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL }}" \
+            --build-arg NEXT_PUBLIC_MONITORING_AGENT_BASE_URL="${{ secrets.NEXT_PUBLIC_MONITORING_AGENT_BASE_URL }}" \
+            --build-arg NEXT_PUBLIC_PYPEAI_API_URL="${{ secrets.NEXT_PUBLIC_PYPEAI_API_URL }}" \
+            --build-arg NEXT_PUBLIC_DISPOSITION_PROJECTS="${{ secrets.NEXT_PUBLIC_DISPOSITION_PROJECTS }}" \
+            --build-arg NEXT_PUBLIC_METABASE_URL="${{ secrets.NEXT_PUBLIC_METABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_FEEDBACK_URL="${{ secrets.NEXT_PUBLIC_FEEDBACK_URL }}" \
+            --build-arg NEXT_PUBLIC_X_API_KEY="${{ secrets.NEXT_PUBLIC_X_API_KEY }}" \
             -t "${IMAGE_URI}" \
             -t "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}" \
             .
