@@ -39,13 +39,30 @@ export const normalizeRoleForColumnAccess = (role: string | null): string | null
   return ['user', 'member', 'viewer'].includes(role) ? 'viewer' : role
 }
 
-/** Viewer-only hidden basic columns: Tags only; everything else matches owner/admin. */
+/** Viewer-only hidden basic columns: Tags and Flag; everything else matches owner/admin. */
 export const ROLE_RESTRICTIONS = {
-  viewer: ['tags'],
+  viewer: ['tags', 'flag'],
 } as const
 
 export const isViewerRole = (role: string | null | undefined): boolean =>
   normalizeRoleForColumnAccess(role ?? null) === 'viewer'
+
+/**
+ * Whether a row should be rendered with flagged (red) styling.
+ *
+ * Viewers never see flag state — the Flag column is hidden from them via
+ * ROLE_RESTRICTIONS, so leaking it back through the row colour would defeat
+ * that. Every table computes "is this row flagged" through here so a new table
+ * can't reintroduce the leak.
+ */
+export const isRowFlaggedForRole = (
+  call: { transcription_metrics?: { flag?: unknown } | null } | null | undefined,
+  role: string | null
+): boolean => {
+  if (isViewerRole(role)) return false
+  const flag = call?.transcription_metrics?.flag as { text?: string } | undefined
+  return Boolean(flag?.text)
+}
 
 export const isColumnVisibleForRole = (columnKey: string, role: string | null): boolean => {
   if (!role) return true

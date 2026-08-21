@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { encryptApiKey } from '@/lib/vapi-encryption'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { deriveAgentName, normalizeAgentDisplayName } from '@/lib/agentDisplayName'
 
 const supabase = createServiceRoleClient()
 
@@ -14,7 +15,7 @@ async function createPipecatAgent(agentData: any, projectId: string, whispeyAgen
   const pipecatPayload = {
     id: whispeyAgentId,              // ✅ use Supabase UUID so both DBs share the same ID
     name: agentData.name,
-    prompt: `You are a helpful voice assistant named ${agentData.name}. ${agentData.configuration?.description || 'Assist users with their queries in a friendly and professional manner.'}`,
+    prompt: `You are a helpful voice assistant named ${agentData.display_name || agentData.name}. ${agentData.configuration?.description || 'Assist users with their queries in a friendly and professional manner.'}`,
     tools: ["transfer_call"],
     custom_tools: [],
     stt_language: "en-IN",
@@ -47,39 +48,213 @@ async function createPipecatAgent(agentData: any, projectId: string, whispeyAgen
   return pipecatAgent
 }
 
+/**
+ * Pick a free `name` for this project, starting from the label-derived prefix.
+ * `name` collides easily once it is only the first 10 chars of a label, and the
+ * caller-facing 409 ("Agent with name Front_Desk already exists") would be
+ * baffling for someone who typed "Front Desk Reception" — so resolve it here.
+ *
+ * Digits can't be used as the suffix (backend agent names reject them), hence
+ * letters. ponytail: fetches every name in the project rather than filtering in
+ * SQL — projects are capped at a handful of agents, and a LIKE pattern would
+ * have to escape the `_` that derived names are full of. No DB unique constraint
+ * to race against either: a concurrent double-create can still land the same
+ * prefix, which is harmless because the backend name carries the agent UUID.
+ * Widen the suffix if a project ever needs >26 agents sharing a 10-char prefix.
+ */
+async function reserveAgentName(projectId: string, base: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('pype_voice_agents')
+    .select('name')
+    .eq('project_id', projectId)
+
+  const taken = new Set((data ?? []).map((row: { name: string }) => row.name))
+  if (!taken.has(base)) return base
+  for (const suffix of 'bcdefghijklmnopqrstuvwxyz') {
+    const candidate = `${base}_${suffix}`
+    if (!taken.has(candidate)) return candidate
+  }
+  return null
+}
+
+type AgentIdentity =
+  | { ok: true; name: string; display_name: string | null }
+  | { ok: false; error: string; status: number }
+
+/**
+ * Decide the immutable `name` and the human `display_name` for a new agent.
+ *
+ * Callers that send a free-text `display_name` (the create form) get `name`
+ * derived from it here, so the stored backend identity is authoritative rather
+ * than whatever the client computed. Callers that send only `name` (the connect
+ * flows, and the voice backend registering itself) keep the original behaviour.
+ */
+async function resolveAgentIdentity(
+  projectId: string,
+  rawName: string,
+  rawDisplayName: unknown
+): Promise<AgentIdentity> {
+  let label: string | null
+  try {
+    label = normalizeAgentDisplayName(rawDisplayName)
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Invalid display_name', status: 400 }
+  }
+
+  if (label) {
+    const reserved = await reserveAgentName(projectId, deriveAgentName(label))
+    if (!reserved) {
+      return {
+        ok: false,
+        error: `Too many agents named like "${label}" in this project. Please pick a different name.`,
+        status: 409,
+      }
+    }
+    return { ok: true, name: reserved, display_name: label }
+  }
+
+  const { data: existingAgent, error: checkError } = await supabase
+    .from('pype_voice_agents')
+    .select('id, name')
+    .eq('project_id', projectId)
+    .eq('name', rawName.trim())
+    .maybeSingle()
+
+  if (checkError) {
+    console.error('❌ Error checking existing agent:', checkError)
+    return { ok: false, error: 'Failed to validate agent name', status: 500 }
+  }
+  if (existingAgent) {
+    return {
+      ok: false,
+      error: `Agent with name "${rawName.trim()}" already exists in this project. Please choose a different name.`,
+      status: 409,
+    }
+  }
+  return { ok: true, name: rawName.trim(), display_name: null }
+}
+
+/** Returns an error message if a required top-level field is missing, else null. */
+function validateRequiredFields(f: { name?: string; agent_type?: string; project_id?: string }): string | null {
+  if (!f.name?.trim()) return 'Agent name is required'
+  if (!f.agent_type) return 'Agent type is required'
+  if (!f.project_id) return 'Project ID is required'
+  return null
+}
+
+/** Returns an error message if the platform's config block is incomplete, else null. */
+function validatePlatformConfig(platform: string, configuration: any): string | null {
+  if (platform === 'vapi') {
+    const v = configuration?.vapi
+    if (!v?.apiKey || !v?.assistantId || !v?.projectApiKey) {
+      return 'Vapi configuration is incomplete. Required: apiKey, assistantId, projectApiKey'
+    }
+  }
+  if (platform === 'retell') {
+    const r = configuration?.retell
+    if (!r?.apiKey || !r?.agentId) {
+      return 'Retell configuration is incomplete. Required: apiKey, agentId'
+    }
+  }
+  return null
+}
+
+/** Encrypt vapi/retell secrets into agentData and strip them from the stored config. */
+function applyPlatformCredentials(agentData: any, platform: string, configuration: any, projectId: string): void {
+  if (platform === 'vapi' && configuration?.vapi) {
+    agentData.vapi_api_key_encrypted = encryptApiKey(configuration.vapi.apiKey, projectId)
+    agentData.vapi_project_key_encrypted = encryptApiKey(configuration.vapi.projectApiKey, projectId)
+    const cleanConfiguration = { ...configuration }
+    if (cleanConfiguration.vapi) {
+      delete cleanConfiguration.vapi.apiKey
+      delete cleanConfiguration.vapi.projectApiKey
+      agentData.configuration = cleanConfiguration
+    }
+    console.log('🔐 Vapi API keys encrypted and stored securely')
+  }
+
+  if (platform === 'retell' && configuration?.retell) {
+    agentData.retell_api_key_encrypted = encryptApiKey(configuration.retell.apiKey, projectId)
+    agentData.configuration = {
+      ...configuration,
+      retell: {
+        agentId:    configuration.retell.agentId,
+        agentName:  configuration.retell.agentName,
+        voiceId:    configuration.retell.voiceId,
+        language:   configuration.retell.language,
+        xPypeToken: configuration.retell.projectApiKey,
+      },
+    }
+    console.log('🔐 Retell API key encrypted and stored securely')
+  }
+}
+
+/** Resolve the project's whispey API key for Pipecat, falling back to the default. */
+async function resolveWhispeyApiKey(projectId: string): Promise<string> {
+  const { data: apiKeyRow, error: keyError } = await supabase
+    .from('pype_voice_api_keys')
+    .select('id, token_hash, token_hash_master')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!keyError && apiKeyRow?.token_hash_master) {
+    try {
+      const { decryptWithWhispeyKey } = await import('@/lib/whispey-crypto')
+      return decryptWithWhispeyKey(apiKeyRow.token_hash_master)
+    } catch (decryptError) {
+      console.error('❌ Failed to decrypt API key, using fallback:', decryptError)
+    }
+  } else {
+    console.log('🔍 Using fallback API key - keyError:', !!keyError, 'hasTokenHashMaster:', !!apiKeyRow?.token_hash_master)
+  }
+  return 'pype-api-v1'
+}
+
+/**
+ * Create the Pipecat agent for an already-inserted Supabase row and store its id
+ * back on the config. Returns an error message (caller responds 500) or null on
+ * success. On failure the Supabase row is rolled back so we never leave an orphan.
+ */
+async function provisionPipecatAgent(agent: any, projectId: string): Promise<string | null> {
+  try {
+    const whispeyApiKey = await resolveWhispeyApiKey(projectId)
+    const pipecatAgent = await createPipecatAgent(agent, projectId, agent.id, whispeyApiKey)
+
+    const { error: updateError } = await supabase
+      .from('pype_voice_agents')
+      .update({ configuration: { ...agent.configuration, pipecat_agent_id: pipecatAgent.id } })
+      .eq('id', agent.id)
+
+    if (updateError) {
+      // Non-fatal — agent is created, just log it
+      console.error('❌ Failed to store pipecat_agent_id in Supabase:', updateError)
+    } else {
+      agent.configuration.pipecat_agent_id = pipecatAgent.id
+      console.log('✅ pipecat_agent_id stored in Supabase configuration')
+    }
+    return null
+  } catch (pipecatError) {
+    console.error('❌ Failed to create Pipecat agent, rolling back Supabase record:', pipecatError)
+    await supabase.from('pype_voice_agents').delete().eq('id', agent.id)
+    return `Failed to create Pipecat agent: ${pipecatError instanceof Error ? pipecatError.message : 'Unknown error'}`
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, agent_type, configuration, project_id, environment, platform } = body
+    const { name, display_name, agent_type, configuration, project_id, environment, platform } = body
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Agent name is required' }, { status: 400 })
+    const requiredError = validateRequiredFields({ name, agent_type, project_id })
+    if (requiredError) {
+      return NextResponse.json({ error: requiredError }, { status: 400 })
     }
 
-    if (!agent_type) {
-      return NextResponse.json({ error: 'Agent type is required' }, { status: 400 })
-    }
-
-    if (!project_id) {
-      return NextResponse.json({ error: 'Project ID is required' }, { status: 400 })
-    }
-
-    if (platform === 'vapi') {
-      if (!configuration?.vapi?.apiKey || !configuration?.vapi?.assistantId || !configuration?.vapi?.projectApiKey) {
-        return NextResponse.json(
-          { error: 'Vapi configuration is incomplete. Required: apiKey, assistantId, projectApiKey' },
-          { status: 400 }
-        )
-      }
-    }
-
-    if (platform === 'retell') {
-      if (!configuration?.retell?.apiKey || !configuration?.retell?.agentId) {
-        return NextResponse.json(
-          { error: 'Retell configuration is incomplete. Required: apiKey, agentId' },
-          { status: 400 }
-        )
-      }
+    const configError = validatePlatformConfig(platform, configuration)
+    if (configError) {
+      return NextResponse.json({ error: configError }, { status: 400 })
     }
 
     const { data: project, error: projectError } = await supabase
@@ -93,27 +268,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
     }
 
-    const { data: existingAgent, error: checkError } = await supabase
-      .from('pype_voice_agents')
-      .select('id, name')
-      .eq('project_id', project_id)
-      .eq('name', name.trim())
-      .maybeSingle()
-
-    if (checkError) {
-      console.error('❌ Error checking existing agent:', checkError)
-      return NextResponse.json({ error: 'Failed to validate agent name' }, { status: 500 })
-    }
-
-    if (existingAgent) {
-      return NextResponse.json(
-        { error: `Agent with name "${name.trim()}" already exists in this project. Please choose a different name.` },
-        { status: 409 }
-      )
+    const identity = await resolveAgentIdentity(project_id, name, display_name)
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error }, { status: identity.status })
     }
 
     const agentData: any = {
-      name: name.trim(),
+      name: identity.name,
+      display_name: identity.display_name,
       agent_type,
       configuration: configuration || {},
       project_id,
@@ -121,33 +283,7 @@ export async function POST(request: NextRequest) {
       is_active: true
     }
 
-    if (platform === 'vapi' && configuration?.vapi) {
-      agentData.vapi_api_key_encrypted = encryptApiKey(configuration.vapi.apiKey, project_id)
-      agentData.vapi_project_key_encrypted = encryptApiKey(configuration.vapi.projectApiKey, project_id)
-      const cleanConfiguration = { ...configuration }
-      if (cleanConfiguration.vapi) {
-        delete cleanConfiguration.vapi.apiKey
-        delete cleanConfiguration.vapi.projectApiKey
-        agentData.configuration = cleanConfiguration
-      }
-      console.log('🔐 Vapi API keys encrypted and stored securely')
-    }
-
-    if (platform === 'retell' && configuration?.retell) {
-      agentData.retell_api_key_encrypted = encryptApiKey(configuration.retell.apiKey, project_id)
-      const cleanConfiguration = {
-        ...configuration,
-        retell: {
-          agentId:    configuration.retell.agentId,
-          agentName:  configuration.retell.agentName,
-          voiceId:    configuration.retell.voiceId,
-          language:   configuration.retell.language,
-          xPypeToken: configuration.retell.projectApiKey,
-        },
-      }
-      agentData.configuration = cleanConfiguration
-      console.log('🔐 Retell API key encrypted and stored securely')
-    }
+    applyPlatformCredentials(agentData, platform, configuration, project_id)
 
     // ✅ Step 1: Insert into Supabase first to get agent.id
     console.log('💾 Inserting agent data:', {
@@ -170,61 +306,9 @@ export async function POST(request: NextRequest) {
 
     // ✅ Step 2: Create Pipecat agent with real agent.id and project API key
     if (platform === 'pipecat') {
-      try {
-        // Fetch project API key to pass to Pipecat
-        const { data: apiKeyRow, error: keyError } = await supabase
-          .from('pype_voice_api_keys')
-          .select('id, token_hash, token_hash_master')
-          .eq('project_id', project_id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        let whispeyApiKey = 'pype-api-v1' // fallback
-
-        if (!keyError && apiKeyRow?.token_hash_master) {
-          try {
-            const { decryptWithWhispeyKey } = await import('@/lib/whispey-crypto')
-            whispeyApiKey = decryptWithWhispeyKey(apiKeyRow.token_hash_master)
-            console.log('✅ Decrypted project API key for Pipecat:', whispeyApiKey)
-          } catch (decryptError) {
-            console.error('❌ Failed to decrypt API key, using fallback:', decryptError)
-          }
-        } else {
-          console.log('🔍 Using fallback API key - keyError:', !!keyError, 'hasTokenHashMaster:', !!apiKeyRow?.token_hash_master)
-        }
-
-        const pipecatAgent = await createPipecatAgent(agent, project_id, agent.id, whispeyApiKey)
-
-        // ✅ Store pipecat_agent_id back into Supabase configuration
-        const { error: updateError } = await supabase
-          .from('pype_voice_agents')
-          .update({
-            configuration: {
-              ...agent.configuration,
-              pipecat_agent_id: pipecatAgent.id
-            }
-          })
-          .eq('id', agent.id)
-
-        if (updateError) {
-          console.error('❌ Failed to store pipecat_agent_id in Supabase:', updateError)
-          // Non-fatal — agent is created, just log it
-        } else {
-          console.log('✅ pipecat_agent_id stored in Supabase configuration')
-          agent.configuration.pipecat_agent_id = pipecatAgent.id
-        }
-
-      } catch (pipecatError) {
-        console.error('❌ Failed to create Pipecat agent, rolling back Supabase record:', pipecatError)
-        
-        // Rollback: delete the Supabase record since Pipecat failed
-        await supabase.from('pype_voice_agents').delete().eq('id', agent.id)
-        
-        return NextResponse.json(
-          { error: `Failed to create Pipecat agent: ${pipecatError instanceof Error ? pipecatError.message : 'Unknown error'}` },
-          { status: 500 }
-        )
+      const pipecatError = await provisionPipecatAgent(agent, project_id)
+      if (pipecatError) {
+        return NextResponse.json({ error: pipecatError }, { status: 500 })
       }
     }
 

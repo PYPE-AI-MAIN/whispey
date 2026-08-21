@@ -27,6 +27,8 @@ import {
 import { Campaign } from '@/utils/campaigns/constants'
 import { useCampaigns } from '@/hooks/useCampaigns'
 import { useQueryClient } from '@tanstack/react-query'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
+import { resolveStoredAgentName } from '@/lib/agentDisplayName'
 
 const PAGE_SIZE = 10
 
@@ -163,6 +165,7 @@ function Campaigns() {
   const router   = useRouter()
   const params   = useParams()
   const projectId = params.projectid as string
+  const { data: agents = [] } = useProjectAgents(projectId)
   const queryClient = useQueryClient()
 
   const [page, setPage]               = useState(1)
@@ -310,6 +313,165 @@ function Campaigns() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  const renderCampaignsContent = () => {
+    if (isLoading) {
+      return (
+        <div className="grid gap-3">
+          {[...Array(PAGE_SIZE)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      )
+    }
+
+    if (campaigns.length === 0) {
+      return (
+        /* Empty states */
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
+            <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          {search ? (
+            <>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                No results for "{search}"
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
+                Try a different name or clear the search.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setSearchInput('')} className="text-xs h-7">
+                Clear Search
+              </Button>
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+                No campaigns yet
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
+                Create your first campaign to start managing calls.
+              </p>
+              <Button onClick={() => router.push(`/${projectId}/campaigns/create`)} size="sm" className="h-7 text-xs gap-2">
+                <Plus className="w-3 h-3" />
+                Create Campaign
+              </Button>
+            </>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      /* Campaign list */
+      <div className="grid gap-3">
+        {campaigns.map(campaign => (
+          <div
+            key={campaign.campaignId}
+            onClick={() => router.push(`/${projectId}/campaigns/${campaign.campaignId}`)}
+            className={`relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+              rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm
+              transition-all cursor-pointer group
+              ${isFetching ? 'opacity-60 pointer-events-none' : ''}`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {campaign.campaignName}
+                  </h3>
+                  {getStatusBadge(campaign.status)}
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <span className="font-medium text-gray-500 dark:text-gray-500">ID:</span>
+                    <span className="font-mono truncate">{campaign.campaignId}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <Phone className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{campaign.callConfig.provider}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <User className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{resolveStoredAgentName(agents, campaign.callConfig.agentName)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <Calendar className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{formatDate(campaign.createdAt)}</span>
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700">
+                  <Stat label="Total"   value={campaign.callStats?.total     ?? campaign.totalContacts}  />
+                  <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-green-600 dark:text-green-400" />
+                  <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-red-600 dark:text-red-400" />
+                  <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-gray-500 dark:text-gray-400" />
+                </div>
+              </div>
+
+              {/* Actions menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    className="text-xs cursor-pointer"
+                    onClick={e => { e.stopPropagation(); setSelectedCampaign(campaign); setIsSheetOpen(true) }}
+                  >
+                    View Details
+                  </DropdownMenuItem>
+
+                  {(campaign.status === 'scheduled' || campaign.status === 'running') && (
+                    <DropdownMenuItem
+                      className="text-xs cursor-pointer"
+                      disabled={actionLoading === campaign.campaignId}
+                      onClick={e => handlePauseCampaign(campaign.campaignId, e)}
+                    >
+                      <Pause className="w-3 h-3 mr-2" />
+                      {actionLoading === campaign.campaignId ? 'Pausing…' : 'Pause'}
+                    </DropdownMenuItem>
+                  )}
+
+                  {campaign.status === 'paused' && (
+                    <DropdownMenuItem
+                      className="text-xs cursor-pointer"
+                      disabled={actionLoading === campaign.campaignId}
+                      onClick={e => handleResumeCampaign(campaign.campaignId, e)}
+                    >
+                      <Play className="w-3 h-3 mr-2" />
+                      {actionLoading === campaign.campaignId ? 'Resuming…' : 'Resume'}
+                    </DropdownMenuItem>
+                  )}
+
+                  {['paused', 'draft', 'completed', 'ready'].includes(campaign.status) && (
+                    <DropdownMenuItem
+                      className="text-xs text-red-600 dark:text-red-400 cursor-pointer"
+                      disabled={actionLoading === campaign.campaignId}
+                      onClick={e => handleDeleteCampaign(campaign.campaignId, e)}
+                    >
+                      <Trash2 className="w-3 h-3 mr-2" />
+                      {actionLoading === campaign.campaignId ? 'Deleting…' : 'Delete'}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Subtle loading overlay when fetching next page */}
+            {isFetching && (
+              <div className="absolute inset-0 rounded-lg bg-white/40 dark:bg-gray-800/40" />
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
 
@@ -387,158 +549,8 @@ function Campaigns() {
       {/* ── Content ── */}
       <div className="flex-1 overflow-auto p-4">
 
-        {/* Initial loading skeletons */}
-        {isLoading ? (
-          <div className="grid gap-3">
-            {[...Array(PAGE_SIZE)].map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-
-        ) : campaigns.length === 0 ? (
-
-          /* Empty states */
-          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
-              <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            {search ? (
-              <>
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  No results for "{search}"
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
-                  Try a different name or clear the search.
-                </p>
-                <Button variant="outline" size="sm" onClick={() => setSearchInput('')} className="text-xs h-7">
-                  Clear Search
-                </Button>
-              </>
-            ) : (
-              <>
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  No campaigns yet
-                </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
-                  Create your first campaign to start managing calls.
-                </p>
-                <Button onClick={() => router.push(`/${projectId}/campaigns/create`)} size="sm" className="h-7 text-xs gap-2">
-                  <Plus className="w-3 h-3" />
-                  Create Campaign
-                </Button>
-              </>
-            )}
-          </div>
-
-        ) : (
-          /* Campaign list */
-          <div className="grid gap-3">
-            {campaigns.map(campaign => (
-              <div
-                key={campaign.campaignId}
-                onClick={() => router.push(`/${projectId}/campaigns/${campaign.campaignId}`)}
-                className={`relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
-                  rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm
-                  transition-all cursor-pointer group
-                  ${isFetching ? 'opacity-60 pointer-events-none' : ''}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {campaign.campaignName}
-                      </h3>
-                      {getStatusBadge(campaign.status)}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <span className="font-medium text-gray-500 dark:text-gray-500">ID:</span>
-                        <span className="font-mono truncate">{campaign.campaignId}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Phone className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{campaign.callConfig.provider}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <User className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{campaign.callConfig.agentName}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <Calendar className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{formatDate(campaign.createdAt)}</span>
-                      </div>
-                    </div>
-
-                    {/* Stats row */}
-                    <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700">
-                      <Stat label="Total"   value={campaign.callStats?.total     ?? campaign.totalContacts}  />
-                      <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-green-600 dark:text-green-400" />
-                      <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-red-600 dark:text-red-400" />
-                      <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-gray-500 dark:text-gray-400" />
-                    </div>
-                  </div>
-
-                  {/* Actions menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                      <Button
-                        variant="ghost" size="sm"
-                        className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem
-                        className="text-xs cursor-pointer"
-                        onClick={e => { e.stopPropagation(); setSelectedCampaign(campaign); setIsSheetOpen(true) }}
-                      >
-                        View Details
-                      </DropdownMenuItem>
-
-                      {(campaign.status === 'scheduled' || campaign.status === 'running') && (
-                        <DropdownMenuItem
-                          className="text-xs cursor-pointer"
-                          disabled={actionLoading === campaign.campaignId}
-                          onClick={e => handlePauseCampaign(campaign.campaignId, e)}
-                        >
-                          <Pause className="w-3 h-3 mr-2" />
-                          {actionLoading === campaign.campaignId ? 'Pausing…' : 'Pause'}
-                        </DropdownMenuItem>
-                      )}
-
-                      {campaign.status === 'paused' && (
-                        <DropdownMenuItem
-                          className="text-xs cursor-pointer"
-                          disabled={actionLoading === campaign.campaignId}
-                          onClick={e => handleResumeCampaign(campaign.campaignId, e)}
-                        >
-                          <Play className="w-3 h-3 mr-2" />
-                          {actionLoading === campaign.campaignId ? 'Resuming…' : 'Resume'}
-                        </DropdownMenuItem>
-                      )}
-
-                      {['paused', 'draft', 'completed', 'ready'].includes(campaign.status) && (
-                        <DropdownMenuItem
-                          className="text-xs text-red-600 dark:text-red-400 cursor-pointer"
-                          disabled={actionLoading === campaign.campaignId}
-                          onClick={e => handleDeleteCampaign(campaign.campaignId, e)}
-                        >
-                          <Trash2 className="w-3 h-3 mr-2" />
-                          {actionLoading === campaign.campaignId ? 'Deleting…' : 'Delete'}
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                {/* Subtle loading overlay when fetching next page */}
-                {isFetching && (
-                  <div className="absolute inset-0 rounded-lg bg-white/40 dark:bg-gray-800/40" />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Initial loading skeletons / empty states / campaign list */}
+        {renderCampaignsContent()}
       </div>
 
       {/* ── Pagination bar ── */}
@@ -589,7 +601,7 @@ function Campaigns() {
               {/* Agent */}
               <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                 <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4">Agent Details</h4>
-                <InfoRow label="Agent Name"  value={selectedCampaign.callConfig.agentName} />
+                <InfoRow label="Agent Name"  value={resolveStoredAgentName(agents, selectedCampaign.callConfig.agentName)} />
                 <InfoRow label="SIP Trunk"   value={<span className="font-mono">{selectedCampaign.callConfig.sipTrunkId}</span>} />
               </div>
 

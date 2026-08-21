@@ -38,17 +38,13 @@ import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
 import MetricsDialog from './MetricsDialog'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import QuickStartGuide from './QuickStartGuide'
 import { useMobile } from '@/hooks/use-mobile'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
+import AgentHeaderIdentity from './agents/AgentHeaderIdentity'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useCallLogsStore, DEFAULT_DATE_FILTER } from '@/stores/callLogsStore'
 
 interface DashboardProps {
@@ -92,15 +88,6 @@ const formatShort = (date: Date) =>
   date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 // Component for skeleton when agent data is loading
-function AgentHeaderSkeleton({ isMobile }: { isMobile: boolean }) {
-  return (
-    <div className="flex items-center gap-3">
-      <Skeleton className={isMobile ? 'h-6 w-32' : 'h-8 w-40'} />
-      <Skeleton className={`${isMobile ? 'h-5 w-16' : 'h-6 w-20'} rounded-full`} />
-    </div>
-  )
-}
-
 // Simple No Calls component for VAPI agents
 function NoCallsMessage() {
   const { isMobile } = useMobile(768)
@@ -229,7 +216,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   const showNoCallsMessage = !callsCheckLoading && !hasCalls && !agentLoading && agent && isVapiAgent
 
   const project = agent?.project_id ? projects?.[0] : null
-  const { isOwnerOrAdmin, visibility } = useMemberVisibility(project?.id)
+  const { isViewer, visibility } = useMemberVisibility(project?.id)
   // Show when permissions.visibility allows (Supabase); viewers can see if DB grants it.
   const canSeeFieldExtractor = canShowOrgSection(visibility, 'fieldExtractor')
   const canSeeMetrics = canShowOrgSection(visibility, 'metrics')
@@ -245,21 +232,21 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     if (agent && project) {
       return {
         project: project.name,
-        item: agent.name
+        item: agentDisplayName(agent)
       }
     }
     
     if (agent && !agent.project_id) {
       return {
         project: 'No Project',
-        item: agent.name
+        item: agentDisplayName(agent)
       }
     }
     
     if (agent && !project) {
       return {
         project: 'Unknown Project',
-        item: agent.name
+        item: agentDisplayName(agent)
       }
     }
     
@@ -316,22 +303,6 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
     if (isMobile) {
       setShowMobileMenu(false)
-    }
-  }
-
-  const getEnvironmentColor = (environment: string) => {
-    switch (environment.toLowerCase()) {
-      case 'production':
-      case 'prod':
-        return 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-100 dark:border-red-800'
-      case 'staging':
-      case 'stage':
-        return 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-800'
-      case 'development':
-      case 'dev':
-        return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800'
-      default:
-        return 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'
     }
   }
 
@@ -482,6 +453,62 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     )
   }
 
+  const renderMainContent = () => {
+    if (showQuickStart) return <QuickStartGuide agentId={agentId} />
+    if (showNoCallsMessage) return <NoCallsMessage />
+
+    return (
+      <>
+        {/* Keep all tabs mounted, just hide inactive ones */}
+        <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
+          <Overview
+            project={project}
+            agent={agent}
+            dateRange={apiDateRange}
+            quickFilter={quickFilter}
+            isCustomRange={isCustomRange}
+            isLoading={agentLoading || projectLoading}
+            isActive={activeTab === 'overview'}
+          />
+        </div>
+
+        <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
+          {agent && (
+            <CallLogs
+              project={project}
+              agent={agent}
+              onBack={handleBack}
+              dateRange={apiDateRange}
+              isLoading={agentLoading || projectLoading || callsCheckLoading}
+            />
+          )}
+        </div>
+
+        {isEnhancedProject && (
+          <div className={activeTab === 'campaign-logs' ? 'block h-full' : 'hidden'}>
+            <CampaignLogs
+              project={project}
+              agent={agent}
+              onBack={handleBack}
+              isLoading={agentLoading || projectLoading}
+            />
+          </div>
+        )}
+
+        {canSeePhoneNumbers && (
+          <div className={activeTab === 'phone-numbers' ? 'block h-full' : 'hidden'}>
+            <PhoneNumbersPanel
+              agentId={agentId}
+              pipecatAgentId={agent?.configuration?.pipecat_agent_id}
+              agentName={agentDisplayName(agent)}
+              projectId={project?.id}
+            />
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header - Mobile optimized */}
@@ -499,34 +526,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               
               <div className="flex items-center gap-3">
                 {/* Agent name and badge - skeleton while loading */}
-                {agentLoading ? (
-                  <AgentHeaderSkeleton isMobile={isMobile} />
-                ) : agent ? (
-                  <>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <h1 className={`${isMobile ? 'text-lg max-w-[180px]' : 'text-2xl max-w-[250px]'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight truncate cursor-default`}>
-                            {agent.name}
-                          </h1>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{agent.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <div className="flex items-center gap-2">
-                      <Badge className={`${isMobile ? 'text-xs px-2 py-0.5' : 'text-xs px-3 py-1'} font-medium rounded-full ${getEnvironmentColor(agent.environment)}`}>
-                        {agent.environment}
-                      </Badge>
-                    </div>
-                  </>
-                ) : (
-                  <div className={`${isMobile ? 'h-7' : 'h-8'} bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 rounded-lg flex items-center`}>
-                    <AlertCircle className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
-                    <span className={isMobile ? 'text-xs' : 'text-sm'}>Agent not found</span>
-                  </div>
-                )}
+                <AgentHeaderIdentity
+                  agentLoading={agentLoading}
+                  agent={agent}
+                  isMobile={isMobile}
+                  isViewer={isViewer}
+                  onSaved={refetchAgent}
+                />
               </div>
 
               {/* Tab Navigation — header pills only for extra tabs (e.g. Campaign Logs) */}
@@ -911,59 +917,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
       {/* Content - Show Quick Start for non-VAPI agents, simple message for VAPI agents */}
       <div className={`flex-1 ${activeTab === 'logs' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        {showQuickStart ? (
-          <QuickStartGuide agentId={agentId} />
-        ) : showNoCallsMessage ? (
-          <NoCallsMessage />
-        ) : (
-          <>
-            {/* Keep all tabs mounted, just hide inactive ones */}
-            <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
-              <Overview 
-                project={project} 
-                agent={agent}
-                dateRange={apiDateRange}
-                quickFilter={quickFilter}
-                isCustomRange={isCustomRange}
-                isLoading={agentLoading || projectLoading}
-                isActive={activeTab === 'overview'}
-              />
-            </div>
-            
-            <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
-              {agent && (
-                <CallLogs 
-                  project={project} 
-                  agent={agent}
-                  onBack={handleBack}
-                  dateRange={apiDateRange}
-                  isLoading={agentLoading || projectLoading || callsCheckLoading}
-                />
-              )}
-            </div>
-            
-            {isEnhancedProject && (
-              <div className={activeTab === 'campaign-logs' ? 'block h-full' : 'hidden'}>
-                <CampaignLogs
-                  project={project}
-                  agent={agent}
-                  onBack={handleBack}
-                  isLoading={agentLoading || projectLoading}
-                />
-              </div>
-            )}
-
-            {canSeePhoneNumbers && (
-              <div className={activeTab === 'phone-numbers' ? 'block h-full' : 'hidden'}>
-                <PhoneNumbersPanel
-                  agentId={agentId}
-                  pipecatAgentId={agent?.configuration?.pipecat_agent_id}
-                  agentName={agent?.name}
-                />
-              </div>
-            )}
-          </>
-        )}
+        {renderMainContent()}
       </div>
     </div>
   )

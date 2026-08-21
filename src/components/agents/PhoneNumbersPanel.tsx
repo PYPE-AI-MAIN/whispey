@@ -12,6 +12,8 @@ import {
   RefreshCw,
   AlertCircle,
 } from 'lucide-react'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface PhoneNumber {
   number: string
@@ -30,10 +32,11 @@ interface Agent {
 
 interface PhoneNumbersPanelProps {
   /** The Supabase dashboard agent ID — used for fetching numbers */
-  agentId: string
+  readonly agentId: string
   /** The DynamoDB pipecat agent ID — used to pre-fill the assign form dropdown */
-  pipecatAgentId?: string
-  agentName?: string
+  readonly pipecatAgentId?: string
+  readonly agentName?: string
+  readonly projectId?: string
 }
 
 const PROVIDERS   = ['acefone', 'plivo', 'other'] as const
@@ -50,9 +53,10 @@ const PROVIDER_COLORS: Record<string, string> = {
   other:   'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 }
 
-export default function PhoneNumbersPanel({ agentId, pipecatAgentId, agentName }: PhoneNumbersPanelProps) {
+export default function PhoneNumbersPanel({ agentId, pipecatAgentId, agentName, projectId }: PhoneNumbersPanelProps) {
   const [numbers, setNumbers]     = useState<PhoneNumber[]>([])
   const [agents, setAgents]       = useState<Agent[]>([])
+  const { data: projectAgents = [] } = useProjectAgents(projectId)
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState<string | null>(null)
   const [msg, setMsg]             = useState<string | null>(null)
@@ -261,7 +265,9 @@ export default function PhoneNumbersPanel({ agentId, pipecatAgentId, agentName }
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none
                            focus:ring-2 focus:ring-blue-500">
                 {agents.map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
+                  <option key={a.id} value={a.id}>
+                    {agentDisplayName(projectAgents.find(pa => pa.id === a.id || pa.configuration?.pipecat_agent_id === a.id)) || a.name}
+                  </option>
                 ))}
               </select>
             </div>
