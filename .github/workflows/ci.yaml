@@ -96,6 +96,11 @@ jobs:
     name: SonarQube Scan & Quality Gate
     runs-on: ubuntu-latest
     needs: test
+    # Community Edition has no real branch-analysis support, so a push-triggered
+    # run (no PR context) scans the whole codebase against absolute conditions
+    # instead of the PR diff, and can fail for reasons unrelated to the PR —
+    # only run this job for pull_request, where the scan is scoped to the diff.
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
