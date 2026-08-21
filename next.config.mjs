@@ -23,7 +23,11 @@ const config = {
     return config;
   },
   compiler:{
-    removeConsole:process.env.NODE_ENV === 'production'
+    // ponytail: temporarily false to get full local-parity logging on EC2
+    // stage while debugging restore/webhook. Switch back to
+    // `{ exclude: ['error', 'warn'] }` once that investigation is done —
+    // don't ship a blanket `false` long-term (see incident notes above).
+    removeConsole: false
   },
   async rewrites() {
     return [
