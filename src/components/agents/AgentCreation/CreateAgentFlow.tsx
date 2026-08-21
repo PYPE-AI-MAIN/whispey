@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AGENT_DEFAULT_CONFIG } from '@/config/agentDefaults'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
-import { deriveAgentName, AGENT_DISPLAY_NAME_MAX } from '@/lib/agentDisplayName'
+import { agentDisplayName, deriveAgentName, AGENT_DISPLAY_NAME_MAX } from '@/lib/agentDisplayName'
 
 const PLATFORM_OPTIONS = [
   {
@@ -328,7 +328,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             Agent Created Successfully!
           </DialogTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            "{createdAgentData?.name}" is ready for use
+            "{agentDisplayName(createdAgentData)}" is ready for use
           </p>
         </DialogHeader>
 
@@ -345,7 +345,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                  {createdAgentData?.name}
+                  {agentDisplayName(createdAgentData)}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className={`text-xs ${getResultBadgeClass(creationMode, selectedPlatform)}`}>

@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PhoneCall, Loader2, AlertCircle, CheckCircle, Phone, Clock, History, Trash2, RotateCcw, Settings, Delete, PhoneOff, Pencil, Check, X, Plus } from 'lucide-react'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface Agent {
   id: string
   name: string
+  display_name?: string | null
   agent_type: string
   is_active: boolean
 }
@@ -454,7 +456,7 @@ export default function PhoneCallConfig() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Dispatch Call</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">with <span className="font-semibold text-gray-900 dark:text-gray-100">{agent.name}</span></p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">with <span className="font-semibold text-gray-900 dark:text-gray-100">{agentDisplayName(agent)}</span></p>
               </div>
             </div>
 

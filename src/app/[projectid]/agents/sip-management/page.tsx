@@ -17,6 +17,8 @@ import {
   CheckCircle
 } from 'lucide-react'
 import PhoneRequestDialog from '@/components/sip-management/PhoneRequestDialog'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface PhoneAgent {
   id: string
@@ -46,6 +48,7 @@ interface PhoneNumbersResponse {
 export default function SimplifiedSipManagement() {
   const params = useParams()
   const projectId = params.projectid as string
+  const { data: agents = [] } = useProjectAgents(projectId)
 
   const [phoneAgents, setPhoneAgents] = useState<PhoneAgent[]>([])
   const [loading, setLoading] = useState(true)
@@ -298,7 +301,7 @@ export default function SimplifiedSipManagement() {
                           <div className="flex items-center gap-2">
                             <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                             <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]" title={phoneAgent.name}>
-                              {cleanAgentName(phoneAgent.name)}
+                              {agentDisplayName(agents.find(a => a.id === phoneAgent.id)) || cleanAgentName(phoneAgent.name)}
                             </span>
                           </div>
                         ) : (
