@@ -13,11 +13,19 @@ const EXPECTED_ALG = 'HS256'
 const EXPECTED_AUD = 'pype-vc-bots'
 
 /**
- * Convert a base64url string to an ArrayBuffer.
+ * Convert a base64url string to a Uint8Array.
  * Uses codePointAt (preferred over charCodeAt for Unicode correctness).
  * Throws on invalid base64url input.
+ *
+ * Returns the TypedArray itself rather than `.buffer` — unwrapping to a bare
+ * ArrayBuffer tripped `crypto.subtle.verify`'s BufferSource check inside
+ * Next.js's Edge Runtime sandbox ("3rd argument is not instance of
+ * ArrayBuffer, Buffer, TypedArray, or DataView"), because the ArrayBuffer
+ * produced in that realm didn't satisfy the native binding's identity check
+ * even though it's structurally valid. Passing the Uint8Array view directly
+ * sidesteps that cross-realm mismatch.
  */
-function base64UrlToBuffer(input: string): ArrayBuffer {
+function base64UrlToBuffer(input: string): Uint8Array {
   const base64 = input.replaceAll('-', '+').replaceAll('_', '/')
   const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
   const binary = atob(padded)
@@ -25,7 +33,7 @@ function base64UrlToBuffer(input: string): ArrayBuffer {
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.codePointAt(i) ?? 0
   }
-  return bytes.buffer
+  return bytes
 }
 
 /** Decode a base64url JWT segment into a plain object. Throws on invalid JSON. */
@@ -81,8 +89,10 @@ export async function hasValidServiceToken(authHeader: string | null): Promise<b
       ['verify'],
     )
 
-    // 3. Verify HMAC signature over the signed input (header.payload)
-    const sigInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`).buffer
+    // 3. Verify HMAC signature over the signed input (header.payload) — pass
+    // Uint8Array views throughout (not `.buffer`) for the same cross-realm
+    // reason documented on base64UrlToBuffer above.
+    const sigInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
     const sigBytes = base64UrlToBuffer(parts[2])
     const valid = await crypto.subtle.verify('HMAC', key, sigBytes, sigInput)
     if (!valid) {
