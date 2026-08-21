@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -45,7 +46,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate } from '@/hooks/useAgentConfig'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
@@ -310,7 +311,7 @@ export default function AgentConfig() {
 
   // Get agent data from Supabase
   const { data: agentDataResponse, isLoading: agentLoading } = useSupabaseQuery("pype_voice_agents", {
-    select: "id, name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, environment",
+    select: "id, name, display_name, agent_type, configuration, vapi_api_key_encrypted, vapi_project_key_encrypted, environment",
     filters: [{ column: "id", operator: "eq", value: agentid }],
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
@@ -339,7 +340,7 @@ export default function AgentConfig() {
     return `${agentDataResponse[0].name}_${sanitizedAgentId}`
   }, [agentDataResponse, agentid])
 
-  const agentNameHeader = agentDataResponse?.[0]?.name || ''
+  const agentNameHeader = agentDisplayName(agentDataResponse?.[0]) || ''
   const agentNameLegacy = agentDataResponse?.[0]?.name || ''
   const isProd = agentDataResponse?.[0]?.environment === 'prod'
   const [prodAuthorized, setProdAuthorized] = useState(false)
@@ -380,6 +381,10 @@ export default function AgentConfig() {
   
   // Use mutations for save operations
   const { saveAndDeploy } = useAgentMutations(activeAgentName)
+  // Recovers "Publishing..." state after a hard refresh (or a second tab) if
+  // the backend update this page kicked off is genuinely still in progress.
+  const isResumingUpdate = useResumeInProgressUpdate(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
+  const isPublishing = isSavingVersion || isResumingUpdate
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
@@ -712,9 +717,16 @@ export default function AgentConfig() {
     setVersionSaveError(null)
     try {
       // Step 1: Deploy config to backend
+      // Read the agent's REAL persisted target directly from loaded data instead of
+      // the `deploymentTarget` state var — that state defaults to 'classic' on mount
+      // and only gets corrected once deploymentTargetInitialized's effect resolves.
+      // Saving before that effect finishes would silently deploy a docker agent to
+      // classic instead, spinning up a stray subprocess alongside the real container.
+      const persistedTarget = agentDataResponse?.[0]?.configuration?.deployment_target
+      const actualDeploymentTarget: 'classic' | 'docker' = persistedTarget === 'docker' ? 'docker' : 'classic'
       await saveAndDeploy.mutateAsync({
         ...pendingCheckpoint.config,
-        deploymentTarget: isSuperAdmin ? deploymentTarget : 'classic',
+        deploymentTarget: isSuperAdmin ? actualDeploymentTarget : 'classic',
       })
       // Step 1b: Save supplemental settings (webhook, drop-off, callback) — non-blocking
       try {
@@ -945,6 +957,46 @@ export default function AgentConfig() {
     }
   }
 
+  // Start/Stop toggle button, shared by the mobile-compact and desktop header
+  // layouts — a chained ternary here reads as ambiguous nesting to lint tools
+  // and to a future reader, so this renders it as a plain if/else instead.
+  const renderAgentToggleButton = (compact: boolean) => {
+    const className = compact ? 'h-8' : 'h-8 text-xs'
+    const iconClassName = compact ? 'w-4 h-4' : 'w-3 h-3 mr-1'
+
+    if (agentStatus.status === 'stopped' || agentStatus.status === 'error') {
+      return (
+        <Button
+          variant="outline" size="sm" className={className}
+          onClick={startAgent} disabled={isAgentLoading || !activeAgentName || isPublishing}
+        >
+          {isAgentLoading ? <Loader2 className={`${iconClassName} animate-spin`} /> : <Play className={iconClassName} />}
+          {!compact && 'Start Agent'}
+        </Button>
+      )
+    }
+
+    if (agentStatus.status === 'running') {
+      return (
+        <Button
+          variant="outline" size="sm" className={className}
+          onClick={stopAgent} disabled={isAgentLoading || isPublishing}
+        >
+          {isAgentLoading ? <Loader2 className={`${iconClassName} animate-spin`} /> : <Square className={iconClassName} />}
+          {!compact && 'Stop Agent'}
+        </Button>
+      )
+    }
+
+    // 'starting' or 'stopping' — always disabled, spinner-only on mobile.
+    return (
+      <Button variant="outline" size="sm" className={className} disabled>
+        <Loader2 className={`${iconClassName} animate-spin`} />
+        {!compact && (agentStatus.status === 'starting' ? 'Starting...' : 'Stopping...')}
+      </Button>
+    )
+  }
+
 // Predefined system variables (same as PromptSettingsSheet). These are always "mapped" by the
 // system, so we must never count them as unmapped—otherwise the Settings indicator stays red.
 const PREDEFINED_VARIABLE_NAMES = new Set(['wcalling_number', 'wcurrent_time', 'wcurrent_date', 'wcontext_dropoff'])
@@ -1101,54 +1153,21 @@ const unmappedVariablesCount = useMemo(() => {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={startAgent}
-                disabled={isAgentLoading || !activeAgentName}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                )}
-              </Button>
-            ) : agentStatus.status === 'running' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={stopAgent}
-                disabled={isAgentLoading}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Square className="w-4 h-4" />
-                )}
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                disabled
-              >
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </Button>
-            )}
+            {renderAgentToggleButton(true)}
 
             {isFormDirty && (
               <Button
                 size="sm"
                 className="h-8 px-3"
                 onClick={handleOpenCommitModal}
-                disabled={isSavingVersion || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+                disabled={isPublishing || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
                 title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
               >
-                <Save className="w-4 h-4" />
+                {isPublishing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
               </Button>
             )}
 
@@ -1251,47 +1270,7 @@ const unmappedVariablesCount = useMemo(() => {
           </div>
           
           <div className="flex items-center gap-3">
-            {agentStatus.status === 'stopped' || agentStatus.status === 'error' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={startAgent}
-                disabled={isAgentLoading || !activeAgentName}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                ) : (
-                  <Play className="w-3 h-3 mr-1" />
-                )}
-                Start Agent
-              </Button>
-            ) : agentStatus.status === 'running' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={stopAgent}
-                disabled={isAgentLoading}
-              >
-                {isAgentLoading ? (
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                ) : (
-                  <Square className="w-3 h-3 mr-1" />
-                )}
-                Stop Agent
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled
-              >
-                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                {agentStatus.status === 'starting' ? 'Starting...' : 'Stopping...'}
-              </Button>
-            )}
+            {renderAgentToggleButton(false)}
 
             <Sheet
               open={isTalkToAssistantOpen}
@@ -1362,10 +1341,13 @@ const unmappedVariablesCount = useMemo(() => {
               size="sm"
               className="h-8 text-xs"
               onClick={handleOpenCommitModal}
-              disabled={isSavingVersion || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+              disabled={isPublishing || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
               title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
-              Update Config
+              {isPublishing
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                : 'Update Config'
+              }
             </Button>
 
             <Button
@@ -1853,7 +1835,7 @@ const unmappedVariablesCount = useMemo(() => {
       />
 
       {/* Review changes / commit dialog */}
-      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isSavingVersion) setIsCommitModalOpen(false) }}>
+      <Dialog open={isCommitModalOpen} onOpenChange={v => { if (!v && !isPublishing) setIsCommitModalOpen(false) }}>
         <DialogContent className="sm:max-w-5xl max-w-[calc(100%-2rem)] max-h-[88vh] p-0 gap-0 flex flex-col overflow-hidden">
           {/* Header — pinned */}
           <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-border space-y-3">
@@ -1908,16 +1890,16 @@ const unmappedVariablesCount = useMemo(() => {
               <Button
                 variant="outline" size="sm" className="h-8 text-xs"
                 onClick={() => setIsCommitModalOpen(false)}
-                disabled={isSavingVersion}
+                disabled={isPublishing}
               >
                 Cancel
               </Button>
               <Button
                 size="sm" className="h-8 text-xs"
                 onClick={handleSaveVersion}
-                disabled={isSavingVersion || !commitMessage.trim()}
+                disabled={isPublishing || !commitMessage.trim()}
               >
-                {isSavingVersion
+                {isPublishing
                   ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
                   : 'Publish'
                 }

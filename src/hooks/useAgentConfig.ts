@@ -1,4 +1,5 @@
 // hooks/useAgentConfig.ts
+import { useState, useEffect } from "react"
 import { AGENT_DEFAULT_CONFIG, getFallback, getFormDefaults } from "@/config/agentDefaults"
 import { languageOptions } from "@/utils/constants"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -213,6 +214,15 @@ export interface AgentConfigResponse {
   backendUnavailableMessage?: string
 }
 
+// A 404 on the primary (full, ID-suffixed) name can be a genuine transient
+// blip — e.g. hitting this right as an update/restore is mid-flight — not
+// proof the agent never had a full name. Retrying a couple of times before
+// falling back avoids permanently poisoning the session onto the legacy
+// short name (which then breaks polling, deploys, start/stop — everything
+// downstream keys off whichever name this function decides was "used").
+const PRIMARY_NAME_RETRY_COUNT = 2
+const PRIMARY_NAME_RETRY_DELAY_MS = 1000
+
 const fetchAgentConfigWithFallback = async (
   primaryAgentName: string,
   fallbackAgentName?: string
@@ -223,13 +233,18 @@ const fetchAgentConfigWithFallback = async (
 
   // Try primary name first (new format with ID)
   try {
-    const response = await fetch(`/api/agent-config/${primaryAgentName}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    })
+    let response: Response
+    for (let attempt = 0; ; attempt++) {
+      response = await fetch(`/api/agent-config/${primaryAgentName}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      })
+      if (response.status !== 404 || attempt >= PRIMARY_NAME_RETRY_COUNT) break
+      await new Promise((r) => setTimeout(r, PRIMARY_NAME_RETRY_DELAY_MS))
+    }
 
     if (response.ok) {
       const contentType = response.headers.get("content-type")
@@ -321,6 +336,52 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
   throw new Error("Timed out waiting for agent update to complete")
 }
 
+function extractAgentName(data: any): string | undefined {
+  return data?.agent?.name || data?.metadata?.agentName
+}
+
+const NON_TERMINAL_UPDATE_STATUSES = new Set(["pending", "validating", "stopping", "updating", "starting", "verifying"])
+
+/**
+ * A hard refresh (or a second tab) wipes any in-memory "Publishing..." state,
+ * but the backend update it was tracking may still be running. On mount, ask
+ * the backend once whether an update is actually in progress for this agent —
+ * if so, resume polling so the UI reflects reality instead of quietly forgetting.
+ *
+ * Docker-only: the update_status/background-update mechanism only exists on
+ * the dockerized-agent backend (server.py on the docker VM). Classic agents
+ * are a separate, unrelated service that deploys synchronously and has no
+ * such endpoint — polling it would just 404/time out for no reason.
+ */
+export function useResumeInProgressUpdate(
+  agentName: string | null | undefined,
+  deploymentTarget: 'classic' | 'docker' = 'classic'
+) {
+  const [isResuming, setIsResuming] = useState(false)
+
+  useEffect(() => {
+    if (!agentName || deploymentTarget !== 'docker') return
+    let cancelled = false
+
+    fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((status) => {
+        if (cancelled || !status) return
+        if (!NON_TERMINAL_UPDATE_STATUSES.has(status.status)) return
+
+        setIsResuming(true)
+        pollUpdateStatus(agentName)
+          .catch(() => {}) // surfaced state is enough; caller doesn't need the result
+          .finally(() => { if (!cancelled) setIsResuming(false) })
+      })
+      .catch(() => {}) // transient — next mount/poll will catch a genuinely stuck update
+
+    return () => { cancelled = true }
+  }, [agentName, deploymentTarget])
+
+  return isResuming
+}
+
 const saveAndDeployAgent = async (data: any) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
@@ -329,17 +390,27 @@ const saveAndDeployAgent = async (data: any) => {
   })
 
   if (!response.ok) {
-    const errorData = await response.json()
+    const errorData = await response.json().catch(() => ({}))
+
+    // A 409 means the backend's own update lock says a redeploy for this
+    // agent is already running (started by an earlier click, another tab,
+    // etc). That's not a failure — poll the existing update instead of
+    // surfacing a dead-end error, so the UI reflects the real in-flight work.
+    // Docker-only: classic's synchronous backend never returns 409 for this.
+    if (response.status === 409 && data?.deploymentTarget === 'docker') {
+      const agentName = extractAgentName(data)
+      if (agentName) {
+        return pollUpdateStatus(agentName)
+      }
+    }
+
     throw new Error(errorData.message || "Failed to save and deploy")
   }
 
   const result = await response.json()
 
-  // Backend now kicks off the actual redeploy in the background and returns
-  // right away — poll until it actually finishes so callers (and the
-  // isPending-driven loader) see the real completion, not just "request sent".
-  const agentName: string | undefined = data?.agent?.name || data?.metadata?.agentName
-  if (result?.status === "update_started" && agentName) {
+  const agentName = result?.data?.agent_name || extractAgentName(data)
+  if (data?.deploymentTarget === 'docker' && result?.data?.status === "update_started" && agentName) {
     return pollUpdateStatus(agentName)
   }
 
