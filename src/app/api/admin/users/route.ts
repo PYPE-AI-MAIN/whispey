@@ -22,16 +22,21 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const users = (data ?? []).map((u: any) => ({
-    id: u.id,
-    email: u.email,
-    first_name: u.first_name,
-    last_name: u.last_name,
-    profile_image_url: u.profile_image_url,
-    created_at: u.created_at,
-    clerk_id: u.clerk_id,
-    globalRole: (u.roles?.globalRole ?? 'user') as 'superadmin' | 'prompter' | 'user',
-  }))
+  const users = (data ?? []).map((u: any) => {
+    const rawRole = u.roles?.globalRole
+    const globalRole: 'superadmin' | 'prompter' | 'user' =
+      rawRole === 'superadmin' || rawRole === 'prompter' ? rawRole : 'user'
+    return {
+      id: u.id,
+      email: u.email,
+      first_name: u.first_name,
+      last_name: u.last_name,
+      profile_image_url: u.profile_image_url,
+      created_at: u.created_at,
+      clerk_id: u.clerk_id,
+      globalRole,
+    }
+  })
 
   return NextResponse.json({ users })
 }
