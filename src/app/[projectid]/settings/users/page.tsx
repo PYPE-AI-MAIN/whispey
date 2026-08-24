@@ -88,7 +88,10 @@ function avatarColor(str: string) {
 }
 
 function RolePill({ role }: { role: GlobalRole }) {
-  const r = ROLES.find(r => r.value === role)!
+  // Falls back to the 'user' pill for any role value that isn't one of the
+  // three known ones — protects against bad data slipping through (e.g. a
+  // stale/legacy value in the DB) instead of crashing the whole users list.
+  const r = ROLES.find(r => r.value === role) ?? ROLES[ROLES.length - 1]
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border whitespace-nowrap ${r.pillClass}`}>
       {r.icon}{r.label}

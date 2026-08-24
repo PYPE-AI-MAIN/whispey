@@ -47,7 +47,6 @@ import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvanced
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
 import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate } from '@/hooks/useAgentConfig'
-import { useGlobalRole } from '@/hooks/useGlobalRole'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -246,12 +245,13 @@ export default function AgentConfig() {
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{ config: any; userEmail: string | null; userId: string | null } | null>(null)
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
-  // Dev-only POC toggle: which voice backend to deploy this agent to. Defaults to
-  // 'classic' (subprocess, existing behavior). Only superadmins can pick 'docker' —
-  // everyone else stays on classic regardless of any client-side state, enforced
-  // again server-side in save-and-deploy/route.ts.
+  // Which voice backend this agent actually runs on, read from its persisted
+  // config below (deploymentTargetInitialized). Never coerce this to 'classic'
+  // for permission reasons in start/stop/status/update/poll paths — an agent
+  // that's actually docker-deployed must stay routed to docker everywhere, or
+  // its updates/starts/stops silently hit the wrong backend (or get correctly
+  // refused there) while the UI has no idea anything went wrong.
   const [deploymentTarget, setDeploymentTarget] = useState<'classic' | 'docker'>('classic')
-  const { isSuperAdmin } = useGlobalRole()
   const [isSavingVersion, setIsSavingVersion] = useState(false)
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
@@ -383,15 +383,15 @@ export default function AgentConfig() {
   const { saveAndDeploy } = useAgentMutations(activeAgentName)
   // Recovers "Publishing..." state after a hard refresh (or a second tab) if
   // the backend update this page kicked off is genuinely still in progress.
-  const isResumingUpdate = useResumeInProgressUpdate(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
+  const isResumingUpdate = useResumeInProgressUpdate(activeAgentName, deploymentTarget)
   const isPublishing = isSavingVersion || isResumingUpdate
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
 
-    const status = await agentStatusService.checkAgentStatus(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
+    const status = await agentStatusService.checkAgentStatus(activeAgentName, deploymentTarget)
     setAgentStatus(status)
-  }, [activeAgentName, isSuperAdmin, deploymentTarget])
+  }, [activeAgentName, deploymentTarget])
 
   // Check agent status on load
   useEffect(() => {
@@ -408,7 +408,7 @@ export default function AgentConfig() {
     setIsAgentLoading(true)
     setAgentStatus({ status: 'starting' } as AgentStatus)
     
-    const target = isSuperAdmin ? deploymentTarget : 'classic'
+    const target = deploymentTarget
 
     try {
       // Step 1: Initiate agent start
@@ -462,7 +462,7 @@ export default function AgentConfig() {
     setAgentStatus({ status: 'stopping' } as AgentStatus)
 
     try {
-      const status = await agentStatusService.stopAgent(activeAgentName, isSuperAdmin ? deploymentTarget : 'classic')
+      const status = await agentStatusService.stopAgent(activeAgentName, deploymentTarget)
 
       if (status.status !== 'error') {
         setAgentStatus({ status: 'stopped' })
@@ -726,7 +726,7 @@ export default function AgentConfig() {
       const actualDeploymentTarget: 'classic' | 'docker' = persistedTarget === 'docker' ? 'docker' : 'classic'
       await saveAndDeploy.mutateAsync({
         ...pendingCheckpoint.config,
-        deploymentTarget: isSuperAdmin ? actualDeploymentTarget : 'classic',
+        deploymentTarget: actualDeploymentTarget,
       })
       // Step 1b: Save supplemental settings (webhook, drop-off, callback) — non-blocking
       try {
@@ -1326,7 +1326,7 @@ const unmappedVariablesCount = useMemo(() => {
                   flashEndCall={flashEndCall}
                   onFlashEndCallDone={() => setFlashEndCall(false)}
                   onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
-                  deploymentTarget={isSuperAdmin ? deploymentTarget : 'classic'}
+                  deploymentTarget={deploymentTarget}
                 />
               </SheetContent>
             </Sheet>
@@ -1754,7 +1754,7 @@ const unmappedVariablesCount = useMemo(() => {
             flashEndCall={flashEndCall}
             onFlashEndCallDone={() => setFlashEndCall(false)}
             onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
-            deploymentTarget={isSuperAdmin ? deploymentTarget : 'classic'}
+            deploymentTarget={deploymentTarget}
           />
         </SheetContent>
       </Sheet>
