@@ -12,8 +12,9 @@ export async function POST(request: NextRequest) {
 
     // Use eleven_flash_v2_5 — the same model used in production agents,
     // supports all languages and is low-latency.
+    // India residency migration — one-way move, no dual-region support needed.
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`,
+      `https://api.in.residency.elevenlabs.io/v1/text-to-speech/${voice_id}`,
       {
         method: 'POST',
         headers: {
