@@ -10,6 +10,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ELEVEN_API_KEY not configured' }, { status: 400 })
     }
 
+    // ElevenLabs voice IDs are alphanumeric; reject anything else to prevent
+    // the value from being used to redirect this request elsewhere (SSRF).
+    if (typeof voice_id !== 'string' || !/^[a-zA-Z0-9]+$/.test(voice_id)) {
+      return NextResponse.json({ error: 'Invalid voice_id' }, { status: 400 })
+    }
+
     // Use eleven_flash_v2_5 — the same model used in production agents,
     // supports all languages and is low-latency.
     // India residency migration — one-way move, no dual-region support needed.
