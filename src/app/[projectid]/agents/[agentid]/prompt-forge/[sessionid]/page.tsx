@@ -10,6 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useAgentConfig } from '@/hooks/useAgentConfig'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -226,7 +227,7 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
   const [notFound, setNotFound] = useState(false)
 
   const { data: agentRows, isLoading: agentLoading } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, agent_type, configuration',
+    select: 'id, name, display_name, agent_type, configuration',
     filters: [{ column: 'id', operator: 'eq', value: agentId }],
     limit: 1,
     auth: { agentId },
@@ -334,7 +335,7 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
     <ForgeUI
       projectId={projectId}
       agentId={agentId}
-      agentName={agentRow?.name ?? ''}
+      agentName={agentDisplayName(agentRow)}
       sessionId={sessionId}
       sessionName={session.name || 'Untitled session'}
       initialPrompt={initialPrompt}

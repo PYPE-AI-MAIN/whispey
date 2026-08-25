@@ -17,6 +17,7 @@ import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
 import { useCallLogsColumns, BASIC_COLUMNS } from '@/hooks/useCallLogsColumns'
 import { useCallLogsStore } from '@/stores/callLogsStore'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 import { createTableColumns } from './tableColumns'
 import {
   FilterHeaderSkeleton,
@@ -420,7 +421,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
             {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
             <BackfillDispositionDialog
               projectId={project?.id} agentId={agent?.id}
-              agentName={agent?.name} projectName={project?.name}
+              agentName={agentDisplayName(agent)} projectName={project?.name}
             />
             <div className="relative">
               <Button

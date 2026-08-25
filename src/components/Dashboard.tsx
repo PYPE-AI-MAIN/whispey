@@ -453,6 +453,62 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     )
   }
 
+  const renderMainContent = () => {
+    if (showQuickStart) return <QuickStartGuide agentId={agentId} />
+    if (showNoCallsMessage) return <NoCallsMessage />
+
+    return (
+      <>
+        {/* Keep all tabs mounted, just hide inactive ones */}
+        <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
+          <Overview
+            project={project}
+            agent={agent}
+            dateRange={apiDateRange}
+            quickFilter={quickFilter}
+            isCustomRange={isCustomRange}
+            isLoading={agentLoading || projectLoading}
+            isActive={activeTab === 'overview'}
+          />
+        </div>
+
+        <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
+          {agent && (
+            <CallLogs
+              project={project}
+              agent={agent}
+              onBack={handleBack}
+              dateRange={apiDateRange}
+              isLoading={agentLoading || projectLoading || callsCheckLoading}
+            />
+          )}
+        </div>
+
+        {isEnhancedProject && (
+          <div className={activeTab === 'campaign-logs' ? 'block h-full' : 'hidden'}>
+            <CampaignLogs
+              project={project}
+              agent={agent}
+              onBack={handleBack}
+              isLoading={agentLoading || projectLoading}
+            />
+          </div>
+        )}
+
+        {canSeePhoneNumbers && (
+          <div className={activeTab === 'phone-numbers' ? 'block h-full' : 'hidden'}>
+            <PhoneNumbersPanel
+              agentId={agentId}
+              pipecatAgentId={agent?.configuration?.pipecat_agent_id}
+              agentName={agentDisplayName(agent)}
+              projectId={project?.id}
+            />
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header - Mobile optimized */}
@@ -861,59 +917,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
       {/* Content - Show Quick Start for non-VAPI agents, simple message for VAPI agents */}
       <div className={`flex-1 ${activeTab === 'logs' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-        {showQuickStart ? (
-          <QuickStartGuide agentId={agentId} />
-        ) : showNoCallsMessage ? (
-          <NoCallsMessage />
-        ) : (
-          <>
-            {/* Keep all tabs mounted, just hide inactive ones */}
-            <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
-              <Overview 
-                project={project} 
-                agent={agent}
-                dateRange={apiDateRange}
-                quickFilter={quickFilter}
-                isCustomRange={isCustomRange}
-                isLoading={agentLoading || projectLoading}
-                isActive={activeTab === 'overview'}
-              />
-            </div>
-            
-            <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
-              {agent && (
-                <CallLogs 
-                  project={project} 
-                  agent={agent}
-                  onBack={handleBack}
-                  dateRange={apiDateRange}
-                  isLoading={agentLoading || projectLoading || callsCheckLoading}
-                />
-              )}
-            </div>
-            
-            {isEnhancedProject && (
-              <div className={activeTab === 'campaign-logs' ? 'block h-full' : 'hidden'}>
-                <CampaignLogs
-                  project={project}
-                  agent={agent}
-                  onBack={handleBack}
-                  isLoading={agentLoading || projectLoading}
-                />
-              </div>
-            )}
-
-            {canSeePhoneNumbers && (
-              <div className={activeTab === 'phone-numbers' ? 'block h-full' : 'hidden'}>
-                <PhoneNumbersPanel
-                  agentId={agentId}
-                  pipecatAgentId={agent?.configuration?.pipecat_agent_id}
-                  agentName={agent?.name}
-                />
-              </div>
-            )}
-          </>
-        )}
+        {renderMainContent()}
       </div>
     </div>
   )

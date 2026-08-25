@@ -9,6 +9,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useMobile } from '@/hooks/use-mobile'
+import { useProjectAgents } from '@/hooks/useProjectAgents'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 interface PypeAgentUsageProps {
   projectId: string
@@ -16,6 +18,7 @@ interface PypeAgentUsageProps {
 
 const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
   const { permissions, canCreatePypeAgent, loading } = useUserPermissions({ projectId })
+  const { data: projectAgents = [] } = useProjectAgents(projectId)
   const { isMobile } = useMobile(768)
   const [showDetails, setShowDetails] = useState(false)
   
@@ -142,7 +145,7 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {agent.name}
+                          {agentDisplayName(projectAgents.find(a => a.id === agent.id)) || agent.name}
                         </p>
                         {agent.phone_number && (
                           <p className="text-xs text-gray-500 dark:text-gray-400">
