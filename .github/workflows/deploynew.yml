@@ -15,7 +15,9 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+  # TEMP: ci-cd-testing also maps to production while validating the prod EC2
+  # pipeline end-to-end. Revert to `github.ref_name == 'main'` once done.
+  DEPLOY_ENV: ${{ (github.ref_name == 'main' || github.ref_name == 'ci-cd-testing') && 'production' || 'develop' }}
 
 jobs:
   test-gate:
@@ -69,7 +71,7 @@ jobs:
     needs: test-gate
     name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+    environment: ${{ (github.ref_name == 'main' || github.ref_name == 'ci-cd-testing') && 'production' || 'develop' }}
 
     outputs:
       image_uri: ${{ steps.image.outputs.image_uri }}
@@ -147,7 +149,7 @@ jobs:
           docker push "${IMAGE_URI}"
           docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
   deploy:
-    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+    environment: ${{ (github.ref_name == 'main' || github.ref_name == 'ci-cd-testing') && 'production' || 'develop' }}
     name: Deploy to Private EC2 using Blue Green
     runs-on: ubuntu-latest
     needs: docker-build-push
