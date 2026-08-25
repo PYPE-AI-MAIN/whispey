@@ -2,7 +2,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight } from "lucide-react"
+import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight, Settings } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
@@ -11,11 +11,15 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table'
 
-import { downloadCSV, DownloadProgress, isRowFlaggedForRole } from '@/utils/callLogsUtils'
+import { isRowFlaggedForRole } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
-import { useCallLogsColumns, BASIC_COLUMNS } from '@/hooks/useCallLogsColumns'
+import { useCallLogsColumns, BASIC_COLUMNS, EXTRA_RESTRICTABLE_COLUMNS } from '@/hooks/useCallLogsColumns'
+import { useGlobalRole } from '@/hooks/useGlobalRole'
+import DownloadDialog from './DownloadDialog'
+import DownloadSettingsDialog from './DownloadSettingsDialog'
+import { useQuery } from '@tanstack/react-query'
 import { useCallLogsStore } from '@/stores/callLogsStore'
 import { agentDisplayName } from '@/lib/agentDisplayName'
 import { createTableColumns } from './tableColumns'
@@ -186,37 +190,34 @@ const CallLogs: React.FC<CallLogsProps> = ({
     await refetch()
   }, [refetch, isRefetching])
 
-  const [dlProgress, setDlProgress] = useState<DownloadProgress | null>(null)
   const [campaignDownloadOpen, setCampaignDownloadOpen] = useState(false)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [downloadSettingsOpen, setDownloadSettingsOpen] = useState(false)
+
+  const { isSuperAdmin } = useGlobalRole()
+
+  const { data: downloadSettingsData, refetch: refetchDownloadSettings } = useQuery({
+    queryKey: ['download-settings', agent?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/agents/${agent!.id}/download-settings`)
+      if (!res.ok) throw new Error('Failed to load download settings')
+      return res.json() as Promise<{
+        enabled: boolean
+        isSuperAdmin: boolean
+        hiddenColumns: string[]
+        hiddenDownloadColumns: string[]
+        settings?: { enabled: boolean; superadmin_only_columns: string[] }
+      }>
+    },
+    enabled: !!agent?.id,
+    staleTime: 60_000,
+  })
 
   const { selectedCampaignByAgent, setSelectedCampaignForAgent } = useCallLogsStore()
   const selectedCampaign = agent?.id ? (selectedCampaignByAgent[agent.id] ?? null) : null
   const setSelectedCampaign = useCallback((c: Campaign | null) => {
     if (agent?.id) setSelectedCampaignForAgent(agent.id, c)
   }, [agent?.id, setSelectedCampaignForAgent])
-
-  const handleDownloadCSV = useCallback(async () => {
-    if (!agent?.id) return
-    setDlProgress({ fetched: 0, total: totalCount, phase: 'fetching' })
-    try {
-      await downloadCSV(
-        agent.id,
-        activeFilters,
-        {
-          basic: visibleColumns.basic,
-          metadata: visibleColumns.metadata,
-          transcription_metrics: visibleColumns.transcription_metrics
-        },
-        project?.id,
-        (p) => setDlProgress(p),
-        dateRange
-      )
-    } catch (err) {
-      alert((err as Error).message)
-    } finally {
-      setDlProgress(null)
-    }
-  }, [agent?.id, activeFilters, visibleColumns, project?.id, totalCount])
 
   const handleColumnChange = useCallback((
     type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics',
@@ -423,46 +424,28 @@ const CallLogs: React.FC<CallLogsProps> = ({
               projectId={project?.id} agentId={agent?.id}
               agentName={agentDisplayName(agent)} projectName={project?.name}
             />
-            <div className="relative">
-              <Button
-                variant="outline" size="sm"
-                onClick={selectedCampaign ? () => setCampaignDownloadOpen(true) : handleDownloadCSV}
-                disabled={(!selectedCampaign && (isLoading || !agent?.id || !!dlProgress))}
-                className="min-w-[120px] overflow-hidden"
-              >
-                {dlProgress ? (
-                  dlProgress.phase === 'processing' ? (
-                    <span className="flex items-center gap-1.5">
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                      Processing…
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5">
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                      {dlProgress.total
-                        ? `${Math.min(99, Math.round((dlProgress.fetched / dlProgress.total) * 100))}%`
-                        : `${dlProgress.fetched.toLocaleString()} rows`
-                      }
-                    </span>
-                  )
-                ) : (
-                  'Download CSV'
+            {(downloadSettingsData?.enabled || isSuperAdmin) && (
+              <div className="relative flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm"
+                  onClick={selectedCampaign ? () => setCampaignDownloadOpen(true) : () => setDownloadDialogOpen(true)}
+                  disabled={!selectedCampaign && (isLoading || !agent?.id)}
+                  className="min-w-[120px] overflow-hidden"
+                >
+                  Download CSV
+                </Button>
+                {isSuperAdmin && (
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => setDownloadSettingsOpen(true)}
+                    className="h-8 w-8 p-0 shrink-0"
+                    aria-label="Download settings"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
                 )}
-              </Button>
-              {/* Progress bar that fills across the button bottom */}
-              {dlProgress && dlProgress.phase === 'fetching' && (
-                <div className="absolute bottom-0 left-0 h-[2px] bg-blue-500 rounded-b transition-all duration-300"
-                  style={{
-                    width: dlProgress.total
-                      ? `${Math.min(99, Math.round((dlProgress.fetched / dlProgress.total) * 100))}%`
-                      : '60%'
-                  }}
-                />
-              )}
-              {dlProgress && dlProgress.phase === 'processing' && (
-                <div className="absolute bottom-0 left-0 h-[2px] bg-blue-500 rounded-b w-full animate-pulse" />
-              )}
-            </div>
+              </div>
+            )}
             <ColumnSelector
               basicColumns={filteredBasicColumns.map(c => c.key)}
               basicColumnLabels={Object.fromEntries(filteredBasicColumns.map(c => [c.key, c.label]))}
@@ -700,6 +683,33 @@ const CallLogs: React.FC<CallLogsProps> = ({
           </span>
         </div>
       </>}
+
+      {agent?.id && (
+        <DownloadDialog
+          open={downloadDialogOpen}
+          onOpenChange={setDownloadDialogOpen}
+          agentId={agent.id}
+          projectId={project?.id}
+          activeFilters={activeFilters}
+          basicColumns={filteredBasicColumns}
+          metadataColumns={dynamicColumns.metadata}
+          transcriptionColumns={dynamicColumns.transcription_metrics}
+          hiddenColumns={downloadSettingsData?.hiddenDownloadColumns ?? downloadSettingsData?.hiddenColumns ?? []}
+          initialDateRange={dateRange}
+        />
+      )}
+
+      {agent?.id && isSuperAdmin && (
+        <DownloadSettingsDialog
+          open={downloadSettingsOpen}
+          onOpenChange={setDownloadSettingsOpen}
+          agentId={agent.id}
+          allColumns={[...BASIC_COLUMNS, ...EXTRA_RESTRICTABLE_COLUMNS].map(c => ({ key: c.key, label: c.label }))}
+          initialEnabled={downloadSettingsData?.settings?.enabled ?? true}
+          initialSuperadminOnlyColumns={downloadSettingsData?.settings?.superadmin_only_columns ?? []}
+          onSaved={() => refetchDownloadSettings()}
+        />
+      )}
     </div>
   )
 }

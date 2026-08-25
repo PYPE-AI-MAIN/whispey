@@ -307,11 +307,35 @@ export const getSelectColumns = (role: string | null): string => {
   return columns.join(',')
 }
 
+const DATE_COLUMNS = new Set(['call_started_at', 'call_ended_at', 'created_at'])
+
+// transcript_json is an array of turn objects (or a JSON string of one) — see
+// TracesTable.tsx for the same shape. Flattened into readable "speaker: text" lines.
+export const formatTranscriptForCSV = (transcriptJson: any): string => {
+  let items = transcriptJson
+  if (typeof items === 'string') {
+    try { items = JSON.parse(items) } catch { return items }
+  }
+  if (!Array.isArray(items)) return items ? JSON.stringify(items) : ''
+  return items.map((item: any) => {
+    if (item?.user_transcript || item?.agent_response) {
+      const lines = []
+      if (item.user_transcript) lines.push(`user: ${item.user_transcript}`)
+      if (item.agent_response) lines.push(`assistant: ${item.agent_response}`)
+      return lines.join('\n')
+    }
+    const content = Array.isArray(item?.content) ? item.content.join(' ') : item?.content
+    return item?.role ? `${item.role}: ${content ?? ''}` : String(content ?? '')
+  }).join('\n')
+}
+
 export const flattenCallLogForCSV = (
   row: CallLog,
   basic: string[],
   metadata: string[],
-  transcription: string[]
+  transcription: string[],
+  timezone: 'IST' | 'UTC' = 'IST',
+  includeTranscript = false
 ): Record<string, any> => {
   const flat: Record<string, any> = {}
 
@@ -324,6 +348,9 @@ export const flattenCallLogForCSV = (
       // flag lives inside transcription_metrics.flag
       const flagData = row.transcription_metrics?.flag as { text?: string } | undefined
       flat['flag'] = flagData?.text ?? ''
+    } else if (DATE_COLUMNS.has(key) && row[key as keyof CallLog]) {
+      const raw = row[key as keyof CallLog] as unknown as string
+      flat[key] = timezone === 'IST' ? formatToIndianDateTime(raw) : new Date(raw).toISOString()
     } else if (key in row && key !== 'total_cost') {
       flat[key] = row[key as keyof CallLog]
     }
@@ -360,6 +387,10 @@ export const flattenCallLogForCSV = (
     }
   }
 
+  if (includeTranscript) {
+    flat['transcript'] = formatTranscriptForCSV(row.transcript_json)
+  }
+
   return flat
 }
 
@@ -377,12 +408,14 @@ export const downloadCSV = async (
     basic: string[]
     metadata: string[]
     transcription_metrics: string[]
+    transcript?: boolean
   },
   projectId?: string,
   onProgress?: (p: DownloadProgress) => void,
-  dateRange?: { from: string; to: string }
+  dateRange?: { from: string; to: string },
+  timezone: 'IST' | 'UTC' = 'IST'
 ) => {
-  const { basic, metadata, transcription_metrics } = visibleColumns
+  const { basic, metadata, transcription_metrics, transcript = false } = visibleColumns
 
   // 'tags' and 'flag' are virtual — they live inside transcription_metrics JSONB,
   // not as top-level columns, so must never appear directly in the SELECT clause.
@@ -397,6 +430,7 @@ export const downloadCSV = async (
     ...basic.filter(col => !VIRTUAL_BASIC_COLS.has(col)),
     ...(metadata.length > 0 ? ['metadata'] : []),
     ...(needsTranscriptionMetrics ? ['transcription_metrics'] : []),
+    ...(transcript ? ['transcript_json'] : []),
   ]
 
   try {
@@ -447,6 +481,7 @@ export const downloadCSV = async (
           p_distinct_order: distinctConfig?.order || 'asc',
           p_date_from: dateRange?.from ?? null,
           p_date_to: dateRange?.to ?? null,
+          p_purpose: 'download',
         }),
       })
       const json = (await res.json()) as { data?: CallLog[]; error?: string }
@@ -470,7 +505,7 @@ export const downloadCSV = async (
 
     onProgress?.({ fetched: allData.length, total: allData.length, phase: 'processing' })
 
-    const csvData = allData.map((row) => flattenCallLogForCSV(row, basic, metadata, transcription_metrics))
+    const csvData = allData.map((row) => flattenCallLogForCSV(row, basic, metadata, transcription_metrics, timezone, transcript))
     const csv = Papa.unparse(csvData)
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const blobUrl = URL.createObjectURL(blob)
