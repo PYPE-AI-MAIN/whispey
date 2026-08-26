@@ -48,6 +48,7 @@ export async function GET() {
   return Response.json(
     {
       status: healthy ? 'ok' : 'degraded',
+      version: process.env.APP_VERSION ?? null,
       checks,
       timestamp: new Date().toISOString(),
     },
