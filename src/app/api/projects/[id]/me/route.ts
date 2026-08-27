@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getEffectiveVisibility } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
 
@@ -32,7 +34,7 @@ export async function GET(
         .from('pype_voice_email_project_mapping')
         .select('role, permissions, is_active')
         .eq('project_id', projectId)
-        .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+        .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
         .or('is_active.is.null,is_active.eq.true')
         .maybeSingle(),
       supabase
@@ -49,7 +51,10 @@ export async function GET(
 
     const globalRole: string = userRow?.roles?.globalRole ?? 'user'
     const globalPermissions: string[] = userRow?.roles?.permissions ?? []
-    const isSuperAdmin = globalRole === 'superadmin' || globalRole === 'prompter' || globalPermissions.includes('promptforge')
+    // Platform admins (PYPE_ADMINS) get the same superadmin-equivalent
+    // fallback access as a DB superadmin — same one-directional rule as
+    // getCallerGlobalRole in prod-auth.ts.
+    const isSuperAdmin = globalRole === 'superadmin' || globalRole === 'prompter' || globalPermissions.includes('promptforge') || isPlatformAdmin(userEmail)
 
     if (!mapping) {
       if (!isSuperAdmin) {

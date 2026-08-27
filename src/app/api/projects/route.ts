@@ -4,6 +4,9 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import crypto from 'crypto'
 import { createProjectApiKey } from '@/lib/api-key-management'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getCallerGlobalRole } from '@/lib/prod-auth'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
 
 // Create Supabase client for server-side operations (use service role for admin operations)
 const supabase = createServiceRoleClient()
@@ -38,6 +41,15 @@ export async function POST(request: NextRequest) {
         { error: 'User not found' },
         { status: 404 }
       )
+    }
+
+    // Self-serve org creation is restricted to superadmins — regular users
+    // get added to an org through the approval flow instead. PYPE_ADMINS are
+    // covered too: getCallerGlobalRole treats them as superadmin.
+    const userEmail = user.emailAddresses[0]?.emailAddress
+    const callerRole = await getCallerGlobalRole(userId)
+    if (callerRole !== 'superadmin') {
+      return NextResponse.json({ error: 'Admin access required to create an organization' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -96,7 +108,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Add creator to email_project_mapping as owner
-    const userEmail = user.emailAddresses[0]?.emailAddress
     if (userEmail) {
       const { error: mappingError } = await supabase
         .from('pype_voice_email_project_mapping')
@@ -112,7 +123,8 @@ export async function POST(request: NextRequest) {
             admin: true
           },
           added_by_clerk_id: userId,
-          is_active: true
+          is_active: true,
+          granted_via: 'new_domain'
         })
 
       if (mappingError) {
@@ -158,7 +170,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User email not found' }, { status: 400 })
     }
 
-    // Fetch projects linked to user email
+    // Fetch projects this login has access to. Regular users only match their
+    // own clerk_id, or an unclaimed invite created by the new-domain approval
+    // flow — not every old row that merely shares this email (see
+    // getProjectRoleForApi.ts for why).
     const { data: projectMappings, error } = await supabase
       .from('pype_voice_email_project_mapping')
       .select(`
@@ -173,7 +188,7 @@ export async function GET(request: NextRequest) {
         ),
         role
       `)
-      .eq('email', userEmail)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
 
     if (error) {

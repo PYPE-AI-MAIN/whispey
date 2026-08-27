@@ -3,6 +3,8 @@ import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb"
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { createServiceRoleClient } from "@/lib/supabase-server"
 import { getCallerGlobalRole } from "@/lib/prod-auth"
+import { projectMembershipMatch } from "@/lib/getProjectRoleForApi"
+import { isPlatformAdmin } from "@/lib/isPlatformAdmin"
 
 const REGION = process.env.AWS_REGION || "ap-south-1"
 const CALL_CONFIG_TABLE = (process.env.CALL_CONFIG_TABLE || `call-log-agent-config-${process.env.STAGE || "dev"}`).trim()
@@ -72,7 +74,7 @@ export async function GET(
         .from("pype_voice_email_project_mapping")
         .select("role, is_active")
         .eq("project_id", projectId)
-        .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+        .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
         .or("is_active.is.null,is_active.eq.true")
         .maybeSingle()
 

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
 
@@ -69,8 +70,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 })
     }
 
-    // Get projects for pending email mappings
-    const { data: emailMappings, error: emailMappingError } = await supabase
+    // Get projects for pending (unclaimed, clerk_id IS NULL) email mappings.
+    // Regular users only get unclaimed invites created via the new-domain
+    // approval flow — never an already-claimed row that merely shares this
+    // email (see getProjectRoleForApi.ts). Platform admins keep the original,
+    // unrestricted email match.
+    const admin = isPlatformAdmin(userEmail)
+    let emailMappingsQuery = supabase
       .from('pype_voice_email_project_mapping')
       .select(`
         id,
@@ -92,6 +98,10 @@ export async function GET(request: NextRequest) {
       `)
       .eq('email', userEmail)
       .eq('project.is_active', true)
+    if (!admin) {
+      emailMappingsQuery = emailMappingsQuery.is('clerk_id', null).eq('granted_via', 'new_domain')
+    }
+    const { data: emailMappings, error: emailMappingError } = await emailMappingsQuery
 
     if (emailMappingError) {
       console.error('Error fetching email mappings:', emailMappingError)

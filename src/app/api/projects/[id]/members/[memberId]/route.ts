@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
 
@@ -44,7 +46,7 @@ export async function PATCH(
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
       .maybeSingle()
 
@@ -159,7 +161,7 @@ export async function DELETE(
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
       .maybeSingle()
 

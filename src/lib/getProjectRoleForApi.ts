@@ -8,8 +8,23 @@ import { getEffectiveVisibility } from '@/types/visibility'
 import type { MemberVisibility } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { requireApiBaseUrl } from '@/lib/pypeApiFetch'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
+
+/**
+ * Match rule for who a mapping row belongs to. Platform admins (PYPE_ADMINS)
+ * keep the original, unrestricted "clerk_id OR email" match — same access as
+ * they've always had. Everyone else only matches by their own clerk_id, or by
+ * email when the row is a genuinely unclaimed invite (clerk_id is null) that
+ * was created within the new-domain approval flow (granted_via='new_domain').
+ * This is what stops an old-domain account's access from silently carrying
+ * over to a different login that happens to share the same email.
+ */
+export function projectMembershipMatch(userId: string, userEmail: string | undefined, admin: boolean): string {
+  if (admin) return `clerk_id.eq.${userId},email.ilike.${userEmail}`
+  return `clerk_id.eq.${userId},and(clerk_id.is.null,email.ilike.${userEmail},granted_via.eq.new_domain)`
+}
 
 export async function getProjectRoleForApi(projectId: string): Promise<{ role: string; visibility: MemberVisibility } | null> {
   const { userId } = await auth()
@@ -21,7 +36,7 @@ export async function getProjectRoleForApi(projectId: string): Promise<{ role: s
     .from('pype_voice_email_project_mapping')
     .select('role, permissions, is_active')
     .eq('project_id', projectId)
-    .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+    .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
     .or('is_active.is.null,is_active.eq.true')
     .maybeSingle()
 

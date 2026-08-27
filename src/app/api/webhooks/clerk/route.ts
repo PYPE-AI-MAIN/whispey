@@ -3,6 +3,8 @@ import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
+import { sendPendingApprovalNotice } from '@/lib/sendApprovalEmail'
 
 interface ClerkWebhookEvent {
   data: {
@@ -81,12 +83,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       console.log('✅ Creating new user in database')
 
+      const isAdmin = isPlatformAdmin(userEmail)
+
       const { data, error } = await supabase.from('pype_voice_users').insert({
         clerk_id: id,
         email: userEmail,
         first_name: first_name,
         last_name: last_name,
         profile_image_url: image_url,
+        // New-domain signup-approval gate: PYPE_ADMINS emails are auto-active
+        // (avoids a lockout — they're the only ones who can approve anyone),
+        // everyone else starts pending until a platform admin approves them.
+        approval_status: isAdmin ? 'active' : 'pending',
       }).select().single()
 
       if (error) {
@@ -95,6 +103,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       console.log('🎉 User created successfully:', data)
+
+      if (!isAdmin) {
+        try {
+          const adminEmails = process.env.PYPE_ADMINS?.split(',').map(e => e.trim()).filter(Boolean) || []
+          if (adminEmails.length > 0) {
+            const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
+            await sendPendingApprovalNotice({
+              adminEmails,
+              userEmail,
+              userName: `${first_name ?? ''} ${last_name ?? ''}`.trim() || userEmail,
+              reviewLink: `${appUrl}/projects`,
+            })
+          } else {
+            console.warn('⚠️ PYPE_ADMINS not configured — skipping pending-approval notice')
+          }
+        } catch (notifyErr) {
+          console.error('⚠️ Failed to notify admins of pending signup:', notifyErr)
+        }
+      }
 
       // Link any pending invite mappings for this email
       // Non-fatal — user still has access via email-based lookup even if this fails

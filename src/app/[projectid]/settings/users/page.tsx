@@ -21,7 +21,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 type GlobalRole = 'superadmin' | 'prompter' | 'user'
-type Tab = 'users' | 'metrics'
+type Tab = 'users' | 'requests' | 'metrics'
+type RequestStatus = 'pending' | 'active' | 'declined'
+
+interface PendingUser {
+  id: string
+  email: string
+  first_name: string | null
+  last_name: string | null
+  profile_image_url: string | null
+  created_at: string
+  approval_status: RequestStatus
+}
+
+interface Org {
+  id: string
+  name: string
+}
 
 interface MetricTemplate {
   metric_id: string
@@ -352,6 +368,174 @@ function MetricsTab() {
   )
 }
 
+const STATUS_PILL: Record<RequestStatus, string> = {
+  pending: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-400/10 border-amber-300 dark:border-amber-400/20',
+  active: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-400/10 border-emerald-300 dark:border-emerald-400/20',
+  declined: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-400/10 border-red-300 dark:border-red-400/20',
+}
+
+function RequestsTab() {
+  const queryClient = useQueryClient()
+  const [decisionFor, setDecisionFor] = useState<PendingUser | null>(null)
+  const [selectedOrg, setSelectedOrg] = useState('')
+  const [selectedRole, setSelectedRole] = useState('viewer')
+
+  const { data, isLoading } = useQuery<{ users: PendingUser[] }>({
+    queryKey: ['pending-users'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/pending-users')
+      if (!res.ok) throw new Error('Failed')
+      return res.json()
+    },
+    staleTime: 30_000,
+  })
+
+  const { data: orgsData } = useQuery<{ orgs: Org[] }>({
+    queryKey: ['admin-orgs'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/orgs')
+      if (!res.ok) throw new Error('Failed')
+      return res.json()
+    },
+    staleTime: 60_000,
+  })
+
+  const decide = useMutation({
+    mutationFn: async ({ id, action, projectId, role }: { id: string; action: 'approve' | 'decline'; projectId?: string; role?: string }) => {
+      const res = await fetch(`/api/admin/pending-users/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, projectId, role }),
+      })
+      if (!res.ok) throw new Error((await res.json())?.error ?? 'Failed')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-users'] })
+      setDecisionFor(null)
+    },
+  })
+
+  const users = data?.users ?? []
+  const orgs = orgsData?.orgs ?? []
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="max-w-5xl mx-auto rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        {isLoading ? (
+          <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+        ) : users.length === 0 ? (
+          <div className="py-16 flex flex-col items-center gap-2 text-gray-600 dark:text-gray-400">
+            <Users className="h-6 w-6" />
+            <span className="text-sm">No signup requests yet</span>
+          </div>
+        ) : (
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">User</th>
+                <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requested</th>
+                <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {users.map(u => {
+                const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email.split('@')[0]
+                const requested = new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                return (
+                  <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-4 py-3">
+                      <p className="text-[13px] font-medium text-gray-900 dark:text-gray-100">{name}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">{u.email}</p>
+                    </td>
+                    <td className="px-3 py-3 text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">{requested}</td>
+                    <td className="px-3 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border capitalize ${STATUS_PILL[u.approval_status]}`}>
+                        {u.approval_status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {u.approval_status !== 'active' ? (
+                        <div className="inline-flex gap-2">
+                          <Button
+                            size="sm"
+                            className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => { setDecisionFor(u); setSelectedOrg(''); setSelectedRole('viewer') }}
+                          >
+                            {u.approval_status === 'declined' ? 'Re-approve' : 'Accept'}
+                          </Button>
+                          {u.approval_status === 'pending' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-3 text-xs border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+                              disabled={decide.isPending}
+                              onClick={() => decide.mutate({ id: u.id, action: 'decline' })}
+                            >
+                              Decline
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <Dialog open={!!decisionFor} onOpenChange={open => { if (!open) setDecisionFor(null) }}>
+        <DialogContent className="max-w-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              Approve {decisionFor?.email}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Organization</Label>
+              <Select value={selectedOrg} onValueChange={setSelectedOrg}>
+                <SelectTrigger className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <SelectValue placeholder="Choose an organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Role</Label>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="owner">Owner</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={!selectedOrg || decide.isPending}
+              onClick={() => decisionFor && decide.mutate({ id: decisionFor.id, action: 'approve', projectId: selectedOrg, role: selectedRole })}
+            >
+              {decide.isPending ? 'Approving…' : 'Approve'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 export default function UsersSettingsPage() {
   const { projectid: projectId } = useParams()
   const router = useRouter()
@@ -360,6 +544,17 @@ export default function UsersSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('users')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
+
+  const { data: meStatus, isLoading: meStatusLoading } = useQuery<{ isPlatformAdmin: boolean }>({
+    queryKey: ['me-status-for-requests-tab'],
+    queryFn: async () => {
+      const res = await fetch('/api/me/status')
+      if (!res.ok) return { isPlatformAdmin: false, status: 'active' as const }
+      return res.json()
+    },
+    staleTime: 60_000,
+  })
+  const isPlatformAdmin = meStatus?.isPlatformAdmin ?? false
 
   useEffect(() => { setPage(0) }, [search])
 
@@ -387,13 +582,16 @@ export default function UsersSettingsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
   })
 
-  if (roleLoading) return (
+  if (roleLoading || meStatusLoading) return (
     // Sidebar bg: bg-white dark:bg-gray-900
     <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
       <div className="w-5 h-5 animate-spin rounded-full border-2 border-blue-500 dark:border-blue-400 border-t-transparent" />
     </div>
   )
 
+  // isSuperAdmin already covers PYPE_ADMINS too (getCallerGlobalRole /
+  // /api/me/global-role treat platform admins as superadmin) — isPlatformAdmin
+  // here is only for the Requests tab's own, narrower visibility below.
   if (!isSuperAdmin) { router.replace(`/${projectId}/agents`); return null }
 
   const users = data?.users ?? []
@@ -566,7 +764,7 @@ export default function UsersSettingsPage() {
       {/* ── Tabs ── */}
       <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-6 flex gap-1 pt-1">
-          {(['users', 'metrics'] as Tab[]).map(tab => (
+          {(['users', ...(isPlatformAdmin ? ['requests' as Tab] : []), 'metrics'] as Tab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -576,13 +774,14 @@ export default function UsersSettingsPage() {
                   : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
-              {tab === 'users' ? 'Users' : 'Metrics'}
+              {tab === 'users' ? 'Users' : tab === 'requests' ? 'Requests' : 'Metrics'}
             </button>
           ))}
         </div>
       </div>
 
       {activeTab === 'metrics' && <MetricsTab />}
+      {activeTab === 'requests' && <RequestsTab />}
 
       {/* ── Users tab content ── */}
       {activeTab === 'users' && <>

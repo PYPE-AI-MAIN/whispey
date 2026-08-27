@@ -1,5 +1,34 @@
+import { NextResponse } from 'next/server';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { hasValidServiceToken } from '@/lib/serviceTokenVerifier';
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin';
+
+// Edge-safe: a plain REST fetch, no @supabase/supabase-js — same reasoning as
+// serviceTokenVerifier.ts avoiding Node-only deps in this file. Returns
+// undefined (not found) or the row's approval fields.
+async function fetchApprovalStatus(clerkId: string): Promise<{ email: string | null; approval_status: string | null } | null> {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/pype_voice_users?clerk_id=eq.${encodeURIComponent(clerkId)}&select=email,approval_status`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+    )
+    if (!res.ok) return null
+    const rows = await res.json()
+    return Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+  } catch {
+    return null
+  }
+}
+
+// New-domain signup-approval gate: a signed-in user whose account isn't
+// 'active' yet can reach only these, regardless of what route they hit.
+const isApprovalGateExemptRoute = createRouteMatcher([
+  '/pending-approval(.*)',
+  '/api/me/status(.*)',
+]);
 
 // Define which routes are public (don't require authentication)
 const isPublicRoute = createRouteMatcher([
@@ -56,7 +85,28 @@ export default clerkMiddleware(async (auth, request) => {
     })
     const isInternalCall = await hasValidServiceToken(authHeader)
     console.log('[middleware debug] isInternalCall:', isInternalCall)
-    if (!isInternalCall) await auth.protect()
+    if (!isInternalCall) {
+      const { userId } = await auth.protect()
+
+      if (userId && !isApprovalGateExemptRoute(request)) {
+        const caller = await fetchApprovalStatus(userId)
+
+        // Grandfather any row that predates this gate (approval_status is
+        // NULL, e.g. accounts created during earlier testing) — only an
+        // explicit 'pending'/'declined' blocks. Fail closed only when no row
+        // exists at all yet (e.g. webhook hasn't landed for a brand-new
+        // signup) — never treated as active by default in that case.
+        const status = caller?.approval_status
+        const approved = isPlatformAdmin(caller?.email) || (caller !== null && status !== 'pending' && status !== 'declined')
+
+        if (!approved) {
+          if (pathname.startsWith('/api/')) {
+            return NextResponse.json({ error: 'Account pending approval' }, { status: 403 })
+          }
+          return NextResponse.redirect(new URL('/pending-approval', request.url))
+        }
+      }
+    }
   }
 });
 
