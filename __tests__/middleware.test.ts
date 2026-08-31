@@ -16,6 +16,9 @@ import middleware from '@/middleware'
 
 const makeReq = (pathname: string, authHeader?: string) => ({
   nextUrl: { pathname },
+  // Real NextRequest always has .url — needed for the approval-gate's
+  // `new URL('/pending-approval', request.url)` redirect.
+  url: `http://localhost:3000${pathname}`,
   headers: { get: (h: string) => (h === 'Authorization' ? (authHeader ?? null) : null) },
 })
 
