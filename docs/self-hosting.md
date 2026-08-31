@@ -84,10 +84,6 @@ OPENAI_API_KEY=sk-...
 
 # VAPI encryption (Required)
 VAPI_MASTER_KEY=your-secret-key
-
-# Optional: Analytics
-NEXT_PUBLIC_POSTHOG_KEY=
-NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 ## 📊 Using Whispey SDK

@@ -4,6 +4,8 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { redactTagsFromCallLogsForViewer } from '@/lib/redactCallLogsTagsForViewer'
 import type { CallLog } from '@/types/logs'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { filterSelectColumns, stripDisallowedColumns, isAgentDownloadDisabledForUser } from '@/lib/callLogSettings'
+import { resolveColumnAccessForRequest } from '@/lib/agentCallLogSettingsStore'
 
 const supabase = createServiceRoleClient()
 
@@ -32,7 +34,7 @@ export async function POST(
 
   const { data: agentRow, error: agentErr } = await supabase
     .from('pype_voice_agents')
-    .select('project_id')
+    .select('project_id, call_log_settings')
     .eq('id', p_agent_id)
     .maybeSingle()
 
@@ -45,13 +47,30 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  const isDownload = body.p_purpose === 'download'
+  if (isDownload && access.downloadDisabled) {
+    return NextResponse.json({ error: 'Downloads are disabled for this project' }, { status: 403 })
+  }
+
   const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
+  const { isSuperAdmin, disallowedColumns } = await resolveColumnAccessForRequest({
+    userId,
+    userEmail,
+    callLogSettings: agentRow.call_log_settings,
+    isDownload,
+  })
+
+  if (isDownload && isAgentDownloadDisabledForUser(agentRow.call_log_settings, isSuperAdmin, userEmail)) {
+    return NextResponse.json({ error: 'Downloads are disabled for this user on this agent' }, { status: 403 })
+  }
+
+  const p_select = filterSelectColumns(body.p_select ?? '*', disallowedColumns)
 
   const rpcParamsWithUser = {
     p_agent_id,
     p_pre_distinct_filters: body.p_pre_distinct_filters ?? [],
     p_post_distinct_filters: body.p_post_distinct_filters ?? [],
-    p_select: body.p_select ?? '*',
+    p_select,
     p_order_by_column: body.p_order_by_column ?? 'created_at',
     p_order_ascending: body.p_order_ascending ?? false,
     p_limit: body.p_limit ?? 50,
@@ -101,6 +120,7 @@ export async function POST(
   if (access.role === 'viewer') {
     rows = redactTagsFromCallLogsForViewer(rows)
   }
+  rows = stripDisallowedColumns(rows, disallowedColumns)
 
   return NextResponse.json({ data: rows })
 }

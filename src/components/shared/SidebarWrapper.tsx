@@ -158,7 +158,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/sip-management' },
       { pattern: '/:projectId/campaigns' },
       { pattern: '/:projectId/settings' },
-      { pattern: '/:projectId/settings/users' },
+      { pattern: '/:projectId/settings/users*' },
       { pattern: '/:projectId/settings/phone-numbers' },
       { pattern: '/:projectId/settings/dnc' },
       { pattern: '/:projectId/campaigns/:campaignId' },
