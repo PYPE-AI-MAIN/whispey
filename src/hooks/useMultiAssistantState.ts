@@ -695,6 +695,7 @@ export function useMultiAssistantState({
         },
         interruption_mode: formValues.advancedSettings?.session?.interruption_mode ?? null,
         adaptive_stt: formValues.advancedSettings?.session?.interruption_mode === 'adaptive',
+        real_interruption_guard: formValues.advancedSettings?.interruption?.realInterruptionGuard ?? false,
         ...(formValues.advancedSettings?.session?.interruption_mode === 'adaptive' && {
           adaptive_min_duration: formValues.advancedSettings.interruption?.adaptiveMinDuration ?? 0.8,
           adaptive_min_words: formValues.advancedSettings.interruption?.adaptiveMinWords ?? 0,
@@ -906,6 +907,7 @@ export function useMultiAssistantState({
         },
         interruption_mode: formValues.advancedSettings?.session?.interruption_mode ?? null,
         adaptive_stt: formValues.advancedSettings?.session?.interruption_mode === 'adaptive',
+        real_interruption_guard: formValues.advancedSettings?.interruption?.realInterruptionGuard ?? false,
         ...(formValues.advancedSettings?.session?.interruption_mode === 'adaptive' && {
           adaptive_min_duration: formValues.advancedSettings.interruption?.adaptiveMinDuration ?? 0.8,
           adaptive_min_words: formValues.advancedSettings.interruption?.adaptiveMinWords ?? 0,

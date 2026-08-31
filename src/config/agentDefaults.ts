@@ -227,6 +227,7 @@ export const AGENT_DEFAULT_CONFIG = {
         adaptiveFalseInterruptionTimeout: 2.0,
         adaptiveBackchannelBoundaryStart: 1.0,
         adaptiveBackchannelBoundaryEnd: 3.5,
+        realInterruptionGuard: false,
       },
       vad: {
         vadProvider: AGENT_DEFAULT_CONFIG.vad.name,

@@ -840,6 +840,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         adaptiveFalseInterruptionTimeout: assistant.adaptive_false_interruption_timeout ?? 2.0,
         adaptiveBackchannelBoundaryStart: assistant.adaptive_backchannel_boundary_start ?? 1.0,
         adaptiveBackchannelBoundaryEnd: assistant.adaptive_backchannel_boundary_end ?? 3.5,
+        realInterruptionGuard: assistant.real_interruption_guard ?? sessionBehavior.real_interruption_guard ?? false,
       },
       vad: {
         vadProvider: assistant.vad?.name || getFallback(null, 'vad.name'),
@@ -859,7 +860,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       },
       session: {
         preemptiveGeneration: (sessionBehavior.preemptive_generation || getFallback(null, 'session_behavior.preemptive_generation')) as "disabled" | "enabled",
-        turn_detection: (sessionBehavior.turn_detection || getFallback(null, 'session_behavior.turn_detection')) as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
+        turn_detection: (sessionBehavior.turn_detection || getFallback(null, 'session_behavior.turn_detection')) as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled" | "v1-mini",
         unlikely_threshold: sessionBehavior.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
         min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),

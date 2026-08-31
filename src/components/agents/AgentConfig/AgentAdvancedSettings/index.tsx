@@ -36,6 +36,7 @@ interface AgentAdvancedSettingsProps {
         adaptiveFalseInterruptionTimeout?: number
         adaptiveBackchannelBoundaryStart?: number
         adaptiveBackchannelBoundaryEnd?: number
+        realInterruptionGuard?: boolean
       }
       vad: {
         vadProvider: string
@@ -49,7 +50,7 @@ interface AgentAdvancedSettingsProps {
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
-        turn_detection: 'multilingual' | 'english' | 'smollm2turndetector' | 'llmturndetector' | 'smollm360m' | 'disabled'
+        turn_detection: 'multilingual' | 'english' | 'smollm2turndetector' | 'llmturndetector' | 'smollm360m' | 'disabled' | 'v1-mini'
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
@@ -198,6 +199,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
               adaptiveFalseInterruptionTimeout={advancedSettings.interruption.adaptiveFalseInterruptionTimeout ?? 2.0}
               adaptiveBackchannelBoundaryStart={advancedSettings.interruption.adaptiveBackchannelBoundaryStart ?? 1.0}
               adaptiveBackchannelBoundaryEnd={advancedSettings.interruption.adaptiveBackchannelBoundaryEnd ?? 3.5}
+              realInterruptionGuard={advancedSettings.interruption.realInterruptionGuard ?? false}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
