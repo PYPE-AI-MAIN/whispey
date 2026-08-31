@@ -1,11 +1,10 @@
 // components/CallLogs/tableColumns.tsx
 
-import React from "react"
+import React, { useState } from "react"
 import { ColumnDef } from '@tanstack/react-table'
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Phone, Clock, CheckCircle, XCircle, Copy, Check } from "lucide-react"
-import { useState } from "react"
 import { CallLog } from "@/types/logs"
 import { formatDuration, formatToIndianDateTime } from '@/utils/callLogsUtils'
 import { DynamicJsonCell } from './sub-components'
