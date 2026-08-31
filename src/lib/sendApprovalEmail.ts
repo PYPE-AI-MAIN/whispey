@@ -30,17 +30,19 @@ export async function sendPendingApprovalNotice({
   adminEmails,
   userEmail,
   userName,
-  reviewLink,
+  approveLink,
+  declineLink,
 }: {
   adminEmails: string[]
   userEmail: string
   userName: string
-  reviewLink: string
+  approveLink: string
+  declineLink: string
 }): Promise<void> {
   const transactionalId = process.env.LOOPS_PENDING_ADMIN_NOTICE_TEMPLATE_ID
   await Promise.all(
     adminEmails.map((adminEmail) =>
-      sendLoopsEmail(transactionalId, adminEmail, { userEmail, userName, reviewLink }).catch((err) =>
+      sendLoopsEmail(transactionalId, adminEmail, { userEmail, userName, approveLink, declineLink }).catch((err) =>
         console.error(`[approval-email] Failed to notify admin ${adminEmail}:`, err)
       )
     )
@@ -49,14 +51,12 @@ export async function sendPendingApprovalNotice({
 
 export async function sendAccountApprovedEmail({
   email,
-  orgName,
   appLink,
 }: {
   email: string
-  orgName: string
   appLink: string
 }): Promise<void> {
-  await sendLoopsEmail(process.env.LOOPS_ACCOUNT_APPROVED_TEMPLATE_ID, email, { orgName, appLink })
+  await sendLoopsEmail(process.env.LOOPS_ACCOUNT_APPROVED_TEMPLATE_ID, email, { appLink })
 }
 
 export async function sendAccountDeclinedEmail({ email }: { email: string }): Promise<void> {

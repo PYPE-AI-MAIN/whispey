@@ -40,8 +40,11 @@ export default function PendingApprovalPage() {
 
   if (!isLoaded || isLoading || status === 'active') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-white dark:bg-gray-900">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {status === 'active' ? "You're approved — redirecting…" : 'Checking your account status…'}
+        </p>
       </div>
     )
   }

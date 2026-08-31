@@ -34,11 +34,6 @@ interface PendingUser {
   approval_status: RequestStatus
 }
 
-interface Org {
-  id: string
-  name: string
-}
-
 interface MetricTemplate {
   metric_id: string
   name: string
@@ -376,9 +371,6 @@ const STATUS_PILL: Record<RequestStatus, string> = {
 
 function RequestsTab() {
   const queryClient = useQueryClient()
-  const [decisionFor, setDecisionFor] = useState<PendingUser | null>(null)
-  const [selectedOrg, setSelectedOrg] = useState('')
-  const [selectedRole, setSelectedRole] = useState('viewer')
 
   const { data, isLoading } = useQuery<{ users: PendingUser[] }>({
     queryKey: ['pending-users'],
@@ -390,34 +382,22 @@ function RequestsTab() {
     staleTime: 30_000,
   })
 
-  const { data: orgsData } = useQuery<{ orgs: Org[] }>({
-    queryKey: ['admin-orgs'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/orgs')
-      if (!res.ok) throw new Error('Failed')
-      return res.json()
-    },
-    staleTime: 60_000,
-  })
-
   const decide = useMutation({
-    mutationFn: async ({ id, action, projectId, role }: { id: string; action: 'approve' | 'decline'; projectId?: string; role?: string }) => {
+    mutationFn: async ({ id, action }: { id: string; action: 'approve' | 'decline' }) => {
       const res = await fetch(`/api/admin/pending-users/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, projectId, role }),
+        body: JSON.stringify({ action }),
       })
       if (!res.ok) throw new Error((await res.json())?.error ?? 'Failed')
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-users'] })
-      setDecisionFor(null)
     },
   })
 
   const users = data?.users ?? []
-  const orgs = orgsData?.orgs ?? []
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -456,26 +436,25 @@ function RequestsTab() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {u.approval_status !== 'active' ? (
+                      {u.approval_status === 'pending' ? (
                         <div className="inline-flex gap-2">
                           <Button
                             size="sm"
                             className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                            onClick={() => { setDecisionFor(u); setSelectedOrg(''); setSelectedRole('viewer') }}
+                            disabled={decide.isPending}
+                            onClick={() => decide.mutate({ id: u.id, action: 'approve' })}
                           >
-                            {u.approval_status === 'declined' ? 'Re-approve' : 'Accept'}
+                            Accept
                           </Button>
-                          {u.approval_status === 'pending' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-3 text-xs border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
-                              disabled={decide.isPending}
-                              onClick={() => decide.mutate({ id: u.id, action: 'decline' })}
-                            >
-                              Decline
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-3 text-xs border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+                            disabled={decide.isPending}
+                            onClick={() => decide.mutate({ id: u.id, action: 'decline' })}
+                          >
+                            Decline
+                          </Button>
                         </div>
                       ) : (
                         <span className="text-[11px] text-gray-400 dark:text-gray-500">—</span>
@@ -488,50 +467,6 @@ function RequestsTab() {
           </table>
         )}
       </div>
-
-      <Dialog open={!!decisionFor} onOpenChange={open => { if (!open) setDecisionFor(null) }}>
-        <DialogContent className="max-w-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Approve {decisionFor?.email}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Organization</Label>
-              <Select value={selectedOrg} onValueChange={setSelectedOrg}>
-                <SelectTrigger className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                  <SelectValue placeholder="Choose an organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {orgs.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Role</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="viewer">Viewer</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="owner">Owner</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              size="sm"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-              disabled={!selectedOrg || decide.isPending}
-              onClick={() => decisionFor && decide.mutate({ id: decisionFor.id, action: 'approve', projectId: selectedOrg, role: selectedRole })}
-            >
-              {decide.isPending ? 'Approving…' : 'Approve'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
