@@ -4,7 +4,8 @@ import React from "react"
 import { ColumnDef } from '@tanstack/react-table'
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Phone, Clock, CheckCircle, XCircle } from "lucide-react"
+import { Phone, Clock, CheckCircle, XCircle, Copy, Check } from "lucide-react"
+import { useState } from "react"
 import { CallLog } from "@/types/logs"
 import { formatDuration, formatToIndianDateTime } from '@/utils/callLogsUtils'
 import { DynamicJsonCell } from './sub-components'
@@ -50,13 +51,43 @@ function renderCustomerNumberCell(call: CallLog) {
   )
 }
 
+function CallIdCell({ callId }: Readonly<{ callId: string }>) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(callId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-0.5 rounded-md font-mono">
+            …{callId.slice(-8)}
+          </code>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="max-w-xs break-all">{callId}</p>
+        </TooltipContent>
+      </Tooltip>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-gray-700/60 transition-colors shrink-0 cursor-pointer"
+        aria-label="Copy call ID"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+    </div>
+  )
+}
+
 function renderCallIdCell(call: CallLog) {
   if (!call.call_id) return <span className="text-muted-foreground">—</span>
-  return (
-    <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-0.5 rounded-md font-mono">
-      {call.call_id.slice(-8)}
-    </code>
-  )
+  return <CallIdCell callId={call.call_id} />
 }
 
 function renderCallEndedReasonCell(call: CallLog) {
