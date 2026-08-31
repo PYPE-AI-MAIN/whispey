@@ -6,6 +6,7 @@ import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
 import { normalizeAgentDisplayName } from '@/lib/agentDisplayName'
+import { parseExtractorKeys, validateFlagRules } from '@/lib/flagRulesValidation'
 
 // GET method to fetch agent details
 export async function GET(
@@ -67,6 +68,7 @@ export async function GET(
       agentResponse.field_extractor_prompt = agent.field_extractor_prompt
       agentResponse.field_extractor_keys = agent.field_extractor_keys
       agentResponse.field_extractor_variables = agent.field_extractor_variables || {}
+      agentResponse.flag_rules = agent.flag_rules || null
     }
     if (allowMetrics) {
       agentResponse.metrics = agent.metrics ?? null
@@ -89,6 +91,7 @@ const GATED_FIELDS = {
   field_extractor_prompt: 'fieldExtractor',
   field_extractor: 'fieldExtractor',
   field_extractor_variables: 'fieldExtractor',
+  flag_rules: 'fieldExtractor', // same sensitivity as field extractor internals
   metrics: 'metrics',
 } as const
 
@@ -114,8 +117,23 @@ function resolveDisplayNameField(
  * Build the validated PATCH payload, enforcing per-field role/visibility rules.
  * `display_name` is handled outside the loop (it needs normalization); `name`
  * is intentionally not patchable — the backend identity is derived from it.
+ * `existingFieldExtractorPrompt` cross-checks flag_rules field references against
+ * whatever field_extractor_prompt this same request submits, falling back to the
+ * agent's existing one.
  */
-function buildAgentUpdatePayload(body: Record<string, unknown>, roleResult: RoleResult): BuildResult {
+// Validate flag_rules against the field-extractor keys from this request (falling back to
+// the agent's stored prompt). Returns a user-facing error message, or null when valid.
+function flagRulesError(body: Record<string, unknown>, existingFieldExtractorPrompt: unknown): string | null {
+  const extractorSource = 'field_extractor_prompt' in body ? body.field_extractor_prompt : existingFieldExtractorPrompt
+  const validationError = validateFlagRules(body.flag_rules, parseExtractorKeys(extractorSource))
+  return validationError ? `Invalid flag_rules: ${validationError}` : null
+}
+
+function buildAgentUpdatePayload(
+  body: Record<string, unknown>,
+  roleResult: RoleResult,
+  existingFieldExtractorPrompt: unknown
+): BuildResult {
   const isViewer = roleResult.role === 'viewer'
   const org = roleResult.visibility?.org
   const payload: Record<string, unknown> = {}
@@ -129,6 +147,10 @@ function buildAgentUpdatePayload(body: Record<string, unknown>, roleResult: Role
   for (const [key, gate] of Object.entries(GATED_FIELDS)) {
     if (!(key in body)) continue
     if (isViewer && org?.[gate] !== true) return { ok: false, error: 'Forbidden', status: 403 }
+    if (key === 'flag_rules') {
+      const err = flagRulesError(body, existingFieldExtractorPrompt)
+      if (err) return { ok: false, error: err, status: 400 }
+    }
     payload[key] = body[key]
   }
 
@@ -158,7 +180,7 @@ export async function PATCH(
 
     const { data: agent, error: fetchErr } = await supabase
       .from('pype_voice_agents')
-      .select('project_id')
+      .select('project_id, field_extractor_prompt')
       .eq('id', agentId)
       .single()
 
@@ -172,7 +194,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const built = buildAgentUpdatePayload(body, roleResult)
+    const built = buildAgentUpdatePayload(body, roleResult, agent.field_extractor_prompt)
     if (!built.ok) {
       return NextResponse.json({ error: built.error }, { status: built.status })
     }
