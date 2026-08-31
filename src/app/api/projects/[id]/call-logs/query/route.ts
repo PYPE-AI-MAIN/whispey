@@ -5,7 +5,7 @@ import { redactTagsFromCallLogsForViewer } from '@/lib/redactCallLogsTagsForView
 import type { CallLog } from '@/types/logs'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getCallerGlobalRole } from '@/lib/prod-auth'
-import { getDisallowedColumns, filterSelectColumns, isAgentDownloadDisabledForUser } from '@/lib/callLogSettings'
+import { getDisallowedColumns, filterSelectColumns, stripDisallowedColumns, isAgentDownloadDisabledForUser } from '@/lib/callLogSettings'
 
 const supabase = createServiceRoleClient()
 
@@ -117,13 +117,7 @@ export async function POST(
   if (access.role === 'viewer') {
     rows = redactTagsFromCallLogsForViewer(rows)
   }
-  if (disallowedColumns.size > 0) {
-    rows = rows.map(row => {
-      const clean = { ...row } as Record<string, unknown>
-      disallowedColumns.forEach(col => delete clean[col])
-      return clean as unknown as CallLog
-    })
-  }
+  rows = stripDisallowedColumns(rows, disallowedColumns)
 
   return NextResponse.json({ data: rows })
 }

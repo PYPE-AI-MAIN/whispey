@@ -107,10 +107,10 @@ function ColumnAccessRow({
   let downloadTitle: string
   if (downloadsDisabledForAgent) {
     downloadTitle = 'Downloads are off for this agent'
-  } else if (!viewable) {
-    downloadTitle = 'Allow viewing first'
-  } else {
+  } else if (viewable) {
     downloadTitle = downloadable ? 'Downloadable — click to block' : 'Blocked — click to allow downloading'
+  } else {
+    downloadTitle = 'Allow viewing first'
   }
 
   return (

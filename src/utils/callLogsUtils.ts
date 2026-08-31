@@ -460,17 +460,31 @@ async function fetchDownloadTotalCount(
   }
 }
 
-async function fetchAllCallLogPagesForDownload(
-  queryUrl: string,
-  agentId: string,
-  preDistinctFilters: Filter[],
-  postDistinctFilters: Filter[],
-  distinctConfig: { column: string; jsonField?: string; order: 'asc' | 'desc' } | undefined,
-  selectColumns: string[],
-  dateRange: { from: string; to: string } | undefined,
-  knownTotal: number | null,
+interface FetchAllCallLogPagesOptions {
+  queryUrl: string
+  agentId: string
+  preDistinctFilters: Filter[]
+  postDistinctFilters: Filter[]
+  distinctConfig: { column: string; jsonField?: string; order: 'asc' | 'desc' } | undefined
+  selectColumns: string[]
+  dateRange: { from: string; to: string } | undefined
+  knownTotal: number | null
   onProgress?: (p: DownloadProgress) => void
-): Promise<CallLog[]> {
+}
+
+async function fetchAllCallLogPagesForDownload(options: FetchAllCallLogPagesOptions): Promise<CallLog[]> {
+  const {
+    queryUrl,
+    agentId,
+    preDistinctFilters,
+    postDistinctFilters,
+    distinctConfig,
+    selectColumns,
+    dateRange,
+    knownTotal,
+    onProgress,
+  } = options
+
   let allData: CallLog[] = []
   let page = 0
   const pageSize = 1000
@@ -563,7 +577,7 @@ export const downloadCSV = async (
     // Fetch total count first so we can show a real percentage
     const knownTotal = await fetchDownloadTotalCount(agentId, dateRange)
 
-    const allData = await fetchAllCallLogPagesForDownload(
+    const allData = await fetchAllCallLogPagesForDownload({
       queryUrl,
       agentId,
       preDistinctFilters,
@@ -572,8 +586,8 @@ export const downloadCSV = async (
       selectColumns,
       dateRange,
       knownTotal,
-      onProgress
-    )
+      onProgress,
+    })
 
     if (allData.length === 0) throw new Error("No data found to export")
 

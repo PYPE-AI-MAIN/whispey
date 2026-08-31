@@ -99,10 +99,16 @@ function renderCallStartedAtCell(call: CallLog) {
   return <span>{formatToIndianDateTime(call.call_started_at)}</span>
 }
 
+function getWcallEventLabel(wcallEvent: CallLog['wcall_event']): string {
+  if (wcallEvent === "call_ended") return "Ended"
+  if (wcallEvent === "call_started") return "Started"
+  return wcallEvent ?? "-"
+}
+
 function renderWcallEventCell(call: CallLog) {
   return (
     <Badge variant={call.wcall_event === "call_ended" ? "default" : "secondary"} className="text-xs font-medium px-2 py-0.5">
-      {call.wcall_event === "call_ended" ? "Ended" : call.wcall_event === "call_started" ? "Started" : (call.wcall_event ?? "-")}
+      {getWcallEventLabel(call.wcall_event)}
     </Badge>
   )
 }
@@ -185,11 +191,17 @@ function renderBasicCell(
     case "flag":
       return renderFlagCell(call, onTagsUpdated)
     default:
-      return <span>{call[key as keyof CallLog] as any ?? "-"}</span>
+      return <span>{call[key as keyof CallLog] ?? "-"}</span>
   }
 }
 
 // ── Metrics-column cell renderer ─────────────────────────────────────────
+
+function getScoreBadgeVariant(score: number): "default" | "secondary" | "destructive" {
+  if (score >= 0.7) return "default"
+  if (score >= 0.5) return "secondary"
+  return "destructive"
+}
 
 function renderMetricCell(call: CallLog, metricId: string) {
   let value: React.ReactNode = "-"
@@ -203,7 +215,7 @@ function renderMetricCell(call: CallLog, metricId: string) {
 
       value = (
         <Badge
-          variant={score >= 0.7 ? "default" : score >= 0.5 ? "secondary" : "destructive"}
+          variant={getScoreBadgeVariant(score)}
           className="text-xs font-medium cursor-help px-2 py-0.5"
         >
           {typeof score === 'number' ? score.toFixed(2) : score}
@@ -221,7 +233,7 @@ function renderMetricCell(call: CallLog, metricId: string) {
       </TooltipTrigger>
       <TooltipContent className="max-w-md bg-gray-900 dark:bg-gray-800 border-gray-700 p-0">
         <div className="text-sm p-4">
-          <div className="font-semibold mb-2 text-white">{metricId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+          <div className="font-semibold mb-2 text-white">{metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase())}</div>
           <div className="text-xs text-gray-100 whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2">
             {tooltipContent}
           </div>
@@ -318,7 +330,7 @@ export const createTableColumns = (
     cols.push({
       id: `metrics-${metricId}`,
       accessorFn: (row) => row.metrics?.[metricId],
-      header: metricId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      header: metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
       cell: ({ row }) => renderMetricCell(row.original, metricId),
       size: 150,
     })

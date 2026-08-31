@@ -96,6 +96,23 @@ export const getDisallowedColumns = (
 }
 
 /**
+ * Strips a set of disallowed columns from each row. Shared by the agent- and
+ * project-scoped call-logs query routes, which both used to inline this same
+ * map/delete loop after fetching rows.
+ */
+export const stripDisallowedColumns = <T extends object>(
+  rows: T[],
+  disallowedColumns: Set<string>
+): T[] => {
+  if (disallowedColumns.size === 0) return rows
+  return rows.map(row => {
+    const clean = { ...row } as Record<string, unknown>
+    disallowedColumns.forEach(col => delete clean[col])
+    return clean as unknown as T
+  })
+}
+
+/**
  * Filters a p_select value (comma-separated string, array of column names, or '*')
  * to drop disallowed columns. '*' is left as-is — the RPC/table select doesn't
  * support excluding columns from '*' at this layer, so callers selecting '*'

@@ -130,6 +130,24 @@ function getHeaderCellClassName(headerId: string): string {
   return cn(base, "text-foreground dark:text-gray-100")
 }
 
+// Extracted so the mixed &&/|| chain doesn't add to CallLogs's own cognitive complexity.
+function shouldShowLoadingSkeleton(
+  parentLoading: boolean | undefined,
+  roleLoading: boolean,
+  agent: any,
+  project: any,
+  isLoading: boolean,
+  currentPageCallsLength: number
+): boolean {
+  if (parentLoading || roleLoading || !agent || !project) return true
+  return isLoading && currentPageCallsLength === 0
+}
+
+// Extracted so this doesn't add another logical-operator branch to CallLogs itself.
+function canShowDownloadButton(canDownload: boolean | undefined, isSuperAdmin: boolean): boolean {
+  return !!canDownload || isSuperAdmin
+}
+
 function getRowStyle(
   isSelected: boolean,
   isFlagged: boolean,
@@ -216,18 +234,31 @@ function renderPageItem(
   )
 }
 
-function renderTableRows(
-  rows: any[],
-  isLoading: boolean,
-  activeFilters: FilterOperation[],
-  handleClearFilters: () => void,
-  columnsLength: number,
-  role: any,
-  selectedCallId: string | null,
-  navigatingCallId: string | null,
-  flaggedRowStyle: React.CSSProperties,
+interface RenderTableRowsOptions {
+  isLoading: boolean
+  activeFilters: FilterOperation[]
+  handleClearFilters: () => void
+  columnsLength: number
+  role: any
+  selectedCallId: string | null
+  navigatingCallId: string | null
+  flaggedRowStyle: React.CSSProperties
   handleRowSelect: (callId: string, callAgentId: string) => void
-) {
+}
+
+function renderTableRows(rows: any[], options: RenderTableRowsOptions) {
+  const {
+    isLoading,
+    activeFilters,
+    handleClearFilters,
+    columnsLength,
+    role,
+    selectedCallId,
+    navigatingCallId,
+    flaggedRowStyle,
+    handleRowSelect,
+  } = options
+
   if (rows.length === 0 && !isLoading) {
     return (
       <tr>
@@ -319,12 +350,12 @@ function useColumnVisibilityHandlers(
     type: 'basic' | 'metadata' | 'transcription_metrics' | 'metrics',
     visible: boolean
   ) => {
-    setVisibleColumns((prev: any) => ({
-      ...prev,
-      [type]: visible
-        ? (type === "basic" ? BASIC_COLUMNS.map(c => c.key) : dynamicColumns[type] || [])
-        : []
-    }))
+    if (!visible) {
+      setVisibleColumns((prev: any) => ({ ...prev, [type]: [] }))
+      return
+    }
+    const allKeys = type === "basic" ? BASIC_COLUMNS.map(c => c.key) : dynamicColumns[type] || []
+    setVisibleColumns((prev: any) => ({ ...prev, [type]: allKeys }))
   }, [setVisibleColumns, dynamicColumns])
 
   return { handleColumnChange, handleSelectAll }
@@ -578,7 +609,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
   const pageEnd   = (currentPage - 1) * 50 + currentPageCalls.length
 
   // ── Loading / error guards ─────────────────────────────────────────────────
-  if (parentLoading || roleLoading || !agent || !project || (isLoading && !currentPageCalls.length)) {
+  if (shouldShowLoadingSkeleton(parentLoading, roleLoading, agent, project, isLoading, currentPageCalls.length)) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <FilterHeaderSkeleton />
@@ -653,7 +684,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
               projectId={project?.id} agentId={agent?.id}
               agentName={agentDisplayName(agent)} projectName={project?.name}
             />
-            {(downloadSettingsData?.canDownload || isSuperAdmin) && (
+            {canShowDownloadButton(downloadSettingsData?.canDownload, isSuperAdmin) && (
               <div className="relative flex items-center gap-1">
                 <Button
                   variant="outline" size="sm"
@@ -741,18 +772,17 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 ))}
               </thead>
               <tbody>
-                {renderTableRows(
-                  rows,
+                {renderTableRows(rows, {
                   isLoading,
                   activeFilters,
                   handleClearFilters,
-                  columns.length,
+                  columnsLength: columns.length,
                   role,
                   selectedCallId,
                   navigatingCallId,
                   flaggedRowStyle,
-                  handleRowSelect
-                )}
+                  handleRowSelect,
+                })}
               </tbody>
             </table>
           </div>
