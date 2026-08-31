@@ -156,6 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   }, [quickFilter, isCustomRange, storedDateFilter.dateFrom, storedDateFilter.dateTo])
 
   const activeTab = searchParams.get('tab') || 'overview'
+  const openDownloadSettings = searchParams.get('openDownloadSettings') === '1'
   
   const quickFilters = [
     { id: '1d', label: '1D', days: 1 },
@@ -480,6 +481,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               onBack={handleBack}
               dateRange={apiDateRange}
               isLoading={agentLoading || projectLoading || callsCheckLoading}
+              openDownloadSettings={activeTab === 'logs' && openDownloadSettings}
             />
           )}
         </div>
