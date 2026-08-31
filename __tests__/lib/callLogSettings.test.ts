@@ -8,6 +8,20 @@ import {
   DEFAULT_DOWNLOAD_SETTINGS,
 } from '@/lib/callLogSettings'
 
+// Shared factory for the `user_overrides` entry shape reused across several
+// describe blocks below — keeps individual tests focused on the field(s)
+// they actually vary instead of repeating the whole object literal.
+const makeOverride = (overrides: Partial<{
+  hidden_view_columns: string[]
+  hidden_download_columns: string[]
+  download_disabled: boolean
+}> = {}) => ({
+  hidden_view_columns: [],
+  hidden_download_columns: [],
+  download_disabled: false,
+  ...overrides,
+})
+
 describe('callLogSettings', () => {
   describe('normalizeDownloadSettings', () => {
     it('returns defaults for null/undefined input', () => {
@@ -70,7 +84,7 @@ describe('callLogSettings', () => {
   describe('isAgentDownloadDisabledForUser', () => {
     it('is never disabled for a superadmin, even with a matching override', () => {
       const settings = {
-        download_settings: { user_overrides: { 'a@b.com': { download_disabled: true, hidden_view_columns: [], hidden_download_columns: [] } } },
+        download_settings: { user_overrides: { 'a@b.com': makeOverride({ download_disabled: true }) } },
       }
       expect(isAgentDownloadDisabledForUser(settings, true, 'a@b.com')).toBe(false)
     })
@@ -86,7 +100,7 @@ describe('callLogSettings', () => {
 
     it('is true when the override sets download_disabled for a non-superadmin', () => {
       const settings = {
-        download_settings: { user_overrides: { 'a@b.com': { download_disabled: true, hidden_view_columns: [], hidden_download_columns: [] } } },
+        download_settings: { user_overrides: { 'a@b.com': makeOverride({ download_disabled: true }) } },
       }
       expect(isAgentDownloadDisabledForUser(settings, false, 'a@b.com')).toBe(true)
     })
@@ -98,7 +112,7 @@ describe('callLogSettings', () => {
 
     it('looks up the override case-insensitively', () => {
       const settings = {
-        download_settings: { user_overrides: { 'a@b.com': { download_disabled: true, hidden_view_columns: [], hidden_download_columns: [] } } },
+        download_settings: { user_overrides: { 'a@b.com': makeOverride({ download_disabled: true }) } },
       }
       expect(isAgentDownloadDisabledForUser(settings, false, 'A@B.COM')).toBe(true)
     })
@@ -109,11 +123,10 @@ describe('callLogSettings', () => {
       download_settings: {
         superadmin_only_columns: ['recording_url'],
         user_overrides: {
-          'a@b.com': {
+          'a@b.com': makeOverride({
             hidden_view_columns: ['caller_number'],
             hidden_download_columns: ['transcript'],
-            download_disabled: false,
-          },
+          }),
         },
       },
     }

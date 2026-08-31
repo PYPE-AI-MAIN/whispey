@@ -5,12 +5,12 @@ import { format } from 'date-fns'
 import { CalendarIcon, AlertTriangle, Download, RefreshCw, ChevronDown } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
+import CheckboxRow from '@/components/calls/CheckboxRow'
 import { downloadCSV, DownloadProgress } from '@/utils/callLogsUtils'
 import type { FilterOperation } from '@/components/CallFilter'
 
@@ -327,28 +327,35 @@ export default function DownloadDialog({
             <CollapsibleContent>
               <div className="rounded-lg border border-t-0 border-gray-200 dark:border-gray-800 rounded-t-none max-h-48 overflow-y-auto p-2 space-y-1 mt-[-1px]">
                 {allowedBasic.map(col => (
-                  <label key={col.key} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                    <Checkbox checked={selectedBasic.includes(col.key)} onCheckedChange={() => toggle(selectedBasic, setSelectedBasic, col.key)} />
-                    {col.label}
-                  </label>
+                  <CheckboxRow
+                    key={col.key}
+                    checked={selectedBasic.includes(col.key)}
+                    onToggle={() => toggle(selectedBasic, setSelectedBasic, col.key)}
+                    label={col.label}
+                  />
                 ))}
                 {allowedMetadata.map(col => (
-                  <label key={`meta-${col}`} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                    <Checkbox checked={selectedMetadata.includes(col)} onCheckedChange={() => toggle(selectedMetadata, setSelectedMetadata, col)} />
-                    metadata_{col}
-                  </label>
+                  <CheckboxRow
+                    key={`meta-${col}`}
+                    checked={selectedMetadata.includes(col)}
+                    onToggle={() => toggle(selectedMetadata, setSelectedMetadata, col)}
+                    label={`metadata_${col}`}
+                  />
                 ))}
                 {allowedTranscription.map(col => (
-                  <label key={`trans-${col}`} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                    <Checkbox checked={selectedTranscription.includes(col)} onCheckedChange={() => toggle(selectedTranscription, setSelectedTranscription, col)} />
-                    transcription_{col}
-                  </label>
+                  <CheckboxRow
+                    key={`trans-${col}`}
+                    checked={selectedTranscription.includes(col)}
+                    onToggle={() => toggle(selectedTranscription, setSelectedTranscription, col)}
+                    label={`transcription_${col}`}
+                  />
                 ))}
                 {transcriptAllowed && (
-                  <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                    <Checkbox checked={includeTranscript} onCheckedChange={() => setIncludeTranscript(v => !v)} />
-                    Transcript
-                  </label>
+                  <CheckboxRow
+                    checked={includeTranscript}
+                    onToggle={() => setIncludeTranscript(v => !v)}
+                    label="Transcript"
+                  />
                 )}
               </div>
             </CollapsibleContent>

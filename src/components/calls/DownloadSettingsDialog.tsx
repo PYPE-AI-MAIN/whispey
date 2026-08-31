@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react'
 import { Save, ShieldAlert } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
+import CheckboxRow from '@/components/calls/CheckboxRow'
 import { BASIC_COLUMNS, EXTRA_RESTRICTABLE_COLUMNS } from '@/hooks/useCallLogsColumns'
 
 interface DownloadSettingsDialogProps {
@@ -103,10 +103,7 @@ export default function DownloadSettingsDialog({
                 <div className="space-y-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">Basic columns</p>
                   {basicCols.map(col => (
-                    <label key={col.key} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                      <Checkbox checked={restricted.has(col.key)} onCheckedChange={() => toggle(col.key)} />
-                      {col.label}
-                    </label>
+                    <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}
                 </div>
               )}
@@ -116,19 +113,13 @@ export default function DownloadSettingsDialog({
                   {basicCols.length > 0 && <div className="border-t border-gray-100 dark:border-gray-800 pt-1.5" />}
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 px-1">Sensitive columns</p>
                   {extraCols.map(col => (
-                    <label key={col.key} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                      <Checkbox checked={restricted.has(col.key)} onCheckedChange={() => toggle(col.key)} />
-                      {col.label}
-                    </label>
+                    <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}
                 </div>
               )}
 
               {otherCols.map(col => (
-                <label key={col.key} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                  <Checkbox checked={restricted.has(col.key)} onCheckedChange={() => toggle(col.key)} />
-                  {col.label}
-                </label>
+                <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
               ))}
             </div>
           </div>

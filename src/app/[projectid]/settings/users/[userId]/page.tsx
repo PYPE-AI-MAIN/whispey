@@ -160,6 +160,41 @@ function ColumnAccessRow({
   )
 }
 
+// Renders one titled group of ColumnAccessRow entries (basic or sensitive
+// columns) — extracted so the two call sites in AgentColumnChecklist don't
+// repeat the same wrapper/label/map structure with only the title, color
+// class, and column list differing.
+function ColumnAccessGroup({
+  title, titleClassName, columns, hiddenView, hiddenDownload, downloadsDisabledForAgent, onToggleView, onToggleDownload,
+}: Readonly<{
+  title: string
+  titleClassName: string
+  columns: string[]
+  hiddenView: Set<string>
+  hiddenDownload: Set<string>
+  downloadsDisabledForAgent: boolean
+  onToggleView: (col: string) => void
+  onToggleDownload: (col: string) => void
+}>) {
+  if (columns.length === 0) return null
+  return (
+    <div className="space-y-0.5">
+      <p className={`text-[10px] font-semibold uppercase tracking-wider px-2 ${titleClassName}`}>{title}</p>
+      {columns.map(col => (
+        <ColumnAccessRow
+          key={col}
+          column={col}
+          viewable={!hiddenView.has(col)}
+          downloadable={!hiddenView.has(col) && !hiddenDownload.has(col)}
+          downloadsDisabledForAgent={downloadsDisabledForAgent}
+          onToggleView={() => onToggleView(col)}
+          onToggleDownload={() => onToggleDownload(col)}
+        />
+      ))}
+    </div>
+  )
+}
+
 function AgentColumnChecklist({
   agent, userEmail, otherAgentIds, downloadDisabled, onDownloadDisabledChange, onSaved, projectId,
 }: Readonly<{
@@ -318,38 +353,26 @@ function AgentColumnChecklist({
       {editingColumns ? (
         <>
           <div className="space-y-2.5">
-            {basicToggleable.length > 0 && (
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2">Basic columns</p>
-                {basicToggleable.map(col => (
-                  <ColumnAccessRow
-                    key={col}
-                    column={col}
-                    viewable={!hiddenView.has(col)}
-                    downloadable={!hiddenView.has(col) && !hiddenDownload.has(col)}
-                    downloadsDisabledForAgent={downloadDisabled}
-                    onToggleView={() => toggleView(col)}
-                    onToggleDownload={() => toggleDownload(col)}
-                  />
-                ))}
-              </div>
-            )}
-            {sensitiveToggleable.length > 0 && (
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 px-2">Sensitive columns</p>
-                {sensitiveToggleable.map(col => (
-                  <ColumnAccessRow
-                    key={col}
-                    column={col}
-                    viewable={!hiddenView.has(col)}
-                    downloadable={!hiddenView.has(col) && !hiddenDownload.has(col)}
-                    downloadsDisabledForAgent={downloadDisabled}
-                    onToggleView={() => toggleView(col)}
-                    onToggleDownload={() => toggleDownload(col)}
-                  />
-                ))}
-              </div>
-            )}
+            <ColumnAccessGroup
+              title="Basic columns"
+              titleClassName="text-gray-400 dark:text-gray-500"
+              columns={basicToggleable}
+              hiddenView={hiddenView}
+              hiddenDownload={hiddenDownload}
+              downloadsDisabledForAgent={downloadDisabled}
+              onToggleView={toggleView}
+              onToggleDownload={toggleDownload}
+            />
+            <ColumnAccessGroup
+              title="Sensitive columns"
+              titleClassName="text-amber-600 dark:text-amber-400"
+              columns={sensitiveToggleable}
+              hiddenView={hiddenView}
+              hiddenDownload={hiddenDownload}
+              downloadsDisabledForAgent={downloadDisabled}
+              onToggleView={toggleView}
+              onToggleDownload={toggleDownload}
+            />
             {alwaysHiddenSection}
           </div>
 
