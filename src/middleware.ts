@@ -13,7 +13,10 @@ async function fetchApprovalStatus(clerkId: string): Promise<{ email: string | n
   try {
     const res = await fetch(
       `${url}/rest/v1/pype_voice_users?clerk_id=eq.${encodeURIComponent(clerkId)}&select=email,approval_status`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+      // Next.js caches server-side fetch() by default — approval_status
+      // changes on every admin decision, so a cached response here would
+      // keep gating (or admitting) someone based on stale data indefinitely.
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store' }
     )
     if (!res.ok) return null
     const rows = await res.json()
