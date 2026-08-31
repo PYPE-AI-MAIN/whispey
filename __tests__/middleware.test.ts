@@ -28,7 +28,10 @@ describe('middleware', () => {
 
   it('calls auth.protect when no valid service token on a protected route', async () => {
     mockHasValidServiceToken.mockResolvedValue(false)
-    const auth = { protect: vi.fn() }
+    // Real Clerk's auth.protect() always resolves to a valid auth object (or
+    // throws/redirects) — never undefined — matching that here since
+    // middleware destructures userId off the result.
+    const auth = { protect: vi.fn().mockResolvedValue({ userId: 'test-user-id' }) }
     await (middleware as any)(auth, makeReq('/dashboard/private'))
     expect(auth.protect).toHaveBeenCalled()
   })
