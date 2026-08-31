@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 
 /**
  * Fetches agent by ID from our API. The API returns role-based data:
- * - Viewer: agent without field_extractor, field_extractor_prompt, field_extractor_variables, metrics
+ * - Viewer: agent without field_extractor, field_extractor_prompt, field_extractor_variables, flag_rules, metrics
  * - Admin/Owner: full agent
  * Use this in Dashboard so viewers never receive Field Extractor / Metrics data.
  */
