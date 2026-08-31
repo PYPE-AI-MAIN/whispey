@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getCallerGlobalRole } from '@/lib/prod-auth'
-import { createServiceRoleClient } from '@/lib/supabase-server'
-import { normalizeDownloadSettings, type CallLogSettings } from '@/lib/callLogSettings'
-
-const supabase = createServiceRoleClient()
+import { requireSuperAdminOrForbidden, fetchAgentCallLogSettings, updateAgentCallLogSettings } from '@/lib/agentCallLogSettingsStore'
 
 /**
  * PATCH /api/agents/[id]/download-settings/user-overrides
@@ -26,10 +22,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const globalRole = await getCallerGlobalRole(userId)
-  if (globalRole !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const forbidden = await requireSuperAdminOrForbidden(userId)
+  if (forbidden) return forbidden
 
   let body: { email?: string; hidden_view_columns?: string[]; hidden_download_columns?: string[]; download_disabled?: boolean }
   try {
@@ -46,18 +40,9 @@ export async function PATCH(
     return NextResponse.json({ error: 'email, hidden_view_columns and hidden_download_columns are required' }, { status: 400 })
   }
 
-  const { data: agentRow, error: agentErr } = await supabase
-    .from('pype_voice_agents')
-    .select('call_log_settings')
-    .eq('id', agentId)
-    .maybeSingle()
-
-  if (agentErr || !agentRow) {
-    return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
-  }
-
-  const current = (agentRow.call_log_settings as CallLogSettings | null) ?? {}
-  const currentDownload = normalizeDownloadSettings(current.download_settings)
+  const fetched = await fetchAgentCallLogSettings(agentId)
+  if ('errorResponse' in fetched) return fetched.errorResponse
+  const { current, currentDownload } = fetched
 
   const nextUserOverrides = { ...currentDownload.user_overrides }
   if (hiddenViewColumns.length === 0 && hiddenDownloadColumns.length === 0 && !downloadDisabled) {
@@ -71,16 +56,9 @@ export async function PATCH(
   }
 
   const nextDownload = { ...currentDownload, user_overrides: nextUserOverrides }
-  const nextSettings: CallLogSettings = { ...current, download_settings: nextDownload }
 
-  const { error } = await supabase
-    .from('pype_voice_agents')
-    .update({ call_log_settings: nextSettings })
-    .eq('id', agentId)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  const updateError = await updateAgentCallLogSettings(agentId, current, nextDownload)
+  if (updateError) return updateError
 
   return NextResponse.json({ download_settings: nextDownload })
 }

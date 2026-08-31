@@ -4,8 +4,8 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { redactTagsFromCallLogsForViewer } from '@/lib/redactCallLogsTagsForViewer'
 import type { CallLog } from '@/types/logs'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { getCallerGlobalRole } from '@/lib/prod-auth'
-import { getDisallowedColumns, filterSelectColumns, stripDisallowedColumns, isAgentDownloadDisabledForUser } from '@/lib/callLogSettings'
+import { filterSelectColumns, stripDisallowedColumns, isAgentDownloadDisabledForUser } from '@/lib/callLogSettings'
+import { resolveColumnAccessForRequest } from '@/lib/agentCallLogSettingsStore'
 
 const supabase = createServiceRoleClient()
 
@@ -53,14 +53,17 @@ export async function POST(
   }
 
   const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
-  const globalRole = await getCallerGlobalRole(userId)
-  const isSuperAdmin = globalRole === 'superadmin'
+  const { isSuperAdmin, disallowedColumns } = await resolveColumnAccessForRequest({
+    userId,
+    userEmail,
+    callLogSettings: agentRow.call_log_settings,
+    isDownload,
+  })
 
   if (isDownload && isAgentDownloadDisabledForUser(agentRow.call_log_settings, isSuperAdmin, userEmail)) {
     return NextResponse.json({ error: 'Downloads are disabled for this user on this agent' }, { status: 403 })
   }
 
-  const disallowedColumns = getDisallowedColumns(agentRow.call_log_settings, isSuperAdmin, userEmail, isDownload)
   const p_select = filterSelectColumns(body.p_select ?? '*', disallowedColumns)
 
   const rpcParamsWithUser = {

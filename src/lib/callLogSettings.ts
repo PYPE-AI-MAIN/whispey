@@ -1,6 +1,11 @@
 // Server-side helpers for `pype_voice_agents.call_log_settings` — the per-agent
 // download/column-visibility policy enforced in the call-logs query/count routes
 // and read/written by the download-settings admin APIs.
+//
+// This file is intentionally pure/I/O-free (no Supabase, no 'server-only' import)
+// so it can be unit tested directly. Helpers that need to hit the DB or look up
+// the caller's global role (e.g. resolveColumnAccessForRequest) live in
+// agentCallLogSettingsStore.ts instead.
 
 export interface UserColumnOverride {
   hidden_view_columns: string[]

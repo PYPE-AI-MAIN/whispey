@@ -4,6 +4,7 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { getCallerGlobalRole } from '@/lib/prod-auth'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { normalizeDownloadSettings, isAgentDownloadDisabledForUser, type CallLogSettings } from '@/lib/callLogSettings'
+import { requireSuperAdminOrForbidden, fetchAgentCallLogSettings, updateAgentCallLogSettings } from '@/lib/agentCallLogSettingsStore'
 
 const supabase = createServiceRoleClient()
 
@@ -89,10 +90,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const globalRole = await getCallerGlobalRole(userId)
-  if (globalRole !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const forbidden = await requireSuperAdminOrForbidden(userId)
+  if (forbidden) return forbidden
 
   let body: { enabled?: boolean; superadmin_only_columns?: string[] }
   try {
@@ -101,18 +100,9 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { data: agentRow, error: agentErr } = await supabase
-    .from('pype_voice_agents')
-    .select('call_log_settings')
-    .eq('id', agentId)
-    .maybeSingle()
-
-  if (agentErr || !agentRow) {
-    return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
-  }
-
-  const current = (agentRow.call_log_settings as CallLogSettings | null) ?? {}
-  const currentDownload = normalizeDownloadSettings(current.download_settings)
+  const fetched = await fetchAgentCallLogSettings(agentId)
+  if ('errorResponse' in fetched) return fetched.errorResponse
+  const { current, currentDownload } = fetched
 
   const nextDownload = {
     ...currentDownload,
@@ -122,16 +112,8 @@ export async function PATCH(
       : { superadmin_only_columns: body.superadmin_only_columns }),
   }
 
-  const nextSettings: CallLogSettings = { ...current, download_settings: nextDownload }
-
-  const { error } = await supabase
-    .from('pype_voice_agents')
-    .update({ call_log_settings: nextSettings })
-    .eq('id', agentId)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  const updateError = await updateAgentCallLogSettings(agentId, current, nextDownload)
+  if (updateError) return updateError
 
   return NextResponse.json({ download_settings: nextDownload })
 }
