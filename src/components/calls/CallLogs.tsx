@@ -39,6 +39,7 @@ interface CallLogsProps {
   onBack: () => void
   isLoading?: boolean
   dateRange?: { from: string; to: string }
+  openDownloadSettings?: boolean
 }
 
 // ── Smart pagination range ─────────────────────────────────────────────────
@@ -96,7 +97,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
   agent,
   onBack,
   isLoading: parentLoading,
-  dateRange
+  dateRange,
+  openDownloadSettings
 }) => {
   const router = useRouter()
   const { user } = useUser()
@@ -192,7 +194,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   const [campaignDownloadOpen, setCampaignDownloadOpen] = useState(false)
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
-  const [downloadSettingsOpen, setDownloadSettingsOpen] = useState(false)
+  const [downloadSettingsOpen, setDownloadSettingsOpen] = useState(!!openDownloadSettings)
+
+  // Auto-open the download settings dialog when navigated here with the
+  // ?openDownloadSettings=1 query param (e.g. from the per-user column access
+  // page's "manage this in the agent's Download Settings" link).
+  React.useEffect(() => {
+    if (openDownloadSettings) setDownloadSettingsOpen(true)
+  }, [openDownloadSettings])
 
   const { isSuperAdmin } = useGlobalRole()
 
@@ -204,6 +213,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
       return res.json() as Promise<{
         enabled: boolean
         isSuperAdmin: boolean
+        canDownload: boolean
         hiddenColumns: string[]
         hiddenDownloadColumns: string[]
         settings?: { enabled: boolean; superadmin_only_columns: string[] }
@@ -424,7 +434,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
               projectId={project?.id} agentId={agent?.id}
               agentName={agentDisplayName(agent)} projectName={project?.name}
             />
-            {(downloadSettingsData?.enabled || isSuperAdmin) && (
+            {(downloadSettingsData?.canDownload || isSuperAdmin) && (
               <div className="relative flex items-center gap-1">
                 <Button
                   variant="outline" size="sm"

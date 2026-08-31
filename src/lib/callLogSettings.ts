@@ -5,6 +5,7 @@
 export interface UserColumnOverride {
   hidden_view_columns: string[]
   hidden_download_columns: string[]
+  download_disabled: boolean
 }
 
 export interface DownloadSettings {
@@ -33,6 +34,7 @@ const normalizeUserOverride = (raw: unknown): UserColumnOverride => {
   return {
     hidden_view_columns: Array.isArray(override.hidden_view_columns) ? override.hidden_view_columns : [],
     hidden_download_columns: Array.isArray(override.hidden_download_columns) ? override.hidden_download_columns : [],
+    download_disabled: override.download_disabled === true,
   }
 }
 
@@ -42,13 +44,31 @@ export const normalizeDownloadSettings = (
   const rawOverrides = raw?.user_overrides && typeof raw.user_overrides === 'object' ? raw.user_overrides : {}
   const user_overrides: Record<string, UserColumnOverride> = {}
   for (const email of Object.keys(rawOverrides)) {
-    user_overrides[email] = normalizeUserOverride((rawOverrides as Record<string, unknown>)[email])
+    // Keys are always normalized to lowercase/trimmed so lookups by Clerk's
+    // (possibly differently-cased) email always resolve correctly.
+    const normalizedEmail = email.trim().toLowerCase()
+    user_overrides[normalizedEmail] = normalizeUserOverride((rawOverrides as Record<string, unknown>)[email])
   }
   return {
     enabled: raw?.enabled ?? DEFAULT_DOWNLOAD_SETTINGS.enabled,
     superadmin_only_columns: Array.isArray(raw?.superadmin_only_columns) ? raw!.superadmin_only_columns : [],
     user_overrides,
   }
+}
+
+/**
+ * Whether this specific user has been blocked from downloading on this
+ * specific agent, independent of the project-wide download switch.
+ * Superadmins are never blocked by this per-agent flag.
+ */
+export const isAgentDownloadDisabledForUser = (
+  settings: CallLogSettings | null | undefined,
+  isSuperAdmin: boolean,
+  userEmail: string | null
+): boolean => {
+  if (isSuperAdmin || !userEmail) return false
+  const download = normalizeDownloadSettings(settings?.download_settings)
+  return download.user_overrides[userEmail.trim().toLowerCase()]?.download_disabled === true
 }
 
 /**
@@ -67,7 +87,7 @@ export const getDisallowedColumns = (
   if (isSuperAdmin) return new Set()
   const download = normalizeDownloadSettings(settings?.download_settings)
   const disallowed = new Set(download.superadmin_only_columns)
-  const override = userEmail ? download.user_overrides[userEmail] : undefined
+  const override = userEmail ? download.user_overrides[userEmail.trim().toLowerCase()] : undefined
   override?.hidden_view_columns.forEach(col => disallowed.add(col))
   if (forDownload) {
     override?.hidden_download_columns.forEach(col => disallowed.add(col))

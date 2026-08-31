@@ -85,16 +85,20 @@ export default function DownloadSettingsDialog({
             <Switch checked={enabled} onCheckedChange={setEnabled} className="flex-shrink-0 mt-0.5" />
           </div>
 
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
+          <div className={`rounded-lg border border-gray-200 dark:border-gray-800 p-3 transition-opacity ${!enabled ? 'opacity-50' : ''}`}>
             <div className="flex items-start gap-2 mb-2">
               <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-[11px] text-gray-600 dark:text-gray-400">
-                These columns are hidden from anyone who isn&apos;t a superadmin, both on-screen and in downloads.
-                This is an access-control decision, not a display preference.
+                {enabled
+                  ? <>These columns are hidden from anyone who isn&apos;t a superadmin, both on-screen and in downloads. This is an access-control decision, not a display preference.</>
+                  : <>Downloads are off for non-superadmins, so column restrictions don&apos;t apply right now. Turn on the switch above to configure them.</>}
               </p>
             </div>
 
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 max-h-56 overflow-y-auto p-2 space-y-2">
+            <div
+              aria-disabled={!enabled}
+              className={`rounded-lg border border-gray-200 dark:border-gray-800 max-h-56 overflow-y-auto p-2 space-y-2 ${!enabled ? 'pointer-events-none' : ''}`}
+            >
               {basicCols.length > 0 && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">Basic columns</p>

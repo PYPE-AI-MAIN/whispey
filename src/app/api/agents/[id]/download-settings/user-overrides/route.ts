@@ -8,11 +8,13 @@ const supabase = createServiceRoleClient()
 
 /**
  * PATCH /api/agents/[id]/download-settings/user-overrides
- * Body: { email: string, hidden_view_columns: string[], hidden_download_columns: string[] }
+ * Body: { email: string, hidden_view_columns: string[], hidden_download_columns: string[], download_disabled?: boolean }
  * Global-superadmin only — sets the extra columns hidden for one specific
  * user on top of the agent's superadmin_only_columns baseline. hidden_view_columns
  * hides a column everywhere (table + downloads); hidden_download_columns leaves it
- * visible on-screen but strips it from CSV exports.
+ * visible on-screen but strips it from CSV exports. download_disabled blocks this
+ * user from downloading call logs on this specific agent entirely, independent of
+ * the project-wide download switch.
  */
 export async function PATCH(
   request: NextRequest,
@@ -29,7 +31,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  let body: { email?: string; hidden_view_columns?: string[]; hidden_download_columns?: string[] }
+  let body: { email?: string; hidden_view_columns?: string[]; hidden_download_columns?: string[]; download_disabled?: boolean }
   try {
     body = await request.json()
   } catch {
@@ -39,6 +41,7 @@ export async function PATCH(
   const email = body.email?.trim().toLowerCase()
   const hiddenViewColumns = body.hidden_view_columns
   const hiddenDownloadColumns = body.hidden_download_columns
+  const downloadDisabled = body.download_disabled === true
   if (!email || !Array.isArray(hiddenViewColumns) || !Array.isArray(hiddenDownloadColumns)) {
     return NextResponse.json({ error: 'email, hidden_view_columns and hidden_download_columns are required' }, { status: 400 })
   }
@@ -57,10 +60,14 @@ export async function PATCH(
   const currentDownload = normalizeDownloadSettings(current.download_settings)
 
   const nextUserOverrides = { ...currentDownload.user_overrides }
-  if (hiddenViewColumns.length === 0 && hiddenDownloadColumns.length === 0) {
+  if (hiddenViewColumns.length === 0 && hiddenDownloadColumns.length === 0 && !downloadDisabled) {
     delete nextUserOverrides[email]
   } else {
-    nextUserOverrides[email] = { hidden_view_columns: hiddenViewColumns, hidden_download_columns: hiddenDownloadColumns }
+    nextUserOverrides[email] = {
+      hidden_view_columns: hiddenViewColumns,
+      hidden_download_columns: hiddenDownloadColumns,
+      download_disabled: downloadDisabled,
+    }
   }
 
   const nextDownload = { ...currentDownload, user_overrides: nextUserOverrides }

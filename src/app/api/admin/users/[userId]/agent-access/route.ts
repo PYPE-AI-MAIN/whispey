@@ -86,6 +86,7 @@ export async function GET(
           superadminOnlyColumns: download.superadmin_only_columns,
           hiddenViewColumnsForUser: override?.hidden_view_columns ?? [],
           hiddenDownloadColumnsForUser: override?.hidden_download_columns ?? [],
+          downloadDisabledForUser: override?.download_disabled ?? false,
         }
       })
     return {

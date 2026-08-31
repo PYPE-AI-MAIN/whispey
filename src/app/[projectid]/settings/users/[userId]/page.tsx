@@ -1,13 +1,15 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Crown, FlaskConical, User, ChevronDown, Save, Search, Copy } from 'lucide-react'
+import { ArrowLeft, Crown, FlaskConical, User, ChevronDown, Save, Search, Copy, Eye, EyeOff, Download, DownloadCloud, ShieldOff, Lock, PencilLine } from 'lucide-react'
 import { useGlobalRole } from '@/hooks/useGlobalRole'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { BASIC_COLUMNS, EXTRA_RESTRICTABLE_COLUMNS } from '@/hooks/useCallLogsColumns'
 
 type GlobalRole = 'superadmin' | 'prompter' | 'user'
 
@@ -17,6 +19,7 @@ interface AgentAccess {
   superadminOnlyColumns: string[]
   hiddenViewColumnsForUser: string[]
   hiddenDownloadColumnsForUser: string[]
+  downloadDisabledForUser: boolean
 }
 
 interface ProjectAccess {
@@ -65,7 +68,13 @@ function avatarColor(str: string) {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
 }
 
-async function patchAgentOverride(agentId: string, userEmail: string, hiddenView: Set<string>, hiddenDownload: Set<string>) {
+async function patchAgentOverride(
+  agentId: string,
+  userEmail: string,
+  hiddenView: Set<string>,
+  hiddenDownload: Set<string>,
+  downloadDisabled: boolean
+) {
   return fetch(`/api/agents/${agentId}/download-settings/user-overrides`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -73,27 +82,113 @@ async function patchAgentOverride(agentId: string, userEmail: string, hiddenView
       email: userEmail,
       hidden_view_columns: Array.from(hiddenView),
       hidden_download_columns: Array.from(hiddenDownload),
+      download_disabled: downloadDisabled,
     }),
   })
 }
 
+// Human-readable labels for column keys, reusing the same catalog as the
+// superadmin download-settings dialog so both surfaces agree on naming.
+const COLUMN_LABELS: Record<string, string> = Object.fromEntries(
+  [...BASIC_COLUMNS, ...EXTRA_RESTRICTABLE_COLUMNS].map(c => [c.key, c.label])
+)
+const BASIC_COLUMN_KEY_SET = new Set<string>(BASIC_COLUMNS.map(c => c.key))
+
+function ColumnAccessRow({
+  column, viewable, downloadable, downloadsDisabledForAgent, onToggleView, onToggleDownload,
+}: {
+  column: string
+  viewable: boolean
+  downloadable: boolean
+  downloadsDisabledForAgent: boolean
+  onToggleView: () => void
+  onToggleDownload: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs text-gray-700 dark:text-gray-300 px-2 py-1.5 rounded-md hover:bg-gray-100/60 dark:hover:bg-gray-800/40">
+      <span className="truncate">{COLUMN_LABELS[column] ?? column}</span>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <Button
+          type="button"
+          size="sm"
+          variant={viewable ? 'default' : 'outline'}
+          onClick={onToggleView}
+          title={viewable ? 'Viewable — click to hide' : 'Hidden — click to allow viewing'}
+          className={
+            viewable
+              ? 'h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+              : 'h-6 px-2 text-[10px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
+          }
+        >
+          {viewable ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+          View
+        </Button>
+        <div className="flex flex-col items-start">
+          <Button
+            type="button"
+            size="sm"
+            variant={downloadable ? 'default' : 'outline'}
+            disabled={!viewable || downloadsDisabledForAgent}
+            onClick={onToggleDownload}
+            title={
+              downloadsDisabledForAgent
+                ? 'Downloads are off for this agent'
+                : !viewable
+                  ? 'Allow viewing first'
+                  : downloadable ? 'Downloadable — click to block' : 'Blocked — click to allow downloading'
+            }
+            className={
+              downloadable
+                ? 'h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+                : 'h-6 px-2 text-[10px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
+            }
+          >
+            {downloadable ? <DownloadCloud className="h-3 w-3" /> : <Download className="h-3 w-3" />}
+            Download
+          </Button>
+          {!viewable && (
+            <span className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5 leading-none">
+              Download follows View
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AgentColumnChecklist({
-  agent, userEmail, otherAgentIds, onSaved,
+  agent, userEmail, otherAgentIds, downloadDisabled, onDownloadDisabledChange, onSaved, projectId,
 }: {
   agent: AgentAccess
   userEmail: string
   otherAgentIds: string[]
+  downloadDisabled: boolean
+  onDownloadDisabledChange: (next: boolean) => void
   onSaved: () => void
+  projectId: string
 }) {
   const [hiddenView, setHiddenView] = useState<Set<string>>(new Set(agent.hiddenViewColumnsForUser))
   const [hiddenDownload, setHiddenDownload] = useState<Set<string>>(new Set(agent.hiddenDownloadColumnsForUser))
+  const [savingDownloadToggle, setSavingDownloadToggle] = useState(false)
   const [saving, setSaving] = useState(false)
   const [applyingAll, setApplyingAll] = useState(false)
   const [dirty, setDirty] = useState(false)
 
-  // Columns this admin page can even toggle: only the ones the agent has
-  // marked superadmin-only — anything else is already visible to everyone.
-  const toggleableColumns = agent.superadminOnlyColumns
+  // Columns this admin page can toggle per-user: everything EXCEPT the ones
+  // already unconditionally blocked agent-wide (superadmin_only_columns) —
+  // those are shown separately below as a locked, non-interactive list,
+  // since a per-user override can never re-open them (see getDisallowedColumns
+  // in src/lib/callLogSettings.ts: superadmin_only_columns always wins).
+  const superadminOnlySet = new Set(agent.superadminOnlyColumns)
+  const allRestrictableColumns = [...BASIC_COLUMNS, ...EXTRA_RESTRICTABLE_COLUMNS].map(c => c.key)
+  const toggleableColumns = allRestrictableColumns.filter(c => !superadminOnlySet.has(c))
+  const basicToggleable = toggleableColumns.filter(c => BASIC_COLUMN_KEY_SET.has(c))
+  const sensitiveToggleable = toggleableColumns.filter(c => !BASIC_COLUMN_KEY_SET.has(c))
+  const alwaysHiddenColumns = agent.superadminOnlyColumns
+
+  const hasRestrictions = hiddenView.size > 0 || hiddenDownload.size > 0
+  const [editingColumns, setEditingColumns] = useState(hasRestrictions)
 
   const toggleView = (col: string) => {
     setHiddenView(prev => {
@@ -118,7 +213,7 @@ function AgentColumnChecklist({
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await patchAgentOverride(agent.id, userEmail, hiddenView, hiddenDownload)
+      const res = await patchAgentOverride(agent.id, userEmail, hiddenView, hiddenDownload, downloadDisabled)
       if (res.ok) {
         setDirty(false)
         onSaved()
@@ -131,67 +226,230 @@ function AgentColumnChecklist({
   const handleApplyToAll = async () => {
     setApplyingAll(true)
     try {
-      await Promise.all(otherAgentIds.map(id => patchAgentOverride(id, userEmail, hiddenView, hiddenDownload)))
+      await Promise.all(otherAgentIds.map(id => patchAgentOverride(id, userEmail, hiddenView, hiddenDownload, downloadDisabled)))
       onSaved()
     } finally {
       setApplyingAll(false)
     }
   }
 
+  const handleToggleAgentDownload = async (allowDownload: boolean) => {
+    const previous = downloadDisabled
+    const next = !allowDownload
+    setSavingDownloadToggle(true)
+    onDownloadDisabledChange(next)
+    try {
+      const res = await patchAgentOverride(agent.id, userEmail, hiddenView, hiddenDownload, next)
+      if (res.ok) {
+        onSaved()
+      } else {
+        onDownloadDisabledChange(previous)
+      }
+    } catch {
+      onDownloadDisabledChange(previous)
+    } finally {
+      setSavingDownloadToggle(false)
+    }
+  }
+
+  const downloadToggle = (
+    <label className="flex items-center justify-between gap-2 text-xs text-gray-700 dark:text-gray-300 px-1 pb-2 mb-1 border-b border-gray-200 dark:border-gray-800">
+      <span className="flex items-center gap-1.5">
+        {downloadDisabled ? <ShieldOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> : <Download className="h-3.5 w-3.5 text-gray-400" />}
+        Allow this user to download from this agent
+      </span>
+      <Switch
+        checked={!downloadDisabled}
+        disabled={savingDownloadToggle}
+        onCheckedChange={(checked) => handleToggleAgentDownload(checked)}
+      />
+    </label>
+  )
+
+  const alwaysHiddenSection = alwaysHiddenColumns.length > 0 && (
+    <div className="space-y-0.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2 flex items-center gap-1">
+        <Lock className="h-2.5 w-2.5" />
+        Always hidden for all non-superadmins (agent-wide setting)
+      </p>
+      {alwaysHiddenColumns.map(col => (
+        <div key={col} className="flex items-center justify-between gap-2 text-xs text-gray-400 dark:text-gray-500 px-2 py-1.5">
+          <span className="truncate">{COLUMN_LABELS[col] ?? col}</span>
+          <span className="flex items-center gap-1 text-[10px] flex-shrink-0">
+            <Lock className="h-3 w-3" />
+            Locked
+          </span>
+        </div>
+      ))}
+      <p className="text-[10px] text-gray-400 dark:text-gray-500 px-2 pt-0.5">
+        Always hidden for all non-superadmins — manage this in{' '}
+        <Link
+          href={`/${projectId}/agents/${agent.id}?tab=logs&openDownloadSettings=1`}
+          className="underline text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+        >
+          {agent.name}&apos;s Download Settings
+        </Link>
+        {' '}&rarr;
+      </p>
+    </div>
+  )
+
   if (toggleableColumns.length === 0) {
     return (
-      <p className="text-[11px] text-gray-500 dark:text-gray-400 px-4 py-3">
-        This agent has no superadmin-only columns configured, so there is nothing to restrict for this user.
-      </p>
+      <div className="px-4 py-3 space-y-1 bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800">
+        {downloadToggle}
+        {alwaysHiddenSection}
+        {alwaysHiddenColumns.length === 0 && (
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 px-1">
+            This agent has no restrictable columns configured.
+          </p>
+        )}
+      </div>
     )
   }
 
   return (
     <div className="px-4 py-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">
-        <span>Column</span>
-        <div className="flex gap-6"><span className="w-16">Viewable</span><span className="w-16">Downloadable</span></div>
-      </div>
-      <div className="space-y-1">
-        {toggleableColumns.map(col => (
-          <div key={col} className="flex items-center justify-between gap-2 text-xs text-gray-700 dark:text-gray-300 px-1 py-0.5">
-            <span className="truncate">{col}</span>
-            <div className="flex gap-6 flex-shrink-0">
-              <label className="flex items-center gap-1.5 cursor-pointer w-16">
-                <Checkbox
-                  checked={!hiddenView.has(col)}
-                  onCheckedChange={() => toggleView(col)}
-                />
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer w-16">
-                <Checkbox
-                  checked={!hiddenView.has(col) && !hiddenDownload.has(col)}
-                  disabled={hiddenView.has(col)}
-                  onCheckedChange={() => toggleDownload(col)}
-                />
-              </label>
+      {downloadToggle}
+
+      {!editingColumns ? (
+        <div className="flex items-center justify-between gap-2 px-1 py-1">
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+            No column restrictions — user has full access to this agent&apos;s columns.
+          </p>
+          <Button size="sm" variant="outline" onClick={() => setEditingColumns(true)} className="h-6 text-[10px] gap-1 flex-shrink-0">
+            <PencilLine className="h-3 w-3" />
+            Restrict columns
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2.5">
+            {basicToggleable.length > 0 && (
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2">Basic columns</p>
+                {basicToggleable.map(col => (
+                  <ColumnAccessRow
+                    key={col}
+                    column={col}
+                    viewable={!hiddenView.has(col)}
+                    downloadable={!hiddenView.has(col) && !hiddenDownload.has(col)}
+                    downloadsDisabledForAgent={downloadDisabled}
+                    onToggleView={() => toggleView(col)}
+                    onToggleDownload={() => toggleDownload(col)}
+                  />
+                ))}
+              </div>
+            )}
+            {sensitiveToggleable.length > 0 && (
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 px-2">Sensitive columns</p>
+                {sensitiveToggleable.map(col => (
+                  <ColumnAccessRow
+                    key={col}
+                    column={col}
+                    viewable={!hiddenView.has(col)}
+                    downloadable={!hiddenView.has(col) && !hiddenDownload.has(col)}
+                    downloadsDisabledForAgent={downloadDisabled}
+                    onToggleView={() => toggleView(col)}
+                    onToggleDownload={() => toggleDownload(col)}
+                  />
+                ))}
+              </div>
+            )}
+            {alwaysHiddenSection}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="flex items-start gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 min-w-0">
+              {otherAgentIds.length > 0 && (
+                <>
+                  <Copy className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span className="truncate">
+                    Reuse this exact setup on every other agent in the project.
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              {otherAgentIds.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleApplyToAll}
+                  disabled={applyingAll || saving || dirty}
+                  title={dirty ? 'Save this agent’s settings first' : undefined}
+                  className="h-7 text-xs gap-1.5"
+                >
+                  <Copy className="h-3 w-3" />
+                  {applyingAll ? 'Copying…' : 'Copy to all agents'}
+                </Button>
+              )}
+              <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-7 text-xs gap-1.5">
+                <Save className="h-3 w-3" />
+                {saving ? 'Saving…' : 'Save'}
+              </Button>
             </div>
           </div>
-        ))}
-      </div>
-      <div className="flex justify-end gap-2">
-        {otherAgentIds.length > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleApplyToAll}
-            disabled={applyingAll || saving}
-            className="h-7 text-xs gap-1.5"
-          >
-            <Copy className="h-3 w-3" />
-            {applyingAll ? 'Applying…' : 'Apply to all agents in project'}
-          </Button>
-        )}
-        <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-7 text-xs gap-1.5">
-          <Save className="h-3 w-3" />
-          {saving ? 'Saving…' : 'Save'}
-        </Button>
-      </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function AgentRow({
+  agent, isExpanded, onToggleExpand, userEmail, otherAgentIds, onSaved, projectId,
+}: {
+  agent: AgentAccess
+  isExpanded: boolean
+  onToggleExpand: () => void
+  userEmail: string
+  otherAgentIds: string[]
+  onSaved: () => void
+  projectId: string
+}) {
+  // Lifted out of AgentColumnChecklist so the "Downloads disabled" pill in the
+  // header stays accurate even while the row is collapsed / the child unmounted.
+  const [downloadDisabled, setDownloadDisabled] = useState(agent.downloadDisabledForUser)
+  useEffect(() => setDownloadDisabled(agent.downloadDisabledForUser), [agent.downloadDisabledForUser])
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{agent.name}</span>
+          {downloadDisabled && (
+            <Badge className="text-[10px] px-1.5 py-0 gap-1 bg-red-100 text-red-700 border-red-300 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20 flex-shrink-0">
+              <ShieldOff className="h-2.5 w-2.5" />
+              Downloads disabled
+            </Badge>
+          )}
+        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {agent.superadminOnlyColumns.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700 flex items-center gap-1">
+              <Lock className="h-2.5 w-2.5" />
+              {agent.superadminOnlyColumns.length} restricted column{agent.superadminOnlyColumns.length === 1 ? '' : 's'}
+            </span>
+          )}
+          <ChevronDown className={`h-3.5 w-3.5 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {isExpanded && (
+        <AgentColumnChecklist
+          agent={agent}
+          userEmail={userEmail}
+          otherAgentIds={otherAgentIds}
+          downloadDisabled={downloadDisabled}
+          onDownloadDisabledChange={setDownloadDisabled}
+          onSaved={onSaved}
+          projectId={projectId}
+        />
+      )}
     </div>
   )
 }
@@ -249,36 +507,18 @@ function ProjectAgentsCard({
         {project.agents.length === 0 && (
           <p className="text-[11px] text-gray-500 dark:text-gray-400 px-4 py-3">No agents in this project.</p>
         )}
-        {project.agents.map(agent => {
-          const isExpanded = expandedAgentId === agent.id
-          return (
-            <div key={agent.id}>
-              <button
-                type="button"
-                onClick={() => setExpandedAgentId(isExpanded ? null : agent.id)}
-                className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
-              >
-                <span className="text-xs font-medium text-gray-800 dark:text-gray-200">{agent.name}</span>
-                <div className="flex items-center gap-2">
-                  {agent.superadminOnlyColumns.length > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700">
-                      {agent.superadminOnlyColumns.length} restricted column{agent.superadminOnlyColumns.length === 1 ? '' : 's'}
-                    </span>
-                  )}
-                  <ChevronDown className={`h-3.5 w-3.5 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-              {isExpanded && (
-                <AgentColumnChecklist
-                  agent={agent}
-                  userEmail={userEmail}
-                  otherAgentIds={project.agents.filter(a => a.id !== agent.id).map(a => a.id)}
-                  onSaved={onSaved}
-                />
-              )}
-            </div>
-          )
-        })}
+        {project.agents.map(agent => (
+          <AgentRow
+            key={agent.id}
+            agent={agent}
+            isExpanded={expandedAgentId === agent.id}
+            onToggleExpand={() => setExpandedAgentId(expandedAgentId === agent.id ? null : agent.id)}
+            userEmail={userEmail}
+            otherAgentIds={project.agents.filter(a => a.id !== agent.id).map(a => a.id)}
+            onSaved={onSaved}
+            projectId={project.id}
+          />
+        ))}
       </div>
     </div>
   )

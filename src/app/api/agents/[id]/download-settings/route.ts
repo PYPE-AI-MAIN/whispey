@@ -3,7 +3,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { getCallerGlobalRole } from '@/lib/prod-auth'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { normalizeDownloadSettings, type CallLogSettings } from '@/lib/callLogSettings'
+import { normalizeDownloadSettings, isAgentDownloadDisabledForUser, type CallLogSettings } from '@/lib/callLogSettings'
 
 const supabase = createServiceRoleClient()
 
@@ -45,7 +45,7 @@ export async function GET(
     (agentRow.call_log_settings as CallLogSettings | null)?.download_settings
   )
 
-  const override = userEmail ? downloadSettings.user_overrides[userEmail] : undefined
+  const override = userEmail ? downloadSettings.user_overrides[userEmail.trim().toLowerCase()] : undefined
   const hiddenColumns = isSuperAdmin
     ? []
     : [...downloadSettings.superadmin_only_columns, ...(override?.hidden_view_columns ?? [])]
@@ -53,9 +53,19 @@ export async function GET(
     ? []
     : [...hiddenColumns, ...(override?.hidden_download_columns ?? [])]
 
+  const agentLevelEnabled = downloadSettings.enabled || isSuperAdmin
+  const projectLevelDisabled = !isSuperAdmin && access.downloadDisabled === true
+  const perAgentUserDisabled = isAgentDownloadDisabledForUser(
+    agentRow.call_log_settings as CallLogSettings | null,
+    isSuperAdmin,
+    userEmail
+  )
+  const canDownload = agentLevelEnabled && !projectLevelDisabled && !perAgentUserDisabled
+
   return NextResponse.json({
     enabled: downloadSettings.enabled,
     isSuperAdmin,
+    canDownload,
     hiddenColumns: Array.from(new Set(hiddenColumns)),
     hiddenDownloadColumns: Array.from(new Set(hiddenDownloadColumns)),
     // Only superadmins get the raw settings — they're the only ones who edit them.

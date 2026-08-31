@@ -77,6 +77,7 @@ export const createTableColumns = (
               </Tooltip>
             )
           case "call_id":
+            if (!call.call_id) return <span className="text-muted-foreground">—</span>
             return (
               <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-0.5 rounded-md font-mono">
                 {call.call_id.slice(-8)}
@@ -108,10 +109,11 @@ export const createTableColumns = (
             return (
               <div className="flex items-center gap-2 text-sm font-medium">
                 <Clock className="w-4 h-4 text-muted-foreground" />
-                {formatDuration(call.duration_seconds)}
+                {formatDuration(call.duration_seconds ?? 0)}
               </div>
             )
           case "call_started_at":
+            if (!call.call_started_at) return <span className="text-muted-foreground">—</span>
             return <span>{formatToIndianDateTime(call.call_started_at)}</span>
           case "wcall_event":
             return (

@@ -9,6 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Badge } from '@/components/ui/badge'
+import { ChevronDown } from 'lucide-react'
 import { downloadCSV, DownloadProgress } from '@/utils/callLogsUtils'
 import type { FilterOperation } from '@/components/CallFilter'
 
@@ -40,12 +43,23 @@ export default function DownloadDialog({
     () => basicColumns.filter(c => !hiddenColumns.includes(c.key)),
     [basicColumns, hiddenColumns]
   )
+  // `hiddenColumns` is a flat list of top-level pype_voice_call_logs column
+  // names (BASIC_COLUMNS keys, plus the whole-blob EXTRA_RESTRICTABLE_COLUMNS
+  // keys "metadata" / "transcription_metrics" / "transcript_json"). It never
+  // names individual metadata/transcription_metrics sub-keys — restricting
+  // those isn't supported, the whole blob is hidden or not. Checking a
+  // sub-key's own name against this list (e.g. `hiddenColumns.includes(c)`)
+  // is wrong: if a call's metadata/transcription_metrics JSON happens to
+  // contain a key with the same name as a hidden basic column (e.g.
+  // "call_ended_reason", "duration_seconds"), that sub-key was previously
+  // excluded too even though it was never actually restricted, silently
+  // dropping an extra column from the download list.
   const allowedMetadata = useMemo(
-    () => metadataColumns.filter(c => !hiddenColumns.includes(c)),
+    () => (hiddenColumns.includes('metadata') ? [] : metadataColumns),
     [metadataColumns, hiddenColumns]
   )
   const allowedTranscription = useMemo(
-    () => transcriptionColumns.filter(c => !hiddenColumns.includes(c)),
+    () => (hiddenColumns.includes('transcription_metrics') ? [] : transcriptionColumns),
     [transcriptionColumns, hiddenColumns]
   )
   const transcriptAllowed = !hiddenColumns.includes('transcript_json')
@@ -155,6 +169,15 @@ export default function DownloadDialog({
   }
 
   const isLarge = count !== null && count > LARGE_EXPORT_THRESHOLD
+  const [columnsOpen, setColumnsOpen] = useState(false)
+  const selectedColumnCount = selectedBasic.length + selectedMetadata.length + selectedTranscription.length + (includeTranscript ? 1 : 0)
+  const totalColumnCount = allowedBasic.length + allowedMetadata.length + allowedTranscription.length + (transcriptAllowed ? 1 : 0)
+  const noColumnsSelected = selectedColumnCount === 0
+  const disabledReason = progress
+    ? null
+    : noColumnsSelected
+      ? 'Select at least one column to download'
+      : null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,116 +187,147 @@ export default function DownloadDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Date range */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Date range</label>
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
-                    <CalendarIcon className="h-3 w-3 opacity-60" />
-                    {from ? format(from, 'MMM dd, yyyy') : 'From'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={from} onSelect={setFrom} initialFocus />
-                </PopoverContent>
-              </Popover>
-              <span className="text-xs text-gray-500 dark:text-gray-400">to</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
-                    <CalendarIcon className="h-3 w-3 opacity-60" />
-                    {to ? format(to, 'MMM dd, yyyy') : 'To'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={to} onSelect={setTo} initialFocus />
-                </PopoverContent>
-              </Popover>
+          {/* Date range + timezone */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3 space-y-3">
+            <div>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Date range</label>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
+                      <CalendarIcon className="h-3 w-3 opacity-60" />
+                      {from ? format(from, 'MMM dd, yyyy') : 'From'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={from} onSelect={setFrom} initialFocus />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-xs text-gray-500 dark:text-gray-400">to</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
+                      <CalendarIcon className="h-3 w-3 opacity-60" />
+                      {to ? format(to, 'MMM dd, yyyy') : 'To'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={to} onSelect={setTo} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Timestamp timezone</label>
+              <Select value={timezone} onValueChange={(v: 'IST' | 'UTC') => setTimezone(v)}>
+                <SelectTrigger className="h-8 text-xs w-40 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IST">IST (default)</SelectItem>
+                  <SelectItem value="UTC">UTC</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Timezone */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Timestamp timezone</label>
-            <Select value={timezone} onValueChange={(v: 'IST' | 'UTC') => setTimezone(v)}>
-              <SelectTrigger className="h-8 text-xs w-40 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="IST">IST (default)</SelectItem>
-                <SelectItem value="UTC">UTC</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Row count estimate */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 flex items-center justify-between">
-            <span className="text-xs text-gray-600 dark:text-gray-400">Estimated rows</span>
-            <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
-              {countLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : count !== null ? count.toLocaleString() : '—'}
+          {/* Row count estimate — prominent callout, amber when large */}
+          <div
+            className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 ${
+              isLarge
+                ? 'border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10'
+                : 'border-gray-200 dark:border-gray-800'
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              {isLarge && <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />}
+              <div>
+                <p className={`text-xs font-medium ${isLarge ? 'text-amber-800 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400'}`}>
+                  Estimated rows
+                </p>
+                {isLarge && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                    Large export — this may take a while or fail in-browser. Consider narrowing the date range.
+                  </p>
+                )}
+              </div>
+            </div>
+            <span className={`text-sm font-semibold shrink-0 ${isLarge ? 'text-amber-800 dark:text-amber-300' : 'text-gray-900 dark:text-gray-100'}`}>
+              {countLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : count !== null ? count.toLocaleString() : '—'}
             </span>
           </div>
-          {isLarge && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 px-3 py-2">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                Large export — this may take a while or fail in-browser. Consider narrowing the date range.
-              </p>
-            </div>
-          )}
 
-          {/* Columns */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Columns</label>
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 max-h-48 overflow-y-auto p-2 space-y-1">
-              {allowedBasic.map(col => (
-                <label key={col.key} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                  <Checkbox checked={selectedBasic.includes(col.key)} onCheckedChange={() => toggle(selectedBasic, setSelectedBasic, col.key)} />
-                  {col.label}
-                </label>
-              ))}
-              {allowedMetadata.map(col => (
-                <label key={`meta-${col}`} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                  <Checkbox checked={selectedMetadata.includes(col)} onCheckedChange={() => toggle(selectedMetadata, setSelectedMetadata, col)} />
-                  metadata_{col}
-                </label>
-              ))}
-              {allowedTranscription.map(col => (
-                <label key={`trans-${col}`} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                  <Checkbox checked={selectedTranscription.includes(col)} onCheckedChange={() => toggle(selectedTranscription, setSelectedTranscription, col)} />
-                  transcription_{col}
-                </label>
-              ))}
-              {transcriptAllowed && (
-                <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
-                  <Checkbox checked={includeTranscript} onCheckedChange={() => setIncludeTranscript(v => !v)} />
-                  Transcript
-                </label>
-              )}
-            </div>
-          </div>
+          {/* Columns — collapsible */}
+          <Collapsible open={columnsOpen} onOpenChange={setColumnsOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-left"
+              >
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  Columns
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    {selectedColumnCount}/{totalColumnCount} selected
+                  </Badge>
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform ${columnsOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="rounded-lg border border-t-0 border-gray-200 dark:border-gray-800 rounded-t-none max-h-48 overflow-y-auto p-2 space-y-1 mt-[-1px]">
+                {allowedBasic.map(col => (
+                  <label key={col.key} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
+                    <Checkbox checked={selectedBasic.includes(col.key)} onCheckedChange={() => toggle(selectedBasic, setSelectedBasic, col.key)} />
+                    {col.label}
+                  </label>
+                ))}
+                {allowedMetadata.map(col => (
+                  <label key={`meta-${col}`} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
+                    <Checkbox checked={selectedMetadata.includes(col)} onCheckedChange={() => toggle(selectedMetadata, setSelectedMetadata, col)} />
+                    metadata_{col}
+                  </label>
+                ))}
+                {allowedTranscription.map(col => (
+                  <label key={`trans-${col}`} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
+                    <Checkbox checked={selectedTranscription.includes(col)} onCheckedChange={() => toggle(selectedTranscription, setSelectedTranscription, col)} />
+                    transcription_{col}
+                  </label>
+                ))}
+                {transcriptAllowed && (
+                  <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
+                    <Checkbox checked={includeTranscript} onCheckedChange={() => setIncludeTranscript(v => !v)} />
+                    Transcript
+                  </label>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
 
-          <Button
-            onClick={handleDownload}
-            disabled={!!progress || (selectedBasic.length === 0 && selectedMetadata.length === 0 && selectedTranscription.length === 0 && !includeTranscript)}
-            className="w-full gap-1.5"
-          >
-            {progress ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                {progress.phase === 'processing' ? 'Processing…' : `${progress.fetched.toLocaleString()} rows…`}
-              </>
-            ) : (
-              <>
-                <Download className="h-3.5 w-3.5" />
-                Download CSV
-              </>
+          <div className="space-y-1.5">
+            <Button
+              onClick={handleDownload}
+              disabled={!!progress || noColumnsSelected}
+              className="w-full gap-1.5"
+            >
+              {progress ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  {progress.phase === 'processing' ? 'Processing…' : `${progress.fetched.toLocaleString()} rows…`}
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  Download CSV
+                </>
+              )}
+            </Button>
+            {disabledReason && (
+              <p className="text-[11px] text-center text-gray-500 dark:text-gray-400">{disabledReason}</p>
             )}
-          </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
