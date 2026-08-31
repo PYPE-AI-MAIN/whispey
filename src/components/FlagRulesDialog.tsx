@@ -226,35 +226,26 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl rounded-lg shadow-xl p-0 flex flex-col h-[85vh]">
-        <DialogHeader className="p-6 pb-4 flex-shrink-0">
+        <DialogHeader className="p-6 pb-3 flex-shrink-0">
           <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Call Flagging</DialogTitle>
           <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
-            Automatically flag calls for review when they match a rule you define. Flagged calls are highlighted in Call Logs and can be filtered by their flag.
+            Flag calls for review when they match your rules — flagged calls are highlighted and filterable in Call Logs.
           </DialogDescription>
         </DialogHeader>
         <Separator className="flex-shrink-0" />
 
-        <div className="flex-shrink-0 p-6 pb-4">
+        <div className="flex-shrink-0 px-6 py-4">
           <div className="flex items-center justify-between p-3 rounded-md bg-gray-50 dark:bg-gray-800">
-            <div>
-              <Label htmlFor="flagging-enabled" className="text-base font-medium text-gray-700 dark:text-gray-300">
-                Enable Flagging
-              </Label>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Off = rules are saved but no calls are flagged.</p>
-            </div>
+            <Label htmlFor="flagging-enabled" className="text-base font-medium text-gray-700 dark:text-gray-300">
+              Enable Flagging
+            </Label>
             <Switch id="flagging-enabled" checked={enabled} onCheckedChange={setEnabled} />
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">
-            A call is flagged if it matches <span className="font-semibold">any</span> rule below. A rule matches only when <span className="font-semibold">all</span> of its conditions are true.
-          </p>
           {extractorKeys.length === 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
               No field extractor fields configured yet — set those up first so there's something to flag on.
             </p>
           )}
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            Tip: values vary by agent — some use <code>0</code>/<code>1</code>, others <code>pass</code>/<code>fail</code>/<code>not_applicable</code>, or <code>yes</code>/<code>no</code>. Check a real call's actual values before assuming a convention.
-          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
