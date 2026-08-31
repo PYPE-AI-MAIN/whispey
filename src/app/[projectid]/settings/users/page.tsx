@@ -493,6 +493,10 @@ export default function UsersSettingsPage() {
 
   useEffect(() => { setPage(0) }, [search])
 
+  useEffect(() => {
+    if (!roleLoading && !isSuperAdmin) router.replace(`/${projectId}/agents`)
+  }, [roleLoading, isSuperAdmin, projectId, router])
+
   const { data, isLoading } = useQuery<{ users: AdminUser[] }>({
     queryKey: ['admin-users'],
     queryFn: async () => {
@@ -589,7 +593,8 @@ export default function UsersSettingsPage() {
         <tr
           key={u.id}
           // Sidebar nav item hover: hover:bg-gray-50 dark:hover:bg-gray-800 — use same here
-          className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+          className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+          onClick={() => router.push(`/${projectId}/settings/users/${u.id}`)}
         >
           {/* User */}
           <td className="px-4 py-3 overflow-hidden">
@@ -617,7 +622,7 @@ export default function UsersSettingsPage() {
           </td>
 
           {/* Access */}
-          <td className="px-4 py-3 text-right">
+          <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
             {u.globalRole === 'superadmin' ? (
               <span className="inline-flex items-center gap-1 text-[11px] text-gray-600 dark:text-gray-400">
                 <Shield className="h-3 w-3" />Protected

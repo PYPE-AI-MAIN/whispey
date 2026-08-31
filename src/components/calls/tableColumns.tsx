@@ -15,6 +15,234 @@ import { FlagEditor, FlagData } from './FlagEditor'
 import { cn } from "@/lib/utils"
 import { isViewerRole } from '@/utils/callLogsUtils'
 
+// ── Basic-column cell renderers ──────────────────────────────────────────
+// Extracted out of the big switch in createTableColumns's cell renderer so
+// that function's cognitive complexity stays low. Each function renders the
+// exact same output the corresponding case previously did.
+
+function renderCustomerNumberCell(call: CallLog) {
+  const customerNumber = call.customer_number || ""
+  const isLongNumber = customerNumber.length > 13 // "+916268181226" is 13 chars
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex w-full items-center gap-2 min-w-[180px] max-w-[180px]">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary/10 shrink-0">
+            <Phone className="w-3 h-3 text-primary" />
+          </div>
+          <span
+            className={cn(
+              "font-medium text-gray-900 dark:text-gray-100 text-sm",
+              isLongNumber && "truncate"
+            )}
+            style={{ maxWidth: isLongNumber ? '140px' : 'none' }}
+          >
+            {customerNumber}
+          </span>
+        </div>
+      </TooltipTrigger>
+      {isLongNumber && (
+        <TooltipContent>
+          <p className="max-w-xs break-all">{customerNumber}</p>
+        </TooltipContent>
+      )}
+    </Tooltip>
+  )
+}
+
+function renderCallIdCell(call: CallLog) {
+  if (!call.call_id) return <span className="text-muted-foreground">—</span>
+  return (
+    <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-0.5 rounded-md font-mono">
+      {call.call_id.slice(-8)}
+    </code>
+  )
+}
+
+function renderCallEndedReasonCell(call: CallLog) {
+  if (call.wcall_event === "call_started") return <span className="text-muted-foreground">—</span>
+  return (
+    <Badge
+      variant={call.call_ended_reason === "completed" ? "default" : "destructive"}
+      className="text-xs font-medium px-2 py-0.5"
+    >
+      {call.call_ended_reason === "completed" ? (
+        <CheckCircle className="w-3 h-3 mr-1" />
+      ) : (
+        <XCircle className="w-3 h-3 mr-1" />
+      )}
+      {call.call_ended_reason}
+    </Badge>
+  )
+}
+
+function renderBillingDurationCell(call: CallLog) {
+  return (
+    <div className="flex items-center gap-2 text-sm font-medium">
+      <Clock className="w-4 h-4 text-muted-foreground" />
+      {formatDuration(call?.billing_duration_seconds ?? 0)}
+    </div>
+  )
+}
+
+function renderDurationCell(call: CallLog) {
+  return (
+    <div className="flex items-center gap-2 text-sm font-medium">
+      <Clock className="w-4 h-4 text-muted-foreground" />
+      {formatDuration(call.duration_seconds ?? 0)}
+    </div>
+  )
+}
+
+function renderCallStartedAtCell(call: CallLog) {
+  if (!call.call_started_at) return <span className="text-muted-foreground">—</span>
+  return <span>{formatToIndianDateTime(call.call_started_at)}</span>
+}
+
+function getWcallEventLabel(wcallEvent: CallLog['wcall_event']): string {
+  if (wcallEvent === "call_ended") return "Ended"
+  if (wcallEvent === "call_started") return "Started"
+  return wcallEvent ?? "-"
+}
+
+function renderWcallEventCell(call: CallLog) {
+  return (
+    <Badge variant={call.wcall_event === "call_ended" ? "default" : "secondary"} className="text-xs font-medium px-2 py-0.5">
+      {getWcallEventLabel(call.wcall_event)}
+    </Badge>
+  )
+}
+
+function renderTotalCostCell(call: CallLog) {
+  return call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
+    <CostTooltip call={call} />
+  ) : "-"
+}
+
+function renderTagsCell(
+  call: CallLog,
+  availableTags: string[],
+  canComment: boolean,
+  onTagsUpdated?: () => void
+) {
+  return (
+    <TagEditor
+      callId={call.id}
+      initialTags={
+        Array.isArray(call.transcription_metrics?.tags)
+          ? call.transcription_metrics.tags
+          : []
+      }
+      initialTagComments={
+        call.transcription_metrics?.tagComments &&
+        typeof call.transcription_metrics.tagComments === 'object' &&
+        !Array.isArray(call.transcription_metrics.tagComments)
+          ? (call.transcription_metrics.tagComments as Record<string, string>)
+          : {}
+      }
+      availableTags={availableTags}
+      canComment={canComment}
+      onUpdated={onTagsUpdated}
+    />
+  )
+}
+
+function renderFlagCell(call: CallLog, onTagsUpdated?: () => void) {
+  return (
+    <FlagEditor
+      callId={call.id}
+      initialFlag={
+        call.transcription_metrics?.flag &&
+        typeof call.transcription_metrics.flag === 'object'
+          ? (call.transcription_metrics.flag as FlagData)
+          : null
+      }
+      onUpdated={onTagsUpdated}
+    />
+  )
+}
+
+function renderBasicCell(
+  key: string,
+  call: CallLog,
+  availableTags: string[],
+  canComment: boolean,
+  onTagsUpdated?: () => void
+) {
+  switch (key) {
+    case "customer_number":
+      return renderCustomerNumberCell(call)
+    case "call_id":
+      return renderCallIdCell(call)
+    case "call_ended_reason":
+      return renderCallEndedReasonCell(call)
+    case "billing_duration_seconds":
+      return renderBillingDurationCell(call)
+    case "duration_seconds":
+      return renderDurationCell(call)
+    case "call_started_at":
+      return renderCallStartedAtCell(call)
+    case "wcall_event":
+      return renderWcallEventCell(call)
+    case "total_cost":
+      return renderTotalCostCell(call)
+    case "tags":
+      return renderTagsCell(call, availableTags, canComment, onTagsUpdated)
+    case "flag":
+      return renderFlagCell(call, onTagsUpdated)
+    default:
+      return <span>{call[key as keyof CallLog] ?? "-"}</span>
+  }
+}
+
+// ── Metrics-column cell renderer ─────────────────────────────────────────
+
+function getScoreBadgeVariant(score: number): "default" | "secondary" | "destructive" {
+  if (score >= 0.7) return "default"
+  if (score >= 0.5) return "secondary"
+  return "destructive"
+}
+
+function renderMetricCell(call: CallLog, metricId: string) {
+  let value: React.ReactNode = "-"
+  let tooltipContent: string | null = null
+
+  if (call.metrics && typeof call.metrics === 'object') {
+    const metricData = (call.metrics as any)[metricId]
+    if (metricData) {
+      const score = metricData.score
+      const reason = metricData.reason || "-"
+
+      value = (
+        <Badge
+          variant={getScoreBadgeVariant(score)}
+          className="text-xs font-medium cursor-help px-2 py-0.5"
+        >
+          {typeof score === 'number' ? score.toFixed(2) : score}
+        </Badge>
+      )
+
+      tooltipContent = reason
+    }
+  }
+
+  return tooltipContent ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {value}
+      </TooltipTrigger>
+      <TooltipContent className="max-w-md bg-gray-900 dark:bg-gray-800 border-gray-700 p-0">
+        <div className="text-sm p-4">
+          <div className="font-semibold mb-2 text-white">{metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase())}</div>
+          <div className="text-xs text-gray-100 whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2">
+            {tooltipContent}
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  ) : value
+}
+
 export const createTableColumns = (
   visibleColumns: {
     basic: string[]
@@ -39,128 +267,12 @@ export const createTableColumns = (
   // Basic columns
   visibleColumns.basic.forEach((key) => {
     const col = BASIC_COLUMNS.find((c) => c.key === key)
-    
+
     cols.push({
       id: key,
       accessorKey: key,
       header: col?.label ?? key,
-      cell: ({ row }) => {
-        const call = row.original
-
-        switch (key) {
-          case "customer_number":
-            const customerNumber = call.customer_number || ""
-            const isLongNumber = customerNumber.length > 13 // "+916268181226" is 13 chars
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex w-full items-center gap-2 min-w-[180px] max-w-[180px]">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary/10 shrink-0">
-                      <Phone className="w-3 h-3 text-primary" />
-                    </div>
-                    <span 
-                      className={cn(
-                        "font-medium text-gray-900 dark:text-gray-100 text-sm",
-                        isLongNumber && "truncate"
-                      )}
-                      style={{ maxWidth: isLongNumber ? '140px' : 'none' }}
-                    >
-                      {customerNumber}
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                {isLongNumber && (
-                  <TooltipContent>
-                    <p className="max-w-xs break-all">{customerNumber}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            )
-          case "call_id":
-            return (
-              <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-0.5 rounded-md font-mono">
-                {call.call_id.slice(-8)}
-              </code>
-            )
-          case "call_ended_reason":
-            if (call.wcall_event === "call_started") return <span className="text-muted-foreground">—</span>
-            return (
-              <Badge
-                variant={call.call_ended_reason === "completed" ? "default" : "destructive"}
-                className="text-xs font-medium px-2 py-0.5"
-              >
-                {call.call_ended_reason === "completed" ? (
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                ) : (
-                  <XCircle className="w-3 h-3 mr-1" />
-                )}
-                {call.call_ended_reason}
-              </Badge>
-            )
-          case "billing_duration_seconds":
-            return (
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                {formatDuration(call?.billing_duration_seconds ?? 0)}
-              </div>
-            )
-          case "duration_seconds":
-            return (
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                {formatDuration(call.duration_seconds)}
-              </div>
-            )
-          case "call_started_at":
-            return <span>{formatToIndianDateTime(call.call_started_at)}</span>
-          case "wcall_event":
-            return (
-              <Badge variant={call.wcall_event === "call_ended" ? "default" : "secondary"} className="text-xs font-medium px-2 py-0.5">
-                {call.wcall_event === "call_ended" ? "Ended" : call.wcall_event === "call_started" ? "Started" : (call.wcall_event ?? "-")}
-              </Badge>
-            )
-          case "total_cost":
-            return call?.total_llm_cost || call?.total_tts_cost || call?.total_stt_cost ? (
-              <CostTooltip call={call} />
-            ) : "-"
-          case "tags":
-            return (
-              <TagEditor
-                callId={call.id}
-                initialTags={
-                  Array.isArray(call.transcription_metrics?.tags)
-                    ? call.transcription_metrics.tags
-                    : []
-                }
-                initialTagComments={
-                  call.transcription_metrics?.tagComments &&
-                  typeof call.transcription_metrics.tagComments === 'object' &&
-                  !Array.isArray(call.transcription_metrics.tagComments)
-                    ? (call.transcription_metrics.tagComments as Record<string, string>)
-                    : {}
-                }
-                availableTags={availableTags}
-                canComment={canComment}
-                onUpdated={onTagsUpdated}
-              />
-            )
-          case "flag":
-            return (
-              <FlagEditor
-                callId={call.id}
-                initialFlag={
-                  call.transcription_metrics?.flag &&
-                  typeof call.transcription_metrics.flag === 'object'
-                    ? (call.transcription_metrics.flag as FlagData)
-                    : null
-                }
-                onUpdated={onTagsUpdated}
-              />
-            )
-          default:
-            return <span>{call[key as keyof CallLog] as any ?? "-"}</span>
-        }
-      },
+      cell: ({ row }) => renderBasicCell(key, row.original, availableTags, canComment, onTagsUpdated),
       minSize: key === "customer_number" ? 180 : key === "tags" ? 200 : key === "flag" ? 100 : 150,
       size: key === "customer_number" ? 180 : key === "tags" ? 220 : key === "flag" ? 110 : undefined,
     })
@@ -174,7 +286,7 @@ export const createTableColumns = (
       header: key,
       cell: ({ row }) => {
         const call = row.original
-        
+
         // Special rendering for voicemail-detection
         if (key === 'voicemail-detection' && call.metadata?.['voicemail-detection'] === 'true') {
           return (
@@ -183,10 +295,10 @@ export const createTableColumns = (
             </Badge>
           )
         }
-        
+
         return (
-          <DynamicJsonCell 
-            data={call.metadata} 
+          <DynamicJsonCell
+            data={call.metadata}
             fieldKey={key}
             maxWidth="500px"
           />
@@ -203,8 +315,8 @@ export const createTableColumns = (
       accessorFn: (row) => row.transcription_metrics?.[key],
       header: key,
       cell: ({ row }) => (
-        <DynamicJsonCell 
-          data={row.original.transcription_metrics} 
+        <DynamicJsonCell
+          data={row.original.transcription_metrics}
           fieldKey={key}
           maxWidth="300px"
         />
@@ -218,47 +330,8 @@ export const createTableColumns = (
     cols.push({
       id: `metrics-${metricId}`,
       accessorFn: (row) => row.metrics?.[metricId],
-      header: metricId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      cell: ({ row }) => {
-        const call = row.original
-        let value: React.ReactNode = "-"
-        let tooltipContent: string | null = null
-        
-        if (call.metrics && typeof call.metrics === 'object') {
-          const metricData = (call.metrics as any)[metricId]
-          if (metricData) {
-            const score = metricData.score
-            const reason = metricData.reason || "-"
-            
-            value = (
-              <Badge 
-                variant={score >= 0.7 ? "default" : score >= 0.5 ? "secondary" : "destructive"}
-                className="text-xs font-medium cursor-help px-2 py-0.5"
-              >
-                {typeof score === 'number' ? score.toFixed(2) : score}
-              </Badge>
-            )
-            
-            tooltipContent = reason
-          }
-        }
-        
-        return tooltipContent ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {value}
-            </TooltipTrigger>
-            <TooltipContent className="max-w-md bg-gray-900 dark:bg-gray-800 border-gray-700 p-0">
-              <div className="text-sm p-4">
-                <div className="font-semibold mb-2 text-white">{metricId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-                <div className="text-xs text-gray-100 whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2">
-                  {tooltipContent}
-                </div>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        ) : value
-      },
+      header: metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
+      cell: ({ row }) => renderMetricCell(row.original, metricId),
       size: 150,
     })
   })

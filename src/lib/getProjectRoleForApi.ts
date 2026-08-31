@@ -26,7 +26,7 @@ export function projectMembershipMatch(userId: string, userEmail: string | undef
   return `clerk_id.eq.${userId},and(clerk_id.is.null,email.ilike.${userEmail},granted_via.eq.new_domain)`
 }
 
-export async function getProjectRoleForApi(projectId: string): Promise<{ role: string; visibility: MemberVisibility } | null> {
+export async function getProjectRoleForApi(projectId: string): Promise<{ role: string; visibility: MemberVisibility; downloadDisabled: boolean } | null> {
   const { userId } = await auth()
   const user = await currentUser()
   if (!userId || !projectId) return null
@@ -42,9 +42,9 @@ export async function getProjectRoleForApi(projectId: string): Promise<{ role: s
 
   if (error || !mapping) return null
   const role = ['user', 'member', 'viewer'].includes(mapping.role) ? 'viewer' : mapping.role
-  const storedVisibility = (mapping.permissions as { visibility?: MemberVisibility } | null)?.visibility
-  const visibility = getEffectiveVisibility(role, storedVisibility)
-  return { role, visibility }
+  const permissions = mapping.permissions as { visibility?: MemberVisibility; download_disabled?: boolean } | null
+  const visibility = getEffectiveVisibility(role, permissions?.visibility)
+  return { role, visibility, downloadDisabled: permissions?.download_disabled === true }
 }
 
 /** Returns true if current user is viewer (or not a member) for the project. */

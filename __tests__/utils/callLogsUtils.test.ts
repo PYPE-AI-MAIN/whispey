@@ -17,6 +17,7 @@ import {
   getSelectColumns,
   flattenCallLogForCSV,
   isRowFlaggedForRole,
+  formatTranscriptForCSV,
 } from '@/utils/callLogsUtils'
 
 describe('callLogsUtils', () => {
@@ -430,6 +431,57 @@ describe('callLogsUtils', () => {
       const row = { ...baseRow, transcription_metrics: null }
       const result = flattenCallLogForCSV(row, [], [], ['sentiment'])
       expect(result.transcription_sentiment).toBe('')
+    })
+  })
+
+  describe('formatTranscriptForCSV', () => {
+    it('parses a JSON string of turn objects', () => {
+      const json = JSON.stringify([{ role: 'user', content: 'hi' }])
+      expect(formatTranscriptForCSV(json)).toBe('user: hi')
+    })
+
+    it('formats an array of {role, content} turns', () => {
+      const items = [
+        { role: 'user', content: 'hello' },
+        { role: 'assistant', content: 'hi there' },
+      ]
+      expect(formatTranscriptForCSV(items)).toBe('user: hello\nassistant: hi there')
+    })
+
+    it('joins array content with spaces', () => {
+      const items = [{ role: 'user', content: ['part1', 'part2'] }]
+      expect(formatTranscriptForCSV(items)).toBe('user: part1 part2')
+    })
+
+    it('formats an array of {user_transcript, agent_response} turns', () => {
+      const items = [{ user_transcript: 'hello', agent_response: 'hi there' }]
+      expect(formatTranscriptForCSV(items)).toBe('user: hello\nassistant: hi there')
+    })
+
+    it('handles a user_transcript/agent_response turn with only one side present', () => {
+      expect(formatTranscriptForCSV([{ user_transcript: 'hello' }])).toBe('user: hello')
+      expect(formatTranscriptForCSV([{ agent_response: 'hi' }])).toBe('assistant: hi')
+    })
+
+    it('returns the raw string unchanged when it is not valid JSON', () => {
+      expect(formatTranscriptForCSV('not json')).toBe('not json')
+    })
+
+    it('returns empty string for null/undefined input', () => {
+      expect(formatTranscriptForCSV(null)).toBe('')
+      expect(formatTranscriptForCSV(undefined)).toBe('')
+    })
+
+    it('returns empty string for an empty array', () => {
+      expect(formatTranscriptForCSV([])).toBe('')
+    })
+
+    it('stringifies a non-array, non-string, truthy value', () => {
+      expect(formatTranscriptForCSV({ foo: 'bar' })).toBe(JSON.stringify({ foo: 'bar' }))
+    })
+
+    it('handles an item with neither role nor content gracefully', () => {
+      expect(formatTranscriptForCSV([{}])).toBe('')
     })
   })
 })
