@@ -259,6 +259,12 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
 
         <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                Flags <span className="font-normal text-gray-400 dark:text-gray-500">({rules.length})</span>
+              </h3>
+              <span className="text-xs text-gray-400 dark:text-gray-500">each flag is checked independently</span>
+            </div>
             {rules.map((rule, ruleIndex) => (
               <div key={rule.id}>
                 {ruleIndex > 0 && (
@@ -270,17 +276,20 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                 )}
                 <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Flag reason</Label>
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-900">
+                      {ruleIndex + 1}
+                    </span>
+                    <Label className="text-sm font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">Flag</Label>
                     <Input
-                      placeholder="e.g. task_incomplete (defaults to the field name)"
+                      placeholder="name this flag — e.g. task_incomplete (defaults to the field name)"
                       value={rule.reason}
                       onChange={(e) => updateRule(ruleIndex, { reason: e.target.value })}
-                      className="h-8 text-sm"
+                      className="h-8 text-sm flex-1"
                     />
                     <Button
                       variant="ghost" size="icon"
                       onClick={() => removeRule(ruleIndex)}
-                      aria-label={`Remove rule ${ruleIndex + 1}`}
+                      aria-label={`Remove flag ${ruleIndex + 1}`}
                       className="h-8 w-8 p-0 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400 shrink-0"
                     >
                       <X className="w-4 h-4" />
@@ -336,7 +345,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
             onClick={addRule}
             className="w-full rounded-md border border-dashed border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 bg-transparent"
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Rule
+            <Plus className="w-4 h-4 mr-2" /> Add another flag
           </Button>
           <Button
             onClick={handleSave}
