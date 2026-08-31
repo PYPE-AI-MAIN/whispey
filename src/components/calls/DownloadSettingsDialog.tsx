@@ -23,7 +23,7 @@ const EXTRA_COLUMN_KEYS = new Set<string>(EXTRA_RESTRICTABLE_COLUMNS.map(c => c.
 
 export default function DownloadSettingsDialog({
   open, onOpenChange, agentId, allColumns, initialEnabled, initialSuperadminOnlyColumns, onSaved,
-}: DownloadSettingsDialogProps) {
+}: Readonly<DownloadSettingsDialogProps>) {
   const [enabled, setEnabled] = useState(initialEnabled)
   const [restricted, setRestricted] = useState<Set<string>>(new Set(initialSuperadminOnlyColumns))
   const [saving, setSaving] = useState(false)
@@ -85,7 +85,7 @@ export default function DownloadSettingsDialog({
             <Switch checked={enabled} onCheckedChange={setEnabled} className="flex-shrink-0 mt-0.5" />
           </div>
 
-          <div className={`rounded-lg border border-gray-200 dark:border-gray-800 p-3 transition-opacity ${!enabled ? 'opacity-50' : ''}`}>
+          <div className={`rounded-lg border border-gray-200 dark:border-gray-800 p-3 transition-opacity ${enabled ? '' : 'opacity-50'}`}>
             <div className="flex items-start gap-2 mb-2">
               <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-[11px] text-gray-600 dark:text-gray-400">
@@ -97,7 +97,7 @@ export default function DownloadSettingsDialog({
 
             <div
               aria-disabled={!enabled}
-              className={`rounded-lg border border-gray-200 dark:border-gray-800 max-h-56 overflow-y-auto p-2 space-y-2 ${!enabled ? 'pointer-events-none' : ''}`}
+              className={`rounded-lg border border-gray-200 dark:border-gray-800 max-h-56 overflow-y-auto p-2 space-y-2 ${enabled ? '' : 'pointer-events-none'}`}
             >
               {basicCols.length > 0 && (
                 <div className="space-y-1">

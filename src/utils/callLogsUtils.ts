@@ -329,14 +329,16 @@ export const formatTranscriptForCSV = (transcriptJson: any): string => {
   }).join('\n')
 }
 
-export const flattenCallLogForCSV = (
+// ── flattenCallLogForCSV helpers ──────────────────────────────────────────
+// Extracted so the main function's cognitive complexity stays low. Each
+// returns the exact same key/value pairs the corresponding inline block used
+// to write directly into `flat`.
+
+function flattenBasicColumns(
   row: CallLog,
   basic: string[],
-  metadata: string[],
-  transcription: string[],
-  timezone: 'IST' | 'UTC' = 'IST',
-  includeTranscript = false
-): Record<string, any> => {
+  timezone: 'IST' | 'UTC'
+): Record<string, any> {
   const flat: Record<string, any> = {}
 
   for (const key of basic) {
@@ -357,34 +359,46 @@ export const flattenCallLogForCSV = (
   }
 
   if (basic.includes('total_cost')) {
-    const totalCost = (row.total_llm_cost || 0) + (row.total_tts_cost || 0) + (row.total_stt_cost || 0)
-    flat['total_cost'] = totalCost
+    flat['total_cost'] = (row.total_llm_cost || 0) + (row.total_tts_cost || 0) + (row.total_stt_cost || 0)
   }
 
-  if (row.metadata && typeof row.metadata === "object" && metadata.length > 0) {
-    for (const key of metadata) {
-      const value = row.metadata[key]
-      flat[`metadata_${key}`] = value !== undefined && value !== null 
-        ? (typeof value === 'object' ? JSON.stringify(value) : String(value))
-        : ''
-    }
-  } else if (metadata.length > 0) {
-    for (const key of metadata) {
-      flat[`metadata_${key}`] = ''
-    }
-  }
+  return flat
+}
 
-  if (row.transcription_metrics && typeof row.transcription_metrics === "object" && transcription.length > 0) {
-    for (const key of transcription) {
-      const value = row.transcription_metrics[key]
-      flat[`transcription_${key}`] = value !== undefined && value !== null 
-        ? (typeof value === 'object' ? JSON.stringify(value) : String(value))
-        : ''
+function flattenJsonBlobColumns(
+  blob: Record<string, any> | null | undefined,
+  keys: string[],
+  prefix: string
+): Record<string, any> {
+  const flat: Record<string, any> = {}
+  if (keys.length === 0) return flat
+
+  const hasBlob = blob && typeof blob === "object"
+  for (const key of keys) {
+    if (!hasBlob) {
+      flat[`${prefix}${key}`] = ''
+      continue
     }
-  } else if (transcription.length > 0) {
-    for (const key of transcription) {
-      flat[`transcription_${key}`] = ''
-    }
+    const value = blob[key]
+    flat[`${prefix}${key}`] = value !== undefined && value !== null
+      ? (typeof value === 'object' ? JSON.stringify(value) : String(value))
+      : ''
+  }
+  return flat
+}
+
+export const flattenCallLogForCSV = (
+  row: CallLog,
+  basic: string[],
+  metadata: string[],
+  transcription: string[],
+  timezone: 'IST' | 'UTC' = 'IST',
+  includeTranscript = false
+): Record<string, any> => {
+  const flat: Record<string, any> = {
+    ...flattenBasicColumns(row, basic, timezone),
+    ...flattenJsonBlobColumns(row.metadata, metadata, 'metadata_'),
+    ...flattenJsonBlobColumns(row.transcription_metrics, transcription, 'transcription_'),
   }
 
   if (includeTranscript) {
@@ -401,6 +415,124 @@ export interface DownloadProgress {
 }
 
 /* v8 ignore start */
+
+// ── downloadCSV helpers ────────────────────────────────────────────────────
+// Extracted so the main function's cognitive complexity stays low. Each does
+// exactly what the corresponding inline block used to do.
+
+function buildDownloadSelectColumns(
+  basic: string[],
+  metadata: string[],
+  transcription_metrics: string[],
+  transcript: boolean
+): string[] {
+  // 'tags' and 'flag' are virtual — they live inside transcription_metrics JSONB,
+  // not as top-level columns, so must never appear directly in the SELECT clause.
+  const VIRTUAL_BASIC_COLS = new Set(['total_cost', 'tags', 'flag'])
+  const needsTranscriptionMetrics =
+    transcription_metrics.length > 0 ||
+    basic.includes('tags') ||
+    basic.includes('flag')
+
+  return [
+    'id', 'agent_id',
+    ...basic.filter(col => !VIRTUAL_BASIC_COLS.has(col)),
+    ...(metadata.length > 0 ? ['metadata'] : []),
+    ...(needsTranscriptionMetrics ? ['transcription_metrics'] : []),
+    ...(transcript ? ['transcript_json'] : []),
+  ]
+}
+
+async function fetchDownloadTotalCount(
+  agentId: string,
+  dateRange?: { from: string; to: string }
+): Promise<number | null> {
+  try {
+    const countParams = new URLSearchParams()
+    if (dateRange?.from) countParams.set('dateFrom', dateRange.from)
+    if (dateRange?.to)   countParams.set('dateTo',   dateRange.to)
+    const countRes = await fetch(`/api/agents/${agentId}/call-logs/count?${countParams}`)
+    if (!countRes.ok) return null
+    const countJson = await countRes.json()
+    return countJson.count ?? null
+  } catch {
+    return null // count is optional — degrade gracefully
+  }
+}
+
+async function fetchAllCallLogPagesForDownload(
+  queryUrl: string,
+  agentId: string,
+  preDistinctFilters: Filter[],
+  postDistinctFilters: Filter[],
+  distinctConfig: { column: string; jsonField?: string; order: 'asc' | 'desc' } | undefined,
+  selectColumns: string[],
+  dateRange: { from: string; to: string } | undefined,
+  knownTotal: number | null,
+  onProgress?: (p: DownloadProgress) => void
+): Promise<CallLog[]> {
+  let allData: CallLog[] = []
+  let page = 0
+  const pageSize = 1000
+  let hasMoreData = true
+
+  onProgress?.({ fetched: 0, total: knownTotal, phase: 'fetching' })
+
+  while (hasMoreData) {
+    const res = await fetch(queryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        p_agent_id: agentId,
+        p_pre_distinct_filters: preDistinctFilters,
+        p_post_distinct_filters: postDistinctFilters,
+        p_select: selectColumns.join(','),
+        p_order_by_column: 'created_at',
+        p_order_ascending: false,
+        p_limit: pageSize,
+        p_offset: page * pageSize,
+        p_distinct_column: distinctConfig?.column || null,
+        p_distinct_json_field: distinctConfig?.jsonField || null,
+        p_distinct_order: distinctConfig?.order || 'asc',
+        p_date_from: dateRange?.from ?? null,
+        p_date_to: dateRange?.to ?? null,
+        p_purpose: 'download',
+      }),
+    })
+    const json = (await res.json()) as { data?: CallLog[]; error?: string }
+    if (!res.ok) throw new Error(json.error || 'Failed to fetch data for export')
+
+    const data = json.data || []
+    if (data.length === 0) {
+      hasMoreData = false
+      continue
+    }
+
+    allData = allData.concat(data)
+    onProgress?.({ fetched: allData.length, total: knownTotal, phase: 'fetching' })
+    if (data.length < pageSize) {
+      hasMoreData = false
+    } else {
+      page += 1
+    }
+  }
+
+  return allData
+}
+
+function triggerCSVFileDownload(csvData: Record<string, any>[]): void {
+  const csv = Papa.unparse(csvData)
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const blobUrl = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = blobUrl
+  link.setAttribute("download", `call_logs_${new Date().toISOString().split('T')[0]}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(blobUrl)
+}
+
 export const downloadCSV = async (
   agentId: string,
   activeFilters: FilterOperation[],
@@ -416,22 +548,7 @@ export const downloadCSV = async (
   timezone: 'IST' | 'UTC' = 'IST'
 ) => {
   const { basic, metadata, transcription_metrics, transcript = false } = visibleColumns
-
-  // 'tags' and 'flag' are virtual — they live inside transcription_metrics JSONB,
-  // not as top-level columns, so must never appear directly in the SELECT clause.
-  const VIRTUAL_BASIC_COLS = new Set(['total_cost', 'tags', 'flag'])
-  const needsTranscriptionMetrics =
-    transcription_metrics.length > 0 ||
-    basic.includes('tags') ||
-    basic.includes('flag')
-
-  const selectColumns = [
-    'id', 'agent_id',
-    ...basic.filter(col => !VIRTUAL_BASIC_COLS.has(col)),
-    ...(metadata.length > 0 ? ['metadata'] : []),
-    ...(needsTranscriptionMetrics ? ['transcription_metrics'] : []),
-    ...(transcript ? ['transcript_json'] : []),
-  ]
+  const selectColumns = buildDownloadSelectColumns(basic, metadata, transcription_metrics, transcript)
 
   try {
     const { preDistinctFilters, postDistinctFilters, distinctConfig } = extractFiltersAndDistinct(
@@ -444,78 +561,26 @@ export const downloadCSV = async (
       : `/api/agents/${agentId}/call-logs/query`
 
     // Fetch total count first so we can show a real percentage
-    let knownTotal: number | null = null
-    try {
-      const countParams = new URLSearchParams()
-      if (dateRange?.from) countParams.set('dateFrom', dateRange.from)
-      if (dateRange?.to)   countParams.set('dateTo',   dateRange.to)
-      const countRes = await fetch(`/api/agents/${agentId}/call-logs/count?${countParams}`)
-      if (countRes.ok) {
-        const countJson = await countRes.json()
-        knownTotal = countJson.count ?? null
-      }
-    } catch { /* count is optional — degrade gracefully */ }
+    const knownTotal = await fetchDownloadTotalCount(agentId, dateRange)
 
-    let allData: CallLog[] = []
-    let page = 0
-    const pageSize = 1000
-    let hasMoreData = true
-
-    onProgress?.({ fetched: 0, total: knownTotal, phase: 'fetching' })
-
-    while (hasMoreData) {
-      const res = await fetch(queryUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          p_agent_id: agentId,
-          p_pre_distinct_filters: preDistinctFilters,
-          p_post_distinct_filters: postDistinctFilters,
-          p_select: selectColumns.join(','),
-          p_order_by_column: 'created_at',
-          p_order_ascending: false,
-          p_limit: pageSize,
-          p_offset: page * pageSize,
-          p_distinct_column: distinctConfig?.column || null,
-          p_distinct_json_field: distinctConfig?.jsonField || null,
-          p_distinct_order: distinctConfig?.order || 'asc',
-          p_date_from: dateRange?.from ?? null,
-          p_date_to: dateRange?.to ?? null,
-          p_purpose: 'download',
-        }),
-      })
-      const json = (await res.json()) as { data?: CallLog[]; error?: string }
-      if (!res.ok) throw new Error(json.error || 'Failed to fetch data for export')
-
-      const data = json.data || []
-      if (data.length > 0) {
-        allData = allData.concat(data)
-        onProgress?.({ fetched: allData.length, total: knownTotal, phase: 'fetching' })
-        if (data.length < pageSize) {
-          hasMoreData = false
-        } else {
-          page += 1
-        }
-      } else {
-        hasMoreData = false
-      }
-    }
+    const allData = await fetchAllCallLogPagesForDownload(
+      queryUrl,
+      agentId,
+      preDistinctFilters,
+      postDistinctFilters,
+      distinctConfig,
+      selectColumns,
+      dateRange,
+      knownTotal,
+      onProgress
+    )
 
     if (allData.length === 0) throw new Error("No data found to export")
 
     onProgress?.({ fetched: allData.length, total: allData.length, phase: 'processing' })
 
     const csvData = allData.map((row) => flattenCallLogForCSV(row, basic, metadata, transcription_metrics, timezone, transcript))
-    const csv = Papa.unparse(csvData)
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const blobUrl = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = blobUrl
-    link.setAttribute("download", `call_logs_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(blobUrl)
+    triggerCSVFileDownload(csvData)
 
     onProgress?.({ fetched: allData.length, total: allData.length, phase: 'done' })
 

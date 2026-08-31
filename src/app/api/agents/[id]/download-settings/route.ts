@@ -116,10 +116,10 @@ export async function PATCH(
 
   const nextDownload = {
     ...currentDownload,
-    ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
-    ...(body.superadmin_only_columns !== undefined
-      ? { superadmin_only_columns: body.superadmin_only_columns }
-      : {}),
+    ...(body.enabled === undefined ? {} : { enabled: body.enabled }),
+    ...(body.superadmin_only_columns === undefined
+      ? {}
+      : { superadmin_only_columns: body.superadmin_only_columns }),
   }
 
   const nextSettings: CallLogSettings = { ...current, download_settings: nextDownload }

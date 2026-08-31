@@ -64,7 +64,7 @@ const AVATAR_COLORS = [
 
 function avatarColor(str: string) {
   let h = 0
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
+  for (let i = 0; i < str.length; i++) h = (str.codePointAt(i) ?? 0) + ((h << 5) - h)
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
 }
 
@@ -96,14 +96,23 @@ const BASIC_COLUMN_KEY_SET = new Set<string>(BASIC_COLUMNS.map(c => c.key))
 
 function ColumnAccessRow({
   column, viewable, downloadable, downloadsDisabledForAgent, onToggleView, onToggleDownload,
-}: {
+}: Readonly<{
   column: string
   viewable: boolean
   downloadable: boolean
   downloadsDisabledForAgent: boolean
   onToggleView: () => void
   onToggleDownload: () => void
-}) {
+}>) {
+  let downloadTitle: string
+  if (downloadsDisabledForAgent) {
+    downloadTitle = 'Downloads are off for this agent'
+  } else if (!viewable) {
+    downloadTitle = 'Allow viewing first'
+  } else {
+    downloadTitle = downloadable ? 'Downloadable — click to block' : 'Blocked — click to allow downloading'
+  }
+
   return (
     <div className="flex items-center justify-between gap-2 text-xs text-gray-700 dark:text-gray-300 px-2 py-1.5 rounded-md hover:bg-gray-100/60 dark:hover:bg-gray-800/40">
       <span className="truncate">{COLUMN_LABELS[column] ?? column}</span>
@@ -130,13 +139,7 @@ function ColumnAccessRow({
             variant={downloadable ? 'default' : 'outline'}
             disabled={!viewable || downloadsDisabledForAgent}
             onClick={onToggleDownload}
-            title={
-              downloadsDisabledForAgent
-                ? 'Downloads are off for this agent'
-                : !viewable
-                  ? 'Allow viewing first'
-                  : downloadable ? 'Downloadable — click to block' : 'Blocked — click to allow downloading'
-            }
+            title={downloadTitle}
             className={
               downloadable
                 ? 'h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
@@ -159,7 +162,7 @@ function ColumnAccessRow({
 
 function AgentColumnChecklist({
   agent, userEmail, otherAgentIds, downloadDisabled, onDownloadDisabledChange, onSaved, projectId,
-}: {
+}: Readonly<{
   agent: AgentAccess
   userEmail: string
   otherAgentIds: string[]
@@ -167,7 +170,7 @@ function AgentColumnChecklist({
   onDownloadDisabledChange: (next: boolean) => void
   onSaved: () => void
   projectId: string
-}) {
+}>) {
   const [hiddenView, setHiddenView] = useState<Set<string>>(new Set(agent.hiddenViewColumnsForUser))
   const [hiddenDownload, setHiddenDownload] = useState<Set<string>>(new Set(agent.hiddenDownloadColumnsForUser))
   const [savingDownloadToggle, setSavingDownloadToggle] = useState(false)
@@ -312,17 +315,7 @@ function AgentColumnChecklist({
     <div className="px-4 py-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800">
       {downloadToggle}
 
-      {!editingColumns ? (
-        <div className="flex items-center justify-between gap-2 px-1 py-1">
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-            No column restrictions — user has full access to this agent&apos;s columns.
-          </p>
-          <Button size="sm" variant="outline" onClick={() => setEditingColumns(true)} className="h-6 text-[10px] gap-1 flex-shrink-0">
-            <PencilLine className="h-3 w-3" />
-            Restrict columns
-          </Button>
-        </div>
-      ) : (
+      {editingColumns ? (
         <>
           <div className="space-y-2.5">
             {basicToggleable.length > 0 && (
@@ -392,6 +385,16 @@ function AgentColumnChecklist({
             </div>
           </div>
         </>
+      ) : (
+        <div className="flex items-center justify-between gap-2 px-1 py-1">
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+            No column restrictions — user has full access to this agent&apos;s columns.
+          </p>
+          <Button size="sm" variant="outline" onClick={() => setEditingColumns(true)} className="h-6 text-[10px] gap-1 flex-shrink-0">
+            <PencilLine className="h-3 w-3" />
+            Restrict columns
+          </Button>
+        </div>
       )}
     </div>
   )
@@ -399,7 +402,7 @@ function AgentColumnChecklist({
 
 function AgentRow({
   agent, isExpanded, onToggleExpand, userEmail, otherAgentIds, onSaved, projectId,
-}: {
+}: Readonly<{
   agent: AgentAccess
   isExpanded: boolean
   onToggleExpand: () => void
@@ -407,7 +410,7 @@ function AgentRow({
   otherAgentIds: string[]
   onSaved: () => void
   projectId: string
-}) {
+}>) {
   // Lifted out of AgentColumnChecklist so the "Downloads disabled" pill in the
   // header stays accurate even while the row is collapsed / the child unmounted.
   const [downloadDisabled, setDownloadDisabled] = useState(agent.downloadDisabledForUser)
@@ -456,12 +459,12 @@ function AgentRow({
 
 function ProjectAgentsCard({
   project, userId, userEmail, onSaved,
-}: {
+}: Readonly<{
   project: ProjectAccess
   userId: string
   userEmail: string
   onSaved: () => void
-}) {
+}>) {
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null)
   const [downloadDisabled, setDownloadDisabled] = useState(project.downloadDisabled)
   const [savingToggle, setSavingToggle] = useState(false)
@@ -576,6 +579,35 @@ export default function UserDetailPage() {
   const roleMeta = user ? ROLE_META[user.globalRole] ?? ROLE_META.user : ROLE_META.user
   const joined = user ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
+  let projectsContent: React.ReactNode
+  if (projects.length === 0) {
+    projectsContent = (
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 py-12 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+        This user has no project access.
+      </div>
+    )
+  } else if (filteredProjects.length === 0) {
+    projectsContent = (
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 py-12 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+        No projects or agents found{q ? ` for "${search}"` : ''}.
+      </div>
+    )
+  } else {
+    projectsContent = (
+      <div className="space-y-4">
+        {filteredProjects.map(project => (
+          <ProjectAgentsCard
+            key={project.id}
+            project={project}
+            userId={userId}
+            userEmail={user!.email}
+            onSaved={() => refetch()}
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-gray-900">
       {/* ── Header notch ── */}
@@ -626,27 +658,7 @@ export default function UserDetailPage() {
               </div>
             )}
           </div>
-          {projects.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 py-12 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-              This user has no project access.
-            </div>
-          ) : filteredProjects.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 py-12 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-              No projects or agents found{q ? ` for "${search}"` : ''}.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredProjects.map(project => (
-                <ProjectAgentsCard
-                  key={project.id}
-                  project={project}
-                  userId={userId}
-                  userEmail={user!.email}
-                  onSaved={() => refetch()}
-                />
-              ))}
-            </div>
-          )}
+          {projectsContent}
         </div>
       </div>
     </div>

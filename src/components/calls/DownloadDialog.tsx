@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { CalendarIcon, AlertTriangle, Download, RefreshCw } from 'lucide-react'
+import { CalendarIcon, AlertTriangle, Download, RefreshCw, ChevronDown } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -11,7 +11,6 @@ import { Calendar } from '@/components/ui/calendar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown } from 'lucide-react'
 import { downloadCSV, DownloadProgress } from '@/utils/callLogsUtils'
 import type { FilterOperation } from '@/components/CallFilter'
 
@@ -35,84 +34,27 @@ interface DownloadDialogProps {
   initialDateRange?: { from: string; to: string }
 }
 
-export default function DownloadDialog({
-  open, onOpenChange, agentId, projectId, activeFilters,
-  basicColumns, metadataColumns, transcriptionColumns, hiddenColumns, initialDateRange,
-}: DownloadDialogProps) {
-  const allowedBasic = useMemo(
-    () => basicColumns.filter(c => !hiddenColumns.includes(c.key)),
-    [basicColumns, hiddenColumns]
-  )
-  // `hiddenColumns` is a flat list of top-level pype_voice_call_logs column
-  // names (BASIC_COLUMNS keys, plus the whole-blob EXTRA_RESTRICTABLE_COLUMNS
-  // keys "metadata" / "transcription_metrics" / "transcript_json"). It never
-  // names individual metadata/transcription_metrics sub-keys — restricting
-  // those isn't supported, the whole blob is hidden or not. Checking a
-  // sub-key's own name against this list (e.g. `hiddenColumns.includes(c)`)
-  // is wrong: if a call's metadata/transcription_metrics JSON happens to
-  // contain a key with the same name as a hidden basic column (e.g.
-  // "call_ended_reason", "duration_seconds"), that sub-key was previously
-  // excluded too even though it was never actually restricted, silently
-  // dropping an extra column from the download list.
-  const allowedMetadata = useMemo(
-    () => (hiddenColumns.includes('metadata') ? [] : metadataColumns),
-    [metadataColumns, hiddenColumns]
-  )
-  const allowedTranscription = useMemo(
-    () => (hiddenColumns.includes('transcription_metrics') ? [] : transcriptionColumns),
-    [transcriptionColumns, hiddenColumns]
-  )
-  const transcriptAllowed = !hiddenColumns.includes('transcript_json')
+// ── Extracted helpers (kept out of the component body to hold its cognitive
+// complexity down — each replaces a nested ternary or an inline effect) ─────
 
-  const storageKey = `whispey:download-columns:${agentId}`
+function getCountDisplay(countLoading: boolean, count: number | null): React.ReactNode {
+  if (countLoading) return <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+  if (count === null) return '—'
+  return count.toLocaleString()
+}
 
-  const readExcludedColumns = (): Set<string> => {
-    try {
-      const raw = localStorage.getItem(storageKey)
-      const parsed = raw ? JSON.parse(raw) : []
-      return new Set(Array.isArray(parsed) ? parsed : [])
-    } catch {
-      return new Set()
-    }
-  }
+function getDisabledReason(progress: DownloadProgress | null, noColumnsSelected: boolean): string | null {
+  if (progress) return null
+  if (noColumnsSelected) return 'Select at least one column to download'
+  return null
+}
 
-  const [from, setFrom] = useState<Date | undefined>(initialDateRange?.from ? new Date(initialDateRange.from) : undefined)
-  const [to, setTo] = useState<Date | undefined>(initialDateRange?.to ? new Date(initialDateRange.to) : undefined)
-  const [timezone, setTimezone] = useState<'IST' | 'UTC'>('IST')
-  const [selectedBasic, setSelectedBasic] = useState<string[]>(allowedBasic.map(c => c.key))
-  const [selectedMetadata, setSelectedMetadata] = useState<string[]>(allowedMetadata)
-  const [selectedTranscription, setSelectedTranscription] = useState<string[]>(allowedTranscription)
-  const [includeTranscript, setIncludeTranscript] = useState(false)
+// Row-count estimate for the current filters/date range. Extracted so its
+// fetch effect (try/catch/finally) doesn't count against the dialog's
+// cognitive complexity.
+function useCallCount(agentId: string, open: boolean, from: Date | undefined, to: Date | undefined) {
   const [count, setCount] = useState<number | null>(null)
   const [countLoading, setCountLoading] = useState(false)
-  const [progress, setProgress] = useState<DownloadProgress | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!open) return
-    // The stored preference is an exclusion set (unchecked columns) so newly
-    // added columns default to included automatically. The disallowed set
-    // always wins — never re-show a column the backend would strip anyway.
-    const excluded = readExcludedColumns()
-    setSelectedBasic(allowedBasic.map(c => c.key).filter(k => !excluded.has(k)))
-    setSelectedMetadata(allowedMetadata.filter(k => !excluded.has(`metadata_${k}`)))
-    setSelectedTranscription(allowedTranscription.filter(k => !excluded.has(`transcription_${k}`)))
-    setIncludeTranscript(transcriptAllowed && !excluded.has('transcript'))
-    setError(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, allowedBasic, allowedMetadata, allowedTranscription, transcriptAllowed])
-
-  const persistExcludedColumns = () => {
-    const excluded = [
-      ...allowedBasic.map(c => c.key).filter(k => !selectedBasic.includes(k)),
-      ...allowedMetadata.filter(k => !selectedMetadata.includes(k)).map(k => `metadata_${k}`),
-      ...allowedTranscription.filter(k => !selectedTranscription.includes(k)).map(k => `transcription_${k}`),
-      ...(transcriptAllowed && !includeTranscript ? ['transcript'] : []),
-    ]
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(excluded))
-    } catch { /* localStorage unavailable — persistence is a nice-to-have */ }
-  }
 
   useEffect(() => {
     if (!open) return
@@ -141,6 +83,118 @@ export default function DownloadDialog({
     fetchCount()
     return () => { cancelled = true }
   }, [open, agentId, from, to])
+
+  return { count, countLoading }
+}
+
+// Selected/excluded column state, synced from localStorage whenever the
+// dialog opens. Extracted so the sync effect and persistence logic don't
+// count against the dialog's cognitive complexity.
+function useDownloadColumnSelection(
+  agentId: string,
+  open: boolean,
+  allowedBasic: ColumnGroup[],
+  allowedMetadata: string[],
+  allowedTranscription: string[],
+  transcriptAllowed: boolean,
+  setError: (error: string | null) => void
+) {
+  const storageKey = `whispey:download-columns:${agentId}`
+
+  const readExcludedColumns = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem(storageKey)
+      const parsed = raw ? JSON.parse(raw) : []
+      return new Set(Array.isArray(parsed) ? parsed : [])
+    } catch {
+      return new Set()
+    }
+  }
+
+  const [selectedBasic, setSelectedBasic] = useState<string[]>(allowedBasic.map(c => c.key))
+  const [selectedMetadata, setSelectedMetadata] = useState<string[]>(allowedMetadata)
+  const [selectedTranscription, setSelectedTranscription] = useState<string[]>(allowedTranscription)
+  const [includeTranscript, setIncludeTranscript] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    // The stored preference is an exclusion set (unchecked columns) so newly
+    // added columns default to included automatically. The disallowed set
+    // always wins — never re-show a column the backend would strip anyway.
+    const excluded = readExcludedColumns()
+    setSelectedBasic(allowedBasic.map(c => c.key).filter(k => !excluded.has(k)))
+    setSelectedMetadata(allowedMetadata.filter(k => !excluded.has(`metadata_${k}`)))
+    setSelectedTranscription(allowedTranscription.filter(k => !excluded.has(`transcription_${k}`)))
+    setIncludeTranscript(transcriptAllowed && !excluded.has('transcript'))
+    setError(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, allowedBasic, allowedMetadata, allowedTranscription, transcriptAllowed])
+
+  const persistExcludedColumns = () => {
+    const excluded = [
+      ...allowedBasic.map(c => c.key).filter(k => !selectedBasic.includes(k)),
+      ...allowedMetadata.filter(k => !selectedMetadata.includes(k)).map(k => `metadata_${k}`),
+      ...allowedTranscription.filter(k => !selectedTranscription.includes(k)).map(k => `transcription_${k}`),
+      ...(transcriptAllowed && !includeTranscript ? ['transcript'] : []),
+    ]
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(excluded))
+    } catch { /* localStorage unavailable — persistence is a nice-to-have */ }
+  }
+
+  return {
+    selectedBasic, setSelectedBasic,
+    selectedMetadata, setSelectedMetadata,
+    selectedTranscription, setSelectedTranscription,
+    includeTranscript, setIncludeTranscript,
+    persistExcludedColumns,
+  }
+}
+
+export default function DownloadDialog({
+  open, onOpenChange, agentId, projectId, activeFilters,
+  basicColumns, metadataColumns, transcriptionColumns, hiddenColumns, initialDateRange,
+}: Readonly<DownloadDialogProps>) {
+  const allowedBasic = useMemo(
+    () => basicColumns.filter(c => !hiddenColumns.includes(c.key)),
+    [basicColumns, hiddenColumns]
+  )
+  // `hiddenColumns` is a flat list of top-level pype_voice_call_logs column
+  // names (BASIC_COLUMNS keys, plus the whole-blob EXTRA_RESTRICTABLE_COLUMNS
+  // keys "metadata" / "transcription_metrics" / "transcript_json"). It never
+  // names individual metadata/transcription_metrics sub-keys — restricting
+  // those isn't supported, the whole blob is hidden or not. Checking a
+  // sub-key's own name against this list (e.g. `hiddenColumns.includes(c)`)
+  // is wrong: if a call's metadata/transcription_metrics JSON happens to
+  // contain a key with the same name as a hidden basic column (e.g.
+  // "call_ended_reason", "duration_seconds"), that sub-key was previously
+  // excluded too even though it was never actually restricted, silently
+  // dropping an extra column from the download list.
+  const allowedMetadata = useMemo(
+    () => (hiddenColumns.includes('metadata') ? [] : metadataColumns),
+    [metadataColumns, hiddenColumns]
+  )
+  const allowedTranscription = useMemo(
+    () => (hiddenColumns.includes('transcription_metrics') ? [] : transcriptionColumns),
+    [transcriptionColumns, hiddenColumns]
+  )
+  const transcriptAllowed = !hiddenColumns.includes('transcript_json')
+
+  const [from, setFrom] = useState<Date | undefined>(initialDateRange?.from ? new Date(initialDateRange.from) : undefined)
+  const [to, setTo] = useState<Date | undefined>(initialDateRange?.to ? new Date(initialDateRange.to) : undefined)
+  const [timezone, setTimezone] = useState<'IST' | 'UTC'>('IST')
+  const [progress, setProgress] = useState<DownloadProgress | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const {
+    selectedBasic, setSelectedBasic,
+    selectedMetadata, setSelectedMetadata,
+    selectedTranscription, setSelectedTranscription,
+    includeTranscript, setIncludeTranscript,
+    persistExcludedColumns,
+  } = useDownloadColumnSelection(agentId, open, allowedBasic, allowedMetadata, allowedTranscription, transcriptAllowed, setError)
+
+  const { count, countLoading } = useCallCount(agentId, open, from, to)
 
   const toggle = (list: string[], setList: (v: string[]) => void, col: string) => {
     setList(list.includes(col) ? list.filter(c => c !== col) : [...list, col])
@@ -173,11 +227,7 @@ export default function DownloadDialog({
   const selectedColumnCount = selectedBasic.length + selectedMetadata.length + selectedTranscription.length + (includeTranscript ? 1 : 0)
   const totalColumnCount = allowedBasic.length + allowedMetadata.length + allowedTranscription.length + (transcriptAllowed ? 1 : 0)
   const noColumnsSelected = selectedColumnCount === 0
-  const disabledReason = progress
-    ? null
-    : noColumnsSelected
-      ? 'Select at least one column to download'
-      : null
+  const disabledReason = getDisabledReason(progress, noColumnsSelected)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,7 +240,7 @@ export default function DownloadDialog({
           {/* Date range + timezone */}
           <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3 space-y-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Date range</label>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Date range</span>
               <div className="flex items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -219,9 +269,9 @@ export default function DownloadDialog({
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Timestamp timezone</label>
+              <label htmlFor="download-timezone" className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Timestamp timezone</label>
               <Select value={timezone} onValueChange={(v: 'IST' | 'UTC') => setTimezone(v)}>
-                <SelectTrigger className="h-8 text-xs w-40 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                <SelectTrigger id="download-timezone" className="h-8 text-xs w-40 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -254,7 +304,7 @@ export default function DownloadDialog({
               </div>
             </div>
             <span className={`text-sm font-semibold shrink-0 ${isLarge ? 'text-amber-800 dark:text-amber-300' : 'text-gray-900 dark:text-gray-100'}`}>
-              {countLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : count !== null ? count.toLocaleString() : '—'}
+              {getCountDisplay(countLoading, count)}
             </span>
           </div>
 

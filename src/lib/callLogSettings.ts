@@ -51,7 +51,7 @@ export const normalizeDownloadSettings = (
   }
   return {
     enabled: raw?.enabled ?? DEFAULT_DOWNLOAD_SETTINGS.enabled,
-    superadmin_only_columns: Array.isArray(raw?.superadmin_only_columns) ? raw!.superadmin_only_columns : [],
+    superadmin_only_columns: Array.isArray(raw?.superadmin_only_columns) ? raw.superadmin_only_columns : [],
     user_overrides,
   }
 }
