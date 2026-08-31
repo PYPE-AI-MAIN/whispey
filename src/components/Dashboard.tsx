@@ -482,6 +482,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               dateRange={apiDateRange}
               isLoading={agentLoading || projectLoading || callsCheckLoading}
               openDownloadSettings={activeTab === 'logs' && openDownloadSettings}
+              onAgentUpdated={refetchAgent}
             />
           )}
         </div>
