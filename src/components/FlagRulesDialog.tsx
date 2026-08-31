@@ -24,6 +24,7 @@ type FlagOperator =
 const NO_VALUE_OPERATORS = new Set<FlagOperator>(["is_empty", "is_not_empty", "invalid_phone_format"])
 
 interface FlagCondition {
+  id: string // client-only, for stable React keys; stripped before save
   source: FlagSource
   matchType: FlagMatchType
   field: string
@@ -99,7 +100,7 @@ function conditionLabel(c: FlagCondition): string {
     else if (METRIC_SCORE_PATH.test(c.field)) field = `${c.field.slice("metrics.".length, -METRIC_SCORE_SUFFIX.length)} score`
     else field = CALL_LOG_INFO_FIELDS.find((f) => f.value === c.field)?.label ?? c.field
   } else {
-    field = c.matchType === "exact" ? c.field : `field name ${c.matchType.replace(/_/g, " ")} “${c.field}”`
+    field = c.matchType === "exact" ? c.field : `field name ${c.matchType.replaceAll("_", " ")} “${c.field}”`
   }
   const val = NO_VALUE_OPERATORS.has(c.operator) ? "" : ` ${c.value.trim()}`
   return `${field.trim() || "…"} ${OPERATOR_LABELS[c.operator]}${val}`.trim()
@@ -112,11 +113,24 @@ function ruleSummary(rule: FlagRule): string | null {
   return filled.map(conditionLabel).join(" AND ")
 }
 
+// Client-only stable ids for React keys (rule.id also persists as the rule identifier).
+// crypto.randomUUID is available in every browser secure context and modern Node; the
+// counter is only a non-crypto fallback for old runtimes — no Math.random (security).
+let idCounter = 0
 function newId() {
-  return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `rule-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID()
+  idCounter += 1
+  return `id-${idCounter}`
 }
-const newCondition = (): FlagCondition => ({ source: "field_extractor", matchType: "exact", field: "", operator: "equals", value: "" })
+const newCondition = (): FlagCondition => ({ id: newId(), source: "field_extractor", matchType: "exact", field: "", operator: "equals", value: "" })
 const newRule = (): FlagRule => ({ id: newId(), reason: "", conditions: [newCondition()] })
+
+// Field-mode is a single derived choice (source + matchType + call_log field category).
+function computeFieldMode(condition: FlagCondition): FieldModeChoice {
+  if (condition.source === "call_log") return callLogFieldMode(condition.field)
+  if (condition.matchType === "exact") return "exact"
+  return `pattern:${condition.matchType}` as FieldModeChoice
+}
 
 interface FlagRulesDialogProps {
   agentId?: string
@@ -142,7 +156,14 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
   }, [fieldExtractorPrompt])
 
   const [enabled, setEnabled] = useState(initialFlagRules?.enabled ?? false)
-  const [rules, setRules] = useState<FlagRule[]>(initialFlagRules?.rules?.length ? initialFlagRules.rules : [newRule()])
+  const [rules, setRules] = useState<FlagRule[]>(() =>
+    initialFlagRules?.rules?.length
+      ? initialFlagRules.rules.map((r) => ({
+          ...r,
+          conditions: r.conditions.map((c) => ({ ...c, id: c.id || newId() })), // backfill ids on load (persisted configs have none)
+        }))
+      : [newRule()]
+  )
   const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -166,7 +187,12 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
     const validRules = rules
       .map((r) => ({
         ...r,
-        conditions: r.conditions.filter((c) => c.field.trim() !== "" && (NO_VALUE_OPERATORS.has(c.operator) || c.value.trim() !== "")),
+        conditions: r.conditions
+          .filter((c) => c.field.trim() !== "" && (NO_VALUE_OPERATORS.has(c.operator) || c.value.trim() !== ""))
+          // strip the client-only id so the saved shape matches the documented contract
+          .map((c): Omit<FlagCondition, "id"> => ({
+            source: c.source, matchType: c.matchType, field: c.field, operator: c.operator, value: c.value,
+          })),
       }))
       .filter((r) => r.conditions.length > 0)
 
@@ -270,7 +296,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                   </div>
 
                   {rule.conditions.map((condition, conditionIndex) => (
-                    <div key={conditionIndex}>
+                    <div key={condition.id}>
                       {conditionIndex > 0 && <div className="text-xs font-medium text-gray-400 dark:text-gray-500 pl-1 py-1">AND</div>}
                       <ConditionRow
                         condition={condition}
@@ -331,20 +357,92 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
 // score) all at once, since that's the single choice a person is actually making.
 type FieldModeChoice = "exact" | "pattern:starts_with" | "pattern:ends_with" | "pattern:contains" | "call_info" | "call_metadata" | "metric_score"
 
+// Second-column input: which concrete field within the chosen mode. Early-returns per mode
+// (no nested ternaries) and renders a free-text box for the name-pattern modes.
+function FieldInput({
+  fieldMode, field, extractorKeys, metadataKeys, metricKeys, onChange,
+}: Readonly<{
+  fieldMode: FieldModeChoice
+  field: string
+  extractorKeys: string[]
+  metadataKeys: string[]
+  metricKeys: string[]
+  onChange: (patch: Partial<FlagCondition>) => void
+}>) {
+  if (fieldMode === "call_info") {
+    return (
+      <Select value={field} onValueChange={(v) => onChange({ field: v })}>
+        <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder="Select field" /></SelectTrigger>
+        <SelectContent>
+          {CALL_LOG_INFO_FIELDS.map((f) => (<SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>))}
+        </SelectContent>
+      </Select>
+    )
+  }
+  if (fieldMode === "call_metadata") {
+    return (
+      <Select
+        value={field.startsWith(METADATA_PREFIX) ? field.slice(METADATA_PREFIX.length) : ""}
+        onValueChange={(v) => onChange({ field: `${METADATA_PREFIX}${v}` })}
+      >
+        <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder={metadataKeys.length ? "Select field" : "No metadata fields yet"} /></SelectTrigger>
+        <SelectContent>
+          {metadataKeys.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}
+        </SelectContent>
+      </Select>
+    )
+  }
+  if (fieldMode === "metric_score") {
+    return (
+      <Select
+        value={field.endsWith(METRIC_SCORE_SUFFIX) ? field.slice("metrics.".length, -METRIC_SCORE_SUFFIX.length) : ""}
+        onValueChange={(v) => onChange({ field: `metrics.${v}${METRIC_SCORE_SUFFIX}` })}
+      >
+        <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder={metricKeys.length ? "Select metric" : "No metrics configured yet"} /></SelectTrigger>
+        <SelectContent>
+          {metricKeys.map((k) => (<SelectItem key={k} value={k}>{k} score</SelectItem>))}
+        </SelectContent>
+      </Select>
+    )
+  }
+  if (fieldMode === "exact") {
+    return (
+      <Select value={field} onValueChange={(v) => onChange({ field: v })}>
+        <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder="Select field" /></SelectTrigger>
+        <SelectContent>
+          {extractorKeys.map((k) => (<SelectItem key={k} value={k}>{k}</SelectItem>))}
+        </SelectContent>
+      </Select>
+    )
+  }
+  // pattern:starts_with / ends_with / contains — free-text against field names
+  return (
+    <Input placeholder="e.g. _correctly" value={field} onChange={(e) => onChange({ field: e.target.value })} className="h-8 text-xs" />
+  )
+}
+
+// Reset a condition to sensible defaults when its mode changes (source/matchType/category).
+function applyFieldMode(v: FieldModeChoice, onChange: (patch: Partial<FlagCondition>) => void) {
+  if (v === "call_info" || v === "call_metadata" || v === "metric_score") {
+    onChange({ source: "call_log", matchType: "exact", field: "", operator: "equals", value: "" })
+  } else if (v === "exact") {
+    onChange({ source: "field_extractor", matchType: "exact", field: "", operator: "equals", value: "" })
+  } else {
+    onChange({ source: "field_extractor", matchType: v.replace("pattern:", "") as FlagMatchType, field: "", operator: "equals", value: "" })
+  }
+}
+
 function ConditionRow({
   condition, extractorKeys, metadataKeys, metricKeys, onChange, onRemove,
-}: {
+}: Readonly<{
   condition: FlagCondition
   extractorKeys: string[]
   metadataKeys: string[]
   metricKeys: string[]
   onChange: (patch: Partial<FlagCondition>) => void
   onRemove?: () => void
-}) {
-  const fieldMode: FieldModeChoice =
-    condition.source === "call_log" ? callLogFieldMode(condition.field)
-    : condition.matchType === "exact" ? "exact"
-    : (`pattern:${condition.matchType}` as FieldModeChoice)
+}>) {
+  const fieldMode = computeFieldMode(condition)
 
   // Include the condition's current operator even if it falls outside the type-restricted
   // list — e.g. a rule saved before this field existed, or before restricting by type — so
@@ -355,14 +453,7 @@ function ConditionRow({
   return (
     <div className="grid grid-cols-12 gap-2 items-center">
       <div className="col-span-3 min-w-0">
-        <Select
-          value={fieldMode}
-          onValueChange={(v: FieldModeChoice) => {
-            if (v === "call_info" || v === "call_metadata" || v === "metric_score") onChange({ source: "call_log", matchType: "exact", field: "", operator: "equals", value: "" })
-            else if (v === "exact") onChange({ source: "field_extractor", matchType: "exact", field: "", operator: "equals", value: "" })
-            else onChange({ source: "field_extractor", matchType: v.replace("pattern:", "") as FlagMatchType, field: "", operator: "equals", value: "" })
-          }}
-        >
+        <Select value={fieldMode} onValueChange={(v: FieldModeChoice) => applyFieldMode(v, onChange)}>
           <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue className="truncate" /></SelectTrigger>
           <SelectContent>
             <SelectGroup>
@@ -386,56 +477,14 @@ function ConditionRow({
       </div>
 
       <div className="col-span-3 min-w-0">
-        {fieldMode === "call_info" ? (
-          <Select value={condition.field} onValueChange={(v) => onChange({ field: v })}>
-            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder="Select field" /></SelectTrigger>
-            <SelectContent>
-              {CALL_LOG_INFO_FIELDS.map((f) => (
-                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : fieldMode === "call_metadata" ? (
-          <Select
-            value={condition.field.startsWith(METADATA_PREFIX) ? condition.field.slice(METADATA_PREFIX.length) : ""}
-            onValueChange={(v) => onChange({ field: `${METADATA_PREFIX}${v}` })}
-          >
-            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder={metadataKeys.length ? "Select field" : "No metadata fields yet"} /></SelectTrigger>
-            <SelectContent>
-              {metadataKeys.map((k) => (
-                <SelectItem key={k} value={k}>{k}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : fieldMode === "metric_score" ? (
-          <Select
-            value={condition.field.endsWith(METRIC_SCORE_SUFFIX) ? condition.field.slice("metrics.".length, -METRIC_SCORE_SUFFIX.length) : ""}
-            onValueChange={(v) => onChange({ field: `metrics.${v}${METRIC_SCORE_SUFFIX}` })}
-          >
-            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder={metricKeys.length ? "Select metric" : "No metrics configured yet"} /></SelectTrigger>
-            <SelectContent>
-              {metricKeys.map((k) => (
-                <SelectItem key={k} value={k}>{k} score</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : fieldMode === "exact" ? (
-          <Select value={condition.field} onValueChange={(v) => onChange({ field: v })}>
-            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder="Select field" /></SelectTrigger>
-            <SelectContent>
-              {extractorKeys.map((k) => (
-                <SelectItem key={k} value={k}>{k}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input
-            placeholder="e.g. _correctly"
-            value={condition.field}
-            onChange={(e) => onChange({ field: e.target.value })}
-            className="h-8 text-xs"
-          />
-        )}
+        <FieldInput
+          fieldMode={fieldMode}
+          field={condition.field}
+          extractorKeys={extractorKeys}
+          metadataKeys={metadataKeys}
+          metricKeys={metricKeys}
+          onChange={onChange}
+        />
       </div>
 
       <div className="col-span-3 min-w-0">

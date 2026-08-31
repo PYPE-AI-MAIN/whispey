@@ -121,6 +121,14 @@ function resolveDisplayNameField(
  * whatever field_extractor_prompt this same request submits, falling back to the
  * agent's existing one.
  */
+// Validate flag_rules against the field-extractor keys from this request (falling back to
+// the agent's stored prompt). Returns a user-facing error message, or null when valid.
+function flagRulesError(body: Record<string, unknown>, existingFieldExtractorPrompt: unknown): string | null {
+  const extractorSource = 'field_extractor_prompt' in body ? body.field_extractor_prompt : existingFieldExtractorPrompt
+  const validationError = validateFlagRules(body.flag_rules, parseExtractorKeys(extractorSource))
+  return validationError ? `Invalid flag_rules: ${validationError}` : null
+}
+
 function buildAgentUpdatePayload(
   body: Record<string, unknown>,
   roleResult: RoleResult,
@@ -140,9 +148,8 @@ function buildAgentUpdatePayload(
     if (!(key in body)) continue
     if (isViewer && org?.[gate] !== true) return { ok: false, error: 'Forbidden', status: 403 }
     if (key === 'flag_rules') {
-      const extractorSource = 'field_extractor_prompt' in body ? body.field_extractor_prompt : existingFieldExtractorPrompt
-      const validationError = validateFlagRules(body.flag_rules, parseExtractorKeys(extractorSource))
-      if (validationError) return { ok: false, error: `Invalid flag_rules: ${validationError}`, status: 400 }
+      const err = flagRulesError(body, existingFieldExtractorPrompt)
+      if (err) return { ok: false, error: err, status: 400 }
     }
     payload[key] = body[key]
   }
