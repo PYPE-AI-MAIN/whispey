@@ -63,6 +63,7 @@ interface CallFilterProps {
 
 const FILTER_VALUE_TO_BASIC_KEY: Record<string, string> = {
   customer_number: 'customer_number',
+  call_id: 'call_id',
   duration_seconds: 'duration_seconds',
   avg_latency: 'avg_latency',
   call_started_at: 'call_started_at',
@@ -74,6 +75,7 @@ const FILTER_VALUE_TO_BASIC_KEY: Record<string, string> = {
 
 const COLUMNS = [
   { value: 'customer_number',       label: 'Customer Number',  type: 'text'   },
+  { value: 'call_id',               label: 'Call ID',          type: 'text'   },
   { value: 'duration_seconds',      label: 'Duration (s)',      type: 'number', numericType: 'integer' as const },
   { value: 'avg_latency',           label: 'Avg Latency (ms)',  type: 'number', numericType: 'float'   as const },
   { value: 'call_started_at',       label: 'Date',              type: 'date'   },
@@ -126,7 +128,7 @@ const OPERATIONS = {
   ],
 }
 
-const TEXT_NOT_EQUALS_COLUMNS = new Set(['customer_number', 'call_ended_reason'])
+const TEXT_NOT_EQUALS_COLUMNS = new Set(['customer_number', 'call_ended_reason', 'call_id'])
 
 // ── Internal row state ───────────────────────────────────────────────────────
 
