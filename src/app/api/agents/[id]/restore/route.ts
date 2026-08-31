@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { pushEnrichedConfigToGitHub } from '@/lib/agentVersionHelpers'
 import { mintServiceToken } from '@/lib/serviceToken'
 
-// This route calls into /api/agents/save-and-deploy (itself allowed up to 60s
-// for a hot-reload), then pushes to GitHub and writes to Supabase on top of
-// that — the combined time can exceed Vercel's short default timeout even
-// though the inner deploy call is well within its own budget, causing a
-// platform-level 502 that looks like a random failure from the UI.
-export const maxDuration = 90
+// This route calls into /api/agents/save-and-deploy, then (for docker agents)
+// polls until the background container swap actually finishes, then pushes
+// to GitHub and writes to Supabase on top of that. A real docker deploy alone
+// can take ~90-100s, so the budget here has to cover deploy + poll + GitHub +
+// Supabase, not just the deploy call.
+export const maxDuration = 180
+
+const UPDATE_POLL_INTERVAL_MS = 2000
+const UPDATE_POLL_MAX_MS = 150 * 1000 // leave headroom under maxDuration for GitHub push + Supabase writes
+const TERMINAL_UPDATE_STATUSES = new Set(['completed', 'failed', 'rolled_back'])
 
 const supabase = createServiceRoleClient()
 
@@ -36,12 +41,43 @@ function parseDeployError(errText: string): string {
 
 type DeployError = { message: string; status: number }
 
+// Mirrors the polling loop in useAgentConfig.ts's saveAndDeployAgent, but
+// server-side: the docker backend returns "update_started" immediately and
+// runs the actual container swap in the background, so a fast 200 here does
+// NOT mean the deploy finished — only that it started.
+async function pollDeployStatus(appUrl: string, agentName: string): Promise<DeployError | null> {
+  const deadline = Date.now() + UPDATE_POLL_MAX_MS
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, UPDATE_POLL_INTERVAL_MS))
+
+    const res = await fetch(`${appUrl}/api/agents/update-status/${encodeURIComponent(agentName)}`, {
+      headers: { Authorization: `Bearer ${mintServiceToken()}` },
+    })
+    if (!res.ok) continue // transient — keep polling until the deadline
+
+    const status = await res.json().catch(() => null)
+    if (!status || status.status === 'no_update_found' || status.status === 'unreachable') continue
+    if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
+      if (status.status !== 'completed' || status.success === false) {
+        const failureDetail = status.error || `update ended with status: ${status.status}`
+        return { message: `Restore deploy failed: ${failureDetail}`, status: 502 }
+      }
+      return null
+    }
+  }
+
+  return { message: 'Restore deploy timed out waiting for the agent update to complete', status: 504 }
+}
+
 async function runDeploy(
   appUrl: string,
   isPipecat: boolean,
   configSnapshot: any,
   agentId: string,
   agentName: string,
+  deploymentTarget: 'classic' | 'docker',
+  callerUserId: string | null,
 ): Promise<DeployError | null> {
   if (isPipecat) {
     const pipecatAgentId = configSnapshot?.agent?.whispey_agent_id
@@ -58,17 +94,32 @@ async function runDeploy(
       console.error('[restore] Pipecat deploy failed:', res.status, errText)
       return { message: `Restore deploy failed: ${parseDeployError(errText)}`, status: 502 }
     }
-  } else {
-    const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mintServiceToken()}` },
-      body: JSON.stringify({ agent: configSnapshot.agent, metadata: { agentId, agentName } }),
-    })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      console.error('[restore] LiveKit deploy failed:', res.status, errText)
-      return { message: `Restore deploy failed: ${parseDeployError(errText)}`, status: 502 }
-    }
+    return null
+  }
+
+  const res = await fetch(`${appUrl}/api/agents/save-and-deploy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mintServiceToken()}` },
+    // callerUserId: this is a server-to-server call authenticated by the service
+    // token above, not a Clerk session — save-and-deploy's superadmin check
+    // (resolveDeploymentTarget) would otherwise see no session and silently
+    // downgrade any requested 'docker' target to 'classic'. We already resolved
+    // the real caller's role in this route's own request (which DOES have a
+    // Clerk session), so forward it as an already-verified id instead.
+    body: JSON.stringify({ agent: configSnapshot.agent, metadata: { agentId, agentName }, deploymentTarget, callerUserId }),
+  })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    console.error('[restore] LiveKit deploy failed:', res.status, errText)
+    return { message: `Restore deploy failed: ${parseDeployError(errText)}`, status: 502 }
+  }
+
+  // Classic deploys synchronously and this response IS the final result.
+  // Docker deploys in the background and returns "update_started" — poll
+  // until it actually finishes before treating the restore as successful.
+  const body = await res.json().catch(() => null)
+  if (deploymentTarget === 'docker' && body?.data?.status === 'update_started') {
+    return pollDeployStatus(appUrl, agentName)
   }
   return null
 }
@@ -82,6 +133,11 @@ export async function POST(
     const { id: agentId } = await params
     const body = await req.json()
     const { version_id, commit_message, userEmail, userId } = body
+    // The real, Clerk-verified caller — resolved here (this route has an
+    // actual browser session) so it can be forwarded to save-and-deploy's
+    // superadmin check, which otherwise sees no session on our internal
+    // service-token-authenticated call and silently downgrades to 'classic'.
+    const { userId: callerUserId } = await auth()
 
     if (!version_id || !commit_message?.trim()) {
       return NextResponse.json({ message: 'version_id and commit_message are required' }, { status: 400 })
@@ -106,7 +162,7 @@ export async function POST(
     // 2. Verify this is a dev agent
     const { data: agent, error: aErr } = await supabase
       .from('pype_voice_agents')
-      .select('id, name, project_id, environment')
+      .select('id, name, project_id, environment, configuration')
       .eq('id', agentId)
       .single()
 
@@ -118,10 +174,20 @@ export async function POST(
       return NextResponse.json({ message: 'Cannot restore on a production agent.' }, { status: 403 })
     }
 
-    // 3. Deploy the old config back to the dev agent
+    // 3. Deploy the old config back to the dev agent — must match this agent's
+    // ACTUAL deployment target, not just be omitted (save-and-deploy defaults
+    // any unspecified target to 'classic', which would silently deploy a
+    // docker agent's restore to the wrong backend entirely).
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     const isPipecat = version.config_snapshot?.platform === 'pipecat'
-    const deployErr = await runDeploy(appUrl, isPipecat, version.config_snapshot, agentId, agent.name)
+    const deploymentTarget: 'classic' | 'docker' =
+      (agent as any).configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+    // agent.name is the short display name from pype_voice_agents — the backend
+    // (and the update_status poll) needs the full ID-suffixed name that's actually
+    // stored in the config snapshot itself (e.g. "D_SH_Radio_b4ed5204_..."), not
+    // the short one, or polling 404s against a name the backend never registered.
+    const fullAgentName: string = version.config_snapshot?.agent?.name || agent.name
+    const deployErr = await runDeploy(appUrl, isPipecat, version.config_snapshot, agentId, fullAgentName, deploymentTarget, callerUserId)
     if (deployErr) return NextResponse.json({ message: deployErr.message }, { status: deployErr.status })
 
     // 4. Push restored config as YAML to GitHub (same enrichment as regular save)

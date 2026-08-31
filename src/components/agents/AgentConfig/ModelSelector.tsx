@@ -147,6 +147,9 @@ const modelProviders: Record<string, Provider> = {
     type: 'direct',
     models: [
       { value: 'zai.glm-5', label: 'Z.ai GLM 5' },
+      { value: 'openai.gpt-5.6-luna', label: 'OpenAI GPT 5.6 Luna' },
+      { value: 'openai.gpt-5.6-sol', label: 'OpenAI GPT 5.6 Sol' },
+      { value: 'openai.gpt-5.6-terra', label: 'OpenAI GPT 5.6 Terra' }
     ]
   },
   groq: {

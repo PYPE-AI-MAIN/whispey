@@ -6,6 +6,7 @@ import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { Loader2, ArrowLeft, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PipecatKnowledgeBase from '@/components/agents/AgentConfig/Pipecat/PipecatKnowledgeBase'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 export default function PipecatKnowledgeBasePage() {
   const params = useParams()
@@ -14,7 +15,7 @@ export default function PipecatKnowledgeBasePage() {
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
 
   const { data: agentDataResponse, isLoading } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, configuration',
+    select: 'id, name, display_name, configuration',
     filters: [{ column: 'id', operator: 'eq', value: agentId }],
     limit: 1,
     auth: agentId ? { agentId } : undefined,
@@ -63,7 +64,7 @@ export default function PipecatKnowledgeBasePage() {
                   Knowledge Base
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {agent?.name} · Pipecat
+                  {agentDisplayName(agent)} · Pipecat
                 </p>
               </div>
             </div>

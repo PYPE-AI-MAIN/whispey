@@ -8,7 +8,6 @@ import { Geist, Geist_Mono, Poppins } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import Script from 'next/script'
 import { Toaster } from 'react-hot-toast' // ADD THIS LINE
-import { PostHogProvider } from './providers'
 import { FeatureAccessProvider } from './providers/FeatureAccessProvider'
 import { QueryProvider } from './providers/QueryProvider'
 import './globals.css'
@@ -75,9 +74,8 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <QueryProvider>
-              <PostHogProvider>
-                <FeatureAccessProvider>
-                  <Toaster 
+              <FeatureAccessProvider>
+                  <Toaster
                     position="top-right"
                     toastOptions={{
                       duration: 3000,
@@ -104,8 +102,7 @@ export default function RootLayout({
                   <LayoutContent>
                     {children}
                   </LayoutContent>
-                </FeatureAccessProvider>
-              </PostHogProvider>
+              </FeatureAccessProvider>
             </QueryProvider>
           </ThemeProvider>
         </body>

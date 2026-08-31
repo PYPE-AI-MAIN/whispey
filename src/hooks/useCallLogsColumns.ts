@@ -23,6 +23,19 @@ export const BASIC_COLUMNS = [
   { key: "total_stt_cost", label: "STT Cost (₹)", hidden: true }
 ] as const
 
+// Whole-column JSONB/blob fields that are real columns on pype_voice_call_logs but
+// aren't part of BASIC_COLUMNS — offered as single toggleable entries in the
+// superadmin restriction picker and the download dialog (unlike metadata/
+// transcription_metrics sub-keys, which are broken out individually elsewhere).
+export const EXTRA_RESTRICTABLE_COLUMNS = [
+  { key: "transcript_json", label: "Transcript" },
+  { key: "metadata", label: "Metadata" },
+  { key: "transcription_metrics", label: "Transcription Metrics" },
+] as const
+
+// EXCLUDED_METADATA_COLUMNS is imported from @/lib/metadataColumnDenylist (single source of
+// truth, shared with flag-rules validation) — do not re-declare it inline here.
+
 // transcription_metrics keys managed as first-class BASIC_COLUMNS — skip auto-discovery
 const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = ['tags', 'tagComments', 'flag']
 

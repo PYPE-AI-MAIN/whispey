@@ -4,6 +4,7 @@
 import { useParams } from 'next/navigation'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import PipecatAgentConfig from '@/components/agents/AgentConfig/Pipecat/PipecatAgentConfig'
+import { agentDisplayName } from '@/lib/agentDisplayName'
 
 export default function PipecatConfigPage() {
   const params = useParams()
@@ -11,7 +12,7 @@ export default function PipecatConfigPage() {
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
 
   const { data: agentDataResponse, isLoading } = useSupabaseQuery('pype_voice_agents', {
-    select: 'id, name, configuration, environment',
+    select: 'id, name, display_name, configuration, environment',
     filters: [{ column: 'id', operator: 'eq', value: agentid }],
     limit: 1,
     auth: agentid ? { agentId: agentid } : undefined,
@@ -40,7 +41,7 @@ export default function PipecatConfigPage() {
       agentId={agentid}
       projectId={projectId}
       pipecatAgentId={pipecatAgentId}
-      agentName={agent?.name || ''}
+      agentName={agentDisplayName(agent)}
       environment={agent?.environment ?? 'dev'}
     />
   )

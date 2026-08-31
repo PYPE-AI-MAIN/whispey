@@ -56,3 +56,26 @@ export function deriveAgentName(displayName: string): string {
   // constant — the agent UUID in the backend name is what makes it unique.
   return derived || 'agent'
 }
+
+/**
+ * Resolve a stored technical agent identifier (a raw agent id, or the
+ * `${name}_${id.replace(/-/g, '_')}` backend dispatch name — see
+ * resolveCampaignAgentName in campaigns/create/page.tsx) back to that
+ * agent's display name. Falls back to the raw stored string when no match
+ * is found (e.g. the agent was deleted).
+ */
+export function resolveStoredAgentName(
+  agents: Array<{ id: string; name?: string | null; display_name?: string | null }>,
+  stored: string
+): string {
+  if (!stored) return stored
+  const byId = agents.find((a) => a.id === stored)
+  if (byId) return agentDisplayName(byId)
+  const parts = stored.trim().split('_')
+  if (parts.length >= 5) {
+    const uuid = parts.slice(-5).join('-')
+    const byUuid = agents.find((a) => a.id === uuid)
+    if (byUuid) return agentDisplayName(byUuid)
+  }
+  return stored
+}

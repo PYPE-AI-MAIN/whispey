@@ -236,6 +236,11 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
   const connect = useCallback(async () => {
     if (isConnecting || isConnected) return
     if (!agentName?.trim()) { setConnectionError('Agent name is required'); return }
+    // A prior session that ended any way other than a clean disconnect() (closing
+    // the panel, a page nav, an error path) leaves old transcript bubbles in state.
+    // Without this, a fresh connection just appends new messages on top of stale
+    // ones from an earlier test, producing a misleading mixed transcript.
+    setTranscripts([])
     setIsConnecting(true); setConnectionError(null)
     try {
       const sessionData = await startWebSession()

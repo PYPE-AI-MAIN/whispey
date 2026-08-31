@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { agentDisplayName, normalizeAgentDisplayName, deriveAgentName, AGENT_DISPLAY_NAME_MAX, AGENT_NAME_PREFIX_MAX } from '@/lib/agentDisplayName'
+import { agentDisplayName, normalizeAgentDisplayName, deriveAgentName, resolveStoredAgentName, AGENT_DISPLAY_NAME_MAX, AGENT_NAME_PREFIX_MAX } from '@/lib/agentDisplayName'
 import { extractAgentIdFromBackendName } from '@/lib/getProjectRoleForApi'
 
 describe('agentDisplayName', () => {
@@ -84,5 +84,32 @@ describe('deriveAgentName', () => {
       const backendName = `${deriveAgentName(label)}_${id.replace(/-/g, '_')}`
       expect(extractAgentIdFromBackendName(backendName), label).toBe(id)
     }
+  })
+})
+
+describe('resolveStoredAgentName', () => {
+  const id = 'a2e7a0fa-c64c-4840-a063-dad5a3df685e'
+  const agents = [{ id, name: 'Front_Desk', display_name: 'Front Desk — Riya' }]
+
+  test('resolves a raw agent id to its display name', () => {
+    expect(resolveStoredAgentName(agents, id)).toBe('Front Desk — Riya')
+  })
+
+  test('resolves the composite backend dispatch name to its display name', () => {
+    const backendName = `Front_Desk_${id.replace(/-/g, '_')}`
+    expect(resolveStoredAgentName(agents, backendName)).toBe('Front Desk — Riya')
+  })
+
+  test('falls back to the raw stored string when no agent matches', () => {
+    expect(resolveStoredAgentName(agents, 'deleted-agent-id')).toBe('deleted-agent-id')
+    expect(resolveStoredAgentName([], id)).toBe(id)
+  })
+
+  test('falls back to the technical name when the matched agent has no display_name', () => {
+    expect(resolveStoredAgentName([{ id, name: 'Front_Desk' }], id)).toBe('Front_Desk')
+  })
+
+  test('passes through empty input', () => {
+    expect(resolveStoredAgentName(agents, '')).toBe('')
   })
 })
