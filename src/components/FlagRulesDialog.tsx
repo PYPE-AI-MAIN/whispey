@@ -6,13 +6,13 @@
 import type React from "react"
 import { useMemo, useState } from "react"
 import { Plus, X, Flag } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type FlagSource = "field_extractor" | "call_log"
 type FlagMatchType = "exact" | "starts_with" | "ends_with" | "contains"
@@ -88,6 +88,28 @@ function callLogFieldMode(field: string): CallLogFieldMode {
   if (field.startsWith(METADATA_PREFIX)) return "call_metadata"
   if (METRIC_SCORE_PATH.test(field)) return "metric_score"
   return "call_info"
+}
+
+// Plain-English label for one condition, e.g. "is_task_complete equals 0" or
+// "field name ends with “_correctly” is empty" — used in the live rule preview.
+function conditionLabel(c: FlagCondition): string {
+  let field: string
+  if (c.source === "call_log") {
+    if (c.field.startsWith(METADATA_PREFIX)) field = c.field.slice(METADATA_PREFIX.length)
+    else if (METRIC_SCORE_PATH.test(c.field)) field = `${c.field.slice("metrics.".length, -METRIC_SCORE_SUFFIX.length)} score`
+    else field = CALL_LOG_INFO_FIELDS.find((f) => f.value === c.field)?.label ?? c.field
+  } else {
+    field = c.matchType === "exact" ? c.field : `field name ${c.matchType.replace(/_/g, " ")} “${c.field}”`
+  }
+  const val = NO_VALUE_OPERATORS.has(c.operator) ? "" : ` ${c.value.trim()}`
+  return `${field.trim() || "…"} ${OPERATOR_LABELS[c.operator]}${val}`.trim()
+}
+
+// Live preview of a whole rule; returns null until at least one condition has a field.
+function ruleSummary(rule: FlagRule): string | null {
+  const filled = rule.conditions.filter((c) => c.field.trim() !== "")
+  if (filled.length === 0) return null
+  return filled.map(conditionLabel).join(" AND ")
 }
 
 function newId() {
@@ -180,23 +202,32 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
       <DialogContent className="max-w-3xl rounded-lg shadow-xl p-0 flex flex-col h-[85vh]">
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Call Flagging</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+            Automatically flag calls for review when they match a rule you define. Flagged calls are highlighted in Call Logs and can be filtered by their flag.
+          </DialogDescription>
         </DialogHeader>
         <Separator className="flex-shrink-0" />
 
         <div className="flex-shrink-0 p-6 pb-4">
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 dark:bg-gray-800">
-            <Label htmlFor="flagging-enabled" className="text-base font-medium text-gray-700 dark:text-gray-300">
-              Enable Flagging
-            </Label>
+          <div className="flex items-center justify-between p-3 rounded-md bg-gray-50 dark:bg-gray-800">
+            <div>
+              <Label htmlFor="flagging-enabled" className="text-base font-medium text-gray-700 dark:text-gray-300">
+                Enable Flagging
+              </Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Off = rules are saved but no calls are flagged.</p>
+            </div>
             <Switch id="flagging-enabled" checked={enabled} onCheckedChange={setEnabled} />
           </div>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">
+            A call is flagged if it matches <span className="font-semibold">any</span> rule below. A rule matches only when <span className="font-semibold">all</span> of its conditions are true.
+          </p>
           {extractorKeys.length === 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
               No field extractor fields configured yet — set those up first so there's something to flag on.
             </p>
           )}
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            Values vary by agent — some use <code>0</code>/<code>1</code>, others <code>pass</code>/<code>fail</code>/<code>not_applicable</code>, or <code>yes</code>/<code>no</code>. Check a real call's actual values before assuming a convention.
+            Tip: values vary by agent — some use <code>0</code>/<code>1</code>, others <code>pass</code>/<code>fail</code>/<code>not_applicable</code>, or <code>yes</code>/<code>no</code>. Check a real call's actual values before assuming a convention.
           </p>
         </div>
 
@@ -230,6 +261,14 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                     </Button>
                   </div>
 
+                  <div className="grid grid-cols-12 gap-2 px-1">
+                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">What to check</div>
+                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Field</div>
+                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Condition</div>
+                    <div className="col-span-2 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Value</div>
+                    <div className="col-span-1" />
+                  </div>
+
                   {rule.conditions.map((condition, conditionIndex) => (
                     <div key={conditionIndex}>
                       {conditionIndex > 0 && <div className="text-xs font-medium text-gray-400 dark:text-gray-500 pl-1 py-1">AND</div>}
@@ -251,6 +290,13 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                   >
                     <Plus className="w-3 h-3 mr-1" /> Add condition (AND)
                   </Button>
+
+                  {ruleSummary(rule) && (
+                    <div className="rounded-md bg-blue-50 dark:bg-blue-950/40 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+                      <span className="font-medium">Flags when</span> {ruleSummary(rule)}
+                      <span className="text-blue-400 dark:text-blue-500"> → “{rule.reason.trim() || "reason defaults to the field name"}”</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -317,15 +363,24 @@ function ConditionRow({
             else onChange({ source: "field_extractor", matchType: v.replace("pattern:", "") as FlagMatchType, field: "", operator: "equals", value: "" })
           }}
         >
-          <SelectTrigger className="h-8 text-xs"><SelectValue className="truncate" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue className="truncate" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="exact">Field extractor value</SelectItem>
-            <SelectItem value="pattern:ends_with">Field name ends with</SelectItem>
-            <SelectItem value="pattern:starts_with">Field name starts with</SelectItem>
-            <SelectItem value="pattern:contains">Field name contains</SelectItem>
-            <SelectItem value="call_info">Call info</SelectItem>
-            <SelectItem value="call_metadata">Call metadata</SelectItem>
-            <SelectItem value="metric_score">Metric score</SelectItem>
+            <SelectGroup>
+              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">From the AI analysis</SelectLabel>
+              <SelectItem value="exact">Field extractor value</SelectItem>
+              <SelectItem value="metric_score">Metric score</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">From the call record</SelectLabel>
+              <SelectItem value="call_info">Call info</SelectItem>
+              <SelectItem value="call_metadata">Call metadata</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">Match many fields by name</SelectLabel>
+              <SelectItem value="pattern:starts_with">Field name starts with</SelectItem>
+              <SelectItem value="pattern:ends_with">Field name ends with</SelectItem>
+              <SelectItem value="pattern:contains">Field name contains</SelectItem>
+            </SelectGroup>
           </SelectContent>
         </Select>
       </div>
@@ -333,7 +388,7 @@ function ConditionRow({
       <div className="col-span-3 min-w-0">
         {fieldMode === "call_info" ? (
           <Select value={condition.field} onValueChange={(v) => onChange({ field: v })}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select field" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder="Select field" /></SelectTrigger>
             <SelectContent>
               {CALL_LOG_INFO_FIELDS.map((f) => (
                 <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
@@ -345,7 +400,7 @@ function ConditionRow({
             value={condition.field.startsWith(METADATA_PREFIX) ? condition.field.slice(METADATA_PREFIX.length) : ""}
             onValueChange={(v) => onChange({ field: `${METADATA_PREFIX}${v}` })}
           >
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={metadataKeys.length ? "Select field" : "No metadata fields yet"} /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder={metadataKeys.length ? "Select field" : "No metadata fields yet"} /></SelectTrigger>
             <SelectContent>
               {metadataKeys.map((k) => (
                 <SelectItem key={k} value={k}>{k}</SelectItem>
@@ -357,7 +412,7 @@ function ConditionRow({
             value={condition.field.endsWith(METRIC_SCORE_SUFFIX) ? condition.field.slice("metrics.".length, -METRIC_SCORE_SUFFIX.length) : ""}
             onValueChange={(v) => onChange({ field: `metrics.${v}${METRIC_SCORE_SUFFIX}` })}
           >
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={metricKeys.length ? "Select metric" : "No metrics configured yet"} /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder={metricKeys.length ? "Select metric" : "No metrics configured yet"} /></SelectTrigger>
             <SelectContent>
               {metricKeys.map((k) => (
                 <SelectItem key={k} value={k}>{k} score</SelectItem>
@@ -366,7 +421,7 @@ function ConditionRow({
           </Select>
         ) : fieldMode === "exact" ? (
           <Select value={condition.field} onValueChange={(v) => onChange({ field: v })}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select field" /></SelectTrigger>
+            <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue placeholder="Select field" /></SelectTrigger>
             <SelectContent>
               {extractorKeys.map((k) => (
                 <SelectItem key={k} value={k}>{k}</SelectItem>
@@ -385,7 +440,7 @@ function ConditionRow({
 
       <div className="col-span-3 min-w-0">
         <Select value={condition.operator} onValueChange={(v) => onChange({ operator: v as FlagOperator, value: NO_VALUE_OPERATORS.has(v as FlagOperator) ? "" : condition.value })}>
-          <SelectTrigger className="h-8 text-xs"><SelectValue className="truncate" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue className="truncate" /></SelectTrigger>
           <SelectContent>
             {availableOperators.map((op) => (
               <SelectItem key={op} value={op}>{OPERATOR_LABELS[op]}</SelectItem>
