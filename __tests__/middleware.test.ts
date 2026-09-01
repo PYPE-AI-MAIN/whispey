@@ -6,6 +6,9 @@ const mockHasValidServiceToken = vi.hoisted(() => vi.fn())
 vi.mock('@clerk/nextjs/server', () => ({
   clerkMiddleware: (fn: any) => fn, // expose inner handler as default export
   createRouteMatcher: () => (_req: any) => false, // all routes are "protected"
+  // Used as the platform-admin fallback when the DB-based approval check
+  // doesn't already approve the request — not real Clerk data in this test.
+  currentUser: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@/lib/serviceTokenVerifier', () => ({
