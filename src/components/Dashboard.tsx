@@ -118,22 +118,26 @@ interface PeriodOptionButtonProps {
   readonly children: React.ReactNode
 }
 
-// A Period quick-filter button. When disabled, wraps itself in a Tooltip explaining
-// why — native `disabled` buttons don't fire hover events in most browsers, so the
-// tooltip trigger is a span around the button rather than the button itself.
+// A Period quick-filter button. When disabled, it stays a real <button> (marked
+// `aria-disabled` rather than the native `disabled` attribute) and doubles as its
+// own Tooltip trigger — a native `disabled` button won't fire the hover/focus
+// events a Tooltip needs, but `aria-disabled` keeps it interactive for that
+// purpose while onClick still no-ops via the caller's own guard.
 function PeriodOptionButton({ onClick, disabled, className, children }: PeriodOptionButtonProps) {
-  const button = (
-    <button onClick={onClick} disabled={disabled} className={className}>
-      {children}
-    </button>
-  )
-
-  if (!disabled) return button
+  if (!disabled) {
+    return (
+      <button onClick={onClick} className={className}>
+        {children}
+      </button>
+    )
+  }
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span role="button" aria-disabled="true" tabIndex={0} className="inline-flex">{button}</span>
+        <button type="button" aria-disabled="true" onClick={onClick} className={className}>
+          {children}
+        </button>
       </TooltipTrigger>
       <TooltipContent>{PERIOD_LOCKED_MESSAGE}</TooltipContent>
     </Tooltip>
@@ -740,7 +744,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                             key={filter.id}
                             onClick={() => handleQuickFilter(filter.id)}
                             disabled={isPeriodLocked}
-                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none ${periodPillClass(quickFilter === filter.id && !isCustomRange, isPeriodLocked)}`}
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodPillClass(quickFilter === filter.id && !isCustomRange, isPeriodLocked)}`}
                           >
                             {filter.label}
                           </PeriodOptionButton>
@@ -750,17 +754,15 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                       {isPeriodLocked ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span role="button" aria-disabled="true" tabIndex={0} className="inline-flex">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled
-                                className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 ${periodCustomPillClass(isCustomRange, true)}`}
-                              >
-                                <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
-                                {customRangeLabel}
-                              </Button>
-                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              aria-disabled="true"
+                              className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodCustomPillClass(isCustomRange, true)}`}
+                            >
+                              <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                              {customRangeLabel}
+                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>{PERIOD_LOCKED_MESSAGE}</TooltipContent>
                         </Tooltip>
@@ -896,7 +898,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                       key={filter.id}
                       onClick={() => handleQuickFilter(filter.id)}
                       disabled={isPeriodLocked}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all disabled:opacity-50 disabled:pointer-events-none ${periodMobilePillClass(quickFilter === filter.id && !isCustomRange, isPeriodLocked)}`}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodMobilePillClass(quickFilter === filter.id && !isCustomRange, isPeriodLocked)}`}
                     >
                       {filter.label}
                     </PeriodOptionButton>
@@ -905,15 +907,14 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   {isPeriodLocked ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span role="button" aria-disabled="true" tabIndex={0} className="inline-flex">
-                          <button
-                            disabled
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none ${periodMobilePillClass(isCustomRange, true)}`}
-                          >
-                            <CalendarDays className="h-3 w-3 shrink-0" />
-                            {customRangeLabel}
-                          </button>
-                        </span>
+                        <button
+                          type="button"
+                          aria-disabled="true"
+                          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodMobilePillClass(isCustomRange, true)}`}
+                        >
+                          <CalendarDays className="h-3 w-3 shrink-0" />
+                          {customRangeLabel}
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>{PERIOD_LOCKED_MESSAGE}</TooltipContent>
                     </Tooltip>
