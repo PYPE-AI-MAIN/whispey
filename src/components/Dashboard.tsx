@@ -92,32 +92,30 @@ const formatShort = (date: Date) =>
 // counterparts. When `locked` (manual filters active on the Logs tab), the button
 // always renders in its plain/unselected look so it never appears chosen or
 // interactive, regardless of which period is actually active underneath.
-const periodPillClass = (active: boolean, locked: boolean) =>
-  locked
-    ? 'text-gray-400 dark:text-gray-600'
-    : active
-      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
+const periodPillClass = (active: boolean, locked: boolean) => {
+  if (locked) return 'text-gray-400 dark:text-gray-600'
+  if (active) return 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
+}
 
-const periodCustomPillClass = (active: boolean, locked: boolean) =>
-  locked
-    ? 'text-gray-400 dark:text-gray-600'
-    : active
-      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+const periodCustomPillClass = (active: boolean, locked: boolean) => {
+  if (locked) return 'text-gray-400 dark:text-gray-600'
+  if (active) return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+}
 
-const periodMobilePillClass = (active: boolean, locked: boolean) =>
-  !locked && active
-    ? 'bg-blue-500 text-white'
-    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+const periodMobilePillClass = (active: boolean, locked: boolean) => {
+  if (!locked && active) return 'bg-blue-500 text-white'
+  return 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+}
 
 const PERIOD_LOCKED_MESSAGE = 'Clear the manual filter to use Period'
 
 interface PeriodOptionButtonProps {
-  onClick: () => void
-  disabled: boolean
-  className: string
-  children: React.ReactNode
+  readonly onClick: () => void
+  readonly disabled: boolean
+  readonly className: string
+  readonly children: React.ReactNode
 }
 
 // A Period quick-filter button. When disabled, wraps itself in a Tooltip explaining
@@ -135,7 +133,7 @@ function PeriodOptionButton({ onClick, disabled, className, children }: PeriodOp
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span tabIndex={0} className="inline-flex">{button}</span>
+        <span role="button" aria-disabled="true" tabIndex={0} className="inline-flex">{button}</span>
       </TooltipTrigger>
       <TooltipContent>{PERIOD_LOCKED_MESSAGE}</TooltipContent>
     </Tooltip>
@@ -752,7 +750,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                       {isPeriodLocked ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span tabIndex={0} className="inline-flex">
+                            <span role="button" aria-disabled="true" tabIndex={0} className="inline-flex">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -907,7 +905,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   {isPeriodLocked ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span tabIndex={0} className="inline-flex">
+                        <span role="button" aria-disabled="true" tabIndex={0} className="inline-flex">
                           <button
                             disabled
                             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none ${periodMobilePillClass(isCustomRange, true)}`}
