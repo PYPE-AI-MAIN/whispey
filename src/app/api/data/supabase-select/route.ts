@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { authorizeTableSelect, isAllowedTable } from '@/lib/supabase-select-auth'
+import { filterSelectColumns, stripDisallowedColumns, type CallLogSettings } from '@/lib/callLogSettings'
+import { resolveColumnAccessForRequest } from '@/lib/agentCallLogSettingsStore'
 
 type Filter = { column: string; operator: string; value: unknown }
 
@@ -91,6 +93,35 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient()
 
+  // This generic route is the only fetch path (besides the dedicated
+  // agent/project call-logs query routes) that can return
+  // `pype_voice_call_logs` rows — e.g. the observability/session-detail page
+  // fetches a single call log by id through here. It must enforce the same
+  // per-agent/per-user column restrictions (`call_log_settings`) those
+  // dedicated routes apply, otherwise a column hidden there (like
+  // `customer_number`) leaks through this path unrestricted.
+  let disallowedColumns: Set<string> = new Set()
+  if (table === 'pype_voice_call_logs' && authz.agentId) {
+    const { data: agentRow } = await supabase
+      .from('pype_voice_agents')
+      .select('call_log_settings')
+      .eq('id', authz.agentId)
+      .maybeSingle()
+    const { userId } = await auth()
+    const user = await currentUser()
+    const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
+    if (userId) {
+      const access = await resolveColumnAccessForRequest({
+        userId,
+        userEmail,
+        callLogSettings: (agentRow?.call_log_settings as CallLogSettings | null) ?? null,
+        isDownload: false,
+      })
+      disallowedColumns = access.disallowedColumns
+    }
+  }
+  const effectiveSelect = filterSelectColumns(select || '*', disallowedColumns) as string
+
   if (mode === 'count') {
     let q = supabase.from(table).select('*', { count: 'exact', head: true })
     q = applyFilters(q, filters)
@@ -100,7 +131,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (mode === 'infinite') {
-    let q = supabase.from(table).select(select || '*')
+    let q = supabase.from(table).select(effectiveSelect)
     q = applyFilters(q, filters)
     if (pageParam !== undefined && pageParam !== null && cursorColumn) {
       q = q.gt(cursorColumn, pageParam)
@@ -111,10 +142,10 @@ export async function POST(request: NextRequest) {
     if (pageSize) q = q.limit(pageSize)
     const { data, error } = await q
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ data: data ?? [] })
+    return NextResponse.json({ data: stripDisallowedColumns((data ?? []) as unknown as Record<string, unknown>[], disallowedColumns) })
   }
 
-  let q = supabase.from(table).select(select || '*')
+  let q = supabase.from(table).select(effectiveSelect)
   q = applyFilters(q, filters)
   if (orderBy) {
     q = q.order(orderBy.column, { ascending: orderBy.ascending })
@@ -126,5 +157,5 @@ export async function POST(request: NextRequest) {
   }
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data ?? [] })
+  return NextResponse.json({ data: stripDisallowedColumns((data ?? []) as unknown as Record<string, unknown>[], disallowedColumns) })
 }

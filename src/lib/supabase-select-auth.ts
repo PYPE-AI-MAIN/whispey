@@ -26,7 +26,7 @@ export async function authorizeTableSelect(
   table: string,
   filters: Filter[] | undefined,
   authHint?: { agentId?: string; projectId?: string }
-): Promise<{ ok: true } | { ok: false; response: NextResponse }> {
+): Promise<{ ok: true; agentId?: string } | { ok: false; response: NextResponse }> {
   if (authHint?.agentId && UUID_RE.test(authHint.agentId)) {
     const supabase = createServiceRoleClient()
     const { data: agent } = await supabase
@@ -39,7 +39,7 @@ export async function authorizeTableSelect(
     }
     const role = await getProjectRoleForApi(agent.project_id as string)
     if (!role) return { ok: false, response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
-    return { ok: true }
+    return { ok: true, agentId: authHint.agentId }
   }
 
   if (authHint?.projectId && UUID_RE.test(authHint.projectId)) {
@@ -60,7 +60,7 @@ export async function authorizeTableSelect(
       if (agent?.project_id) {
         const role = await getProjectRoleForApi(agent.project_id as string)
         if (!role) return { ok: false, response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
-        return { ok: true }
+        return { ok: true, agentId: f.value }
       }
     }
     if (f.operator === 'eq' && f.column === 'project_id' && typeof f.value === 'string' && UUID_RE.test(f.value)) {
@@ -101,7 +101,7 @@ export async function authorizeTableSelect(
         if (agent?.project_id) {
           const role = await getProjectRoleForApi(agent.project_id as string)
           if (!role) return { ok: false, response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
-          return { ok: true }
+          return { ok: true, agentId: log.agent_id as string }
         }
       }
     }
