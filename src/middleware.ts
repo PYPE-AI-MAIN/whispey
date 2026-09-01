@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { clerkMiddleware, createRouteMatcher, currentUser } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { hasValidServiceToken } from '@/lib/serviceTokenVerifier';
 import { isPlatformAdmin } from '@/lib/isPlatformAdmin';
 
@@ -21,6 +21,28 @@ async function fetchApprovalStatus(clerkId: string): Promise<{ email: string | n
     if (!res.ok) return null
     const rows = await res.json()
     return Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+  } catch {
+    return null
+  }
+}
+
+// Edge-safe: currentUser() from @clerk/nextjs/server is NOT safe to call
+// from inside clerkMiddleware() — it throws "auth() was called but Clerk
+// can't detect usage of clerkMiddleware()" at runtime on Edge (this only
+// surfaced in production; the unit test mocks Clerk entirely so it never
+// caught it). Hits Clerk's own Backend API directly instead, same pattern
+// as fetchApprovalStatus above.
+async function fetchClerkUserEmail(clerkId: string): Promise<string | null> {
+  const key = process.env.CLERK_SECRET_KEY
+  if (!key) return null
+  try {
+    const res = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(clerkId)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const user = await res.json()
+    return user?.email_addresses?.[0]?.email_address ?? null
   } catch {
     return null
   }
@@ -107,8 +129,8 @@ export default clerkMiddleware(async (auth, request) => {
         // the failure path (not every request) so the common case pays no
         // extra Clerk API call.
         if (!approved) {
-          const clerkUser = await currentUser()
-          approved = isPlatformAdmin(clerkUser?.emailAddresses?.[0]?.emailAddress)
+          const clerkEmail = await fetchClerkUserEmail(userId)
+          approved = isPlatformAdmin(clerkEmail)
         }
 
         if (!approved) {
