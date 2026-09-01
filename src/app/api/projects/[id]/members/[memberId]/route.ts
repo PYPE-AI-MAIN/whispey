@@ -182,7 +182,6 @@ export async function DELETE(
 
     const access = await requireProjectAdminAccess(userId, userEmail, projectId)
     if (!access.ok) return access.response
-    const userAccessMapping = access.mapping
 
     // ✅ FIXED: Get the member to delete (check ALL records, not just active)
     const { data: memberToDelete, error: fetchError } = await supabase
