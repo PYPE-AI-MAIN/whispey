@@ -117,23 +117,6 @@ function InterruptionSettings({
 
       {allowInterruptions && (
         <>
-          {/* Real Interruption Guard */}
-          <div className="flex items-center justify-between">
-            <div className="pr-4">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                Real Interruption Guard (Beta)
-              </Label>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Filters out backchannels/false interruptions before cancelling agent speech. Turn Detection recommended "V1 Mini".
-              </div>
-            </div>
-            <Switch
-              checked={realInterruptionGuard}
-              onCheckedChange={(checked) => onFieldChange('advancedSettings.interruption.realInterruptionGuard', checked)}
-              className="scale-75"
-            />
-          </div>
-
           {/* Interruption Mode — segmented control */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -214,6 +197,23 @@ function InterruptionSettings({
                   value={minInterruptionWords}
                   onChange={(e) => onFieldChange('advancedSettings.interruption.minInterruptionWords', parseInt(e.target.value) || 0)}
                   className="h-7 text-xs"
+                />
+              </div>
+
+              {/* Real Interruption Guard — VAD mode only, conflicts with adaptive's own ML detector */}
+              <div className="flex items-center justify-between">
+                <div className="pr-4">
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Real Interruption Guard (Beta)
+                  </Label>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Filters out backchannels/false interruptions before cancelling agent speech. Turn Detection recommended "V1 Mini".
+                  </div>
+                </div>
+                <Switch
+                  checked={realInterruptionGuard}
+                  onCheckedChange={(checked) => onFieldChange('advancedSettings.interruption.realInterruptionGuard', checked)}
+                  className="scale-75"
                 />
               </div>
             </>
