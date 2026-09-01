@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher, currentUser } from '@clerk/nextjs/server';
 import { hasValidServiceToken } from '@/lib/serviceTokenVerifier';
 import { isPlatformAdmin } from '@/lib/isPlatformAdmin';
 
@@ -100,7 +100,16 @@ export default clerkMiddleware(async (auth, request) => {
         // exists at all yet (e.g. webhook hasn't landed for a brand-new
         // signup) — never treated as active by default in that case.
         const status = caller?.approval_status
-        const approved = isPlatformAdmin(caller?.email) || (caller !== null && status !== 'pending' && status !== 'declined')
+        let approved = isPlatformAdmin(caller?.email) || (caller !== null && status !== 'pending' && status !== 'declined')
+
+        // Platform-admin status shouldn't depend on a DB row existing yet —
+        // fall back to Clerk's own session identity directly. Only runs on
+        // the failure path (not every request) so the common case pays no
+        // extra Clerk API call.
+        if (!approved) {
+          const clerkUser = await currentUser()
+          approved = isPlatformAdmin(clerkUser?.emailAddresses?.[0]?.emailAddress)
+        }
 
         if (!approved) {
           if (pathname.startsWith('/api/')) {

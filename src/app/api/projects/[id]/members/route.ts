@@ -321,6 +321,10 @@ export async function GET(
       .eq('project_id', projectId)
       .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
+      // .limit(1): an admin's broad email match can legitimately return
+      // more than one row (multiple clerk_ids over time) — cap to 1
+      // before .maybeSingle() so that's "yes, a member," not a 500.
+      .limit(1)
       .maybeSingle()
 
     if (accessError) {
