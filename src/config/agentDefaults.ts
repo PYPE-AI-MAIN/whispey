@@ -241,7 +241,7 @@ export const AGENT_DEFAULT_CONFIG = {
       },
       session: {
         preemptiveGeneration: AGENT_DEFAULT_CONFIG.session_behavior.preemptive_generation as "disabled" | "enabled",
-        turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "smollm2turndetector" | "llmturndetector" | "smollm360m" | "disabled",
+        turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "disabled",
         unlikely_threshold: AGENT_DEFAULT_CONFIG.session_behavior.unlikely_threshold,
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
         max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay,

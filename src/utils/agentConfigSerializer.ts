@@ -83,7 +83,7 @@ export interface SerializedAgentConfig {
       }
       session: {
         preemptiveGeneration: 'disabled' | 'enabled'
-        turn_detection: 'multilingual' | 'english' | 'smollm2turndetector' | 'llmturndetector' | 'smollm360m' | 'disabled'
+        turn_detection: 'multilingual' | 'english' | 'disabled'
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number

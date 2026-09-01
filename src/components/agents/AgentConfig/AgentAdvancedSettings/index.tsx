@@ -50,7 +50,7 @@ interface AgentAdvancedSettingsProps {
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
-        turn_detection: 'multilingual' | 'english' | 'smollm2turndetector' | 'llmturndetector' | 'smollm360m' | 'disabled' | 'v1-mini'
+        turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
         unlikely_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
