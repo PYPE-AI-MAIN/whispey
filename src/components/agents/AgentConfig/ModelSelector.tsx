@@ -111,6 +111,21 @@ const modelProviders: Record<string, Provider> = {
       { value: 'gpt-4o-mini', label: 'GPT 4o Mini' },
     ]
   },
+  sarvam: {
+    label: 'Sarvam',
+    icon: 'S',
+    color: 'bg-rose-500',
+    type: 'direct',
+    addedAt: '2026-09-02',
+    models: [
+      { value: 'sarvam-105b-conversations', label: 'Sarvam 105B Conversations', addedAt: '2026-09-02' },
+      { value: 'sarvam-105b', label: 'Sarvam 105B' },
+      { value: 'sarvam-105b-32k', label: 'Sarvam 105B 32K' },
+      { value: 'sarvam-m', label: 'Sarvam M' },
+      { value: 'sarvam-30b', label: 'Sarvam 30B' },
+      { value: 'sarvam-30b-16k', label: 'Sarvam 30B 16K' },
+    ]
+  },
   google: {
     label: 'Google',
     icon: 'G',
