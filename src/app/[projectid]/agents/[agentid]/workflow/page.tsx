@@ -222,13 +222,13 @@ function WorkflowPageInner() {
     }
   }
 
-  const handleDeploy = async () => {
-    if (!workflow || !backendAgentName) return
+  const handleDeploy = async (): Promise<boolean> => {
+    if (!workflow || !backendAgentName) return false
     if (hasErrors(lintIssues)) {
       const errors = lintIssues.filter((i) => i.severity === 'error')
       const errorList = errors.map((e) => `• ${e.message}`).join('\n')
       toast.error(`Fix ${errorCount} error(s):\n${errorList}`, { duration: 6000 })
-      return
+      return false
     }
     setDeploying(true)
     try {
@@ -241,14 +241,28 @@ function WorkflowPageInner() {
       if (res.ok) {
         toast.success('Workflow deployed')
         markClean()
-      } else {
-        toast.error(data?.message || `Deploy failed (${res.status})`)
+        return true
       }
+      toast.error(data?.message || `Deploy failed (${res.status})`)
+      return false
     } catch {
       toast.error('Could not reach the deploy endpoint')
+      return false
     } finally {
       setDeploying(false)
     }
+  }
+
+  // A workflow agent's backend runtime files are generated at deploy time, so a
+  // Start before the first deploy 404s. Auto-deploy the current canvas when
+  // there are undeployed changes, then start — one click instead of the
+  // Deploy-then-Start dance.
+  const handleStartAgent = async () => {
+    if (isDirty) {
+      const deployed = await handleDeploy()
+      if (!deployed) return
+    }
+    agentLifecycle.start()
   }
 
   if (!agentId || !projectId) {
@@ -317,9 +331,9 @@ function WorkflowPageInner() {
 
         <AgentLifecycleButton
           status={agentLifecycle.status.status}
-          isLoading={agentLifecycle.isLoading}
+          isLoading={agentLifecycle.isLoading || deploying}
           backendAgentName={backendAgentName}
-          onStart={agentLifecycle.start}
+          onStart={handleStartAgent}
           onStop={agentLifecycle.stop}
         />
         <Button
