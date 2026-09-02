@@ -178,9 +178,13 @@ function WorkflowPageInner() {
   // Live "wf-node" events from the interpreter — drives active-node highlighting
   // on the canvas and the event log below it.
   const [workflowEvents, setWorkflowEvents] = useState<WorkflowEvent[]>([])
+  const eventSeq = useRef(0)
   const handleWorkflowEvent = useCallback(
     (event: Record<string, any>) => {
-      setWorkflowEvents((prev) => [...prev.slice(-49), { ...event, _ts: Date.now() } as WorkflowEvent])
+      // _id is a monotonic counter: Date.now() collides when two events arrive
+      // in the same millisecond, which React rejects as a duplicate key.
+      const withId = { ...event, _ts: Date.now(), _id: eventSeq.current++ } as WorkflowEvent
+      setWorkflowEvents((prev) => [...prev.slice(-49), withId])
       if (event.type === 'node_enter' && event.node_id) setActiveNode(event.node_id)
     },
     [setActiveNode]
