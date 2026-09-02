@@ -543,6 +543,7 @@ function transformFormDataToAgentConfig(formData: any) {
           },
           interruption_mode: formikValues.advancedSettings.session.interruption_mode ?? null,
           adaptive_stt: formikValues.advancedSettings.session.interruption_mode === 'adaptive',
+          real_interruption_guard: formikValues.advancedSettings.interruption.realInterruptionGuard ?? false,
           ...buildRouteAdaptiveInterruptionPayload(formikValues),
           first_message_mode: firstMessageModeConfig
         }
