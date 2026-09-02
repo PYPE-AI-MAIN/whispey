@@ -157,8 +157,13 @@ function buildFallbackTtsPayload(formValues: any) {
   }
 }
 
-function getRealInterruptionGuard(formValues: any): boolean {
-  return formValues.advancedSettings?.interruption?.realInterruptionGuard ?? false
+function getInterruptionModeFields(formValues: any): { interruption_mode: string | null; adaptive_stt: boolean; real_interruption_guard: boolean } {
+  const interruption_mode = formValues.advancedSettings?.session?.interruption_mode ?? null
+  return {
+    interruption_mode,
+    adaptive_stt: interruption_mode === 'adaptive',
+    real_interruption_guard: formValues.advancedSettings?.interruption?.realInterruptionGuard ?? false,
+  }
 }
 
 function buildSingleAssistantSttPayload(formValues: any, currentSttConfig: any): any {
@@ -697,9 +702,7 @@ export function useMultiAssistantState({
           drop_filler_words: formValues.advancedSettings?.interruption?.dropFillerWords ?? false,
           filler_drop_list: formValues.advancedSettings?.interruption?.fillerDropList ?? [],
         },
-        interruption_mode: formValues.advancedSettings?.session?.interruption_mode ?? null,
-        adaptive_stt: formValues.advancedSettings?.session?.interruption_mode === 'adaptive',
-        real_interruption_guard: getRealInterruptionGuard(formValues),
+        ...getInterruptionModeFields(formValues),
         ...(formValues.advancedSettings?.session?.interruption_mode === 'adaptive' && {
           adaptive_min_duration: formValues.advancedSettings.interruption?.adaptiveMinDuration ?? 0.8,
           adaptive_min_words: formValues.advancedSettings.interruption?.adaptiveMinWords ?? 0,
@@ -909,9 +912,7 @@ export function useMultiAssistantState({
           drop_filler_words: formValues.advancedSettings?.interruption?.dropFillerWords ?? false,
           filler_drop_list: formValues.advancedSettings?.interruption?.fillerDropList ?? [],
         },
-        interruption_mode: formValues.advancedSettings?.session?.interruption_mode ?? null,
-        adaptive_stt: formValues.advancedSettings?.session?.interruption_mode === 'adaptive',
-        real_interruption_guard: getRealInterruptionGuard(formValues),
+        ...getInterruptionModeFields(formValues),
         ...(formValues.advancedSettings?.session?.interruption_mode === 'adaptive' && {
           adaptive_min_duration: formValues.advancedSettings.interruption?.adaptiveMinDuration ?? 0.8,
           adaptive_min_words: formValues.advancedSettings.interruption?.adaptiveMinWords ?? 0,
