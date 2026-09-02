@@ -53,7 +53,7 @@ function InterruptionSettings({
   adaptiveBackchannelBoundaryEnd = 3.5,
   realInterruptionGuard = false,
   onFieldChange
-}: InterruptionSettingsProps) {
+}: Readonly<InterruptionSettingsProps>) {
   const [newWord, setNewWord] = useState('')
 
   const isAdaptive = interruption_mode === 'adaptive'
