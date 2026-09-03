@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface SessionBehaviourSettingsProps {
   preemptiveGeneration: 'enabled' | 'disabled'
-  turn_detection: 'multilingual' | 'english' | 'smollm2turndetector' | 'llmturndetector' | 'smollm360m' | 'disabled'
+  turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
   unlikely_threshold?: number
   min_endpointing_delay?: number
   max_endpointing_delay?: number
@@ -202,9 +202,7 @@ export default function SessionBehaviourSettings({
             <SelectContent>
               <SelectItem value="multilingual" className="text-xs">Multilingual</SelectItem>
               <SelectItem value="english" className="text-xs">English</SelectItem>
-              <SelectItem value="smollm2turndetector" className="text-xs">SmolLM2 Turn Detector</SelectItem>
-              <SelectItem value="llmturndetector" className="text-xs">LLM Turn Detector</SelectItem>
-              <SelectItem value="smollm360m" className="text-xs">SmolLM360M</SelectItem>
+              <SelectItem value="v1-mini" className="text-xs">V1 Mini (Real Interruption Classifier)</SelectItem>
               <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
             </SelectContent>
           </Select>

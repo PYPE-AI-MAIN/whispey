@@ -64,7 +64,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       response = await fetch(`${baseUrl}/workflow/${encodeURIComponent(agentName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
-        body: JSON.stringify(body),
+        // Forward the real agent row id so the backend stores it as the config's
+        // agent_id. Without it save_agent_config() mints a uuid5(agent_name) and
+        // every call gets logged to Whispey under that phantom id — invisible in
+        // this agent's call logs. rowId is already resolved above.
+        body: JSON.stringify({ ...body, agent_id: rowId }),
         signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS),
       })
     } catch (err) {

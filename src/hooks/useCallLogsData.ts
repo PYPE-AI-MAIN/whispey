@@ -57,6 +57,11 @@ export const useCallLogsData = (
     [activeFilters, agentId]
   )
 
+  // The Period (date range) filter and manually-added filters must act independently:
+  // once the user adds a manual filter, the Period filter is excluded from the query
+  // entirely rather than being ANDed with it.
+  const effectiveDateRange = activeFilters.length > 0 ? undefined : dateRange
+
   useEffect(() => {
     if ((userEmail || userId) && projectId) {
       const getUserRole = async () => {
@@ -92,13 +97,13 @@ export const useCallLogsData = (
   const filterKey = JSON.stringify(activeFilters)
   const prevQueryKeyRef = useRef<string>('')
   useEffect(() => {
-    const key = `${agentId}|${filterKey}|${dateRange?.from}|${dateRange?.to}`
+    const key = `${agentId}|${filterKey}|${effectiveDateRange?.from}|${effectiveDateRange?.to}`
     if (prevQueryKeyRef.current && prevQueryKeyRef.current !== key) {
       setCurrentPage(1)
     }
     prevQueryKeyRef.current = key
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agentId, filterKey, dateRange?.from, dateRange?.to])
+  }, [agentId, filterKey, effectiveDateRange?.from, effectiveDateRange?.to])
 
   // ── Per-page query (direct offset fetch — no sequential loading) ──────────
   const queryEnabled = !!agentId && !roleLoading
@@ -116,7 +121,7 @@ export const useCallLogsData = (
     postDistinctFilters,
     select: selectColumns,
     distinctConfig,
-    dateRange,
+    dateRange: effectiveDateRange,
     page: currentPage,
     enabled: queryEnabled,
     refetchOnMount: false,
@@ -177,7 +182,7 @@ export const useCallLogsData = (
       selectColumns,
       { column: 'created_at', ascending: false },
       distinctConfig,
-      dateRange,
+      effectiveDateRange,
       userId ?? 'no-user',
       nextPage,
     )
@@ -196,8 +201,8 @@ export const useCallLogsData = (
           p_distinct_column: distinctConfig?.column || null,
           p_distinct_json_field: distinctConfig?.jsonField || null,
           p_distinct_order: distinctConfig?.order || 'asc',
-          p_date_from: dateRange?.from || null,
-          p_date_to: dateRange?.to || null,
+          p_date_from: effectiveDateRange?.from || null,
+          p_date_to: effectiveDateRange?.to || null,
           p_user_clerk_id: userId || null,
           p_user_email: userEmail || null,
         }

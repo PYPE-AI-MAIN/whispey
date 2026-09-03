@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   ChevronLeft,
   BarChart3,
@@ -87,6 +88,62 @@ const formatDateISO = (date: Date): string => {
 const formatShort = (date: Date) =>
   date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
+// Period control styling — shared by the desktop pill buttons and their mobile
+// counterparts. When `locked` (manual filters active on the Logs tab), the button
+// always renders in its plain/unselected look so it never appears chosen or
+// interactive, regardless of which period is actually active underneath.
+const periodPillClass = (active: boolean, locked: boolean) => {
+  if (locked) return 'text-gray-400 dark:text-gray-600'
+  if (active) return 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
+}
+
+const periodCustomPillClass = (active: boolean, locked: boolean) => {
+  if (locked) return 'text-gray-400 dark:text-gray-600'
+  if (active) return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+}
+
+const periodMobilePillClass = (active: boolean, locked: boolean) => {
+  if (!locked && active) return 'bg-blue-500 text-white'
+  return 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+}
+
+const PERIOD_LOCKED_MESSAGE = 'Clear the manual filter to use Period'
+
+interface PeriodOptionButtonProps {
+  readonly onClick: () => void
+  readonly disabled: boolean
+  readonly className: string
+  readonly children: React.ReactNode
+}
+
+// A Period quick-filter button. When disabled, it stays a real <button> (marked
+// `aria-disabled` rather than the native `disabled` attribute) and doubles as its
+// own Tooltip trigger — a native `disabled` button won't fire the hover/focus
+// events a Tooltip needs, but `aria-disabled` keeps it interactive for that
+// purpose while onClick still no-ops via the caller's own guard.
+function PeriodOptionButton({ onClick, disabled, className, children }: PeriodOptionButtonProps) {
+  if (!disabled) {
+    return (
+      <button onClick={onClick} className={className}>
+        {children}
+      </button>
+    )
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" aria-disabled="true" onClick={onClick} className={className}>
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{PERIOD_LOCKED_MESSAGE}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 // Component for skeleton when agent data is loading
 // Simple No Calls component for VAPI agents
 function NoCallsMessage() {
@@ -136,7 +193,7 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const [connectingRetellWebhook, setConnectingRetellWebhook] = useState(false)
   
   // Date filter state — stored in Zustand (persisted) so it survives navigation.
-  const { dateFilterByAgent, setDateFilterForAgent } = useCallLogsStore()
+  const { dateFilterByAgent, setDateFilterForAgent, filtersByAgent } = useCallLogsStore()
   const storedDateFilter = dateFilterByAgent[agentId] ?? DEFAULT_DATE_FILTER
 
   const quickFilter   = storedDateFilter.quickFilter
@@ -155,8 +212,19 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
    
   }, [quickFilter, isCustomRange, storedDateFilter.dateFrom, storedDateFilter.dateTo])
 
+  // Label shown on the Custom-range trigger — shared by the desktop and mobile controls.
+  const customRangeLabel = isCustomRange && dateRange.from && dateRange.to
+    ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
+    : 'Custom'
+
   const activeTab = searchParams.get('tab') || 'overview'
   const openDownloadSettings = searchParams.get('openDownloadSettings') === '1'
+
+  // The Period control is shared between Overview and Logs, but the two filters must
+  // act independently (see useCallLogsData). While a manual filter is active on the
+  // Logs tab, lock Period so it can't be changed there — Overview is unaffected since
+  // this only engages for activeTab === 'logs'.
+  const isPeriodLocked = activeTab === 'logs' && (filtersByAgent[agentId]?.length ?? 0) > 0
   
   const quickFilters = [
     { id: '1d', label: '1D', days: 1 },
@@ -267,6 +335,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
   // Date filter handlers — write to Zustand store (persisted across navigation)
   const handleQuickFilter = (filterId: string) => {
+    if (isPeriodLocked) return
     setDateFilterForAgent(agentId, {
       quickFilter: filterId,
       isCustomRange: false,
@@ -278,6 +347,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   }
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
+    if (isPeriodLocked) return
     if (range?.from && range?.to) {
       setDateFilterForAgent(agentId, {
         quickFilter: '',
@@ -670,50 +740,57 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                       <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Period</span>
                       <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                         {quickFilters.map((filter) => (
-                          <button
+                          <PeriodOptionButton
                             key={filter.id}
                             onClick={() => handleQuickFilter(filter.id)}
-                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                              quickFilter === filter.id && !isCustomRange
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
-                            }`}
+                            disabled={isPeriodLocked}
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodPillClass(quickFilter === filter.id && !isCustomRange, isPeriodLocked)}`}
                           >
                             {filter.label}
-                          </button>
+                          </PeriodOptionButton>
                         ))}
                       </div>
-                      
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 ${
-                              isCustomRange 
-                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30' 
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                          >
-                            <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
-                            {isCustomRange && dateRange.from && dateRange.to
-                              ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
-                              : 'Custom'
-                            }
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
-                          <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={dateRange?.from}
-                            selected={dateRange}
-                            onSelect={handleDateRangeSelect}
-                            numberOfMonths={2}
-                            className="rounded-xl"
-                          />
-                        </PopoverContent>
-                      </Popover>
+
+                      {isPeriodLocked ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              aria-disabled="true"
+                              className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodCustomPillClass(isCustomRange, true)}`}
+                            >
+                              <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                              {customRangeLabel}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{PERIOD_LOCKED_MESSAGE}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 ${periodCustomPillClass(isCustomRange, false)}`}
+                            >
+                              <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                              {customRangeLabel}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
+                            <Calendar
+                              initialFocus
+                              mode="range"
+                              defaultMonth={dateRange?.from}
+                              selected={dateRange}
+                              onSelect={handleDateRangeSelect}
+                              numberOfMonths={2}
+                              className="rounded-xl"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </div>
                     
                     {/* Field Extractor & Metrics - skeleton while agent loading; visibility-controlled */}
@@ -817,46 +894,52 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Period</div>
                 <div className="flex flex-wrap gap-2">
                   {quickFilters.map((filter) => (
-                    <button
+                    <PeriodOptionButton
                       key={filter.id}
                       onClick={() => handleQuickFilter(filter.id)}
-                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                        quickFilter === filter.id && !isCustomRange
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
-                      }`}
+                      disabled={isPeriodLocked}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodMobilePillClass(quickFilter === filter.id && !isCustomRange, isPeriodLocked)}`}
                     >
                       {filter.label}
-                    </button>
+                    </PeriodOptionButton>
                   ))}
-                  
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 ${
-                          isCustomRange 
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
-                        }`}
-                      >
-                        <CalendarDays className="h-3 w-3 shrink-0" />
-                        {isCustomRange && dateRange.from && dateRange.to
-                          ? `${formatShort(dateRange.from)} – ${formatShort(dateRange.to)}`
-                          : 'Custom'
-                        }
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                      <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={dateRange?.from}
-                        selected={dateRange}
-                        onSelect={handleDateRangeSelect}
-                        numberOfMonths={1}
-                      />
-                    </PopoverContent>
-                  </Popover>
+
+                  {isPeriodLocked ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-disabled="true"
+                          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodMobilePillClass(isCustomRange, true)}`}
+                        >
+                          <CalendarDays className="h-3 w-3 shrink-0" />
+                          {customRangeLabel}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{PERIOD_LOCKED_MESSAGE}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 ${periodMobilePillClass(isCustomRange, false)}`}
+                        >
+                          <CalendarDays className="h-3 w-3 shrink-0" />
+                          {customRangeLabel}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={dateRange?.from}
+                          selected={dateRange}
+                          onSelect={handleDateRangeSelect}
+                          numberOfMonths={1}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </div>
               </div>
 
