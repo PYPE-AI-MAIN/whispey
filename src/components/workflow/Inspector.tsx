@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWorkflowStore } from '@/stores/workflowStore'
@@ -51,7 +52,42 @@ function Field({ label, children }: Readonly<{ label: string; children: React.Re
   )
 }
 
-function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: Partial<WorkflowNode>) => void }>) {
+function ToolsField({
+  workflow,
+  functions,
+  onChange,
+}: Readonly<{ workflow: Workflow | null; functions: string[]; onChange: (fns: string[]) => void }>) {
+  const functionNodes = (workflow?.nodes ?? []).filter((n) => n.type === 'function')
+  return (
+    <Field label="Tools this step can call">
+      {functionNodes.length === 0 ? (
+        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+          No Function nodes in this workflow yet — add one, then check it here to make it callable.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {functionNodes.map((fn) => (
+            <label key={fn.id} className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox
+                checked={functions.includes(fn.id)}
+                onCheckedChange={(checked) =>
+                  onChange(checked ? [...functions, fn.id] : functions.filter((id) => id !== fn.id))
+                }
+              />
+              {fn.name || fn.id}
+            </label>
+          ))}
+        </div>
+      )}
+    </Field>
+  )
+}
+
+function NodeFields({
+  node,
+  patch,
+  workflow,
+}: Readonly<{ node: WorkflowNode; patch: (p: Partial<WorkflowNode>) => void; workflow: Workflow | null }>) {
   switch (node.type) {
     case 'conversation':
       return (
@@ -70,6 +106,7 @@ function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: P
             <Label className="text-xs">Block interruptions</Label>
             <Switch checked={!!node.blockInterruptions} onCheckedChange={(v) => patch({ blockInterruptions: v } as any)} />
           </div>
+          <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
           <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
             <Field label="LLM override">
@@ -258,6 +295,7 @@ function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: P
           <Field label="Prompt">
             <Textarea value={node.prompt} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[140px]" />
           </Field>
+          <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
           <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
             <Field label="LLM override">
@@ -418,7 +456,7 @@ export function Inspector() {
               </Field>
               {/* key=node.id: JsonField's internal text state must reset when
                   switching selected nodes, or it shows the previous node's JSON. */}
-              <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} />
+              <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} workflow={workflow} />
             </div>
             <SheetFooter className="flex-row justify-between">
               {node.id !== workflow?.start && (

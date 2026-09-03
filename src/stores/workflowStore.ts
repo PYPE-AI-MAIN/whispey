@@ -11,6 +11,10 @@ interface WorkflowState {
   future: Workflow[]
   lintIssues: LintIssue[]
   activeNodeId: string | null
+  /** Whether the AI Builder chat is currently generating/streaming a response —
+   *  read by the canvas to show a working indicator, since chat and canvas are
+   *  separate components and this is the only state they share. */
+  chatStreaming: boolean
   /** Bumped whenever the whole workflow is swapped (chat apply, template pick,
    *  undo/redo) so the canvas knows to re-fit the viewport — incremental edits
    *  (addNode, updateNode, ...) don't touch this, so the camera doesn't jump
@@ -34,6 +38,7 @@ interface WorkflowState {
   redo: () => void
   markClean: () => void
   setActiveNode: (id: string | null) => void
+  setChatStreaming: (v: boolean) => void
 }
 
 const MAX_UNDO = 50
@@ -58,6 +63,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   future: [],
   lintIssues: [],
   activeNodeId: null,
+  chatStreaming: false,
   replaceCount: 0,
 
   setWorkflow: (wf) =>
@@ -204,4 +210,5 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   markClean: () => set({ isDirty: false }),
   setActiveNode: (id) => set({ activeNodeId: id }),
+  setChatStreaming: (v) => set({ chatStreaming: v }),
 }))

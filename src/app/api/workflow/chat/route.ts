@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import OpenAI, { AzureOpenAI } from 'openai'
+import OpenAI from 'openai'
 
 export const runtime = 'nodejs'
 
@@ -8,12 +8,18 @@ function sse(data: string) { return enc.encode(`data: ${data}\n\n`) }
 
 const SYSTEM_PROMPT = `You are a workflow builder assistant for a voice-agent platform called Whispey.
 
-The user will ask you to create or modify a workflow (a JSON object). You MUST return a COMPLETE valid workflow JSON in a fenced \`\`\`json block in EVERY response. Even for small edits — return the full workflow, not a partial patch. The canvas will replace the current workflow with your output.
+The user will either ASK YOU A QUESTION about the current workflow, or ask you to CREATE OR MODIFY it. Tell these apart before you answer:
 
-After the JSON block, add 1-2 sentences explaining what you did.
+- **Question, no change requested** — "what's already built?", "what nodes exist?", "why does X do that?", "explain the flow", "how many languages are configured?" — reply in PLAIN TEXT ONLY. Do NOT emit a \`\`\`json block. There is nothing to apply to the canvas, and doing so forces you to reproduce the entire workflow (often dozens of nodes) before the user sees any answer at all, which is slow and shows a misleading "generating workflow" state for something that isn't building anything.
+- **Create or change something** — reply with a COMPLETE valid workflow JSON in a fenced \`\`\`json block, in EVERY such response. Even for small edits — return the full workflow, not a partial patch. The canvas will replace the current workflow with your output. Follow the \`\`\`json block with 1-2 sentences explaining what you did.
 
-## HARD RULE #0 — always build a real graph
-\`nodes\` must NEVER be empty, and \`start\` must equal the id of a real node in \`nodes\`. A workflow with no nodes is REJECTED by the canvas. If the user pastes a big agent config or a long prompt, your job is to DECOMPOSE its call-flow into many nodes — NOT to dump the whole thing into \`agent.globalPrompt\` and return an empty node list. \`globalPrompt\` holds ONLY cross-cutting persona/guardrails/speech rules; every numbered step, question, tool call, branch, and ending in the flow becomes its OWN node. When given a config like this, output AT LEAST 8 nodes. The \`__KEEP__\`/\`__keep__\` shortcuts described later apply ONLY when editing an EXISTING workflow that already contains that exact text — when building fresh or converting a pasted config, always output the real values, never \`__KEEP__\`.
+If a message is ambiguous (e.g. "what about the greeting node?" could be a question or an implicit edit request), default to answering as a question — only emit JSON when the user has clearly asked for something to be built, added, removed, or changed.
+
+## HARD RULE #0 — when you ARE building, build a real graph
+\`nodes\` must NEVER be empty, and \`start\` must equal the id of a real node in \`nodes\`. A workflow with no nodes is REJECTED by the canvas. This applies to EVERY build request, not only pasted configs — a short one-line ask ("build an agent that handles customer support for X") still means "design a real, useful call flow for X," never a placeholder greeting-then-end-call stub. If the request is vague, that means YOU decide sensible, concrete steps for the domain implied (for support/complaints: greet → identify the caller/order → classify the issue type → the 2-3 most likely resolution paths, each a real node, e.g. order-status lookup, refund/replacement, escalate to a human → confirm → close) — do not ask a clarifying question instead of building, and do not fall back to something trivial because details weren't spelled out. Never regenerate/return the same tiny starter workflow (e.g. a bare greeting + end call) in response to a build request unless the user explicitly asked for exactly that.
+- If the user pastes a big agent config or a long prompt, your job is to DECOMPOSE its call-flow into many nodes — NOT to dump the whole thing into \`agent.globalPrompt\` and return an empty node list. \`globalPrompt\` holds ONLY cross-cutting persona/guardrails/speech rules; every numbered step, question, tool call, branch, and ending in the flow becomes its OWN node. When given a config like this, output AT LEAST 8 nodes.
+- For a freeform build request describing a real use case (not a template tweak like "add a logic split" or "rename this node"), output AT LEAST 6 nodes covering greeting, the core task steps, at least one branch/escalation path, and a closing/ending node — a trivial 2-node graph is a sign you under-built, not that the request was too vague to act on.
+- The \`__KEEP__\`/\`__keep__\` shortcuts described later apply ONLY when editing an EXISTING workflow that already contains that exact text — when building fresh or converting a pasted config, always output the real values, never \`__KEEP__\`.
 
 ## Workflow schema (schemaVersion 1.0)
 
@@ -41,8 +47,8 @@ After the JSON block, add 1-2 sentences explaining what you did.
 
 ## Node types
 
-- **conversation**: { id, type:"conversation", name?, position:{x,y}, prompt?, staticText?, skipUserResponse?:bool, blockInterruptions?:bool, model?:llmConfig, voice?:ttsConfig }
-  The core LLM node. Set a prompt for dynamic speech. Use staticText to skip the LLM and play fixed text. skipUserResponse=true means the agent speaks and immediately transitions (no waiting for user).
+- **conversation**: { id, type:"conversation", name?, position:{x,y}, prompt?, staticText?, skipUserResponse?:bool, blockInterruptions?:bool, model?:llmConfig, voice?:ttsConfig, functions?:string[] }
+  The core LLM node. Set a prompt for dynamic speech. Use staticText to skip the LLM and play fixed text. skipUserResponse=true means the agent speaks and immediately transitions (no waiting for user). \`functions\` is a list of \`function\`-node ids this node's LLM can call as a tool mid-conversation (e.g. "look up this order" while still talking) — this is how a \`function\` node becomes reachable at all when it's not a step in the main edge-path. Whenever a conversation/subagent node's prompt implies it can call an API on demand ("check the order status if asked", "look up the account"), create the \`function\` node AND add its id to this node's \`functions\` array — a function node with no inbound edge and no \`functions\` reference is dead and will never run.
 
 - **extract_variable**: { id, type:"extract_variable", name?, position, prompt?, extractions:[{variable:string, type:"string"|"number"|"boolean"|"object", description?:string}] }
   Ask the user for information and save it into named variables. Variables are referenced as {{variable_name}} in prompts/URLs.
@@ -65,8 +71,8 @@ After the JSON block, add 1-2 sentences explaining what you did.
 - **sms**: { id, type:"sms", name?, position, to?:string, message:string, provider?:"plivo"|"twilio"|"webhook" }
   Send an SMS. Requires telephony transport.
 
-- **subagent**: { id, type:"subagent", name?, position, prompt:string, model?:llmConfig, voice?:ttsConfig }
-  A node with its own persona/model/voice — useful for a different character or specialist.
+- **subagent**: { id, type:"subagent", name?, position, prompt:string, model?:llmConfig, voice?:ttsConfig, functions?:string[] }
+  A node with its own persona/model/voice — useful for a different character or specialist. Same \`functions\` tool-wiring as conversation nodes.
 
 - **mcp**: { id, type:"mcp", name?, position, server:string, tool:string, args?:{}, saveAs?:string }
   Call a tool on an MCP server.
@@ -100,7 +106,7 @@ After the JSON block, add 1-2 sentences explaining what you did.
 ## Important
 
 - Return COMPLETE workflow JSON every time — the canvas replaces the entire workflow
-- Use the CURRENT workflow (provided in the conversation) as the base for edits
+- Use the CURRENT workflow (provided below) as the base for edits
 - When the user asks to "add a node", keep all existing nodes and edges intact
 - Generate valid edge ids (e.g. "e1", "e2", etc.) — they must be unique
 - Wrap variables in {{double_braces}} in prompts and URLs
@@ -133,40 +139,16 @@ edges: [ {id:"e1",source:"greeting",target:"patient-lookup",kind:"always"}, ... 
 \`\`\`
 - Never return one giant node, and never return an empty \`nodes\` array.`
 
-// Each model's real output cap. gpt-4.1 family = 32768, gpt-4o-mini = 16384.
-// Ask for the max minus a small margin so we never trip the API's hard limit.
-function maxTokensFor(model: string): number {
-  return /4\.1|gpt-5|o[13]/i.test(model) ? 32000 : 16000
-}
+// GPT-5.6 Luna: 1.05M context, 128K max output, the cheap/fast tier of the
+// gpt-5.6 family — override with OPENAI_MODEL (e.g. "gpt-5.6-sol" for the
+// flagship tier) if Luna's quality isn't enough for a given workload.
+const MODEL = process.env.OPENAI_MODEL || 'gpt-5.6-luna'
+const MAX_TOKENS = 64000
 
-function getClient(): { client: OpenAI; model: string; maxTokens: number } {
-  const azureKey = process.env.AZURE_OPENAI_API_KEY
-  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT
-  if (azureKey && azureEndpoint) {
-    const model = process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4.1-mini-2'
-    return {
-      client: new AzureOpenAI({
-        apiKey: azureKey,
-        endpoint: azureEndpoint,
-        apiVersion: process.env.OPENAI_API_VERSION || '2024-12-01-preview',
-        deployment: model,
-      }),
-      model,
-      maxTokens: maxTokensFor(model),
-    }
-  }
-  const openaiKey = process.env.OPENAI_API_KEY
-  if (openaiKey) {
-    // gpt-4.1: 1M context + 32k output, holds big workflow JSON together far
-    // better than -mini. Override with OPENAI_MODEL if needed.
-    const model = process.env.OPENAI_MODEL || 'gpt-4.1'
-    return {
-      client: new OpenAI({ apiKey: openaiKey }),
-      model,
-      maxTokens: maxTokensFor(model),
-    }
-  }
-  throw new Error('No LLM API key configured (set AZURE_OPENAI_API_KEY or OPENAI_API_KEY)')
+function getClient(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) throw new Error('No LLM API key configured (set OPENAI_API_KEY)')
+  return new OpenAI({ apiKey })
 }
 
 export async function POST(req: NextRequest) {
@@ -176,27 +158,21 @@ export async function POST(req: NextRequest) {
   }
 
   let client: OpenAI
-  let model: string
-  let maxTokens: number
   try {
-    const c = getClient()
-    client = c.client
-    model = c.model
-    maxTokens = c.maxTokens
+    client = getClient()
   } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 })
   }
 
-  const systemMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
-  ]
-
+  let systemContent = SYSTEM_PROMPT
   if (workflow) {
-    systemMessages.push({
-      role: 'system',
-      content: `The user's CURRENT workflow is:\n\`\`\`json\n${JSON.stringify(workflow, null, 2)}\n\`\`\`\nUse this as the base for any edits. Return the complete modified workflow.`,
-    })
+    systemContent += `\n\nThe user's CURRENT workflow is:\n\`\`\`json\n${JSON.stringify(workflow, null, 2)}\n\`\`\`\nUse this as the base for any edits. Return the complete modified workflow.`
   }
+
+  const convo: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemContent },
+    ...messages.map((m: { role: 'user' | 'assistant'; content: string }) => ({ role: m.role, content: m.content })),
+  ]
 
   const { readable, writable } = new TransformStream()
   const writer = writable.getWriter()
@@ -205,8 +181,9 @@ export async function POST(req: NextRequest) {
   // finish_reason "length" mid-JSON, feed its partial output back and let it
   // continue exactly where it left off, stitching rounds into one stream. The
   // client just accumulates `content`, so continuation is transparent to it.
+  // 128K output makes this a rare safety net rather than the common path it
+  // was at gpt-4.1's 32K cap.
   const MAX_ROUNDS = 6
-  const convo: OpenAI.Chat.ChatCompletionMessageParam[] = [...systemMessages, ...messages]
 
   ;(async () => {
     try {
@@ -214,11 +191,10 @@ export async function POST(req: NextRequest) {
       let round = 0
       do {
         const stream = await client.chat.completions.create({
-          model,
+          model: MODEL,
           messages: convo,
           stream: true,
-          temperature: 0.3,
-          max_tokens: maxTokens,
+          max_completion_tokens: MAX_TOKENS,
         })
         let roundContent = ''
         finishReason = undefined
@@ -244,7 +220,8 @@ export async function POST(req: NextRequest) {
       }
       await writer.write(sse('[DONE]'))
     } catch (err: any) {
-      await writer.write(sse(JSON.stringify({ error: err.message })))
+      const message = err instanceof OpenAI.APIError ? err.message : (err.message || 'Unknown error')
+      await writer.write(sse(JSON.stringify({ error: message })))
     } finally {
       await writer.close()
     }

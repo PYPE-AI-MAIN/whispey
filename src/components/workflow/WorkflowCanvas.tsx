@@ -7,23 +7,37 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  Panel,
   useReactFlow,
   type Node,
   type Edge as FlowEdge,
   type NodeChange,
   type NodeTypes,
+  type EdgeTypes,
   type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import { LayoutGrid, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
+import { computeAutoLayout } from '@/lib/workflow/autoLayout'
+import { LoaderFive } from '@/components/ui/loader-five'
 import { FlowNode } from './FlowNode'
+import { WorkflowEdge } from './WorkflowEdge'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { PALETTE_DND_TYPE } from './WorkflowPalette'
 
 const NODE_TYPES = Object.fromEntries(
   Object.keys(NODE_REGISTRY).map((type) => [type, FlowNode])
 ) as unknown as NodeTypes
+
+const EDGE_TYPES: EdgeTypes = { workflow: WorkflowEdge }
+
+function truncateLabel(text: string, max = 28): string {
+  const trimmed = text.trim()
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed
+}
 
 const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
   always: { stroke: '#9ca3af' },
@@ -37,6 +51,7 @@ export function WorkflowCanvas() {
   const { screenToFlowPosition, fitView } = useReactFlow()
 
   const workflow = useWorkflowStore((s) => s.workflow)
+  const chatStreaming = useWorkflowStore((s) => s.chatStreaming)
   const replaceCount = useWorkflowStore((s) => s.replaceCount)
   const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId)
   const selectedEdgeId = useWorkflowStore((s) => s.selectedEdgeId)
@@ -61,12 +76,18 @@ export function WorkflowCanvas() {
     if (!workflow) return []
     return workflow.edges.map((e) => {
       const style = EDGE_STYLE[e.kind] ?? EDGE_STYLE.always
+      // The actual condition/expression text is what tells two "condition"
+      // edges apart on the canvas — falling back to the edge KIND ("condition")
+      // made every branch off a node look identical and unreadable.
+      const detail = e.condition || e.expression
+      const label = e.label || (detail ? truncateLabel(detail) : e.kind === 'always' ? undefined : e.kind)
       return {
         id: e.id,
+        type: 'workflow',
         source: e.source,
         target: e.target,
         selected: e.id === selectedEdgeId,
-        label: e.label || (e.kind === 'always' ? undefined : e.kind),
+        label,
         animated: e.kind === 'condition' || e.kind === 'logic',
         style: { stroke: style.stroke, strokeDasharray: style.dashed ? '5 5' : undefined },
       }
@@ -118,14 +139,30 @@ export function WorkflowCanvas() {
     return () => clearTimeout(t)
   }, [replaceCount, fitView])
 
+  const handleAutoArrange = useCallback(() => {
+    if (!workflow) return
+    const positions = computeAutoLayout(workflow)
+    updatePositions(Object.entries(positions).map(([id, position]) => ({ id, position })))
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
+  }, [workflow, updatePositions, fitView])
+
   if (!workflow) return null
 
   return (
-    <div ref={wrapperRef} role="application" className="flex-1 h-full" onDrop={onDrop} onDragOver={onDragOver}>
+    <div
+      ref={wrapperRef}
+      role="application"
+      className={`flex-1 h-full transition-shadow ${
+        chatStreaming ? 'shadow-[inset_0_0_70px_14px_rgba(167,139,250,0.45)] animate-pulse' : ''
+      }`}
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+    >
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         onNodesChange={onNodesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => setSelectedNode(node.id)}
@@ -140,6 +177,19 @@ export function WorkflowCanvas() {
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls />
         <MiniMap pannable zoomable className="!bg-gray-50 dark:!bg-gray-800" />
+        {chatStreaming && (
+          <Panel position="top-center">
+            <div className="flex items-center gap-2 h-8 px-3 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-600/30">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse" />
+              <LoaderFive text="AI Builder is working…" className="text-xs" />
+            </div>
+          </Panel>
+        )}
+        <Panel position="top-right">
+          <Button variant="outline" size="sm" className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm" onClick={handleAutoArrange}>
+            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Auto-arrange
+          </Button>
+        </Panel>
       </ReactFlow>
     </div>
   )
