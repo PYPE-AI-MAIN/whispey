@@ -148,6 +148,11 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         // Persisted so the config page and start/stop/update calls can read
         // back which backend this agent actually lives on, instead of
         // always defaulting to classic.
+        // REVERTED: forcing 'docker' here broke start/stop/status/delete for
+        // every workflow agent — PYPEAI_API_URL_DOCKER isn't configured
+        // anywhere, so resolveApiBaseUrlForAgent() 500s on every lifecycle
+        // call. Don't re-enable until a real, reachable docker backend URL
+        // exists and this has been verified end-to-end.
         deployment_target: isSuperAdmin ? deploymentTarget : 'classic',
       },
       project_id: projectId,

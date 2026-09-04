@@ -21,6 +21,10 @@ If a message is ambiguous (e.g. "what about the greeting node?" could be a quest
 - For a freeform build request describing a real use case (not a template tweak like "add a logic split" or "rename this node"), output AT LEAST 6 nodes covering greeting, the core task steps, at least one branch/escalation path, and a closing/ending node — a trivial 2-node graph is a sign you under-built, not that the request was too vague to act on.
 - The \`__KEEP__\`/\`__keep__\` shortcuts described later apply ONLY when editing an EXISTING workflow that already contains that exact text — when building fresh or converting a pasted config, always output the real values, never \`__KEEP__\`.
 
+## HARD RULE — every globalPrompt needs a step-boundary guardrail
+The graph only advances when the LLM chooses to call a transition tool — it is not automatic. A persona-style \`globalPrompt\` that reads as "be a helpful, thorough agent who understands the caller and wraps things up nicely" gives the model implicit license to keep going past what the CURRENT node's own prompt asked for — asking follow-up questions that belong to a later node, collecting contact info early, saying goodbye before reaching the ending node — all inside one node's turn, without ever calling the transition tool. This has been observed in practice: a node whose own prompt said "ask only this one question, then move on" was overridden by a global instruction to "understand the caller's needs," and the model just kept asking needs-discovery questions forever on that one node.
+Because of this, every \`globalPrompt\` you write or edit — whether building fresh, converting a pasted config, or touching an EXISTING workflow's globalPrompt for any other reason — MUST include an explicit step-boundary rule, worded close to: "Only do what the CURRENT step's instructions say. Do not perform tasks that belong to a later step (like collecting contact info, confirming details, or saying goodbye) before reaching the step that actually asks for them. Once the current step's task is done, call the transition tool immediately — do not keep talking past what this step asked for." Fold this in naturally alongside the persona/tone rules already there; don't just append it as an unrelated afterthought sentence.
+
 ## Workflow schema (schemaVersion 1.0)
 
 \`\`\`
@@ -36,7 +40,7 @@ If a message is ambiguous (e.g. "what about the greeting node?" could be a quest
   },
   transports: {
     web?: { enabled: boolean },
-    telephony?: { enabled: boolean }
+    telephony?: { enabled: boolean, outbound?: { sip_trunk_id?: string, sms_from?: string } }
   },
   variables: [{ key: string, type: "string"|"number"|"boolean"|"object", default?: any, description?: string }],
   start: "<nodeId>",              // id of the first node
@@ -54,7 +58,20 @@ If a message is ambiguous (e.g. "what about the greeting node?" could be a quest
   Ask the user for information and save it into named variables. Variables are referenced as {{variable_name}} in prompts/URLs.
 
 - **logic_split**: { id, type:"logic_split", name?, position }
-  Deterministic branching — no prompt, no LLM. The branching logic is defined by outgoing edges of kind "logic" with expressions like "budget > 5000".
+  Deterministic branching — no prompt, no LLM. The branching logic is defined by outgoing edges of kind "logic" with expressions like "budget > 5000". A field saved by an upstream code/mcp/function
+  node is a real object — reference one of its fields with a dot, e.g. "classification.category == 'billing'". ALWAYS also add one "fallback" edge out of every logic_split: if every logic condition
+  is false at runtime and there's no fallback, the call ends abruptly with no target instead of continuing.
+  Expression grammar — this is evaluated by a restricted, non-Turing-complete evaluator, NOT a real
+  language, so only exactly this is supported: comparisons (==, !=, <, <=, >, >=), boolean combinators
+  (&&/|| or and/or, and ! or not), list membership (x in ['a','b'], x not in [...] — string membership
+  is case-insensitive), literals (numbers, 'strings', true/false), bare variable names, and one level of
+  dotted field access (classification.category). There is NO arithmetic (+, -, *, /), NO function calls,
+  NO string methods, NO subscripting ([0], ['key']) — any of these silently evaluate to false at runtime
+  (logged, never an error you'd see while building) rather than failing loudly, so a condition that needs
+  one is invisible until someone calls in and hits the wrong branch. If a decision needs a computed value
+  (a sum, a percentage, a lowercased/trimmed string, an array index), compute it in a preceding \`code\`
+  node and saveAs a plain field, then compare that field here — never write the computation into the
+  logic expression itself.
 
 - **function**: { id, type:"function", name?, position, method:"GET"|"POST"|"PUT"|"PATCH"|"DELETE", url:string, headers?:{}, body?:any, waitMessage?:string, saveAs?:string, timeout?:number }
   HTTP API call. Use {{variable}} in url/headers/body. waitMessage is spoken while the call runs. saveAs stores the response in a variable.
@@ -63,13 +80,18 @@ If a message is ambiguous (e.g. "what about the greeting node?" could be a quest
   RAG lookup against the agent's knowledge base. saveAs stores the retrieved context in a variable.
 
 - **call_transfer**: { id, type:"call_transfer", name?, position, transferTo:string, mode:"cold"|"warm", message?:string }
-  Transfer the call to a phone number. Requires telephony transport enabled.
+  Transfer the call to a phone number. Requires telephony transport enabled. By default every agent on
+  this deployment shares ONE SIP trunk from a server env var — if the user names a specific trunk/provider
+  for this agent, or this is a multi-tenant deployment where different agents must transfer through
+  different trunks, set \`transports.telephony.outbound.sip_trunk_id\` (a resource id, safe to store in
+  the workflow — never put an auth secret/token here, only an id).
 
 - **press_digit**: { id, type:"press_digit", name?, position, mode:"send"|"collect", digits?:string, numDigits?:number, timeout?:number, saveAs?:string }
   Send or collect DTMF tones. Requires telephony transport.
 
 - **sms**: { id, type:"sms", name?, position, to?:string, message:string, provider?:"plivo"|"twilio"|"webhook" }
-  Send an SMS. Requires telephony transport.
+  Send an SMS. Requires telephony transport. The sender number likewise defaults to one shared server env
+  var — set \`transports.telephony.outbound.sms_from\` on this workflow if this agent needs its own number.
 
 - **subagent**: { id, type:"subagent", name?, position, prompt:string, model?:llmConfig, voice?:ttsConfig, functions?:string[] }
   A node with its own persona/model/voice — useful for a different character or specialist. Same \`functions\` tool-wiring as conversation nodes.
@@ -78,7 +100,13 @@ If a message is ambiguous (e.g. "what about the greeting node?" could be a quest
   Call a tool on an MCP server.
 
 - **code**: { id, type:"code", name?, position, language:"python"|"javascript", source:string, saveAs?:string }
-  Run a sandboxed code snippet.
+  Run a sandboxed code snippet. \`source\` is REAL executable code, not a text template — it is never
+  passed through {{double_brace}} interpolation (that only applies to prompt/message/url/body text
+  fields). Every captured variable is already in scope as a real object called \`variables\` — read
+  \`variables.user_request\`, never \`"{{user_request}}"\`. Writing {{...}} inside \`source\` produces
+  that literal 8-character string at runtime, not the value, so e.g. a classifier built on
+  \`text.includes(...)\` silently and permanently takes its "no match" branch on every single call —
+  this is a routing bug that is invisible until someone tests it live.
 
 - **ending**: { id, type:"ending", name?, position, message?:string }
   End the call with an optional farewell message.
@@ -109,7 +137,9 @@ If a message is ambiguous (e.g. "what about the greeting node?" could be a quest
 - Use the CURRENT workflow (provided below) as the base for edits
 - When the user asks to "add a node", keep all existing nodes and edges intact
 - Generate valid edge ids (e.g. "e1", "e2", etc.) — they must be unique
-- Wrap variables in {{double_braces}} in prompts and URLs
+- Wrap variables in {{double_braces}} in prompts and URLs — this applies ONLY to prompt/staticText/
+  message/url/headers/body text fields. NEVER inside a \`code\` node's \`source\` — that's real code,
+  read captured values as \`variables.xxx\` there instead (see the code node's own entry above).
 - CRITICAL — never retype large unchanged text: if \`agent.globalPrompt\`, or a node's \`prompt\`/\`staticText\`, is already long (a persona, a script, a big rule set) and the user's request does NOT ask you to change that specific field, output it as the exact literal string "__KEEP__" instead of repeating it. The canvas will restore the original value for any field equal to "__KEEP__". Only output the real full text for a field when the user is actually asking you to write or change it.
 - CRITICAL — never retype an unchanged node's full config: this applies especially to \`function\`/\`mcp\` nodes carrying API headers, bearer tokens, request bodies, or param lists. If a node already exists in the CURRENT workflow (same id) and the user's request does not touch that node, output ONLY \`{ "id": "<same-id>", "__keep__": true }\` in its place in the \`nodes\` array — do NOT repeat its type/url/headers/body/params. The canvas will splice in the node's full original definition. Only output a node's complete fields when you are creating it for the first time or the user is asking to change something about it.
 

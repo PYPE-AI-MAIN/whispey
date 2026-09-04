@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
 import { lintWorkflow, hasErrors } from '@/lib/workflow/linter'
+import { isRetryableApplyError } from '@/lib/workflow/chatRetry'
 import toast from 'react-hot-toast'
 
 interface Message {
@@ -188,18 +189,26 @@ export function WorkflowChat({
 
   // Parses the assistant's trailing ```json block (if any) and applies it to
   // the workflow store, reporting success/failure via toast + message status.
+  // `silentOnError` skips the error toast — used for a first attempt that's
+  // about to get one automatic self-correction retry, so a mistake the model
+  // fixes on its own never flashes a scary error at whoever is self-serving.
   const applyAssistantWorkflow = useCallback(
     (
-      assistantContent: string
+      assistantContent: string,
+      opts: { silentOnError?: boolean } = {}
     ): { applyStatus: Message['applyStatus']; applyError?: string; applyNodeCount?: number; applyWarnings?: string[] } => {
+      const { silentOnError = false } = opts
+      const fail = (applyError: string) => {
+        if (!silentOnError) toast.error(applyError, { duration: 10000 })
+        return { applyStatus: 'error' as const, applyError }
+      }
+
       const jsonBlockStart = assistantContent.indexOf('```json')
       const hasJsonBlock = jsonBlockStart !== -1 && assistantContent.slice(jsonBlockStart + 7).includes('```')
       const json = extractWorkflowJson(assistantContent)
       if (!json) {
         if (!hasJsonBlock) return { applyStatus: 'none' }
-        const applyError = 'Response JSON was malformed (likely cut off — try a shorter/simpler request)'
-        toast.error(applyError, { duration: 8000 })
-        return { applyStatus: 'error', applyError }
+        return fail('Response JSON was malformed (likely cut off — try a shorter/simpler request)')
       }
 
       const parsed = safeParseWorkflow(restoreKeptFields(json, workflow))
@@ -208,14 +217,12 @@ export function WorkflowChat({
       // canvas but shows a misleading "applied" — reject it and say why.
       if (!parsed.success) {
         const applyError = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
-        toast.error(`AI returned invalid workflow JSON: ${applyError}`, { duration: 8000 })
-        return { applyStatus: 'error', applyError }
+        return fail(`AI returned invalid workflow JSON: ${applyError}`)
       }
       if (parsed.data.nodes.length === 0 || !parsed.data.nodes.some((n) => n.id === parsed.data.start)) {
-        const applyError =
+        return fail(
           'The AI returned a workflow with no usable nodes — the config is too large to convert in one shot. Ask it to "build the flow step by step" (greeting, then patient lookup, then symptoms, …), or paste the flow in a few smaller messages.'
-        toast.error(applyError, { duration: 10000 })
-        return { applyStatus: 'error', applyError }
+        )
       }
 
       // "Chat-only" only works if problems surface HERE — the same lint the
@@ -228,8 +235,7 @@ export function WorkflowChat({
           .slice(0, 3)
           .map((i) => i.message)
           .join('; ')
-        toast.error(`AI returned a broken workflow graph: ${applyError}`, { duration: 10000 })
-        return { applyStatus: 'error', applyError }
+        return fail(`AI returned a broken workflow graph: ${applyError}`)
       }
 
       setWorkflow(parsed.data)
@@ -244,26 +250,21 @@ export function WorkflowChat({
     [workflow, setWorkflow]
   )
 
-  const handleSend = useCallback(async (overrideText?: string) => {
-    const text = (overrideText ?? input).trim()
-    if (!text || isStreaming) return
-
-    const userMsg: Message = { role: 'user', content: text }
-    const newMessages = [...messages, userMsg]
-    setMessages(newMessages)
-    setInput('')
-    setIsStreaming(true)
-    setChatStreaming(true)
-
-    const abort = new AbortController()
-    abortRef.current = abort
-
-    try {
+  // One request/stream/apply round-trip. Appends a fresh assistant bubble and
+  // fills it as chunks arrive; returns the apply result so the caller can
+  // decide whether this needs a self-correction retry.
+  const sendAndApply = useCallback(
+    async (
+      conversationMessages: Pick<Message, 'role' | 'content'>[],
+      abort: AbortController,
+      opts: { silentOnError?: boolean } = {}
+    ) => {
+      const { silentOnError = false } = opts
       const res = await fetch('/api/workflow/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages.map((m) => ({
+          messages: conversationMessages.map((m) => ({
             role: m.role,
             content: m.role === 'assistant' ? stripJsonBlocksForHistory(m.content) : m.content,
           })),
@@ -289,21 +290,65 @@ export function WorkflowChat({
 
       if (wasTruncated) {
         const err = 'Response was cut off (too long to generate in one reply) — the workflow was NOT applied. Try a shorter request, or build the flow structure via chat and paste large prompts directly into the Global Prompt field instead.'
-        toast.error(err, { duration: 10000 })
+        if (!silentOnError) toast.error(err, { duration: 10000 })
         setMessages((prev) => {
           const updated = [...prev]
           updated[updated.length - 1] = { ...updated.at(-1)!, applyStatus: 'error', applyError: err }
           return updated
         })
-        return
+        return { applyStatus: 'error' as const, applyError: err, retryable: false }
       }
 
-      const { applyStatus, applyError, applyNodeCount, applyWarnings } = applyAssistantWorkflow(assistantContent)
+      const { applyStatus, applyError, applyNodeCount, applyWarnings } = applyAssistantWorkflow(assistantContent, { silentOnError })
       setMessages((prev) => {
         const updated = [...prev]
         updated[updated.length - 1] = { ...updated.at(-1)!, applyStatus, applyError, applyNodeCount, applyWarnings }
         return updated
       })
+      const retryable = applyStatus === 'error' && isRetryableApplyError(applyError)
+      return { applyStatus, applyError, retryable }
+    },
+    [workflow, streamAssistantReply, applyAssistantWorkflow]
+  )
+
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim()
+    if (!text || isStreaming) return
+
+    const userMsg: Message = { role: 'user', content: text }
+    let conversation = [...messages, userMsg]
+    setMessages(conversation)
+    setInput('')
+    setIsStreaming(true)
+    setChatStreaming(true)
+
+    const abort = new AbortController()
+    abortRef.current = abort
+
+    try {
+      // Silent: an error here might self-correct below, and toasting a
+      // mistake the model is about to fix on its own just alarms whoever is
+      // self-serving this workflow for no reason.
+      const first = await sendAndApply(conversation, abort, { silentOnError: true })
+
+      // One self-correction pass: feed the exact validation/lint errors back
+      // as a follow-up turn so a fixable mistake (a dangling edge, {{var}} in
+      // a code node, a missing fallback) gets corrected automatically instead
+      // of surfacing to whoever is self-serving this workflow.
+      if (first.retryable) {
+        const retryMsg: Message = {
+          role: 'user',
+          content: `The workflow you just returned failed validation: ${first.applyError}. Fix these specific issues and return the corrected COMPLETE workflow JSON.`,
+        }
+        conversation = [...conversation, { role: 'assistant', content: '(previous attempt — see error below)' }, retryMsg]
+        setMessages((prev) => [...prev, retryMsg])
+        // Non-silent: this is the last attempt either way, so its outcome
+        // (fixed, or still broken) is what the user should actually see.
+        await sendAndApply(conversation, abort, { silentOnError: false })
+      } else if (first.applyStatus === 'error' && first.applyError) {
+        // Not retryable (e.g. truncated) — nothing more to try, surface it now.
+        toast.error(first.applyError, { duration: 10000 })
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') return
       toast.error(err.message || 'Chat request failed')
@@ -318,7 +363,7 @@ export function WorkflowChat({
       setChatStreaming(false)
       abortRef.current = null
     }
-  }, [input, isStreaming, messages, workflow, streamAssistantReply, applyAssistantWorkflow, setChatStreaming])
+  }, [input, isStreaming, messages, sendAndApply, setChatStreaming])
 
   const sentInitialRef = useRef(false)
   useEffect(() => {
@@ -340,7 +385,7 @@ export function WorkflowChat({
 
   return (
     <div
-      className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-50 w-[min(560px,calc(100%-2rem))] ${
+      className={`absolute right-4 top-1/2 -translate-y-1/2 z-50 w-[min(560px,calc(100%-2rem))] ${
         collapsed ? '' : 'max-h-[46vh]'
       } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
     >

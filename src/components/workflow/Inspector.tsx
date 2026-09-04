@@ -18,6 +18,20 @@ import { LogicConditionField } from './LogicConditionField'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 
+/** Points to where the outbound trunk/number actually lives (Agent settings,
+ * transports.telephony.outbound) — this node has no field of its own for it,
+ * so without this hint it's not discoverable that one exists at all. */
+function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>) {
+  const outbound = workflow?.transports?.telephony?.outbound as { sip_trunk_id?: string; sms_from?: string } | undefined
+  return (
+    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+      {outbound?.sip_trunk_id
+        ? `Uses this agent's outbound number (set in Agent settings): ${outbound.sms_from || outbound.sip_trunk_id}.`
+        : "No outbound number set for this agent — it's using the deployment's shared default trunk. Set one in Agent settings (top toolbar) → Telephony → Outbound number."}
+    </p>
+  )
+}
+
 /** Textarea backed by a JSON-serialized object; keeps raw text while invalid so typing isn't fought. */
 function JsonField({ label, value, onChange }: Readonly<{ label: string; value: unknown; onChange: (v: any) => void }>) {
   const [text, setText] = useState(() => JSON.stringify(value ?? {}, null, 2))
@@ -247,6 +261,7 @@ function NodeFields({
             </Select>
           </Field>
           <Field label="Message before transfer"><Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
+          <OutboundTrunkHint workflow={workflow} />
         </>
       )
     case 'press_digit':
@@ -287,6 +302,7 @@ function NodeFields({
               </SelectContent>
             </Select>
           </Field>
+          <OutboundTrunkHint workflow={workflow} />
         </>
       )
     case 'subagent':

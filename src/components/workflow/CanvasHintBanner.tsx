@@ -2,17 +2,22 @@
 
 import React, { useEffect, useState } from 'react'
 import { X, Lightbulb } from 'lucide-react'
+import { useWorkflowStore } from '@/stores/workflowStore'
 
 const STORAGE_KEY = 'whispey-workflow-hint-dismissed'
 
 export function CanvasHintBanner() {
   const [dismissed, setDismissed] = useState(true) // default hidden until we check localStorage, to avoid a flash
+  // Both this and the AI Builder's "working" pill sit top-center — showing
+  // static "here's how to build" instructions while the AI is actively
+  // building is both redundant and a visual collision, so just step aside.
+  const chatStreaming = useWorkflowStore((s) => s.chatStreaming)
 
   useEffect(() => {
     setDismissed(typeof globalThis !== 'undefined' && globalThis.localStorage.getItem(STORAGE_KEY) === '1')
   }, [])
 
-  if (dismissed) return null
+  if (dismissed || chatStreaming) return null
 
   const dismiss = () => {
     setDismissed(true)

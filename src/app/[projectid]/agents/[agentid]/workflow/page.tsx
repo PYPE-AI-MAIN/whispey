@@ -271,6 +271,7 @@ function WorkflowPageInner() {
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
         toast.success('Workflow deployed')
+        if (data?.warning) toast.error(data.warning, { duration: 8000 })
         markClean()
         // Deploy already hot-reloads a RUNNING worker — only auto-start if it
         // wasn't running, so a deploy while live doesn't restart the call.

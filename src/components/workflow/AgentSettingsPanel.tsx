@@ -1,17 +1,29 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
-import { Languages as LanguagesIcon, Edit2, Trash2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Languages as LanguagesIcon, Edit2, Trash2, Phone, Loader2 } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 import LanguageSwitchSettings, { LanguageSwitchConfig } from '@/components/agents/AgentConfig/LanguageSwitchSettings'
+
+interface OutboundPhoneNumber {
+  id: string
+  phone_number: string
+  trunk_id: string
+  provider: string | null
+  project_id: string | null
+  status: string | null
+  trunk_direction: string | null
+}
 
 // LanguageSwitchSettings' TTS picker writes the provider's native voice-id
 // field (sarvam: speaker, google: voice_name) because it was built to feed the
@@ -33,10 +45,40 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
   const patchWorkflow = useWorkflowStore((s) => s.patchWorkflow)
   const [isLSOpen, setIsLSOpen] = useState(false)
   const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
+  const params = useParams()
+  const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
+  const [phoneNumbers, setPhoneNumbers] = useState<OutboundPhoneNumber[]>([])
+  const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
+
+  // Same source + filter as the classic agent's transfer_call tool config
+  // (ToolsActionsSettingsProps.tsx) — every workflow agent otherwise shared
+  // ONE trunk/number from a server env var with no way to pick a different
+  // one per agent, even though the backend has supported an override
+  // (transports.telephony.outbound) since it was added.
+  useEffect(() => {
+    if (!projectId) return
+    setLoadingPhoneNumbers(true)
+    fetch('/api/calls/phone-numbers/?limit=100')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: OutboundPhoneNumber[]) => {
+        const seen = new Set<string>()
+        setPhoneNumbers(
+          data.filter((p) => {
+            if (seen.has(p.id)) return false
+            seen.add(p.id)
+            return p.project_id === projectId && p.status === 'active' && p.trunk_direction === 'outbound'
+          })
+        )
+      })
+      .catch((err) => console.error('Error fetching phone numbers:', err))
+      .finally(() => setLoadingPhoneNumbers(false))
+  }, [projectId])
 
   if (!workflow) return null
   const { agent, transports } = workflow
   const languages = (agent.languages ?? []) as LanguageSwitchConfig[]
+  const outbound = (transports.telephony?.outbound ?? {}) as { sip_trunk_id?: string; sms_from?: string }
+  const selectedPhoneId = phoneNumbers.find((p) => p.trunk_id === outbound.sip_trunk_id)?.id
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -161,6 +203,59 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
                 }
               />
             </div>
+            {transports.telephony?.enabled && (
+              <div className="pt-1">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Phone className="w-3 h-3" /> Outbound number
+                </Label>
+                {loadingPhoneNumbers ? (
+                  <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg mt-1">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  </div>
+                ) : phoneNumbers.length === 0 ? (
+                  <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 mt-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">No active outbound numbers on this project</span>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedPhoneId || '__none__'}
+                    onValueChange={(phoneId) => {
+                      const nextOutbound =
+                        phoneId === '__none__'
+                          ? { ...outbound, sip_trunk_id: undefined, sms_from: undefined }
+                          : (() => {
+                              const phone = phoneNumbers.find((p) => p.id === phoneId)
+                              return phone ? { ...outbound, sip_trunk_id: phone.trunk_id, sms_from: phone.phone_number } : outbound
+                            })()
+                      patchWorkflow({
+                        transports: { ...transports, telephony: { ...transports.telephony, enabled: true, outbound: nextOutbound } },
+                      })
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-8 text-xs mt-1">
+                      <SelectValue placeholder="Select phone number" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        <span className="text-xs text-gray-400">None — use the server&apos;s default trunk</span>
+                      </SelectItem>
+                      {phoneNumbers.map((phone) => (
+                        <SelectItem key={phone.id} value={phone.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs">{phone.phone_number}</span>
+                            {phone.provider && <span className="text-gray-500 text-xs">({phone.provider})</span>}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Used by this agent&apos;s Call Transfer and SMS nodes. Leave as &quot;None&quot; to share the
+                  deployment&apos;s default trunk/number with every other agent.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </SheetContent>
