@@ -490,6 +490,11 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   
   const { isMobile, mounted } = useMobile(768)
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false)
+  // The workflow canvas wants all the width it can get — force the sidebar
+  // collapsed there without touching the user's saved preference for every
+  // other page, so it re-expands automatically the moment they navigate away.
+  const isWorkflowRoute = pathname?.endsWith('/workflow') ?? false
+  const effectiveCollapsed = isDesktopCollapsed || isWorkflowRoute
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
 
@@ -640,7 +645,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             <Sidebar
               config={sidebarConfig}
               currentPath={pathname}
-              isCollapsed={isDesktopCollapsed}
+              isCollapsed={effectiveCollapsed}
               onToggleCollapse={handleDesktopToggle}
               isMobile={false}
               isSuperAdmin={isGlobalSuperAdmin}
