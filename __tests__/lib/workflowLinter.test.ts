@@ -169,6 +169,34 @@ describe('lintWorkflow', () => {
     expect(issues.some((i) => i.message.includes('undeclared variable'))).toBe(false)
   })
 
+  it('flags an undeclared variable nested inside a dict/list-valued field (function headers/body)', () => {
+    const issues = lintWorkflow(wf({
+      nodes: [
+        { id: 's', type: 'conversation', prompt: 'hi' },
+        {
+          id: 'f',
+          type: 'function',
+          url: 'http://x',
+          headers: { Authorization: 'Bearer {{missing_token}}' },
+          body: { nested: { question: '{{also_missing}}' } },
+        },
+      ] as never,
+      edges: [{ id: 'e', source: 's', target: 'f', kind: 'always' }] as never,
+    }))
+    const warning = issues.find((i) => i.nodeId === 'f' && i.message.includes('undeclared variable'))
+    expect(warning?.message).toContain('missing_token')
+    expect(warning?.message).toContain('also_missing')
+  })
+
+  it('flags an undeclared variable in agent.globalPrompt specifically', () => {
+    const issues = lintWorkflow(wf({
+      agent: { globalPrompt: 'You are Acme’s agent, {{typo_company_name}}.' } as never,
+    }))
+    const warning = issues.find((i) => i.message.startsWith('agent.globalPrompt references'))
+    expect(warning).toBeTruthy()
+    expect(warning?.message).toContain('typo_company_name')
+  })
+
   it('does not flag the built-in language-switch state variable', () => {
     const issues = lintWorkflow(wf({
       agent: { globalPrompt: '', languages: [{ tool_name: 'switch', language_code: 'hi' }] } as never,
@@ -197,6 +225,22 @@ describe('lintWorkflow', () => {
       edges: [{ id: 'e', source: 's', target: 'c', kind: 'fallback' }] as never,
     }))
     expect(hasErrors(issues)).toBe(false)
+  })
+
+  it('exempts a function node reached only via another node\'s functions array from reachability checks', () => {
+    // A function node with no inbound edge would normally be flagged
+    // unreachable/dead-end — unless it's wired as a callable tool via the
+    // conversation node's `functions` array, which is how it actually runs.
+    const issues = lintWorkflow(wf({
+      nodes: [
+        { id: 's', type: 'conversation', prompt: 'hi', functions: ['f'] },
+        { id: 'f', type: 'function', url: 'http://x' },
+        { id: 'e', type: 'ending' },
+      ] as never,
+      edges: [{ id: 'e1', source: 's', target: 'e', kind: 'always' }] as never,
+    }))
+    expect(issues.some((i) => i.nodeId === 'f' && i.message.includes('unreachable'))).toBe(false)
+    expect(issues.some((i) => i.nodeId === 'f' && i.message.includes('dead-end'))).toBe(false)
   })
 })
 
