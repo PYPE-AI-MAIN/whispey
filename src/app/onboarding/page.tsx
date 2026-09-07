@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { useQueryClient } from '@tanstack/react-query' // ✅ ADD THIS
+import { useQuery, useQueryClient } from '@tanstack/react-query' // ✅ ADD THIS
 import { Building2, Loader2, Sparkles, ArrowRight, Rocket, Clock } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,27 @@ export default function OnboardingPage() {
     description: '',
     environment: 'production'
   })
+
+  // Non-superadmins have no org yet and are waiting for an admin to add
+  // them to one — poll for that instead of requiring a manual navigation
+  // to notice it happened, same pattern as /pending-approval's status poll.
+  const { data: organizations } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects')
+      if (!res.ok) throw new Error('Failed to fetch organizations')
+      return res.json()
+    },
+    enabled: !isRoleLoading && !isSuperAdmin,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+  })
+
+  useEffect(() => {
+    if (organizations && organizations.length > 0) {
+      router.push('/projects')
+    }
+  }, [organizations, router])
 
   const handleCreateOrganization = async (e: React.FormEvent) => {
     e.preventDefault()
