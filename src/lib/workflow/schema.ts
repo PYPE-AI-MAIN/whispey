@@ -66,7 +66,12 @@ export const languageSwitchTool = z.object({
 
 export const agentConfig = z.object({
   globalPrompt: z.string().default(''),
-  llm: llmConfig.default({ name: 'azure_openai', model: 'gpt-4.1-mini' }),
+  // 'azure', not 'azure_openai' — that's the exact key workflow/providers.py's
+  // build_llm() dispatches on; an unrecognized name doesn't error, it silently
+  // falls through to plain OpenAI (confirmed live: model_provider logged as
+  // api.openai.com instead of Azure) since "gpt-4.1-mini" also happens to be
+  // a real OpenAI model id, so the wrong-provider fallback was invisible.
+  llm: llmConfig.default({ name: 'azure', model: 'gpt-4.1-mini' }),
   // language:'unknown' is Sarvam's auto-detect sentinel (see SelectSTTDialog) —
   // omitting it falls through to sttConfig's own default of 'en', which isn't
   // a valid BCP-47 code for saaras:v3 and makes the backend's Sarvam plugin
