@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getEffectiveVisibility } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
 
@@ -32,8 +34,13 @@ export async function GET(
         .from('pype_voice_email_project_mapping')
         .select('role, permissions, is_active')
         .eq('project_id', projectId)
-        .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+        // .limit(1) before .maybeSingle(): without it, a legitimate multi-row
+        // match (e.g. the same email tied to two different accounts/domains)
+        // makes Supabase error out instead of returning a row, surfacing as
+        // a 500 here rather than "yes, a member."
+        .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
         .or('is_active.is.null,is_active.eq.true')
+        .limit(1)
         .maybeSingle(),
       supabase
         .from('pype_voice_users')

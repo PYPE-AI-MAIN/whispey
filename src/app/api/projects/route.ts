@@ -4,6 +4,8 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import crypto from 'crypto'
 import { createProjectApiKey } from '@/lib/api-key-management'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
 
 // Create Supabase client for server-side operations (use service role for admin operations)
 const supabase = createServiceRoleClient()
@@ -158,7 +160,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User email not found' }, { status: 400 })
     }
 
-    // Fetch projects linked to user email
+    // Fetch projects this login has access to. Regular users only match
+    // their own clerk_id, or an unclaimed invite created by the new-domain
+    // approval flow — not every row that merely shares this email (a
+    // different account's old-domain membership included).
     const { data: projectMappings, error } = await supabase
       .from('pype_voice_email_project_mapping')
       .select(`
@@ -173,7 +178,7 @@ export async function GET(request: NextRequest) {
         ),
         role
       `)
-      .eq('email', userEmail)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
 
     if (error) {
@@ -181,9 +186,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 })
     }
 
-    // Return only active projects with user role included
+    // Return only active projects with user role included — deduped by
+    // project id, since an admin's deliberately broad match (clerk_id OR
+    // email) can legitimately return more than one mapping row for the same
+    // project (e.g. one per old/new-domain account sharing this email).
+    const seenProjectIds = new Set<string>()
     const activeProjects = projectMappings
       .filter(mapping => mapping.project)
+      .filter(mapping => {
+        // Supabase's inferred type for this joined relation doesn't match
+        // its actual one-to-one shape at runtime (same quirk as elsewhere
+        // in this codebase) — hence the `any`.
+        const id = (mapping.project as any)?.id
+        if (seenProjectIds.has(id)) return false
+        seenProjectIds.add(id)
+        return true
+      })
       .map(mapping => ({
         ...mapping.project,
         user_role: mapping.role
