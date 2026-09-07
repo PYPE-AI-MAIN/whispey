@@ -409,7 +409,7 @@ function WorkflowPageInner() {
           size="sm"
           onClick={() => setTalkOpen(true)}
           disabled={agentLifecycle.status.status !== 'running'}
-          title={agentLifecycle.status.status !== 'running' ? 'Start the agent first to talk to it' : undefined}
+          title={agentLifecycle.status.status === 'running' ? undefined : 'Start the agent first to talk to it'}
         >
           <PhoneIcon className="h-3.5 w-3.5 mr-1.5" /> Talk to Assistant
         </Button>
