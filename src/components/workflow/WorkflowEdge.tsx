@@ -11,7 +11,7 @@ import { useWorkflowStore } from '@/stores/workflowStore'
 // around) spreads them apart without needing real collision detection.
 function hashOffset(id: string): number {
   let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
+  for (let i = 0; i < id.length; i++) h = Math.trunc(h * 31 + (id.codePointAt(i) ?? 0))
   // -2.5..2.5 lane steps, spread over ~46px — enough separation for the ~11px label text.
   return ((Math.abs(h) % 5) - 2) * 11.5
 }
@@ -60,7 +60,15 @@ function WorkflowEdgeComponent({
               pointerEvents: 'auto',
               transform: `translate(-50%, -50%) translate(${labelX + px * offset}px, ${labelY + py * offset}px)`,
             }}
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
+              e.stopPropagation()
+              setSelectedEdge(id)
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              e.preventDefault()
               e.stopPropagation()
               setSelectedEdge(id)
             }}

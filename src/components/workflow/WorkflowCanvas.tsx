@@ -39,6 +39,16 @@ function truncateLabel(text: string, max = 28): string {
   return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed
 }
 
+/** The actual condition/expression text is what tells two "condition" edges
+ * apart on the canvas — falling back to the edge KIND ("condition") made
+ * every branch off a node look identical and unreadable. */
+function edgeCanvasLabel(kind: string, explicitLabel: string | null | undefined, detail: string | null | undefined): string | undefined {
+  if (explicitLabel) return explicitLabel
+  if (detail) return truncateLabel(detail)
+  if (kind === 'always') return undefined
+  return kind
+}
+
 const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
   always: { stroke: '#9ca3af' },
   condition: { stroke: '#f59e0b' },
@@ -76,11 +86,8 @@ export function WorkflowCanvas() {
     if (!workflow) return []
     return workflow.edges.map((e) => {
       const style = EDGE_STYLE[e.kind] ?? EDGE_STYLE.always
-      // The actual condition/expression text is what tells two "condition"
-      // edges apart on the canvas — falling back to the edge KIND ("condition")
-      // made every branch off a node look identical and unreadable.
       const detail = e.condition || e.expression
-      const label = e.label || (detail ? truncateLabel(detail) : e.kind === 'always' ? undefined : e.kind)
+      const label = edgeCanvasLabel(e.kind, e.label, detail)
       return {
         id: e.id,
         type: 'workflow',

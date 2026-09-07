@@ -34,6 +34,12 @@ const TEMPLATE_IN_CODE_RE = /\{\{\s*[a-zA-Z0-9_.]+\s*\}\}/
 // above) and already has its own, more specific error.
 const VAR_REF_RE = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g
 
+/** Pulled out to avoid a template literal nested inside another template
+ * literal's ${...} — same string either way. */
+function braceWrap(name: string): string {
+  return `{{${name}}}`
+}
+
 // Fields verified (pype-voice-agent/workflow/interpreter.py) to actually pass
 // through interpolate()/render() at runtime — an include-list, not "every
 // string field", so a field nobody templates (an id, an enum, a node name)
@@ -205,22 +211,26 @@ function lintUnknownVariables(wf: Workflow): LintIssue[] {
     for (const field of TEMPLATED_DICT_FIELDS[n.type] ?? []) collectRefs((n as Record<string, unknown>)[field], refs)
     if (n.type === 'function') collectRefs((n as { body?: unknown }).body, refs)
     const unknown = [...new Set(refs.filter((r) => !known.has(r)))].sort((a, b) => a.localeCompare(b))
-    if (unknown.length)
+    if (unknown.length) {
+      const refList = unknown.map(braceWrap).join(', ')
       issues.push({
         severity: 'warning',
-        message: `references undeclared variable(s) ${unknown.map((u) => `{{${u}}}`).join(', ')} — these render as an empty string at runtime, not an error, so a typo here is invisible until someone notices blank text. Check spelling against Variables / this workflow's extractions and saveAs fields.`,
+        message: `references undeclared variable(s) ${refList} — these render as an empty string at runtime, not an error, so a typo here is invisible until someone notices blank text. Check spelling against Variables / this workflow's extractions and saveAs fields.`,
         nodeId: n.id,
       })
+    }
   }
   if (wf.agent?.globalPrompt) {
     const refs: string[] = []
     collectRefs(wf.agent.globalPrompt, refs)
     const unknown = [...new Set(refs.filter((r) => !known.has(r)))].sort((a, b) => a.localeCompare(b))
-    if (unknown.length)
+    if (unknown.length) {
+      const refList = unknown.map(braceWrap).join(', ')
       issues.push({
         severity: 'warning',
-        message: `agent.globalPrompt references undeclared variable(s) ${unknown.map((u) => `{{${u}}}`).join(', ')}`,
+        message: `agent.globalPrompt references undeclared variable(s) ${refList}`,
       })
+    }
   }
   return issues
 }
@@ -262,15 +272,19 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
   const telOn = !!wf.transports.telephony?.enabled
   const toolNodeIds = collectToolNodeIds(wf, nodeMap)
 
-  const issues: LintIssue[] = [...lintIds(wf.nodes)]
-  if (!webOn && !telOn) issues.push({ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' })
-  issues.push(...lintStart(wf, idSet, nodeMap))
-  for (const n of wf.nodes) issues.push(...lintNode(wf, n, telOn, outEdges))
-  issues.push(...lintSaveAs(wf.nodes))
-  for (const e of wf.edges) issues.push(...lintEdge(e, idSet, nodeMap))
-  issues.push(...lintReachability(wf, toolNodeIds, outEdges))
-  issues.push(...lintUnknownVariables(wf))
-  return issues
+  const transportIssue: LintIssue[] = !webOn && !telOn
+    ? [{ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' }]
+    : []
+  return [
+    ...lintIds(wf.nodes),
+    ...transportIssue,
+    ...lintStart(wf, idSet, nodeMap),
+    ...wf.nodes.flatMap((n) => lintNode(wf, n, telOn, outEdges)),
+    ...lintSaveAs(wf.nodes),
+    ...wf.edges.flatMap((e) => lintEdge(e, idSet, nodeMap)),
+    ...lintReachability(wf, toolNodeIds, outEdges),
+    ...lintUnknownVariables(wf),
+  ]
 }
 
 function reachableSet(wf: Workflow): Set<string> {

@@ -208,15 +208,17 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
                 <Label className="text-xs flex items-center gap-1.5">
                   <Phone className="w-3 h-3" /> Outbound number
                 </Label>
-                {loadingPhoneNumbers ? (
+                {loadingPhoneNumbers && (
                   <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg mt-1">
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                   </div>
-                ) : phoneNumbers.length === 0 ? (
+                )}
+                {!loadingPhoneNumbers && phoneNumbers.length === 0 && (
                   <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 mt-1">
                     <span className="text-xs text-gray-500 dark:text-gray-400">No active outbound numbers on this project</span>
                   </div>
-                ) : (
+                )}
+                {!loadingPhoneNumbers && phoneNumbers.length > 0 && (
                   <Select
                     value={selectedPhoneId || '__none__'}
                     onValueChange={(phoneId) => {
