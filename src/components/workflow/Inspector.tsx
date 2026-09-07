@@ -59,8 +59,8 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
 
 function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
   return (
-    <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</Label>
       {children}
     </div>
   )
@@ -440,41 +440,47 @@ export function Inspector() {
         }
       }}
     >
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md overflow-y-auto bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-white/10 p-0"
+      >
         {node && (
           <>
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
+            <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
+              <SheetTitle className="flex items-center gap-2 text-base">
                 {NODE_REGISTRY[node.type]?.label}
                 {node.id === workflow?.start && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
               </SheetTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Node settings — id &ldquo;{node.id}&rdquo;</p>
             </SheetHeader>
-            <div className="px-4 space-y-4">
-              {nodeIssues.length > 0 && (
-                <div className="space-y-1">
-                  {nodeIssues.map((iss) => (
-                    <p
-                      key={`${iss.severity}-${iss.message}`}
-                      className={`text-[11px] rounded-md px-2 py-1.5 ${
-                        iss.severity === 'error'
-                          ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
-                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                      }`}
-                    >
-                      {iss.severity === 'error' ? '⛔ ' : '⚠️ '}
-                      {iss.message}
-                    </p>
-                  ))}
-                </div>
-              )}
-              <Field label="Name">
-                <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
-              </Field>
-              {/* key=node.id: JsonField's internal text state must reset when
-                  switching selected nodes, or it shows the previous node's JSON. */}
-              <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} workflow={workflow} />
+            <div className="p-4">
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
+                {nodeIssues.length > 0 && (
+                  <div className="space-y-1">
+                    {nodeIssues.map((iss) => (
+                      <p
+                        key={`${iss.severity}-${iss.message}`}
+                        className={`text-[11px] rounded-md px-2 py-1.5 ${
+                          iss.severity === 'error'
+                            ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                        }`}
+                      >
+                        {iss.severity === 'error' ? '⛔ ' : '⚠️ '}
+                        {iss.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <Field label="Name">
+                  <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
+                </Field>
+                {/* key=node.id: JsonField's internal text state must reset when
+                    switching selected nodes, or it shows the previous node's JSON. */}
+                <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} workflow={workflow} />
+              </div>
             </div>
-            <SheetFooter className="flex-row justify-between">
+            <SheetFooter className="flex-row justify-between border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               {node.id !== workflow?.start && (
                 <Button variant="outline" size="sm" onClick={() => setStart(node.id)}>
                   Set as start
@@ -488,13 +494,18 @@ export function Inspector() {
         )}
         {edge && workflow && (
           <>
-            <SheetHeader>
-              <SheetTitle>Edge</SheetTitle>
+            <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
+              <SheetTitle className="text-base">Edge</SheetTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Controls when the workflow takes this path from &ldquo;{edge.source}&rdquo; to &ldquo;{edge.target}&rdquo;
+              </p>
             </SheetHeader>
-            <div className="px-4 space-y-4">
-              <EdgeFields edge={edge} workflow={workflow} patch={(p) => updateEdge(edge.id, p)} />
+            <div className="p-4">
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
+                <EdgeFields edge={edge} workflow={workflow} patch={(p) => updateEdge(edge.id, p)} />
+              </div>
             </div>
-            <SheetFooter>
+            <SheetFooter className="border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               <Button variant="destructive" size="sm" onClick={() => removeEdge(edge.id)}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete edge
               </Button>
