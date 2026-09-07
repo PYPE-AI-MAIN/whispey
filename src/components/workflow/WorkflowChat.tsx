@@ -397,115 +397,122 @@ export function WorkflowChat({
   if (!open) return null
 
   return (
-    <div
-      className={`absolute right-4 top-1/2 -translate-y-1/2 z-50 w-[min(760px,calc(100%-2rem))] ${
-        collapsed ? '' : 'max-h-[74vh]'
-      } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
-    >
-      {/* Header — the subtitle IS the "already loaded" answer: what's already
-          built, right where you'd look for it, instead of a separate card
-          repeating the same thing lower down. */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-        <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
-          <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Workflow Builder</h3>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight truncate">
-            {formatContextSummary(contextSummary)}
-          </p>
-        </div>
-        {messages.length > 0 && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setMessages([])}
-            title="Clear chat"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </Button>
-        )}
-        {messages.length > 0 && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setCollapsed((v) => !v)}
-            title={collapsed ? 'Expand chat' : 'Collapse chat'}
-          >
-            {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </Button>
-        )}
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onOpenChange(false)}>
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-
-      {/* Messages */}
-      <div ref={scrollRef} className={`flex-1 overflow-y-auto px-5 py-4 space-y-4 ${collapsed ? 'hidden' : ''}`}>
-        {messages.length === 0 && (
-          <div className="flex flex-col gap-2 py-1">
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 px-0.5">
-              {contextSummary ? 'Try one of these, or describe your own change:' : 'Try one of these, or describe what to build:'}
-            </p>
-            {[
-              'Create an appointment booking flow',
-              'Add a logic split after the greeting node',
-              'Add call transfer to +1234567890 when the user asks for support',
-            ].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => { setInput(suggestion); setTimeout(() => inputRef.current?.focus(), 0) }}
-                className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    <>
+      {/* Status/thread card — floats top-left, clear of the node palette
+          (left-64 = palette's 14rem width + a gap). This is where "thinking"
+          and the running conversation live; the composer below is separate
+          so typing a new message never requires scrolling past history. */}
+      <div className="absolute left-64 top-4 right-4 z-50 flex justify-start pointer-events-none">
+        <div
+          className={`pointer-events-auto w-[min(440px,100%)] ${
+            collapsed ? '' : 'max-h-[60vh]'
+          } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
+        >
+          {/* Header — the subtitle IS the "already loaded" answer: what's already
+              built, right where you'd look for it, instead of a separate card
+              repeating the same thing lower down. */}
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Workflow Builder</h3>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight truncate">
+                {formatContextSummary(contextSummary)}
+              </p>
+            </div>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setMessages([])}
+                title="Clear chat"
               >
-                {suggestion}
-              </button>
+                <RotateCcw className="w-3.5 h-3.5" />
+              </Button>
+            )}
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setCollapsed((v) => !v)}
+                title={collapsed ? 'Expand chat' : 'Collapse chat'}
+              >
+                {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onOpenChange(false)}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Messages */}
+          <div ref={scrollRef} className={`flex-1 overflow-y-auto px-5 py-4 space-y-4 ${collapsed ? 'hidden' : ''}`}>
+            {messages.length === 0 && (
+              <div className="flex flex-col gap-2 py-1">
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 px-0.5">
+                  {contextSummary ? 'Try one of these, or describe your own change:' : 'Try one of these, or describe what to build:'}
+                </p>
+                {[
+                  'Create an appointment booking flow',
+                  'Add a logic split after the greeting node',
+                  'Add call transfer to +1234567890 when the user asks for support',
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => { setInput(suggestion); setTimeout(() => inputRef.current?.focus(), 0) }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {messages.map((msg, i) => (
+              <div key={`${msg.role}-${i}`} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'assistant' && (
+                  <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+                  }`}
+                >
+                  {msg.role === 'assistant' ? (
+                    <AssistantMessage
+                      content={msg.content}
+                      streaming={isStreaming && i === messages.length - 1}
+                      applyStatus={msg.applyStatus}
+                      applyError={msg.applyError}
+                      applyNodeCount={msg.applyNodeCount}
+                      applyWarnings={msg.applyWarnings}
+                    />
+                  ) : (
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  )}
+                </div>
+                {msg.role === 'user' && (
+                  <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                )}
+              </div>
             ))}
           </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <div key={`${msg.role}-${i}`} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
-              </div>
-            )}
-            <div
-              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-              }`}
-            >
-              {msg.role === 'assistant' ? (
-                <AssistantMessage
-                  content={msg.content}
-                  streaming={isStreaming && i === messages.length - 1}
-                  applyStatus={msg.applyStatus}
-                  applyError={msg.applyError}
-                  applyNodeCount={msg.applyNodeCount}
-                  applyWarnings={msg.applyWarnings}
-                />
-              ) : (
-                <span className="whitespace-pre-wrap">{msg.content}</span>
-              )}
-            </div>
-            {msg.role === 'user' && (
-              <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              </div>
-            )}
-          </div>
-        ))}
+        </div>
       </div>
 
-      {/* Input — one rounded composer with the send button floating inside it,
-          bottom-right (Claude's own chat-input pattern), not a pill + a
-          separate button bolted on beside it. */}
-      <div className="px-4 pb-4 pt-2 shrink-0">
-        <div className="relative rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
+      {/* Composer — docked along the bottom, wide, separate from the status
+          card above so it's always reachable without collapsing history. */}
+      <div className="absolute left-64 right-4 bottom-4 z-50 flex justify-center pointer-events-none">
+        <div className="pointer-events-auto w-[min(760px,100%)] relative rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
           <textarea
             ref={inputRef}
             value={input}
@@ -526,7 +533,7 @@ export function WorkflowChat({
           </Button>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

@@ -404,7 +404,13 @@ function WorkflowPageInner() {
         <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
           <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Agent
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setTalkOpen(true)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setTalkOpen(true)}
+          disabled={agentLifecycle.status.status !== 'running'}
+          title={agentLifecycle.status.status !== 'running' ? 'Start the agent first to talk to it' : undefined}
+        >
           <PhoneIcon className="h-3.5 w-3.5 mr-1.5" /> Talk to Assistant
         </Button>
         <Button variant="outline" size="sm" onClick={handleValidate} disabled={saving}>
