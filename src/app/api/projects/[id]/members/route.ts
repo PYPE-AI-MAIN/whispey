@@ -97,12 +97,18 @@ export async function POST(
     const orgName = project?.name ?? 'your organization'
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
 
-    // Check if already added by email (INCLUDING INACTIVE ONES)
+    // Check if already added by email (INCLUDING INACTIVE ONES) — scoped to
+    // granted_via='new_domain' so an old-domain mapping row for this same
+    // email/project (a different, unrelated clerk_id) never blocks a fresh
+    // new-domain invite. Every row this route creates/reactivates always
+    // carries granted_via='new_domain' (see below), so this only ever
+    // matches rows this system itself manages.
     const { data: existingMapping, error: existingMappingError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('id, is_active, clerk_id, invite_token')
       .eq('email', normalizedEmail)
       .eq('project_id', projectId)
+      .eq('granted_via', 'new_domain')
       .maybeSingle()
 
     if (existingMappingError) {
