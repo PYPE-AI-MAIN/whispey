@@ -81,6 +81,76 @@ export default function PendingUsersAdminPage() {
 
   const users = data?.users ?? []
 
+  let tableContent: React.ReactNode
+  if (isLoading) {
+    tableContent = <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+  } else if (users.length === 0) {
+    tableContent = (
+      <div className="py-16 flex flex-col items-center gap-2 text-gray-600 dark:text-gray-400">
+        <Users className="h-6 w-6" />
+        <span className="text-sm">No signup requests yet</span>
+      </div>
+    )
+  } else {
+    tableContent = (
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+            <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">User</th>
+            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requested</th>
+            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+            <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          {users.map(u => {
+            const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email.split('@')[0]
+            const requested = new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            return (
+              <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <td className="px-4 py-3">
+                  <p className="text-[13px] font-medium text-gray-900 dark:text-gray-100">{name}</p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{u.email}</p>
+                </td>
+                <td className="px-3 py-3 text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">{requested}</td>
+                <td className="px-3 py-3">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border capitalize ${STATUS_PILL[u.approval_status]}`}>
+                    {u.approval_status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {u.approval_status === 'pending' ? (
+                    <div className="inline-flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                        disabled={decide.isPending}
+                        onClick={() => decide.mutate({ id: u.id, action: 'approve' })}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+                        disabled={decide.isPending}
+                        onClick={() => decide.mutate({ id: u.id, action: 'decline' })}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500">—</span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    )
+  }
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-gray-900">
       <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
@@ -102,70 +172,7 @@ export default function PendingUsersAdminPage() {
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-5xl mx-auto rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          {isLoading ? (
-            <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>
-          ) : users.length === 0 ? (
-            <div className="py-16 flex flex-col items-center gap-2 text-gray-600 dark:text-gray-400">
-              <Users className="h-6 w-6" />
-              <span className="text-sm">No signup requests yet</span>
-            </div>
-          ) : (
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">User</th>
-                  <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requested</th>
-                  <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-                  <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {users.map(u => {
-                  const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email.split('@')[0]
-                  const requested = new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  return (
-                    <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="px-4 py-3">
-                        <p className="text-[13px] font-medium text-gray-900 dark:text-gray-100">{name}</p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">{u.email}</p>
-                      </td>
-                      <td className="px-3 py-3 text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">{requested}</td>
-                      <td className="px-3 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border capitalize ${STATUS_PILL[u.approval_status]}`}>
-                          {u.approval_status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {u.approval_status === 'pending' ? (
-                          <div className="inline-flex gap-2">
-                            <Button
-                              size="sm"
-                              className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                              disabled={decide.isPending}
-                              onClick={() => decide.mutate({ id: u.id, action: 'approve' })}
-                            >
-                              Accept
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-3 text-xs border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300"
-                              disabled={decide.isPending}
-                              onClick={() => decide.mutate({ id: u.id, action: 'decline' })}
-                            >
-                              Decline
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-gray-400 dark:text-gray-500">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
+          {tableContent}
         </div>
       </div>
     </div>
