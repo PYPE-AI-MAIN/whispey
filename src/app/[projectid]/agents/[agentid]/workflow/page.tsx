@@ -343,7 +343,7 @@ function WorkflowPageInner() {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Workflow</h1>
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
         </div>
         <TemplatePicker onPick={handlePickTemplate} onStartWithPrompt={handleStartWithPrompt} />
       </div>
@@ -358,7 +358,7 @@ function WorkflowPageInner() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Workflow</h1>
+        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
         {isDirty && <Badge variant="secondary" className="text-[10px]">Unsaved</Badge>}
 
         <div className="flex-1" />
