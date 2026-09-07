@@ -36,6 +36,16 @@ function formatLintBadgeLabel(errorCount: number, warningCount: number): string 
   return `${warningCount} warning${warningCount > 1 ? 's' : ''}`
 }
 
+/** Standalone Deploy only makes sense against an already-running agent (a hot
+ * config reload) — while stopped, "Deploy & Start" is the one and only way to
+ * ship changes, so Deploy stays disabled instead of offering two redundant
+ * paths to the same place. */
+function deployButtonTitle(isDirty: boolean, agentStatus: string): string | undefined {
+  if (agentStatus !== 'running') return 'Agent isn\'t running — use "Deploy & Start" instead'
+  if (!isDirty) return 'Already deployed — no changes to send'
+  return undefined
+}
+
 /** Start/Stop/Starting/Stopping button for the agent lifecycle — kept out of the
  * main render to avoid a nested-ternary pileup for a single button slot. */
 function AgentLifecycleButton({
@@ -420,8 +430,8 @@ function WorkflowPageInner() {
         <Button
           size="sm"
           onClick={() => handleDeploy()}
-          disabled={deploying || !isDirty}
-          title={isDirty ? undefined : 'Already deployed — no changes to send'}
+          disabled={deploying || !isDirty || agentLifecycle.status.status !== 'running'}
+          title={deployButtonTitle(isDirty, agentLifecycle.status.status)}
         >
           {deploying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}
           Deploy
