@@ -12,6 +12,7 @@ import {
   type Node,
   type Edge as FlowEdge,
   type NodeChange,
+  type EdgeChange,
   type NodeTypes,
   type EdgeTypes,
   type Connection,
@@ -67,6 +68,8 @@ export function WorkflowCanvas() {
   const selectedEdgeId = useWorkflowStore((s) => s.selectedEdgeId)
   const addNode = useWorkflowStore((s) => s.addNode)
   const addEdge = useWorkflowStore((s) => s.addEdge)
+  const removeNode = useWorkflowStore((s) => s.removeNode)
+  const removeEdge = useWorkflowStore((s) => s.removeEdge)
   const updatePositions = useWorkflowStore((s) => s.updatePositions)
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
   const setSelectedEdge = useWorkflowStore((s) => s.setSelectedEdge)
@@ -109,8 +112,18 @@ export function WorkflowCanvas() {
       if (moved.length) {
         updatePositions(moved.map((c) => ({ id: c.id, position: c.position! })))
       }
+      changes.filter((c) => c.type === 'remove').forEach((c) => removeNode(c.id))
     },
-    [updatePositions]
+    [updatePositions, removeNode]
+  )
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      changes
+        .filter((c): c is Extract<EdgeChange, { type: 'remove' }> => c.type === 'remove')
+        .forEach((c) => removeEdge(c.id))
+    },
+    [removeEdge]
   )
 
   const onConnect = useCallback(
@@ -171,6 +184,7 @@ export function WorkflowCanvas() {
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => setSelectedNode(node.id)}
         onEdgeClick={(_, edge) => setSelectedEdge(edge.id)}
@@ -178,6 +192,7 @@ export function WorkflowCanvas() {
           setSelectedNode(null)
           setSelectedEdge(null)
         }}
+        deleteKeyCode={['Delete', 'Backspace']}
         fitView
         minZoom={0.2}
       >

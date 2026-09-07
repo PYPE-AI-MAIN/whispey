@@ -1,8 +1,8 @@
 import { parseWorkflow, type Workflow } from './schema'
 
-// Every workflow agent needs a working voice out of the box — the ElevenLabs
-// plugin's built-in default voice isn't available on every account.
-const DEFAULT_TTS = { name: 'elevenlabs', voice_id: 'EXAVITQu4vr4xnSDxMaL' }
+// Every workflow agent needs a working voice out of the box — "Zara", the
+// team's standard ElevenLabs voice.
+const DEFAULT_TTS = { name: 'elevenlabs', voice_id: 'MmQVkVZnQ0dUbfWzcW6f' }
 
 export interface WorkflowTemplate {
   id: string

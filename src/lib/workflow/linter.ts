@@ -175,7 +175,7 @@ function lintEdge(e: Edge, idSet: Set<string>, nodeMap: Map<string, Node>): Lint
 // node's saveAs — plus the built-in language-switch state variable (defaults
 // to "wlanguage", overridable), written by a runtime tool with no node of its
 // own, which would otherwise always look "unknown".
-function knownVariableNames(wf: Workflow): Set<string> {
+export function knownVariableNames(wf: Workflow): Set<string> {
   const names = new Set(wf.variables.map((v) => v.key))
   for (const n of wf.nodes) {
     if (n.type === 'extract_variable') {
@@ -196,6 +196,21 @@ function collectRefs(value: unknown, out: string[]): void {
   } else if (value && typeof value === 'object') {
     Object.values(value).forEach((v) => collectRefs(v, out))
   }
+}
+
+/** Every {{ref}} root name referenced anywhere a template can appear — nodes'
+ * templated fields plus agent.globalPrompt. Lets the store auto-declare a
+ * variable the moment someone types {{name}}, instead of also requiring a
+ * trip to the Variables tab to declare it by hand. */
+export function collectAllVarRefs(wf: Workflow): string[] {
+  const refs: string[] = []
+  for (const n of wf.nodes) {
+    for (const field of TEMPLATED_TEXT_FIELDS[n.type] ?? []) collectRefs((n as Record<string, unknown>)[field], refs)
+    for (const field of TEMPLATED_DICT_FIELDS[n.type] ?? []) collectRefs((n as Record<string, unknown>)[field], refs)
+    if (n.type === 'function') collectRefs((n as { body?: unknown }).body, refs)
+  }
+  if (wf.agent?.globalPrompt) collectRefs(wf.agent.globalPrompt, refs)
+  return [...new Set(refs)]
 }
 
 // {{typo_name}} silently renders as an empty string at runtime — same failure
