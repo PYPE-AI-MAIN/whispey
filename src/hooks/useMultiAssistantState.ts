@@ -157,6 +157,220 @@ function buildFallbackTtsPayload(formValues: any) {
   }
 }
 
+function getInterruptionModeFields(formValues: any): { interruption_mode: string | null; adaptive_stt: boolean; real_interruption_guard: boolean } {
+  const interruption_mode = formValues.advancedSettings?.session?.interruption_mode ?? null
+  return {
+    interruption_mode,
+    adaptive_stt: interruption_mode === 'adaptive',
+    real_interruption_guard: formValues.advancedSettings?.interruption?.realInterruptionGuard ?? false,
+  }
+}
+
+function buildAssistantVariables(formValues: any): any {
+  return Array.isArray(formValues.variables)
+    ? formValues.variables.reduce((acc: any, v: any) => {
+        acc[v.name] = v.value
+        return acc
+      }, {})
+    : formValues.variables || {}
+}
+
+function buildAssistantFirstMessageMode(formValues: any): any {
+  return typeof formValues.firstMessageMode === 'object'
+    ? {
+        mode: formValues.firstMessageMode.mode,
+        first_message: formValues.firstMessageMode.first_message || '',
+        allow_interruptions: formValues.firstMessageMode.allow_interruptions ?? getFallback(null, 'first_message_mode.allow_interruptions')
+      }
+    : {
+        mode: formValues.firstMessageMode || getFallback(null, 'first_message_mode.mode'),
+        first_message: formValues.customFirstMessage || getFallback(null, 'first_message_mode.first_message'),
+        allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions')
+      }
+}
+
+function buildAssistantVadPayload(formValues: any): any {
+  return {
+    name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
+    ...(formValues.advancedSettings?.vad?.minSilenceDuration !== undefined && {
+      min_silence_duration: formValues.advancedSettings.vad.minSilenceDuration
+    }),
+    ...(formValues.advancedSettings?.vad?.minSpeechDuration !== undefined && {
+      min_speech_duration: formValues.advancedSettings.vad.minSpeechDuration
+    }),
+    ...(formValues.advancedSettings?.vad?.prefixPaddingDuration !== undefined && {
+      prefix_padding_duration: formValues.advancedSettings.vad.prefixPaddingDuration
+    }),
+    ...(formValues.advancedSettings?.vad?.maxBufferedSpeech !== undefined && {
+      max_buffered_speech: formValues.advancedSettings.vad.maxBufferedSpeech
+    }),
+    ...(formValues.advancedSettings?.vad?.activationThreshold !== undefined && {
+      activation_threshold: formValues.advancedSettings.vad.activationThreshold
+    }),
+    ...(formValues.advancedSettings?.vad?.sampleRate !== undefined && {
+      sample_rate: formValues.advancedSettings.vad.sampleRate
+    }),
+    ...(formValues.advancedSettings?.vad?.forceCpu !== undefined && {
+      force_cpu: formValues.advancedSettings.vad.forceCpu
+    })
+  }
+}
+
+function buildAssistantSessionBehaviorPayload(formValues: any): any {
+  return {
+    preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || getFallback(null, 'session_behavior.preemptive_generation'),
+    turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
+    unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
+    min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
+    max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
+    ...(formValues.advancedSettings?.session?.endpointing_mode && {
+      endpointing_mode: formValues.advancedSettings.session.endpointing_mode
+    }),
+    // interruption_mode is intentionally omitted here — it's sent at the top level
+    // above and the backend hoists it into session_behavior on save.
+    ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
+      user_away_timeout: formValues.advancedSettings.session.user_away_timeout
+    }),
+    ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
+      user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
+    }),
+    ...(formValues.advancedSettings?.session?.user_away_timeout_max_count !== undefined && {
+      user_away_timeout_max_count: formValues.advancedSettings.session.user_away_timeout_max_count
+    }),
+    ...(formValues.advancedSettings?.session?.user_away_timeout_end_message !== undefined && formValues.advancedSettings.session.user_away_timeout_end_message !== null && formValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
+      user_away_timeout_end_message: formValues.advancedSettings.session.user_away_timeout_end_message
+    })
+  }
+}
+
+// Single-assistant and multi-assistant save paths disagree on whether
+// background_audio's single/dual fields fall back to a default when the
+// form value is empty (single-assistant does, multi-assistant doesn't) --
+// a pre-existing behavioral difference, preserved here via useFallbacks
+// rather than silently unified.
+function buildAssistantBackgroundAudioPayload(formValues: any, useFallbacks: boolean): any {
+  const singleBackgroundAudio = useFallbacks
+    ? {
+        type: formValues.advancedSettings?.backgroundAudio?.singleType || 'keyboard',
+        volume: formValues.advancedSettings?.backgroundAudio?.singleVolume ?? 0.5,
+        timing: formValues.advancedSettings?.backgroundAudio?.singleTiming || 'thinking'
+      }
+    : {
+        type: formValues.advancedSettings?.backgroundAudio?.singleType,
+        volume: formValues.advancedSettings?.backgroundAudio?.singleVolume,
+        timing: formValues.advancedSettings?.backgroundAudio?.singleTiming
+      }
+
+  const dualBackgroundAudio = useFallbacks
+    ? {
+        ambient: {
+          type: formValues.advancedSettings?.backgroundAudio?.ambientType || getFallback(null, 'background_audio.ambient.type'),
+          volume: formValues.advancedSettings?.backgroundAudio?.ambientVolume ?? getFallback(null, 'background_audio.ambient.volume')
+        },
+        thinking: {
+          type: formValues.advancedSettings?.backgroundAudio?.thinkingType || getFallback(null, 'background_audio.thinking.type'),
+          volume: formValues.advancedSettings?.backgroundAudio?.thinkingVolume ?? getFallback(null, 'background_audio.thinking.volume')
+        }
+      }
+    : {
+        ambient: {
+          type: formValues.advancedSettings?.backgroundAudio?.ambientType,
+          volume: formValues.advancedSettings?.backgroundAudio?.ambientVolume
+        },
+        thinking: {
+          type: formValues.advancedSettings?.backgroundAudio?.thinkingType,
+          volume: formValues.advancedSettings?.backgroundAudio?.thinkingVolume
+        }
+      }
+
+  return {
+    enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
+    thinking_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 1,
+    tool_call_typing_config: {
+      enabled: formValues.advancedSettings?.backgroundAudio?.toolCallTyping ?? false,
+      volume: formValues.advancedSettings?.backgroundAudio?.toolCallVolume ?? 0.8
+    },
+    ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && singleBackgroundAudio),
+    ...(formValues.advancedSettings?.backgroundAudio?.mode === 'dual' && dualBackgroundAudio)
+  }
+}
+
+function buildAssistantPayload(formValues: any, opts: {
+  name: string
+  stt: any
+  llm: any
+  tts: any
+  tools: any
+  useBackgroundAudioFallbacks: boolean
+}): any {
+  const firstMessageModeConfig = buildAssistantFirstMessageMode(formValues)
+
+  return {
+    name: opts.name,
+    prompt: formValues.prompt || '',
+    variables: buildAssistantVariables(formValues),
+    stt: opts.stt,
+    llm: opts.llm,
+    tts: opts.tts,
+    vad: buildAssistantVadPayload(formValues),
+    tools: opts.tools,
+    filler_words: {
+      enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
+        ...(formValues.advancedSettings?.fillers?.generalFillers ?? []),
+        ...(formValues.advancedSettings?.fillers?.questionFillers ?? []),
+        ...(formValues.advancedSettings?.fillers?.ambiguousFillers ?? []),
+      ].some((w: string) => w !== ''),
+      language: formValues.advancedSettings?.fillers?.language ?? 'auto',
+      question_keywords: formValues.advancedSettings?.fillers?.questionKeywords?.filter((f: string) => f !== '') ?? [],
+      question_fillers: formValues.advancedSettings?.fillers?.questionFillers?.filter((f: string) => f !== '') ?? [],
+      ambiguous_keywords: formValues.advancedSettings?.fillers?.ambiguousKeywords?.filter((f: string) => f !== '') ?? [],
+      ambiguous_fillers: formValues.advancedSettings?.fillers?.ambiguousFillers?.filter((f: string) => f !== '') ?? [],
+      general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') ?? [],
+      typing_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 0.1,
+      filler_cooldown_sec: formValues.advancedSettings?.fillers?.fillerCooldownSec ?? 4,
+      latency_threshold: formValues.advancedSettings?.fillers?.latencyThreshold ?? 1.2,
+      conversation_fillers: formValues.advancedSettings?.fillers?.conversationFillers?.filter((f: string) => f !== '') ?? [],
+      conversation_keywords: formValues.advancedSettings?.fillers?.conversationKeywords?.filter((f: string) => f !== '') ?? [],
+    },
+    bug_reports: {
+      enable: formValues.advancedSettings?.bugs?.enableBugReport ?? getFallback(null, 'bug_reports.enable'),
+      bug_start_command: formValues.advancedSettings?.bugs?.bugStartCommands || getFallback(null, 'bug_reports.bug_start_command'),
+      bug_end_command: formValues.advancedSettings?.bugs?.bugEndCommands || getFallback(null, 'bug_reports.bug_end_command'),
+      response: formValues.advancedSettings?.bugs?.initialResponse || getFallback(null, 'bug_reports.response'),
+      collection_prompt: formValues.advancedSettings?.bugs?.collectionPrompt || getFallback(null, 'bug_reports.collection_prompt')
+    },
+    context_memory: {
+      enabled: formValues.advancedSettings?.contextMemory?.enabled ?? false
+    },
+    interruptions: {
+      allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
+      min_interruption_duration: formValues.advancedSettings?.interruption?.minInterruptionDuration ?? getFallback(null, 'interruptions.min_interruption_duration'),
+      min_interruption_words: formValues.advancedSettings?.interruption?.minInterruptionWords ?? getFallback(null, 'interruptions.min_interruption_words'),
+      drop_filler_words: formValues.advancedSettings?.interruption?.dropFillerWords ?? false,
+      filler_drop_list: formValues.advancedSettings?.interruption?.fillerDropList ?? [],
+    },
+    ...getInterruptionModeFields(formValues),
+    ...(formValues.advancedSettings?.session?.interruption_mode === 'adaptive' && {
+      adaptive_min_duration: formValues.advancedSettings.interruption?.adaptiveMinDuration ?? 0.8,
+      adaptive_min_words: formValues.advancedSettings.interruption?.adaptiveMinWords ?? 0,
+      adaptive_discard_audio_if_uninterruptible: formValues.advancedSettings.interruption?.adaptiveDiscardAudioIfUninterruptible ?? true,
+      adaptive_resume_false_interruption: formValues.advancedSettings.interruption?.adaptiveResumeFalseInterruption ?? true,
+      adaptive_false_interruption_timeout: formValues.advancedSettings.interruption?.adaptiveFalseInterruptionTimeout ?? 0.5,
+      adaptive_backchannel_boundary_start: formValues.advancedSettings.interruption?.adaptiveBackchannelBoundaryStart ?? 0.1,
+      adaptive_backchannel_boundary_end: formValues.advancedSettings.interruption?.adaptiveBackchannelBoundaryEnd ?? 2,
+    }),
+    first_message_mode: firstMessageModeConfig,
+    first_message: firstMessageModeConfig.first_message,
+    turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
+    session_behavior: buildAssistantSessionBehaviorPayload(formValues),
+    background_audio: buildAssistantBackgroundAudioPayload(formValues, opts.useBackgroundAudioFallbacks),
+    ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
+      dynamic_tts: formValues.dynamic_tts
+    }),
+    fallback_global_enabled: !!formValues.fallbackGlobalEnabled,
+  }
+}
+
 function buildSingleAssistantSttPayload(formValues: any, currentSttConfig: any): any {
   const rawConfig = formValues.sttConfig || currentSttConfig?.config || {}
   const { language: _l, mode: _m, model: _mo, tier: _t, version: _v,
@@ -602,163 +816,19 @@ export function useMultiAssistantState({
   const buildSavePayload = useCallback(() => {
     if (currentFormik && assistantNames.length <= 1) {
       const formValues = currentFormik.values
-      
-      const variablesObject = Array.isArray(formValues.variables)
-        ? formValues.variables.reduce((acc: any, v: any) => {
-            acc[v.name] = v.value
-            return acc
-          }, {})
-        : formValues.variables || {}
 
-      const firstMessageModeConfig = typeof formValues.firstMessageMode === 'object'
-        ? {
-            mode: formValues.firstMessageMode.mode,
-            first_message: formValues.firstMessageMode.first_message || '',
-            allow_interruptions: formValues.firstMessageMode.allow_interruptions ?? getFallback(null, 'first_message_mode.allow_interruptions')
-          }
-        : {
-            mode: formValues.firstMessageMode || getFallback(null, 'first_message_mode.mode'),
-            first_message: formValues.customFirstMessage || getFallback(null, 'first_message_mode.first_message'),
-            allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions')
-          }
-
-      const assistant = {
+      const assistant = buildAssistantPayload(formValues, {
         name: agentName,
-        prompt: formValues.prompt || '',
-        variables: variablesObject,
         stt: buildSingleAssistantSttPayload(formValues, currentSttConfig),
         llm: buildSingleAssistantLlmPayload(formValues, currentAzureConfig, fallbackAzureConfig),
         tts: buildSingleAssistantTtsPayload(formValues, currentTtsConfig),
-        vad: {
-          name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
-          ...(formValues.advancedSettings?.vad?.minSilenceDuration !== undefined && {
-            min_silence_duration: formValues.advancedSettings.vad.minSilenceDuration
-          }),
-          ...(formValues.advancedSettings?.vad?.minSpeechDuration !== undefined && {
-            min_speech_duration: formValues.advancedSettings.vad.minSpeechDuration
-          }),
-          ...(formValues.advancedSettings?.vad?.prefixPaddingDuration !== undefined && {
-            prefix_padding_duration: formValues.advancedSettings.vad.prefixPaddingDuration
-          }),
-          ...(formValues.advancedSettings?.vad?.maxBufferedSpeech !== undefined && {
-            max_buffered_speech: formValues.advancedSettings.vad.maxBufferedSpeech
-          }),
-          ...(formValues.advancedSettings?.vad?.activationThreshold !== undefined && {
-            activation_threshold: formValues.advancedSettings.vad.activationThreshold
-          }),
-          ...(formValues.advancedSettings?.vad?.sampleRate !== undefined && {
-            sample_rate: formValues.advancedSettings.vad.sampleRate
-          }),
-          ...(formValues.advancedSettings?.vad?.forceCpu !== undefined && {
-            force_cpu: formValues.advancedSettings.vad.forceCpu
-          })
-        },
         tools: (() => {
           const mappedTools = formValues.advancedSettings?.tools?.tools?.map(serializeAssistantToolFull) || getFallback(null, 'tools') || []
           const filteredTools = mergeToolsWithKbAndLanguageSwitch(formValues, mappedTools)
           return filteredTools.length > 0 ? filteredTools : getFallback(null, 'tools')
         })(),
-        filler_words: {
-          enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
-            ...(formValues.advancedSettings?.fillers?.generalFillers ?? []),
-            ...(formValues.advancedSettings?.fillers?.questionFillers ?? []),
-            ...(formValues.advancedSettings?.fillers?.ambiguousFillers ?? []),
-          ].some((w: string) => w !== ''),
-          language: formValues.advancedSettings?.fillers?.language ?? 'auto',
-          question_keywords: formValues.advancedSettings?.fillers?.questionKeywords?.filter((f: string) => f !== '') ?? [],
-          question_fillers: formValues.advancedSettings?.fillers?.questionFillers?.filter((f: string) => f !== '') ?? [],
-          ambiguous_keywords: formValues.advancedSettings?.fillers?.ambiguousKeywords?.filter((f: string) => f !== '') ?? [],
-          ambiguous_fillers: formValues.advancedSettings?.fillers?.ambiguousFillers?.filter((f: string) => f !== '') ?? [],
-          general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') ?? [],
-          typing_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 0.10,
-          filler_cooldown_sec: formValues.advancedSettings?.fillers?.fillerCooldownSec ?? 4.0,
-          latency_threshold: formValues.advancedSettings?.fillers?.latencyThreshold ?? 1.2,
-          conversation_fillers: formValues.advancedSettings?.fillers?.conversationFillers?.filter((f: string) => f !== '') ?? [],
-          conversation_keywords: formValues.advancedSettings?.fillers?.conversationKeywords?.filter((f: string) => f !== '') ?? [],
-        },
-        bug_reports: {
-          enable: formValues.advancedSettings?.bugs?.enableBugReport ?? getFallback(null, 'bug_reports.enable'),
-          bug_start_command: formValues.advancedSettings?.bugs?.bugStartCommands || getFallback(null, 'bug_reports.bug_start_command'),
-          bug_end_command: formValues.advancedSettings?.bugs?.bugEndCommands || getFallback(null, 'bug_reports.bug_end_command'),
-          response: formValues.advancedSettings?.bugs?.initialResponse || getFallback(null, 'bug_reports.response'),
-          collection_prompt: formValues.advancedSettings?.bugs?.collectionPrompt || getFallback(null, 'bug_reports.collection_prompt')
-        },
-        context_memory: {
-          enabled: formValues.advancedSettings?.contextMemory?.enabled ?? false
-        },
-        interruptions: {
-          allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
-          min_interruption_duration: formValues.advancedSettings?.interruption?.minInterruptionDuration ?? getFallback(null, 'interruptions.min_interruption_duration'),
-          min_interruption_words: formValues.advancedSettings?.interruption?.minInterruptionWords ?? getFallback(null, 'interruptions.min_interruption_words'),
-          drop_filler_words: formValues.advancedSettings?.interruption?.dropFillerWords ?? false,
-          filler_drop_list: formValues.advancedSettings?.interruption?.fillerDropList ?? [],
-        },
-        interruption_mode: formValues.advancedSettings?.session?.interruption_mode ?? null,
-        adaptive_stt: formValues.advancedSettings?.session?.interruption_mode === 'adaptive',
-        ...(formValues.advancedSettings?.session?.interruption_mode === 'adaptive' && {
-          adaptive_min_duration: formValues.advancedSettings.interruption?.adaptiveMinDuration ?? 0.8,
-          adaptive_min_words: formValues.advancedSettings.interruption?.adaptiveMinWords ?? 0,
-          adaptive_discard_audio_if_uninterruptible: formValues.advancedSettings.interruption?.adaptiveDiscardAudioIfUninterruptible ?? true,
-          adaptive_resume_false_interruption: formValues.advancedSettings.interruption?.adaptiveResumeFalseInterruption ?? true,
-          adaptive_false_interruption_timeout: formValues.advancedSettings.interruption?.adaptiveFalseInterruptionTimeout ?? 0.5,
-          adaptive_backchannel_boundary_start: formValues.advancedSettings.interruption?.adaptiveBackchannelBoundaryStart ?? 0.1,
-          adaptive_backchannel_boundary_end: formValues.advancedSettings.interruption?.adaptiveBackchannelBoundaryEnd ?? 2,
-        }),
-        first_message_mode: firstMessageModeConfig,
-        first_message: firstMessageModeConfig.first_message,
-        turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
-        session_behavior: {
-          preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || getFallback(null, 'session_behavior.preemptive_generation'),
-          turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
-          unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
-          min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
-          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
-          ...(formValues.advancedSettings?.session?.endpointing_mode && {
-            endpointing_mode: formValues.advancedSettings.session.endpointing_mode
-          }),
-          // interruption_mode is intentionally omitted here — it's sent at the top level
-          // above and the backend hoists it into session_behavior on save.
-          ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
-            user_away_timeout: formValues.advancedSettings.session.user_away_timeout
-          }),
-          ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
-            user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
-          }),
-          ...(formValues.advancedSettings?.session?.user_away_timeout_max_count !== undefined && {
-            user_away_timeout_max_count: formValues.advancedSettings.session.user_away_timeout_max_count
-          }),
-          ...(formValues.advancedSettings?.session?.user_away_timeout_end_message !== undefined && formValues.advancedSettings.session.user_away_timeout_end_message !== null && formValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
-            user_away_timeout_end_message: formValues.advancedSettings.session.user_away_timeout_end_message
-          })
-        },
-        background_audio: {
-          enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
-          thinking_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 1.0,
-          tool_call_typing_config: {
-            enabled: formValues.advancedSettings?.backgroundAudio?.toolCallTyping ?? false,
-            volume: formValues.advancedSettings?.backgroundAudio?.toolCallVolume ?? 0.8
-          },
-          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
-            type: formValues.advancedSettings.backgroundAudio.singleType || 'keyboard',
-            volume: formValues.advancedSettings.backgroundAudio.singleVolume ?? 0.5,
-            timing: formValues.advancedSettings.backgroundAudio.singleTiming || 'thinking'
-          }),
-          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'dual' && {
-            ambient: {
-              type: formValues.advancedSettings.backgroundAudio.ambientType || getFallback(null, 'background_audio.ambient.type'),
-              volume: formValues.advancedSettings.backgroundAudio.ambientVolume ?? getFallback(null, 'background_audio.ambient.volume')
-            },
-            thinking: {
-              type: formValues.advancedSettings.backgroundAudio.thinkingType || getFallback(null, 'background_audio.thinking.type'),
-              volume: formValues.advancedSettings.backgroundAudio.thinkingVolume ?? getFallback(null, 'background_audio.thinking.volume')
-            }
-          })
-        },
-        ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
-          dynamic_tts: formValues.dynamic_tts
-        }),
-        fallback_global_enabled: !!formValues.fallbackGlobalEnabled,
-      }
+        useBackgroundAudioFallbacks: true,
+      })
 
       return buildAgentEnvelope(agentName, agentType, [assistant], agentId)
     }
@@ -767,30 +837,9 @@ export function useMultiAssistantState({
     const assistants = assistantNames.map(name => {
       const data = assistantsData.get(name) || getAssistantData(name)
       const formValues = data.formikRef?.values || {}
-      
-      const variablesObject = Array.isArray(formValues.variables)
-        ? formValues.variables.reduce((acc: any, v: any) => {
-            acc[v.name] = v.value
-            return acc
-          }, {})
-        : formValues.variables || {}
 
-      const firstMessageModeConfig = typeof formValues.firstMessageMode === 'object'
-        ? {
-            mode: formValues.firstMessageMode.mode,
-            first_message: formValues.firstMessageMode.first_message || '',
-            allow_interruptions: formValues.firstMessageMode.allow_interruptions ?? getFallback(null, 'first_message_mode.allow_interruptions')
-          }
-        : {
-            mode: formValues.firstMessageMode || getFallback(null, 'first_message_mode.mode'),
-            first_message: formValues.customFirstMessage || getFallback(null, 'first_message_mode.first_message'),
-            allow_interruptions: getFallback(null, 'first_message_mode.allow_interruptions')
-          }
-      
-      return {
-        name: name,
-        prompt: formValues.prompt || '',
-        variables: variablesObject,
+      return buildAssistantPayload(formValues, {
+        name,
         stt: {
           name: data.sttConfig?.name || formValues.sttProvider || getFallback(null, 'stt.name'),
           language: data.sttConfig?.language || formValues.sttConfig?.language || getFallback(null, 'stt.language'),
@@ -799,38 +848,7 @@ export function useMultiAssistantState({
             mode: data.sttConfig?.mode || formValues.sttConfig?.mode
           }),
         },
-        llm: {
-          name: formValues.selectedProvider || getFallback(null, 'llm.name'),
-          provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
-          model: formValues.selectedModel || getFallback(null, 'llm.model'),
-          temperature: formValues.temperature ?? getFallback(null, 'llm.temperature'),
-          ...(formValues.selectedProvider === 'azure_openai' && currentAzureConfig && {
-            azure_deployment: currentAzureConfig.deploymentName || getFallback(null, 'llm.azure_deployment'),
-            azure_endpoint: currentAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
-            api_version: currentAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
-            api_key_env: getFallback(null, 'llm.api_key_env')
-          }),
-          ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
-          ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
-          ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
-          ...(formValues.fallbackLlmProvider && {
-            fallback: {
-              name: formValues.fallbackLlmProvider,
-              provider: formValues.fallbackLlmProvider === 'azure_openai' ? 'azure' : formValues.fallbackLlmProvider,
-              model: formValues.fallbackLlmModel || getFallback(null, 'llm.model'),
-              temperature: formValues.fallbackLlmTemperature ?? getFallback(null, 'llm.temperature'),
-              ...(formValues.fallbackLlmProvider === 'azure_openai' && fallbackAzureConfig && {
-                azure_deployment: fallbackAzureConfig.deploymentName || getFallback(null, 'llm.azure_deployment'),
-                azure_endpoint: fallbackAzureConfig.endpoint || getFallback(null, 'llm.azure_endpoint'),
-                api_version: fallbackAzureConfig.apiVersion || getFallback(null, 'llm.api_version'),
-                api_key_env: getFallback(null, 'llm.api_key_env')
-              }),
-              ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
-              ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
-              ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
-            }
-          }),
-        },
+        llm: buildSingleAssistantLlmPayload(formValues, currentAzureConfig, fallbackAzureConfig),
         tts: {
           name: data.ttsConfig?.name || formValues.ttsProvider || getFallback(null, 'tts.name'),
           voice_id: data.ttsConfig?.voice_id || formValues.selectedVoice || getFallback(null, 'tts.voice_id'),
@@ -844,132 +862,9 @@ export function useMultiAssistantState({
             speed: data.ttsConfig?.voice_settings?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
           }
         },
-        vad: {
-          name: formValues.advancedSettings?.vad?.vadProvider || getFallback(null, 'vad.name'),
-          ...(formValues.advancedSettings?.vad?.minSilenceDuration !== undefined && {
-            min_silence_duration: formValues.advancedSettings.vad.minSilenceDuration
-          }),
-          ...(formValues.advancedSettings?.vad?.minSpeechDuration !== undefined && {
-            min_speech_duration: formValues.advancedSettings.vad.minSpeechDuration
-          }),
-          ...(formValues.advancedSettings?.vad?.prefixPaddingDuration !== undefined && {
-            prefix_padding_duration: formValues.advancedSettings.vad.prefixPaddingDuration
-          }),
-          ...(formValues.advancedSettings?.vad?.maxBufferedSpeech !== undefined && {
-            max_buffered_speech: formValues.advancedSettings.vad.maxBufferedSpeech
-          }),
-          ...(formValues.advancedSettings?.vad?.activationThreshold !== undefined && {
-            activation_threshold: formValues.advancedSettings.vad.activationThreshold
-          }),
-          ...(formValues.advancedSettings?.vad?.sampleRate !== undefined && {
-            sample_rate: formValues.advancedSettings.vad.sampleRate
-          }),
-          ...(formValues.advancedSettings?.vad?.forceCpu !== undefined && {
-            force_cpu: formValues.advancedSettings.vad.forceCpu
-          })
-        },
         tools: formValues.advancedSettings?.tools?.tools?.map(serializeAssistantToolBasic) || getFallback(null, 'tools'),
-        filler_words: {
-          enabled: (formValues.advancedSettings?.fillers?.enableFillerWords ?? false) && [
-            ...(formValues.advancedSettings?.fillers?.generalFillers ?? []),
-            ...(formValues.advancedSettings?.fillers?.questionFillers ?? []),
-            ...(formValues.advancedSettings?.fillers?.ambiguousFillers ?? []),
-          ].some((w: string) => w !== ''),
-          language: formValues.advancedSettings?.fillers?.language ?? 'auto',
-          question_keywords: formValues.advancedSettings?.fillers?.questionKeywords?.filter((f: string) => f !== '') ?? [],
-          question_fillers: formValues.advancedSettings?.fillers?.questionFillers?.filter((f: string) => f !== '') ?? [],
-          ambiguous_keywords: formValues.advancedSettings?.fillers?.ambiguousKeywords?.filter((f: string) => f !== '') ?? [],
-          ambiguous_fillers: formValues.advancedSettings?.fillers?.ambiguousFillers?.filter((f: string) => f !== '') ?? [],
-          general_fillers: formValues.advancedSettings?.fillers?.generalFillers?.filter((f: string) => f !== '') ?? [],
-          typing_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 0.10,
-          filler_cooldown_sec: formValues.advancedSettings?.fillers?.fillerCooldownSec ?? 4.0,
-          latency_threshold: formValues.advancedSettings?.fillers?.latencyThreshold ?? 1.2,
-          conversation_fillers: formValues.advancedSettings?.fillers?.conversationFillers?.filter((f: string) => f !== '') ?? [],
-          conversation_keywords: formValues.advancedSettings?.fillers?.conversationKeywords?.filter((f: string) => f !== '') ?? [],
-        },
-        bug_reports: {
-          enable: formValues.advancedSettings?.bugs?.enableBugReport ?? getFallback(null, 'bug_reports.enable'),
-          bug_start_command: formValues.advancedSettings?.bugs?.bugStartCommands || getFallback(null, 'bug_reports.bug_start_command'),
-          bug_end_command: formValues.advancedSettings?.bugs?.bugEndCommands || getFallback(null, 'bug_reports.bug_end_command'),
-          response: formValues.advancedSettings?.bugs?.initialResponse || getFallback(null, 'bug_reports.response'),
-          collection_prompt: formValues.advancedSettings?.bugs?.collectionPrompt || getFallback(null, 'bug_reports.collection_prompt')
-        },
-        context_memory: {
-          enabled: formValues.advancedSettings?.contextMemory?.enabled ?? false
-        },
-        interruptions: {
-          allow_interruptions: formValues.advancedSettings?.interruption?.allowInterruptions ?? getFallback(null, 'interruptions.allow_interruptions'),
-          min_interruption_duration: formValues.advancedSettings?.interruption?.minInterruptionDuration ?? getFallback(null, 'interruptions.min_interruption_duration'),
-          min_interruption_words: formValues.advancedSettings?.interruption?.minInterruptionWords ?? getFallback(null, 'interruptions.min_interruption_words'),
-          drop_filler_words: formValues.advancedSettings?.interruption?.dropFillerWords ?? false,
-          filler_drop_list: formValues.advancedSettings?.interruption?.fillerDropList ?? [],
-        },
-        interruption_mode: formValues.advancedSettings?.session?.interruption_mode ?? null,
-        adaptive_stt: formValues.advancedSettings?.session?.interruption_mode === 'adaptive',
-        ...(formValues.advancedSettings?.session?.interruption_mode === 'adaptive' && {
-          adaptive_min_duration: formValues.advancedSettings.interruption?.adaptiveMinDuration ?? 0.8,
-          adaptive_min_words: formValues.advancedSettings.interruption?.adaptiveMinWords ?? 0,
-          adaptive_discard_audio_if_uninterruptible: formValues.advancedSettings.interruption?.adaptiveDiscardAudioIfUninterruptible ?? true,
-          adaptive_resume_false_interruption: formValues.advancedSettings.interruption?.adaptiveResumeFalseInterruption ?? true,
-          adaptive_false_interruption_timeout: formValues.advancedSettings.interruption?.adaptiveFalseInterruptionTimeout ?? 0.5,
-          adaptive_backchannel_boundary_start: formValues.advancedSettings.interruption?.adaptiveBackchannelBoundaryStart ?? 0.1,
-          adaptive_backchannel_boundary_end: formValues.advancedSettings.interruption?.adaptiveBackchannelBoundaryEnd ?? 2,
-        }),
-        first_message_mode: firstMessageModeConfig,
-        first_message: firstMessageModeConfig.first_message,
-        turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
-        session_behavior: {
-          preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || getFallback(null, 'session_behavior.preemptive_generation'),
-          turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
-          unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
-          min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
-          max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
-          ...(formValues.advancedSettings?.session?.endpointing_mode && {
-            endpointing_mode: formValues.advancedSettings.session.endpointing_mode
-          }),
-          // interruption_mode is intentionally omitted here — it's sent at the top level
-          // above and the backend hoists it into session_behavior on save.
-          ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
-            user_away_timeout: formValues.advancedSettings.session.user_away_timeout
-          }),
-          ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
-            user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
-          }),
-          ...(formValues.advancedSettings?.session?.user_away_timeout_max_count !== undefined && {
-            user_away_timeout_max_count: formValues.advancedSettings.session.user_away_timeout_max_count
-          }),
-          ...(formValues.advancedSettings?.session?.user_away_timeout_end_message !== undefined && formValues.advancedSettings.session.user_away_timeout_end_message !== null && formValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
-            user_away_timeout_end_message: formValues.advancedSettings.session.user_away_timeout_end_message
-          })
-        },
-        background_audio: {
-          enabled: formValues.advancedSettings?.backgroundAudio?.mode !== 'disabled',
-          thinking_probability: formValues.advancedSettings?.backgroundAudio?.thinkingProbability ?? 1.0,
-          tool_call_typing_config: {
-            enabled: formValues.advancedSettings?.backgroundAudio?.toolCallTyping ?? false,
-            volume: formValues.advancedSettings?.backgroundAudio?.toolCallVolume ?? 0.8
-          },
-          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'single' && {
-            type: formValues.advancedSettings.backgroundAudio.singleType,
-            volume: formValues.advancedSettings.backgroundAudio.singleVolume,
-            timing: formValues.advancedSettings.backgroundAudio.singleTiming
-          }),
-          ...(formValues.advancedSettings?.backgroundAudio?.mode === 'dual' && {
-            ambient: {
-              type: formValues.advancedSettings.backgroundAudio.ambientType,
-              volume: formValues.advancedSettings.backgroundAudio.ambientVolume
-            },
-            thinking: {
-              type: formValues.advancedSettings.backgroundAudio.thinkingType,
-              volume: formValues.advancedSettings.backgroundAudio.thinkingVolume
-            }
-          })
-        },
-        ...(formValues.dynamic_tts && formValues.dynamic_tts.length > 0 && {
-          dynamic_tts: formValues.dynamic_tts
-        }),
-        fallback_global_enabled: !!formValues.fallbackGlobalEnabled,
-      }
+        useBackgroundAudioFallbacks: false,
+      })
     })
 
     return buildAgentEnvelope(agentName, agentType, assistants)

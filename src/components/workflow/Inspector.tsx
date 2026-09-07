@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWorkflowStore } from '@/stores/workflowStore'
@@ -16,6 +17,20 @@ import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
+
+/** Points to where the outbound trunk/number actually lives (Agent settings,
+ * transports.telephony.outbound) — this node has no field of its own for it,
+ * so without this hint it's not discoverable that one exists at all. */
+function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>) {
+  const outbound = workflow?.transports?.telephony?.outbound as { sip_trunk_id?: string; sms_from?: string } | undefined
+  return (
+    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+      {outbound?.sip_trunk_id
+        ? `Uses this agent's outbound number (set in Agent settings): ${outbound.sms_from || outbound.sip_trunk_id}.`
+        : "No outbound number set for this agent — it's using the deployment's shared default trunk. Set one in Agent settings (top toolbar) → Telephony → Outbound number."}
+    </p>
+  )
+}
 
 /** Textarea backed by a JSON-serialized object; keeps raw text while invalid so typing isn't fought. */
 function JsonField({ label, value, onChange }: Readonly<{ label: string; value: unknown; onChange: (v: any) => void }>) {
@@ -44,14 +59,49 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
 
 function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
   return (
-    <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</Label>
       {children}
     </div>
   )
 }
 
-function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: Partial<WorkflowNode>) => void }>) {
+function ToolsField({
+  workflow,
+  functions,
+  onChange,
+}: Readonly<{ workflow: Workflow | null; functions: string[]; onChange: (fns: string[]) => void }>) {
+  const functionNodes = (workflow?.nodes ?? []).filter((n) => n.type === 'function')
+  return (
+    <Field label="Tools this step can call">
+      {functionNodes.length === 0 ? (
+        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+          No Function nodes in this workflow yet — add one, then check it here to make it callable.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {functionNodes.map((fn) => (
+            <label key={fn.id} className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox
+                checked={functions.includes(fn.id)}
+                onCheckedChange={(checked) =>
+                  onChange(checked ? [...functions, fn.id] : functions.filter((id) => id !== fn.id))
+                }
+              />
+              {fn.name || fn.id}
+            </label>
+          ))}
+        </div>
+      )}
+    </Field>
+  )
+}
+
+function NodeFields({
+  node,
+  patch,
+  workflow,
+}: Readonly<{ node: WorkflowNode; patch: (p: Partial<WorkflowNode>) => void; workflow: Workflow | null }>) {
   switch (node.type) {
     case 'conversation':
       return (
@@ -70,6 +120,7 @@ function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: P
             <Label className="text-xs">Block interruptions</Label>
             <Switch checked={!!node.blockInterruptions} onCheckedChange={(v) => patch({ blockInterruptions: v } as any)} />
           </div>
+          <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
           <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
             <Field label="LLM override">
@@ -210,6 +261,7 @@ function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: P
             </Select>
           </Field>
           <Field label="Message before transfer"><Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
+          <OutboundTrunkHint workflow={workflow} />
         </>
       )
     case 'press_digit':
@@ -250,6 +302,7 @@ function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: P
               </SelectContent>
             </Select>
           </Field>
+          <OutboundTrunkHint workflow={workflow} />
         </>
       )
     case 'subagent':
@@ -258,6 +311,7 @@ function NodeFields({ node, patch }: Readonly<{ node: WorkflowNode; patch: (p: P
           <Field label="Prompt">
             <Textarea value={node.prompt} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[140px]" />
           </Field>
+          <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
           <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
             <Field label="LLM override">
@@ -386,41 +440,47 @@ export function Inspector() {
         }
       }}
     >
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md overflow-y-auto bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-white/10 p-0"
+      >
         {node && (
           <>
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
+            <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
+              <SheetTitle className="flex items-center gap-2 text-base">
                 {NODE_REGISTRY[node.type]?.label}
                 {node.id === workflow?.start && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
               </SheetTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Node settings — id &ldquo;{node.id}&rdquo;</p>
             </SheetHeader>
-            <div className="px-4 space-y-4">
-              {nodeIssues.length > 0 && (
-                <div className="space-y-1">
-                  {nodeIssues.map((iss) => (
-                    <p
-                      key={`${iss.severity}-${iss.message}`}
-                      className={`text-[11px] rounded-md px-2 py-1.5 ${
-                        iss.severity === 'error'
-                          ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
-                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                      }`}
-                    >
-                      {iss.severity === 'error' ? '⛔ ' : '⚠️ '}
-                      {iss.message}
-                    </p>
-                  ))}
-                </div>
-              )}
-              <Field label="Name">
-                <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
-              </Field>
-              {/* key=node.id: JsonField's internal text state must reset when
-                  switching selected nodes, or it shows the previous node's JSON. */}
-              <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} />
+            <div className="p-4">
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
+                {nodeIssues.length > 0 && (
+                  <div className="space-y-1">
+                    {nodeIssues.map((iss) => (
+                      <p
+                        key={`${iss.severity}-${iss.message}`}
+                        className={`text-[11px] rounded-md px-2 py-1.5 ${
+                          iss.severity === 'error'
+                            ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                        }`}
+                      >
+                        {iss.severity === 'error' ? '⛔ ' : '⚠️ '}
+                        {iss.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <Field label="Name">
+                  <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
+                </Field>
+                {/* key=node.id: JsonField's internal text state must reset when
+                    switching selected nodes, or it shows the previous node's JSON. */}
+                <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} workflow={workflow} />
+              </div>
             </div>
-            <SheetFooter className="flex-row justify-between">
+            <SheetFooter className="flex-row justify-between border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               {node.id !== workflow?.start && (
                 <Button variant="outline" size="sm" onClick={() => setStart(node.id)}>
                   Set as start
@@ -434,13 +494,18 @@ export function Inspector() {
         )}
         {edge && workflow && (
           <>
-            <SheetHeader>
-              <SheetTitle>Edge</SheetTitle>
+            <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
+              <SheetTitle className="text-base">Edge</SheetTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Controls when the workflow takes this path from &ldquo;{edge.source}&rdquo; to &ldquo;{edge.target}&rdquo;
+              </p>
             </SheetHeader>
-            <div className="px-4 space-y-4">
-              <EdgeFields edge={edge} workflow={workflow} patch={(p) => updateEdge(edge.id, p)} />
+            <div className="p-4">
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
+                <EdgeFields edge={edge} workflow={workflow} patch={(p) => updateEdge(edge.id, p)} />
+              </div>
             </div>
-            <SheetFooter>
+            <SheetFooter className="border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               <Button variant="destructive" size="sm" onClick={() => removeEdge(edge.id)}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete edge
               </Button>

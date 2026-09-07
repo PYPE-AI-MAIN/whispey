@@ -29,6 +29,7 @@ import {
   ReanalyzeDialogWrapper
 } from './sub-components'
 import BackfillDispositionDialog from '@/components/disposition/BackfillDispositionDialog'
+import FlagRulesDialog from '@/components/FlagRulesDialog'
 import { CampaignSelector } from './CampaignSelector'
 import type { Campaign } from './CampaignSelector'
 import CampaignCallLogs from './CampaignCallLogs'
@@ -39,6 +40,7 @@ interface CallLogsProps {
   onBack: () => void
   isLoading?: boolean
   dateRange?: { from: string; to: string }
+  onAgentUpdated?: () => void // refetch the agent (e.g. after saving Flag Rules) so this dialog reopens with fresh data
   openDownloadSettings?: boolean
 }
 
@@ -479,6 +481,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
   onBack,
   isLoading: parentLoading,
   dateRange,
+  onAgentUpdated,
   openDownloadSettings
 }) => {
   const router = useRouter()
@@ -516,6 +519,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   const { visibility } = useMemberVisibility(project?.id ?? undefined)
   const canReanalyze = canShowOrgSection(visibility, 'reanalyze')
+  // Flag rules expose the same kind of internal QA criteria as field extractor config — same gate.
+  const canManageFlagRules = canShowOrgSection(visibility, 'fieldExtractor')
 
   const { distinctConfigByAgent, setDistinctConfigForAgent } = useCallLogsStore()
   const distinctConfig = agent?.id ? distinctConfigByAgent[agent.id] : undefined
@@ -680,6 +685,16 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
           <div className="flex items-center gap-2">
             {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
+            {canManageFlagRules && agent?.id && (
+              <FlagRulesDialog
+                agentId={agent.id}
+                fieldExtractorPrompt={agent?.field_extractor_prompt}
+                initialFlagRules={agent?.flag_rules}
+                metadataKeys={dynamicColumns.metadata}
+                metricKeys={dynamicColumns.metrics}
+                onSaved={onAgentUpdated}
+              />
+            )}
             <BackfillDispositionDialog
               projectId={project?.id} agentId={agent?.id}
               agentName={agentDisplayName(agent)} projectName={project?.name}

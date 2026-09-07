@@ -31,7 +31,9 @@ export async function postSupabaseSelect<T = unknown>(payload: {
   })
   const json = (await res.json()) as { data?: T[]; count?: number; error?: string }
   if (!res.ok) {
-    throw new Error(json.error || res.statusText)
+    const err = new Error(json.error || res.statusText) as Error & { status?: number }
+    err.status = res.status
+    throw err
   }
   if (payload.mode === 'count') {
     return json.count ?? 0

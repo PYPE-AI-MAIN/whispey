@@ -12,8 +12,10 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    // India residency migration — one-way move, no dual-region support needed.
-    const response = await fetch('https://api.in.residency.elevenlabs.io/v1/voices', {
+    // India residency by default; overridable via ELEVENLABS_BASE_URL for a box
+    // whose key belongs to the global workspace (residency rejects it with 400).
+    const base = process.env.ELEVENLABS_BASE_URL || 'https://api.in.residency.elevenlabs.io/v1'
+    const response = await fetch(`${base}/voices`, {
       method: 'GET',
       headers: {
         'xi-api-key': apiKey,

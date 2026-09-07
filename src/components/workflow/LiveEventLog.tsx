@@ -8,6 +8,9 @@ export interface WorkflowEvent {
   type: string
   [key: string]: any
   _ts: number
+  // Monotonic per-session id — _ts alone collides when two events land in the
+  // same millisecond, which React rejects as a duplicate key.
+  _id?: number
 }
 
 const ICONS: Record<string, React.ElementType> = {
@@ -65,12 +68,12 @@ export function LiveEventLog({ events, onClear }: Readonly<{ events: WorkflowEve
             No activity yet — start a Talk to Assistant call to watch node transitions and tool calls live.
           </p>
         )}
-        {events.map((e) => {
+        {events.map((e, i) => {
           const Icon = ICONS[e.type] || ListTree
           const isError = e.type === 'error'
           return (
             <div
-              key={e._ts}
+              key={e._id ?? `${e._ts}-${i}`}
               className={`flex items-start gap-1.5 ${isError ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}
             >
               <Icon className="h-3 w-3 mt-0.5 shrink-0" />

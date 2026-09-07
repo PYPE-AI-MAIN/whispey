@@ -14,7 +14,7 @@ import { useAgentLifecycle } from '@/hooks/useAgentLifecycle'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
 import { hasErrors } from '@/lib/workflow/linter'
-import type { WorkflowTemplate } from '@/lib/workflow/templates'
+import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from '@/lib/workflow/templates'
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
@@ -25,6 +25,9 @@ import { CanvasHintBanner } from '@/components/workflow/CanvasHintBanner'
 import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { LiveEventLog, type WorkflowEvent } from '@/components/workflow/LiveEventLog'
 import { WorkflowChat } from '@/components/workflow/WorkflowChat'
+import { LoaderFive } from '@/components/ui/loader-five'
+
+const LOADING_LINES = ['yup, warming things up…', 'stitching your nodes together…', 'almost there, hang tight…']
 import { ImportJsonSheet } from '@/components/workflow/ImportJsonSheet'
 
 /** "3 errors" / "1 warning" label for the lint badge — plural-aware, no nested ternary. */
@@ -39,12 +42,14 @@ function AgentLifecycleButton({
   status,
   isLoading,
   backendAgentName,
+  isDirty,
   onStart,
   onStop,
 }: Readonly<{
   status: string
   isLoading: boolean
   backendAgentName: string
+  isDirty: boolean
   onStart: () => void
   onStop: () => void
 }>) {
@@ -65,9 +70,15 @@ function AgentLifecycleButton({
     )
   }
   return (
-    <Button variant="outline" size="sm" onClick={onStart} disabled={isLoading || !backendAgentName}>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onStart}
+      disabled={isLoading || !backendAgentName}
+      title={isDirty ? 'Deploys your changes first, then starts the agent' : undefined}
+    >
       {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
-      Start Agent
+      {isDirty ? 'Deploy & Start' : 'Start Agent'}
     </Button>
   )
 }
@@ -128,7 +139,17 @@ function WorkflowPageInner() {
   const setActiveNode = useWorkflowStore((s) => s.setActiveNode)
 
   const [needsTemplate, setNeedsTemplate] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   const [agentNotFound, setAgentNotFound] = useState(false)
+
+  // Rotating copy for the initial-load screen — cycles regardless of whether
+  // this render actually needs it; harmless since the screen it feeds is only
+  // shown for a couple seconds anyway.
+  const [loadingLineIndex, setLoadingLineIndex] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setLoadingLineIndex((i) => (i + 1) % LOADING_LINES.length), 2200)
+    return () => clearInterval(id)
+  }, [])
   const initialized = useRef(false)
   useEffect(() => {
     if (initialized.current || agentLoading) return
@@ -139,7 +160,9 @@ function WorkflowPageInner() {
     }
     const existing = safeParseWorkflow(agentRow.configuration?.workflow)
     if (existing.success) {
-      setWorkflow(existing.data)
+      // This is already the deployed config (it came from the agent row we
+      // just loaded), not new content waiting to be deployed.
+      setWorkflow(existing.data, { dirty: false })
     } else {
       setNeedsTemplate(true)
     }
@@ -148,6 +171,18 @@ function WorkflowPageInner() {
   const handlePickTemplate = (template: WorkflowTemplate) => {
     setWorkflow(template.build(agentRow?.name ?? ''))
     setNeedsTemplate(false)
+  }
+
+  // Chat-first start: a prompt typed before any workflow exists. Seed a blank
+  // workflow (AI Builder edits it same as any other), then open the chat panel
+  // pre-loaded with what they typed so building starts immediately instead of
+  // pick-template -> open-chat -> retype.
+  const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null)
+  const handleStartWithPrompt = (prompt: string) => {
+    const blank = WORKFLOW_TEMPLATES.find((t) => t.id === 'blank') ?? WORKFLOW_TEMPLATES[0]
+    handlePickTemplate(blank)
+    setPendingChatMessage(prompt)
+    setChatOpen(true)
   }
 
   const [variablesOpen, setVariablesOpen] = useState(false)
@@ -178,9 +213,13 @@ function WorkflowPageInner() {
   // Live "wf-node" events from the interpreter — drives active-node highlighting
   // on the canvas and the event log below it.
   const [workflowEvents, setWorkflowEvents] = useState<WorkflowEvent[]>([])
+  const eventSeq = useRef(0)
   const handleWorkflowEvent = useCallback(
     (event: Record<string, any>) => {
-      setWorkflowEvents((prev) => [...prev.slice(-49), { ...event, _ts: Date.now() } as WorkflowEvent])
+      // _id is a monotonic counter: Date.now() collides when two events arrive
+      // in the same millisecond, which React rejects as a duplicate key.
+      const withId = { ...event, _ts: Date.now(), _id: eventSeq.current++ } as WorkflowEvent
+      setWorkflowEvents((prev) => [...prev.slice(-49), withId])
       if (event.type === 'node_enter' && event.node_id) setActiveNode(event.node_id)
     },
     [setActiveNode]
@@ -192,8 +231,6 @@ function WorkflowPageInner() {
     },
     [setActiveNode]
   )
-
-  const [chatOpen, setChatOpen] = useState(false)
 
   const errorCount = useMemo(() => lintIssues.filter((i) => i.severity === 'error').length, [lintIssues])
   const warningCount = lintIssues.length - errorCount
@@ -222,13 +259,19 @@ function WorkflowPageInner() {
     }
   }
 
-  const handleDeploy = async () => {
-    if (!workflow || !backendAgentName) return
+  // Deploy only ever saves + hot-reloads (the backend re-reads config per call,
+  // live or not) — it never starts the agent. Start is the one button that
+  // goes live, so the two buttons each have exactly one job instead of
+  // overlapping: previously Deploy also auto-started whenever the agent
+  // wasn't running, which is precisely when the Start button is visible too —
+  // so both buttons did the identical "deploy + start" in that state.
+  const handleDeploy = async (): Promise<boolean> => {
+    if (!workflow || !backendAgentName) return false
     if (hasErrors(lintIssues)) {
       const errors = lintIssues.filter((i) => i.severity === 'error')
       const errorList = errors.map((e) => `• ${e.message}`).join('\n')
       toast.error(`Fix ${errorCount} error(s):\n${errorList}`, { duration: 6000 })
-      return
+      return false
     }
     setDeploying(true)
     try {
@@ -240,20 +283,35 @@ function WorkflowPageInner() {
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
         toast.success('Workflow deployed')
+        if (data?.warning) toast.error(data.warning, { duration: 8000 })
         markClean()
-      } else {
-        toast.error(data?.message || `Deploy failed (${res.status})`)
+        return true
       }
+      toast.error(data?.message || `Deploy failed (${res.status})`)
+      return false
     } catch {
       toast.error('Could not reach the deploy endpoint')
+      return false
     } finally {
       setDeploying(false)
     }
   }
 
+  // A workflow agent's backend runtime files are generated at deploy time, so a
+  // Start before the first deploy 404s. Auto-deploy the current canvas when
+  // there are undeployed changes, then start — one click instead of the
+  // Deploy-then-Start dance.
+  const handleStartAgent = async () => {
+    if (isDirty) {
+      const deployed = await handleDeploy()
+      if (!deployed) return
+    }
+    agentLifecycle.start()
+  }
+
   if (!agentId || !projectId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
         <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or project.</p>
       </div>
     )
@@ -261,7 +319,7 @@ function WorkflowPageInner() {
 
   if (agentNotFound) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4 bg-gray-50 dark:bg-gray-900">
         <p className="text-sm text-gray-600 dark:text-gray-400">This agent could not be found.</p>
         <Button variant="outline" size="sm" onClick={() => router.push(`/${projectId}/agents`)}>
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back to agents
@@ -272,8 +330,8 @@ function WorkflowPageInner() {
 
   if (agentLoading || (!workflow && !needsTemplate)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <LoaderFive text={LOADING_LINES[loadingLineIndex]} className="text-sm text-gray-500 dark:text-gray-400" />
       </div>
     )
   }
@@ -285,9 +343,9 @@ function WorkflowPageInner() {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Workflow</h1>
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
         </div>
-        <TemplatePicker onPick={handlePickTemplate} />
+        <TemplatePicker onPick={handlePickTemplate} onStartWithPrompt={handleStartWithPrompt} />
       </div>
     )
   }
@@ -300,7 +358,7 @@ function WorkflowPageInner() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Workflow</h1>
+        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
         {isDirty && <Badge variant="secondary" className="text-[10px]">Unsaved</Badge>}
 
         <div className="flex-1" />
@@ -317,9 +375,10 @@ function WorkflowPageInner() {
 
         <AgentLifecycleButton
           status={agentLifecycle.status.status}
-          isLoading={agentLifecycle.isLoading}
+          isLoading={agentLifecycle.isLoading || deploying}
           backendAgentName={backendAgentName}
-          onStart={agentLifecycle.start}
+          isDirty={isDirty}
+          onStart={handleStartAgent}
           onStop={agentLifecycle.stop}
         />
         <Button
@@ -352,7 +411,12 @@ function WorkflowPageInner() {
           {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
           Validate
         </Button>
-        <Button size="sm" onClick={handleDeploy} disabled={deploying}>
+        <Button
+          size="sm"
+          onClick={() => handleDeploy()}
+          disabled={deploying || !isDirty}
+          title={isDirty ? undefined : 'Already deployed — no changes to send'}
+        >
           {deploying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}
           Deploy
         </Button>
@@ -364,7 +428,12 @@ function WorkflowPageInner() {
           <WorkflowPalette />
           <WorkflowCanvas />
         </ReactFlowProvider>
-        <WorkflowChat open={chatOpen} onOpenChange={setChatOpen} />
+        <WorkflowChat
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          initialMessage={pendingChatMessage}
+          onInitialMessageConsumed={() => setPendingChatMessage(null)}
+        />
       </div>
 
       <Inspector />

@@ -32,6 +32,7 @@ interface InterruptionSettingsProps {
   adaptiveFalseInterruptionTimeout?: number
   adaptiveBackchannelBoundaryStart?: number
   adaptiveBackchannelBoundaryEnd?: number
+  realInterruptionGuard?: boolean
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -50,8 +51,9 @@ function InterruptionSettings({
   adaptiveFalseInterruptionTimeout = 2.0,
   adaptiveBackchannelBoundaryStart = 1.0,
   adaptiveBackchannelBoundaryEnd = 3.5,
+  realInterruptionGuard = false,
   onFieldChange
-}: InterruptionSettingsProps) {
+}: Readonly<InterruptionSettingsProps>) {
   const [newWord, setNewWord] = useState('')
 
   const isAdaptive = interruption_mode === 'adaptive'
@@ -195,6 +197,23 @@ function InterruptionSettings({
                   value={minInterruptionWords}
                   onChange={(e) => onFieldChange('advancedSettings.interruption.minInterruptionWords', parseInt(e.target.value) || 0)}
                   className="h-7 text-xs"
+                />
+              </div>
+
+              {/* Real Interruption Guard — VAD mode only, conflicts with adaptive's own ML detector */}
+              <div className="flex items-center justify-between">
+                <div className="pr-4">
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Real Interruption Guard (Beta)
+                  </Label>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Filters out backchannels/false interruptions before cancelling agent speech. Turn Detection recommended "V1 Mini".
+                  </div>
+                </div>
+                <Switch
+                  checked={realInterruptionGuard}
+                  onCheckedChange={(checked) => onFieldChange('advancedSettings.interruption.realInterruptionGuard', checked)}
+                  className="scale-75"
                 />
               </div>
             </>

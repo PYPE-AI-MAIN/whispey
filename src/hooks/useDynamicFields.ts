@@ -76,8 +76,19 @@ export const useDynamicFields = (agentId: string, limit: number = 20): DynamicFi
         setMetadataFields(sortedMetadataFields)
         setTranscriptionFields(sortedTranscriptionFields)
       } catch (err) {
-        console.error('Error extracting dynamic fields:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load fields')
+        // A 403 here means the caller has no (or no longer has) access to this
+        // agent's project — e.g. a stale agentId during a project/agent switch,
+        // or a user without project membership. That's an expected, non-actionable
+        // state for a background "discover column names" request, not a bug: just
+        // surface empty fields instead of logging/erroring.
+        const status = (err as { status?: number } | undefined)?.status
+        if (status === 403) {
+          setMetadataFields([])
+          setTranscriptionFields([])
+        } else {
+          console.error('Error extracting dynamic fields:', err)
+          setError(err instanceof Error ? err.message : 'Failed to load fields')
+        }
       } finally {
         setLoading(false)
       }

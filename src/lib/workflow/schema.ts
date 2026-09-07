@@ -40,6 +40,30 @@ export const turnDetectionConfig = z.object({
   model: z.string().nullish(),
 })
 
+// A caller-invoked mid-call language switch (mirrors workflow/models.py:LanguageSwitchTool
+// and reuses the classic agent's LanguageSwitchConfig shape from LanguageSwitchSettings) —
+// lets one node serve multiple languages instead of the graph being duplicated per language.
+export const languageSwitchTool = z.object({
+  tool_name: z.string(),
+  description: z.string().nullish(),
+  language_code: z.string(),
+  system_message: z.string().nullish(),
+  allow_interruptions: z.boolean().default(true),
+  interruption: z.boolean().nullish(),
+  switch_stt: z.boolean().default(true),
+  switch_tts: z.boolean().default(true),
+  // .passthrough(): LanguageSwitchSettings (reused from the classic agent's
+  // Advanced Settings) writes provider-specific extras (adaptive_stt, mode,
+  // flush_signal, keyterm, ...) that plain sttConfig/ttsConfig would silently
+  // drop on parse. Python's STTConfig already allows these (extra="allow").
+  stt: sttConfig.passthrough().nullish(),
+  tts: ttsConfig.passthrough().nullish(),
+  // Overrides which state variable this tool writes the language into
+  // (default "wlanguage") — e.g. to drive a workflow's own pre-existing
+  // language variable instead of a second, disconnected one.
+  state_variable: z.string().nullish(),
+})
+
 export const agentConfig = z.object({
   globalPrompt: z.string().default(''),
   llm: llmConfig.default({ name: 'openai' }),
@@ -47,6 +71,7 @@ export const agentConfig = z.object({
   tts: ttsConfig.default({ name: 'elevenlabs' }),
   vad: vadConfig.nullish(),
   turnDetection: turnDetectionConfig.nullish(),
+  languages: z.array(languageSwitchTool).default([]),
   advanced: z.record(z.any()).default({}),
 })
 

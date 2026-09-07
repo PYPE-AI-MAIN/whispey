@@ -111,6 +111,19 @@ const modelProviders: Record<string, Provider> = {
       { value: 'gpt-4o-mini', label: 'GPT 4o Mini' },
     ]
   },
+  sarvam: {
+    label: 'Sarvam',
+    icon: 'S',
+    color: 'bg-rose-500',
+    type: 'direct',
+    addedAt: '2026-09-02',
+    models: [
+      // Only Sarvam's currently-live models; the 30b/32k/m variants are
+      // deprecated server-side (400 "model has been deprecated").
+      { value: 'sarvam-105b-conversations', label: 'Sarvam 105B Conversations', addedAt: '2026-09-02' },
+      { value: 'sarvam-105b', label: 'Sarvam 105B' },
+    ]
+  },
   google: {
     label: 'Google',
     icon: 'G',
