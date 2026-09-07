@@ -1,10 +1,13 @@
 'use client'
 
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Sparkles, X, Loader2, User, RotateCcw } from 'lucide-react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { ArrowUp, Sparkles, X, Loader2, User, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { lintWorkflow, hasErrors } from '@/lib/workflow/linter'
+import { isRetryableApplyError } from '@/lib/workflow/chatRetry'
 import toast from 'react-hot-toast'
 
 interface Message {
@@ -12,6 +15,8 @@ interface Message {
   content: string
   applyStatus?: 'success' | 'error' | 'none'
   applyError?: string
+  applyNodeCount?: number
+  applyWarnings?: string[]
 }
 
 // Past assistant turns embed a full workflow JSON block. Re-sending those on every
@@ -38,6 +43,19 @@ function stripJsonBlocksForHistory(text: string): string {
     pos = end + 3
   }
   return result
+}
+
+type ContextSummary = { nodeCount: number; startLabel: string; langCount: number; varCount: number } | null
+
+/** The header subtitle — "already loaded" answer to the question every user
+ * asks first. Plain string building instead of a nested ternary inside a
+ * nested template literal, which is exactly as unreadable as it sounds. */
+function formatContextSummary(contextSummary: ContextSummary): string {
+  if (!contextSummary) return 'Describe what to build or change'
+  let text = `${contextSummary.nodeCount} nodes · starts at "${contextSummary.startLabel}"`
+  if (contextSummary.varCount) text += ` · ${contextSummary.varCount} vars`
+  if (contextSummary.langCount) text += ` · ${contextSummary.langCount} languages`
+  return text
 }
 
 function extractWorkflowJson(text: string): object | null {
@@ -80,12 +98,43 @@ function restoreKeptFields(next: any, current: any): any {
   return next
 }
 
-export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
+export function WorkflowChat({
+  open,
+  onOpenChange,
+  initialMessage,
+  onInitialMessageConsumed,
+}: Readonly<{
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  // Set by the chat-first landing screen: a prompt typed before any workflow
+  // existed. Sent automatically the first time the panel opens with it set,
+  // so "describe your agent" -> building starts in one step instead of
+  // pick-a-template-then-open-chat-then-retype.
+  initialMessage?: string | null
+  onInitialMessageConsumed?: () => void
+}>) {
   const workflow = useWorkflowStore((s) => s.workflow)
+  // Shown before the first message so it's visible, not just true, that the
+  // model already has the current graph — the question every user asks first.
+  const contextSummary = useMemo(() => {
+    if (!workflow) return null
+    const startNode = workflow.nodes.find((n) => n.id === workflow.start)
+    return {
+      nodeCount: workflow.nodes.length,
+      startLabel: startNode?.name || startNode?.id || workflow.start,
+      langCount: workflow.agent.languages?.length ?? 0,
+      varCount: workflow.variables?.length ?? 0,
+    }
+  }, [workflow])
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
+  const setChatStreaming = useWorkflowStore((s) => s.setChatStreaming)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  // Collapsed = just header + input, no history — a long conversation
+  // shouldn't force the panel to stay huge; this is how you get canvas space
+  // back without losing the thread or closing the panel outright.
+  const [collapsed, setCollapsed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -153,16 +202,26 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
 
   // Parses the assistant's trailing ```json block (if any) and applies it to
   // the workflow store, reporting success/failure via toast + message status.
+  // `silentOnError` skips the error toast — used for a first attempt that's
+  // about to get one automatic self-correction retry, so a mistake the model
+  // fixes on its own never flashes a scary error at whoever is self-serving.
   const applyAssistantWorkflow = useCallback(
-    (assistantContent: string): { applyStatus: Message['applyStatus']; applyError?: string } => {
+    (
+      assistantContent: string,
+      opts: { silentOnError?: boolean } = {}
+    ): { applyStatus: Message['applyStatus']; applyError?: string; applyNodeCount?: number; applyWarnings?: string[] } => {
+      const { silentOnError = false } = opts
+      const fail = (applyError: string) => {
+        if (!silentOnError) toast.error(applyError, { duration: 10000 })
+        return { applyStatus: 'error' as const, applyError }
+      }
+
       const jsonBlockStart = assistantContent.indexOf('```json')
       const hasJsonBlock = jsonBlockStart !== -1 && assistantContent.slice(jsonBlockStart + 7).includes('```')
       const json = extractWorkflowJson(assistantContent)
       if (!json) {
         if (!hasJsonBlock) return { applyStatus: 'none' }
-        const applyError = 'Response JSON was malformed (likely cut off — try a shorter/simpler request)'
-        toast.error(applyError, { duration: 8000 })
-        return { applyStatus: 'error', applyError }
+        return fail('Response JSON was malformed (likely cut off — try a shorter/simpler request)')
       }
 
       const parsed = safeParseWorkflow(restoreKeptFields(json, workflow))
@@ -171,42 +230,54 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
       // canvas but shows a misleading "applied" — reject it and say why.
       if (!parsed.success) {
         const applyError = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
-        toast.error(`AI returned invalid workflow JSON: ${applyError}`, { duration: 8000 })
-        return { applyStatus: 'error', applyError }
+        return fail(`AI returned invalid workflow JSON: ${applyError}`)
       }
       if (parsed.data.nodes.length === 0 || !parsed.data.nodes.some((n) => n.id === parsed.data.start)) {
-        const applyError =
+        return fail(
           'The AI returned a workflow with no usable nodes — the config is too large to convert in one shot. Ask it to "build the flow step by step" (greeting, then patient lookup, then symptoms, …), or paste the flow in a few smaller messages.'
-        toast.error(applyError, { duration: 10000 })
-        return { applyStatus: 'error', applyError }
+        )
+      }
+
+      // "Chat-only" only works if problems surface HERE — the same lint the
+      // canvas warning badge runs, since a user who never opens the canvas
+      // would otherwise never see a dangling edge or dead-end node at all.
+      const issues = lintWorkflow(parsed.data)
+      if (hasErrors(issues)) {
+        const applyError = issues
+          .filter((i) => i.severity === 'error')
+          .slice(0, 3)
+          .map((i) => i.message)
+          .join('; ')
+        return fail(`AI returned a broken workflow graph: ${applyError}`)
       }
 
       setWorkflow(parsed.data)
       toast.success('Workflow updated from chat')
-      return { applyStatus: 'success' }
+      const warnings = issues.filter((i) => i.severity === 'warning')
+      return {
+        applyStatus: 'success',
+        applyNodeCount: parsed.data.nodes.length,
+        applyWarnings: warnings.length ? warnings.slice(0, 3).map((i) => i.message) : undefined,
+      }
     },
     [workflow, setWorkflow]
   )
 
-  const handleSend = useCallback(async () => {
-    const text = input.trim()
-    if (!text || isStreaming) return
-
-    const userMsg: Message = { role: 'user', content: text }
-    const newMessages = [...messages, userMsg]
-    setMessages(newMessages)
-    setInput('')
-    setIsStreaming(true)
-
-    const abort = new AbortController()
-    abortRef.current = abort
-
-    try {
+  // One request/stream/apply round-trip. Appends a fresh assistant bubble and
+  // fills it as chunks arrive; returns the apply result so the caller can
+  // decide whether this needs a self-correction retry.
+  const sendAndApply = useCallback(
+    async (
+      conversationMessages: Pick<Message, 'role' | 'content'>[],
+      abort: AbortController,
+      opts: { silentOnError?: boolean } = {}
+    ) => {
+      const { silentOnError = false } = opts
       const res = await fetch('/api/workflow/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages.map((m) => ({
+          messages: conversationMessages.map((m) => ({
             role: m.role,
             content: m.role === 'assistant' ? stripJsonBlocksForHistory(m.content) : m.content,
           })),
@@ -232,21 +303,65 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
 
       if (wasTruncated) {
         const err = 'Response was cut off (too long to generate in one reply) — the workflow was NOT applied. Try a shorter request, or build the flow structure via chat and paste large prompts directly into the Global Prompt field instead.'
-        toast.error(err, { duration: 10000 })
+        if (!silentOnError) toast.error(err, { duration: 10000 })
         setMessages((prev) => {
           const updated = [...prev]
           updated[updated.length - 1] = { ...updated.at(-1)!, applyStatus: 'error', applyError: err }
           return updated
         })
-        return
+        return { applyStatus: 'error' as const, applyError: err, retryable: false }
       }
 
-      const { applyStatus, applyError } = applyAssistantWorkflow(assistantContent)
+      const { applyStatus, applyError, applyNodeCount, applyWarnings } = applyAssistantWorkflow(assistantContent, { silentOnError })
       setMessages((prev) => {
         const updated = [...prev]
-        updated[updated.length - 1] = { ...updated.at(-1)!, applyStatus, applyError }
+        updated[updated.length - 1] = { ...updated.at(-1)!, applyStatus, applyError, applyNodeCount, applyWarnings }
         return updated
       })
+      const retryable = applyStatus === 'error' && isRetryableApplyError(applyError)
+      return { applyStatus, applyError, retryable }
+    },
+    [workflow, streamAssistantReply, applyAssistantWorkflow]
+  )
+
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim()
+    if (!text || isStreaming) return
+
+    const userMsg: Message = { role: 'user', content: text }
+    let conversation = [...messages, userMsg]
+    setMessages(conversation)
+    setInput('')
+    setIsStreaming(true)
+    setChatStreaming(true)
+
+    const abort = new AbortController()
+    abortRef.current = abort
+
+    try {
+      // Silent: an error here might self-correct below, and toasting a
+      // mistake the model is about to fix on its own just alarms whoever is
+      // self-serving this workflow for no reason.
+      const first = await sendAndApply(conversation, abort, { silentOnError: true })
+
+      // One self-correction pass: feed the exact validation/lint errors back
+      // as a follow-up turn so a fixable mistake (a dangling edge, {{var}} in
+      // a code node, a missing fallback) gets corrected automatically instead
+      // of surfacing to whoever is self-serving this workflow.
+      if (first.retryable) {
+        const retryMsg: Message = {
+          role: 'user',
+          content: `The workflow you just returned failed validation: ${first.applyError}. Fix these specific issues and return the corrected COMPLETE workflow JSON.`,
+        }
+        conversation = [...conversation, { role: 'assistant', content: '(previous attempt — see error below)' }, retryMsg]
+        setMessages((prev) => [...prev, retryMsg])
+        // Non-silent: this is the last attempt either way, so its outcome
+        // (fixed, or still broken) is what the user should actually see.
+        await sendAndApply(conversation, abort, { silentOnError: false })
+      } else if (first.applyStatus === 'error' && first.applyError) {
+        // Not retryable (e.g. truncated) — nothing more to try, surface it now.
+        toast.error(first.applyError, { duration: 10000 })
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') return
       toast.error(err.message || 'Chat request failed')
@@ -258,9 +373,19 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
       })
     } finally {
       setIsStreaming(false)
+      setChatStreaming(false)
       abortRef.current = null
     }
-  }, [input, isStreaming, messages, workflow, streamAssistantReply, applyAssistantWorkflow])
+  }, [input, isStreaming, messages, sendAndApply, setChatStreaming])
+
+  const sentInitialRef = useRef(false)
+  useEffect(() => {
+    if (!open || !initialMessage || sentInitialRef.current) return
+    sentInitialRef.current = true
+    onInitialMessageConsumed?.()
+    handleSend(initialMessage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once per mount when initialMessage arrives, not on every handleSend identity change
+  }, [open, initialMessage])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -272,15 +397,23 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
   if (!open) return null
 
   return (
-    <div className="absolute bottom-4 right-4 z-50 w-[420px] h-[560px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-      {/* Header */}
+    <div
+      className={`absolute right-4 top-1/2 -translate-y-1/2 z-50 w-[min(560px,calc(100%-2rem))] ${
+        collapsed ? '' : 'max-h-[46vh]'
+      } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
+    >
+      {/* Header — the subtitle IS the "already loaded" answer: what's already
+          built, right where you'd look for it, instead of a separate card
+          repeating the same thing lower down. */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-        <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
           <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Workflow Builder</h3>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Describe what to build or change</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight truncate">
+            {formatContextSummary(contextSummary)}
+          </p>
         </div>
         {messages.length > 0 && (
           <Button
@@ -293,39 +426,42 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
             <RotateCcw className="w-3.5 h-3.5" />
           </Button>
         )}
+        {messages.length > 0 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? 'Expand chat' : 'Collapse chat'}
+          >
+            {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onOpenChange(false)}>
           <X className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div ref={scrollRef} className={`flex-1 overflow-y-auto px-4 py-3 space-y-3 ${collapsed ? 'hidden' : ''}`}>
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-8">
-            <div className="w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-violet-500" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Build with AI</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-[260px]">
-                Describe the workflow you want to build or what changes to make. The AI will generate the flow for you.
-              </p>
-            </div>
-            <div className="space-y-1.5 w-full mt-2">
-              {[
-                'Create an appointment booking flow',
-                'Add a logic split after the greeting node',
-                'Add call transfer to +1234567890 when the user asks for support',
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => { setInput(suggestion); setTimeout(() => inputRef.current?.focus(), 0) }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-col gap-2 py-1">
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 px-0.5">
+              {contextSummary ? 'Try one of these, or describe your own change:' : 'Try one of these, or describe what to build:'}
+            </p>
+            {[
+              'Create an appointment booking flow',
+              'Add a logic split after the greeting node',
+              'Add call transfer to +1234567890 when the user asks for support',
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => { setInput(suggestion); setTimeout(() => inputRef.current?.focus(), 0) }}
+                className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
           </div>
         )}
 
@@ -349,6 +485,8 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
                   streaming={isStreaming && i === messages.length - 1}
                   applyStatus={msg.applyStatus}
                   applyError={msg.applyError}
+                  applyNodeCount={msg.applyNodeCount}
+                  applyWarnings={msg.applyWarnings}
                 />
               ) : (
                 <span className="whitespace-pre-wrap">{msg.content}</span>
@@ -363,26 +501,28 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
         ))}
       </div>
 
-      {/* Input */}
-      <div className="px-3 py-3 border-t border-gray-100 dark:border-gray-800 shrink-0">
-        <div className="flex items-end gap-2 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2">
+      {/* Input — one rounded composer with the send button floating inside it,
+          bottom-right (Claude's own chat-input pattern), not a pill + a
+          separate button bolted on beside it. */}
+      <div className="px-3 pb-3 pt-2 shrink-0">
+        <div className="relative rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe your workflow..."
+            placeholder="Describe what to build or change…"
             rows={1}
-            className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none outline-none max-h-[80px] leading-relaxed"
-            style={{ minHeight: '24px' }}
+            className="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none outline-none max-h-[120px] leading-relaxed pl-4 pr-11 pt-3 pb-3"
+            style={{ minHeight: '44px' }}
           />
           <Button
             size="icon"
-            className="h-7 w-7 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40"
-            onClick={handleSend}
+            className="absolute right-2 bottom-2 h-7 w-7 rounded-full bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
+            onClick={() => handleSend()}
             disabled={!input.trim() || isStreaming}
           >
-            {isStreaming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            {isStreaming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUp className="w-3.5 h-3.5" />}
           </Button>
         </div>
       </div>
@@ -390,16 +530,38 @@ export function WorkflowChat({ open, onOpenChange }: Readonly<{ open: boolean; o
   )
 }
 
+// Compact chat-bubble sizing (text-xs) — the default element margins/list
+// styles are built for full-page prose, not a 13px-wide message bubble.
+const MARKDOWN_COMPONENTS = {
+  p: ({ children }: { children?: React.ReactNode }) => <p className="whitespace-pre-wrap [&:not(:first-child)]:mt-2">{children}</p>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold">{children}</strong>,
+  code: ({ children }: { children?: React.ReactNode }) => (
+    <code className="px-1 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-[11px]">{children}</code>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => <ul className="list-disc pl-4 space-y-0.5 [&:not(:first-child)]:mt-2">{children}</ul>,
+  ol: ({ children }: { children?: React.ReactNode }) => <ol className="list-decimal pl-4 space-y-0.5 [&:not(:first-child)]:mt-2">{children}</ol>,
+  li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
+  a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
+    <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+      {children}
+    </a>
+  ),
+}
+
 function AssistantMessage({
   content,
   streaming,
   applyStatus,
   applyError,
+  applyNodeCount,
+  applyWarnings,
 }: Readonly<{
   content: string
   streaming?: boolean
   applyStatus?: Message['applyStatus']
   applyError?: string
+  applyNodeCount?: number
+  applyWarnings?: string[]
 }>) {
   if (!content && streaming) {
     return (
@@ -429,39 +591,101 @@ function AssistantMessage({
   })
   return (
     <div className="space-y-1.5">
-      {partsWithOffset.map(({ part, at }) => {
-        if (part.startsWith('```json')) {
-          if (streaming) {
-            return (
-              <div key={`json-parsing-${at}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Parsing workflow...
-              </div>
-            )
-          }
-          if (applyStatus === 'error') {
-            return (
-              <div key={`json-error-${at}`} className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
-                <span>⚠</span>
-                <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
-              </div>
-            )
-          }
-          return (
-            <div key={`json-applied-${at}`} className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-medium">
-              <Sparkles className="w-3 h-3" />
-              Workflow JSON applied to canvas
+      {partsWithOffset.map(({ part, at }) =>
+        part.startsWith('```json') ? (
+          <AssistantMessageJsonPart
+            key={`json-${at}`}
+            streaming={streaming}
+            applyStatus={applyStatus}
+            applyError={applyError}
+            applyNodeCount={applyNodeCount}
+            applyWarnings={applyWarnings}
+          />
+        ) : (
+          part.trim() && (
+            <div key={`text-${at}`}>
+              <ReactMarkdown components={MARKDOWN_COMPONENTS}>{part.trim()}</ReactMarkdown>
             </div>
           )
-        }
-        const trimmed = part.trim()
-        if (!trimmed) return null
-        return <span key={`text-${at}`} className="whitespace-pre-wrap">{trimmed}</span>
-      })}
+        )
+      )}
       {streaming && hasOpenJsonBlock && (
         <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
           <Loader2 className="w-3 h-3 animate-spin" />
           Generating workflow...
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatAppliedNodeCount(applyNodeCount: number | undefined): string {
+  if (applyNodeCount == null) return ''
+  const plural = applyNodeCount === 1 ? '' : 's'
+  return ` — ${applyNodeCount} node${plural}`
+}
+
+/** One ```json block's status badge — pulled out of AssistantMessage so that
+ * function's cognitive complexity stays about "which parts make up a
+ * message", not also "what does a json part look like in each apply state". */
+function AssistantMessageJsonPart({
+  streaming,
+  applyStatus,
+  applyError,
+  applyNodeCount,
+  applyWarnings,
+}: Readonly<{
+  streaming?: boolean
+  applyStatus?: Message['applyStatus']
+  applyError?: string
+  applyNodeCount?: number
+  applyWarnings?: string[]
+}>) {
+  if (streaming) {
+    return (
+      <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Parsing workflow...
+      </div>
+    )
+  }
+  if (applyStatus === 'error') {
+    return (
+      <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
+        <span>⚠</span>
+        <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
+      </div>
+    )
+  }
+  // A trivial node count on a real build request usually means the model
+  // under-built rather than that the ask was too vague — flag it instead of
+  // showing the same "success" green as a real result.
+  const isSuspiciouslySmall = (applyNodeCount ?? 0) <= 3
+  return (
+    <div className="space-y-1">
+      <div
+        className={`flex items-center gap-1.5 py-1 px-2 rounded-md text-[10px] font-medium ${
+          isSuspiciouslySmall
+            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
+            : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+        }`}
+      >
+        <Sparkles className="w-3 h-3" />
+        Applied to canvas{formatAppliedNodeCount(applyNodeCount)}
+        {isSuspiciouslySmall ? " (looks small — ask for more detail if this isn't what you meant)" : ''}
+      </div>
+      {/* Same lint the canvas warning badge runs — shown here too since the
+          whole point of chat-only building is never opening the canvas. */}
+      {applyWarnings && applyWarnings.length > 0 && (
+        <div className="py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px]">
+          <p className="font-medium mb-0.5">
+            ⚠ {applyWarnings.length} warning{applyWarnings.length === 1 ? '' : 's'}:
+          </p>
+          <ul className="list-disc pl-3.5 space-y-0.5">
+            {applyWarnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

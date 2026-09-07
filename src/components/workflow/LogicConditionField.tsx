@@ -54,21 +54,26 @@ export function LogicConditionField({ workflow, value, onChange }: Readonly<{ wo
       {mode === 'builder' ? (
         <>
           <div className="flex gap-1.5 items-center">
-            {knownVars.length > 0 ? (
-              <Select value={current.variable} onValueChange={(v) => update({ variable: v })}>
-                <SelectTrigger className="h-8 text-xs flex-1">
-                  <SelectValue placeholder="variable" />
-                </SelectTrigger>
-                <SelectContent>
-                  {knownVars.map((v) => (
-                    <SelectItem key={v.name} value={v.name}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input placeholder="variable" value={current.variable} onChange={(e) => update({ variable: e.target.value })} className="h-8 text-xs flex-1" />
+            {/* A plain dropdown can only ever offer the known variable names
+               themselves — it can't represent a field on one of them, e.g.
+               `classification.category` off a code node's saved object (that
+               object's shape isn't known statically). A native datalist keeps
+               the same autocomplete convenience while still letting the field
+               be typed, so `name.field` is reachable without leaving the
+               builder for Custom mode. */}
+            <Input
+              list="logic-known-vars"
+              placeholder="variable"
+              value={current.variable}
+              onChange={(e) => update({ variable: e.target.value })}
+              className="h-8 text-xs flex-1"
+            />
+            {knownVars.length > 0 && (
+              <datalist id="logic-known-vars">
+                {knownVars.map((v) => (
+                  <option key={v.name} value={v.name} />
+                ))}
+              </datalist>
             )}
             <Select value={current.operator} onValueChange={(v) => update({ operator: v })}>
               <SelectTrigger className="h-8 text-xs w-32">
