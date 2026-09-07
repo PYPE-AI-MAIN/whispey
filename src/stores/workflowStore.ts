@@ -21,7 +21,13 @@ interface WorkflowState {
    *  around during normal editing. */
   replaceCount: number
 
-  setWorkflow: (wf: Workflow) => void
+  /** `dirty` defaults to true: most callers (template pick, AI Builder apply,
+   *  JSON import) are applying content that has never been deployed, so it
+   *  must be treated as unsaved. Only loading the agent's already-deployed
+   *  config on page load should pass `{ dirty: false }` — otherwise Start
+   *  Agent's "deploy first if dirty" check never fires for a workflow that
+   *  was never actually sent to the backend, and Start just fails/no-ops. */
+  setWorkflow: (wf: Workflow, opts?: { dirty?: boolean }) => void
   addNode: (node: WorkflowNode) => void
   removeNode: (nodeId: string) => void
   updateNode: (nodeId: string, patch: Partial<WorkflowNode>) => void
@@ -66,10 +72,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   chatStreaming: false,
   replaceCount: 0,
 
-  setWorkflow: (wf) =>
+  setWorkflow: (wf, opts) =>
     set((s) => ({
       workflow: wf,
-      isDirty: false,
+      isDirty: opts?.dirty ?? true,
       past: [],
       future: [],
       lintIssues: relint(wf),

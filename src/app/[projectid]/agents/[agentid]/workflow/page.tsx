@@ -42,12 +42,14 @@ function AgentLifecycleButton({
   status,
   isLoading,
   backendAgentName,
+  isDirty,
   onStart,
   onStop,
 }: Readonly<{
   status: string
   isLoading: boolean
   backendAgentName: string
+  isDirty: boolean
   onStart: () => void
   onStop: () => void
 }>) {
@@ -68,9 +70,15 @@ function AgentLifecycleButton({
     )
   }
   return (
-    <Button variant="outline" size="sm" onClick={onStart} disabled={isLoading || !backendAgentName}>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onStart}
+      disabled={isLoading || !backendAgentName}
+      title={isDirty ? 'Deploys your changes first, then starts the agent' : undefined}
+    >
       {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
-      Start Agent
+      {isDirty ? 'Deploy & Start' : 'Start Agent'}
     </Button>
   )
 }
@@ -152,7 +160,9 @@ function WorkflowPageInner() {
     }
     const existing = safeParseWorkflow(agentRow.configuration?.workflow)
     if (existing.success) {
-      setWorkflow(existing.data)
+      // This is already the deployed config (it came from the agent row we
+      // just loaded), not new content waiting to be deployed.
+      setWorkflow(existing.data, { dirty: false })
     } else {
       setNeedsTemplate(true)
     }
@@ -249,11 +259,13 @@ function WorkflowPageInner() {
     }
   }
 
-  // autoStart defaults on for the toolbar's own Deploy button — "deploy" should
-  // mean "this is live and answering calls," not "saved, now go press another
-  // button to actually turn it on." handleStartAgent passes false since IT
-  // calls agentLifecycle.start() itself right after, to avoid firing it twice.
-  const handleDeploy = async (autoStart = true): Promise<boolean> => {
+  // Deploy only ever saves + hot-reloads (the backend re-reads config per call,
+  // live or not) — it never starts the agent. Start is the one button that
+  // goes live, so the two buttons each have exactly one job instead of
+  // overlapping: previously Deploy also auto-started whenever the agent
+  // wasn't running, which is precisely when the Start button is visible too —
+  // so both buttons did the identical "deploy + start" in that state.
+  const handleDeploy = async (): Promise<boolean> => {
     if (!workflow || !backendAgentName) return false
     if (hasErrors(lintIssues)) {
       const errors = lintIssues.filter((i) => i.severity === 'error')
@@ -273,11 +285,6 @@ function WorkflowPageInner() {
         toast.success('Workflow deployed')
         if (data?.warning) toast.error(data.warning, { duration: 8000 })
         markClean()
-        // Deploy already hot-reloads a RUNNING worker — only auto-start if it
-        // wasn't running, so a deploy while live doesn't restart the call.
-        if (autoStart && agentLifecycle.status.status !== 'running') {
-          agentLifecycle.start()
-        }
         return true
       }
       toast.error(data?.message || `Deploy failed (${res.status})`)
@@ -296,7 +303,7 @@ function WorkflowPageInner() {
   // Deploy-then-Start dance.
   const handleStartAgent = async () => {
     if (isDirty) {
-      const deployed = await handleDeploy(false)
+      const deployed = await handleDeploy()
       if (!deployed) return
     }
     agentLifecycle.start()
@@ -370,6 +377,7 @@ function WorkflowPageInner() {
           status={agentLifecycle.status.status}
           isLoading={agentLifecycle.isLoading || deploying}
           backendAgentName={backendAgentName}
+          isDirty={isDirty}
           onStart={handleStartAgent}
           onStop={agentLifecycle.stop}
         />
@@ -403,7 +411,12 @@ function WorkflowPageInner() {
           {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
           Validate
         </Button>
-        <Button size="sm" onClick={() => handleDeploy()} disabled={deploying}>
+        <Button
+          size="sm"
+          onClick={() => handleDeploy()}
+          disabled={deploying || !isDirty}
+          title={isDirty ? undefined : 'Already deployed — no changes to send'}
+        >
           {deploying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}
           Deploy
         </Button>
