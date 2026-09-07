@@ -313,7 +313,8 @@ const STT_PROVIDERS: STTProviders = {
     name: 'Sarvam AI',
     models: [
       { id: 'saarika:v2.5', name: 'Saarika v2.5', description: 'Same-language transcription with code-mixing support' },
-      { id: 'saaras:v3', name: 'Saaras v3', description: 'Latest model — supports transcribe, translate, verbatim, translit, codemix' }
+      { id: 'saaras:v3', name: 'Saaras v3', description: 'Supports transcribe, translate, verbatim, translit, codemix' },
+      { id: 'saaras:v4', name: 'Saaras v4', description: 'Supports transcribe, translate, verbatim, translit, codemix' }
     ],
     languages: [
       { code: 'unknown', name: '🌐 Auto-detect (Saaras only)' },
@@ -881,7 +882,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           </div>
         )}
 
-        {activeProvider === 'sarvam' && currentModel === 'saaras:v3' && (
+        {activeProvider === 'sarvam' && (currentModel === 'saaras:v3' || currentModel === 'saaras:v4') && (
           <div className="space-y-2">
             <Label className="text-sm sm:text-base">Mode</Label>
             <Select
@@ -928,7 +929,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           </div>
         )}
 
-        {activeProvider === 'sarvam' && currentModel === 'saaras:v3' && (
+        {activeProvider === 'sarvam' && (currentModel === 'saaras:v3' || currentModel === 'saaras:v4') && (
           <>
             <div className="flex items-center justify-between gap-3">
               <div>
