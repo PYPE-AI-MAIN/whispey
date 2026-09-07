@@ -36,7 +36,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
             if (v.default === true) boolDefault = 'true'
             else if (v.default === false) boolDefault = 'false'
             return (
-            <div key={v.key} className="flex gap-1.5 items-start border-b border-gray-100 dark:border-gray-800 pb-2">
+            <div key={i} className="flex gap-1.5 items-start border-b border-gray-100 dark:border-gray-800 pb-2">
               <Input
                 placeholder="key"
                 value={v.key}

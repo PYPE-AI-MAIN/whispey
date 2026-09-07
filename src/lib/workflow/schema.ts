@@ -66,9 +66,9 @@ export const languageSwitchTool = z.object({
 
 export const agentConfig = z.object({
   globalPrompt: z.string().default(''),
-  llm: llmConfig.default({ name: 'openai' }),
-  stt: sttConfig.default({ name: 'deepgram' }),
-  tts: ttsConfig.default({ name: 'elevenlabs' }),
+  llm: llmConfig.default({ name: 'azure_openai', model: 'gpt-4.1-mini' }),
+  stt: sttConfig.default({ name: 'sarvam', model: 'saaras:v3' }),
+  tts: ttsConfig.default({ name: 'elevenlabs', voice_id: 'MmQVkVZnQ0dUbfWzcW6f' }),
   vad: vadConfig.nullish(),
   turnDetection: turnDetectionConfig.nullish(),
   languages: z.array(languageSwitchTool).default([]),
