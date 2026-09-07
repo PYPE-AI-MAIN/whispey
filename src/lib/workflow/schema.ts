@@ -74,9 +74,10 @@ export const agentConfig = z.object({
   llm: llmConfig.default({ name: 'azure', model: 'gpt-4.1-mini' }),
   // language:'unknown' is Sarvam's auto-detect sentinel (see SelectSTTDialog) —
   // omitting it falls through to sttConfig's own default of 'en', which isn't
-  // a valid BCP-47 code for saaras:v3 and makes the backend's Sarvam plugin
-  // raise and silently fall back to Deepgram (workflow/providers.py _dispatch).
-  stt: sttConfig.default({ name: 'sarvam', model: 'saaras:v3', language: 'unknown' }),
+  // a valid BCP-47 code for saaras models and makes the backend's Sarvam
+  // plugin raise and silently fall back to Deepgram (workflow/providers.py
+  // _dispatch). saaras:v4 is the plugin's own current default model.
+  stt: sttConfig.default({ name: 'sarvam', model: 'saaras:v4', language: 'unknown' }),
   tts: ttsConfig.default({ name: 'elevenlabs', voice_id: 'MmQVkVZnQ0dUbfWzcW6f' }),
   vad: vadConfig.nullish(),
   turnDetection: turnDetectionConfig.nullish(),
