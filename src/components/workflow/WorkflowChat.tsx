@@ -398,8 +398,8 @@ export function WorkflowChat({
 
   return (
     <div
-      className={`absolute right-4 top-1/2 -translate-y-1/2 z-50 w-[min(560px,calc(100%-2rem))] ${
-        collapsed ? '' : 'max-h-[46vh]'
+      className={`absolute right-4 top-1/2 -translate-y-1/2 z-50 w-[min(760px,calc(100%-2rem))] ${
+        collapsed ? '' : 'max-h-[74vh]'
       } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
     >
       {/* Header — the subtitle IS the "already loaded" answer: what's already
@@ -443,7 +443,7 @@ export function WorkflowChat({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className={`flex-1 overflow-y-auto px-4 py-3 space-y-3 ${collapsed ? 'hidden' : ''}`}>
+      <div ref={scrollRef} className={`flex-1 overflow-y-auto px-5 py-4 space-y-4 ${collapsed ? 'hidden' : ''}`}>
         {messages.length === 0 && (
           <div className="flex flex-col gap-2 py-1">
             <p className="text-[11px] text-gray-400 dark:text-gray-500 px-0.5">
@@ -468,12 +468,12 @@ export function WorkflowChat({
         {messages.map((msg, i) => (
           <div key={`${msg.role}-${i}`} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
-              <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                <Sparkles className="w-3 h-3 text-violet-600 dark:text-violet-400" />
+              <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
               </div>
             )}
             <div
-              className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
@@ -493,8 +493,8 @@ export function WorkflowChat({
               )}
             </div>
             {msg.role === 'user' && (
-              <div className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+              <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               </div>
             )}
           </div>
@@ -504,7 +504,7 @@ export function WorkflowChat({
       {/* Input — one rounded composer with the send button floating inside it,
           bottom-right (Claude's own chat-input pattern), not a pill + a
           separate button bolted on beside it. */}
-      <div className="px-3 pb-3 pt-2 shrink-0">
+      <div className="px-4 pb-4 pt-2 shrink-0">
         <div className="relative rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
           <textarea
             ref={inputRef}
@@ -513,12 +513,12 @@ export function WorkflowChat({
             onKeyDown={handleKeyDown}
             placeholder="Describe what to build or change…"
             rows={1}
-            className="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none outline-none max-h-[120px] leading-relaxed pl-4 pr-11 pt-3 pb-3"
-            style={{ minHeight: '44px' }}
+            className="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none outline-none max-h-[160px] leading-relaxed pl-4 pr-11 pt-3.5 pb-3.5"
+            style={{ minHeight: '52px' }}
           />
           <Button
             size="icon"
-            className="absolute right-2 bottom-2 h-7 w-7 rounded-full bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
+            className="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
             onClick={() => handleSend()}
             disabled={!input.trim() || isStreaming}
           >
