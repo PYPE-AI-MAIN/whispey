@@ -6,7 +6,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   Panel,
   useReactFlow,
   type Node,
@@ -57,6 +56,18 @@ const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
   logic: { stroke: '#8b5cf6' },
   fallback: { stroke: '#ef4444', dashed: true },
 }
+
+// xyflow's Controls buttons default to hardcoded light-mode colors (white
+// background, dark text) regardless of app theme — these are its own CSS
+// variables (see @xyflow/react/dist/style.css), overridden here only for the
+// zoom/fit-view/lock buttons so nothing else on the canvas shifts color.
+const CONTROLS_DARK_VARS = {
+  '--xy-controls-button-background-color': '#27272a',
+  '--xy-controls-button-background-color-hover': '#3f3f46',
+  '--xy-controls-button-color': '#e5e7eb',
+  '--xy-controls-button-color-hover': '#ffffff',
+  '--xy-controls-button-border-color': '#52525b',
+} as React.CSSProperties
 
 export function WorkflowCanvas() {
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -185,7 +196,6 @@ export function WorkflowCanvas() {
       onDragOver={onDragOver}
     >
       <ReactFlow
-        className={resolvedTheme === 'dark' ? 'dark' : undefined}
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={NODE_TYPES}
@@ -204,8 +214,10 @@ export function WorkflowCanvas() {
         minZoom={0.2}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <Controls />
-        <MiniMap pannable zoomable />
+        {/* Only the button colors, via xyflow's own CSS variables — the
+            canvas's background/edge/node colors are already themed by our
+            own components and shouldn't move when this toggles. */}
+        <Controls style={resolvedTheme === 'dark' ? CONTROLS_DARK_VARS : undefined} />
         {chatStreaming && (
           <Panel position="top-center">
             <div className="flex items-center gap-2 h-8 px-3 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-600/30">
