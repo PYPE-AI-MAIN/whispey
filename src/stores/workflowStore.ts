@@ -11,13 +11,23 @@ interface WorkflowState {
   future: Workflow[]
   lintIssues: LintIssue[]
   activeNodeId: string | null
+  /** Whether the AI Builder chat is currently generating/streaming a response —
+   *  read by the canvas to show a working indicator, since chat and canvas are
+   *  separate components and this is the only state they share. */
+  chatStreaming: boolean
   /** Bumped whenever the whole workflow is swapped (chat apply, template pick,
    *  undo/redo) so the canvas knows to re-fit the viewport — incremental edits
    *  (addNode, updateNode, ...) don't touch this, so the camera doesn't jump
    *  around during normal editing. */
   replaceCount: number
 
-  setWorkflow: (wf: Workflow) => void
+  /** `dirty` defaults to true: most callers (template pick, AI Builder apply,
+   *  JSON import) are applying content that has never been deployed, so it
+   *  must be treated as unsaved. Only loading the agent's already-deployed
+   *  config on page load should pass `{ dirty: false }` — otherwise Start
+   *  Agent's "deploy first if dirty" check never fires for a workflow that
+   *  was never actually sent to the backend, and Start just fails/no-ops. */
+  setWorkflow: (wf: Workflow, opts?: { dirty?: boolean }) => void
   addNode: (node: WorkflowNode) => void
   removeNode: (nodeId: string) => void
   updateNode: (nodeId: string, patch: Partial<WorkflowNode>) => void
@@ -34,6 +44,7 @@ interface WorkflowState {
   redo: () => void
   markClean: () => void
   setActiveNode: (id: string | null) => void
+  setChatStreaming: (v: boolean) => void
 }
 
 const MAX_UNDO = 50
@@ -58,12 +69,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   future: [],
   lintIssues: [],
   activeNodeId: null,
+  chatStreaming: false,
   replaceCount: 0,
 
-  setWorkflow: (wf) =>
+  setWorkflow: (wf, opts) =>
     set((s) => ({
       workflow: wf,
-      isDirty: false,
+      isDirty: opts?.dirty ?? true,
       past: [],
       future: [],
       lintIssues: relint(wf),
@@ -204,4 +216,5 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   markClean: () => set({ isDirty: false }),
   setActiveNode: (id) => set({ activeNodeId: id }),
+  setChatStreaming: (v) => set({ chatStreaming: v }),
 }))

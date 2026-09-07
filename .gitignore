@@ -74,4 +74,4 @@ Thumbs.db
 
 # local scratch tooling (personal, not part of the shipped repo)
 /_sonar-check.mjs
-
+.scannerwork
