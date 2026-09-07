@@ -175,7 +175,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       } else if (!isAdmin) {
         try {
-          const adminEmails = process.env.PYPE_ADMINS?.split(',').map(e => e.trim()).filter(Boolean) || []
+          // Separate from PYPE_ADMINS (superadmin auth) on purpose — who
+          // gets notified of a pending signup isn't necessarily the same
+          // list as who has superadmin access.
+          const adminEmails = process.env.APPROVAL_NOTICE_EMAILS?.split(',').map(e => e.trim()).filter(Boolean) || []
           if (adminEmails.length > 0) {
             const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
             await sendPendingApprovalNotice({
@@ -186,7 +189,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               declineLink: `${appUrl}/api/admin/pending-users/${data.id}/action?decision=decline&token=${data.approval_token}`,
             })
           } else {
-            console.warn('⚠️ PYPE_ADMINS not configured — skipping pending-approval notice')
+            console.warn('⚠️ APPROVAL_NOTICE_EMAILS not configured — skipping pending-approval notice')
           }
         } catch (notifyErr) {
           console.error('⚠️ Failed to notify admins of pending signup:', notifyErr)
