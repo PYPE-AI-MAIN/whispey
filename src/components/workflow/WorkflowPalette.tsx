@@ -32,11 +32,8 @@ export function WorkflowPalette() {
                         }}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 cursor-grab active:cursor-grabbing hover:border-gray-300 dark:hover:border-gray-600 transition-colors text-left"
                       >
-                        <div
-                          className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: `${meta.color}20` }}
-                        >
-                          <meta.icon className="w-3.5 h-3.5" style={{ color: meta.color }} />
+                        <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+                          <meta.icon className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                           {meta.label}
