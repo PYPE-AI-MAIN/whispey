@@ -2,6 +2,21 @@ import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
 export const runtime = 'nodejs'
+// A large workflow can take a while just to reach the first output token,
+// let alone finish across MAX_ROUNDS continuations — the platform default
+// (as low as 10-60s) kills the function mid-generation with no error frame,
+// which looks to the client like the response never arrives. Vercel clamps
+// this to whatever the plan actually allows, so it's safe to ask for the max.
+export const maxDuration = 300
+
+// The system prompt already resends the FULL current workflow every turn (the
+// model needs current state to edit it — a deliberate tradeoff, not trimmed
+// here), so old chat turns are the one thing that's safe to cap: they mostly
+// restate context already reflected in that workflow. Without a cap, a long
+// AI Builder session keeps growing the request forever, pushing time-to-
+// first-token past the client's stall timeout. Keep the last few exchanges
+// for short-term coherence ("do that for this node too") and drop the rest.
+const MAX_HISTORY_MESSAGES = 16
 
 const enc = new TextEncoder()
 function sse(data: string) { return enc.encode(`data: ${data}\n\n`) }
@@ -121,6 +136,9 @@ Because of this, every \`globalPrompt\` you write or edit — whether building f
 - **logic**: variable expression (e.g. "budget > 5000"). Used with logic_split source nodes.
 - **fallback**: default branch when nothing else matched.
 
+## HARD RULE — every conversation/extract_variable/subagent node needs a way out
+If a node's only outgoing edges are \`condition\` kind, the graph only advances when the caller's reply happens to match one of those exact phrasings — anything else (an ambiguous answer, a question back, silence, a reply that doesn't cleanly fit any listed condition) leaves the model with no tool to call, so the call just stalls on that node forever. This is invisible in a text review of the prompt and only shows up on a live call. Whenever a node like this has one or more \`condition\` edges, ALSO add one \`always\` or \`fallback\` edge out of it as a catch-all (usually back to itself or to a "let me get that another way" clarification path) — the same requirement already stated above for \`logic_split\`. A node with zero outgoing edges at all (and not an \`ending\` node) is worse — a hard dead-end — so every non-ending node must have at least one outgoing edge.
+
 ## Layout rules
 
 - Position nodes top-to-bottom or left-to-right, ~160px apart vertically
@@ -199,9 +217,11 @@ export async function POST(req: NextRequest) {
     systemContent += `\n\nThe user's CURRENT workflow is:\n\`\`\`json\n${JSON.stringify(workflow, null, 2)}\n\`\`\`\nUse this as the base for any edits. Return the complete modified workflow.`
   }
 
+  const recentMessages = messages.slice(-MAX_HISTORY_MESSAGES)
+
   const convo: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'system', content: systemContent },
-    ...messages.map((m: { role: 'user' | 'assistant'; content: string }) => ({ role: m.role, content: m.content })),
+    ...recentMessages.map((m: { role: 'user' | 'assistant'; content: string }) => ({ role: m.role, content: m.content })),
   ]
 
   const { readable, writable } = new TransformStream()
