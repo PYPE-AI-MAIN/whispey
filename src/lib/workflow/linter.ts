@@ -18,6 +18,49 @@ export interface LintIssue {
 type Node = Workflow['nodes'][number]
 type Edge = Workflow['edges'][number]
 
+// `{{var}}` is interpolated into prompt/message/url/etc. text fields, but a
+// `code` node's `source` runs as real JS/Python — it's never passed through
+// that interpolation (doing so would let a caller's answer break out of a
+// string literal into code). "{{user_request}}" inside source is therefore
+// always the literal 8-char string, never the captured value: a classifier
+// built on `text.includes(...)` silently and permanently takes its "no
+// match" branch. Real code already has `variables` in scope.
+const TEMPLATE_IN_CODE_RE = /\{\{\s*[a-zA-Z0-9_.]+\s*\}\}/
+
+// Same grammar, capturing the reference so its base name (before any dot) can
+// be checked against what's actually declared anywhere in the workflow — see
+// lintUnknownVariables. code.source is deliberately never scanned with this:
+// {{..}} there is always wrong regardless of the name (TEMPLATE_IN_CODE_RE
+// above) and already has its own, more specific error.
+const VAR_REF_RE = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g
+
+/** Pulled out to avoid a template literal nested inside another template
+ * literal's ${...} — same string either way. */
+function braceWrap(name: string): string {
+  return `{{${name}}}`
+}
+
+// Fields verified (pype-voice-agent/workflow/interpreter.py) to actually pass
+// through interpolate()/render() at runtime — an include-list, not "every
+// string field", so a field nobody templates (an id, an enum, a node name)
+// can never false-positive here.
+const TEMPLATED_TEXT_FIELDS: Record<string, string[]> = {
+  conversation: ['prompt', 'staticText'],
+  extract_variable: ['prompt'],
+  subagent: ['prompt'],
+  function: ['url', 'waitMessage'],
+  knowledge: ['query'],
+  call_transfer: ['transferTo', 'message'],
+  press_digit: ['digits'],
+  sms: ['to', 'message'],
+  mcp: ['server'],
+  ending: ['message'],
+}
+const TEMPLATED_DICT_FIELDS: Record<string, string[]> = {
+  function: ['headers', 'params'],
+  mcp: ['args'],
+}
+
 // Per-node completeness: type → (has-required-value predicate, warning message).
 // A freshly-dropped node is empty by definition, so a miss is a `warning`
 // nudge, never an `error` that blocks deploy or turns the canvas red on drop.
@@ -63,8 +106,29 @@ function lintNode(wf: Workflow, n: Node, telOn: boolean, outEdges: (id: string) 
         nodeId: n.id,
       })
   }
+  // Same dead-end shape as the stall guard above, for logic_split: if every
+  // logic condition is false at runtime and there's no fallback edge, the
+  // node has no target and the call ends abruptly instead of continuing.
+  if (n.type === 'logic_split') {
+    const outs = outEdges(n.id)
+    if (outs.length > 0 && !outs.some((e) => e.kind === 'fallback'))
+      issues.push({
+        severity: 'warning',
+        message: `'${n.id}' can dead-end — if no logic condition matches at runtime there's no fallback edge, so the call ends abruptly instead of continuing. Add a Fallback edge as a catch-all.`,
+        nodeId: n.id,
+      })
+  }
   if (TELEPHONY_NODE_TYPES.has(n.type) && !telOn)
     issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
+  if (n.type === 'code') {
+    const m = TEMPLATE_IN_CODE_RE.exec((n as { source?: string }).source ?? '')
+    if (m)
+      issues.push({
+        severity: 'error',
+        message: `code node source contains '${m[0]}' — this is never substituted here (that syntax only works in prompt/message/url text fields), so it always runs as that literal string. Use \`variables.${m[0].slice(2, -2).trim()}\` instead — \`variables\` already holds every captured value in real JS/Python.`,
+        nodeId: n.id,
+      })
+  }
   return issues
 }
 
@@ -106,6 +170,71 @@ function lintEdge(e: Edge, idSet: Set<string>, nodeMap: Map<string, Node>): Lint
   return issues
 }
 
+// Every name that could plausibly hold a value by the time some node's text
+// is interpolated: declared globals, extract_variable captures, and every
+// node's saveAs — plus the built-in language-switch state variable (defaults
+// to "wlanguage", overridable), written by a runtime tool with no node of its
+// own, which would otherwise always look "unknown".
+function knownVariableNames(wf: Workflow): Set<string> {
+  const names = new Set(wf.variables.map((v) => v.key))
+  for (const n of wf.nodes) {
+    if (n.type === 'extract_variable') {
+      for (const f of (n as { extractions?: { variable: string }[] }).extractions ?? []) names.add(f.variable)
+    }
+    const saveAs = (n as { saveAs?: unknown }).saveAs
+    if (typeof saveAs === 'string' && saveAs.trim()) names.add(saveAs)
+  }
+  for (const lang of wf.agent?.languages ?? []) names.add(lang.state_variable || 'wlanguage')
+  return names
+}
+
+function collectRefs(value: unknown, out: string[]): void {
+  if (typeof value === 'string') {
+    for (const m of value.matchAll(VAR_REF_RE)) out.push(m[1].split('.', 1)[0])
+  } else if (Array.isArray(value)) {
+    value.forEach((v) => collectRefs(v, out))
+  } else if (value && typeof value === 'object') {
+    Object.values(value).forEach((v) => collectRefs(v, out))
+  }
+}
+
+// {{typo_name}} silently renders as an empty string at runtime — same failure
+// shape as the dead {{..}} in a code node, just spread across every templated
+// field instead of one. A warning, not an error: this can't see every way a
+// name might become valid, so it flags rather than blocks.
+function lintUnknownVariables(wf: Workflow): LintIssue[] {
+  const known = knownVariableNames(wf)
+  const issues: LintIssue[] = []
+  for (const n of wf.nodes) {
+    const refs: string[] = []
+    for (const field of TEMPLATED_TEXT_FIELDS[n.type] ?? []) collectRefs((n as Record<string, unknown>)[field], refs)
+    for (const field of TEMPLATED_DICT_FIELDS[n.type] ?? []) collectRefs((n as Record<string, unknown>)[field], refs)
+    if (n.type === 'function') collectRefs((n as { body?: unknown }).body, refs)
+    const unknown = [...new Set(refs.filter((r) => !known.has(r)))].sort((a, b) => a.localeCompare(b))
+    if (unknown.length) {
+      const refList = unknown.map(braceWrap).join(', ')
+      issues.push({
+        severity: 'warning',
+        message: `references undeclared variable(s) ${refList} — these render as an empty string at runtime, not an error, so a typo here is invisible until someone notices blank text. Check spelling against Variables / this workflow's extractions and saveAs fields.`,
+        nodeId: n.id,
+      })
+    }
+  }
+  if (wf.agent?.globalPrompt) {
+    const refs: string[] = []
+    collectRefs(wf.agent.globalPrompt, refs)
+    const unknown = [...new Set(refs.filter((r) => !known.has(r)))].sort((a, b) => a.localeCompare(b))
+    if (unknown.length) {
+      const refList = unknown.map(braceWrap).join(', ')
+      issues.push({
+        severity: 'warning',
+        message: `agent.globalPrompt references undeclared variable(s) ${refList}`,
+      })
+    }
+  }
+  return issues
+}
+
 function lintReachability(wf: Workflow, toolNodeIds: Set<string>, outEdges: (id: string) => Edge[]): LintIssue[] {
   const issues: LintIssue[] = []
   const reachable = reachableSet(wf)
@@ -143,14 +272,19 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
   const telOn = !!wf.transports.telephony?.enabled
   const toolNodeIds = collectToolNodeIds(wf, nodeMap)
 
-  const issues: LintIssue[] = [...lintIds(wf.nodes)]
-  if (!webOn && !telOn) issues.push({ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' })
-  issues.push(...lintStart(wf, idSet, nodeMap))
-  for (const n of wf.nodes) issues.push(...lintNode(wf, n, telOn, outEdges))
-  issues.push(...lintSaveAs(wf.nodes))
-  for (const e of wf.edges) issues.push(...lintEdge(e, idSet, nodeMap))
-  issues.push(...lintReachability(wf, toolNodeIds, outEdges))
-  return issues
+  const transportIssue: LintIssue[] = !webOn && !telOn
+    ? [{ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' }]
+    : []
+  return [
+    ...lintIds(wf.nodes),
+    ...transportIssue,
+    ...lintStart(wf, idSet, nodeMap),
+    ...wf.nodes.flatMap((n) => lintNode(wf, n, telOn, outEdges)),
+    ...lintSaveAs(wf.nodes),
+    ...wf.edges.flatMap((e) => lintEdge(e, idSet, nodeMap)),
+    ...lintReachability(wf, toolNodeIds, outEdges),
+    ...lintUnknownVariables(wf),
+  ]
 }
 
 function reachableSet(wf: Workflow): Set<string> {

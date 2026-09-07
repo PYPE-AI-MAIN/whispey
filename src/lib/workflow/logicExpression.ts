@@ -43,7 +43,15 @@ export interface ParsedCondition {
 // identifier — anchored to end-of-string, so "x > 1 && y == true" cannot match
 // (there's no valid single-token value that also consumes the trailing "&& ...").
 // Built from named pieces to keep each sub-pattern simple and readable.
-const IDENT = String.raw`[a-zA-Z_]\w*`
+//
+// IDENT allows a dotted path (`classification.category`) so a condition on one
+// field of a code/mcp/function node's saved object round-trips through the
+// builder — those nodes return an arbitrary shape we can't enumerate statically,
+// so there's no way to offer ".category" as a discrete known variable; the
+// user types it. The backend evaluator (workflow/tools.py) is what actually
+// enforces which attribute paths are safe to read; this regex only needs to
+// recognize the shape, not validate it.
+const IDENT = String.raw`[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*`
 const OPERATOR = String.raw`==|!=|>=|<=|>|<`
 const QUOTED = String.raw`'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"`
 const NUMBER = String.raw`-?\d+(?:\.\d+)?`
