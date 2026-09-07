@@ -196,9 +196,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 })
     }
 
-    // Return only active projects with user role included
+    // Return only active projects with user role included — deduped by
+    // project id, since an admin's deliberately broad match (clerk_id OR
+    // email) can legitimately return more than one mapping row for the same
+    // project (e.g. one per old/new-domain account sharing this email).
+    const seenProjectIds = new Set<string>()
     const activeProjects = projectMappings
       .filter(mapping => mapping.project)
+      .filter(mapping => {
+        // Supabase's inferred type for this joined relation doesn't match
+        // its actual one-to-one shape at runtime (same quirk as elsewhere
+        // in this codebase) — hence the `any`.
+        const id = (mapping.project as any)?.id
+        if (seenProjectIds.has(id)) return false
+        seenProjectIds.add(id)
+        return true
+      })
       .map(mapping => ({
         ...mapping.project,
         user_role: mapping.role
