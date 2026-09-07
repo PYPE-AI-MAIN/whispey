@@ -179,12 +179,15 @@ export function WorkflowChat({
       let buffer = ''
 
       while (true) {
+        // 90s, not 45s: a big workflow re-sent as context on every turn can
+        // legitimately take a while to reach its first output token, and this
+        // resets on every chunk received — it only fires on true silence.
         const { done, value } = await Promise.race([
           reader.read(),
           new Promise<never>((_, reject) => setTimeout(() => {
             abort.abort()
             reject(new Error('Response timed out — try a shorter/simpler request'))
-          }, 45000)),
+          }, 90000)),
         ])
         if (done) break
 

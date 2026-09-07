@@ -2,6 +2,21 @@ import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
 export const runtime = 'nodejs'
+// A large workflow can take a while just to reach the first output token,
+// let alone finish across MAX_ROUNDS continuations — the platform default
+// (as low as 10-60s) kills the function mid-generation with no error frame,
+// which looks to the client like the response never arrives. Vercel clamps
+// this to whatever the plan actually allows, so it's safe to ask for the max.
+export const maxDuration = 300
+
+// The system prompt already resends the FULL current workflow every turn (the
+// model needs current state to edit it — a deliberate tradeoff, not trimmed
+// here), so old chat turns are the one thing that's safe to cap: they mostly
+// restate context already reflected in that workflow. Without a cap, a long
+// AI Builder session keeps growing the request forever, pushing time-to-
+// first-token past the client's stall timeout. Keep the last few exchanges
+// for short-term coherence ("do that for this node too") and drop the rest.
+const MAX_HISTORY_MESSAGES = 16
 
 const enc = new TextEncoder()
 function sse(data: string) { return enc.encode(`data: ${data}\n\n`) }
@@ -199,9 +214,11 @@ export async function POST(req: NextRequest) {
     systemContent += `\n\nThe user's CURRENT workflow is:\n\`\`\`json\n${JSON.stringify(workflow, null, 2)}\n\`\`\`\nUse this as the base for any edits. Return the complete modified workflow.`
   }
 
+  const recentMessages = messages.slice(-MAX_HISTORY_MESSAGES)
+
   const convo: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'system', content: systemContent },
-    ...messages.map((m: { role: 'user' | 'assistant'; content: string }) => ({ role: m.role, content: m.content })),
+    ...recentMessages.map((m: { role: 'user' | 'assistant'; content: string }) => ({ role: m.role, content: m.content })),
   ]
 
   const { readable, writable } = new TransformStream()
