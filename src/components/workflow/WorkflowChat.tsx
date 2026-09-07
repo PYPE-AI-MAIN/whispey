@@ -619,6 +619,12 @@ function AssistantMessage({
   )
 }
 
+function formatAppliedNodeCount(applyNodeCount: number | undefined): string {
+  if (applyNodeCount == null) return ''
+  const plural = applyNodeCount === 1 ? '' : 's'
+  return ` — ${applyNodeCount} node${plural}`
+}
+
 /** One ```json block's status badge — pulled out of AssistantMessage so that
  * function's cognitive complexity stays about "which parts make up a
  * message", not also "what does a json part look like in each apply state". */
@@ -665,7 +671,7 @@ function AssistantMessageJsonPart({
         }`}
       >
         <Sparkles className="w-3 h-3" />
-        Applied to canvas{applyNodeCount != null ? ` — ${applyNodeCount} node${applyNodeCount === 1 ? '' : 's'}` : ''}
+        Applied to canvas{formatAppliedNodeCount(applyNodeCount)}
         {isSuspiciouslySmall ? " (looks small — ask for more detail if this isn't what you meant)" : ''}
       </div>
       {/* Same lint the canvas warning badge runs — shown here too since the

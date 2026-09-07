@@ -46,7 +46,8 @@ function WorkflowEdgeComponent({
       <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} className={animated ? 'react-flow__edge-path-animated' : undefined} />
       {label != null && label !== '' && (
         <EdgeLabelRenderer>
-          <div
+          <button
+            type="button"
             className={`nodrag nopan absolute text-[10px] font-medium px-1.5 py-0.5 rounded-md border cursor-pointer whitespace-nowrap ${
               selected
                 ? 'bg-blue-600 text-white border-blue-600 z-10'
@@ -60,21 +61,13 @@ function WorkflowEdgeComponent({
               pointerEvents: 'auto',
               transform: `translate(-50%, -50%) translate(${labelX + px * offset}px, ${labelY + py * offset}px)`,
             }}
-            role="button"
-            tabIndex={0}
             onClick={(e) => {
-              e.stopPropagation()
-              setSelectedEdge(id)
-            }}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter' && e.key !== ' ') return
-              e.preventDefault()
               e.stopPropagation()
               setSelectedEdge(id)
             }}
           >
             {label}
-          </div>
+          </button>
         </EdgeLabelRenderer>
       )}
     </>
