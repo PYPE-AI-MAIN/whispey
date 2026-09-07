@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { Workflow, WorkflowNode, Edge, AgentConfig } from '@/lib/workflow/schema'
-import { lintWorkflow, type LintIssue } from '@/lib/workflow/linter'
+import type { Workflow, WorkflowNode, Edge, AgentConfig, VarType } from '@/lib/workflow/schema'
+import { lintWorkflow, type LintIssue, collectAllVarRefs, knownVariableNames } from '@/lib/workflow/linter'
 
 interface WorkflowState {
   workflow: Workflow | null
@@ -60,6 +60,20 @@ function relint(wf: Workflow | null): LintIssue[] {
   try { return lintWorkflow(wf) } catch { return [] }
 }
 
+/** Auto-declares any {{ref}} typed into a templated field (prompt, message,
+ * url, ...) as a top-level variable, so self-serve users don't also have to
+ * visit the Variables tab by hand for something they already named inline. */
+function withAutoVars(wf: Workflow): Workflow {
+  try {
+    const known = knownVariableNames(wf)
+    const newRefs = collectAllVarRefs(wf).filter((r) => !known.has(r))
+    if (!newRefs.length) return wf
+    return { ...wf, variables: [...wf.variables, ...newRefs.map((key) => ({ key, type: 'string' as VarType }))] }
+  } catch {
+    return wf
+  }
+}
+
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   workflow: null,
   isDirty: false,
@@ -73,22 +87,25 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   replaceCount: 0,
 
   setWorkflow: (wf, opts) =>
-    set((s) => ({
-      workflow: wf,
-      isDirty: opts?.dirty ?? true,
-      past: [],
-      future: [],
-      lintIssues: relint(wf),
-      selectedNodeId: null,
-      selectedEdgeId: null,
-      replaceCount: s.replaceCount + 1,
-    })),
+    set((s) => {
+      const workflow = withAutoVars(wf)
+      return {
+        workflow,
+        isDirty: opts?.dirty ?? true,
+        past: [],
+        future: [],
+        lintIssues: relint(workflow),
+        selectedNodeId: null,
+        selectedEdgeId: null,
+        replaceCount: s.replaceCount + 1,
+      }
+    }),
 
   addNode: (node) =>
     set((s) => {
       if (!s.workflow) return s
       const undo = pushUndo(s)
-      const workflow = { ...s.workflow, nodes: [...s.workflow.nodes, node] }
+      const workflow = withAutoVars({ ...s.workflow, nodes: [...s.workflow.nodes, node] })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
 
@@ -110,10 +127,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((s) => {
       if (!s.workflow) return s
       const undo = pushUndo(s)
-      const workflow = {
+      const workflow = withAutoVars({
         ...s.workflow,
         nodes: s.workflow.nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } as WorkflowNode : n)),
-      }
+      })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
 
@@ -166,7 +183,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((s) => {
       if (!s.workflow) return s
       const undo = pushUndo(s)
-      const workflow = { ...s.workflow, agent: { ...s.workflow.agent, ...patch } }
+      const workflow = withAutoVars({ ...s.workflow, agent: { ...s.workflow.agent, ...patch } })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
 
@@ -174,7 +191,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set((s) => {
       if (!s.workflow) return s
       const undo = pushUndo(s)
-      const workflow = { ...s.workflow, ...patch }
+      const workflow = withAutoVars({ ...s.workflow, ...patch })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
 
