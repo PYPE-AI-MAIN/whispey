@@ -196,6 +196,7 @@ export function WorkflowCanvas() {
       onDragOver={onDragOver}
     >
       <ReactFlow
+        proOptions={{ hideAttribution: true }}
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={NODE_TYPES}
