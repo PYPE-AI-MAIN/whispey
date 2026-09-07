@@ -190,16 +190,18 @@ export async function GET(request: NextRequest) {
     // project id, since an admin's deliberately broad match (clerk_id OR
     // email) can legitimately return more than one mapping row for the same
     // project (e.g. one per old/new-domain account sharing this email).
+    // Supabase infers this joined relation as an array even though it's
+    // actually one-to-one at runtime (same quirk as elsewhere in this
+    // codebase) — a single explicit cast here avoids repeating `any`.
+    type ProjectRow = { id: string; name: string; description: string | null; environment: string; is_active: boolean; owner_clerk_id: string; created_at: string }
+    const mappingsTyped = projectMappings as unknown as { project: ProjectRow | null; role: string }[]
+
     const seenProjectIds = new Set<string>()
-    const activeProjects = projectMappings
-      .filter(mapping => mapping.project)
-      .filter(mapping => {
-        // Supabase's inferred type for this joined relation doesn't match
-        // its actual one-to-one shape at runtime (same quirk as elsewhere
-        // in this codebase) — hence the `any`.
-        const id = (mapping.project as any)?.id
-        if (seenProjectIds.has(id)) return false
-        seenProjectIds.add(id)
+    const activeProjects = mappingsTyped
+      .filter((mapping): mapping is { project: ProjectRow; role: string } => {
+        if (!mapping.project) return false
+        if (seenProjectIds.has(mapping.project.id)) return false
+        seenProjectIds.add(mapping.project.id)
         return true
       })
       .map(mapping => ({
