@@ -18,7 +18,8 @@ import {
   type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { LayoutGrid, Sparkles } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { LayoutGrid, Locate, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
@@ -60,6 +61,11 @@ const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
 export function WorkflowCanvas() {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition, fitView } = useReactFlow()
+  // xyflow ships its own dark theme for Controls/MiniMap, gated behind a
+  // literal `dark` class on the .react-flow root (not just an ancestor
+  // .dark) — without it those two render with their light-mode defaults
+  // (white buttons, near-invisible against a dark canvas).
+  const { resolvedTheme } = useTheme()
 
   const workflow = useWorkflowStore((s) => s.workflow)
   const chatStreaming = useWorkflowStore((s) => s.chatStreaming)
@@ -179,6 +185,7 @@ export function WorkflowCanvas() {
       onDragOver={onDragOver}
     >
       <ReactFlow
+        className={resolvedTheme === 'dark' ? 'dark' : undefined}
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={NODE_TYPES}
@@ -198,7 +205,7 @@ export function WorkflowCanvas() {
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls />
-        <MiniMap pannable zoomable className="!bg-gray-50 dark:!bg-gray-800" />
+        <MiniMap pannable zoomable />
         {chatStreaming && (
           <Panel position="top-center">
             <div className="flex items-center gap-2 h-8 px-3 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-600/30">
@@ -207,7 +214,15 @@ export function WorkflowCanvas() {
             </div>
           </Panel>
         )}
-        <Panel position="top-right">
+        <Panel position="top-right" className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
+            onClick={() => fitView({ padding: 0.2, duration: 300 })}
+          >
+            <Locate className="h-3.5 w-3.5 mr-1.5" /> Fit view
+          </Button>
           <Button variant="outline" size="sm" className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm" onClick={handleAutoArrange}>
             <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Auto-arrange
           </Button>
