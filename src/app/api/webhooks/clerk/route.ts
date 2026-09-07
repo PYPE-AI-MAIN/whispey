@@ -105,36 +105,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const isAdmin = isPlatformAdmin(userEmail)
 
-      // Pre-existing (old-domain) account for this email — approval_status is
-      // NULL only for rows that predate this feature entirely, never for a
-      // row this flow itself created (those are always 'pending'/'active'/'declined').
-      // Confirmed design: this account is a NEW, separate row for the new
-      // domain's clerk_id — the legacy row and its clerk_id are never
-      // touched, so old-domain access for this person keeps working.
-      const { data: legacyRow, error: legacyLookupError } = await supabase
-        .from('pype_voice_users')
-        .select('id, clerk_id')
-        .eq('email', userEmail)
-        .is('approval_status', null)
-        .maybeSingle()
-
-      if (legacyLookupError) {
-        console.error('❌ Error checking for legacy user:', legacyLookupError)
-        return new NextResponse('Error checking for legacy user', { status: 500 })
-      }
-
-      const isRecognizedExistingUser = !!legacyRow
-
       const { data, error } = await supabase.from('pype_voice_users').insert({
         clerk_id: id,
         email: userEmail,
         first_name: first_name,
         last_name: last_name,
         profile_image_url: image_url,
-        // Recognized existing users and PYPE_ADMINS skip the queue outright;
-        // everyone else starts pending until a platform admin decides.
-        approval_status: isAdmin || isRecognizedExistingUser ? 'active' : 'pending',
-        approval_token: isAdmin || isRecognizedExistingUser ? null : crypto.randomUUID(),
+        // Every signup starts pending until a platform admin decides —
+        // no more auto-approval by matching against a pre-existing account.
+        // PYPE_ADMINS still skip the queue outright.
+        approval_status: isAdmin ? 'active' : 'pending',
+        approval_token: isAdmin ? null : crypto.randomUUID(),
       }).select().single()
 
       if (error) {
@@ -144,38 +125,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       console.log('🎉 User created successfully:', data)
 
-      if (isRecognizedExistingUser && legacyRow!.clerk_id) {
-        // Copy their existing org access onto the new clerk_id — insert only,
-        // never update the legacy rows, so old-domain access is untouched.
-        const { data: oldMappings, error: oldMappingsError } = await supabase
-          .from('pype_voice_email_project_mapping')
-          .select('project_id, role, permissions, is_active')
-          .eq('clerk_id', legacyRow!.clerk_id)
-
-        if (oldMappingsError) {
-          console.error('⚠️ Failed to read legacy project mappings for', userEmail, oldMappingsError)
-        } else if (oldMappings && oldMappings.length > 0) {
-          const { error: copyError } = await supabase.from('pype_voice_email_project_mapping').insert(
-            oldMappings.map((m) => ({
-              clerk_id: id,
-              email: userEmail,
-              project_id: m.project_id,
-              role: m.role,
-              permissions: m.permissions,
-              is_active: m.is_active,
-              added_by_clerk_id: id,
-              granted_via: 'existing_user_migrated',
-            }))
-          )
-          if (copyError) {
-            console.error('⚠️ Failed to copy project mappings for', userEmail, copyError)
-          } else {
-            console.log(`🔗 Copied ${oldMappings.length} project mapping(s) for`, userEmail)
-          }
-        }
-      } else if (!isAdmin) {
+      if (!isAdmin) {
         try {
-          const adminEmails = process.env.PYPE_ADMINS?.split(',').map(e => e.trim()).filter(Boolean) || []
+          // Separate from PYPE_ADMINS (superadmin auth) on purpose — who
+          // gets notified of a pending signup isn't necessarily the same
+          // list as who has superadmin access.
+          const adminEmails = process.env.APPROVAL_NOTICE_EMAILS?.split(',').map(e => e.trim()).filter(Boolean) || []
           if (adminEmails.length > 0) {
             const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
             await sendPendingApprovalNotice({
@@ -186,7 +141,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               declineLink: `${appUrl}/api/admin/pending-users/${data.id}/action?decision=decline&token=${data.approval_token}`,
             })
           } else {
-            console.warn('⚠️ PYPE_ADMINS not configured — skipping pending-approval notice')
+            console.warn('⚠️ APPROVAL_NOTICE_EMAILS not configured — skipping pending-approval notice')
           }
         } catch (notifyErr) {
           console.error('⚠️ Failed to notify admins of pending signup:', notifyErr)
