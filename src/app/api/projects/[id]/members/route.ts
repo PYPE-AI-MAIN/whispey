@@ -160,11 +160,15 @@ export async function POST(
     }
 
     // Continue with normal flow to add new member...
-    // Check if user already exists in users table
+    // Check if user already exists in users table.
+    // .limit(1) before .maybeSingle(): pype_voice_users.email has no unique
+    // constraint on staging, so a dual-domain account (two clerk_ids sharing
+    // this email) can legitimately have two rows here — must not 500 on that.
     const { data: existingUser, error: existingUserError } = await supabase
       .from('pype_voice_users')
       .select('clerk_id')
       .eq('email', normalizedEmail)
+      .limit(1)
       .maybeSingle()
 
     if (existingUserError) {
