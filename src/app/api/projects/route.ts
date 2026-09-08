@@ -4,7 +4,6 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import crypto from 'crypto'
 import { createProjectApiKey } from '@/lib/api-key-management'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { getCallerGlobalRole } from '@/lib/prod-auth'
 import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
 
@@ -43,14 +42,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Self-serve org creation is restricted to superadmins — regular users
-    // get added to an org through the approval flow instead. PYPE_ADMINS are
-    // covered too: getCallerGlobalRole treats them as superadmin.
+    // Self-serve org creation is open to any authenticated caller. No extra
+    // role check is needed here: middleware.ts already blocks a pending or
+    // declined account from reaching any route but /pending-approval, so by
+    // the time a request lands here the caller is either approved or a
+    // platform admin. This is the path /onboarding's "Create Organization"
+    // uses for a brand-new user with no prior project to inherit — see
+    // pendingUserActions.ts's copyExistingProjectAccess for the other case
+    // (an approved user who already had access via an old-domain account).
     const userEmail = user.emailAddresses[0]?.emailAddress
-    const callerRole = await getCallerGlobalRole(userId)
-    if (callerRole !== 'superadmin') {
-      return NextResponse.json({ error: 'Admin access required to create an organization' }, { status: 403 })
-    }
 
     const body = await request.json()
     const { name, description } = body
