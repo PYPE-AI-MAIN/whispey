@@ -111,8 +111,7 @@ export async function PATCH(
     }
 
     // Don't allow changing your own role (but allow changing own visibility for future use)
-    const isSelf = memberToUpdate.clerk_id === userId || memberToUpdate.email?.toLowerCase() === userEmail?.toLowerCase()
-    if (role && isSelf) {
+    if (role && isSameUser(memberToUpdate, userId, userEmail)) {
       return NextResponse.json({ error: 'You cannot change your own role' }, { status: 400 })
     }
 
@@ -157,6 +156,41 @@ export async function PATCH(
   }
 }
 
+function isSameUser(mapping: { clerk_id: string | null; email: string | null }, userId: string, userEmail: string | undefined): boolean {
+  return mapping.clerk_id === userId || mapping.email?.toLowerCase() === userEmail?.toLowerCase()
+}
+
+// Permanently removes the mapping row (used for pending invites, so the invite
+// token stops working, and for an explicit "permanent" delete of an active member).
+async function hardDeleteMapping(memberId: string, projectId: string): Promise<NextResponse | null> {
+  const { error } = await supabase
+    .from('pype_voice_email_project_mapping')
+    .delete()
+    .eq('id', memberId)
+    .eq('project_id', projectId)
+
+  if (error) {
+    console.error('Error deleting member:', error)
+    return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+  }
+  return null
+}
+
+// Deactivates an active member's mapping row without deleting it, so they can be re-added later.
+async function softDeleteMapping(memberId: string, projectId: string): Promise<NextResponse | null> {
+  const { error } = await supabase
+    .from('pype_voice_email_project_mapping')
+    .update({ is_active: false })
+    .eq('id', memberId)
+    .eq('project_id', projectId)
+
+  if (error) {
+    console.error('Error soft deleting member:', error)
+    return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+  }
+  return null
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; memberId: string }> }
@@ -164,17 +198,14 @@ export async function DELETE(
   try {
     const { userId } = await auth()
     const user = await currentUser()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id: projectId, memberId } = await params
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
-
-    // Get permanent flag from query params
-    const { searchParams } = new URL(request.url)
-    const permanent = searchParams.get('permanent') === 'true'
+    const permanent = new URL(request.url).searchParams.get('permanent') === 'true'
 
     const access = await requireProjectAdminAccess(projectId, userId, userEmail)
     if ('errorResponse' in access) {
@@ -202,8 +233,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot remove project owner' }, { status: 400 })
     }
 
-    // Don't allow removing yourself
-    if (memberToDelete.clerk_id === userId || memberToDelete.email?.toLowerCase() === userEmail?.toLowerCase()) {
+    if (isSameUser(memberToDelete, userId, userEmail)) {
       return NextResponse.json({ error: 'You cannot remove yourself' }, { status: 400 })
     }
 
@@ -213,39 +243,26 @@ export async function DELETE(
     const isPendingInvite = !memberToDelete.clerk_id
 
     if (isPendingInvite || permanent) {
-      const { error: deleteError } = await supabase
-        .from('pype_voice_email_project_mapping')
-        .delete()
-        .eq('id', memberId)
-        .eq('project_id', projectId)
-
-      if (deleteError) {
-        console.error('Error deleting member:', deleteError)
-        return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+      const errorResponse = await hardDeleteMapping(memberId, projectId)
+      if (errorResponse) {
+        return errorResponse
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: isPendingInvite ? 'Invite cancelled' : 'Member permanently removed',
         type: isPendingInvite ? 'invite_cancelled' : 'permanent_delete',
       }, { status: 200 })
-    } else {
-      // Soft delete active members — preserves history and allows re-adding
-      const { error: deleteError } = await supabase
-        .from('pype_voice_email_project_mapping')
-        .update({ is_active: false })
-        .eq('id', memberId)
-        .eq('project_id', projectId)
-
-      if (deleteError) {
-        console.error('Error soft deleting member:', deleteError)
-        return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
-      }
-
-      return NextResponse.json({ 
-        message: 'Member access removed',
-        type: 'soft_delete'
-      }, { status: 200 })
     }
+
+    const errorResponse = await softDeleteMapping(memberId, projectId)
+    if (errorResponse) {
+      return errorResponse
+    }
+
+    return NextResponse.json({
+      message: 'Member access removed',
+      type: 'soft_delete'
+    }, { status: 200 })
   } catch (error) {
     console.error('Unexpected error removing member:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
