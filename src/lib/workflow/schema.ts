@@ -66,8 +66,18 @@ export const languageSwitchTool = z.object({
 
 export const agentConfig = z.object({
   globalPrompt: z.string().default(''),
-  llm: llmConfig.default({ name: 'azure_openai', model: 'gpt-4.1-mini' }),
-  stt: sttConfig.default({ name: 'sarvam', model: 'saaras:v3' }),
+  // 'azure', not 'azure_openai' — that's the exact key workflow/providers.py's
+  // build_llm() dispatches on; an unrecognized name doesn't error, it silently
+  // falls through to plain OpenAI (confirmed live: model_provider logged as
+  // api.openai.com instead of Azure) since "gpt-4.1-mini" also happens to be
+  // a real OpenAI model id, so the wrong-provider fallback was invisible.
+  llm: llmConfig.default({ name: 'azure', model: 'gpt-4.1-mini' }),
+  // language:'unknown' is Sarvam's auto-detect sentinel (see SelectSTTDialog) —
+  // omitting it falls through to sttConfig's own default of 'en', which isn't
+  // a valid BCP-47 code for saaras models and makes the backend's Sarvam
+  // plugin raise and silently fall back to Deepgram (workflow/providers.py
+  // _dispatch). saaras:v4 is the plugin's own current default model.
+  stt: sttConfig.default({ name: 'sarvam', model: 'saaras:v4', language: 'unknown' }),
   tts: ttsConfig.default({ name: 'elevenlabs', voice_id: 'MmQVkVZnQ0dUbfWzcW6f' }),
   vad: vadConfig.nullish(),
   turnDetection: turnDetectionConfig.nullish(),

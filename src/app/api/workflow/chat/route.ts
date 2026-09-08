@@ -136,6 +136,9 @@ Because of this, every \`globalPrompt\` you write or edit — whether building f
 - **logic**: variable expression (e.g. "budget > 5000"). Used with logic_split source nodes.
 - **fallback**: default branch when nothing else matched.
 
+## HARD RULE — every conversation/extract_variable/subagent node needs a way out
+If a node's only outgoing edges are \`condition\` kind, the graph only advances when the caller's reply happens to match one of those exact phrasings — anything else (an ambiguous answer, a question back, silence, a reply that doesn't cleanly fit any listed condition) leaves the model with no tool to call, so the call just stalls on that node forever. This is invisible in a text review of the prompt and only shows up on a live call. Whenever a node like this has one or more \`condition\` edges, ALSO add one \`always\` or \`fallback\` edge out of it as a catch-all (usually back to itself or to a "let me get that another way" clarification path) — the same requirement already stated above for \`logic_split\`. A node with zero outgoing edges at all (and not an \`ending\` node) is worse — a hard dead-end — so every non-ending node must have at least one outgoing edge.
+
 ## Layout rules
 
 - Position nodes top-to-bottom or left-to-right, ~160px apart vertically
