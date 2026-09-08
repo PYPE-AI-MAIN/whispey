@@ -3,12 +3,46 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
 
 function normalizeRole(role: string): string {
   if (role === 'user' || role === 'member' || role === 'viewer') return 'viewer'
   return role
+}
+
+type MappingAccessRow = { role: string; clerk_id: string | null; email: string; is_active: boolean | null }
+
+// Shared by PATCH and DELETE: does the caller have admin/owner access to this project?
+// .limit(1) before .maybeSingle(): an admin's match is deliberately broad (clerk_id
+// OR email), so a legitimate multi-row match (dual accounts sharing this email) must
+// not turn "yes, a member" into a 500.
+async function requireProjectAdminAccess(
+  projectId: string,
+  userId: string,
+  userEmail: string | undefined
+): Promise<{ mapping: MappingAccessRow } | { errorResponse: NextResponse }> {
+  const { data: userAccessMapping, error: accessError } = await supabase
+    .from('pype_voice_email_project_mapping')
+    .select('role, clerk_id, email, is_active')
+    .eq('project_id', projectId)
+    .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
+    .or('is_active.is.null,is_active.eq.true')
+    .limit(1)
+    .maybeSingle()
+
+  if (accessError) {
+    console.error('Error checking user access:', accessError)
+    return { errorResponse: NextResponse.json({ error: 'Internal server error' }, { status: 500 }) }
+  }
+
+  if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
+    return { errorResponse: NextResponse.json({ error: 'Admin access required' }, { status: 403 }) }
+  }
+
+  return { mapping: userAccessMapping }
 }
 
 export async function PATCH(
@@ -39,23 +73,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
-    // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
-    const { data: userAccessMapping, error: accessError } = await supabase
-      .from('pype_voice_email_project_mapping')
-      .select('role, clerk_id, email, is_active')
-      .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
-      .or('is_active.is.null,is_active.eq.true')
-      .maybeSingle()
-
-    if (accessError) {
-      console.error('Error checking user access:', accessError)
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const access = await requireProjectAdminAccess(projectId, userId, userEmail)
+    if ('errorResponse' in access) {
+      return access.errorResponse
     }
-
-    if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
+    const { mapping: userAccessMapping } = access
 
     // Normalize the role early
     const newRole = normalizeRole(role)
@@ -89,8 +111,7 @@ export async function PATCH(
     }
 
     // Don't allow changing your own role (but allow changing own visibility for future use)
-    const isSelf = memberToUpdate.clerk_id === userId || memberToUpdate.email?.toLowerCase() === userEmail?.toLowerCase()
-    if (role && isSelf) {
+    if (role && isSameUser(memberToUpdate, userId, userEmail)) {
       return NextResponse.json({ error: 'You cannot change your own role' }, { status: 400 })
     }
 
@@ -135,6 +156,41 @@ export async function PATCH(
   }
 }
 
+function isSameUser(mapping: { clerk_id: string | null; email: string | null }, userId: string, userEmail: string | undefined): boolean {
+  return mapping.clerk_id === userId || mapping.email?.toLowerCase() === userEmail?.toLowerCase()
+}
+
+// Permanently removes the mapping row (used for pending invites, so the invite
+// token stops working, and for an explicit "permanent" delete of an active member).
+async function hardDeleteMapping(memberId: string, projectId: string): Promise<NextResponse | null> {
+  const { error } = await supabase
+    .from('pype_voice_email_project_mapping')
+    .delete()
+    .eq('id', memberId)
+    .eq('project_id', projectId)
+
+  if (error) {
+    console.error('Error deleting member:', error)
+    return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+  }
+  return null
+}
+
+// Deactivates an active member's mapping row without deleting it, so they can be re-added later.
+async function softDeleteMapping(memberId: string, projectId: string): Promise<NextResponse | null> {
+  const { error } = await supabase
+    .from('pype_voice_email_project_mapping')
+    .update({ is_active: false })
+    .eq('id', memberId)
+    .eq('project_id', projectId)
+
+  if (error) {
+    console.error('Error soft deleting member:', error)
+    return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+  }
+  return null
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; memberId: string }> }
@@ -142,34 +198,18 @@ export async function DELETE(
   try {
     const { userId } = await auth()
     const user = await currentUser()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id: projectId, memberId } = await params
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
+    const permanent = new URL(request.url).searchParams.get('permanent') === 'true'
 
-    // Get permanent flag from query params
-    const { searchParams } = new URL(request.url)
-    const permanent = searchParams.get('permanent') === 'true'
-
-    // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
-    const { data: userAccessMapping, error: accessError } = await supabase
-      .from('pype_voice_email_project_mapping')
-      .select('role, clerk_id, email, is_active')
-      .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
-      .or('is_active.is.null,is_active.eq.true')
-      .maybeSingle()
-
-    if (accessError) {
-      console.error('Error checking user access:', accessError)
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-    }
-
-    if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    const access = await requireProjectAdminAccess(projectId, userId, userEmail)
+    if ('errorResponse' in access) {
+      return access.errorResponse
     }
 
     // ✅ FIXED: Get the member to delete (check ALL records, not just active)
@@ -193,8 +233,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot remove project owner' }, { status: 400 })
     }
 
-    // Don't allow removing yourself
-    if (memberToDelete.clerk_id === userId || memberToDelete.email?.toLowerCase() === userEmail?.toLowerCase()) {
+    if (isSameUser(memberToDelete, userId, userEmail)) {
       return NextResponse.json({ error: 'You cannot remove yourself' }, { status: 400 })
     }
 
@@ -204,39 +243,26 @@ export async function DELETE(
     const isPendingInvite = !memberToDelete.clerk_id
 
     if (isPendingInvite || permanent) {
-      const { error: deleteError } = await supabase
-        .from('pype_voice_email_project_mapping')
-        .delete()
-        .eq('id', memberId)
-        .eq('project_id', projectId)
-
-      if (deleteError) {
-        console.error('Error deleting member:', deleteError)
-        return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
+      const errorResponse = await hardDeleteMapping(memberId, projectId)
+      if (errorResponse) {
+        return errorResponse
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: isPendingInvite ? 'Invite cancelled' : 'Member permanently removed',
         type: isPendingInvite ? 'invite_cancelled' : 'permanent_delete',
       }, { status: 200 })
-    } else {
-      // Soft delete active members — preserves history and allows re-adding
-      const { error: deleteError } = await supabase
-        .from('pype_voice_email_project_mapping')
-        .update({ is_active: false })
-        .eq('id', memberId)
-        .eq('project_id', projectId)
-
-      if (deleteError) {
-        console.error('Error soft deleting member:', deleteError)
-        return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 })
-      }
-
-      return NextResponse.json({ 
-        message: 'Member access removed',
-        type: 'soft_delete'
-      }, { status: 200 })
     }
+
+    const errorResponse = await softDeleteMapping(memberId, projectId)
+    if (errorResponse) {
+      return errorResponse
+    }
+
+    return NextResponse.json({
+      message: 'Member access removed',
+      type: 'soft_delete'
+    }, { status: 200 })
   } catch (error) {
     console.error('Unexpected error removing member:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

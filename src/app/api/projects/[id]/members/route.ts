@@ -5,6 +5,8 @@ import { randomUUID } from 'crypto'
 import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { sendInviteEmail } from '@/lib/sendInviteEmail'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
 
@@ -61,16 +63,18 @@ export async function POST(
 
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
     
-    // Check current user access
+    // Check current user access. Scoped the same way as everywhere else:
+    // non-admins only match their own clerk_id (or an unclaimed new-domain
+    // invite), so a stale row from a different account sharing this email
+    // can't grant invite/admin rights here.
     const { data: allMappings } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email')
       .eq('project_id', projectId)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
 
-    const userMapping = allMappings?.find(
-      (m: any) => m.clerk_id === userId || m.email?.toLowerCase() === userEmail?.toLowerCase()
-    )
+    const userMapping = allMappings?.find((m: any) => ['admin', 'owner'].includes(m.role))
 
     if (!userMapping || !['admin', 'owner'].includes(userMapping.role)) {
       return NextResponse.json(
@@ -89,12 +93,15 @@ export async function POST(
     const orgName = project?.name ?? 'your organization'
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
 
-    // Check if already added by email (INCLUDING INACTIVE ONES)
+    // Check if already added by email (INCLUDING INACTIVE ONES).
+    // .limit(1): if this email was ever added to this exact project under two
+    // different clerk_ids (dual-domain account), this must not 500 on that.
     const { data: existingMapping, error: existingMappingError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('id, is_active, clerk_id, invite_token')
       .eq('email', normalizedEmail)
       .eq('project_id', projectId)
+      .limit(1)
       .maybeSingle()
 
     if (existingMappingError) {
@@ -156,11 +163,15 @@ export async function POST(
     }
 
     // Continue with normal flow to add new member...
-    // Check if user already exists in users table
+    // Check if user already exists in users table.
+    // .limit(1) before .maybeSingle(): pype_voice_users.email has no unique
+    // constraint on staging, so a dual-domain account (two clerk_ids sharing
+    // this email) can legitimately have two rows here — must not 500 on that.
     const { data: existingUser, error: existingUserError } = await supabase
       .from('pype_voice_users')
       .select('clerk_id')
       .eq('email', normalizedEmail)
+      .limit(1)
       .maybeSingle()
 
     if (existingUserError) {
@@ -296,12 +307,16 @@ export async function GET(
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
     // ✅ FIXED: Check if user has ANY access to the project (not just admin)
+    // .limit(1) before .maybeSingle(): an admin's match is deliberately broad
+    // (clerk_id OR email), so a legitimate multi-row match (dual accounts
+    // sharing this email) must not turn "yes, a member" into a 500.
     const { data: userAccessMapping, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
+      .limit(1)
       .maybeSingle()
 
     if (accessError) {
