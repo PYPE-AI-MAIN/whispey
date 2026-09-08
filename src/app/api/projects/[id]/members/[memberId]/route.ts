@@ -13,6 +13,38 @@ function normalizeRole(role: string): string {
   return role
 }
 
+type MappingAccessRow = { role: string; clerk_id: string | null; email: string; is_active: boolean | null }
+
+// Shared by PATCH and DELETE: does the caller have admin/owner access to this project?
+// .limit(1) before .maybeSingle(): an admin's match is deliberately broad (clerk_id
+// OR email), so a legitimate multi-row match (dual accounts sharing this email) must
+// not turn "yes, a member" into a 500.
+async function requireProjectAdminAccess(
+  projectId: string,
+  userId: string,
+  userEmail: string | undefined
+): Promise<{ mapping: MappingAccessRow } | { errorResponse: NextResponse }> {
+  const { data: userAccessMapping, error: accessError } = await supabase
+    .from('pype_voice_email_project_mapping')
+    .select('role, clerk_id, email, is_active')
+    .eq('project_id', projectId)
+    .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
+    .or('is_active.is.null,is_active.eq.true')
+    .limit(1)
+    .maybeSingle()
+
+  if (accessError) {
+    console.error('Error checking user access:', accessError)
+    return { errorResponse: NextResponse.json({ error: 'Internal server error' }, { status: 500 }) }
+  }
+
+  if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
+    return { errorResponse: NextResponse.json({ error: 'Admin access required' }, { status: 403 }) }
+  }
+
+  return { mapping: userAccessMapping }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; memberId: string }> }
@@ -41,27 +73,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
-    // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
-    // .limit(1) before .maybeSingle(): an admin's match is deliberately broad
-    // (clerk_id OR email), so a legitimate multi-row match (dual accounts
-    // sharing this email) must not turn "yes, a member" into a 500.
-    const { data: userAccessMapping, error: accessError } = await supabase
-      .from('pype_voice_email_project_mapping')
-      .select('role, clerk_id, email, is_active')
-      .eq('project_id', projectId)
-      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
-      .or('is_active.is.null,is_active.eq.true')
-      .limit(1)
-      .maybeSingle()
-
-    if (accessError) {
-      console.error('Error checking user access:', accessError)
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const access = await requireProjectAdminAccess(projectId, userId, userEmail)
+    if ('errorResponse' in access) {
+      return access.errorResponse
     }
-
-    if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
+    const { mapping: userAccessMapping } = access
 
     // Normalize the role early
     const newRole = normalizeRole(role)
@@ -160,26 +176,9 @@ export async function DELETE(
     const { searchParams } = new URL(request.url)
     const permanent = searchParams.get('permanent') === 'true'
 
-    // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
-    // .limit(1) before .maybeSingle(): an admin's match is deliberately broad
-    // (clerk_id OR email), so a legitimate multi-row match (dual accounts
-    // sharing this email) must not turn "yes, a member" into a 500.
-    const { data: userAccessMapping, error: accessError } = await supabase
-      .from('pype_voice_email_project_mapping')
-      .select('role, clerk_id, email, is_active')
-      .eq('project_id', projectId)
-      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
-      .or('is_active.is.null,is_active.eq.true')
-      .limit(1)
-      .maybeSingle()
-
-    if (accessError) {
-      console.error('Error checking user access:', accessError)
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-    }
-
-    if (!userAccessMapping || !['admin', 'owner'].includes(userAccessMapping.role)) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    const access = await requireProjectAdminAccess(projectId, userId, userEmail)
+    if ('errorResponse' in access) {
+      return access.errorResponse
     }
 
     // ✅ FIXED: Get the member to delete (check ALL records, not just active)
