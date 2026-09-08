@@ -93,12 +93,15 @@ export async function POST(
     const orgName = project?.name ?? 'your organization'
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
 
-    // Check if already added by email (INCLUDING INACTIVE ONES)
+    // Check if already added by email (INCLUDING INACTIVE ONES).
+    // .limit(1): if this email was ever added to this exact project under two
+    // different clerk_ids (dual-domain account), this must not 500 on that.
     const { data: existingMapping, error: existingMappingError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('id, is_active, clerk_id, invite_token')
       .eq('email', normalizedEmail)
       .eq('project_id', projectId)
+      .limit(1)
       .maybeSingle()
 
     if (existingMappingError) {
