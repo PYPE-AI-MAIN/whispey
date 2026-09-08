@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { DEFAULT_MEMBER_VISIBILITY, VIEWER_RESTRICTED_VISIBILITY } from '@/types/visibility'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { projectMembershipMatch } from '@/lib/getProjectRoleForApi'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 const supabase = createServiceRoleClient()
 
@@ -40,12 +42,16 @@ export async function PATCH(
     }
 
     // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
+    // .limit(1) before .maybeSingle(): an admin's match is deliberately broad
+    // (clerk_id OR email), so a legitimate multi-row match (dual accounts
+    // sharing this email) must not turn "yes, a member" into a 500.
     const { data: userAccessMapping, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
+      .limit(1)
       .maybeSingle()
 
     if (accessError) {
@@ -155,12 +161,16 @@ export async function DELETE(
     const permanent = searchParams.get('permanent') === 'true'
 
     // ✅ FIXED: Check if current user has admin/owner access (only active mappings)
+    // .limit(1) before .maybeSingle(): an admin's match is deliberately broad
+    // (clerk_id OR email), so a legitimate multi-row match (dual accounts
+    // sharing this email) must not turn "yes, a member" into a 500.
     const { data: userAccessMapping, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
-      .or(`clerk_id.eq.${userId},email.ilike.${userEmail}`)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
+      .limit(1)
       .maybeSingle()
 
     if (accessError) {
