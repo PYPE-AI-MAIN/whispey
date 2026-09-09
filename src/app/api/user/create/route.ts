@@ -45,11 +45,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email not found' }, { status: 400 })
     }
 
-    // Check if already exists
+    // Check if already exists.
+    // .limit(1) before .maybeSingle(): pype_voice_users.email has no unique
+    // constraint on staging, so a dual-domain account (two clerk_ids sharing
+    // this email) can legitimately have two rows here — must not 500 on that.
     const { data: existingUser } = await supabase
       .from('pype_voice_users')
       .select('id, clerk_id')
       .or(`clerk_id.eq.${userId},email.eq.${email}`)
+      .limit(1)
       .maybeSingle()
 
     if (existingUser) {
