@@ -15,16 +15,16 @@ import { Switch } from '@/components/ui/switch'
 const STREAMING_TURN_DETECTOR_MIN_SILENCE = 0.25
 
 interface VoiceActivitySettingsProps {
-  vadProvider: string
-  minSilenceDuration: number
-  minSpeechDuration?: number
-  prefixPaddingDuration?: number
-  maxBufferedSpeech?: number
-  activationThreshold?: number
-  sampleRate?: 8000 | 16000
-  forceCpu?: boolean
-  turnDetection?: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
-  onFieldChange: (field: string, value: any) => void
+  readonly vadProvider: string
+  readonly minSilenceDuration: number
+  readonly minSpeechDuration?: number
+  readonly prefixPaddingDuration?: number
+  readonly maxBufferedSpeech?: number
+  readonly activationThreshold?: number
+  readonly sampleRate?: 8000 | 16000
+  readonly forceCpu?: boolean
+  readonly turnDetection?: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
+  readonly onFieldChange: (field: string, value: any) => void
 }
 
 function VoiceActivitySettings({
