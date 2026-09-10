@@ -1022,13 +1022,16 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             values.callWindowEnd
                           )
                           if (!warning) return null
+                          // <output> over role="status": it carries the same
+                          // live-region semantics natively and announces the
+                          // recalculated warning as the schedule is edited.
+                          // Inline by default, hence block.
                           return (
-                            <p
-                              role="status"
-                              className="text-xs mt-2 rounded-md px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900"
+                            <output
+                              className="block text-xs mt-2 rounded-md px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900"
                             >
                               {warning}
-                            </p>
+                            </output>
                           )
                         })()}
                       </div>
