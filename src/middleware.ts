@@ -13,6 +13,7 @@ const isPublicRoute = createRouteMatcher([
   '/invite(.*)',
   // Public API routes (external callers — no Clerk session)
   '/api/webhooks(.*)',
+  '/api/health(.*)',
   '/api/vapi/webhook(.*)',
   '/api/retell/webhook(.*)',
   '/api/elevenlabs/webhook(.*)',
@@ -45,7 +46,16 @@ export default clerkMiddleware(async (auth, request) => {
 
   // If it's not a public route, require either a Clerk session or a valid internal service JWT
   if (!isPublicRoute(request)) {
-    const isInternalCall = await hasValidServiceToken(request.headers.get('Authorization'))
+    const authHeader = request.headers.get('Authorization')
+    // TEMP DEBUG — remove after confirming PYPE_JWT_SECRET visibility in middleware
+    console.log('[middleware debug]', {
+      path: pathname,
+      method: request.method,
+      hasAuthHeader: !!authHeader,
+      hasSecret: !!process.env.PYPE_JWT_SECRET,
+    })
+    const isInternalCall = await hasValidServiceToken(authHeader)
+    console.log('[middleware debug] isInternalCall:', isInternalCall)
     if (!isInternalCall) await auth.protect()
   }
 });

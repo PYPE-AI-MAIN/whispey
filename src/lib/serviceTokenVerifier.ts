@@ -13,11 +13,19 @@ const EXPECTED_ALG = 'HS256'
 const EXPECTED_AUD = 'pype-vc-bots'
 
 /**
- * Convert a base64url string to an ArrayBuffer.
+ * Convert a base64url string to a Uint8Array.
  * Uses codePointAt (preferred over charCodeAt for Unicode correctness).
  * Throws on invalid base64url input.
+ *
+ * Returns the TypedArray itself rather than `.buffer` — unwrapping to a bare
+ * ArrayBuffer tripped `crypto.subtle.verify`'s BufferSource check inside
+ * Next.js's Edge Runtime sandbox ("3rd argument is not instance of
+ * ArrayBuffer, Buffer, TypedArray, or DataView"), because the ArrayBuffer
+ * produced in that realm didn't satisfy the native binding's identity check
+ * even though it's structurally valid. Passing the Uint8Array view directly
+ * sidesteps that cross-realm mismatch.
  */
-function base64UrlToBuffer(input: string): ArrayBuffer {
+function base64UrlToBuffer(input: string): Uint8Array {
   const base64 = input.replaceAll('-', '+').replaceAll('_', '/')
   const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
   const binary = atob(padded)
@@ -25,12 +33,12 @@ function base64UrlToBuffer(input: string): ArrayBuffer {
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.codePointAt(i) ?? 0
   }
-  return bytes.buffer
+  return bytes
 }
 
 /** Decode a base64url JWT segment into a plain object. Throws on invalid JSON. */
 function decodeSegment(segment: string): Record<string, unknown> {
-  return JSON.parse(new TextDecoder().decode(base64UrlToBuffer(segment)))
+  return JSON.parse(new TextDecoder().decode(base64UrlToBuffer(segment) as BufferSource))
 }
 
 /**
@@ -45,19 +53,32 @@ function decodeSegment(segment: string): Record<string, unknown> {
  * missing env var — without throwing.
  */
 export async function hasValidServiceToken(authHeader: string | null): Promise<boolean> {
-  if (!authHeader?.startsWith('Bearer ')) return false
+  // TEMP DEBUG — remove once the restore/webhook auth investigation is closed.
+  if (!authHeader?.startsWith('Bearer ')) {
+    console.log('[serviceTokenVerifier] fail: no Bearer prefix', { authHeader })
+    return false
+  }
 
   const token = authHeader.slice(7).trim()
   const parts = token.split('.')
-  if (parts.length !== 3) return false
+  if (parts.length !== 3) {
+    console.log('[serviceTokenVerifier] fail: wrong part count', { partCount: parts.length })
+    return false
+  }
 
   const secret = process.env.PYPE_JWT_SECRET
-  if (!secret) return false
+  if (!secret) {
+    console.log('[serviceTokenVerifier] fail: no secret')
+    return false
+  }
 
   try {
     // 1. Check algorithm claim before any crypto work (alg confusion guard)
     const header = decodeSegment(parts[0])
-    if (header.alg !== EXPECTED_ALG) return false
+    if (header.alg !== EXPECTED_ALG) {
+      console.log('[serviceTokenVerifier] fail: alg mismatch', { alg: header.alg })
+      return false
+    }
 
     // 2. Import the HMAC key for verification only (not extractable)
     const key = await crypto.subtle.importKey(
@@ -68,11 +89,23 @@ export async function hasValidServiceToken(authHeader: string | null): Promise<b
       ['verify'],
     )
 
-    // 3. Verify HMAC signature over the signed input (header.payload)
-    const sigInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`).buffer
+    // 3. Verify HMAC signature over the signed input (header.payload) — pass
+    // Uint8Array views throughout (not `.buffer`) for the same cross-realm
+    // reason documented on base64UrlToBuffer above.
+    const sigInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`)
     const sigBytes = base64UrlToBuffer(parts[2])
-    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, sigInput)
-    if (!valid) return false
+    // Cast: TS's DOM lib types Uint8Array generically over ArrayBufferLike
+    // (which includes SharedArrayBuffer), so it doesn't structurally satisfy
+    // BufferSource even though these are always plain, non-shared buffers
+    // at runtime — Web Crypto itself accepts any TypedArray view.
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes as BufferSource, sigInput as BufferSource)
+    if (!valid) {
+      console.log('[serviceTokenVerifier] fail: signature invalid', {
+        secretLen: secret.length,
+        tokenPreview: token.slice(0, 20) + '...',
+      })
+      return false
+    }
 
     // 4. Decode payload and validate claims (only after signature is verified)
     const payload = decodeSegment(parts[1])
@@ -82,16 +115,27 @@ export async function hasValidServiceToken(authHeader: string | null): Promise<b
     const audValid =
       aud === EXPECTED_AUD ||
       (Array.isArray(aud) && aud.includes(EXPECTED_AUD))
-    if (!audValid) return false
+    if (!audValid) {
+      console.log('[serviceTokenVerifier] fail: aud mismatch', { aud })
+      return false
+    }
 
     // Expiry: must be present and in the future (no exp = reject)
     const exp = payload.exp
-    if (typeof exp !== 'number') return false
-    if (exp <= Math.floor(Date.now() / 1000)) return false
+    if (typeof exp !== 'number') {
+      console.log('[serviceTokenVerifier] fail: exp not a number', { exp })
+      return false
+    }
+    if (exp <= Math.floor(Date.now() / 1000)) {
+      console.log('[serviceTokenVerifier] fail: token expired', { exp, now: Math.floor(Date.now() / 1000) })
+      return false
+    }
 
+    console.log('[serviceTokenVerifier] SUCCESS')
     return true
-  } catch {
+  } catch (err) {
     // Covers: malformed base64url, invalid JSON, crypto errors
+    console.log('[serviceTokenVerifier] fail: exception', { message: (err as Error)?.message })
     return false
   }
 }
