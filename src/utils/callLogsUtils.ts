@@ -504,8 +504,8 @@ export async function fetchTranscriptTurnsForSessions(
   // turn_id ("turn_1", "turn_2", ...) is the authoritative sequence, same as TracesTable.
   for (const turns of map.values()) {
     turns.sort((a, b) => {
-      const aNum = parseInt(String(a.turn_id ?? '').replace('turn_', '')) || 0
-      const bNum = parseInt(String(b.turn_id ?? '').replace('turn_', '')) || 0
+      const aNum = Number.parseInt(String(a.turn_id ?? '').replace('turn_', '')) || 0
+      const bNum = Number.parseInt(String(b.turn_id ?? '').replace('turn_', '')) || 0
       return aNum - bNum
     })
   }
