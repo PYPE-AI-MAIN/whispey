@@ -256,7 +256,16 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
       if (!sessionData.token && !sessionData.user_token) throw new Error('No token in session response.')
       await liveKitRoom.connect(sessionData.url, sessionData.token || sessionData.user_token!, { autoSubscribe: true })
       if (mode === 'voice') {
-        await liveKitRoom.localParticipant.setMicrophoneEnabled(true).catch(e => console.warn('Mic enable failed:', e))
+        // Swallowing this used to mean: room connects fine, transcript panel
+        // shows the agent's greeting, everything LOOKS connected — but no
+        // local audio track ever gets published, so the agent never receives
+        // a single frame of the caller's voice and just sits there silently.
+        // Surface it instead of only logging, so a denied/blocked mic is
+        // visible rather than indistinguishable from "STT isn't working."
+        await liveKitRoom.localParticipant.setMicrophoneEnabled(true).catch(e => {
+          console.warn('Mic enable failed:', e)
+          setConnectionError(`Microphone access failed (${e?.name || 'error'}): ${e?.message || e}. Check your browser's mic permission for this site.`)
+        })
       }
       // chat mode: mic stays off, no audio elements created
     } catch (error) {
