@@ -4,20 +4,27 @@ import React, { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Info } from 'lucide-react'
+import { Info, AlertTriangle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Switch } from '@/components/ui/switch'
 
+// LiveKit's streaming TurnDetector (v1 / v1-mini) rejects a VAD whose
+// min_silence_duration is below this floor: audio_recognition.py computes
+// required = (MIN_SILENCE_DURATION_MS [200] + 50) / 1000 and raises if the
+// configured VAD is under that, so agents saved below it fail at call start.
+const STREAMING_TURN_DETECTOR_MIN_SILENCE = 0.25
+
 interface VoiceActivitySettingsProps {
-  vadProvider: string
-  minSilenceDuration: number
-  minSpeechDuration?: number
-  prefixPaddingDuration?: number
-  maxBufferedSpeech?: number
-  activationThreshold?: number
-  sampleRate?: 8000 | 16000
-  forceCpu?: boolean
-  onFieldChange: (field: string, value: any) => void
+  readonly vadProvider: string
+  readonly minSilenceDuration: number
+  readonly minSpeechDuration?: number
+  readonly prefixPaddingDuration?: number
+  readonly maxBufferedSpeech?: number
+  readonly activationThreshold?: number
+  readonly sampleRate?: 8000 | 16000
+  readonly forceCpu?: boolean
+  readonly turnDetection?: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
+  readonly onFieldChange: (field: string, value: any) => void
 }
 
 function VoiceActivitySettings({
@@ -29,6 +36,7 @@ function VoiceActivitySettings({
   activationThreshold = 0.5,
   sampleRate = 16000,
   forceCpu = true,
+  turnDetection,
   onFieldChange
 }: VoiceActivitySettingsProps) {
   // Local state for input values to handle intermediate states
@@ -182,6 +190,15 @@ function VoiceActivitySettings({
             className="h-7 text-xs"
             placeholder="0.55"
           />
+          {turnDetection === 'v1-mini' && minSilenceDuration < STREAMING_TURN_DETECTOR_MIN_SILENCE && (
+            <div className="flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-700 dark:text-red-300">
+                Invalid parameter: V1 Mini turn detection requires Min Silence Duration to be at least{' '}
+                {STREAMING_TURN_DETECTOR_MIN_SILENCE}s. The call will fail to start at {minSilenceDuration}s — raise it to {STREAMING_TURN_DETECTOR_MIN_SILENCE} or higher (0.55 recommended).
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Min Speech Duration */}

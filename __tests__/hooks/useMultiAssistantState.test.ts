@@ -33,16 +33,18 @@ describe('serializeVoicemailDetectionTool', () => {
   const baseToolConfig = { type: 'voicemail_detection' }
   const commonFields = { name: 'Voicemail Detection', description: 'Detects voicemail' }
 
-  it('includes vm_message and vm_wait_timeout from tool.config', () => {
+  it('includes vm_message and vm_wait_timeout from tool.config, without description', () => {
     const tool = { config: { vm_message: 'Call back later', vm_wait_timeout: 12 } }
     const result = serializeVoicemailDetectionTool(tool, baseToolConfig, commonFields)
     expect(result).toEqual({
       type: 'voicemail_detection',
       name: 'Voicemail Detection',
-      description: 'Detects voicemail',
       vm_message: 'Call back later',
       vm_wait_timeout: 12,
     })
+    // The backend never reads config.description for this tool type - it's
+    // driven entirely by AMD, not a user-describable LLM-callable function.
+    expect(result).not.toHaveProperty('description')
   })
 
   it('falls back to real defaults when config fields are absent', () => {
@@ -75,26 +77,26 @@ describe('serializeAssistantToolFull / serializeAssistantToolBasic — voicemail
     config: { description: 'Detects voicemail', vm_message: 'Please call back', vm_wait_timeout: 5 },
   }
 
-  it('serializeAssistantToolFull preserves the full voicemail_detection config', () => {
+  it('serializeAssistantToolFull preserves the voicemail_detection config, without description', () => {
     const result = serializeAssistantToolFull(tool)
     expect(result).toEqual({
       type: 'voicemail_detection',
       name: 'Voicemail Detection',
-      description: 'Detects voicemail',
       vm_message: 'Please call back',
       vm_wait_timeout: 5,
     })
+    expect(result).not.toHaveProperty('description')
   })
 
-  it('serializeAssistantToolBasic preserves the full voicemail_detection config', () => {
+  it('serializeAssistantToolBasic preserves the voicemail_detection config, without description', () => {
     const result = serializeAssistantToolBasic(tool)
     expect(result).toEqual({
       type: 'voicemail_detection',
       name: 'Voicemail Detection',
-      description: 'Detects voicemail',
       vm_message: 'Please call back',
       vm_wait_timeout: 5,
     })
+    expect(result).not.toHaveProperty('description')
   })
 
   it('does not reduce to just {type} the way the unfixed fallthrough did', () => {

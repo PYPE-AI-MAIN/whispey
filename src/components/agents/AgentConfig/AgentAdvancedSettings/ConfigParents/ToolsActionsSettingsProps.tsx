@@ -169,7 +169,8 @@ const TOOL_TYPE_TEXT_OVERRIDES: Record<string, Record<string, unknown>> = {
   },
   voicemail_detection: {
     name: 'voicemail_detection',
-    description: 'Detect voicemail systems and leave a message',
+    // No description default - the field is hidden for this tool type (see the
+    // Description block below); the backend never reads config.description for it.
     vm_message: "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
     vm_wait_timeout: 7,
   },
@@ -683,16 +684,21 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
               {toolNameError && <p className="text-xs text-red-500 mt-1">{toolNameError}</p>}
             </div>
 
-            {/* Description */}
-            <div>
-              <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder={selectedToolType === 'ivr_navigator' ? 'Send a DTMF tone to pick IVR menu options' : 'Describe what this tool does...'}
-              />
-            </div>
+            {/* Description - not shown for voicemail_detection: the backend never reads
+                config.description for this tool type. It's driven entirely by AMD
+                (LiveKit's Answering Machine Detection), not a describable LLM-callable
+                function, so there's nothing here for a description to configure. */}
+            {selectedToolType !== 'voicemail_detection' && (
+              <div>
+                <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder={selectedToolType === 'ivr_navigator' ? 'Send a DTMF tone to pick IVR menu options' : 'Describe what this tool does...'}
+                />
+              </div>
+            )}
 
             {/* IVR Navigator specific fields */}
             {selectedToolType === 'ivr_navigator' && (
