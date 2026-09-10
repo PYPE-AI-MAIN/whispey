@@ -589,6 +589,8 @@ function CreateCampaign() {
                     retryConfig: values.retryConfig,
                     agentId: values.agentId,
                     agentRuntime: values.agentRuntime,  // ← ADD
+                    callWindowStart: values.callWindowStart,
+                    callWindowEnd: values.callWindowEnd,
                   }}
                 />
 

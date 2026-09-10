@@ -325,7 +325,68 @@ interface RetryConfigurationProps {
     retryConfig: RetryConfig[]
     agentId?: string
     agentRuntime?: 'livekit' | 'pipecat' | 'acefone_bridge'
+    // Calling window, "HH:MM". Used only to warn when a backoff leg is longer
+    // than the window — see backoffWindowWarning.
+    callWindowStart?: string
+    callWindowEnd?: string
   }
+}
+
+/** Minutes from midnight for a "HH:MM" string, or null if unparseable. */
+function parseHHMM(value?: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value?.trim() ?? '')
+  if (!m) return null
+  const [h, min] = [Number(m[1]), Number(m[2])]
+  if (h > 23 || min > 59) return null
+  return h * 60 + min
+}
+
+const fmtDuration = (m: number) => (m % 60 === 0 ? `${m / 60}h` : `${m}m`)
+const fmtClock = (minutesFromMidnight: number) =>
+  `${String(Math.floor(minutesFromMidnight / 60)).padStart(2, '0')}`
+  + `:${String(minutesFromMidnight % 60).padStart(2, '0')}`
+
+/**
+ * Warn when a backoff leg is too long to land inside the calling window.
+ *
+ * The scheduler only dials inside [startTime, endTime], so a retry due after
+ * endTime waits for tomorrow's window. Crucially it is NOT enough for a leg to
+ * be shorter than the window: a leg of L minutes only lands the same day when
+ * the call itself happened before endTime - L. Two live campaigns had a 480m
+ * leg in a 10:00-18:30 window — 480 < 510, so a naive "leg vs window length"
+ * check passes — yet only calls before 10:30 could retry that day and the rest
+ * sat on a future nextCallAt for hours, looking stuck.
+ *
+ * Fires when a leg exceeds half the window, i.e. when most of the day's calls
+ * cannot get a same-day retry. Returns null when the schedule is workable.
+ */
+export function backoffWindowWarning(
+  backoffMinutes: number[] | undefined,
+  callWindowStart?: string,
+  callWindowEnd?: string
+): string | null {
+  if (!Array.isArray(backoffMinutes) || backoffMinutes.length === 0) return null
+  const start = parseHHMM(callWindowStart)
+  const end = parseHHMM(callWindowEnd)
+  if (start === null || end === null || end <= start) return null
+
+  const windowMinutes = end - start
+  const legs = backoffMinutes.filter((m) => typeof m === 'number' && m > windowMinutes / 2)
+  if (legs.length === 0) return null
+
+  const worst = Math.max(...legs)
+  const which = legs.length === 1 ? 'A' : `${legs.length}`
+  const delay = legs.length === 1 ? 'delay' : 'delays'
+  const head = `${which} ${fmtDuration(worst)} retry ${delay} in this schedule `
+
+  // A leg at least as long as the window can never land the same day.
+  if (worst >= windowMinutes) {
+    return head + `exceeds your ${fmtDuration(windowMinutes)} calling window `
+      + `(${callWindowStart}–${callWindowEnd}), so those retries always slip to the next day.`
+  }
+  return head + `only lands the same day for calls placed before `
+    + `${fmtClock(end - worst)} — later calls slip to the next day, `
+    + `since the window closes at ${callWindowEnd}.`
 }
 
 export function RetryConfiguration({ onFieldChange, values }: RetryConfigurationProps) {
@@ -954,6 +1015,25 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           Total retries = {(config.backoffMinutes || []).length} (max 10).
                           Minimum 5 minutes per entry. Repeated values are allowed.
                         </p>
+                        {(() => {
+                          const warning = backoffWindowWarning(
+                            config.backoffMinutes,
+                            values.callWindowStart,
+                            values.callWindowEnd
+                          )
+                          if (!warning) return null
+                          // <output> over role="status": it carries the same
+                          // live-region semantics natively and announces the
+                          // recalculated warning as the schedule is edited.
+                          // Inline by default, hence block.
+                          return (
+                            <output
+                              className="block text-xs mt-2 rounded-md px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900"
+                            >
+                              {warning}
+                            </output>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>
