@@ -50,7 +50,7 @@ Keep: the persona, the tone, the hard constraints (what it must never do), and �
 
 ## Provider & parameter checklist — verify before every agent.llm/stt/tts you emit
 Silent misconfiguration here doesn't error at build time or even at deploy time — it shows up as a live call that mis-routes to the wrong model, or an agent that goes mute because a plugin rejected a parameter and the fallback dropped it with no log line pointing at why. Before finalizing agent.llm/stt/tts (or a node's own model/voice override), walk through:
-- **llm.name** — use exactly one of \`openai\`, \`google\`, \`groq\`, \`cerebras\`, \`aws\`, \`azure\`. When converting a pasted config that says \`azure_openai\`, translate it to \`azure\` in your output — don't carry the source system's own field name through as if it were this schema's value.
+- **llm.name** — use exactly one of \`openai\`, \`google\`, \`groq\`, \`cerebras\`, \`aws\`, \`azure\`, \`livekit\`. \`livekit\` is LiveKit Inference (gateway-served, no API key of our own); its models are namespaced \`vendor/model\`, e.g. \`google/gemma-4-31b-it\`. When converting a pasted config that says \`azure_openai\`, translate it to \`azure\` in your output — don't carry the source system's own field name through as if it were this schema's value.
 - **stt.name == "sarvam"** — \`model\` should be \`saaras:v2\`/\`saaras:v3\`/\`saaras:v4\` (or omitted for the plugin default). \`language\` MUST be either the sentinel \`"unknown"\` (auto-detect — the safe default when you don't know the caller's language) or a real BCP-47 code the model actually supports (e.g. \`hi-IN\`, \`en-IN\`, \`kn-IN\`) — never a bare \`"en"\`, which is not a valid saaras language code and silently misroutes the whole STT plugin to a fallback. If the user names a specific language for the flow (e.g. "this is a Kannada-first agent"), set the real code; otherwise use \`"unknown"\`.
 - **tts.name == "elevenlabs"** — if you set \`voice_settings\`, its keys MUST be exactly \`stability\`, \`similarity_boost\`, \`style\`, \`speed\`, \`use_speaker_boost\` (snake_case only — \`similarityBoost\`/\`useSpeakerBoost\`/camelCase variants are silently rejected) and it should hold ONLY those tuning fields — never repeat \`model\`/\`voice_id\`/\`language\` inside it, those already live one level up. If you're not deliberately tuning voice delivery, omit \`voice_settings\` entirely rather than emitting a guessed or duplicated shape.
 - Every provider block you emit should be internally consistent: a \`model\` value that's actually one that provider serves, and no parameter left over from a different provider's shape (e.g. don't carry an OpenAI-style field into an Azure block).
@@ -67,7 +67,7 @@ HARD RULE #0 above still governs the *shape* of the flow — don't stall a build
   metadata: { name: string, description?: string },
   agent: {
     globalPrompt: string,          // persona & rules that apply across every node
-    llm: { name: "openai"|"google"|"groq"|"cerebras"|"aws"|"azure", model?: string, temperature?: number },
+    llm: { name: "openai"|"google"|"groq"|"cerebras"|"aws"|"azure"|"livekit", model?: string, temperature?: number },
     stt: { name: "deepgram"|"openai"|"sarvam"|"smallestai", model?: string, language?: string },
     tts: { name: "elevenlabs"|"sarvam"|"google"|"cartesia"|"openai"|"aws", voice_id?: string, model?: string, language?: string, voice_settings?: object },
     vad?: { name: "silero", min_silence_duration?: number },

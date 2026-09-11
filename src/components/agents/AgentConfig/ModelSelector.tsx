@@ -222,6 +222,50 @@ const modelProviders: Record<string, Provider> = {
         ]
       }
     ]
+  },
+  // LiveKit Inference — served through LiveKit Cloud's own gateway and authed with
+  // the worker's existing LIVEKIT_API_KEY/SECRET, so there is no key to configure
+  // and no per-provider plugin. Model ids are namespaced `vendor/model` and are
+  // passed through to the gateway verbatim.
+  livekit: {
+    label: 'LiveKit Inference',
+    icon: 'LK',
+    color: 'bg-cyan-500',
+    type: 'grouped',
+    description: 'Gateway-served models, billed via LiveKit Cloud. No API key needed.',
+    addedAt: '2026-09-11',
+    groups: [
+      {
+        // Gemma 4 31B is LiveKit's own latency-tuned deployment (SGLang +
+        // speculative decoding) and the reason this provider is worth having.
+        name: 'Latency optimized',
+        models: [
+          { value: 'google/gemma-4-31b-it', label: 'Gemma 4 31B', addedAt: '2026-09-11' },
+        ]
+      },
+      {
+        name: 'Fast',
+        models: [
+          { value: 'google/gemini-3-flash', label: 'Gemini 3 Flash' },
+          { value: 'google/gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
+          { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+          { value: 'openai/gpt-4.1-mini', label: 'GPT 4.1 Mini' },
+          { value: 'openai/gpt-4.1-nano', label: 'GPT 4.1 Nano' },
+          { value: 'xai/grok-4-1-fast-non-reasoning', label: 'Grok 4.1 Fast' },
+        ]
+      },
+      {
+        name: 'Frontier',
+        models: [
+          { value: 'openai/gpt-5.5', label: 'GPT 5.5' },
+          { value: 'openai/gpt-5.4-mini', label: 'GPT 5.4 Mini' },
+          { value: 'google/gemini-3.1-pro', label: 'Gemini 3.1 Pro' },
+          { value: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
+          { value: 'zai/glm-5.1', label: 'Z.ai GLM 5.1' },
+          { value: 'deepseek-ai/deepseek-v3.2', label: 'DeepSeek V3.2' },
+        ]
+      }
+    ]
   }
 }
 
@@ -233,7 +277,8 @@ const getProviderIcon = (providerKey: string) => {
     google: <Cloud className="h-3 w-3" />,
     azure_openai: <Cloud className="h-3 w-3" />,
     aws: <Cloud className="h-3 w-3" />,
-    cerebras: <Cpu className="h-3 w-3" />
+    cerebras: <Cpu className="h-3 w-3" />,
+    livekit: <Zap className="h-3 w-3" />
   }
   return iconMap[providerKey]
 }
