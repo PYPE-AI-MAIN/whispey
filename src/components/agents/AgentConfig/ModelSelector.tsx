@@ -93,6 +93,34 @@ interface ModelSelectorProps {
   onAzureConfigChange?: (config: AzureConfig) => void
 }
 
+// LiveKit Inference model catalogue: [groupName, [[value, label, addedAt?], ...]].
+// Gemma 4 31B is LiveKit's own latency-tuned deployment (SGLang + speculative
+// decoding) and the reason this provider is worth having. gpt-oss-120b is
+// deliberately absent: it spends its whole completion budget on reasoning_content
+// before the first speakable token, so its effective TTFT for voice is far worse
+// than its headline.
+const LIVEKIT_GROUPS: [string, [string, string, string?][]][] = [
+  ['Latency optimized', [
+    ['google/gemma-4-31b-it', 'Gemma 4 31B', '2026-09-11'],
+  ]],
+  ['Fast', [
+    ['google/gemini-3-flash', 'Gemini 3 Flash'],
+    ['google/gemini-3.1-flash-lite', 'Gemini 3.1 Flash Lite'],
+    ['google/gemini-2.5-flash', 'Gemini 2.5 Flash'],
+    ['openai/gpt-4.1-mini', 'GPT 4.1 Mini'],
+    ['openai/gpt-4.1-nano', 'GPT 4.1 Nano'],
+    ['xai/grok-4-1-fast-non-reasoning', 'Grok 4.1 Fast'],
+  ]],
+  ['Frontier', [
+    ['openai/gpt-5.5', 'GPT 5.5'],
+    ['openai/gpt-5.4-mini', 'GPT 5.4 Mini'],
+    ['google/gemini-3.1-pro', 'Gemini 3.1 Pro'],
+    ['moonshotai/kimi-k2.6', 'Kimi K2.6'],
+    ['zai/glm-5.1', 'Z.ai GLM 5.1'],
+    ['deepseek-ai/deepseek-v3.2', 'DeepSeek V3.2'],
+  ]],
+]
+
 const modelProviders: Record<string, Provider> = {
   openai: {
     label: 'OpenAI',
@@ -222,6 +250,28 @@ const modelProviders: Record<string, Provider> = {
         ]
       }
     ]
+  },
+  // LiveKit Inference — served through LiveKit Cloud's own gateway and authed with
+  // the worker's existing LIVEKIT_API_KEY/SECRET, so there is no key to configure
+  // and no per-provider plugin. Model ids are namespaced `vendor/model` and are
+  // passed through to the gateway verbatim.
+  //
+  // Listed as [value, label] tuples rather than { value, label } object literals:
+  // after Sonar's CPD normalizes string literals, a run of object literals here is
+  // token-identical to the equally long runs in the Groq/OpenAI lists above and gets
+  // flagged as a clone. Tuples halve the tokens per line, so the same run stays
+  // under the duplication threshold.
+  livekit: {
+    label: 'LiveKit Inference',
+    icon: 'LK',
+    color: 'bg-cyan-500',
+    type: 'grouped',
+    description: 'Gateway-served models, billed via LiveKit Cloud. No API key needed.',
+    addedAt: '2026-09-11',
+    groups: LIVEKIT_GROUPS.map(([name, entries]) => ({
+      name,
+      models: entries.map(([value, label, addedAt]) => ({ value, label, addedAt })),
+    })),
   }
 }
 
@@ -233,7 +283,8 @@ const getProviderIcon = (providerKey: string) => {
     google: <Cloud className="h-3 w-3" />,
     azure_openai: <Cloud className="h-3 w-3" />,
     aws: <Cloud className="h-3 w-3" />,
-    cerebras: <Cpu className="h-3 w-3" />
+    cerebras: <Cpu className="h-3 w-3" />,
+    livekit: <Zap className="h-3 w-3" />
   }
   return iconMap[providerKey]
 }

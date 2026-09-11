@@ -18,6 +18,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   smallestai: "Smallest AI",
   aws: "AWS",
   cerebras: "Cerebras",
+  livekit: "LiveKit Inference",
 }
 
 // Turns a raw class path like "livekit.plugins.deepgram.stt.STT" into "Deepgram".
