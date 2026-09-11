@@ -395,7 +395,7 @@ function buildSingleAssistantSttPayload(formValues: any, currentSttConfig: any):
   }
 }
 
-function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any, fallbackAzureConfig: any): any {
+export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any, fallbackAzureConfig: any): any {
   return {
     name: formValues.selectedProvider || getFallback(null, 'llm.name'),
     provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),

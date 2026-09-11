@@ -393,7 +393,8 @@ export const flattenCallLogForCSV = (
   metadata: string[],
   transcription: string[],
   timezone: 'IST' | 'UTC' = 'IST',
-  includeTranscript = false
+  includeTranscript = false,
+  transcriptTurns?: any[]
 ): Record<string, any> => {
   const flat: Record<string, any> = {
     ...flattenBasicColumns(row, basic, timezone),
@@ -402,7 +403,7 @@ export const flattenCallLogForCSV = (
   }
 
   if (includeTranscript) {
-    flat['transcript'] = formatTranscriptForCSV(row.transcript_json)
+    flat['transcript'] = formatTranscriptForCSV(transcriptTurns ?? [])
   }
 
   return flat
@@ -434,13 +435,81 @@ function buildDownloadSelectColumns(
     basic.includes('tags') ||
     basic.includes('flag')
 
+  // transcript is no longer read off pype_voice_call_logs.transcript_json —
+  // it's fetched separately from pype_voice_metrics_logs (see fetchTranscriptTurnsForSessions)
+  // because that table holds the authoritative per-turn transcript.
   return [
     'id', 'agent_id',
     ...basic.filter(col => !VIRTUAL_BASIC_COLS.has(col)),
     ...(metadata.length > 0 ? ['metadata'] : []),
     ...(needsTranscriptionMetrics ? ['transcription_metrics'] : []),
-    ...(transcript ? ['transcript_json'] : []),
   ]
+}
+
+// Batches session ids into chunks so the `in (...)` filter stays a reasonable size.
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+  return out
+}
+
+interface MetricsLogTurn {
+  session_id: string
+  turn_id: string
+  user_transcript: string | null
+  agent_response: string | null
+  unix_timestamp: number | null
+}
+
+// Fetches per-turn transcript rows from pype_voice_metrics_logs for a batch of
+// call ids (session_id there == pype_voice_call_logs.id) and groups them into
+// the same {user_transcript, agent_response}[] shape formatTranscriptForCSV expects.
+export async function fetchTranscriptTurnsForSessions(
+  agentId: string,
+  sessionIds: string[]
+): Promise<Map<string, MetricsLogTurn[]>> {
+  const map = new Map<string, MetricsLogTurn[]>()
+  for (const ids of chunk(sessionIds.filter(Boolean), 200)) {
+    if (ids.length === 0) continue
+    try {
+      const res = await fetch('/api/data/supabase-select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: 'pype_voice_metrics_logs',
+          mode: 'list',
+          query: {
+            select: 'session_id,turn_id,user_transcript,agent_response,unix_timestamp',
+            filters: [{ column: 'session_id', operator: 'in', value: ids }],
+            orderBy: { column: 'unix_timestamp', ascending: true },
+          },
+          auth: { agentId },
+        }),
+      })
+      if (!res.ok) continue // transcript is best-effort — don't fail the whole export
+      const json = (await res.json()) as { data?: MetricsLogTurn[] }
+      for (const turn of json.data || []) {
+        if (!turn?.session_id) continue
+        const list = map.get(turn.session_id) ?? []
+        list.push(turn)
+        map.set(turn.session_id, list)
+      }
+    } catch {
+      // network failure / bad JSON — transcript is best-effort, keep exporting the rest
+      continue
+    }
+  }
+
+  // DB order (unix_timestamp) can interleave across streamed sub-events —
+  // turn_id ("turn_1", "turn_2", ...) is the authoritative sequence, same as TracesTable.
+  for (const turns of map.values()) {
+    turns.sort((a, b) => {
+      const aNum = Number.parseInt(String(a.turn_id ?? '').replace('turn_', '')) || 0
+      const bNum = Number.parseInt(String(b.turn_id ?? '').replace('turn_', '')) || 0
+      return aNum - bNum
+    })
+  }
+  return map
 }
 
 async function fetchDownloadTotalCount(
@@ -593,7 +662,14 @@ export const downloadCSV = async (
 
     onProgress?.({ fetched: allData.length, total: allData.length, phase: 'processing' })
 
-    const csvData = allData.map((row) => flattenCallLogForCSV(row, basic, metadata, transcription_metrics, timezone, transcript))
+    const transcriptTurnsBySession = transcript
+      ? await fetchTranscriptTurnsForSessions(agentId, allData.map((row) => row.id))
+      : new Map<string, any[]>()
+
+    const csvData = allData.map((row) => flattenCallLogForCSV(
+      row, basic, metadata, transcription_metrics, timezone, transcript,
+      transcriptTurnsBySession.get(row.id)
+    ))
     triggerCSVFileDownload(csvData)
 
     onProgress?.({ fetched: allData.length, total: allData.length, phase: 'done' })
