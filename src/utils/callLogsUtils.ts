@@ -60,13 +60,15 @@ export interface FlagEntry {
  * array shape and the legacy single-object shape (`{ text, flagged_at }`,
  * written before multi-flag support) into a flag list.
  */
+const hasFlagText = (f: unknown): f is { text: string } =>
+  Boolean(f) && typeof f === 'object' && typeof (f as { text?: unknown }).text === 'string' &&
+  (f as { text: string }).text.trim().length > 0
+
 export const normalizeFlags = (raw: unknown): FlagEntry[] => {
   if (Array.isArray(raw)) {
-    return raw.filter(
-      (f): f is FlagEntry => Boolean(f) && typeof f === 'object' && typeof (f as FlagEntry).text === 'string'
-    )
+    return raw.filter(hasFlagText) as FlagEntry[]
   }
-  if (raw && typeof raw === 'object' && typeof (raw as { text?: unknown }).text === 'string') {
+  if (hasFlagText(raw)) {
     const legacy = raw as { text: string; flagged_at?: string; flagged_by?: FlagEntry['flagged_by'] }
     return [{
       id: 'legacy',
@@ -378,8 +380,13 @@ function flattenBasicColumns(
       const tags = row.transcription_metrics?.tags
       flat['tags'] = Array.isArray(tags) ? tags.join(', ') : ''
     } else if (key === 'flag') {
-      // flag lives inside transcription_metrics.flag — a call can carry several
-      flat['flag'] = normalizeFlags(row.transcription_metrics?.flag).map(f => f.text).join(' | ')
+      // flag lives inside transcription_metrics.flag — a call can carry several,
+      // each attributed to whoever created it. Exported as a JSON array so both
+      // the flag text and its author survive the CSV round-trip.
+      const flags = normalizeFlags(row.transcription_metrics?.flag)
+      flat['flag'] = flags.length > 0
+        ? JSON.stringify(flags.map(f => ({ flag: f.text, email: f.flagged_by?.email ?? null })))
+        : ''
     } else if (DATE_COLUMNS.has(key) && row[key as keyof CallLog]) {
       const raw = row[key as keyof CallLog] as unknown as string
       flat[key] = timezone === 'IST' ? formatToIndianDateTime(raw) : new Date(raw).toISOString()
