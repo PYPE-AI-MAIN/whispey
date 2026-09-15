@@ -11,7 +11,7 @@ import { DynamicJsonCell } from './sub-components'
 import { CostTooltip } from "../tool-tip/costToolTip"
 import { BASIC_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { TagEditor } from './TagEditor'
-import { FlagEditor, FlagData } from './FlagEditor'
+import { FlagEditor } from './FlagEditor'
 import { cn } from "@/lib/utils"
 import { isViewerRole } from '@/utils/callLogsUtils'
 
@@ -177,16 +177,21 @@ function renderTagsCell(
   )
 }
 
-function renderFlagCell(call: CallLog, onTagsUpdated?: () => void) {
+function renderFlagCell(
+  call: CallLog,
+  role: string | null,
+  currentUserId: string | null,
+  currentUserEmail: string | null,
+  onTagsUpdated?: () => void
+) {
+  const canDeleteAnyFlag = role !== null && !isViewerRole(role)
   return (
     <FlagEditor
       callId={call.id}
-      initialFlag={
-        call.transcription_metrics?.flag &&
-        typeof call.transcription_metrics.flag === 'object'
-          ? (call.transcription_metrics.flag as FlagData)
-          : null
-      }
+      initialFlag={call.transcription_metrics?.flag}
+      currentUserId={currentUserId}
+      currentUserEmail={currentUserEmail}
+      canDeleteAnyFlag={canDeleteAnyFlag}
       onUpdated={onTagsUpdated}
     />
   )
@@ -197,6 +202,9 @@ function renderBasicCell(
   call: CallLog,
   availableTags: string[],
   canComment: boolean,
+  role: string | null,
+  currentUserId: string | null,
+  currentUserEmail: string | null,
   onTagsUpdated?: () => void
 ) {
   switch (key) {
@@ -219,7 +227,7 @@ function renderBasicCell(
     case "tags":
       return renderTagsCell(call, availableTags, canComment, onTagsUpdated)
     case "flag":
-      return renderFlagCell(call, onTagsUpdated)
+      return renderFlagCell(call, role, currentUserId, currentUserEmail, onTagsUpdated)
     default:
       return <span>{call[key as keyof CallLog] ?? "-"}</span>
   }
@@ -285,11 +293,17 @@ export const createTableColumns = (
     onTagsUpdated?: () => void
     /** Current user role — used to gate comment & flag capabilities */
     role?: string | null
+    /** Current user's Clerk id — used to gate deleting other people's flags */
+    currentUserId?: string | null
+    /** Current user's email — shown as flag attribution */
+    currentUserEmail?: string | null
   }
 ): ColumnDef<CallLog>[] => {
   const availableTags = options?.availableTags ?? []
   const onTagsUpdated = options?.onTagsUpdated
   const role = options?.role ?? null
+  const currentUserId = options?.currentUserId ?? null
+  const currentUserEmail = options?.currentUserEmail ?? null
   // owner/admin can add per-tag annotations; viewers cannot
   const canComment = role !== null && !isViewerRole(role)
   const cols: ColumnDef<CallLog>[] = []
@@ -302,7 +316,7 @@ export const createTableColumns = (
       id: key,
       accessorKey: key,
       header: col?.label ?? key,
-      cell: ({ row }) => renderBasicCell(key, row.original, availableTags, canComment, onTagsUpdated),
+      cell: ({ row }) => renderBasicCell(key, row.original, availableTags, canComment, role, currentUserId, currentUserEmail, onTagsUpdated),
       minSize: key === "customer_number" ? 180 : key === "tags" ? 200 : key === "flag" ? 100 : 150,
       size: key === "customer_number" ? 180 : key === "tags" ? 220 : key === "flag" ? 110 : undefined,
     })
