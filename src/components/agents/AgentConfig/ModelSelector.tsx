@@ -17,17 +17,18 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  ChevronDown, 
-  Settings, 
-  ExternalLink, 
-  Check, 
+import {
+  ChevronDown,
+  Settings,
+  ExternalLink,
+  Check,
   Zap,
   Cpu,
   Brain,
   Cloud,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  Server
 } from 'lucide-react'
 
 interface Model {
@@ -35,6 +36,9 @@ interface Model {
   label: string
   id?: string
   deploymentName?: string
+  // Per-model OpenAI-compatible endpoint override (self-hosted / custom providers).
+  // When absent, the backend falls back to the provider's default env-configured base_url.
+  baseUrl?: string
   addedAt?: string // ISO date (YYYY-MM-DD); shows a "New" badge for NEW_BADGE_DAYS after this date
 }
 
@@ -188,9 +192,8 @@ const modelProviders: Record<string, Provider> = {
     type: 'direct',
     models: [
       { value: 'zai.glm-5', label: 'Z.ai GLM 5' },
-      { value: 'openai.gpt-5.6-luna', label: 'OpenAI GPT 5.6 Luna' },
-      { value: 'openai.gpt-5.6-sol', label: 'OpenAI GPT 5.6 Sol' },
-      { value: 'openai.gpt-5.6-terra', label: 'OpenAI GPT 5.6 Terra' }
+      { value: 'in.openai.gpt-5.6-luna', label: 'OpenAI GPT 5.6 Luna', addedAt: '2026-08-18' },
+      { value: 'in.openai.gpt-5.6-terra', label: 'OpenAI GPT 5.6 Terra', addedAt: '2026-08-18' }
     ]
   },
   groq: {
@@ -272,7 +275,46 @@ const modelProviders: Record<string, Provider> = {
       name,
       models: entries.map(([value, label, addedAt]) => ({ value, label, addedAt })),
     })),
+  },
+  self_hosted: {
+    label: 'Self-Hosted',
+    icon: 'S',
+    color: 'bg-slate-600',
+    type: 'grouped',
+    description: 'Custom OpenAI-compatible endpoints',
+    addedAt: '2026-09-14',
+    groups: [
+      {
+        name: 'Custom Endpoints',
+        models: [
+          {
+            // gemma4-e4b-mtp: int4 QAT + multi-token-prediction drafter (speculative
+            // decoding), ~2x the decode speed of the plain gemma4:e4b-it-qat tag also
+            // hosted on this box. Use this one -- per the box owner's runbook
+            // (GEMMA-ENDPOINT.md, Ashish, verified 14 Sep 2026), gemma4:e4b-it-qat is
+            // explicitly the slower baseline kept only for comparison.
+            value: 'gemma4-e4b-mtp',
+            label: 'Gemma 4 E4B (MTP)',
+            baseUrl: 'https://llm-13-207-31-49.sslip.io/v1',
+            addedAt: '2026-09-14',
+          },
+        ]
+      }
+    ]
   }
+}
+
+// Looks up the configured base_url for a self-hosted / custom-endpoint model.
+// Returns undefined for any model that doesn't declare one (direct SDK providers
+// like OpenAI/Google never need this) — callers should fall back to a server-side
+// default env var in that case rather than send an empty string.
+export function getModelBaseUrl(providerKey: string, modelValue: string): string | undefined {
+  const provider = modelProviders[providerKey]
+  if (!provider) return undefined
+  const allModels = provider.type === 'grouped'
+    ? provider.groups?.flatMap(g => g.models) ?? []
+    : provider.models ?? []
+  return allModels.find(m => m.value === modelValue)?.baseUrl
 }
 
 const getProviderIcon = (providerKey: string) => {
@@ -284,7 +326,8 @@ const getProviderIcon = (providerKey: string) => {
     azure_openai: <Cloud className="h-3 w-3" />,
     aws: <Cloud className="h-3 w-3" />,
     cerebras: <Cpu className="h-3 w-3" />,
-    livekit: <Zap className="h-3 w-3" />
+    livekit: <Zap className="h-3 w-3" />,
+    self_hosted: <Server className="h-3 w-3" />
   }
   return iconMap[providerKey]
 }

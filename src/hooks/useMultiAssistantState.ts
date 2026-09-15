@@ -2,6 +2,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import { getFallback } from '@/config/agentDefaults'
+import { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
 
 function serializeSarvamLanguageSwitchSTT(stt: any): any {
   const out: any = { name: stt.name, language: stt.language, model: stt.model }
@@ -410,6 +411,12 @@ export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConf
     ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
     ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
     ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+    ...(formValues.selectedProvider === 'self_hosted' && {
+      // Falls back to the backend's default LLM_BASE_URL/LLM_API_KEY env vars when
+      // a model doesn't declare its own baseUrl (see ModelSelector.getModelBaseUrl).
+      base_url: getModelBaseUrl('self_hosted', formValues.selectedModel) || getFallback(null, 'llm.base_url'),
+      api_key_env: 'LLM_API_KEY'
+    }),
     ...(formValues.fallbackLlmProvider && {
       fallback: {
         name: formValues.fallbackLlmProvider,
@@ -425,6 +432,10 @@ export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConf
         ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
         ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
         ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+        ...(formValues.fallbackLlmProvider === 'self_hosted' && {
+          base_url: getModelBaseUrl('self_hosted', formValues.fallbackLlmModel) || getFallback(null, 'llm.base_url'),
+          api_key_env: 'LLM_API_KEY'
+        }),
       }
     }),
   }
