@@ -7,7 +7,7 @@ import { Flag, X, Pencil, Trash2, Plus, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { normalizeFlags, type FlagEntry } from '@/utils/callLogsUtils'
 
-export type { FlagEntry }
+export type { FlagEntry } from '@/utils/callLogsUtils'
 
 export interface FlagEditorProps {
   callId: string
@@ -24,6 +24,75 @@ type FlagApiAction =
   | { action: 'add'; text: string }
   | { action: 'update'; flagId: string; text: string }
   | { action: 'delete'; flagId: string }
+
+const pluralizeFlags = (count: number, noun = 'flag'): string => `${count} ${noun}${count === 1 ? '' : 's'}`
+
+interface FlagListItemProps {
+  flag: FlagEntry
+  isAuthor: boolean
+  canDelete: boolean
+  isBeingEdited: boolean
+  copied: boolean
+  onCopyEmail: (email: string) => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+// One flag entry inside the popover's list — its own component so the parent's
+// render logic (which flag is open in the tooltip, which is being edited, the
+// composer) doesn't also have to carry this row's author/permission branching.
+const FlagListItem: React.FC<FlagListItemProps> = ({
+  flag, isAuthor, canDelete, isBeingEdited, copied, onCopyEmail, onEdit, onDelete,
+}) => {
+  const email = flag.flagged_by?.email
+  return (
+    <li
+      className={cn(
+        'group rounded-md border p-2 transition-colors',
+        isBeingEdited ? 'border-rose-400/50 bg-rose-500/5' : 'border-border/60 bg-muted/25 hover:bg-muted/40'
+      )}
+    >
+      <p className="whitespace-pre-wrap text-xs leading-snug text-foreground">{flag.text}</p>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
+          <span className="truncate">{email ?? 'Unknown'}</span>
+          {email && (
+            <button
+              aria-label="Copy email"
+              onClick={() => onCopyEmail(email)}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {copied ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : <Copy className="w-2.5 h-2.5" />}
+            </button>
+          )}
+          <span className="shrink-0">· {formatRelativeTime(flag.flagged_at)}</span>
+        </div>
+        {(isAuthor || canDelete) && (
+          <div className="flex shrink-0 items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
+            {isAuthor && (
+              <button
+                aria-label="Edit flag"
+                onClick={onEdit}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                aria-label="Remove flag"
+                onClick={onDelete}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </li>
+  )
+}
 
 // Short, human timestamp — "Just now" / "5m ago" / "3h ago" / falls back to a date once it's old.
 function formatRelativeTime(iso: string): string {
@@ -151,11 +220,12 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
   }
 
   const isFlagged = flags.length > 0
+  const headerLabel = isFlagged ? pluralizeFlags(flags.length, 'Flag') : 'Report an issue'
 
   // ── Tooltip message ────────────────────────────────────────────────────────
   const tooltipContent = isFlagged
     ? (
-      <div className="flex flex-col gap-2 max-w-[260px] py-0.5">
+      <div className="flex flex-col gap-2 max-w-[260px] max-h-32 overflow-y-auto py-0.5 pr-0.5">
         {flags.map(f => (
           <div key={f.id} className="flex items-start gap-2">
             <Flag className="w-3 h-3 mt-0.5 shrink-0 text-rose-400" style={{ fill: 'currentColor' }} />
@@ -210,7 +280,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
                 // Flagged — solid red pill; a count beyond 1 rides as a small badge
                 // in the corner instead of inline text, so the pill never wraps.
                 <button
-                  aria-label={`View ${flags.length} flag${flags.length > 1 ? 's' : ''}`}
+                  aria-label={`View ${pluralizeFlags(flags.length)}`}
                   disabled={saving}
                   className={cn(
                     'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
@@ -285,7 +355,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
           <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
             <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
               <Flag className="w-3 h-3 text-rose-500 shrink-0" style={{ fill: 'currentColor' }} />
-              <span>{isFlagged ? `${flags.length} Flag${flags.length > 1 ? 's' : ''}` : 'Report an issue'}</span>
+              <span>{headerLabel}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -303,62 +373,18 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
             <ul className="flex flex-col gap-1.5 max-h-28 overflow-y-auto px-3 pt-2">
               {flags.map(f => {
                 const isAuthor = Boolean(currentUserId) && f.flagged_by?.userId === currentUserId
-                const canDeleteThis = isAuthor || canDeleteAnyFlag
-                const isBeingEdited = editingId === f.id
-                const email = f.flagged_by?.email
                 return (
-                  <li
+                  <FlagListItem
                     key={f.id}
-                    className={cn(
-                      'group rounded-md border p-2 transition-colors',
-                      isBeingEdited
-                        ? 'border-rose-400/50 bg-rose-500/5'
-                        : 'border-border/60 bg-muted/25 hover:bg-muted/40'
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap text-xs leading-snug text-foreground">{f.text}</p>
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
-                        <span className="truncate">{email ?? 'Unknown'}</span>
-                        {email && (
-                          <button
-                            aria-label="Copy email"
-                            onClick={() => handleCopyEmail(f, email)}
-                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {copiedId === f.id ? (
-                              <Check className="w-2.5 h-2.5 text-emerald-500" />
-                            ) : (
-                              <Copy className="w-2.5 h-2.5" />
-                            )}
-                          </button>
-                        )}
-                        <span className="shrink-0">· {formatRelativeTime(f.flagged_at)}</span>
-                      </div>
-                      {(isAuthor || canDeleteThis) && (
-                        <div className="flex shrink-0 items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                          {isAuthor && (
-                            <button
-                              aria-label="Edit flag"
-                              onClick={() => startEditing(f)}
-                              className="text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
-                          )}
-                          {canDeleteThis && (
-                            <button
-                              aria-label="Remove flag"
-                              onClick={() => handleDelete(f.id)}
-                              className="text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </li>
+                    flag={f}
+                    isAuthor={isAuthor}
+                    canDelete={isAuthor || canDeleteAnyFlag}
+                    isBeingEdited={editingId === f.id}
+                    copied={copiedId === f.id}
+                    onCopyEmail={(email) => handleCopyEmail(f, email)}
+                    onEdit={() => startEditing(f)}
+                    onDelete={() => handleDelete(f.id)}
+                  />
                 )
               })}
             </ul>
@@ -386,10 +412,10 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
               value={draft}
               onChange={e => setDraft(e.target.value)}
               placeholder={`e.g. "Response at 2:30 was incorrect"`}
-              rows={2}
+              rows={3}
               className={cn(
-                'w-full resize-none rounded-md border border-input bg-background px-2 py-1.5',
-                'text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring',
+                'w-full resize-none rounded-md border border-input bg-background px-2.5 py-2',
+                'text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring',
               )}
               onKeyDown={e => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {

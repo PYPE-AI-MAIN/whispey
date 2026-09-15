@@ -367,6 +367,35 @@ export const formatTranscriptForCSV = (transcriptJson: any): string => {
 // returns the exact same key/value pairs the corresponding inline block used
 // to write directly into `flat`.
 
+// Marks "this key isn't one flattenBasicColumnValue handles" so the caller can
+// skip it — distinct from the key being handled but genuinely resolving to `undefined`.
+const NOT_HANDLED = Symbol('not-handled')
+
+function flattenBasicColumnValue(row: CallLog, key: string, timezone: 'IST' | 'UTC'): unknown {
+  if (key === 'tags') {
+    // tags live inside transcription_metrics.tags — serialize as comma-separated
+    const tags = row.transcription_metrics?.tags
+    return Array.isArray(tags) ? tags.join(', ') : ''
+  }
+  if (key === 'flag') {
+    // flag lives inside transcription_metrics.flag — a call can carry several,
+    // each attributed to whoever created it. Exported as a JSON array so both
+    // the flag text and its author survive the CSV round-trip.
+    const flags = normalizeFlags(row.transcription_metrics?.flag)
+    return flags.length > 0
+      ? JSON.stringify(flags.map(f => ({ flag: f.text, email: f.flagged_by?.email ?? null })))
+      : ''
+  }
+  if (DATE_COLUMNS.has(key) && row[key as keyof CallLog]) {
+    const raw = row[key as keyof CallLog] as unknown as string
+    return timezone === 'IST' ? formatToIndianDateTime(raw) : new Date(raw).toISOString()
+  }
+  if (key in row && key !== 'total_cost') {
+    return row[key as keyof CallLog]
+  }
+  return NOT_HANDLED
+}
+
 function flattenBasicColumns(
   row: CallLog,
   basic: string[],
@@ -375,24 +404,8 @@ function flattenBasicColumns(
   const flat: Record<string, any> = {}
 
   for (const key of basic) {
-    if (key === 'tags') {
-      // tags live inside transcription_metrics.tags — serialize as comma-separated
-      const tags = row.transcription_metrics?.tags
-      flat['tags'] = Array.isArray(tags) ? tags.join(', ') : ''
-    } else if (key === 'flag') {
-      // flag lives inside transcription_metrics.flag — a call can carry several,
-      // each attributed to whoever created it. Exported as a JSON array so both
-      // the flag text and its author survive the CSV round-trip.
-      const flags = normalizeFlags(row.transcription_metrics?.flag)
-      flat['flag'] = flags.length > 0
-        ? JSON.stringify(flags.map(f => ({ flag: f.text, email: f.flagged_by?.email ?? null })))
-        : ''
-    } else if (DATE_COLUMNS.has(key) && row[key as keyof CallLog]) {
-      const raw = row[key as keyof CallLog] as unknown as string
-      flat[key] = timezone === 'IST' ? formatToIndianDateTime(raw) : new Date(raw).toISOString()
-    } else if (key in row && key !== 'total_cost') {
-      flat[key] = row[key as keyof CallLog]
-    }
+    const value = flattenBasicColumnValue(row, key, timezone)
+    if (value !== NOT_HANDLED) flat[key] = value
   }
 
   if (basic.includes('total_cost')) {
