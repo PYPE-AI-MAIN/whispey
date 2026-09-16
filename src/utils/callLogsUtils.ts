@@ -39,30 +39,52 @@ export const normalizeRoleForColumnAccess = (role: string | null): string | null
   return ['user', 'member', 'viewer'].includes(role) ? 'viewer' : role
 }
 
-/** Viewer-only hidden basic columns: Tags and Flag; everything else matches owner/admin. */
+/** Viewer-only hidden basic columns: Tags; Flag is visible (and writable) to all roles. */
 export const ROLE_RESTRICTIONS = {
-  viewer: ['tags', 'flag'],
+  viewer: ['tags'],
 } as const
 
 export const isViewerRole = (role: string | null | undefined): boolean =>
   normalizeRoleForColumnAccess(role ?? null) === 'viewer'
 
+export interface FlagEntry {
+  id: string
+  text: string
+  flagged_at: string
+  /** Absent on flags written before attribution existed. */
+  flagged_by?: { userId: string; email: string }
+}
+
 /**
- * Whether a row should be rendered with flagged (red) styling.
- *
- * Viewers never see flag state — the Flag column is hidden from them via
- * ROLE_RESTRICTIONS, so leaking it back through the row colour would defeat
- * that. Every table computes "is this row flagged" through here so a new table
- * can't reintroduce the leak.
+ * A call can carry multiple independent flags. Normalizes both the current
+ * array shape and the legacy single-object shape (`{ text, flagged_at }`,
+ * written before multi-flag support) into a flag list.
  */
+const hasFlagText = (f: unknown): f is { text: string } =>
+  Boolean(f) && typeof f === 'object' && typeof (f as { text?: unknown }).text === 'string' &&
+  (f as { text: string }).text.trim().length > 0
+
+export const normalizeFlags = (raw: unknown): FlagEntry[] => {
+  if (Array.isArray(raw)) {
+    return raw.filter(hasFlagText) as FlagEntry[]
+  }
+  if (hasFlagText(raw)) {
+    const legacy = raw as { text: string; flagged_at?: string; flagged_by?: FlagEntry['flagged_by'] }
+    return [{
+      id: 'legacy',
+      text: legacy.text,
+      flagged_at: legacy.flagged_at ?? new Date(0).toISOString(),
+      flagged_by: legacy.flagged_by,
+    }]
+  }
+  return []
+}
+
+/** Whether a row should be rendered with flagged (red) styling. Flags are visible to every role. */
 export const isRowFlaggedForRole = (
   call: { transcription_metrics?: { flag?: unknown } | null } | null | undefined,
   role: string | null
-): boolean => {
-  if (isViewerRole(role)) return false
-  const flag = call?.transcription_metrics?.flag as { text?: string } | undefined
-  return Boolean(flag?.text)
-}
+): boolean => normalizeFlags(call?.transcription_metrics?.flag).length > 0
 
 export const isColumnVisibleForRole = (columnKey: string, role: string | null): boolean => {
   if (!role) return true
@@ -89,13 +111,24 @@ const convertFilterOperationToFilter = (filter: Extract<FilterOperation, { type:
     }
   }
 
-  // Flag is stored inside transcription_metrics.flag.text (JSONB nested text)
+  // Flag is stored inside transcription_metrics.flag as an array of entries.
+  // Casting the JSONB to text and matching against the stringified array (same
+  // approach as 'tags' above) means this keeps working whether a row still has
+  // the legacy single-object shape or the current array shape — an empty array
+  // is never persisted (the key is deleted once the last flag is removed), so
+  // "not null" still means "has at least one flag".
   if (filter.column === 'flag') {
     switch (filter.operation) {
       case 'contains':
-        return { column: "transcription_metrics->'flag'->>'text'", operator: 'ilike', value: `%${filter.value}%` }
+        return { column: "transcription_metrics->>'flag'", operator: 'ilike', value: `%${filter.value}%` }
+      case 'flagged_by':
+        // Scoped to the flagged_by.email field specifically (not flag text), by matching
+        // the "email" key followed by the value somewhere after it. Deliberately loose
+        // about what sits between the colon and the value (a literal space, per Postgres's
+        // jsonb-to-text cast, which renders `{"a": 1}` — space after the colon — unlike
+        // JS's JSON.stringify) rather than assuming exact spacing/quoting.
+        return { column: "transcription_metrics->>'flag'", operator: 'ilike', value: `%"email":%${filter.value}%` }
       case 'exists':
-        // Any call that has a flag object with a non-empty text field
         return { column: "transcription_metrics->>'flag'", operator: 'not.is', value: null }
       default:
         return null
@@ -334,6 +367,35 @@ export const formatTranscriptForCSV = (transcriptJson: any): string => {
 // returns the exact same key/value pairs the corresponding inline block used
 // to write directly into `flat`.
 
+// Marks "this key isn't one flattenBasicColumnValue handles" so the caller can
+// skip it — distinct from the key being handled but genuinely resolving to `undefined`.
+const NOT_HANDLED = Symbol('not-handled')
+
+function flattenBasicColumnValue(row: CallLog, key: string, timezone: 'IST' | 'UTC'): unknown {
+  if (key === 'tags') {
+    // tags live inside transcription_metrics.tags — serialize as comma-separated
+    const tags = row.transcription_metrics?.tags
+    return Array.isArray(tags) ? tags.join(', ') : ''
+  }
+  if (key === 'flag') {
+    // flag lives inside transcription_metrics.flag — a call can carry several,
+    // each attributed to whoever created it. Exported as a JSON array so both
+    // the flag text and its author survive the CSV round-trip.
+    const flags = normalizeFlags(row.transcription_metrics?.flag)
+    return flags.length > 0
+      ? JSON.stringify(flags.map(f => ({ flag: f.text, email: f.flagged_by?.email ?? null })))
+      : ''
+  }
+  if (DATE_COLUMNS.has(key) && row[key as keyof CallLog]) {
+    const raw = row[key as keyof CallLog] as unknown as string
+    return timezone === 'IST' ? formatToIndianDateTime(raw) : new Date(raw).toISOString()
+  }
+  if (key in row && key !== 'total_cost') {
+    return row[key as keyof CallLog]
+  }
+  return NOT_HANDLED
+}
+
 function flattenBasicColumns(
   row: CallLog,
   basic: string[],
@@ -342,20 +404,8 @@ function flattenBasicColumns(
   const flat: Record<string, any> = {}
 
   for (const key of basic) {
-    if (key === 'tags') {
-      // tags live inside transcription_metrics.tags — serialize as comma-separated
-      const tags = row.transcription_metrics?.tags
-      flat['tags'] = Array.isArray(tags) ? tags.join(', ') : ''
-    } else if (key === 'flag') {
-      // flag lives inside transcription_metrics.flag
-      const flagData = row.transcription_metrics?.flag as { text?: string } | undefined
-      flat['flag'] = flagData?.text ?? ''
-    } else if (DATE_COLUMNS.has(key) && row[key as keyof CallLog]) {
-      const raw = row[key as keyof CallLog] as unknown as string
-      flat[key] = timezone === 'IST' ? formatToIndianDateTime(raw) : new Date(raw).toISOString()
-    } else if (key in row && key !== 'total_cost') {
-      flat[key] = row[key as keyof CallLog]
-    }
+    const value = flattenBasicColumnValue(row, key, timezone)
+    if (value !== NOT_HANDLED) flat[key] = value
   }
 
   if (basic.includes('total_cost')) {

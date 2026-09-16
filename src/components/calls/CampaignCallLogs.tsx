@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
+import { useUser } from '@clerk/nextjs'
 import type { CallLog } from '@/types/logs'
 import { createTableColumns } from './tableColumns'
 import { useCampaignGroupedLogs, CAMPAIGN_PAGE_SIZE } from '@/hooks/useCampaignGroupedLogs'
@@ -113,6 +114,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
 }) => {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
+  const { user } = useUser()
   const flaggedRowStyle: React.CSSProperties = {
     backgroundColor: resolvedTheme === 'dark' ? 'rgba(136, 19, 55, 0.18)' : '#fff1f2',
   }
@@ -243,8 +245,8 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
   }, [dlRunning, dlType, campaign, agent?.id, project?.id, visibleColumns, setDialogOpen])
 
   const dataCols = useMemo(
-    () => createTableColumns(visibleColumns, { availableTags, role }),
-    [visibleColumns, availableTags, role]
+    () => createTableColumns(visibleColumns, { availableTags, role, currentUserId: user?.id ?? null, currentUserEmail: user?.emailAddresses?.[0]?.emailAddress ?? null }),
+    [visibleColumns, availableTags, role, user?.id, user?.emailAddresses]
   )
 
   const expandCol: ColumnDef<CallLog> = useMemo(() => ({
