@@ -257,8 +257,13 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
     )
     : <span className="text-xs">Report an issue in this call</span>
 
+  // Stop these clicks from bubbling to an ancestor row's own onClick — applied on each
+  // real interactive button below rather than a wrapping div, so there's no non-native
+  // element with a click handler for accessibility tooling to flag.
+  const stop = (e: React.MouseEvent) => e.stopPropagation()
+
   return (
-    <div className="inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
+    <div className="inline-flex items-center gap-1">
       {/*
         Radix UI composition pattern for Tooltip + Popover sharing one trigger:
           <Tooltip>
@@ -282,6 +287,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
                 <button
                   aria-label={`View ${pluralizeFlags(flags.length)}`}
                   disabled={saving}
+                  onClick={stop}
                   className={cn(
                     'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
                     'bg-rose-600 text-white border border-rose-700',
@@ -302,6 +308,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
                 <button
                   aria-label="Add flag"
                   disabled={saving}
+                  onClick={stop}
                   className={cn(
                     'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',
                     'border border-dashed border-gray-300 dark:border-gray-600',
@@ -331,7 +338,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
           <button
             aria-label="Add another flag"
             disabled={saving}
-            onClick={() => { startAdding(); setOpen(true) }}
+            onClick={(e) => { stop(e); startAdding(); setOpen(true) }}
             className={cn(
               'inline-flex items-center justify-center w-5 h-5 shrink-0 rounded-full select-none transition-all cursor-pointer',
               'border border-dashed border-gray-300 dark:border-gray-600',
