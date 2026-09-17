@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMobile } from '@/hooks/use-mobile'
 import { useAnalyticsDashboard, useChartData, useCsvExport } from '@/hooks/useAnalyticsDashboard'
-import type { ChartKind, Widget } from '@/types/analytics'
+import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS } from './ChartCard'
 import { SidePanel, CHART_TYPE_DRAG_TYPE } from './SidePanel'
@@ -29,7 +29,7 @@ import { LogsOverlay } from './LogsOverlay'
 import { FilterBar, decodeFilters, encodeFilters } from './FilterBar'
 import { WhenFilter, type TimeOfDay } from './WhenFilter'
 import { OutcomeOrderEditor, type OutcomeRanking } from './OutcomeOrderEditor'
-import { adaptSpecToKind, suggestSpec, suggestTitle } from './suggest'
+import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitle } from './suggest'
 import { coverage } from './chartData'
 import {
   applyGridLayout, toGridLayout, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, MIN_SIZE, ROW_HEIGHT,
@@ -220,27 +220,17 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
     selectChart(copy.id)
   }
 
-  /** One per appointment needs an order to rank by, so ask for one instead of failing. */
+  /** One per patient needs an order to rank by, so ask for one instead of failing. */
   const setGrain = (w: Widget, grain: 'interaction' | 'entity') => {
-    if (grain === 'entity' && !ranking?.order?.length) {
+    if (grain === 'interaction') {
+      edit(w.id, { spec: { ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput })
+      return
+    }
+    if (!ranking?.order?.length) {
       setOrderEditor(true)
       return
     }
-    edit(w.id, {
-      spec:
-        grain === 'interaction'
-          ? ({ ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput)
-          : ({
-              ...w.spec,
-              grain: 'entity',
-              dedupe: w.spec.dedupe ?? {
-                key: { field: identityField(catalog), fallback: 'call_id' },
-                winner: 'best_outcome',
-                ranking_ref: 'agent',
-                lookback_days: 90,
-              },
-            } as SpecInput),
-    })
+    edit(w.id, { spec: entitySpec(w.spec, catalog, ranking) })
   }
 
   const persist = () => {
@@ -400,6 +390,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
                     // dragging off on a phone: the canvas is for reading there
                     draggable={!isMobile}
                     categories={categoriesFor(w, catalog)}
+                    grainLabel={grainLabel(w, catalog)}
                     onSelect={() => selectChart(w.id)}
                     onOpenLogs={(value) => setLogs({ widget: w, value })}
                     onEdit={() => selectChart(w.id)}
@@ -510,10 +501,38 @@ function categoriesFor(w: Widget, fields: { col: string; path: string[]; enum_va
   return fields.find((f) => `${f.col}::${f.path.join('.')}` === key)?.enum_values ?? null
 }
 
-/** Whatever the catalog thinks could identify a patient, else the caller's number. */
-function identityField(fields: { col: string; path: string[]; is_identity_candidate: boolean }[]) {
-  const candidate = fields.find((f) => f.is_identity_candidate)
-  return candidate ? { col: candidate.col, ...(candidate.path.length ? { path: candidate.path } : {}) } : { col: 'customer_number' }
+const asRef = (f: { col: string; path: string[] }) => ({ col: f.col, ...(f.path.length ? { path: f.path } : {}) })
+
+/**
+ * Counting one row per patient, with everything the query builder insists on.
+ *
+ * `best_outcome` without an outcome field is rejected by the schema, which is
+ * how the Count control produced a card reading "this chart needs fixing" — it
+ * set the winner and never set the field to rank by. With no outcome to rank,
+ * the honest fallback is the most recent attempt, not a broken chart.
+ */
+function entitySpec(spec: SpecInput, fields: CatalogField[], ranking: OutcomeRanking): SpecInput {
+  const key = identityFields(fields)[0]
+  const outcome = outcomeField(fields, ranking?.field)
+  return {
+    ...spec,
+    grain: 'entity',
+    dedupe: {
+      key: { field: key ? asRef(key) : { col: 'customer_number' }, fallback: 'call_id' },
+      ...(outcome
+        ? { winner: 'best_outcome' as const, outcome: asRef(outcome), ranking_ref: 'agent' as const }
+        : { winner: 'most_recent' as const }),
+      lookback_days: 90,
+    },
+  }
+}
+
+/** "Every call", or the name of whatever the chart counts one of. */
+function grainLabel(w: Widget, fields: CatalogField[]): string {
+  const key = w.spec.dedupe?.key.field
+  if (w.spec.grain !== 'entity' || !key) return 'Every call'
+  const match = fields.find((f) => f.col === key.col && f.path.join('.') === (key.path ?? []).join('.'))
+  return `One per ${(match?.label ?? key.path?.[key.path.length - 1] ?? key.col).toLowerCase()}`
 }
 
 function changed(w: Widget, original: Widget[]): boolean {

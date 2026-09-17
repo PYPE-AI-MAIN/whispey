@@ -117,6 +117,31 @@ export function suggestions(fields: CatalogField[]): { title: string; why: strin
 }
 
 /**
+ * Which field identifies the same patient across calls, best first.
+ *
+ * A real column beats a copy of it inside metadata. This agent writes the
+ * caller's number into both `customer_number` and `metadata.wcalling_number` —
+ * 165 and 167 distinct values over the same 481 calls — and the JSON copy won
+ * simply by sorting first. The column is the one that is always there, always
+ * spelled the same way, and readable by somebody who does not know the agent.
+ */
+export function identityFields(fields: CatalogField[]): CatalogField[] {
+  return fields
+    .filter((f) => f.is_identity_candidate)
+    .sort((a, b) => Number(a.path.length > 0) - Number(b.path.length > 0) || byCoverage(a, b))
+}
+
+/** Which field carries the outcome to rank attempts by (§10.6). */
+export function outcomeField(fields: CatalogField[], saved?: { col: string; path?: string[] } | null): CatalogField | undefined {
+  if (saved) {
+    const match = fields.find((f) => f.col === saved.col && f.path.join('.') === (saved.path ?? []).join('.'))
+    if (match) return match
+  }
+  // a short list of named results is what an outcome looks like
+  return usable(fields, 'enum').find((f) => f.path.length > 0) ?? usable(fields, 'enum')[0]
+}
+
+/**
  * Switching chart type has to give you a chart, not a puzzle.
  *
  * Chart type stays presentational — it never reaches the compiler — but each

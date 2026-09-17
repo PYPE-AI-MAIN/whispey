@@ -14,6 +14,7 @@ import { BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2 } f
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
+import { identityFields, outcomeField } from './suggest'
 import type { SpecInput } from '@/server/analytics/spec'
 
 /** What a chart-type tile puts on the drag event, and what the grid reads off it. */
@@ -189,7 +190,8 @@ function ChartSettings({
   }, [fields, calculation.needs])
 
   const dimensions = useMemo(() => fields.filter((f) => f.is_dimension && f.value_type !== 'json'), [fields])
-  const identities = useMemo(() => fields.filter((f) => f.is_identity_candidate), [fields])
+  const identities = useMemo(() => identityFields(fields), [fields])
+  const outcome = useMemo(() => outcomeField(fields), [fields])
 
   const setSpec = (patch: Partial<SpecInput>) => onChange({ ...spec, ...patch })
 
@@ -321,8 +323,16 @@ function ChartSettings({
                     grain: 'entity',
                     dedupe: {
                       key: { field: { col: f.col, ...(f.path.length ? { path: f.path } : {}) }, fallback: 'call_id' },
-                      winner: 'best_outcome',
-                      ranking_ref: 'agent',
+                      // best_outcome without an outcome field is rejected by the
+                      // schema; with nothing to rank, the honest answer is the
+                      // most recent attempt rather than a card that will not load
+                      ...(outcome
+                        ? {
+                            winner: 'best_outcome' as const,
+                            outcome: { col: outcome.col, ...(outcome.path.length ? { path: outcome.path } : {}) },
+                            ranking_ref: 'agent' as const,
+                          }
+                        : { winner: 'most_recent' as const }),
                       lookback_days: 90,
                     },
                   })
@@ -331,7 +341,9 @@ function ChartSettings({
         />
         {spec.grain === 'entity' && (
           <p className="mt-1 text-[11px] text-gray-400">
-            Repeat calls collapse to one row, keeping the best outcome from the agent’s order.
+            {spec.dedupe?.winner === 'best_outcome'
+              ? 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
+              : 'Repeat calls collapse to one row, keeping the most recent attempt.'}
           </p>
         )}
       </Row>

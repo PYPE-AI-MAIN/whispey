@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { adaptSpecToKind, suggestSpec, suggestTitle, suggestions } from '@/components/analytics/suggest'
+import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitle, suggestions } from '@/components/analytics/suggest'
 import type { CatalogField } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
@@ -97,5 +97,36 @@ describe('switching chart type gives you a chart, not a puzzle', () => {
     const spec = adaptSpecToKind({ ...bar, bucket: 'day' }, 'pie', [disposition])
     expect(spec.bucket).toBe('none')
     expect(spec.dimension?.limit).toBeLessThanOrEqual(8)
+  })
+})
+
+describe('which field identifies the same patient across calls', () => {
+  const column = field({ col: 'customer_number', path: [], label: 'Phone number', value_type: 'text', is_identity_candidate: true, coverage_pct: 100 })
+  const jsonCopy = field({ col: 'metadata', path: ['wcalling_number'], label: 'Wcalling number', value_type: 'text', is_identity_candidate: true, coverage_pct: 100 })
+
+  it('prefers the real column over a copy of it inside metadata', () => {
+    // this agent writes the caller's number into both, and the JSON copy was
+    // winning purely by sorting first
+    expect(identityFields([jsonCopy, column])[0].col).toBe('customer_number')
+  })
+
+  it('leaves out anything that cannot identify anybody', () => {
+    expect(identityFields([disposition])).toHaveLength(0)
+  })
+})
+
+describe('which field carries the outcome', () => {
+  it('uses the one the agent’s saved order names', () => {
+    const other = field({ path: ['status'], label: 'Status', value_type: 'enum' })
+    const chosen = outcomeField([other, disposition], { col: 'transcription_metrics', path: ['final_disposition'] })
+    expect(chosen?.path).toEqual(['final_disposition'])
+  })
+
+  it('falls back to a short list of named results', () => {
+    expect(outcomeField([latency, disposition])?.path).toEqual(['final_disposition'])
+  })
+
+  it('says so rather than guessing when there is nothing to rank', () => {
+    expect(outcomeField([latency])).toBeUndefined()
   })
 })

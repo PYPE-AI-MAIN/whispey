@@ -24,7 +24,7 @@ import { coverage } from './chartData'
 export const DRAG_HANDLE_CLASS = 'chart-drag-handle'
 
 export function ChartCard({
-  widget, result, isLoading, selected, canEdit, draggable, categories,
+  widget, result, isLoading, selected, canEdit, draggable, categories, grainLabel,
   onSelect, onOpenLogs, onEdit, onDuplicate, onRemove, onExport, onChangeGrain,
 }: {
   widget: Widget
@@ -32,6 +32,8 @@ export function ChartCard({
   isLoading: boolean
   /** Known values of the field this chart splits by, so a zero shows as a zero. */
   categories?: string[] | null
+  /** "Every call", or the name of whatever this chart counts one of. */
+  grainLabel: string
   selected: boolean
   canEdit: boolean
   /** Off on a phone: the canvas is for reading there, not for building. */
@@ -93,7 +95,7 @@ export function ChartCard({
                 onChangeGrain(grain === 'entity' ? 'interaction' : 'entity')
               }}
             >
-              {grain === 'entity' ? 'One per appointment' : 'Every call'}
+              {grainLabel}
             </button>
           )}
         </div>
