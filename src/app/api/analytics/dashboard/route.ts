@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   const resolved = await resolveAnalyticsContext(agentId)
   if (isDenied(resolved)) return resolved.errorResponse
-  const { agent, role } = resolved
+  const { agent, role, downloadDisabled } = resolved
 
   let { data: dashboard } = await supabase
     .from('pype_analytics_dashboards')
@@ -83,6 +83,8 @@ export async function GET(req: NextRequest) {
     widgets: widgets ?? [],
     agent: { id: agent.id, name: agent.name },
     can_edit: role !== 'viewer',
+    // the export route refuses anyway; this stops the button appearing at all
+    download_disabled: downloadDisabled,
   })
 }
 

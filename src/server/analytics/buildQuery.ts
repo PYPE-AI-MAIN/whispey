@@ -279,7 +279,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   for (const r of allRefs) {
     if (r.col === ELEMENT_COL) continue
     if (r.col === 'total_cost') {
-      carried.add('total_llm_cost'), carried.add('total_tts_cost'), carried.add('total_stt_cost')
+      for (const c of ['total_llm_cost', 'total_tts_cost', 'total_stt_cost']) carried.add(c)
     } else {
       carried.add(r.col)
     }

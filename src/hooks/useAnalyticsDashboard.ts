@@ -19,7 +19,13 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T
 }
 
-type DashboardPayload = { dashboard: Dashboard; widgets: Widget[]; agent: { id: string; name: string }; can_edit: boolean }
+type DashboardPayload = {
+  dashboard: Dashboard
+  widgets: Widget[]
+  agent: { id: string; name: string }
+  can_edit: boolean
+  download_disabled: boolean
+}
 
 export function useAnalyticsDashboard(agentId: string | undefined, enabled: boolean) {
   const queryClient = useQueryClient()

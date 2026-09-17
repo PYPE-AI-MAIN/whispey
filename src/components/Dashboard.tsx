@@ -30,7 +30,7 @@ import {
   X,
   Phone,
 } from 'lucide-react'
-import Overview from './Overview'
+import AnalyticsCanvas from './analytics/AnalyticsCanvas'
 import CallLogs from './calls/CallLogs'
 import CampaignLogs from './campaigns/CampaignLogs'
 import PhoneNumbersPanel from './agents/PhoneNumbersPanel'
@@ -532,7 +532,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       <>
         {/* Keep all tabs mounted, just hide inactive ones */}
         <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
-          <Overview
+          <AnalyticsCanvas
             project={project}
             agent={agent}
             dateRange={apiDateRange}
