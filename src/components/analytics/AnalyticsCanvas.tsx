@@ -33,7 +33,7 @@ import { coverage } from './chartData'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { explainSpec } from './explain'
 import {
-  applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, MIN_SIZE, ROW_HEIGHT,
+  applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
 } from './gridLayout'
 import 'react-grid-layout/css/styles.css'
 import './grid.css'
@@ -453,15 +453,6 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
             // a new type needs the shape that draws it, or you get an empty box
             onChangeKind={(kind) =>
               selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec, kind, catalog) })
-            }
-            onChangeWidth={(columns) =>
-              selected &&
-              edit(selected.id, {
-                layout: {
-                  ...(toGridLayout([selected])[0]),
-                  w: Math.max(columns, MIN_SIZE[selected.kind].w),
-                } as Widget['layout'],
-              })
             }
             onChangeTitle={(title) => selected && edit(selected.id, { title })}
           />

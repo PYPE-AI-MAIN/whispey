@@ -64,7 +64,7 @@ export function FilterBar({
             Filter
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-3">
+        <PopoverContent align="start" collisionPadding={12} className="w-64 p-3">
           <FilterEditor
             fields={fields}
             onAdd={(condition) => {
@@ -167,7 +167,7 @@ export function FilterEditor({ fields, onAdd }: { fields: CatalogField[]; onAdd:
 
       <Button
         size="sm"
-        className="w-full"
+        className="h-8 w-full text-xs"
         disabled={!field || (chosen?.needsValue && !value)}
         onClick={() =>
           field &&
@@ -187,6 +187,10 @@ export function FilterEditor({ fields, onAdd }: { fields: CatalogField[]; onAdd:
 /** "Disposition is confirmed" — readable at a glance, with no JSON path in it. */
 function describe(c: Condition, labels: Map<string, string>): string {
   const name = labels.get(keyOf(c.field)) ?? c.field.path?.[c.field.path.length - 1] ?? c.field.col
+  // half these fields are already called "Is something", and "Is conversation
+  // hindi is yes" is not a sentence anybody wrote on purpose
+  if (c.op === 'is_true') return `${name}: yes`
+  if (c.op === 'is_false') return `${name}: no`
   const op = OPERATORS.find((o) => o.op === c.op)
   const value = Array.isArray(c.value) ? c.value.join(', ') : c.value
   return `${name} ${op?.label ?? c.op}${op?.needsValue ? ` ${value}` : ''}`
@@ -227,7 +231,9 @@ export function ChartFilters({
             {filters.length ? 'Add' : 'Only where…'}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-3">
+        {/* the settings panel is 288px wide; open to its left rather than
+            spilling off the edge of it */}
+        <PopoverContent side="left" align="start" collisionPadding={12} className="w-64 p-3">
           <FilterEditor
             fields={fields}
             onAdd={(condition) => {

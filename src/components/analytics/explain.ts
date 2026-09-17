@@ -60,10 +60,15 @@ export function fieldName(
 }
 
 export function describeCondition(condition: Condition, fields: CatalogField[]): string {
+  const name = fieldName(condition.field, fields)
+  // "is conversation hindi is yes" is not a sentence; these fields are already
+  // named as questions
+  if (condition.op === 'is_true') return `${name}: yes`
+  if (condition.op === 'is_false') return `${name}: no`
   const words = OPERATOR_WORDS[condition.op] ?? condition.op
-  if (!NEEDS_VALUE.has(condition.op)) return `${fieldName(condition.field, fields)} ${words}`
+  if (!NEEDS_VALUE.has(condition.op)) return `${name} ${words}`
   const value = Array.isArray(condition.value) ? condition.value.join(' or ') : condition.value
-  return `${fieldName(condition.field, fields)} ${words} ${value}`
+  return `${name} ${words} ${value}`
 }
 
 function describeNode(node: FilterNode, fields: CatalogField[]): string {

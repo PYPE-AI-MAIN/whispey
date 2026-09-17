@@ -117,7 +117,7 @@ function ChartTypeTile({
 }
 
 export function SidePanel({
-  selected, fields, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeWidth, onChangeTitle,
+  selected, fields, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle,
 }: {
   selected: Widget | null
   fields: CatalogField[]
@@ -127,8 +127,6 @@ export function SidePanel({
   onDragChartType: (kind: ChartKind | null) => void
   onChange: (spec: SpecInput) => void
   onChangeKind: (kind: ChartKind) => void
-  /** Columns out of twelve. Dragging the corner does the same thing; this is the keyboard way. */
-  onChangeWidth: (columns: number) => void
   onChangeTitle: (title: string) => void
 }) {
   if (!selected) {
@@ -162,21 +160,19 @@ export function SidePanel({
       canEdit={canEdit}
       onChange={onChange}
       onChangeKind={onChangeKind}
-      onChangeWidth={onChangeWidth}
       onChangeTitle={onChangeTitle}
     />
   )
 }
 
 function ChartSettings({
-  widget, fields, canEdit, onChange, onChangeKind, onChangeWidth, onChangeTitle,
+  widget, fields, canEdit, onChange, onChangeKind, onChangeTitle,
 }: {
   widget: Widget
   fields: CatalogField[]
   canEdit: boolean
   onChange: (spec: SpecInput) => void
   onChangeKind: (kind: ChartKind) => void
-  onChangeWidth: (columns: number) => void
   onChangeTitle: (title: string) => void
 }) {
   const spec = widget.spec
@@ -364,27 +360,6 @@ function ChartSettings({
           disabled={!canEdit}
           onChange={(having) => setSpec({ having })}
         />
-      </Row>
-
-      <Row label="Width">
-        <div className="flex gap-1">
-          {WIDTH_PRESETS.map((p) => (
-            <button
-              key={p.label}
-              disabled={!canEdit}
-              onClick={() => onChangeWidth(p.columns)}
-              className={cn(
-                'flex-1 rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
-                currentColumns(widget) === p.columns
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                  : 'border-gray-200 text-gray-600 dark:border-gray-800 dark:text-gray-400'
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-[11px] text-gray-400">Or drag a card’s bottom-right corner to any size.</p>
       </Row>
 
     </Panel>

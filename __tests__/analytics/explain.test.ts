@@ -105,3 +105,17 @@ describe('no database words get through', () => {
     expect(describeCondition(c, fields)).toBe('why the call ended has any value')
   })
 })
+
+describe('fields already named as questions', () => {
+  const hindi = [field({ path: ['is_Conversation_hindi'], label: 'Is conversation hindi', value_type: 'boolean', boolean_encoding: 'yes_no' })]
+
+  it('does not write "is conversation hindi is yes"', () => {
+    expect(describeCondition({ field: { col: 'transcription_metrics', path: ['is_Conversation_hindi'] }, op: 'is_true' }, hindi))
+      .toBe('is conversation hindi: yes')
+  })
+
+  it('reads the negative the same way', () => {
+    expect(describeCondition({ field: { col: 'transcription_metrics', path: ['is_Conversation_hindi'] }, op: 'is_false' }, hindi))
+      .toBe('is conversation hindi: no')
+  })
+})
