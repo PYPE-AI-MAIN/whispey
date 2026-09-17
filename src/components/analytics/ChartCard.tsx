@@ -53,6 +53,9 @@ export function ChartCard({
   const rows = result?.data ?? []
   const cover = coverage(rows)
   const isKpi = widget.kind === 'kpi'
+  // the line exists to disclose a shortfall. On a filtered count every row
+  // counts, so "99 of 99 calls" says nothing and implies a universe of 99.
+  const showCoverage = Boolean(cover && (cover.used < cover.total || widget.spec.dimension))
   const grain = widget.spec.grain ?? 'interaction'
 
   return (
@@ -145,7 +148,7 @@ export function ChartCard({
 
       {/* an average over only the usable rows misleads unless the card says so */}
       <div className="flex items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
-        {cover ? (
+        {cover && showCoverage ? (
           <button
             className="truncate underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
             onClick={(e) => {

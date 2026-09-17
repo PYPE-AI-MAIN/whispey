@@ -399,11 +399,15 @@ describe('what the numbers are counted over', () => {
     expect(sql).not.toContain('wcall_event')
   })
 
-  it('excludes test calls unless the chart says otherwise', () => {
-    const on = buildQuery(parse(countByDisposition), ctx, 'aggregate')
-    expect(on.params).toContainEqual(['dev'])
-    const off = buildQuery(parse({ ...countByDisposition, exclude_environments: [] }), ctx, 'aggregate')
-    expect(off.sql).not.toContain('l.environment')
+  it('counts every environment until somebody says otherwise', () => {
+    // defaulting this to ['dev'] zeroed every chart on every dev-deployed
+    // agent, silently — the filter has to be visible to be safe
+    const byDefault = buildQuery(parse(countByDisposition), ctx, 'aggregate')
+    expect(byDefault.sql).not.toContain('l.environment')
+
+    const excluded = buildQuery(parse({ ...countByDisposition, exclude_environments: ['dev'] }), ctx, 'aggregate')
+    expect(excluded.params).toContainEqual(['dev'])
+    expect(excluded.sql).toContain('l.environment')
   })
 
   it('treats all four spellings of empty as missing', () => {

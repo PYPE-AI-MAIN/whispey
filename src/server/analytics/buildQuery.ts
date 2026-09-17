@@ -20,6 +20,7 @@ import {
   BOOLEAN_VALUES,
   NUMERIC_COL_SET,
   COLUMN_EXPRESSIONS,
+  EXPRESSION_SOURCES,
   ELEMENT_COL,
   JSON_COLS,
   TEXT_COLS,
@@ -278,19 +279,21 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const carried = new Set<string>(['call_id', 'agent_id', 'created_at'])
   for (const r of allRefs) {
     if (r.col === ELEMENT_COL) continue
-    if (r.col === 'total_cost') {
-      for (const c of ['total_llm_cost', 'total_tts_cost', 'total_stt_cost']) carried.add(c)
-    } else {
-      carried.add(r.col)
-    }
+    // an expression column needs its ingredients carried, not its own name
+    const sources = EXPRESSION_SOURCES[r.col]
+    if (sources) for (const c of sources) carried.add(c)
+    else carried.add(r.col)
   }
   if (target !== 'aggregate') {
     for (const c of ['customer_number', 'call_ended_reason', 'call_ended_at', 'duration_seconds', 'recording_url']) {
       carried.add(c)
     }
   }
-  // both are projected explicitly below; listing them twice makes the alias ambiguous
-  carried.delete('call_started_at')
+  // `id` is projected explicitly below and would be ambiguous twice over.
+  // `call_started_at` is projected as `started_at`, but call_duration_seconds
+  // measures it, so it is also carried under its own name — two output columns
+  // from one source, which is legal and keeps one expression valid at every
+  // stage of the query.
   carried.delete('id')
 
   /* ---- stage 1: the scan ---- */

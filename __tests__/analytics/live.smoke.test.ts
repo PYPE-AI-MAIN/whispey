@@ -20,30 +20,30 @@ const cases: Record<string, SpecInput> = {
   'count by disposition': {
     spec_version: 1, agg: { fn: 'count' },
     dimension: { field: { col: 'transcription_metrics', path: ['final_disposition'] } },
-    range: { days: 400 }, exclude_environments: [],
+    range: { days: 400 },
   },
   'calls per day': {
-    spec_version: 1, agg: { fn: 'count' }, bucket: 'day', range: { days: 30 }, exclude_environments: [],
+    spec_version: 1, agg: { fn: 'count' }, bucket: 'day', range: { days: 30 },
   },
   // three encodings, all present in this data: '0'/'1', 'yes'/'no' (mixed case,
   // and mixed with '0' on the same field), and 'true'/'false' beside 'N/A'
   'confirmation rate (1/0)': {
     spec_version: 1,
     agg: { fn: 'rate', field: { col: 'transcription_metrics', path: ['is_confirmation'], boolean_encoding: 'one_zero' } },
-    range: { days: 400 }, exclude_environments: [],
+    range: { days: 400 },
   },
   'hindi rate (yes/no, mixed case)': {
     spec_version: 1,
     agg: { fn: 'rate', field: { col: 'transcription_metrics', path: ['is_Conversation_hindi'], boolean_encoding: 'yes_no' } },
-    range: { days: 400 }, exclude_environments: [],
+    range: { days: 400 },
   },
   'new patient rate (true/false beside N/A)': {
     spec_version: 1,
     agg: { fn: 'rate', field: { col: 'transcription_metrics', path: ['is_new_patient'], boolean_encoding: 'true_false' } },
-    range: { days: 400 }, exclude_environments: [],
+    range: { days: 400 },
   },
   'p95 latency': {
-    spec_version: 1, agg: { fn: 'p95', field: { col: 'avg_latency' } }, range: { days: 400 }, exclude_environments: [],
+    spec_version: 1, agg: { fn: 'p95', field: { col: 'avg_latency' } }, range: { days: 400 },
   },
   'one per patient, best outcome': {
     spec_version: 1, grain: 'entity',
@@ -52,16 +52,16 @@ const cases: Record<string, SpecInput> = {
       ranking: ['appointment_confirmed', 'confirmed', 'transferred', 'user_busy', 'wrong_number'] },
     agg: { fn: 'count' },
     dimension: { field: { col: 'transcription_metrics', path: ['final_disposition'] } },
-    range: { days: 400 }, exclude_environments: [],
+    range: { days: 400 },
   },
   'nested object path': {
     spec_version: 1, agg: { fn: 'count' },
     dimension: { field: { col: 'metadata', path: ['usage', 'llm_prompt_tokens'] } },
-    range: { days: 400 }, exclude_environments: [],
+    range: { days: 400 },
   },
   'night shift 22:00-02:00': {
     spec_version: 1, agg: { fn: 'count' }, time_of_day: { from: '22:00', to: '02:00' },
-    range: { days: 400 }, exclude_environments: [],
+    range: { days: 400 },
   },
 }
 

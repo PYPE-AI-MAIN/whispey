@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { JSON_COLS } from '@/server/analytics/spec'
-import { scanColumn, inferField } from '@/server/analytics/catalog'
+import { scanColumn, scanBuiltins, inferField } from '@/server/analytics/catalog'
 import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
 
 export const runtime = 'nodejs'
@@ -73,6 +73,37 @@ async function rescan(
   const keep = new Map(existing.map((r) => [`${r.col}.${((r.path ?? []) as string[]).join('.')}`, r]))
   const now = new Date().toISOString()
   const out: Record<string, unknown>[] = []
+
+  // the real columns first: every call has a duration and a reason it ended,
+  // so they are not discovered, only measured
+  for (const b of await scanBuiltins(agentId)) {
+    const prior = keep.get(`${b.col}.`)
+    out.push({
+      ...(prior?.id ? { id: prior.id } : {}),
+      project_id: projectId,
+      agent_id: agentId,
+      source: 'voice',
+      col: b.col,
+      path: [],
+      label: (prior?.type_confirmed && (prior?.label as string)) || b.label,
+      value_type: b.value_type,
+      encoding: 'native',
+      boolean_encoding: null,
+      json_shape: null,
+      sentinels: null,
+      enum_values: b.enum_values,
+      is_identity_candidate: b.is_identity_candidate,
+      type_confirmed: prior?.type_confirmed === true,
+      cardinality_est: b.cardinality_est,
+      coverage_pct: b.coverage_pct,
+      blank_count: null,
+      empty_count: null,
+      name_normalised: b.col,
+      is_dimension: b.is_dimension,
+      first_seen_at: prior?.first_seen_at ?? now,
+      last_seen_at: now,
+    })
+  }
 
   for (const col of JSON_COLS) {
     for (const stats of await scanColumn(agentId, col)) {

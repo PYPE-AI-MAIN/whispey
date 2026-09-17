@@ -37,13 +37,41 @@ export const TEXT_COLS = [
  * fixed string the user never writes.
  */
 export const NUMERIC_COLS = [
-  'duration_seconds', 'billing_duration_seconds', 'avg_latency', 'p50_latency',
+  'duration_seconds', 'call_duration_seconds', 'billing_duration_seconds', 'avg_latency',
   'total_stt_cost', 'total_tts_cost', 'total_llm_cost', 'total_cost',
 ] as const
+// p50_latency is in setup-supabase.sql but not on the live database. A column
+// that exists only in the repo turns every chart using it into a hard error, so
+// this list is what production actually has, checked against
+// information_schema rather than the DDL file.
 
-/** Columns that are an expression rather than a column. Keys only ever come from NUMERIC_COLS. */
+/**
+ * Columns that are an expression rather than a column. Keys only ever come from
+ * NUMERIC_COLS, so nothing a user wrote reaches the SQL text.
+ *
+ * `call_duration_seconds` exists because `duration_seconds` is NULL on every
+ * row: its DDL default computes it at INSERT, and at insert time the call has
+ * not ended yet — the later UPDATE never recomputes it. Measuring the two
+ * timestamps is the only way to get a call's length, and `call_ended_at >
+ * call_started_at` throws away the rows where they arrived out of order rather
+ * than reporting a negative call.
+ */
 export const COLUMN_EXPRESSIONS: Record<string, (t: string) => string> = {
-  total_cost: (t) => `(coalesce(${t}.total_llm_cost, 0) + coalesce(${t}.total_tts_cost, 0) + coalesce(${t}.total_stt_cost, 0))`,
+  // NULL when no cost was recorded at all, rather than a confident zero. A
+  // coalesce here reported 100% coverage for an agent whose costs are never
+  // written, which is the exact opposite of what the coverage line is for.
+  total_cost: (t) =>
+    `(CASE WHEN ${t}.total_llm_cost IS NOT NULL OR ${t}.total_tts_cost IS NOT NULL OR ${t}.total_stt_cost IS NOT NULL
+           THEN coalesce(${t}.total_llm_cost, 0) + coalesce(${t}.total_tts_cost, 0) + coalesce(${t}.total_stt_cost, 0) END)`,
+  call_duration_seconds: (t) =>
+    `(CASE WHEN ${t}.call_ended_at > ${t}.call_started_at
+           THEN EXTRACT(epoch FROM (${t}.call_ended_at - ${t}.call_started_at)) END)`,
+}
+
+/** Which real columns each expression needs carried through the query. */
+export const EXPRESSION_SOURCES: Record<string, string[]> = {
+  total_cost: ['total_llm_cost', 'total_tts_cost', 'total_stt_cost'],
+  call_duration_seconds: ['call_started_at', 'call_ended_at'],
 }
 
 export const SCALAR_COLS = [...TEXT_COLS, ...NUMERIC_COLS] as const
@@ -198,8 +226,16 @@ export const Spec = z
     bucket: z.enum(BUCKETS).default('none'),
 
     live: z.boolean().default(false),
-    /** Test calls are in every number today (§5.6). Excluded by default; the UI shows it as a chip. */
-    exclude_environments: z.array(z.string()).max(20).default(['dev']),
+    /**
+     * Environments to leave out (§5.6 — test calls are in every number today).
+     *
+     * Empty by default, deliberately. Defaulting this to ['dev'] zeroed every
+     * chart on every agent deployed to dev — 1,903 of 1,911 rows in that
+     * database — and did it silently, which is precisely what §10.3 forbids:
+     * a filter that is on but hidden makes every number wrong without anyone
+     * noticing. Environment belongs in a filter chip you can see and remove.
+     */
+    exclude_environments: z.array(z.string()).max(20).default([]),
     /** Completed calls only by default — a call_started row with no end is a live call (§5.5). */
     include_live_calls: z.boolean().default(false),
     sentinels: z.array(z.string()).max(50).default([...DEFAULT_SENTINELS]),

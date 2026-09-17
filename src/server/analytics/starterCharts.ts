@@ -34,7 +34,7 @@ export const STARTER_CHARTS: StarterChart[] = [
     layout: { width: 'quarter' },
     spec: {
       spec_version: 1,
-      agg: { fn: 'sum', field: { col: 'duration_seconds' } },
+      agg: { fn: 'sum', field: { col: 'call_duration_seconds' } },
       range: { days: 7 },
       // full precision in the query; the rounding happens once, on screen
       display: { round: 0, unit: 'm', scale: SECONDS_TO_MINUTES },
@@ -123,7 +123,7 @@ export const STARTER_CHARTS: StarterChart[] = [
     layout: { width: 'half' },
     spec: {
       spec_version: 1,
-      agg: { fn: 'sum', field: { col: 'duration_seconds' } },
+      agg: { fn: 'sum', field: { col: 'call_duration_seconds' } },
       bucket: 'day',
       range: { days: 30 },
       display: { round: 0, unit: 'm', scale: SECONDS_TO_MINUTES },

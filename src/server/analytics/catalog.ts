@@ -14,7 +14,7 @@
  * here still works, because the query builder validates the base column and
  * passes the path as a parameter regardless.
  */
-import { BOOLEAN_VALUES, BOOLEAN_ENCODINGS, DEFAULT_SENTINELS, JSON_COLS } from './spec'
+import { BOOLEAN_VALUES, BOOLEAN_ENCODINGS, DEFAULT_SENTINELS, EXPRESSION_SOURCES, JSON_COLS } from './spec'
 import { runQuery } from './db'
 
 /** Depth 2 covers metadata.usage.llm_prompt_tokens. Deeper fields still chart; they just are not offered. */
@@ -204,4 +204,88 @@ export async function scanColumn(agentId: string, col: (typeof JSON_COLS)[number
     30_000
   )
   return rows.map((r) => ({ ...r, sample_values: (r.sample_values as string[] | null) ?? [] })) as unknown as FieldStats[]
+}
+
+/* ------------------------------------------------------- the real columns */
+
+/**
+ * The columns that are columns, not JSON — Confluence §5, and the gap that made
+ * the filter bar and the "split by" list unable to offer the very fields the
+ * starter charts use.
+ *
+ * They are not discovered, because they do not vary: every call has a duration
+ * and a reason it ended. Only their value lists and coverage are read from the
+ * data.
+ */
+const BUILTIN: { col: string; label: string; value_type: FieldInference['value_type']; is_dimension: boolean }[] = [
+  { col: 'environment', label: 'Environment', value_type: 'enum', is_dimension: true },
+  { col: 'call_ended_reason', label: 'Why the call ended', value_type: 'enum', is_dimension: true },
+  { col: 'wcall_event', label: 'Call state', value_type: 'enum', is_dimension: true },
+  { col: 'transcript_type', label: 'Transcript type', value_type: 'enum', is_dimension: true },
+  { col: 'customer_number', label: 'Phone number', value_type: 'text', is_dimension: true },
+  { col: 'call_id', label: 'Call id', value_type: 'text', is_dimension: true },
+  { col: 'call_duration_seconds', label: 'Call length (seconds)', value_type: 'number', is_dimension: false },
+  { col: 'billing_duration_seconds', label: 'Billed length (seconds)', value_type: 'number', is_dimension: false },
+  { col: 'avg_latency', label: 'Response time (seconds)', value_type: 'number', is_dimension: false },
+  { col: 'total_cost', label: 'Cost', value_type: 'number', is_dimension: false },
+  { col: 'total_llm_cost', label: 'Model cost', value_type: 'number', is_dimension: false },
+  { col: 'total_tts_cost', label: 'Voice cost', value_type: 'number', is_dimension: false },
+  { col: 'total_stt_cost', label: 'Transcription cost', value_type: 'number', is_dimension: false },
+]
+
+/** The ones worth offering as categories; the rest are values, not buckets. */
+const BUILTIN_ENUMS = BUILTIN.filter((b) => b.value_type === 'enum').map((b) => b.col)
+
+export type BuiltinField = (typeof BUILTIN)[number] & {
+  path: string[]
+  enum_values: string[] | null
+  coverage_pct: number
+  cardinality_est: number
+  is_identity_candidate: boolean
+}
+
+/** One query for every built-in column's coverage, plus the value lists of the short ones. */
+export async function scanBuiltins(agentId: string): Promise<BuiltinField[]> {
+  const counts = BUILTIN.map(
+    (b) => `count(${EXPRESSION_SOURCES[b.col]?.[0] ?? b.col})::int AS "n_${b.col}"`
+  ).join(',\n           ')
+  const enums = BUILTIN_ENUMS.map(
+    (c) => `(SELECT array_agg(DISTINCT v) FROM (SELECT ${c} AS v FROM sample WHERE ${c} IS NOT NULL AND ${c} <> '' LIMIT 5000) s WHERE true) AS "vals_${c}"`
+  ).join(',\n           ')
+
+  const rows = await runQuery<Record<string, unknown>>(
+    `WITH sample AS (
+       SELECT *
+       FROM   pype_voice_call_logs
+       WHERE  agent_id = $1::uuid
+         AND  call_started_at >= now() - ($2 || ' days')::interval
+       ORDER  BY call_started_at DESC
+       LIMIT  $3
+     )
+     SELECT count(*)::int AS total,
+            ${counts},
+            ${enums}
+     FROM   sample`,
+    [agentId, String(SAMPLE_DAYS), SAMPLE_ROWS],
+    30_000
+  )
+
+  const row = rows[0] ?? {}
+  const total = Number(row.total ?? 0)
+
+  return BUILTIN.map((b) => {
+    const filled = Number(row[`n_${b.col}`] ?? 0)
+    const values = (row[`vals_${b.col}`] as string[] | null) ?? null
+    // a column with too many values is not a category, whatever it was declared
+    const usableValues = values && values.length <= 30 ? values.slice().sort() : null
+    return {
+      ...b,
+      path: [],
+      enum_values: usableValues,
+      value_type: b.value_type === 'enum' && !usableValues ? 'text' : b.value_type,
+      coverage_pct: total > 0 ? Math.round((filled / total) * 1000) / 10 : 0,
+      cardinality_est: values?.length ?? 0,
+      is_identity_candidate: b.col === 'customer_number' || b.col === 'call_id',
+    }
+  })
 }
