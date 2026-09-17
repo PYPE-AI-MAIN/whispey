@@ -14,7 +14,7 @@ import { runQuery } from '@/server/analytics/db'
  */
 const AGENT = '781fcc07-6929-4a4a-bc63-bb2b837ce71c'
 const ctx = { projectId: 'x', agentIds: [AGENT, '6e5f72dd-1ee5-4dda-9b4b-9ea6f1bec234'],
-  visibleFields: null, tz: 'Asia/Kolkata', maxDays: 730 }
+  deniedFields: new Set<string>(), tz: 'Asia/Kolkata', maxDays: 730 }
 
 const cases: Record<string, SpecInput> = {
   'count by disposition': {

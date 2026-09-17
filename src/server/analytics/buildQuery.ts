@@ -52,8 +52,13 @@ export type Ctx = {
    * the route, not an unfiltered query here.
    */
   agentIds: string[]
-  /** Field keys (`col.path.join('.')`) this member may read. null = no restriction. */
-  visibleFields: Set<string> | null
+  /**
+   * Fields this member may NOT read — the same deny set the Call Logs column
+   * picker already produces (`getDisallowedColumns`), so analytics and logs
+   * cannot disagree about who sees the cost column. A denied base column blocks
+   * every path underneath it.
+   */
+  deniedFields: Set<string>
   /** Named zone, e.g. 'Asia/Kolkata'. Never a fixed offset. */
   tz: string
   maxDays: number
@@ -174,10 +179,13 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
 
   const keyOf = (ref: Ref) => (ref.path?.length ? `${ref.col}.${ref.path.join('.')}` : ref.col)
   const check = (ref: Ref | undefined) => {
-    if (!ref) return
-    if (ctx.visibleFields && !ctx.visibleFields.has(keyOf(ref))) {
-      throw new SpecError(`no permission for ${keyOf(ref)}`)
-    }
+    if (!ref || ctx.deniedFields.size === 0) return
+    // deny the whole subtree: hiding `metadata` hides every path inside it, and
+    // hiding one key hides only that key
+    const denied =
+      ctx.deniedFields.has(ref.col) ||
+      (ref.path ?? []).some((_, i) => ctx.deniedFields.has(`${ref.col}.${ref.path!.slice(0, i + 1).join('.')}`))
+    if (denied) throw new SpecError(`no permission for ${keyOf(ref)}`)
   }
   check(spec.agg.field)
   check(spec.dimension?.field)

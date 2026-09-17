@@ -16,7 +16,7 @@ const AGENT = '11111111-1111-1111-1111-111111111111'
 const ctx: Ctx = {
   projectId: '22222222-2222-2222-2222-222222222222',
   agentIds: [AGENT],
-  visibleFields: null,
+  deniedFields: new Set<string>(),
   tz: 'Asia/Kolkata',
   maxDays: 365,
   now: new Date('2026-09-17T12:00:00Z'),
@@ -274,12 +274,23 @@ describe('6 · permissions are enforced here, not in the browser', () => {
   })
 
   it('refuses a field the member may not see, whoever wrote the spec', () => {
-    const restricted: Ctx = { ...ctx, visibleFields: new Set(['metadata.appointment_id']) }
+    const restricted: Ctx = { ...ctx, deniedFields: new Set(['transcription_metrics.final_disposition']) }
     expect(() => buildQuery(parse(countByDisposition), restricted, 'aggregate')).toThrow(/no permission/)
   })
 
+  it('hides every path underneath a hidden column', () => {
+    const restricted: Ctx = { ...ctx, deniedFields: new Set(['metadata']) }
+    expect(() =>
+      buildQuery(
+        parse({ ...countByDisposition, dimension: { field: { col: 'metadata', path: ['usage', 'cost'] } } }),
+        restricted,
+        'aggregate'
+      )
+    ).toThrow(/no permission/)
+  })
+
   it('checks fields used only inside a filter too', () => {
-    const restricted: Ctx = { ...ctx, visibleFields: new Set(['transcription_metrics.final_disposition']) }
+    const restricted: Ctx = { ...ctx, deniedFields: new Set(['metadata.total_cost_secret']) }
     expect(() =>
       buildQuery(
         parse({

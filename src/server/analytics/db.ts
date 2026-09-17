@@ -40,7 +40,10 @@ function pool(): Pool {
     // pool size is per running instance, so the ceiling is max × peak instances
     max: 2,
     idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 5_000,
+    // a dashboard sends its charts together and the pool holds 2, so most of them
+    // queue here. Waiting is correct; statement_timeout bounds how long any one
+    // of them can make the others wait.
+    connectionTimeoutMillis: 30_000,
     // Supabase terminates TLS at the pooler with its own certificate chain
     ssl: { rejectUnauthorized: false },
   })
