@@ -52,7 +52,9 @@ const SOURCES = [{ id: 'voice', label: 'Voice' }] as const
 
 export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive = true }: Props) {
   const agentId = agent?.id
-  const isMobile = useMobile()
+  // useMobile returns { isMobile, mounted } — taking the object whole makes
+  // every `!isMobile` false, which silently hides the panel and kills dragging
+  const { isMobile } = useMobile()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { dashboard, fields, save } = useAnalyticsDashboard(agentId, Boolean(isActive))

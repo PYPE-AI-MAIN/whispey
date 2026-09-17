@@ -77,7 +77,9 @@ export function ChartCard({
                 {...sortable.attributes}
                 {...sortable.listeners}
                 aria-label={`Move ${widget.title}`}
-                className="-ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-gray-500 focus:opacity-100 dark:text-gray-600"
+                // faint rather than invisible: a handle nobody can see is a
+                // feature nobody finds
+                className="-ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-40 transition hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 dark:text-gray-600"
               >
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
