@@ -52,6 +52,10 @@ type Props = {
 /** Phase 3 adds WhatsApp and Journeys. An empty tab looks broken, so only Voice ships (§10.2). */
 const SOURCES = [{ id: 'voice', label: 'Voice' }] as const
 
+/** Both fixed, and only used to guess a width when measuring has not worked yet. */
+const SIDEBAR_WIDTH = 340
+const PANEL_WIDTH = 288
+
 /**
  * Cards stack into one column below this (§10.9).
  *
@@ -110,8 +114,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
 
   /**
    * Zero is never a real layout — it means the tab is display:none, or the node
-   * is between renders. Taking it would blank the grid, which will not draw
-   * without a width, so only a real measurement is kept.
+   * is between renders — so only a real measurement is kept.
    */
   const measure = useCallback(() => {
     const node = containerRef.current
@@ -147,6 +150,22 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       window.clearInterval(retry)
     }
   }, [measure])
+
+  /**
+   * react-grid-layout needs its width in pixels and will not draw without one,
+   * so a measurement that comes back zero must never be the end of the story:
+   * that is a blank dashboard on top of data that loaded perfectly well.
+   *
+   * Until a real measurement lands, work it out from the window — the app
+   * sidebar and the settings panel are both fixed widths. A slightly wrong
+   * layout for one frame is worth any amount of "nothing rendered at all".
+   */
+  const gridWidth =
+    width > 0
+      ? width
+      : typeof window !== 'undefined'
+        ? Math.max(480, window.innerWidth - SIDEBAR_WIDTH - (panelOpen ? PANEL_WIDTH : 32))
+        : 1024
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   const canEdit = dashboard.data?.can_edit === true
@@ -372,12 +391,9 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
           {/* measured without the padding — the grid lays out inside this box,
               and measuring the padded parent made it 24px too wide */}
           <div ref={containerRef} className="w-full">
-            {/* never blank: before the width is known there is still a dashboard
-                here, it just cannot be placed yet */}
-            {width === 0 && widgets.length > 0 && <DashboardSkeleton />}
-            {width > 0 && widgets.length > 0 && (
+            {widgets.length > 0 && (
             <ResponsiveGridLayout
-              width={width}
+              width={gridWidth}
               layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
               breakpoints={BREAKPOINTS}
               cols={COLUMNS}
