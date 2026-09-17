@@ -13,9 +13,17 @@ import type { Dashboard, Widget, WidgetResult, CatalogField } from '@/types/anal
 import type { FilterNodeInput } from '@/server/analytics/spec'
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } })
+  let res: Response
+  try {
+    res = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } })
+  } catch {
+    // fetch only rejects when the request never got an answer — offline, the
+    // server restarting, a dropped connection. "Failed to fetch" is the
+    // browser's words for that and it tells nobody anything.
+    throw new Error('Could not reach the server. Check your connection and try again — nothing was lost.')
+  }
   const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body?.error ?? 'Something went wrong')
+  if (!res.ok) throw new Error(body?.error ?? `Something went wrong (${res.status})`)
   return body as T
 }
 

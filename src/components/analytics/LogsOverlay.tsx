@@ -54,8 +54,10 @@ export function LogsOverlay({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ agentId, spec: widget.spec, dimensionValue, cursor: next }),
+        }).catch(() => {
+          throw new Error('Could not reach the server. Check your connection and try again.')
         })
-        const body = await res.json()
+        const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body?.error ?? 'Could not load these calls')
         setRows((prev) => (next ? [...prev, ...body.rows] : body.rows))
         setCursor(body.nextCursor)
