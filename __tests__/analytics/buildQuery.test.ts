@@ -772,3 +772,27 @@ describe('charts that read the same rows share one scan', () => {
     expect(plans[0].sql).toContain('LIMIT')
   })
 })
+
+/**
+ * `duration_seconds` is a DDL default computed at INSERT, when the call has not
+ * ended — so it is NULL on most rows. The drill list showed "—" for the length
+ * of calls the chart beside it had just totalled in minutes.
+ */
+describe('the drill list reports a length the chart would recognise', () => {
+  const spec = Spec.parse({ spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } } satisfies SpecInput)
+
+  it('falls back to the same subtraction the charts use', () => {
+    const { sql } = buildQuery(spec, ctx, 'drill')
+    expect(sql).toContain('coalesce')
+    expect(sql).toMatch(/EXTRACT\(epoch FROM \(\w+\.call_ended_at - \w+\.started_at\)\)/)
+    expect(sql).toContain('AS duration_seconds')
+  })
+
+  it('and so does an export, so the file matches the screen', () => {
+    expect(buildQuery(spec, ctx, 'export').sql).toContain('AS duration_seconds')
+  })
+
+  it('but an aggregate is untouched — it already measures what it was asked for', () => {
+    expect(buildQuery(spec, ctx, 'aggregate').sql).not.toContain('AS duration_seconds')
+  })
+})

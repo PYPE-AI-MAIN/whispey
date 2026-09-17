@@ -529,7 +529,15 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     }
     const cols = [
       `${t}.id`, `${t}.call_id`, `${t}.customer_number`, `${t}.started_at`,
-      `${t}.call_ended_at`, `${t}.duration_seconds`, `${t}.call_ended_reason`,
+      `${t}.call_ended_at`,
+      // duration_seconds is a DDL default computed at INSERT, when the call has
+      // not ended — so it is NULL on most rows, and the drill list showed "—"
+      // for the length of calls the chart had just measured in minutes. Fall
+      // back to the same subtraction the charts use.
+      `coalesce(${t}.duration_seconds,` +
+        ` CASE WHEN ${t}.call_ended_at > ${t}.started_at` +
+        ` THEN EXTRACT(epoch FROM (${t}.call_ended_at - ${t}.started_at)) END) AS duration_seconds`,
+      `${t}.call_ended_reason`,
       ...(target === 'export' ? [`${t}.recording_url`] : []),
       ...(dimExpr ? [`${dimExpr} AS series`] : []),
     ]

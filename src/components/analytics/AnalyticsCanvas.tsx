@@ -32,7 +32,7 @@ import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitl
 import { coverage } from './chartData'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { SuggestedStrip } from './SuggestedStrip'
-import { explainSpec } from './explain'
+import { explainSpec, fieldName } from './explain'
 import {
   applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
 } from './gridLayout'
@@ -80,7 +80,7 @@ const SOURCES = [
 const BREAKPOINTS = { lg: 640, sm: 0 }
 const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
 
-export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive = true }: Props) {
+export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true }: Props) {
   const agentId = agent?.id
   const { isMobile } = useMobile()
   const router = useRouter()
@@ -513,7 +513,10 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
 
       <LogsOverlay
         agentId={agentId}
+        projectId={project?.id ?? ''}
         widget={logs?.widget ?? null}
+        grainLabel={logs ? grainLabel(logs.widget, catalog) : 'Every call'}
+        seriesLabel={logs?.widget.spec.dimension?.field ? fieldName(logs.widget.spec.dimension.field, catalog) : null}
         dimensionValue={logs?.value}
         open={Boolean(logs)}
         onClose={() => setLogs(null)}

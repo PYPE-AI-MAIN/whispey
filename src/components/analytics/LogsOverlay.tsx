@@ -8,7 +8,7 @@
  */
 'use client'
 import React, { useEffect, useState } from 'react'
-import { Download, Loader2 } from 'lucide-react'
+import { ArrowUpRight, Download, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -27,9 +27,15 @@ type Row = {
 }
 
 export function LogsOverlay({
-  agentId, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal,
+  agentId, projectId, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel,
 }: {
   agentId: string
+  /** Needed to link a row to its call. */
+  projectId: string
+  /** "Every call", or "One per patient" — whatever this chart is counting one of. */
+  grainLabel: string
+  /** What the chart splits by, for the column heading. */
+  seriesLabel?: string | null
   widget: Widget | null
   /** undefined = every row behind the chart; null = the rows with no value. */
   dimensionValue: string | null | undefined
@@ -79,6 +85,15 @@ export function LogsOverlay({
   }, [open, load])
 
   const grain = widget?.spec.grain ?? 'interaction'
+  // the breakdown column earns its space only when the rows differ in it
+  const showSeries = Boolean(widget?.spec.dimension) && dimensionValue === undefined
+
+  /**
+   * The call itself, in a new tab — the dashboard you were reading is still
+   * there when you come back, filters, scroll position and all.
+   */
+  const openCall = (id: string) =>
+    window.open(`/${projectId}/agents/${agentId}/observability?session_id=${id}`, '_blank', 'noopener')
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -94,12 +109,17 @@ export function LogsOverlay({
           </DialogTitle>
 
           {/* stops somebody asking why they expected 1,847 */}
-          {grain === 'entity' && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              One per appointment, best outcome
-              {chartTotal ? ` — ${chartTotal.toLocaleString()} calls became ${rows.length.toLocaleString()} rows` : ''}
-            </p>
-          )}
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {grain === 'entity'
+              ? `${grainLabel}, ${widget?.spec.dedupe?.winner === 'most_recent' ? 'most recent attempt' : 'best outcome'}`
+              : grainLabel}
+            {/* only when it actually collapsed something: "54 calls became 54
+                rows" reads like a bug, because it is telling you nothing */}
+            {grain === 'entity' && chartTotal && chartTotal !== rows.length
+              ? ` — ${chartTotal.toLocaleString()} calls became ${rows.length.toLocaleString()} rows`
+              : ''}
+            {rows.length > 0 && grain !== 'entity' ? ` · ${rows.length.toLocaleString()} shown` : ''}
+          </p>
 
           {!downloadDisabled && (
             <div className="pt-1">
@@ -126,25 +146,49 @@ export function LogsOverlay({
 
           {rows.length > 0 && (
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-gray-400">
-                <tr>
-                  <th className="pb-2 font-medium">When</th>
-                  <th className="pb-2 font-medium">Number</th>
-                  <th className="pb-2 font-medium">Length</th>
-                  <th className="pb-2 font-medium">Ended</th>
+              <thead className="sticky top-0 bg-white text-left text-xs uppercase tracking-wide text-gray-400 dark:bg-gray-950">
+                <tr className="border-b border-gray-200 dark:border-gray-800">
+                  <th className="py-2 font-medium">When</th>
+                  <th className="py-2 font-medium">Number</th>
+                  <th className="py-2 font-medium">Length</th>
+                  <th className="py-2 font-medium">Ended</th>
+                  {/* the value this row landed in — pointless when every row on
+                      screen has the same one, because the title already says it */}
+                  {showSeries && <th className="py-2 font-medium">{seriesLabel ?? 'Value'}</th>}
+                  <th className="w-8 py-2" />
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-t border-gray-100 dark:border-gray-800">
-                    <td className="py-1.5 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                  <tr
+                    key={r.id}
+                    onClick={() => openCall(r.id)}
+                    className="group cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800/70 dark:hover:bg-gray-800/40"
+                  >
+                    <td className="whitespace-nowrap py-2 pr-4 text-gray-700 dark:text-gray-300">
                       {r.started_at ? new Date(r.started_at).toLocaleString() : '—'}
                     </td>
-                    <td className="py-1.5 tabular-nums text-gray-700 dark:text-gray-300">{r.customer_number ?? '—'}</td>
-                    <td className="py-1.5 tabular-nums text-gray-500">
-                      {r.duration_seconds ? `${Math.round(r.duration_seconds)}s` : '—'}
+                    {/* about 250 of this agent's rows hold a 40-character web
+                        session id here instead of a number, and unbounded it
+                        pushed every other column off the dialog */}
+                    <td
+                      className="max-w-[10rem] truncate py-2 pr-4 tabular-nums text-gray-700 dark:text-gray-300"
+                      title={r.customer_number ?? undefined}
+                    >
+                      {r.customer_number || '—'}
                     </td>
-                    <td className="py-1.5 text-gray-500">{r.call_ended_reason ?? '—'}</td>
+                    <td className="whitespace-nowrap py-2 pr-4 tabular-nums text-gray-500">{length(r.duration_seconds)}</td>
+                    <td className="max-w-[9rem] truncate py-2 pr-4 text-gray-500" title={r.call_ended_reason ?? undefined}>
+                      {r.call_ended_reason ?? '—'}
+                    </td>
+                    {showSeries && (
+                      <td className="max-w-[10rem] truncate py-2 pr-4 text-gray-500" title={r.series ?? undefined}>
+                        {r.series ?? '—'}
+                      </td>
+                    )}
+                    <td className="py-2 text-right">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 opacity-0 transition group-hover:opacity-100 dark:text-gray-600" />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -163,4 +207,12 @@ export function LogsOverlay({
       </DialogContent>
     </Dialog>
   )
+}
+
+/** A call length nobody has to convert in their head. */
+function length(seconds: number | null): string {
+  if (seconds === null || seconds === undefined) return '—'
+  const whole = Math.round(seconds)
+  if (whole < 60) return `${whole}s`
+  return `${Math.floor(whole / 60)}m ${String(whole % 60).padStart(2, '0')}s`
 }
