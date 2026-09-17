@@ -160,3 +160,53 @@ describe('chartSubject', () => {
     expect(chartSubject({ spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } } as never)).toBe('count::count')
   })
 })
+
+/**
+ * Everything here was visible in one screenshot of the SUGGESTED strip: four
+ * cards, all of them boolean KPIs, all carrying the identical sentence "yes or
+ * no, filled in on 100% of calls", and none of them the one field anybody would
+ * actually want.
+ */
+describe('a suggestion strip that is not four of the same thing', () => {
+  const bool = (path: string, label: string, over: Partial<CatalogField> = {}) =>
+    field({ path: [path], label, value_type: 'boolean', boolean_encoding: 'one_zero',
+      enum_values: null, coverage_pct: 100, cardinality_est: 2, ...over })
+
+  it('never offers a field that only ever holds one value', () => {
+    // is_reschedule_transfer: on 100% of calls, and 0 on every one of them
+    const list = suggestions([bool('is_reschedule_transfer', 'Is reschedule transfer', { cardinality_est: 1 })])
+    expect(list).toEqual([])
+  })
+
+  it('puts a field the extractor declared ahead of one it did not', () => {
+    const list = suggestions([
+      bool('guessed', 'Guessed'),
+      bool('declared', 'Declared', { declared: true, description: 'Determine if the patient CONFIRMED.' }),
+    ])
+    expect(list[0].title).toBe('Declared rate')
+  })
+
+  it('quotes the extractor instead of repeating the same sentence', () => {
+    const [s] = suggestions([bool('is_confirmation', 'Is confirmation',
+      { declared: true, description: 'Determine if the patient CONFIRMED they will attend.' })])
+    expect(s.why).toBe('Determine if the patient CONFIRMED they will attend.')
+  })
+
+  it('still says something useful when there is no definition to quote', () => {
+    const [s] = suggestions([bool('x', 'X', { coverage_pct: 99.7 })])
+    expect(s.why).toBe('yes or no, on 99.7% of calls')
+  })
+
+  it('offers a rate, a breakdown and a trend before offering a second rate', () => {
+    const list = suggestions([
+      bool('a', 'A'), bool('b', 'B'),
+      field({ path: ['disposition'], label: 'Disposition', value_type: 'enum', enum_values: ['x', 'y'], cardinality_est: 2 }),
+      field({ path: ['latency'], label: 'Latency', value_type: 'number', enum_values: null, cardinality_est: 40, is_dimension: false }),
+    ])
+    expect(list.slice(0, 3).map((s) => s.kind)).toEqual(['kpi', 'bar', 'line'])
+  })
+
+  it('names the chart, not the column', () => {
+    expect(suggestions([bool('is_wrong_number', 'Is wrong number')])[0].title).toBe('Wrong number rate')
+  })
+})

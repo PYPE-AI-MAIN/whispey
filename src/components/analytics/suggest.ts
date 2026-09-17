@@ -63,56 +63,99 @@ export function suggestTitle(kind: ChartKind, fields: CatalogField[]): string {
 }
 
 /**
- * Charts worth offering for this agent, best first. Each says why, because a
- * suggestion without a reason is noise.
+ * A field whose every row holds the same value. `is_reschedule_transfer` is
+ * filled in on 100% of this agent's calls and is `0` on all of them; a card
+ * reading "0%" that will read "0%" tomorrow is not a suggestion.
  */
-export function suggestions(fields: CatalogField[]): { title: string; why: string; kind: ChartKind; spec: SpecInput }[] {
-  const out: { title: string; why: string; kind: ChartKind; spec: SpecInput }[] = []
+const varies = (f: CatalogField) => (f.cardinality_est ?? 0) > 1
 
-  for (const f of usable(fields, 'boolean').slice(0, 5)) {
-    out.push({
-      title: f.label,
-      why: `yes or no, filled in on ${f.coverage_pct}% of calls`,
-      kind: 'kpi',
-      spec: {
-        spec_version: 1,
-        agg: { fn: 'rate', field: { ...ref(f), boolean_encoding: f.boolean_encoding ?? 'true_false' }, denominator: 'field_present' },
-        range: { days: 30 },
-        display: { round: 1, unit: '%' },
-      },
-    })
+/** "Is wrong number" is the field's name. "Wrong number rate" is the chart's. */
+function rateTitle(label: string): string {
+  const stripped = label.replace(/^is\s+/i, '')
+  return `${stripped.charAt(0).toUpperCase()}${stripped.slice(1)} rate`
+}
+
+/**
+ * Why this chart is worth building — §11.3: "Every suggestion says why,
+ * otherwise it is noise."
+ *
+ * It was noise. Every boolean got the same sentence — "yes or no, filled in on
+ * 100% of calls" — which is true of all nine of them and says nothing about any
+ * one. The agent's extractor prompt already carries a real answer for every
+ * field it declares, so use that, and fall back to the shape only when there is
+ * no definition to quote.
+ */
+function why(f: CatalogField): string {
+  if (f.description) return f.description
+  if (f.value_type === 'boolean') return `yes or no, on ${f.coverage_pct ?? 0}% of calls`
+  if (f.value_type === 'enum') return `${f.cardinality_est ?? 0} different values, on ${f.coverage_pct ?? 0}% of calls`
+  return `a number, on ${f.coverage_pct ?? 0}% of calls`
+}
+
+/** A field somebody wrote a definition for is a field somebody cares about. */
+const byIntent = (a: CatalogField, b: CatalogField) =>
+  Number(Boolean(b.declared)) - Number(Boolean(a.declared)) || byCoverage(a, b)
+
+export type Suggestion = { title: string; why: string; kind: ChartKind; spec: SpecInput }
+
+/**
+ * Charts worth offering for this agent, best first.
+ *
+ * Three rules beyond "what type is it", each of which the first version got
+ * wrong and the screenshot showed:
+ *
+ *  - **Nothing constant.** See `varies`.
+ *  - **Declared fields first.** Sorting on coverage alone left nine fields tied
+ *    at 100%, broken by whatever order the catalog scan returned — which is how
+ *    the strip came to offer the four rarest outcomes and not `is_confirmation`.
+ *  - **One of each, not four of one.** The lists used to be concatenated and the
+ *    strip took the first four, so all four were always booleans. They are
+ *    interleaved, so you get a rate, a breakdown and a trend.
+ */
+export function suggestions(fields: CatalogField[]): Suggestion[] {
+  const rates = usable(fields, 'boolean').filter(varies).sort(byIntent).map<Suggestion>((f) => ({
+    title: rateTitle(f.label),
+    why: why(f),
+    kind: 'kpi',
+    spec: {
+      spec_version: 1,
+      agg: { fn: 'rate', field: { ...ref(f), boolean_encoding: f.boolean_encoding ?? 'true_false' }, denominator: 'field_present' },
+      range: { days: 30 },
+      display: { round: 1, unit: '%' },
+    },
+  }))
+
+  const breakdowns = usable(fields, 'enum').filter((f) => varies(f) && f.is_dimension).sort(byIntent).map<Suggestion>((f) => ({
+    title: `Calls by ${f.label.toLowerCase()}`,
+    why: why(f),
+    kind: 'bar',
+    spec: {
+      spec_version: 1,
+      agg: { fn: 'count' },
+      dimension: { field: ref(f), limit: 12 },
+      range: { days: 30 },
+      display: { round: 0 },
+    },
+  }))
+
+  const trends = usable(fields, 'number').sort(byIntent).map<Suggestion>((f) => ({
+    title: `${f.label} over time`,
+    why: why(f),
+    kind: 'line',
+    spec: {
+      spec_version: 1,
+      agg: { fn: 'avg', field: ref(f) },
+      bucket: 'day',
+      range: { days: 30 },
+      display: { round: 2 },
+    },
+  }))
+
+  // one from each, round and round, so the strip is never four of a kind
+  const out: Suggestion[] = []
+  for (let i = 0; i < Math.max(rates.length, breakdowns.length, trends.length); i++) {
+    for (const list of [rates, breakdowns, trends]) if (list[i]) out.push(list[i])
   }
-
-  for (const f of usable(fields, 'enum').slice(0, 5)) {
-    out.push({
-      title: `Calls by ${f.label.toLowerCase()}`,
-      why: `${f.cardinality_est ?? 0} different values, filled in on ${f.coverage_pct}% of calls`,
-      kind: 'bar',
-      spec: {
-        spec_version: 1,
-        agg: { fn: 'count' },
-        dimension: { field: ref(f), limit: 12 },
-        range: { days: 30 },
-        display: { round: 0 },
-      },
-    })
-  }
-
-  for (const f of usable(fields, 'number').slice(0, 3)) {
-    out.push({
-      title: `${f.label} over time`,
-      why: `a number, filled in on ${f.coverage_pct}% of calls`,
-      kind: 'line',
-      spec: {
-        spec_version: 1,
-        agg: { fn: 'avg', field: ref(f) },
-        bucket: 'day',
-        range: { days: 30 },
-        display: { round: 2 },
-      },
-    })
-  }
-
   return out
 }
 

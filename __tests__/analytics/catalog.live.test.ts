@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import { scanBuiltins, scanColumn, inferField } from '@/server/analytics/catalog'
 import { applyDeclarations, GROUP_LABEL, GROUP_ORDER, type FieldGroup } from '@/server/analytics/extractor'
 import { disambiguate } from '@/components/analytics/FieldPicker'
+import { suggestions } from '@/components/analytics/suggest'
 import { JSON_COLS } from '@/server/analytics/spec'
 import type { CatalogField } from '@/types/analytics'
 
@@ -47,6 +48,11 @@ run('what the pickers show', () => {
         if (f.description) console.log(`         ↳ ${f.description.slice(0,88)}`)
       }
     }
+    console.log('\n══ SUGGESTED (what the strip offers, in order)')
+    for (const s of suggestions(rows).slice(0, 8)) {
+      console.log(`  [${s.kind.padEnd(4)}] ${s.title.padEnd(34)} ↳ ${s.why.slice(0, 80)}`)
+    }
+
     console.log('\nSPLIT-BY candidates:', rows.filter(f=>f.is_dimension && f.value_type!=='json').length, 'of', rows.length)
   }, 120000)
 })
