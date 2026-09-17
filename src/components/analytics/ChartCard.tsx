@@ -10,8 +10,6 @@
  */
 'use client'
 import React from 'react'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { AlertTriangle, Clock, Copy, Download, EyeOff, GripVertical, List, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,11 +20,8 @@ import type { Widget, WidgetResult } from '@/types/analytics'
 import { ChartRenderer } from './ChartRenderer'
 import { coverage } from './chartData'
 
-const WIDTH_CLASS: Record<Widget['layout']['width'], string> = {
-  quarter: 'col-span-12 sm:col-span-6 xl:col-span-3',
-  half: 'col-span-12 lg:col-span-6',
-  full: 'col-span-12',
-}
+/** react-grid-layout only starts a drag from this class, so a click on the card selects it. */
+export const DRAG_HANDLE_CLASS = 'chart-drag-handle'
 
 export function ChartCard({
   widget, result, isLoading, selected, canEdit, draggable, categories,
@@ -49,7 +44,6 @@ export function ChartCard({
   onExport: () => void
   onChangeGrain: (grain: 'interaction' | 'entity') => void
 }) {
-  const sortable = useSortable({ id: widget.id, disabled: !draggable || !canEdit })
   const rows = result?.data ?? []
   const cover = coverage(rows)
   const isKpi = widget.kind === 'kpi'
@@ -60,15 +54,12 @@ export function ChartCard({
 
   return (
     <div
-      ref={sortable.setNodeRef}
-      style={{ transform: CSS.Translate.toString(sortable.transform), transition: sortable.transition }}
       className={cn(
-        WIDTH_CLASS[widget.layout?.width ?? 'half'],
-        'group relative flex flex-col rounded-xl border bg-white shadow-sm transition-all dark:bg-gray-900',
+        // the grid owns the rectangle; the card fills whatever it is given
+        'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-colors dark:bg-gray-900',
         selected
           ? 'border-blue-500 ring-1 ring-blue-500/30 dark:border-blue-400'
-          : 'border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700',
-        sortable.isDragging && 'z-20 opacity-80 shadow-lg'
+          : 'border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'
       )}
       onClick={onSelect}
     >
@@ -77,12 +68,13 @@ export function ChartCard({
           <div className="flex items-center gap-1.5">
             {draggable && canEdit && (
               <button
-                {...sortable.attributes}
-                {...sortable.listeners}
                 aria-label={`Move ${widget.title}`}
                 // faint rather than invisible: a handle nobody can see is a
                 // feature nobody finds
-                className="-ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-40 transition hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 dark:text-gray-600"
+                className={cn(
+                  DRAG_HANDLE_CLASS,
+                  '-ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-40 transition hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 dark:text-gray-600'
+                )}
               >
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
@@ -142,7 +134,7 @@ export function ChartCard({
         </DropdownMenu>
       </div>
 
-      <div className={cn('min-h-0 flex-1 px-4 pb-2', isKpi ? 'h-16' : 'h-56')}>
+      <div className={cn('min-h-0 flex-1 px-4', isKpi ? 'pb-1' : 'pb-2')}>
         <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} onSelect={onOpenLogs} />
       </div>
 
@@ -211,7 +203,7 @@ function CardBody({
       bucket={result?.meta?.bucket}
       categories={categories}
       onSelect={onSelect}
-      compact={widget.layout?.width === 'quarter'}
+      compact={'w' in (widget.layout ?? {}) && (widget.layout as { w: number }).w <= 4}
     />
   )
 }

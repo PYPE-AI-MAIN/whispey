@@ -101,7 +101,17 @@ const SaveBody = z.object({
         title: z.string().min(1).max(120),
         kind: z.enum(['kpi', 'bar', 'line', 'table', 'pie']),
         spec: z.unknown(),
-        layout: z.object({ width: z.enum(['quarter', 'half', 'full']) }),
+        // a rectangle on the twelve-column grid. `width` is the pre-grid shape,
+        // still accepted so an older client cannot fail to save.
+        layout: z.union([
+          z.object({
+            x: z.number().int().min(0).max(11),
+            y: z.number().int().min(0).max(500),
+            w: z.number().int().min(1).max(12),
+            h: z.number().int().min(1).max(40),
+          }),
+          z.object({ width: z.enum(['quarter', 'half', 'full']) }),
+        ]),
         position: z.number().int().min(0),
         is_seeded: z.boolean().optional(),
       })

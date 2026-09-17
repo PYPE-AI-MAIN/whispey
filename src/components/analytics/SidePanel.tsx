@@ -10,12 +10,14 @@
  */
 'use client'
 import React, { useMemo } from 'react'
-import { useDraggable } from '@dnd-kit/core'
 import { BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { CatalogField, ChartKind, Widget, WidgetWidth } from '@/types/analytics'
+import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
+
+/** What a chart-type tile puts on the drag event, and what the grid reads off it. */
+export const CHART_TYPE_DRAG_TYPE = 'application/x-whispey-chart-type'
 
 const CHART_TYPES: { kind: ChartKind; label: string; icon: React.ReactNode }[] = [
   { kind: 'kpi', label: 'Number', icon: <Hash className="h-4 w-4" /> },
@@ -49,24 +51,45 @@ const BUCKETS = [
 
 const fieldKey = (f: { col: string; path?: string[] }) => `${f.col}::${(f.path ?? []).join('.')}`
 
+/** Common sizes, for people who would rather click than drag a corner. */
+const WIDTH_PRESETS = [
+  { label: 'Quarter', columns: 3 },
+  { label: 'Third', columns: 4 },
+  { label: 'Half', columns: 6 },
+  { label: 'Full', columns: 12 },
+]
+
+const currentColumns = (widget: Widget): number | null =>
+  'w' in (widget.layout ?? {}) ? (widget.layout as { w: number }).w : null
+
 /**
  * Draggable onto the canvas, and clickable for anyone who would rather not drag
  * — a keyboard user, or somebody on a trackpad who finds dragging fiddly.
- * Dropping it is what places it; clicking it appends to the end.
+ * Dropping it places it where you let go; clicking it appends to the end.
+ *
+ * Plain HTML5 drag rather than a library, because the grid reads the drop
+ * itself and only understands a real dragstart.
  */
 function ChartTypeTile({
-  type, disabled, onAdd,
+  type, disabled, onAdd, onDragStart, onDragEnd,
 }: {
   type: { kind: ChartKind; label: string; icon: React.ReactNode }
   disabled: boolean
   onAdd: () => void
+  onDragStart: () => void
+  onDragEnd: () => void
 }) {
-  const drag = useDraggable({ id: `chart-type-${type.kind}`, data: { chartType: type.kind }, disabled })
   return (
     <button
-      ref={drag.setNodeRef}
-      {...drag.attributes}
-      {...drag.listeners}
+      draggable={!disabled}
+      onDragStart={(e) => {
+        e.dataTransfer.setData(CHART_TYPE_DRAG_TYPE, type.kind)
+        // Firefox will not start a drag without text/plain
+        e.dataTransfer.setData('text/plain', type.kind)
+        e.dataTransfer.effectAllowed = 'copy'
+        onDragStart()
+      }}
+      onDragEnd={onDragEnd}
       disabled={disabled}
       onClick={onAdd}
       className={cn(
@@ -74,8 +97,7 @@ function ChartTypeTile({
         'hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700 active:cursor-grabbing',
         'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:bg-transparent',
         'dark:border-gray-800 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:bg-blue-950/30',
-        !disabled && 'cursor-grab',
-        drag.isDragging && 'opacity-40'
+        !disabled && 'cursor-grab'
       )}
     >
       {type.icon}
@@ -85,15 +107,18 @@ function ChartTypeTile({
 }
 
 export function SidePanel({
-  selected, fields, canEdit, onAddChart, onChange, onChangeKind, onChangeWidth, onChangeTitle,
+  selected, fields, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeWidth, onChangeTitle,
 }: {
   selected: Widget | null
   fields: CatalogField[]
   canEdit: boolean
   onAddChart: (kind: ChartKind) => void
+  /** Tells the canvas which type is in flight, so the drop placeholder is the right size. */
+  onDragChartType: (kind: ChartKind | null) => void
   onChange: (spec: SpecInput) => void
   onChangeKind: (kind: ChartKind) => void
-  onChangeWidth: (width: WidgetWidth) => void
+  /** Columns out of twelve. Dragging the corner does the same thing; this is the keyboard way. */
+  onChangeWidth: (columns: number) => void
   onChangeTitle: (title: string) => void
 }) {
   if (!selected) {
@@ -106,7 +131,14 @@ export function SidePanel({
         </p>
         <div className="grid grid-cols-2 gap-2">
           {CHART_TYPES.map((t) => (
-            <ChartTypeTile key={t.kind} type={t} disabled={!canEdit} onAdd={() => onAddChart(t.kind)} />
+            <ChartTypeTile
+              key={t.kind}
+              type={t}
+              disabled={!canEdit}
+              onAdd={() => onAddChart(t.kind)}
+              onDragStart={() => onDragChartType(t.kind)}
+              onDragEnd={() => onDragChartType(null)}
+            />
           ))}
         </div>
       </Panel>
@@ -134,7 +166,7 @@ function ChartSettings({
   canEdit: boolean
   onChange: (spec: SpecInput) => void
   onChangeKind: (kind: ChartKind) => void
-  onChangeWidth: (width: WidgetWidth) => void
+  onChangeWidth: (columns: number) => void
   onChangeTitle: (title: string) => void
 }) {
   const spec = widget.spec
@@ -293,23 +325,25 @@ function ChartSettings({
 
       <Row label="Width">
         <div className="flex gap-1">
-          {(['quarter', 'half', 'full'] as WidgetWidth[]).map((w) => (
+          {WIDTH_PRESETS.map((p) => (
             <button
-              key={w}
+              key={p.label}
               disabled={!canEdit}
-              onClick={() => onChangeWidth(w)}
+              onClick={() => onChangeWidth(p.columns)}
               className={cn(
-                'flex-1 rounded-md border px-2 py-1 text-xs capitalize transition disabled:opacity-50',
-                (widget.layout?.width ?? 'half') === w
+                'flex-1 rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
+                currentColumns(widget) === p.columns
                   ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
                   : 'border-gray-200 text-gray-600 dark:border-gray-800 dark:text-gray-400'
               )}
             >
-              {w}
+              {p.label}
             </button>
           ))}
         </div>
+        <p className="mt-1 text-[11px] text-gray-400">Or drag a card’s bottom-right corner to any size.</p>
       </Row>
+
     </Panel>
   )
 }

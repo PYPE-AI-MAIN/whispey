@@ -2,7 +2,8 @@
 import type { SpecInput } from '@/server/analytics/spec'
 
 export type ChartKind = 'kpi' | 'bar' | 'line' | 'table' | 'pie'
-export type WidgetWidth = 'quarter' | 'half' | 'full'
+/** A rectangle on the twelve-column grid; `width` is the shape saved before the grid. */
+export type WidgetLayout = { x: number; y: number; w: number; h: number } | { width: 'quarter' | 'half' | 'full' }
 
 export type Widget = {
   id: string
@@ -10,7 +11,7 @@ export type Widget = {
   title: string
   kind: ChartKind
   spec: SpecInput
-  layout: { width: WidgetWidth }
+  layout: WidgetLayout
   position: number
   live: boolean
   is_seeded: boolean

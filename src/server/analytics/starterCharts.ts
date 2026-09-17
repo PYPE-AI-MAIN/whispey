@@ -15,7 +15,8 @@ import type { SpecInput } from './spec'
 export type StarterChart = {
   title: string
   kind: 'kpi' | 'bar' | 'line' | 'table'
-  layout: { width: 'quarter' | 'half' | 'full' }
+  /** A rectangle on the twelve-column grid: four numbers across, two charts a row. */
+  layout: { x: number; y: number; w: number; h: number }
   spec: SpecInput
 }
 
@@ -25,13 +26,13 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Total calls',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 0, y: 0, w: 3, h: 2 },
     spec: { spec_version: 1, agg: { fn: 'count' }, range: { days: 7 }, display: { round: 0 } },
   },
   {
     title: 'Total minutes',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 3, y: 0, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'sum', field: { col: 'call_duration_seconds' } },
@@ -43,7 +44,7 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Billing minutes',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 6, y: 0, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'sum', field: { col: 'billing_duration_seconds' } },
@@ -54,7 +55,7 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Total cost',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 9, y: 0, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'sum', field: { col: 'total_cost' } },
@@ -65,7 +66,7 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Response time',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 0, y: 2, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'avg', field: { col: 'avg_latency' } },
@@ -76,7 +77,7 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Completed calls',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 3, y: 2, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'count' },
@@ -88,7 +89,7 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Incomplete calls',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 6, y: 2, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'count' },
@@ -101,7 +102,7 @@ export const STARTER_CHARTS: StarterChart[] = [
     // a call_started row with no matching call_ended is a call happening now
     title: 'Live calls',
     kind: 'kpi',
-    layout: { width: 'quarter' },
+    layout: { x: 9, y: 2, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'count' },
@@ -114,13 +115,13 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Daily call volume',
     kind: 'line',
-    layout: { width: 'half' },
+    layout: { x: 0, y: 4, w: 6, h: 5 },
     spec: { spec_version: 1, agg: { fn: 'count' }, bucket: 'day', range: { days: 30 }, display: { round: 0 } },
   },
   {
     title: 'Usage minutes',
     kind: 'bar',
-    layout: { width: 'half' },
+    layout: { x: 6, y: 4, w: 6, h: 5 },
     spec: {
       spec_version: 1,
       agg: { fn: 'sum', field: { col: 'call_duration_seconds' } },
@@ -132,7 +133,7 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Why calls ended',
     kind: 'bar',
-    layout: { width: 'half' },
+    layout: { x: 0, y: 9, w: 6, h: 5 },
     spec: {
       spec_version: 1,
       agg: { fn: 'count' },
@@ -144,7 +145,7 @@ export const STARTER_CHARTS: StarterChart[] = [
   {
     title: 'Latency spread',
     kind: 'line',
-    layout: { width: 'half' },
+    layout: { x: 6, y: 9, w: 6, h: 5 },
     spec: {
       spec_version: 1,
       agg: { fn: 'p95', field: { col: 'avg_latency' } },

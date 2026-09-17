@@ -1,41 +1,40 @@
 /**
  * The dashboard canvas — Confluence "Analytics Phase 1 and 2 — Build Spec" §10.
  *
- * This replaces the hand-coded Overview. Every tile and chart on it is now an
+ * This replaces the hand-coded Overview. Every tile and chart on it is an
  * ordinary saved chart object: editable, duplicable, clickable through to the
  * calls, and exportable, instead of seven special cases in a 1,478-line file.
  *
- * One DndContext covers the panel and the grid, so the same gesture does both
- * things §10 asks for: drag a chart type out of the panel to place a new chart,
- * and drag a card to move it. dnd-kit gives no grid behaviour of its own, so the
- * placement rules are here — a 12-column CSS grid and a width per card, which is
- * what §10.1 chose over taking on a grid library for free resizing nobody asked
- * for.
+ * §10.1 weighed dnd-kit plus a width toggle against a grid library and picked
+ * the toggle, with one condition: "free resizing is what forces a grid library,
+ * and nobody has asked for it." Somebody has, so the layout is
+ * react-grid-layout's now — drag a card anywhere, drag its corner to any size,
+ * and everything else moves out of the way.
  */
 'use client'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useDroppable, useSensor, useSensors,
-  type DragEndEvent, type DragStartEvent,
-} from '@dnd-kit/core'
-import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { ResponsiveGridLayout, useContainerWidth, type Layout } from 'react-grid-layout'
 import { ChevronRight, Loader2, PanelRightOpen, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMobile } from '@/hooks/use-mobile'
 import { useAnalyticsDashboard, useChartData, useCsvExport } from '@/hooks/useAnalyticsDashboard'
-import type { ChartKind, Widget, WidgetWidth } from '@/types/analytics'
+import type { ChartKind, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
-import { ChartCard } from './ChartCard'
-import { SidePanel } from './SidePanel'
+import { ChartCard, DRAG_HANDLE_CLASS } from './ChartCard'
+import { SidePanel, CHART_TYPE_DRAG_TYPE } from './SidePanel'
 import { LogsOverlay } from './LogsOverlay'
 import { FilterBar, decodeFilters, encodeFilters } from './FilterBar'
 import { WhenFilter, type TimeOfDay } from './WhenFilter'
 import { OutcomeOrderEditor, type OutcomeRanking } from './OutcomeOrderEditor'
 import { adaptSpecToKind, suggestSpec, suggestTitle } from './suggest'
 import { coverage } from './chartData'
+import {
+  applyGridLayout, toGridLayout, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, MIN_SIZE, ROW_HEIGHT,
+} from './gridLayout'
+import 'react-grid-layout/css/styles.css'
 
 type Props = {
   project: { id: string } | null | undefined
@@ -51,10 +50,12 @@ type Props = {
 /** Phase 3 adds WhatsApp and Journeys. An empty tab looks broken, so only Voice ships (§10.2). */
 const SOURCES = [{ id: 'voice', label: 'Voice' }] as const
 
+/** Cards stack into one column below this, and dragging goes off (§10.9). */
+const BREAKPOINTS = { lg: 1024, sm: 0 }
+const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
+
 export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive = true }: Props) {
   const agentId = agent?.id
-  // useMobile returns { isMobile, mounted } — taking the object whole makes
-  // every `!isMobile` false, which silently hides the panel and kills dragging
   const { isMobile } = useMobile()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -63,10 +64,12 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   const [draft, setDraft] = useState<Widget[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [logs, setLogs] = useState<{ widget: Widget; value: string | null | undefined } | null>(null)
-  const [draggingType, setDraggingType] = useState<ChartKind | null>(null)
   const [orderEditor, setOrderEditor] = useState(false)
-  // the panel is where you build; when you are only reading a dashboard it is
-  // in the way. Remembered per browser, like the app's own sidebar.
+  const [droppingKind, setDroppingKind] = useState<ChartKind | null>(null)
+  // the grid needs a measured width; v2 has no WidthProvider wrapper
+  const { width, containerRef } = useContainerWidth()
+
+  // the panel is where you build; when you are only reading it is in the way
   const [panelOpen, setPanelOpen] = useState(true)
   useEffect(() => {
     try {
@@ -85,11 +88,6 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       return !open
     })
   }, [])
-  // settings have nowhere to appear if the panel is shut
-  const selectChart = useCallback((id: string) => {
-    setSelectedId(id)
-    setPanelOpen(true)
-  }, [])
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   const canEdit = dashboard.data?.can_edit === true
@@ -101,18 +99,6 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
 
   // a filtered view is a link somebody can send (§10.3)
   const filters = useMemo(() => decodeFilters(searchParams.get('af')), [searchParams])
-  const setFilters = useCallback(
-    (next: FilterNodeInput[]) => {
-      const params = new URLSearchParams(searchParams.toString())
-      if (next.length) params.set('af', encodeFilters(next))
-      else params.delete('af')
-      router.replace(`?${params.toString()}`, { scroll: false })
-    },
-    [router, searchParams]
-  )
-
-  // the hours and the days live in the URL too, so a shared link shows the
-  // same numbers the sender was looking at
   const when = useMemo(
     () => ({
       timeOfDay: decodeWhen(searchParams.get('at')),
@@ -120,13 +106,13 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
     }),
     [searchParams]
   )
-  const setWhen = useCallback(
-    (next: { timeOfDay: TimeOfDay; days: number[] }) => {
+  const setParam = useCallback(
+    (changes: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString())
-      if (next.timeOfDay) params.set('at', `${next.timeOfDay.from}-${next.timeOfDay.to}`)
-      else params.delete('at')
-      if (next.days.length && next.days.length < 7) params.set('dow', next.days.join(','))
-      else params.delete('dow')
+      for (const [key, value] of Object.entries(changes)) {
+        if (value) params.set(key, value)
+        else params.delete(key)
+      }
       router.replace(`?${params.toString()}`, { scroll: false })
     },
     [router, searchParams]
@@ -141,71 +127,56 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       setDraft((prev) => (prev ?? widgets).map((w) => (w.id === id ? { ...w, ...patch } : w))),
     [widgets]
   )
+  const selectChart = useCallback((id: string) => {
+    setSelectedId(id)
+    setPanelOpen(true)
+  }, [])
 
   /** A new card arrives with its settings already filled in, never blank (§10.4). */
   const makeChart = useCallback(
-    (kind: ChartKind, position: number): Widget => ({
+    (kind: ChartKind, at?: { x: number; y: number }): Widget => ({
       id: `new-${crypto.randomUUID()}`,
       dashboard_id: dashboard.data?.dashboard.id ?? '',
       title: suggestTitle(kind, catalog),
       kind,
       spec: suggestSpec(kind, catalog),
-      layout: { width: kind === 'kpi' ? 'quarter' : 'half' },
-      position,
+      layout: { ...(at ?? { x: 0, y: Infinity }), ...DEFAULT_SIZE[kind] },
+      position: 0,
       live: false,
       is_seeded: false,
     }),
     [catalog, dashboard.data]
   )
 
-  const insertAt = (kind: ChartKind, index: number) => {
-    const list = [...(draft ?? widgets)]
-    const card = makeChart(kind, index)
-    list.splice(index, 0, card)
-    setDraft(list.map((w, i) => ({ ...w, position: i })))
-    setSelectedId(card.id)
+  const addChart = (kind: ChartKind, at?: { x: number; y: number }) => {
+    const card = makeChart(kind, at)
+    setDraft([...(draft ?? widgets), card])
+    selectChart(card.id)
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    // every drag handle is a real button, so tab to one and move it with the
-    // arrow keys — dragging must not be the only way to arrange a dashboard
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
+  const layout = useMemo(() => toGridLayout(widgets), [widgets])
+  // react-grid-layout fires onLayoutChange on mount and on every width
+  // measurement, which would mark a dashboard nobody touched as unsaved
+  const settled = useRef(false)
+  useEffect(() => {
+    settled.current = false
+  }, [dashboard.data])
 
-  const onDragStart = (e: DragStartEvent) => {
-    const kind = e.active.data.current?.chartType as ChartKind | undefined
-    setDraggingType(kind ?? null)
-  }
-
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    setDraggingType(null)
-    if (!over) return
-
-    // dropped in from the chart-type panel: place it where it landed
-    const kind = active.data.current?.chartType as ChartKind | undefined
-    if (kind) {
-      const list = draft ?? widgets
-      const target = list.findIndex((w) => w.id === over.id)
-      insertAt(kind, target >= 0 ? target : list.length)
-      return
+  const onLayoutChange = (next: Layout) => {
+    if (!canEdit || next.length !== widgets.length) return
+    const moved = applyGridLayout(widgets, next)
+    if (!settled.current) {
+      settled.current = true
+      // the first callback is the grid reporting what we gave it
+      if (JSON.stringify(moved.map((w) => w.layout)) === JSON.stringify(widgets.map((w) => w.layout))) return
     }
-
-    if (active.id === over.id) return
-    const list = draft ?? widgets
-    const from = list.findIndex((w) => w.id === active.id)
-    const to = list.findIndex((w) => w.id === over.id)
-    if (from < 0 || to < 0) return
-    setDraft(arrayMove(list, from, to).map((w, i) => ({ ...w, position: i })))
+    setDraft(moved)
   }
 
   const duplicate = (w: Widget) => {
-    const copy: Widget = { ...w, id: `new-${crypto.randomUUID()}`, title: `${w.title} copy`, is_seeded: false }
-    const list = [...(draft ?? widgets)]
-    list.splice(list.findIndex((x) => x.id === w.id) + 1, 0, copy)
-    setDraft(list.map((x, i) => ({ ...x, position: i })))
-    setSelectedId(copy.id)
+    const copy: Widget = { ...w, id: `new-${crypto.randomUUID()}`, title: `${w.title} copy`, is_seeded: false, layout: { ...(w.layout as object), y: Infinity } as Widget['layout'] }
+    setDraft([...(draft ?? widgets), copy])
+    selectChart(copy.id)
   }
 
   /** One per appointment needs an order to rank by, so ask for one instead of failing. */
@@ -234,15 +205,16 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   const persist = () => {
     if (!draft) return
     const original = dashboard.data?.widgets ?? []
+    const placed = applyGridLayout(draft, toGridLayout(draft))
     save.mutate(
       {
-        widgets: draft.map((w, i) => ({
+        widgets: placed.map((w, i) => ({
           // a brand-new card carries a placeholder id the database must not be given
           ...(w.id.startsWith('new-') ? {} : { id: w.id }),
           title: w.title,
           kind: w.kind,
           spec: w.spec,
-          layout: w.layout ?? { width: 'half' },
+          layout: w.layout,
           position: i,
           // a starter chart stops being ours the moment somebody edits it, so
           // anyone who never edits keeps getting our improvements
@@ -271,69 +243,106 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   if (dashboard.isError) return <Centered>{(dashboard.error as Error).message}</Centered>
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <div className="flex h-full min-h-0">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 dark:border-gray-800">
-            <div className="flex flex-wrap items-center gap-2">
-              {SOURCES.map((s) => (
-                <span
-                  key={s.id}
-                  className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                >
-                  {s.label}
-                </span>
-              ))}
-              {/* on but hidden makes every number wrong without anyone noticing */}
-              <WhenFilter timeOfDay={when.timeOfDay} days={when.days} onChange={setWhen} />
-              <FilterBar filters={filters} fields={catalog} onChange={setFilters} />
-            </div>
-
-            <div className="flex items-center gap-1">
-              {charts.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
-              <Button
-                size="sm"
-                variant="ghost"
-                title="Run every chart again"
-                onClick={() => charts.refetch()}
-                disabled={charts.isFetching}
-                className="h-7 px-2 text-xs"
+    <div className="flex h-full min-h-0">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 dark:border-gray-800">
+          <div className="flex flex-wrap items-center gap-2">
+            {SOURCES.map((s) => (
+              <span
+                key={s.id}
+                className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
-              {canEdit && (
-                <Button size="sm" variant="ghost" onClick={() => setOrderEditor(true)} className="h-7 text-xs">
-                  <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
-                </Button>
-              )}
-              {canEdit && (
-                <Button size="sm" variant="ghost" onClick={() => insertAt('bar', widgets.length)} className="h-7 text-xs">
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Add chart
-                </Button>
-              )}
-              {dirty && (
-                <>
-                  <Button size="sm" variant="ghost" onClick={() => setDraft(null)} className="h-7 text-xs">
-                    <RotateCcw className="mr-1 h-3.5 w-3.5" /> Discard
-                  </Button>
-                  <Button size="sm" onClick={persist} disabled={save.isPending} className="h-7 text-xs">
-                    {save.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-                    Save
-                  </Button>
-                </>
-              )}
-            </div>
+                {s.label}
+              </span>
+            ))}
+            {/* on but hidden makes every number wrong without anyone noticing */}
+            <WhenFilter
+              timeOfDay={when.timeOfDay}
+              days={when.days}
+              onChange={(next) =>
+                setParam({
+                  at: next.timeOfDay ? `${next.timeOfDay.from}-${next.timeOfDay.to}` : null,
+                  dow: next.days.length && next.days.length < 7 ? next.days.join(',') : null,
+                })
+              }
+            />
+            <FilterBar
+              filters={filters}
+              fields={catalog}
+              onChange={(next: FilterNodeInput[]) => setParam({ af: next.length ? encodeFilters(next) : null })}
+            />
           </div>
 
-          {save.isError && <Banner onDismiss={() => save.reset()}>{(save.error as Error).message}</Banner>}
-          {csv.error && <Banner onDismiss={() => undefined}>{csv.error}</Banner>}
+          <div className="flex items-center gap-1">
+            {charts.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+            <Button
+              size="sm"
+              variant="ghost"
+              title="Run every chart again"
+              onClick={() => charts.refetch()}
+              disabled={charts.isFetching}
+              className="h-7 px-2 text-xs"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+            {canEdit && (
+              <Button size="sm" variant="ghost" onClick={() => setOrderEditor(true)} className="h-7 text-xs">
+                <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
+              </Button>
+            )}
+            {canEdit && (
+              <Button size="sm" variant="ghost" onClick={() => addChart('bar')} className="h-7 text-xs">
+                <Plus className="mr-1 h-3.5 w-3.5" /> Add chart
+              </Button>
+            )}
+            {dirty && (
+              <>
+                <Button size="sm" variant="ghost" onClick={() => setDraft(null)} className="h-7 text-xs">
+                  <RotateCcw className="mr-1 h-3.5 w-3.5" /> Discard
+                </Button>
+                <Button size="sm" onClick={persist} disabled={save.isPending} className="h-7 text-xs">
+                  {save.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+                  Save
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
 
-          <CanvasDropZone active={Boolean(draggingType)}>
-            <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-12 gap-3">
-                {widgets.map((w) => (
+        {save.isError && <Banner onDismiss={() => save.reset()}>{(save.error as Error).message}</Banner>}
+        {charts.error && <Banner onDismiss={() => charts.refetch()}>{charts.error.message}</Banner>}
+        {csv.error && <Banner onDismiss={() => undefined}>{csv.error}</Banner>}
+
+        <div
+          ref={containerRef}
+          className={cn('min-h-0 flex-1 overflow-y-auto p-3', droppingKind && 'bg-blue-50/30 dark:bg-blue-950/10')}
+        >
+          {width > 0 && widgets.length > 0 && (
+            <ResponsiveGridLayout
+              width={width}
+              layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
+              breakpoints={BREAKPOINTS}
+              cols={COLUMNS}
+              rowHeight={ROW_HEIGHT}
+              margin={GRID_MARGIN}
+              containerPadding={[0, 0]}
+              // a click anywhere on a card selects it, so a drag starts from the grip
+              dragConfig={{ enabled: canEdit && !isMobile, handle: `.${DRAG_HANDLE_CLASS}` }}
+              resizeConfig={{ enabled: canEdit && !isMobile, handles: ['se'] }}
+              dropConfig={{
+                enabled: canEdit && !isMobile,
+                defaultItem: DEFAULT_SIZE[droppingKind ?? 'bar'],
+              }}
+              onLayoutChange={onLayoutChange}
+              onDrop={(_next, item, event) => {
+                const kind = (event as DragEvent).dataTransfer?.getData(CHART_TYPE_DRAG_TYPE) as ChartKind
+                setDroppingKind(null)
+                if (kind && DEFAULT_SIZE[kind]) addChart(kind, { x: item?.x ?? 0, y: item?.y ?? 0 })
+              }}
+            >
+              {widgets.map((w) => (
+                <div key={w.id}>
                   <ChartCard
-                    key={w.id}
                     widget={w}
                     result={charts.byWidget.get(w.id)}
                     isLoading={charts.isLoading}
@@ -353,62 +362,61 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
                     onExport={() => !downloadDisabled && csv.run(w.spec, undefined, w.title)}
                     onChangeGrain={(grain) => setGrain(w, grain)}
                   />
-                ))}
-              </div>
-            </SortableContext>
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+          )}
 
-            {widgets.length === 0 && (
-              <Centered>
-                {canEdit ? 'Drag a chart type from the panel to start.' : 'Nothing on this dashboard yet.'}
-              </Centered>
-            )}
-          </CanvasDropZone>
+          {widgets.length === 0 && (
+            <Centered>{canEdit ? 'Drag a chart type from the panel to start.' : 'Nothing on this dashboard yet.'}</Centered>
+          )}
         </div>
-
-        {/* building happens on desktop; a phone reads the dashboard and the call list */}
-        {!isMobile && !panelOpen && (
-          <button
-            onClick={togglePanel}
-            aria-label="Show chart settings"
-            className="flex w-8 shrink-0 items-center justify-center border-l border-gray-200 text-gray-400 transition hover:bg-gray-50 hover:text-gray-600 dark:border-gray-800 dark:hover:bg-gray-900"
-          >
-            <PanelRightOpen className="h-4 w-4" />
-          </button>
-        )}
-
-        {!isMobile && panelOpen && (
-          <div className="relative w-72 shrink-0">
-            <button
-              onClick={togglePanel}
-              aria-label="Hide chart settings"
-              className="absolute right-2 top-2.5 z-10 rounded p-1 text-gray-400 transition hover:bg-gray-200/60 hover:text-gray-600 dark:hover:bg-gray-800"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <SidePanel
-              selected={selected}
-              fields={catalog}
-              canEdit={canEdit}
-              onAddChart={(kind) => insertAt(kind, widgets.length)}
-              onChange={(spec) => selected && edit(selected.id, { spec })}
-              // a new type needs the shape that draws it, or you get an empty box
-              onChangeKind={(kind) =>
-                selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec, kind, catalog) })
-              }
-              onChangeWidth={(width: WidgetWidth) => selected && edit(selected.id, { layout: { width } })}
-              onChangeTitle={(title) => selected && edit(selected.id, { title })}
-            />
-          </div>
-        )}
       </div>
 
-      <DragOverlay dropAnimation={null}>
-        {draggingType && (
-          <div className="rounded-lg border-2 border-dashed border-blue-400 bg-blue-50/80 px-4 py-6 text-xs font-medium text-blue-700 shadow-lg dark:bg-blue-950/60 dark:text-blue-300">
-            Drop to add
-          </div>
-        )}
-      </DragOverlay>
+      {/* building happens on desktop; a phone reads the dashboard and the call list */}
+      {!isMobile && !panelOpen && (
+        <button
+          onClick={togglePanel}
+          aria-label="Show chart settings"
+          className="flex w-8 shrink-0 items-center justify-center border-l border-gray-200 text-gray-400 transition hover:bg-gray-50 hover:text-gray-600 dark:border-gray-800 dark:hover:bg-gray-900"
+        >
+          <PanelRightOpen className="h-4 w-4" />
+        </button>
+      )}
+
+      {!isMobile && panelOpen && (
+        <div className="relative w-72 shrink-0">
+          <button
+            onClick={togglePanel}
+            aria-label="Hide chart settings"
+            className="absolute right-2 top-2.5 z-10 rounded p-1 text-gray-400 transition hover:bg-gray-200/60 hover:text-gray-600 dark:hover:bg-gray-800"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <SidePanel
+            selected={selected}
+            fields={catalog}
+            canEdit={canEdit}
+            onAddChart={(kind) => addChart(kind)}
+            onDragChartType={setDroppingKind}
+            onChange={(spec) => selected && edit(selected.id, { spec })}
+            // a new type needs the shape that draws it, or you get an empty box
+            onChangeKind={(kind) =>
+              selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec, kind, catalog) })
+            }
+            onChangeWidth={(columns) =>
+              selected &&
+              edit(selected.id, {
+                layout: {
+                  ...(toGridLayout([selected])[0]),
+                  w: Math.max(columns, MIN_SIZE[selected.kind].w),
+                } as Widget['layout'],
+              })
+            }
+            onChangeTitle={(title) => selected && edit(selected.id, { title })}
+          />
+        </div>
+      )}
 
       <LogsOverlay
         agentId={agentId}
@@ -428,7 +436,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
         onClose={() => setOrderEditor(false)}
         onSaved={() => fields.refetch()}
       />
-    </DndContext>
+    </div>
   )
 }
 
@@ -438,23 +446,6 @@ export function decodeWhen(raw: string | null): TimeOfDay {
   const [from, to] = raw.split('-')
   const clock = /^([01]\d|2[0-3]):[0-5]\d$/
   return clock.test(from ?? '') && clock.test(to ?? '') ? { from, to } : null
-}
-
-/** The whole scroll area accepts a drop, so a chart can be added to empty space too. */
-function CanvasDropZone({ active, children }: { active: boolean; children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'canvas' })
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'min-h-0 flex-1 overflow-y-auto p-4 transition-colors',
-        active && 'bg-blue-50/30 dark:bg-blue-950/10',
-        active && isOver && 'ring-2 ring-inset ring-blue-300 dark:ring-blue-700'
-      )}
-    >
-      {children}
-    </div>
-  )
 }
 
 /**
