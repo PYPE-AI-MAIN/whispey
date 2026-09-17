@@ -109,7 +109,7 @@ export function OutcomeOrderEditor({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-base">When we called more than once, which result wins?</DialogTitle>
           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -163,9 +163,12 @@ export function OutcomeOrderEditor({
               {order.length === 0 && <p className="py-4 text-center text-sm text-gray-500">No results recorded for this field yet.</p>}
             </div>
 
-            {/* not decoration: this rewrites what last quarter's numbers were */}
-            <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {/* not decoration: this rewrites what last quarter's numbers were.
+                Said in the interface's own colours rather than a wash of
+                yellow — a notice nobody can read past is not more serious, it
+                just looks louder. */}
+            <div className="flex items-start gap-2.5 rounded-md border-l-2 border-slate-400 bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600 dark:border-slate-500 dark:bg-slate-800/50 dark:text-slate-300">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
               <span>
                 {ranked
                   ? 'Changing this order changes past numbers too — every chart counting one row per patient is recalculated.'

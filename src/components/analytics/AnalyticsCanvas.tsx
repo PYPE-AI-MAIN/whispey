@@ -15,7 +15,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ResponsiveGridLayout, useContainerWidth, type Layout } from 'react-grid-layout'
-import { ChevronRight, Loader2, PanelRightOpen, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronRight, Loader2, PanelRightOpen, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
@@ -375,11 +375,6 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
               </Button>
             )}
-            {canEdit && (
-              <Button size="sm" variant="ghost" onClick={() => addChart('bar')} className="h-7 text-xs">
-                <Plus className="mr-1 h-3.5 w-3.5" /> Add chart
-              </Button>
-            )}
             {dirty && (
               <>
                 <Button size="sm" variant="ghost" onClick={() => setDraft(null)} className="h-7 text-xs">
@@ -602,7 +597,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 function Banner({ children, onDismiss }: { children: React.ReactNode; onDismiss: () => void }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+    <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
       <span>{children}</span>
       <button onClick={onDismiss} aria-label="Dismiss">
         <X className="h-3.5 w-3.5" />
