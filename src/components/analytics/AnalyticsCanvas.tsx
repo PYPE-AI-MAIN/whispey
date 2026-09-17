@@ -14,7 +14,7 @@
 'use client'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ResponsiveGridLayout, useContainerWidth, type Layout } from 'react-grid-layout'
+import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
 import { ChevronRight, Loader2, PanelRightOpen, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -51,8 +51,16 @@ type Props = {
 /** Phase 3 adds WhatsApp and Journeys. An empty tab looks broken, so only Voice ships (§10.2). */
 const SOURCES = [{ id: 'voice', label: 'Voice' }] as const
 
-/** Cards stack into one column below this, and dragging goes off (§10.9). */
-const BREAKPOINTS = { lg: 1024, sm: 0 }
+/**
+ * Cards stack into one column below this (§10.9).
+ *
+ * Measured on the canvas, not the window — and the canvas has already lost the
+ * app sidebar and, when it is open, 288px of settings panel. At 1024 a 1440px
+ * laptop with the panel open fell to a single column, so opening and closing
+ * the panel rearranged the whole dashboard instead of just making it narrower.
+ * 640px of canvas is where twelve columns genuinely stop working.
+ */
+const BREAKPOINTS = { lg: 640, sm: 0 }
 const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
 
 export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive = true }: Props) {
@@ -67,8 +75,34 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   const [logs, setLogs] = useState<{ widget: Widget; value: string | null | undefined } | null>(null)
   const [orderEditor, setOrderEditor] = useState(false)
   const [droppingKind, setDroppingKind] = useState<ChartKind | null>(null)
-  // the grid needs a measured width; v2 has no WidthProvider wrapper
-  const { width, containerRef } = useContainerWidth()
+
+  /**
+   * The grid needs its width in pixels — it has no CSS of its own for that.
+   *
+   * Measured here rather than with the library's hook, which starts at a
+   * hard-coded 1280 and only corrects if its observer happens to fire. When it
+   * did not, the grid laid itself out wider than the page and the right-hand
+   * cards disappeared under the settings panel.
+   */
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  const measure = useCallback(() => {
+    const node = containerRef.current
+    if (node) setWidth(node.clientWidth)
+  }, [])
+  useEffect(() => {
+    const node = containerRef.current
+    if (!node) return
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    // the tab is display:none until Overview is opened, which reports zero
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [measure])
 
   // the panel is where you build; when you are only reading it is in the way
   const [panelOpen, setPanelOpen] = useState(true)
@@ -89,6 +123,12 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       return !open
     })
   }, [])
+  // the panel changes the width by 288px; measure on the next frame rather than
+  // waiting for the observer, so the cards never render at the old width
+  useEffect(() => {
+    const frame = requestAnimationFrame(measure)
+    return () => cancelAnimationFrame(frame)
+  }, [panelOpen, isActive, measure])
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   const canEdit = dashboard.data?.can_edit === true
