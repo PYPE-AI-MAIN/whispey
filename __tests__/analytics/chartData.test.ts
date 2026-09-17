@@ -3,7 +3,7 @@
  * needs its own query, it has failed here first.
  */
 import { describe, it, expect } from 'vitest'
-import { shape, coverage, displayNumber, formatValue, shortLabel, formatBucket } from '@/components/analytics/chartData'
+import { shape, zeroFill, coverage, displayNumber, formatValue, shortLabel, formatBucket } from '@/components/analytics/chartData'
 import type { ResultRow } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
@@ -103,5 +103,28 @@ describe('labels stay readable', () => {
   it('shows a day bucket as a date and an hour bucket as a time', () => {
     expect(formatBucket('2026-09-01T00:00:00Z', 'day')).toMatch(/\d/)
     expect(formatBucket('not a date', 'day')).toBe('not a date')
+  })
+})
+
+describe('a category that scored zero is drawn, not dropped', () => {
+  it('fills in every value the field is known to produce', () => {
+    const s = zeroFill(shape([row({ series: 'triage_complete', value: '340' })], count), [
+      'triage_complete',
+      'emergency_escalated',
+    ])
+    // "emergency_escalated: 0" vanishing looks exactly like the field not existing
+    expect(s.points).toHaveLength(2)
+    expect(s.points.find((p) => p.x === 'emergency_escalated')).toEqual({ x: 'emergency_escalated', value: 0 })
+  })
+
+  it('leaves a time series alone — a missing day is not a category', () => {
+    const s = shape([row({ bucket: '2026-09-01T00:00:00Z', value: '5' })], count)
+    expect(zeroFill(s, ['a', 'b'])).toEqual(s)
+  })
+
+  it('does nothing when the value list is unknown', () => {
+    const s = shape([row({ series: 'a', value: '1' })], count)
+    expect(zeroFill(s, null)).toEqual(s)
+    expect(zeroFill(s, [])).toEqual(s)
   })
 })

@@ -281,6 +281,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
                     canEdit={canEdit}
                     // dragging off on a phone: the canvas is for reading there
                     draggable={!isMobile}
+                    categories={categoriesFor(w, catalog)}
                     onSelect={() => setSelectedId(w.id)}
                     onOpenLogs={(value) => setLogs({ widget: w, value })}
                     onEdit={() => setSelectedId(w.id)}
@@ -366,6 +367,18 @@ function CanvasDropZone({ active, children }: { active: boolean; children: React
       {children}
     </div>
   )
+}
+
+/**
+ * The value list of whatever this chart splits by. A category that scored zero
+ * has to be drawn as a zero — on a safety metric, a missing bar and a bar of
+ * zero mean opposite things (§8.4).
+ */
+function categoriesFor(w: Widget, fields: { col: string; path: string[]; enum_values: string[] | null }[]) {
+  const dim = w.spec.dimension?.field
+  if (!dim) return null
+  const key = `${dim.col}::${(dim.path ?? []).join('.')}`
+  return fields.find((f) => `${f.col}::${f.path.join('.')}` === key)?.enum_values ?? null
 }
 
 /** Whatever the catalog thinks could identify a patient, else the caller's number. */

@@ -29,12 +29,14 @@ const WIDTH_CLASS: Record<Widget['layout']['width'], string> = {
 }
 
 export function ChartCard({
-  widget, result, isLoading, selected, canEdit, draggable,
+  widget, result, isLoading, selected, canEdit, draggable, categories,
   onSelect, onOpenLogs, onEdit, onDuplicate, onRemove, onExport, onChangeGrain,
 }: {
   widget: Widget
   result?: WidgetResult
   isLoading: boolean
+  /** Known values of the field this chart splits by, so a zero shows as a zero. */
+  categories?: string[] | null
   selected: boolean
   canEdit: boolean
   /** Off on a phone: the canvas is for reading there, not for building. */
@@ -136,7 +138,7 @@ export function ChartCard({
       </div>
 
       <div className={cn('min-h-0 flex-1 px-4 pb-2', isKpi ? 'h-16' : 'h-56')}>
-        <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} onSelect={onOpenLogs} />
+        <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} onSelect={onOpenLogs} />
       </div>
 
       {/* an average over only the usable rows misleads unless the card says so */}
@@ -163,12 +165,13 @@ export function ChartCard({
 
 /** The five states a card has to be able to show, and never a blank rectangle. */
 function CardBody({
-  widget, result, isLoading, rows, onSelect,
+  widget, result, isLoading, rows, categories, onSelect,
 }: {
   widget: Widget
   result?: WidgetResult
   isLoading: boolean
   rows: WidgetResult['data'] & object
+  categories?: string[] | null
   onSelect: (value: string | null) => void
 }) {
   if (isLoading && !result) return <Skeleton className="h-full w-full rounded-lg" />
@@ -189,7 +192,7 @@ function CardBody({
       />
     )
   }
-  if (result && rows.length === 0) {
+  if (result && rows.length === 0 && !categories?.length) {
     // "no rows" and "this field is no longer produced" look identical on screen
     // unless the card distinguishes them
     return <State text={widget.spec.display?.empty_text ?? 'Nothing in this range.'} tone="muted" />
@@ -201,6 +204,7 @@ function CardBody({
       rows={rows}
       spec={widget.spec}
       bucket={result?.meta?.bucket}
+      categories={categories}
       onSelect={onSelect}
       compact={widget.layout?.width === 'quarter'}
     />

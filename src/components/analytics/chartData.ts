@@ -52,6 +52,22 @@ export type Shaped = {
   axis: 'time' | 'category' | 'none'
 }
 
+/**
+ * Every category the field is known to produce, including the ones that scored
+ * zero — §8.4.
+ *
+ * "emergency_escalated: 0" vanishing from a chart looks exactly like the field
+ * not existing, which on a safety metric is the difference between "we checked
+ * and it never happened" and "we were not looking". The catalog already knows
+ * the value list, so this needs no change to the query.
+ */
+export function zeroFill(shaped: Shaped, categories: string[] | null | undefined): Shaped {
+  if (shaped.axis !== 'category' || !categories?.length) return shaped
+  const seen = new Set(shaped.points.map((p) => p.x))
+  const missing = categories.filter((c) => !seen.has(c)).map((c) => ({ x: c, value: 0 }))
+  return missing.length ? { ...shaped, points: [...shaped.points, ...missing] } : shaped
+}
+
 export function shape(rows: ResultRow[], spec: Widget['spec']): Shaped {
   const hasBucket = rows.some((r) => r.bucket !== undefined && r.bucket !== null)
   const hasSeries = rows.some((r) => r.series !== undefined)

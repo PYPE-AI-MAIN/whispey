@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 import { cn } from '@/lib/utils'
 import type { ChartKind, ResultRow, Widget } from '@/types/analytics'
-import { shape, formatValue, formatBucket, shortLabel, displayNumber, isRate } from './chartData'
+import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, isRate } from './chartData'
 
 /** Distinguishable in both themes, and still distinguishable for the most common colour blindness. */
 const SERIES_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16']
@@ -41,17 +41,19 @@ const tooltipStyle = {
 } as const
 
 export function ChartRenderer({
-  kind, rows, spec, bucket, onSelect, compact,
+  kind, rows, spec, bucket, categories, onSelect, compact,
 }: {
   kind: ChartKind
   rows: ResultRow[]
   spec: Widget['spec']
   bucket?: string
+  /** Every value this field is known to produce, so a zero is drawn rather than dropped. */
+  categories?: string[] | null
   /** Clicking a bar or a slice opens the calls behind it. */
   onSelect?: (value: string | null) => void
   compact?: boolean
 }) {
-  const shaped = shape(rows, spec)
+  const shaped = zeroFill(shape(rows, spec), categories)
   const suffix = isRate(spec) ? '%' : (spec.display?.unit ?? '')
   const tickFor = (x: string) => (shaped.axis === 'time' ? formatBucket(x, bucket) : shortLabel(x, compact ? 10 : 18))
 
