@@ -7,7 +7,7 @@
  * real database (the numeric-guard coverage number, the CSV export, the
  * project_id backfill) are checked where they live.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { Spec, type SpecInput } from '@/server/analytics/spec'
 import { buildQuery, SpecError, type Ctx } from '@/server/analytics/buildQuery'
 
@@ -267,6 +267,24 @@ describe('6 · permissions are enforced here, not in the browser', () => {
       expect(sql).toContain('l.agent_id = ANY($')
       expect(params).toContainEqual([AGENT])
     }
+  })
+
+  it('adds the tenant column once that database is backfilled', () => {
+    const before = buildQuery(parse(countByDisposition), ctx, 'aggregate')
+    expect(before.sql).not.toContain('project_id')
+
+    process.env.ANALYTICS_PROJECT_ID_BACKFILLED = 'true'
+    vi.resetModules()
+    return import('@/server/analytics/buildQuery').then(({ buildQuery: fresh }) => {
+      const after = fresh(parse(countByDisposition), ctx, 'aggregate')
+      expect(after.sql).toContain('l.project_id = $')
+      expect(after.params).toContain(ctx.projectId)
+      // and the agent list is still there — the column is defence in depth,
+      // never a replacement for it
+      expect(after.sql).toContain('l.agent_id = ANY($')
+      delete process.env.ANALYTICS_PROJECT_ID_BACKFILLED
+      vi.resetModules()
+    })
   })
 
   it('refuses to build at all with no readable agents', () => {

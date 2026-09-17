@@ -13,7 +13,7 @@ import { runQuery } from '@/server/analytics/db'
  *   SUPABASE_POOLER_URL=... npx vitest run __tests__/analytics/live.smoke.test.ts
  */
 const AGENT = '781fcc07-6929-4a4a-bc63-bb2b837ce71c'
-const ctx = { projectId: 'x', agentIds: [AGENT, '6e5f72dd-1ee5-4dda-9b4b-9ea6f1bec234'],
+const ctx = { projectId: 'cdba7b05-7aaa-48dd-8e96-860db7914618', agentIds: [AGENT, '6e5f72dd-1ee5-4dda-9b4b-9ea6f1bec234'],
   deniedFields: new Set<string>(), tz: 'Asia/Kolkata', maxDays: 730 }
 
 const cases: Record<string, SpecInput> = {

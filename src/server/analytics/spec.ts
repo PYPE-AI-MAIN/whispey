@@ -30,11 +30,21 @@ export const TEXT_COLS = [
   'transcript_type', 'environment', 'wcall_event',
 ] as const
 
-/** Real numeric columns — no cast needed, no coverage problem. */
+/**
+ * Real numeric columns — no cast needed, no coverage problem. `total_cost` is
+ * the one exception: there is no such column, it is the three cost columns
+ * added up, and it is here rather than in the spec so the expression stays a
+ * fixed string the user never writes.
+ */
 export const NUMERIC_COLS = [
   'duration_seconds', 'billing_duration_seconds', 'avg_latency', 'p50_latency',
-  'total_stt_cost', 'total_tts_cost', 'total_llm_cost',
+  'total_stt_cost', 'total_tts_cost', 'total_llm_cost', 'total_cost',
 ] as const
+
+/** Columns that are an expression rather than a column. Keys only ever come from NUMERIC_COLS. */
+export const COLUMN_EXPRESSIONS: Record<string, (t: string) => string> = {
+  total_cost: (t) => `(coalesce(${t}.total_llm_cost, 0) + coalesce(${t}.total_tts_cost, 0) + coalesce(${t}.total_stt_cost, 0))`,
+}
 
 export const SCALAR_COLS = [...TEXT_COLS, ...NUMERIC_COLS] as const
 
@@ -198,6 +208,8 @@ export const Spec = z
       .object({
         round: z.number().int().min(0).max(6).default(1),
         unit: z.string().max(16).optional(),
+        /** Presentational only — seconds charted as minutes, never a change to the query. */
+        scale: z.number().finite().optional(),
         direction: z.enum(['higher_is_better', 'lower_is_better', 'neutral']).default('neutral'),
         empty_text: z.string().max(200).optional(),
         value_map: z.record(z.string()).optional(),

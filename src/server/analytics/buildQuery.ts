@@ -19,6 +19,7 @@ import {
   Ref,
   BOOLEAN_VALUES,
   NUMERIC_COL_SET,
+  COLUMN_EXPRESSIONS,
   ELEMENT_COL,
   JSON_COLS,
   TEXT_COLS,
@@ -28,13 +29,22 @@ import {
 } from './spec'
 
 /**
- * pype_voice_call_logs has no project_id yet (spec §6.2 adds it, then backfills
- * 958k rows in batches). Until that lands the tenant boundary is the resolved
- * agent list, which is strictly enforced below and is equivalent. Flip this to
- * true once the column is backfilled and non-null — it saves the join and gives
- * the planner a cheap first predicate.
+ * Whether pype_voice_call_logs.project_id is backfilled on THIS database.
+ *
+ * The column and its trigger exist everywhere once the migration runs, but the
+ * backfill is a separate, out-of-hours job per environment — so the same build
+ * deploys to a database that is done and one that is not. Filtering on a column
+ * that is still half NULL would silently drop rows, which is worse than the
+ * join it replaces.
+ *
+ * Set ANALYTICS_PROJECT_ID_BACKFILLED=true once
+ * `SELECT count(*) FILTER (WHERE project_id IS NULL)` reads zero there.
+ *
+ * Either way the tenant boundary is the resolved agent list below, which is
+ * always applied; this predicate is defence in depth and a cheap first filter
+ * for the planner.
  */
-const HAS_PROJECT_ID_COLUMN = false
+const HAS_PROJECT_ID_COLUMN = process.env.ANALYTICS_PROJECT_ID_BACKFILLED === 'true'
 
 /**
  * call_started_at / call_ended_at / created_at are `timestamp without time
@@ -200,7 +210,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     if ((JSON_COLS as readonly string[]).includes(ref.col)) {
       return `(${t}.${ref.col} #>> ${bind(ref.path)}::text[])`
     }
-    return `(${t}.${ref.col})::text`
+    return `(${COLUMN_EXPRESSIONS[ref.col]?.(t) ?? `${t}.${ref.col}`})::text`
   }
 
   /** Text with the four ways of writing "empty" collapsed to NULL (§5.1). */
@@ -215,7 +225,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
    * NULL, which is why n_nonnull is always returned beside the number.
    */
   const numeric = (ref: Ref, t: string) => {
-    if (NUMERIC_COL_SET.has(ref.col)) return `${t}.${ref.col}::numeric`
+    if (NUMERIC_COL_SET.has(ref.col)) return `${COLUMN_EXPRESSIONS[ref.col]?.(t) ?? `${t}.${ref.col}`}::numeric`
     const c = cleanText(ref, t)
     return `(CASE WHEN ${c} ~ '^-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$' THEN (${c})::numeric END)`
   }
@@ -266,7 +276,14 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const allRefs = [...refs, ...collect(spec.filters), ...collect(spec.having)].filter(Boolean) as Ref[]
 
   const carried = new Set<string>(['call_id', 'agent_id', 'created_at'])
-  for (const r of allRefs) if (r.col !== ELEMENT_COL) carried.add(r.col)
+  for (const r of allRefs) {
+    if (r.col === ELEMENT_COL) continue
+    if (r.col === 'total_cost') {
+      carried.add('total_llm_cost'), carried.add('total_tts_cost'), carried.add('total_stt_cost')
+    } else {
+      carried.add(r.col)
+    }
+  }
   if (target !== 'aggregate') {
     for (const c of ['customer_number', 'call_ended_reason', 'call_ended_at', 'duration_seconds', 'recording_url']) {
       carried.add(c)
