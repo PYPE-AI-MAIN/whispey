@@ -13,14 +13,14 @@
  * for.
  */
 'use client'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useDroppable, useSensor, useSensors,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
-import { Loader2, Plus, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronRight, Loader2, PanelRightOpen, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -65,6 +65,31 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   const [logs, setLogs] = useState<{ widget: Widget; value: string | null | undefined } | null>(null)
   const [draggingType, setDraggingType] = useState<ChartKind | null>(null)
   const [orderEditor, setOrderEditor] = useState(false)
+  // the panel is where you build; when you are only reading a dashboard it is
+  // in the way. Remembered per browser, like the app's own sidebar.
+  const [panelOpen, setPanelOpen] = useState(true)
+  useEffect(() => {
+    try {
+      setPanelOpen(localStorage.getItem('analytics.panel') !== 'closed')
+    } catch {
+      /* private window or storage blocked — it just starts open */
+    }
+  }, [])
+  const togglePanel = useCallback(() => {
+    setPanelOpen((open) => {
+      try {
+        localStorage.setItem('analytics.panel', open ? 'closed' : 'open')
+      } catch {
+        /* nothing to remember it with; the toggle still works for this visit */
+      }
+      return !open
+    })
+  }, [])
+  // settings have nowhere to appear if the panel is shut
+  const selectChart = useCallback((id: string) => {
+    setSelectedId(id)
+    setPanelOpen(true)
+  }, [])
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   const canEdit = dashboard.data?.can_edit === true
@@ -266,6 +291,16 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
 
             <div className="flex items-center gap-1">
               {charts.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+              <Button
+                size="sm"
+                variant="ghost"
+                title="Run every chart again"
+                onClick={() => charts.refetch()}
+                disabled={charts.isFetching}
+                className="h-7 px-2 text-xs"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
               {canEdit && (
                 <Button size="sm" variant="ghost" onClick={() => setOrderEditor(true)} className="h-7 text-xs">
                   <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
@@ -307,9 +342,9 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
                     // dragging off on a phone: the canvas is for reading there
                     draggable={!isMobile}
                     categories={categoriesFor(w, catalog)}
-                    onSelect={() => setSelectedId(w.id)}
+                    onSelect={() => selectChart(w.id)}
                     onOpenLogs={(value) => setLogs({ widget: w, value })}
-                    onEdit={() => setSelectedId(w.id)}
+                    onEdit={() => selectChart(w.id)}
                     onDuplicate={() => duplicate(w)}
                     onRemove={() => {
                       setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
@@ -331,8 +366,25 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
         </div>
 
         {/* building happens on desktop; a phone reads the dashboard and the call list */}
-        {!isMobile && (
-          <div className="w-72 shrink-0">
+        {!isMobile && !panelOpen && (
+          <button
+            onClick={togglePanel}
+            aria-label="Show chart settings"
+            className="flex w-8 shrink-0 items-center justify-center border-l border-gray-200 text-gray-400 transition hover:bg-gray-50 hover:text-gray-600 dark:border-gray-800 dark:hover:bg-gray-900"
+          >
+            <PanelRightOpen className="h-4 w-4" />
+          </button>
+        )}
+
+        {!isMobile && panelOpen && (
+          <div className="relative w-72 shrink-0">
+            <button
+              onClick={togglePanel}
+              aria-label="Hide chart settings"
+              className="absolute right-2 top-2.5 z-10 rounded p-1 text-gray-400 transition hover:bg-gray-200/60 hover:text-gray-600 dark:hover:bg-gray-800"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
             <SidePanel
               selected={selected}
               fields={catalog}

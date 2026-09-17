@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { Spec, FilterNode } from '@/server/analytics/spec'
-import { buildQuery, SpecError } from '@/server/analytics/buildQuery'
+import { buildQuery, SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
 import { resolveAnalyticsContext, isDenied, outcomeOrderFor } from '@/server/analytics/context'
 
@@ -96,8 +96,19 @@ export async function POST(req: NextRequest) {
         if (isTimeout(err)) {
           return { widget_id: widget.id, status: 'timeout', error: 'This chart took too long. Try a shorter date range.' }
         }
-        if (err instanceof SpecError || err instanceof z.ZodError) {
-          return { widget_id: widget.id, status: 'error', error: err instanceof z.ZodError ? 'This chart is not valid' : err.message }
+        // a SpecError is something the person can act on, so it is shown as
+        // written. Everything else is our problem: log the detail, show a
+        // sentence, and never put an invariant on a nurse's screen.
+        if (err instanceof SpecError) {
+          return { widget_id: widget.id, status: 'error', error: err.message }
+        }
+        if (err instanceof z.ZodError) {
+          console.error('[analytics/query] invalid spec', widget.id, err.flatten())
+          return { widget_id: widget.id, status: 'error', error: 'This chart needs fixing in its settings' }
+        }
+        if (err instanceof InternalSpecError) {
+          console.error('[analytics/query] compiler bug', widget.id, err.message)
+          return { widget_id: widget.id, status: 'error', error: 'Could not draw this chart. The problem has been logged.' }
         }
         console.error('[analytics/query]', widget.id, err)
         return { widget_id: widget.id, status: 'error', error: 'Something went wrong drawing this chart' }

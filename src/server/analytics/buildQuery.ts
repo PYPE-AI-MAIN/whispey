@@ -100,7 +100,15 @@ export type Built = {
   }
 }
 
+/** Something the person can act on: no permission, no outcome order, range too long. */
 export class SpecError extends Error {}
+
+/**
+ * A bug in this file. The message names the invariant so it is useful in a log,
+ * and it never reaches the screen — a card reading "parameter $6 was bound but
+ * never used" tells a nurse nothing and tells them it is their fault.
+ */
+export class InternalSpecError extends Error {}
 
 /* ------------------------------------------------------------ time in a zone */
 
@@ -240,19 +248,23 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
 
   const condition = (c: Condition, t: string): string => {
     check(c.field)
-    const txt = cleanText(c.field, t)
+    // built on demand, not up front: `is yes` and the numeric comparisons never
+    // read the text form, and binding a parameter no branch uses makes Postgres
+    // reject the whole statement
+    let textRef: string | null = null
+    const txt = () => (textRef ??= cleanText(c.field, t))
     const arr = (v: unknown) => bind((Array.isArray(v) ? v : [v]).map(String))
     switch (c.op) {
-      case 'is_empty': return `${txt} IS NULL`
-      case 'is_not_empty': return `${txt} IS NOT NULL`
+      case 'is_empty': return `${txt()} IS NULL`
+      case 'is_not_empty': return `${txt()} IS NOT NULL`
       case 'is_true': return boolean(c.field, t, true)
       case 'is_false': return boolean(c.field, t, false)
-      case 'eq': return `${txt} = ${bind(String(c.value))}`
-      case 'neq': return `(${txt} IS DISTINCT FROM ${bind(String(c.value))})`
-      case 'in': return `${txt} = ANY(${arr(c.value)}::text[])`
-      case 'not_in': return `(${txt} IS NULL OR NOT (${txt} = ANY(${arr(c.value)}::text[])))`
-      case 'contains': return `${txt} ILIKE '%' || ${bind(String(c.value))} || '%'`
-      case 'starts_with': return `${txt} ILIKE ${bind(String(c.value))} || '%'`
+      case 'eq': return `${txt()} = ${bind(String(c.value))}`
+      case 'neq': return `(${txt()} IS DISTINCT FROM ${bind(String(c.value))})`
+      case 'in': return `${txt()} = ANY(${arr(c.value)}::text[])`
+      case 'not_in': return `(${txt()} IS NULL OR NOT (${txt()} = ANY(${arr(c.value)}::text[])))`
+      case 'contains': return `${txt()} ILIKE '%' || ${bind(String(c.value))} || '%'`
+      case 'starts_with': return `${txt()} ILIKE ${bind(String(c.value))} || '%'`
       case 'gt': case 'gte': case 'lt': case 'lte': {
         const op = { gt: '>', gte: '>=', lt: '<', lte: '<=' }[c.op]
         return `${numeric(c.field, t)} ${op} ${bind(Number(c.value))}`
@@ -516,7 +528,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
 function checkEveryParamIsUsed(sql: string, params: unknown[]): void {
   for (let n = 1; n <= params.length; n++) {
     if (!new RegExp(`\\$${n}(?![0-9])`).test(sql)) {
-      throw new SpecError(`parameter $${n} was bound but never used — the query would be rejected`)
+      throw new InternalSpecError(`parameter $${n} was bound but never used — the query would be rejected`)
     }
   }
 }

@@ -7,7 +7,7 @@
  * a time per site, so they would queue twice before Postgres ever saw them.
  */
 'use client'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Dashboard, Widget, WidgetResult, CatalogField } from '@/types/analytics'
 import type { FilterNodeInput } from '@/server/analytics/spec'
@@ -63,9 +63,24 @@ export function useAnalyticsDashboard(agentId: string | undefined, enabled: bool
 }
 
 /**
- * Runs every chart on the dashboard. The date range and the filter chips above
- * the canvas are applied here rather than saved into each chart, so one Period
- * change redraws everything without rewriting twelve saved objects.
+ * Runs the charts on the dashboard — Confluence §9.1.
+ *
+ * Two constraints pull against each other here.
+ *
+ * One request per chart is what a cache wants: change one chart, refetch one
+ * chart. But eight charts is eight database connections out of sixty, and a
+ * browser runs about six requests at a time per origin, so they queue twice
+ * before Postgres sees them. §9.1 rules it out.
+ *
+ * One request for the whole dashboard fixes that and creates the opposite
+ * problem: editing a single chart re-runs all twelve, which on this data was
+ * 3.3 seconds of disk-bound queries to redraw one card.
+ *
+ * So: one request, carrying only the charts whose answer actually changed.
+ * Results are kept per chart and merged, so editing one card re-queries one
+ * card while the other eleven keep the numbers they already had. Changing the
+ * date range, the filters or the hours invalidates everything, because it
+ * genuinely does.
  */
 export function useChartData(
   agentId: string | undefined,
@@ -75,36 +90,80 @@ export function useChartData(
   when: { timeOfDay: { from: string; to: string } | null; days: number[] },
   enabled: boolean
 ) {
-  const key = useMemo(
-    () => widgets.map((w) => `${w.id}:${JSON.stringify(w.spec)}`).join('|'),
-    [widgets]
+  const [byWidget, setByWidget] = useState<Map<string, WidgetResult>>(new Map())
+  const [isFetching, setIsFetching] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+  /** widget id → the spec we last have an answer for. */
+  const answered = useRef(new Map<string, string>())
+  const lastContext = useRef<string | null>(null)
+
+  const context = JSON.stringify({ agentId, range, filters, when })
+  const signature = useMemo(() => widgets.map((w) => `${w.id}:${JSON.stringify(w.spec)}`).join('|'), [widgets])
+
+  const run = useCallback(
+    async (force: boolean) => {
+      if (!enabled || !agentId || widgets.length === 0) return
+
+      const contextChanged = lastContext.current !== context
+      const specOf = (w: Widget) => JSON.stringify(w.spec)
+      const stale = widgets.filter((w) => force || contextChanged || answered.current.get(w.id) !== specOf(w))
+
+      // a card that has not been touched keeps the number it already had
+      if (stale.length === 0) {
+        setByWidget((prev) => prune(prev, widgets))
+        return
+      }
+
+      setIsFetching(true)
+      setError(null)
+      try {
+        const body = await json<{ widgets: WidgetResult[] }>(`/api/analytics/query`, {
+          method: 'POST',
+          body: JSON.stringify({
+            agentId,
+            range,
+            filters,
+            time_of_day: when.timeOfDay,
+            days_of_week: when.days,
+            widgets: stale.map((w) => ({ id: w.id, spec: w.spec })),
+          }),
+        })
+        lastContext.current = context
+        for (const w of stale) answered.current.set(w.id, specOf(w))
+        setByWidget((prev) => {
+          const next = contextChanged ? new Map<string, WidgetResult>() : new Map(prev)
+          for (const r of body.widgets) next.set(r.widget_id, r)
+          return prune(next, widgets)
+        })
+      } catch (err) {
+        setError(err as Error)
+      } finally {
+        setIsFetching(false)
+      }
+    },
+    [agentId, context, enabled, filters, range, when, widgets]
   )
 
-  const query = useQuery({
-    queryKey: ['analytics', 'query', agentId, key, range, filters, when],
-    queryFn: () =>
-      json<{ widgets: WidgetResult[] }>(`/api/analytics/query`, {
-        method: 'POST',
-        body: JSON.stringify({
-          agentId,
-          range,
-          filters,
-          time_of_day: when.timeOfDay,
-          days_of_week: when.days,
-          widgets: widgets.map((w) => ({ id: w.id, spec: w.spec })),
-        }),
-      }),
-    enabled: Boolean(agentId) && widgets.length > 0 && enabled,
-    staleTime: 30_000,
-  })
+  useEffect(() => {
+    if (!enabled) return
+    // settings change on every keystroke and every dropdown; wait for the
+    // person to stop before asking the database anything
+    const timer = setTimeout(() => void run(false), 250)
+    return () => clearTimeout(timer)
+    // `signature` and `context` are the real inputs; `run` closes over both
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, context, enabled])
 
-  const byWidget = useMemo(() => {
-    const map = new Map<string, WidgetResult>()
-    for (const r of query.data?.widgets ?? []) map.set(r.widget_id, r)
-    return map
-  }, [query.data])
+  const isLoading = isFetching && byWidget.size === 0
 
-  return { ...query, byWidget }
+  return { byWidget, isFetching, isLoading, error, refetch: () => run(true) }
+}
+
+/** Drop answers for charts that are no longer on the dashboard. */
+function prune(results: Map<string, WidgetResult>, widgets: Widget[]): Map<string, WidgetResult> {
+  const live = new Set(widgets.map((w) => w.id))
+  if ([...results.keys()].every((id) => live.has(id))) return results
+  return new Map([...results].filter(([id]) => live.has(id)))
 }
 
 /** Walks the export a page at a time, following the cursor, and hands back one file. */

@@ -629,3 +629,41 @@ describe('which days count', () => {
     expect(none.sql).not.toContain('isodow')
   })
 })
+
+describe('every operator compiles to a runnable query', () => {
+  const field = { col: 'transcription_metrics' as const, path: ['is_cancellation_transfer'], boolean_encoding: 'one_zero' as const }
+
+  it.each([
+    ['is_true', undefined],
+    ['is_false', undefined],
+    ['is_empty', undefined],
+    ['is_not_empty', undefined],
+    ['eq', 'x'],
+    ['neq', 'x'],
+    ['in', ['a', 'b']],
+    ['not_in', ['a']],
+    ['contains', 'x'],
+    ['starts_with', 'x'],
+    ['gt', 5],
+    ['gte', 5],
+    ['lt', 5],
+    ['lte', 5],
+  ])('binds no parameter it does not use: %s', (op, value) => {
+    // `is yes` and the numeric comparisons never read the text form of a field.
+    // Building it anyway left an orphan parameter, and Postgres rejects a
+    // statement carrying one — every card on the dashboard went amber.
+    expect(() =>
+      buildQuery(
+        parse({ ...countByDisposition, having: [{ field, op: op as never, ...(value !== undefined ? { value } : {}) }] }),
+        ctx,
+        'aggregate'
+      )
+    ).not.toThrow()
+  })
+
+  it('does the same for a pre-dedupe filter', () => {
+    expect(() =>
+      buildQuery(parse({ ...countByDisposition, filters: [{ field, op: 'is_true' }] }), ctx, 'aggregate')
+    ).not.toThrow()
+  })
+})

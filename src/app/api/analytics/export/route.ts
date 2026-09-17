@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { RowsBody, fetchRowPage, ROW_COLUMNS } from '@/server/analytics/rowsRequest'
 import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { isTimeout } from '@/server/analytics/db'
-import { SpecError } from '@/server/analytics/buildQuery'
+import { SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { csvPage } from '@/server/analytics/csv'
 
 export const runtime = 'nodejs'
@@ -46,6 +46,10 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     if (isTimeout(err)) return NextResponse.json({ error: 'That took too long. Try a shorter date range.' }, { status: 504 })
     if (err instanceof SpecError) return NextResponse.json({ error: err.message }, { status: 400 })
+    if (err instanceof InternalSpecError) {
+      console.error('[analytics/export] compiler bug', err.message)
+      return NextResponse.json({ error: 'Could not load this. The problem has been logged.' }, { status: 500 })
+    }
     console.error('[analytics/export]', err)
     return NextResponse.json({ error: 'Could not build the export' }, { status: 500 })
   }
