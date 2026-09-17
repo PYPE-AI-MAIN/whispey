@@ -24,13 +24,28 @@ export function scaled(value: unknown, spec: Widget['spec']): number | null {
   return n * (spec.display?.scale ?? 1)
 }
 
+/**
+ * The one place a unit is attached to a number.
+ *
+ * It used to be two: this appended `display.unit`, and every caller *also*
+ * appended '%' for a rate. A suggested rate chart sets `unit: '%'`, so it got
+ * both — "2.8%%" on the card, in the tooltip, and down the axis.
+ *
+ * A rate is a percentage whatever `display.unit` says, so that is decided here
+ * and callers simply print what they are given.
+ */
 export function formatValue(value: number | null, spec: Widget['spec']): string {
   if (value === null) return '—'
   const round = spec.display?.round ?? 1
-  const unit = spec.display?.unit
+  const unit = unitFor(spec)
   const text = value.toLocaleString(undefined, { minimumFractionDigits: round, maximumFractionDigits: round })
   if (!unit) return text
   return unit === '₹' ? `${unit}${text}` : `${text}${unit}`
+}
+
+/** What goes after the number — and for a rate that is '%', never twice. */
+export function unitFor(spec: Widget['spec']): string {
+  return isRate(spec) ? '%' : (spec.display?.unit ?? '')
 }
 
 /** A rate comes back as 0–1 and is read as a percentage. */

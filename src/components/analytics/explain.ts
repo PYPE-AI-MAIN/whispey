@@ -138,7 +138,12 @@ export function explainSpec(spec: Widget['spec'], fields: CatalogField[]): strin
   const fn = spec.agg?.fn ?? 'count'
   const field = spec.agg?.field
   if (fn === 'count') parts.push(CALCULATION_WORDS.count)
-  else if (fn === 'rate') parts.push(`Percentage where ${fieldName(field, fields)} is ${spec.agg?.match === false ? 'no' : 'yes'}`)
+  // half these fields are already named as questions, and "Percentage where is
+  // wrong number is yes" is not a sentence anybody wrote on purpose
+  else if (fn === 'rate') {
+    const name = fieldName(field, fields).replace(/^is\s+/i, '')
+    parts.push(`Percentage where ${name} is ${spec.agg?.match === false ? 'no' : 'yes'}`)
+  }
   else parts.push(`${CALCULATION_WORDS[fn] ?? fn} ${fieldName(field, fields)}`.trim())
 
   if (spec.dimension?.field) parts.push(`split by ${fieldName(spec.dimension.field, fields)}`)

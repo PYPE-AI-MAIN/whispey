@@ -48,7 +48,7 @@ describe('a card says what it counted', () => {
       agg: { fn: 'rate', field: { col: 'transcription_metrics', path: ['is_confirmation'], boolean_encoding: 'one_zero' } },
       range: { days: 30 },
     }
-    expect(explainSpec(spec, fields)).toBe('Percentage where is confirmation is yes')
+    expect(explainSpec(spec, fields)).toBe('Percentage where confirmation is yes')
   })
 
   it('names the split', () => {

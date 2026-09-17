@@ -191,6 +191,16 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
     setPanelOpen(true)
   }, [])
 
+  // the other way back to the chart types, for anyone who reaches for Escape
+  // before reaching for a button
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   /** A new card arrives with its settings already filled in, never blank (§10.4). */
   const makeChart = useCallback(
     (kind: ChartKind, at?: { x: number; y: number }): Widget => ({
@@ -488,6 +498,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
             selected={selected}
             fields={catalog}
             canEdit={canEdit}
+            onBack={() => setSelectedId(null)}
             onAddChart={(kind) => addChart(kind)}
             onDragChartType={setDroppingKind}
             onChange={(spec) => selected && edit(selected.id, { spec })}

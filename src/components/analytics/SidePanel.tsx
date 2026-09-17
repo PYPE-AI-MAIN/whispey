@@ -10,7 +10,7 @@
  */
 'use client'
 import React, { useMemo } from 'react'
-import { BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2 } from 'lucide-react'
+import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
@@ -105,11 +105,13 @@ function ChartTypeTile({
 }
 
 export function SidePanel({
-  selected, fields, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle,
+  selected, fields, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack,
 }: {
   selected: Widget | null
   fields: CatalogField[]
   canEdit: boolean
+  /** Leaves the chart's settings and puts the chart types back (§10.4). */
+  onBack: () => void
   onAddChart: (kind: ChartKind) => void
   /** Tells the canvas which type is in flight, so the drop placeholder is the right size. */
   onDragChartType: (kind: ChartKind | null) => void
@@ -146,6 +148,7 @@ export function SidePanel({
       widget={selected}
       fields={fields}
       canEdit={canEdit}
+      onBack={onBack}
       onChange={onChange}
       onChangeKind={onChangeKind}
       onChangeTitle={onChangeTitle}
@@ -154,11 +157,12 @@ export function SidePanel({
 }
 
 function ChartSettings({
-  widget, fields, canEdit, onChange, onChangeKind, onChangeTitle,
+  widget, fields, canEdit, onBack, onChange, onChangeKind, onChangeTitle,
 }: {
   widget: Widget
   fields: CatalogField[]
   canEdit: boolean
+  onBack: () => void
   onChange: (spec: SpecInput) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
@@ -190,7 +194,7 @@ function ChartSettings({
   }
 
   return (
-    <Panel title="Chart settings">
+    <Panel title="Chart settings" onBack={onBack}>
       {/* the same sentence the card shows, but with room to read it */}
       <p className="mb-3 rounded-md bg-gray-100/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
         {explainSpec(spec, fields)}
@@ -237,6 +241,11 @@ function ChartSettings({
                 next.needs === 'none'
                   ? { fn: next.fn }
                   : { fn: next.fn, field: spec.agg?.field, ...(next.needs === 'boolean' ? { denominator: 'field_present' as const } : {}) },
+              // unit and scale described the *old* measurement. Kept, they
+              // turned an average response time into "Count of calls · 190.00s",
+              // and would have divided a count of calls by 60 on a chart that
+              // used to draw minutes.
+              display: { round: next.fn === 'count' || next.fn === 'count_distinct' ? 0 : 2 },
             })
           }}
         />
@@ -371,10 +380,22 @@ function coverageHint(f: CatalogField): string | undefined {
   return `${f.coverage_pct}% of calls`
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ title, children, onBack }: { title: string; children: React.ReactNode; onBack?: () => void }) {
   return (
     <aside className="flex h-full w-full flex-col overflow-y-auto border-l border-gray-200 bg-gray-50/60 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/40">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</h2>
+      {/* selecting a chart replaces the chart types with its settings, and
+          until this existed the only way back was to guess that clicking the
+          canvas background would do it */}
+      {onBack ? (
+        <button
+          onClick={onBack}
+          className="mb-3 -ml-1 flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-gray-500 transition hover:bg-gray-200/60 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Chart types
+        </button>
+      ) : (
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</h2>
+      )}
       {children}
     </aside>
   )
@@ -412,14 +433,12 @@ function Picker({
       <SelectContent className="max-h-72">
         {(clearable || !value) && <SelectItem value={NONE}>{placeholder ?? 'None'}</SelectItem>}
         {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            <span className="flex w-full flex-col gap-0.5">
-              <span className="flex w-full items-center justify-between gap-3">
-                <span>{o.label}</span>
-                {o.hint && <span className="shrink-0 text-[11px] text-gray-400">{o.hint}</span>}
-              </span>
-              {/* a calculation nobody can explain produces a number nobody can check */}
-              {o.help && <span className="text-[11px] leading-snug text-gray-400">{o.help}</span>}
+          // a calculation nobody can explain produces a number nobody can check
+          // — but the explanation belongs in the list, not inside the closed box
+          <SelectItem key={o.value} value={o.value} description={o.help}>
+            <span className="flex w-full items-center justify-between gap-3">
+              <span>{o.label}</span>
+              {o.hint && <span className="shrink-0 text-[11px] text-gray-400">{o.hint}</span>}
             </span>
           </SelectItem>
         ))}

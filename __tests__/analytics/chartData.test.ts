@@ -128,3 +128,33 @@ describe('a category that scored zero is drawn, not dropped', () => {
     expect(zeroFill(s, [])).toEqual(s)
   })
 })
+
+/**
+ * A suggested rate chart sets `display.unit: '%'`, and every caller also
+ * appended '%' for a rate — so the card read "2.8%%", and so did the tooltip
+ * and the axis. One place owns the suffix now.
+ */
+describe('a percentage sign, once', () => {
+  const rate = { spec_version: 1 as const, agg: { fn: 'rate' as const, field: { col: 'transcription_metrics', path: ['x'] } },
+    range: { days: 30 }, display: { round: 1, unit: '%' } }
+
+  it('does not print the unit twice when the unit is already a percent', () => {
+    expect(formatValue(2.8, rate as never)).toBe('2.8%')
+  })
+
+  it('is a percentage even when nobody set a unit', () => {
+    expect(formatValue(2.8, { ...rate, display: { round: 1 } } as never)).toBe('2.8%')
+  })
+
+  it('leaves an ordinary unit alone', () => {
+    const avg = { spec_version: 1 as const, agg: { fn: 'avg' as const, field: { col: 'avg_latency' } },
+      range: { days: 30 }, display: { round: 2, unit: 's' } }
+    expect(formatValue(1.25, avg as never)).toBe('1.25s')
+  })
+
+  it('still puts a currency sign in front', () => {
+    const sum = { spec_version: 1 as const, agg: { fn: 'sum' as const, field: { col: 'total_cost' } },
+      range: { days: 30 }, display: { round: 2, unit: '₹' } }
+    expect(formatValue(12, sum as never)).toBe('₹12.00')
+  })
+})

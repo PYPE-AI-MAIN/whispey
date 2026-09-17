@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 import { cn } from '@/lib/utils'
 import type { ChartKind, ResultRow, Widget } from '@/types/analytics'
-import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, isRate } from './chartData'
+import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, unitFor } from './chartData'
 
 /** Distinguishable in both themes, and still distinguishable for the most common colour blindness. */
 const SERIES_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16']
@@ -56,7 +56,7 @@ export function ChartRenderer({
   short?: boolean
 }) {
   const shaped = zeroFill(shape(rows, spec), categories)
-  const suffix = isRate(spec) ? '%' : (spec.display?.unit ?? '')
+  const suffix = unitFor(spec)
   const tickFor = (x: string) => (shaped.axis === 'time' ? formatBucket(x, bucket) : shortLabel(x, compact ? 10 : 18))
 
   if (kind === 'kpi') return <Kpi rows={rows} spec={spec} short={short} />
@@ -94,7 +94,7 @@ export function ChartRenderer({
               <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip {...tooltipStyle} formatter={(v: unknown) => `${formatValue(Number(v), spec)}${isRate(spec) ? '%' : ''}`} />
+          <Tooltip {...tooltipStyle} formatter={(v: unknown) => formatValue(Number(v), spec)} />
           <Legend formatter={(v: unknown) => shortLabel(String(v), 18)} wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
       </ResponsiveContainer>
@@ -111,7 +111,7 @@ export function ChartRenderer({
         <Tooltip
           {...tooltipStyle}
           labelFormatter={(x: unknown) => (shaped.axis === 'time' ? formatBucket(String(x), bucket) : String(x))}
-          formatter={(v: unknown) => `${formatValue(Number(v), spec)}${isRate(spec) ? '%' : ''}`}
+          formatter={(v: unknown) => formatValue(Number(v), spec)}
         />
         {shaped.seriesKeys.length > 1 && (
           <Legend formatter={(v: unknown) => shortLabel(String(v), 16)} wrapperStyle={{ fontSize: 11 }} />
@@ -158,7 +158,7 @@ function Kpi({ rows, spec, short }: { rows: ResultRow[]; spec: Widget['spec']; s
           value === null && 'text-gray-400 dark:text-gray-500'
         )}
       >
-        {value === null ? '—' : `${formatValue(value, spec)}${isRate(spec) ? '%' : ''}`}
+        {value === null ? '—' : formatValue(value, spec)}
       </div>
     </div>
   )
@@ -191,7 +191,6 @@ function Table({
               {shaped.seriesKeys.map((key) => (
                 <td key={key} className="py-1.5 text-right tabular-nums text-gray-900 dark:text-gray-100">
                   {formatValue(typeof p[key] === 'number' ? (p[key] as number) : null, spec)}
-                  {isRate(spec) ? '%' : ''}
                 </td>
               ))}
             </tr>
