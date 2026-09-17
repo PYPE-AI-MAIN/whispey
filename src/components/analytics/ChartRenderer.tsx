@@ -133,6 +133,8 @@ export function ChartRenderer({
               stackId={shaped.seriesKeys.length > 1 ? 'a' : undefined}
               fill={SERIES_COLORS[i % SERIES_COLORS.length]}
               radius={shaped.seriesKeys.length > 1 ? 0 : [4, 4, 0, 0]}
+              // one bucket would otherwise render as a wall the width of the card
+              maxBarSize={64}
               cursor={onSelect ? 'pointer' : undefined}
               onClick={(bar: unknown) => onSelect?.(readX(bar))}
             />

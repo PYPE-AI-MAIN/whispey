@@ -35,6 +35,7 @@ import {
   applyGridLayout, toGridLayout, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, MIN_SIZE, ROW_HEIGHT,
 } from './gridLayout'
 import 'react-grid-layout/css/styles.css'
+import './grid.css'
 
 type Props = {
   project: { id: string } | null | undefined
@@ -314,10 +315,18 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
         {csv.error && <Banner onDismiss={() => undefined}>{csv.error}</Banner>}
 
         <div
-          ref={containerRef}
-          className={cn('min-h-0 flex-1 overflow-y-auto p-3', droppingKind && 'bg-blue-50/30 dark:bg-blue-950/10')}
+          className={cn(
+            // overflow-x-hidden, not auto: the grid is measured to fit, and a
+            // sideways scrollbar means the measurement was wrong, not that the
+            // dashboard is wider than the screen
+            'min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3',
+            droppingKind && 'bg-blue-50/30 dark:bg-blue-950/10'
+          )}
         >
-          {width > 0 && widgets.length > 0 && (
+          {/* measured without the padding — the grid lays out inside this box,
+              and measuring the padded parent made it 24px too wide */}
+          <div ref={containerRef} className="w-full">
+            {width > 0 && widgets.length > 0 && (
             <ResponsiveGridLayout
               width={width}
               layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
@@ -364,8 +373,9 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
                   />
                 </div>
               ))}
-            </ResponsiveGridLayout>
-          )}
+              </ResponsiveGridLayout>
+            )}
+          </div>
 
           {widgets.length === 0 && (
             <Centered>{canEdit ? 'Drag a chart type from the panel to start.' : 'Nothing on this dashboard yet.'}</Centered>

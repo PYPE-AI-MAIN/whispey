@@ -209,6 +209,14 @@ export const Spec = z
         limit: z.number().int().min(1).max(500).default(50),
         /** Show the empty bucket as its own category rather than dropping it. */
         include_empty: z.boolean().default(false),
+        /**
+         * Fold case before grouping. `is_Conversation_hindi` holds yes, no,
+         * Yes, No and 0 on one agent, which without this draws five series for
+         * a field with two answers. Applied in SQL rather than in the renderer
+         * so the chart and the drill-down underneath it agree about what a
+         * bucket contains.
+         */
+        case_insensitive: z.boolean().default(false),
       })
       .optional(),
 

@@ -1,0 +1,39 @@
+/*
+ * react-grid-layout ships styling built for a light page: the drop placeholder
+ * is `background: red` and the resize corner is a 5px light-grey chevron. On a
+ * dark dashboard the first reads as a broken chart and the second is invisible.
+ */
+
+/* where the card will land, not an error */
+.react-grid-item.react-grid-placeholder {
+  background: rgb(59 130 246 / 0.12);
+  border: 1px dashed rgb(59 130 246 / 0.55);
+  border-radius: 0.75rem;
+  opacity: 1;
+}
+
+/* the corner you drag to resize — faint until you approach the card */
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.react-grid-item:hover > .react-resizable-handle,
+.react-grid-item > .react-resizable-handle:focus-visible {
+  opacity: 1;
+}
+.react-grid-item > .react-resizable-handle::after {
+  right: 5px;
+  bottom: 5px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgb(148 163 184);
+  border-bottom: 2px solid rgb(148 163 184);
+}
+
+/* a card being dragged should float above the rest, not tunnel under them */
+.react-grid-item.react-draggable-dragging {
+  z-index: 30;
+}
+.react-grid-item.resizing {
+  z-index: 30;
+}

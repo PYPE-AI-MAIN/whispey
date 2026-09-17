@@ -59,6 +59,13 @@ const WIDTH_PRESETS = [
   { label: 'Full', columns: 12 },
 ]
 
+/** True when two of the field's own values differ only in case or spacing. */
+export function hasCaseVariants(values: string[] | null | undefined): boolean {
+  if (!values?.length) return false
+  const folded = new Set(values.map((v) => v.trim().toLowerCase()))
+  return folded.size < values.length
+}
+
 const currentColumns = (widget: Widget): number | null =>
   'w' in (widget.layout ?? {}) ? (widget.layout as { w: number }).w : null
 
@@ -275,7 +282,13 @@ function ChartSettings({
           onChange={(key) =>
             key
               ? pickField(key, (f) =>
-                  setSpec({ dimension: { field: { col: f.col, ...(f.path.length ? { path: f.path } : {}) } } })
+                  setSpec({
+                    dimension: {
+                      field: { col: f.col, ...(f.path.length ? { path: f.path } : {}) },
+                      // yes/Yes/no/No is one answer written four ways, not four categories
+                      case_insensitive: hasCaseVariants(f.enum_values),
+                    },
+                  })
                 )
               : setSpec({ dimension: undefined })
           }

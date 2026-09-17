@@ -667,3 +667,31 @@ describe('every operator compiles to a runnable query', () => {
     ).not.toThrow()
   })
 })
+
+describe('one answer written four ways is one category', () => {
+  const byHindi = (caseInsensitive: boolean): SpecInput => ({
+    spec_version: 1,
+    agg: { fn: 'count' },
+    dimension: {
+      field: { col: 'transcription_metrics', path: ['is_Conversation_hindi'] },
+      case_insensitive: caseInsensitive,
+    },
+    range: { days: 30 },
+  })
+
+  it('folds case in the query, so yes and Yes are one bucket', () => {
+    expect(buildQuery(parse(byHindi(true)), ctx, 'aggregate').sql).toContain('lower((CASE WHEN')
+  })
+
+  it('leaves the values alone by default — folding a name would be wrong', () => {
+    expect(buildQuery(parse(byHindi(false)), ctx, 'aggregate').sql).not.toContain('lower((CASE WHEN')
+  })
+
+  it('matches the same bucket when you click through to the calls', () => {
+    const chart = buildQuery(parse(byHindi(true)), ctx, 'aggregate')
+    const drill = buildQuery(parse(byHindi(true)), ctx, 'drill', { dimensionValue: 'yes' })
+    // the folding has to happen in SQL, or the bar and the list below it disagree
+    expect(drill.sql).toContain('lower((CASE WHEN')
+    expect(chart.sql).toContain('lower((CASE WHEN')
+  })
+})

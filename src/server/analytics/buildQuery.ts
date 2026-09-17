@@ -419,7 +419,11 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const bucket = spec.bucket === 'none' ? 'none' : spec.bucket === 'auto' ? autoBucket(range.days) : spec.bucket
   const post = conjunction(spec.having, t)
 
-  const dimExpr = spec.dimension ? cleanText(spec.dimension.field, t) : null
+  const dimExpr = spec.dimension
+    ? spec.dimension.case_insensitive
+      ? `lower(${cleanText(spec.dimension.field, t)})`
+      : cleanText(spec.dimension.field, t)
+    : null
   if (dimExpr && !spec.dimension!.include_empty) post.push(`${dimExpr} IS NOT NULL`)
 
   const aggField = spec.agg.field
