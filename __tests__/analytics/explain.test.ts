@@ -3,7 +3,7 @@
  * card can say what it counted, in words, with no database in them.
  */
 import { describe, it, expect } from 'vitest'
-import { explainSpec, fieldName, describeCondition } from '@/components/analytics/explain'
+import { CALCULATIONS, explainSpec, fieldName, describeCondition } from '@/components/analytics/explain'
 import type { CatalogField } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
@@ -68,7 +68,7 @@ describe('a card says what it counted', () => {
       time_of_day: { from: '22:00', to: '02:00' },
       range: { days: 30 },
     }
-    expect(explainSpec(spec, fields)).toBe('Average response time · between 22:00 and 02:00')
+    expect(explainSpec(spec, fields)).toBe('Average of response time · between 22:00 and 02:00')
   })
 
   it('joins an and/or group so a nested filter is still readable', () => {
@@ -117,5 +117,35 @@ describe('fields already named as questions', () => {
   it('reads the negative the same way', () => {
     expect(describeCondition({ field: { col: 'transcription_metrics', path: ['is_Conversation_hindi'] }, op: 'is_false' }, hindi))
       .toBe('is conversation hindi: no')
+  })
+})
+
+/**
+ * The panel said "Average of" while the card said "Average", and "Slowest 5%"
+ * was only true when the field happened to be a latency. Both now read one
+ * table; this is the test that keeps them there.
+ */
+describe('the calculation vocabulary', () => {
+  it('gives every calculation a name, a phrase and an explanation', () => {
+    for (const c of CALCULATIONS) {
+      expect(c.label.length, c.fn).toBeGreaterThan(0)
+      expect(c.phrase.length, c.fn).toBeGreaterThan(0)
+      expect(c.help.endsWith('.'), c.fn).toBe(true)
+    }
+  })
+
+  it('says nothing about speed — a total cost is not slow', () => {
+    for (const c of CALCULATIONS) {
+      expect(`${c.label} ${c.phrase} ${c.help}`.toLowerCase()).not.toContain('slow')
+    }
+  })
+
+  it('uses the same words on the card as in the panel', () => {
+    const fields: CatalogField[] = []
+    for (const c of CALCULATIONS) {
+      if (c.needs !== 'number') continue
+      const spec = { spec_version: 1 as const, agg: { fn: c.fn, field: { col: 'avg_latency' } }, range: { days: 30 } }
+      expect(explainSpec(spec as never, fields)).toBe(`${c.phrase} avg latency`)
+    }
   })
 })

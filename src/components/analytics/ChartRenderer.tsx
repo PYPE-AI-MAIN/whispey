@@ -41,7 +41,7 @@ const tooltipStyle = {
 } as const
 
 export function ChartRenderer({
-  kind, rows, spec, bucket, categories, onSelect, compact,
+  kind, rows, spec, bucket, categories, onSelect, compact, short,
 }: {
   kind: ChartKind
   rows: ResultRow[]
@@ -52,14 +52,16 @@ export function ChartRenderer({
   /** Clicking a bar or a slice opens the calls behind it. */
   onSelect?: (value: string | null) => void
   compact?: boolean
+  /** A card only two grid rows tall: the big number has to come down a size. */
+  short?: boolean
 }) {
   const shaped = zeroFill(shape(rows, spec), categories)
   const suffix = isRate(spec) ? '%' : (spec.display?.unit ?? '')
   const tickFor = (x: string) => (shaped.axis === 'time' ? formatBucket(x, bucket) : shortLabel(x, compact ? 10 : 18))
 
-  if (kind === 'kpi') return <Kpi rows={rows} spec={spec} />
+  if (kind === 'kpi') return <Kpi rows={rows} spec={spec} short={short} />
   // a table with nothing to break down is just the number
-  if (kind === 'table' && shape(rows, spec).axis === 'none') return <Kpi rows={rows} spec={spec} />
+  if (kind === 'table' && shape(rows, spec).axis === 'none') return <Kpi rows={rows} spec={spec} short={short} />
 
   // a chart type needs a shape to draw. Say which one is missing rather than
   // leaving an empty rectangle and no explanation.
@@ -145,13 +147,14 @@ export function ChartRenderer({
   )
 }
 
-function Kpi({ rows, spec }: { rows: ResultRow[]; spec: Widget['spec'] }) {
+function Kpi({ rows, spec, short }: { rows: ResultRow[]; spec: Widget['spec']; short?: boolean }) {
   const value = displayNumber(rows[0], spec)
   return (
-    <div className="flex h-full flex-col justify-center">
+    <div className="flex h-full flex-col justify-center overflow-hidden">
       <div
         className={cn(
-          'text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-50',
+          'truncate font-semibold tabular-nums text-gray-900 dark:text-gray-50',
+          short ? 'text-2xl' : 'text-3xl',
           value === null && 'text-gray-400 dark:text-gray-500'
         )}
       >

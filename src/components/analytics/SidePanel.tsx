@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import { ChartFilters } from './FilterBar'
-import { explainSpec } from './explain'
+import { CALCULATIONS, explainSpec } from './explain'
 import { identityFields, outcomeField } from './suggest'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 
@@ -28,19 +28,6 @@ const CHART_TYPES: { kind: ChartKind; label: string; icon: React.ReactNode }[] =
   { kind: 'line', label: 'Line', icon: <LineIcon className="h-4 w-4" /> },
   { kind: 'table', label: 'Table', icon: <Table2 className="h-4 w-4" /> },
   { kind: 'pie', label: 'Pie', icon: <PieIcon className="h-4 w-4" /> },
-]
-
-/** Plain words for what each calculation does. Nobody is reading "p95" and thinking "percentile". */
-const CALCULATIONS: { fn: NonNullable<SpecInput['agg']>['fn']; label: string; needs: 'none' | 'any' | 'number' | 'boolean' }[] = [
-  { fn: 'count', label: 'How many calls', needs: 'none' },
-  { fn: 'count_distinct', label: 'How many different', needs: 'any' },
-  { fn: 'rate', label: 'Percentage that are yes', needs: 'boolean' },
-  { fn: 'sum', label: 'Total of', needs: 'number' },
-  { fn: 'avg', label: 'Average of', needs: 'number' },
-  { fn: 'p50', label: 'Middle value of', needs: 'number' },
-  { fn: 'p95', label: 'Slowest 5% of', needs: 'number' },
-  { fn: 'min', label: 'Lowest', needs: 'number' },
-  { fn: 'max', label: 'Highest', needs: 'number' },
 ]
 
 const BUCKETS = [
@@ -238,7 +225,7 @@ function ChartSettings({
         <Picker
           value={spec.agg?.fn ?? 'count'}
           disabled={!canEdit}
-          options={CALCULATIONS.map((c) => ({ value: c.fn, label: c.label }))}
+          options={CALCULATIONS.map((c) => ({ value: c.fn, label: c.label, help: c.help }))}
           onChange={(fn) => {
             const next = CALCULATIONS.find((c) => c.fn === fn)!
             setSpec({
@@ -249,6 +236,7 @@ function ChartSettings({
             })
           }}
         />
+        <p className="mt-1 text-[11px] leading-snug text-gray-400">{calculation.help}</p>
       </Row>
 
       {calculation.needs !== 'none' && (
@@ -394,7 +382,7 @@ function Picker({
   value, options, onChange, disabled, placeholder, clearable,
 }: {
   value: string
-  options: { value: string; label: string; hint?: string }[]
+  options: { value: string; label: string; hint?: string; help?: string }[]
   onChange: (value: string) => void
   disabled?: boolean
   placeholder?: string
@@ -414,9 +402,13 @@ function Picker({
         {(clearable || !value) && <SelectItem value={NONE}>{placeholder ?? 'None'}</SelectItem>}
         {options.map((o) => (
           <SelectItem key={o.value} value={o.value}>
-            <span className="flex w-full items-center justify-between gap-3">
-              <span>{o.label}</span>
-              {o.hint && <span className="text-[11px] text-gray-400">{o.hint}</span>}
+            <span className="flex w-full flex-col gap-0.5">
+              <span className="flex w-full items-center justify-between gap-3">
+                <span>{o.label}</span>
+                {o.hint && <span className="shrink-0 text-[11px] text-gray-400">{o.hint}</span>}
+              </span>
+              {/* a calculation nobody can explain produces a number nobody can check */}
+              {o.help && <span className="text-[11px] leading-snug text-gray-400">{o.help}</span>}
             </span>
           </SelectItem>
         ))}

@@ -33,18 +33,70 @@ const NEEDS_VALUE = new Set<Condition['op']>([
   'eq', 'neq', 'in', 'not_in', 'gt', 'gte', 'lt', 'lte', 'contains', 'starts_with',
 ])
 
+/**
+ * Every calculation, in one table — the dropdown and the card's definition line
+ * read the same row, so they cannot drift apart. They had: the panel said
+ * "Average of" while the card said "Average", and "Slowest 5%" was only true if
+ * the field happened to be a latency. The total cost of a call is not slow.
+ *
+ * `label` is what the dropdown shows on its own, `phrase` is how it reads in
+ * front of a field name, and `help` is the line underneath — because a
+ * calculation you cannot explain is a number nobody can check.
+ */
+export type CalculationFn =
+  | 'count' | 'count_distinct' | 'rate' | 'sum' | 'avg' | 'p50' | 'p95' | 'min' | 'max'
+
+export const CALCULATIONS: {
+  fn: CalculationFn
+  label: string
+  phrase: string
+  /** What kind of field it needs, which is what the field list is filtered by. */
+  needs: 'none' | 'any' | 'number' | 'boolean'
+  help: string
+}[] = [
+  {
+    fn: 'count', label: 'How many calls', phrase: 'How many calls', needs: 'none',
+    help: 'Counts every call that matches.',
+  },
+  {
+    fn: 'count_distinct', label: 'How many different', phrase: 'How many different', needs: 'any',
+    help: 'Counts each value once — ten calls from four numbers is four.',
+  },
+  {
+    fn: 'rate', label: 'Percentage that are yes', phrase: 'Percentage where', needs: 'boolean',
+    help: 'Out of the calls where this field has an answer, not out of every call.',
+  },
+  {
+    fn: 'sum', label: 'Total of', phrase: 'Total of', needs: 'number',
+    help: 'Adds every value together.',
+  },
+  {
+    fn: 'avg', label: 'Average of', phrase: 'Average of', needs: 'number',
+    help: 'The mean. One extreme call moves it a long way.',
+  },
+  {
+    fn: 'p50', label: 'Middle value of', phrase: 'Middle value of', needs: 'number',
+    help: 'Half the calls are below this and half above. Extremes do not move it.',
+  },
+  {
+    fn: 'p95', label: 'Top 5% start at', phrase: 'Top 5% of', needs: 'number',
+    help: '95 calls in every 100 stay below this. The bad tail, not the average.',
+  },
+  {
+    fn: 'min', label: 'Lowest', phrase: 'Lowest', needs: 'number',
+    help: 'The smallest value recorded.',
+  },
+  {
+    fn: 'max', label: 'Highest', phrase: 'Highest', needs: 'number',
+    help: 'The largest value recorded.',
+  },
+]
+
 const CALCULATION_WORDS: Record<string, string> = {
-  count: 'How many calls',
-  count_distinct: 'How many different',
-  rate: 'Percentage where',
-  sum: 'Total',
-  avg: 'Average',
-  min: 'Lowest',
-  max: 'Highest',
+  ...Object.fromEntries(CALCULATIONS.map((c) => [c.fn, c.phrase])),
+  // allowed by the spec but not offered in the panel, so they only need words
   stddev: 'Spread of',
-  p50: 'Middle value of',
-  p90: 'Slowest 10% of',
-  p95: 'Slowest 5% of',
+  p90: 'Top 10% of',
 }
 
 export function fieldName(

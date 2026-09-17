@@ -44,12 +44,23 @@ export function OutcomeOrderEditor({
   const [order, setOrder] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * Nothing has ranked these yet.
+   *
+   * The catalog hands back a field's values sorted, so the list opens
+   * alphabetically — and this agent's alphabetical order puts `cancelled` at the
+   * top, above `confirmed`, under a label reading "best". Save without touching
+   * it and the dashboard is quietly told a cancelled appointment is the best
+   * thing that can happen to one. So an untouched list says so.
+   */
+  const [dragged, setDragged] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setError(null)
     const chosen = current?.field ? candidates.find((f) => keyOf(f) === keyOf(current.field)) : candidates[0]
     setFieldKey(chosen ? keyOf(chosen) : '')
+    setDragged(false)
     // keep the saved order, then append anything the agent has started producing
     // since — a new outcome ranks last rather than silently ranking first
     const known = current?.order ?? []
@@ -58,6 +69,8 @@ export function OutcomeOrderEditor({
   }, [open, current, candidates])
 
   const field = candidates.find((f) => keyOf(f) === fieldKey)
+  // ranked means somebody decided this, either now or on a previous visit
+  const ranked = dragged || (Boolean(current?.order?.length) && Boolean(field) && keyOf(current!.field) === fieldKey)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -65,6 +78,7 @@ export function OutcomeOrderEditor({
     const from = order.indexOf(String(e.active.id))
     const to = order.indexOf(String(e.over.id))
     if (from < 0 || to < 0) return
+    setDragged(true)
     setOrder(arrayMove(order, from, to))
   }
 
@@ -115,6 +129,7 @@ export function OutcomeOrderEditor({
                 value={fieldKey}
                 onValueChange={(v) => {
                   setFieldKey(v)
+                  setDragged(false)
                   setOrder(candidates.find((f) => keyOf(f) === v)?.enum_values ?? [])
                 }}
               >
@@ -135,7 +150,13 @@ export function OutcomeOrderEditor({
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <SortableContext items={order} strategy={verticalListSortingStrategy}>
                   {order.map((value, i) => (
-                    <OutcomeRow key={value} value={value} rank={i + 1} isBest={i === 0} isWorst={i === order.length - 1} />
+                    <OutcomeRow
+                      key={value}
+                      value={value}
+                      rank={i + 1}
+                      isBest={ranked && i === 0}
+                      isWorst={ranked && i === order.length - 1}
+                    />
                   ))}
                 </SortableContext>
               </DndContext>
@@ -145,7 +166,11 @@ export function OutcomeOrderEditor({
             {/* not decoration: this rewrites what last quarter's numbers were */}
             <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>Changing this order changes past numbers too — every chart counting one row per patient is recalculated.</span>
+              <span>
+                {ranked
+                  ? 'Changing this order changes past numbers too — every chart counting one row per patient is recalculated.'
+                  : 'This is only the order these results were found in, alphabetically. It is not a ranking until you make it one — drag the best result to the top.'}
+              </span>
             </div>
 
             {error && <p className="text-xs text-red-600">{error}</p>}

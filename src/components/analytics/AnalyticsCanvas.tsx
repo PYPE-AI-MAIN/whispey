@@ -12,9 +12,9 @@
  * and everything else moves out of the way.
  */
 'use client'
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
+import { ResponsiveGridLayout, useContainerWidth, type Layout } from 'react-grid-layout'
 import { ChevronRight, Loader2, PanelRightOpen, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -52,10 +52,6 @@ type Props = {
 /** Phase 3 adds WhatsApp and Journeys. An empty tab looks broken, so only Voice ships (§10.2). */
 const SOURCES = [{ id: 'voice', label: 'Voice' }] as const
 
-/** Both fixed, and only used to guess a width when measuring has not worked yet. */
-const SIDEBAR_WIDTH = 340
-const PANEL_WIDTH = 288
-
 /**
  * Cards stack into one column below this (§10.9).
  *
@@ -84,10 +80,12 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   /**
    * The grid needs its width in pixels — it has no CSS of its own for that.
    *
-   * Measured here rather than with the library's hook, which starts at a
-   * hard-coded 1280 and only corrects if its observer happens to fire. When it
-   * did not, the grid laid itself out wider than the page and the right-hand
-   * cards disappeared under the settings panel.
+   * This is the library's own hook now rather than a hand-rolled measurement.
+   * Mine refused a zero reading and fell back to a width worked out from
+   * `window.innerWidth` minus two hard-coded chrome widths — and once that
+   * guess was in state nothing replaced it, so the dashboard laid itself out
+   * for a window nobody had. The hook observes the real element and is where
+   * the library puts `measureWidth` for the case below.
    */
   // the panel is where you build; when you are only reading a dashboard it is
   // in the way. Remembered per browser, like the app's own sidebar.
@@ -109,63 +107,29 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       return !open
     })
   }, [])
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(0)
+  const { width, containerRef, measureWidth } = useContainerWidth()
 
   /**
-   * Zero is never a real layout — it means the tab is display:none, or the node
-   * is between renders — so only a real measurement is kept.
-   */
-  const measure = useCallback(() => {
-    const node = containerRef.current
-    if (!node) return 0
-    const next = Math.floor(node.clientWidth || node.getBoundingClientRect().width || 0)
-    if (next > 0) setWidth((prev) => (prev === next ? prev : next))
-    return next
-  }, [])
-
-  // before paint, so the first frame already has a width to lay out in
-  useLayoutEffect(() => {
-    measure()
-  }, [measure])
-
-  useEffect(() => {
-    const node = containerRef.current
-    if (!node) return
-    const observer = new ResizeObserver(() => measure())
-    observer.observe(node)
-    window.addEventListener('resize', measure)
-
-    // and keep asking, briefly, for the case where the first measurements all
-    // land at zero and nothing ever resizes to tell us otherwise. Without this
-    // a single bad reading leaves a skeleton on the screen forever.
-    let attempts = 0
-    const retry = window.setInterval(() => {
-      if (measure() > 0 || ++attempts > 20) window.clearInterval(retry)
-    }, 150)
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', measure)
-      window.clearInterval(retry)
-    }
-  }, [measure])
-
-  /**
-   * react-grid-layout needs its width in pixels and will not draw without one,
-   * so a measurement that comes back zero must never be the end of the story:
-   * that is a blank dashboard on top of data that loaded perfectly well.
+   * Opening and closing the panel is the one resize the observer cannot be
+   * trusted for: the element that changes size is a *sibling* of the measured
+   * one, the flex row redistributes in the same frame, and the observer's
+   * callback is deferred to the next animation frame behind it. That is the
+   * report — "again it fails when collapsed and opened" — and `measureWidth` is
+   * the escape hatch the library documents for exactly this.
    *
-   * Until a real measurement lands, work it out from the window — the app
-   * sidebar and the settings panel are both fixed widths. A slightly wrong
-   * layout for one frame is worth any amount of "nothing rendered at all".
+   * Twice: once now, once after the frame the layout settles in.
    */
-  const gridWidth =
-    width > 0
-      ? width
-      : typeof window !== 'undefined'
-        ? Math.max(480, window.innerWidth - SIDEBAR_WIDTH - (panelOpen ? PANEL_WIDTH : 32))
-        : 1024
+  useEffect(() => {
+    measureWidth()
+    const id = requestAnimationFrame(measureWidth)
+    return () => cancelAnimationFrame(id)
+  }, [panelOpen, measureWidth])
+
+  // a zero-width reading is the tab being display:none, not a one-column
+  // dashboard — draw the last real width rather than reflowing into a strip
+  const lastGood = useRef(0)
+  if (width > 0) lastGood.current = width
+  const gridWidth = width > 0 ? width : lastGood.current || 1024
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   const canEdit = dashboard.data?.can_edit === true

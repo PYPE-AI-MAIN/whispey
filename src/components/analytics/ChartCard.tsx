@@ -51,6 +51,10 @@ export function ChartCard({
   const rows = result?.data ?? []
   const cover = coverage(rows)
   const isKpi = widget.kind === 'kpi'
+  // a KPI two rows tall has ~40px for its number once the title, the definition
+  // and the coverage line have taken theirs. 36px of text-3xl did not fit, and
+  // nothing clipped it — it simply drew over both.
+  const short = (((widget.layout ?? {}) as { h?: number }).h ?? 3) <= 2
   // the line exists to disclose a shortfall. On a filtered count every row
   // counts, so "99 of 99 calls" says nothing and implies a universe of 99.
   const showCoverage = Boolean(cover && (cover.used < cover.total || widget.spec.dimension))
@@ -67,7 +71,7 @@ export function ChartCard({
       )}
       onClick={onSelect}
     >
-      <div className="flex items-start justify-between gap-2 px-4 pt-3">
+      <div className="flex shrink-0 items-start justify-between gap-2 px-4 pt-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             {draggable && canEdit && (
@@ -104,7 +108,10 @@ export function ChartCard({
             {/* "Completed calls · 110" is not a number anyone can check */}
             {/* wrapped, not truncated: a definition you cannot read is the
                 same as no definition */}
-            <span className="line-clamp-2 text-gray-400/80 dark:text-gray-500" title={definition}>
+            <span
+              className={cn('text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
+              title={definition}
+            >
               {canEdit ? '· ' : ''}
               {definition}
             </span>
@@ -147,12 +154,13 @@ export function ChartCard({
         </DropdownMenu>
       </div>
 
-      <div className={cn('min-h-0 flex-1 px-4', isKpi ? 'pb-1' : 'pb-2')}>
-        <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} onSelect={onOpenLogs} />
+      {/* the only part allowed to absorb a card that is shorter than its contents */}
+      <div className={cn('min-h-0 flex-1 overflow-hidden px-4', isKpi ? 'pb-1' : 'pb-2')}>
+        <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} short={short} onSelect={onOpenLogs} />
       </div>
 
       {/* an average over only the usable rows misleads unless the card says so */}
-      <div className="flex items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
         {cover && showCoverage ? (
           <button
             className="truncate underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
@@ -162,7 +170,7 @@ export function ChartCard({
             }}
           >
             {cover.used.toLocaleString()} of {cover.total.toLocaleString()} calls
-            {cover.pct < 95 && cover.pct > 0 && ` · ${cover.pct}% have this field`}
+            {cover.pct < 95 && cover.pct > 0 && ` · ${Math.round(cover.pct)}% filled in`}
           </button>
         ) : (
           <span />
@@ -175,13 +183,15 @@ export function ChartCard({
 
 /** The five states a card has to be able to show, and never a blank rectangle. */
 function CardBody({
-  widget, result, isLoading, rows, categories, onSelect,
+  widget, result, isLoading, rows, categories, short, onSelect,
 }: {
   widget: Widget
   result?: WidgetResult
   isLoading: boolean
   rows: WidgetResult['data'] & object
   categories?: string[] | null
+  /** Two grid rows tall — the number has to be smaller or it draws over the words. */
+  short: boolean
   onSelect: (value: string | null) => void
 }) {
   if (isLoading && !result) return <Skeleton className="h-full w-full rounded-lg" />
@@ -216,6 +226,7 @@ function CardBody({
       bucket={result?.meta?.bucket}
       categories={categories}
       onSelect={onSelect}
+      short={short}
       compact={'w' in (widget.layout ?? {}) && (widget.layout as { w: number }).w <= 4}
     />
   )
