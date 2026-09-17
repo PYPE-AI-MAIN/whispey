@@ -88,7 +88,7 @@ export function ChartCard({
             </h3>
           </div>
 
-          <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-[11px] text-gray-400">
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-[11px] text-gray-400">
             {/* it changes what the number means, so it is never hidden in a dialog */}
             {canEdit && (
               <button
@@ -102,7 +102,9 @@ export function ChartCard({
               </button>
             )}
             {/* "Completed calls · 110" is not a number anyone can check */}
-            <span className="truncate text-gray-400/80 dark:text-gray-500" title={definition}>
+            {/* wrapped, not truncated: a definition you cannot read is the
+                same as no definition */}
+            <span className="line-clamp-2 text-gray-400/80 dark:text-gray-500" title={definition}>
               {canEdit ? '· ' : ''}
               {definition}
             </span>

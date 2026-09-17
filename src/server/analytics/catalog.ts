@@ -236,6 +236,9 @@ const BUILTIN: { col: string; label: string; value_type: FieldInference['value_t
 /** The ones worth offering as categories; the rest are values, not buckets. */
 const BUILTIN_ENUMS = BUILTIN.filter((b) => b.value_type === 'enum').map((b) => b.col)
 
+/** The real columns we expect to find in any current catalog. */
+export const BUILTIN_COLUMNS: readonly string[] = BUILTIN.map((b) => b.col)
+
 export type BuiltinField = (typeof BUILTIN)[number] & {
   path: string[]
   enum_values: string[] | null

@@ -14,8 +14,10 @@ import { BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2 } f
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
+import { ChartFilters } from './FilterBar'
+import { explainSpec } from './explain'
 import { identityFields, outcomeField } from './suggest'
-import type { SpecInput } from '@/server/analytics/spec'
+import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 
 /** What a chart-type tile puts on the drag event, and what the grid reads off it. */
 export const CHART_TYPE_DRAG_TYPE = 'application/x-whispey-chart-type'
@@ -202,6 +204,11 @@ function ChartSettings({
 
   return (
     <Panel title="Chart settings">
+      {/* the same sentence the card shows, but with room to read it */}
+      <p className="mb-3 rounded-md bg-gray-100/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
+        {explainSpec(spec, fields)}
+      </p>
+
       <Row label="Name">
         <input
           value={widget.title}
@@ -346,6 +353,17 @@ function ChartSettings({
               : 'Repeat calls collapse to one row, keeping the most recent attempt.'}
           </p>
         )}
+      </Row>
+
+      {/* a count with a filter on it is not "how many calls" — this is where
+          "Completed calls" stops being a number with no definition */}
+      <Row label="Only counting">
+        <ChartFilters
+          filters={(spec.having ?? []) as FilterNodeInput[]}
+          fields={fields}
+          disabled={!canEdit}
+          onChange={(having) => setSpec({ having })}
+        />
       </Row>
 
       <Row label="Width">

@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { JSON_COLS } from '@/server/analytics/spec'
-import { scanColumn, scanBuiltins, inferField } from '@/server/analytics/catalog'
+import { scanColumn, scanBuiltins, inferField, BUILTIN_COLUMNS } from '@/server/analytics/catalog'
 import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
 
 export const runtime = 'nodejs'
@@ -35,7 +35,13 @@ export async function GET(req: NextRequest) {
     .order('coverage_pct', { ascending: false })
 
   const newest = (existing ?? []).reduce((max, r) => Math.max(max, Date.parse(r.last_seen_at ?? 0)), 0)
-  const stale = !existing?.length || Date.now() - newest > STALE_AFTER_MS
+  // A catalog written before a column was added to the built-in list is stale
+  // however recently it was written — without this, a field the UI now knows
+  // about stays missing until the six hours are up, and every card naming it
+  // falls back to spelling out its column name.
+  const known = new Set((existing ?? []).map((r) => r.col))
+  const missingBuiltin = BUILTIN_COLUMNS.some((col) => !known.has(col))
+  const stale = !existing?.length || missingBuiltin || Date.now() - newest > STALE_AFTER_MS
 
   let rows = existing ?? []
   if (stale || force) {
