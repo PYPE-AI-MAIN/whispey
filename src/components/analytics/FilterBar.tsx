@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { CatalogField } from '@/types/analytics'
+import { FieldPicker, FieldShape } from './FieldPicker'
 import type { Condition, FilterNodeInput } from '@/server/analytics/spec'
 
 /** Plain words. Nobody building a dashboard is thinking "not_in". */
@@ -102,29 +103,26 @@ export function FilterEditor({ fields, onAdd }: { fields: CatalogField[]; onAdd:
 
   return (
     <div className="space-y-2">
-      <Select
+      <FieldPicker
+        fields={usable}
         value={fieldKey}
-        onValueChange={(v) => {
+        placeholder="Which field"
+        onChange={(v) => {
           setFieldKey(v)
           const f = usable.find((x) => keyOf(x) === v)
           setOp(f?.value_type === 'boolean' ? 'is_true' : 'eq')
           setValue('')
         }}
-      >
-        <SelectTrigger className="h-8 text-sm">
-          <SelectValue placeholder="Which field" />
-        </SelectTrigger>
-        <SelectContent className="max-h-72">
-          {usable.map((f) => (
-            <SelectItem key={keyOf(f)} value={keyOf(f)}>
-              <span className="flex w-full items-center justify-between gap-3">
-                <span>{f.label}</span>
-                {f.coverage_pct !== null && <span className="text-[11px] text-gray-400">{f.coverage_pct}%</span>}
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      />
+
+      {/* what the field holds, in the values it holds: "is yes" on a column
+          full of 1 and 0 is how somebody stops trusting the dashboard */}
+      {field && (
+        <p className="px-0.5 text-[11px] leading-snug text-gray-400">
+          {field.description ? `${field.description} ` : ''}
+          <FieldShape field={field} />
+        </p>
+      )}
 
       {field && (
         <Select value={chosen?.op} onValueChange={(v) => setOp(v as Condition['op'])}>

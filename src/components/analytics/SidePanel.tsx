@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import { ChartFilters } from './FilterBar'
 import { CALCULATIONS, explainSpec } from './explain'
+import { FieldPicker, FieldShape } from './FieldPicker'
 import { identityFields, outcomeField } from './suggest'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 
@@ -175,6 +176,9 @@ function ChartSettings({
   }, [fields, calculation.needs])
 
   const dimensions = useMemo(() => fields.filter((f) => f.is_dimension && f.value_type !== 'json'), [fields])
+  const chosenAggField = spec.agg?.field
+    ? fields.find((f) => fieldKey(f) === fieldKey(spec.agg!.field!))
+    : undefined
   const identities = useMemo(() => identityFields(fields), [fields])
   const outcome = useMemo(() => outcomeField(fields), [fields])
 
@@ -241,11 +245,11 @@ function ChartSettings({
 
       {calculation.needs !== 'none' && (
         <Row label="Of which field">
-          <Picker
+          <FieldPicker
+            fields={usable}
             value={spec.agg?.field ? fieldKey(spec.agg.field) : ''}
             disabled={!canEdit}
             placeholder={usable.length ? 'Pick a field' : 'No fields of this kind yet'}
-            options={usable.map((f) => ({ value: fieldKey(f), label: f.label, hint: coverageHint(f) }))}
             onChange={(key) =>
               pickField(key, (f) =>
                 setSpec({
@@ -262,16 +266,23 @@ function ChartSettings({
               )
             }
           />
+          {chosenAggField && (
+            <p className="mt-1 text-[11px] leading-snug text-gray-400">
+              {chosenAggField.description ? `${chosenAggField.description} ` : ''}
+              <FieldShape field={chosenAggField} />
+            </p>
+          )}
         </Row>
       )}
 
       <Row label="Split by">
-        <Picker
+        <FieldPicker
+          fields={dimensions}
           value={spec.dimension?.field ? fieldKey(spec.dimension.field) : ''}
           disabled={!canEdit}
           placeholder="Nothing — one total"
+          emptyLabel="Nothing — one total"
           clearable
-          options={dimensions.map((f) => ({ value: fieldKey(f), label: f.label, hint: coverageHint(f) }))}
           onChange={(key) =>
             key
               ? pickField(key, (f) =>

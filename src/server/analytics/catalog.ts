@@ -24,6 +24,20 @@ const SAMPLE_ROWS = 2000
 const SAMPLE_DAYS = 90
 /** Above this a field is a value, not a category. */
 const ENUM_MAX_DISTINCT = 15
+/**
+ * Above this many distinct values, splitting by a field draws a bar per row.
+ * `call_id` and `Duration formatted` were both being offered as things to split
+ * a chart by — 190 bars and 95 bars respectively.
+ */
+const DIMENSION_MAX_DISTINCT = 50
+/**
+ * And a label this long is not a label. `metrics.is_task_complete.reason` holds
+ * eight distinct values, so it read as a short list of categories — except each
+ * one is a 300-character paragraph of the model's reasoning. Eight of those on
+ * an axis is not a chart, and in the outcome-order editor it offered them as
+ * results to rank.
+ */
+const MAX_LABEL_LENGTH = 80
 
 export type FieldStats = {
   path: string[]
@@ -98,12 +112,20 @@ export function inferField(stats: FieldStats): FieldInference {
     .map((v) => v.trim())
     .filter((v) => v !== '' && !(DEFAULT_SENTINELS as readonly string[]).includes(v.toLowerCase()))
 
+  const longestValue = meaningful.reduce((max, v) => Math.max(max, v.length), 0)
+  // short list, short labels. Either one failing makes it a value to filter on
+  // or measure, never an axis to split by.
+  const chartableAsCategory =
+    stats.distinct_values > 0 &&
+    stats.distinct_values <= DIMENSION_MAX_DISTINCT &&
+    longestValue <= MAX_LABEL_LENGTH
+
   const base = {
     label,
     coverage_pct,
     cardinality_est: stats.distinct_values,
     is_identity_candidate: IDENTITY_HINT.test(leaf) && stats.distinct_values > Math.max(5, nonEmpty * 0.5),
-    is_dimension: true,
+    is_dimension: chartableAsCategory,
   }
 
   // real JSON first — read its type rather than guessing from its text
@@ -146,7 +168,9 @@ export function inferField(stats: FieldStats): FieldInference {
     return { ...base, value_type: 'number', encoding: 'native', is_dimension: false }
   }
 
-  if (stats.distinct_values > 0 && stats.distinct_values <= ENUM_MAX_DISTINCT) {
+  // a short list of short values is a fixed list; a short list of paragraphs is
+  // still text, however few of them there are
+  if (stats.distinct_values > 0 && stats.distinct_values <= ENUM_MAX_DISTINCT && longestValue <= MAX_LABEL_LENGTH) {
     return { ...base, value_type: 'enum', encoding: 'native', enum_values: meaningful.slice(0, ENUM_MAX_DISTINCT).sort() }
   }
 
@@ -222,8 +246,10 @@ const BUILTIN: { col: string; label: string; value_type: FieldInference['value_t
   { col: 'call_ended_reason', label: 'Why the call ended', value_type: 'enum', is_dimension: true },
   { col: 'wcall_event', label: 'Call state', value_type: 'enum', is_dimension: true },
   { col: 'transcript_type', label: 'Transcript type', value_type: 'enum', is_dimension: true },
-  { col: 'customer_number', label: 'Phone number', value_type: 'text', is_dimension: true },
-  { col: 'call_id', label: 'Call id', value_type: 'text', is_dimension: true },
+  // both are still filterable and customer_number still identifies a patient —
+  // they are simply not axes. "Calls by phone number" is one bar per call.
+  { col: 'customer_number', label: 'Phone number', value_type: 'text', is_dimension: false },
+  { col: 'call_id', label: 'Call id', value_type: 'text', is_dimension: false },
   { col: 'call_duration_seconds', label: 'Call length (seconds)', value_type: 'number', is_dimension: false },
   { col: 'billing_duration_seconds', label: 'Billed length (seconds)', value_type: 'number', is_dimension: false },
   { col: 'avg_latency', label: 'Response time (seconds)', value_type: 'number', is_dimension: false },

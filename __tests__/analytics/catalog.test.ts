@@ -108,3 +108,47 @@ describe('coverage and identity', () => {
     expect(f.is_identity_candidate).toBe(false)
   })
 })
+
+/**
+ * Both of these were live: the "Split by" list offered `call_id` (one bar per
+ * call) and `metrics.is_task_complete.reason`, whose eight "categories" are
+ * each a 300-character paragraph of the model's reasoning.
+ */
+describe('what can actually be an axis', () => {
+  const paragraph = (n: number) =>
+    `Step ${n}: The agent correctly identified the caller's intent as confirming the appointment attendance and then proceeded appropriately.`
+
+  it('refuses a short list of long values', () => {
+    const f = inferField(stats({
+      path: ['reason'], rows_with_key: 100, rows_sampled: 100, n_string: 100,
+      distinct_values: 8, sample_values: [1, 2, 3, 4, 5, 6, 7, 8].map(paragraph),
+    }))
+    expect(f.value_type).toBe('text')
+    expect(f.is_dimension).toBe(false)
+  })
+
+  it('refuses a long list of short values', () => {
+    const f = inferField(stats({
+      path: ['duration_formatted'], rows_with_key: 100, rows_sampled: 100, n_string: 100,
+      distinct_values: 95, sample_values: ['1:20', '2:31', '0:44'],
+    }))
+    expect(f.is_dimension).toBe(false)
+  })
+
+  it('keeps a short list of short values', () => {
+    const f = inferField(stats({
+      path: ['final_disposition'], rows_with_key: 100, rows_sampled: 100, n_string: 100,
+      distinct_values: 4, sample_values: ['confirmed', 'cancelled', 'unassured', 'unconfirmed'],
+    }))
+    expect(f.value_type).toBe('enum')
+    expect(f.is_dimension).toBe(true)
+  })
+
+  it('keeps a campaign list, which is long but genuinely categorical', () => {
+    const f = inferField(stats({
+      path: ['campaignId'], rows_with_key: 100, rows_sampled: 100, n_string: 100,
+      distinct_values: 40, sample_values: ['andheri-jan', 'andheri-feb'],
+    }))
+    expect(f.is_dimension).toBe(true)
+  })
+})

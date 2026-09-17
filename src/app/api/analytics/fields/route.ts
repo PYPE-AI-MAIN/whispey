@@ -12,6 +12,7 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 import { JSON_COLS } from '@/server/analytics/spec'
 import { scanColumn, scanBuiltins, inferField, BUILTIN_COLUMNS } from '@/server/analytics/catalog'
 import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
+import { applyDeclarations } from '@/server/analytics/extractor'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -59,10 +60,25 @@ export async function GET(req: NextRequest) {
     (r) => !ctx.deniedFields.has(r.col) && !ctx.deniedFields.has(`${r.col}.${(r.path ?? []).join('.')}`)
   )
 
+  /**
+   * What the agent was told to extract beats what sampling guessed (§11.2).
+   *
+   * Applied here rather than in the rescan so it also reaches a cached catalog
+   * — editing the extractor prompt should change the picker on the next load,
+   * not six hours later.
+   *
+   * The prompt itself is only shown to people the agent route already shows it
+   * to; the *types* it implies are not sensitive, being derivable from the data
+   * anyway, so a viewer still gets correct yes/no fields and full value lists.
+   */
+  const described = applyDeclarations(visible, agent.extractorPrompt, {
+    includeDescription: resolved.role !== 'viewer',
+  })
+
   return NextResponse.json({
     agent: { id: agent.id, name: agent.name },
     outcome_ranking: agent.outcomeRanking ?? null,
-    fields: visible,
+    fields: described,
   })
 }
 

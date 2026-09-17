@@ -41,7 +41,7 @@ const COLUMNS_BEHIND_VISIBILITY: Record<string, string[]> = {
 
 export type AnalyticsContext = {
   ctx: Ctx
-  agent: { id: string; name: string; projectId: string; outcomeRanking: unknown }
+  agent: { id: string; name: string; projectId: string; outcomeRanking: unknown; extractorPrompt: unknown }
   role: string
   downloadDisabled: boolean
 }
@@ -62,7 +62,7 @@ export async function resolveAnalyticsContext(
 
   const { data: agent } = await supabase
     .from('pype_voice_agents')
-    .select('id, name, display_name, project_id, call_log_settings, outcome_ranking')
+    .select('id, name, display_name, project_id, call_log_settings, outcome_ranking, field_extractor_prompt')
     .eq('id', agentId)
     .maybeSingle()
   if (!agent?.project_id) return deny(404, 'Agent not found')
@@ -105,6 +105,9 @@ export async function resolveAnalyticsContext(
       name: agent.display_name || agent.name,
       projectId: agent.project_id,
       outcomeRanking: agent.outcome_ranking,
+      // what the agent was told to extract — the definition the dispositions
+      // already depend on, and which the field catalog used to ignore (§11.2)
+      extractorPrompt: agent.field_extractor_prompt ?? null,
     },
     role: access.role,
     downloadDisabled: access.downloadDisabled,

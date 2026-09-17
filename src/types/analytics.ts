@@ -56,4 +56,10 @@ export type CatalogField = {
   is_identity_candidate: boolean
   is_dimension: boolean
   type_confirmed: boolean
+  /** Which part of a call it came from — the heading it sits under in the picker. */
+  group?: 'call' | 'extracted' | 'metrics' | 'metadata'
+  /** True when the agent's extractor prompt declares this field by name. */
+  declared?: boolean
+  /** What that prompt says it means, in one line. Withheld from viewers. */
+  description?: string | null
 }

@@ -29,7 +29,7 @@ describe('a card says what it counted', () => {
       having: [{ field: { col: 'call_ended_reason' }, op: 'eq', value: 'completed' }],
       range: { days: 30 },
     }
-    expect(explainSpec(spec, fields)).toBe('How many calls · only where why the call ended is completed')
+    expect(explainSpec(spec, fields)).toBe('Count of calls · only where why the call ended is completed')
   })
 
   it('explains the incomplete one, where the operator is a negation', () => {
@@ -58,7 +58,7 @@ describe('a card says what it counted', () => {
       dimension: { field: { col: 'transcription_metrics', path: ['final_disposition'] } },
       range: { days: 30 },
     }
-    expect(explainSpec(spec, fields)).toBe('How many calls · split by final disposition')
+    expect(explainSpec(spec, fields)).toBe('Count of calls · split by final disposition')
   })
 
   it('mentions the hours when the chart is limited to them', () => {
@@ -134,9 +134,16 @@ describe('the calculation vocabulary', () => {
     }
   })
 
-  it('says nothing about speed — a total cost is not slow', () => {
+  it('never calls a calculation slow — a total cost is not slow', () => {
     for (const c of CALCULATIONS) {
-      expect(`${c.label} ${c.phrase} ${c.help}`.toLowerCase()).not.toContain('slow')
+      expect(`${c.label} ${c.phrase}`.toLowerCase()).not.toContain('slow')
+    }
+  })
+
+  it('shows the dropdown and the card the same words', () => {
+    for (const c of CALCULATIONS) {
+      if (c.fn === 'rate') continue // the card writes a whole sentence for a rate
+      expect(c.label, c.fn).toBe(c.phrase)
     }
   })
 
