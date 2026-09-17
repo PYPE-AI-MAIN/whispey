@@ -168,12 +168,18 @@ export async function PUT(req: NextRequest) {
     is_seeded: w.is_seeded ?? false,
   }))
 
-  const removal = supabase.from('pype_analytics_widgets').delete().eq('dashboard_id', body.dashboardId)
-  const { error: delError } = rows.length
-    ? await removal.not('id', 'in', `(${rows.map((r) => r.id).join(',')})`)
-    : await removal
-
+  // Write first, then remove what is no longer on the dashboard. PostgREST has
+  // no transaction across two calls, so the order decides what a half-failure
+  // leaves behind: delete-then-insert can empty a dashboard and then fail to
+  // refill it. This way the worst case is a few stale rows, not a blank page.
   const { error: upError } = await supabase.from('pype_analytics_widgets').upsert(rows)
+
+  const removal = supabase.from('pype_analytics_widgets').delete().eq('dashboard_id', body.dashboardId)
+  const { error: delError } = upError
+    ? { error: null }
+    : rows.length
+      ? await removal.not('id', 'in', `(${rows.map((r) => r.id).join(',')})`)
+      : await removal
 
   if (delError || upError) {
     const failure = delError ?? upError

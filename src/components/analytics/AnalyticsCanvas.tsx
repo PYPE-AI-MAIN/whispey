@@ -18,7 +18,6 @@ import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
 import { ChevronRight, Loader2, PanelRightOpen, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useMobile } from '@/hooks/use-mobile'
 import { useAnalyticsDashboard, useChartData, useCsvExport } from '@/hooks/useAnalyticsDashboard'
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
@@ -31,6 +30,7 @@ import { WhenFilter, type TimeOfDay } from './WhenFilter'
 import { OutcomeOrderEditor, type OutcomeRanking } from './OutcomeOrderEditor'
 import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitle } from './suggest'
 import { coverage } from './chartData'
+import { DashboardSkeleton } from './DashboardSkeleton'
 import { explainSpec } from './explain'
 import {
   applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, MIN_SIZE, ROW_HEIGHT,
@@ -89,7 +89,10 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   const [width, setWidth] = useState(0)
   const measure = useCallback(() => {
     const node = containerRef.current
-    if (node) setWidth(node.clientWidth)
+    // zero is never a real layout — it means the tab is display:none or the
+    // node is between renders. Keeping the last good width stops the grid
+    // blanking out, since it will not draw without one.
+    if (node && node.clientWidth > 0) setWidth(node.clientWidth)
   }, [])
   useEffect(() => {
     const node = containerRef.current
@@ -99,9 +102,13 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
     observer.observe(node)
     // the tab is display:none until Overview is opened, which reports zero
     window.addEventListener('resize', measure)
+    // and one late attempt, for the case where the first measurement lands
+    // before the layout settles and the observer then has nothing to report
+    const settle = setTimeout(measure, 200)
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', measure)
+      clearTimeout(settle)
     }
   }, [measure])
 
@@ -267,18 +274,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
 
   if (!agentId) return null
 
-  if (dashboard.isLoading || isLoading) {
-    return (
-      <div className="grid grid-cols-12 gap-3 p-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton
-            key={i}
-            className={cn('h-28 rounded-xl', i < 4 ? 'col-span-12 sm:col-span-6 xl:col-span-3' : 'col-span-12 lg:col-span-6')}
-          />
-        ))}
-      </div>
-    )
-  }
+  if (dashboard.isLoading || isLoading) return <DashboardSkeleton />
 
   if (dashboard.isError) return <Centered>{(dashboard.error as Error).message}</Centered>
 
@@ -365,6 +361,9 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
           {/* measured without the padding — the grid lays out inside this box,
               and measuring the padded parent made it 24px too wide */}
           <div ref={containerRef} className="w-full">
+            {/* never blank: before the width is known there is still a dashboard
+                here, it just cannot be placed yet */}
+            {width === 0 && widgets.length > 0 && <DashboardSkeleton />}
             {width > 0 && widgets.length > 0 && (
             <ResponsiveGridLayout
               width={width}
