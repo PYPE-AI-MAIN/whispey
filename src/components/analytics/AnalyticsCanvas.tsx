@@ -31,6 +31,7 @@ import { OutcomeOrderEditor, type OutcomeRanking } from './OutcomeOrderEditor'
 import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitle } from './suggest'
 import { coverage } from './chartData'
 import { DashboardSkeleton } from './DashboardSkeleton'
+import { SuggestedStrip } from './SuggestedStrip'
 import { explainSpec } from './explain'
 import {
   applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
@@ -198,6 +199,16 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
     setDraft([...(draft ?? widgets), card])
     selectChart(card.id)
   }
+
+  /** A suggestion is an ordinary card that arrived with its settings already made. */
+  const addSuggested = useCallback(
+    (title: string, kind: ChartKind, spec: SpecInput) => {
+      const card = { ...makeChart(kind), title, spec }
+      setDraft((prev) => [...(prev ?? widgets), card])
+      selectChart(card.id)
+    },
+    [makeChart, selectChart, widgets]
+  )
 
   const layout = useMemo(() => toGridLayout(widgets), [widgets])
   // react-grid-layout fires onLayoutChange on mount and on every width
@@ -411,6 +422,11 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
           {widgets.length === 0 && (
             <Centered>{canEdit ? 'Drag a chart type from the panel to start.' : 'Nothing on this dashboard yet.'}</Centered>
           )}
+
+          {/* §10's mockup puts this under the canvas: charts worth building for
+              this agent, each saying why. The rules have been in suggest.ts
+              since phase 1 — this is what finally shows them. */}
+          <SuggestedStrip fields={catalog} widgets={widgets} canEdit={canEdit} onAdd={addSuggested} />
         </div>
       </div>
 

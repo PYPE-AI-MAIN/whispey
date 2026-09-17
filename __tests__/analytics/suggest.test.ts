@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitle, suggestions } from '@/components/analytics/suggest'
+import { chartSubject, adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitle, suggestions } from '@/components/analytics/suggest'
 import type { CatalogField } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
@@ -128,5 +128,35 @@ describe('which field carries the outcome', () => {
 
   it('says so rather than guessing when there is nothing to rank', () => {
     expect(outcomeField([latency])).toBeUndefined()
+  })
+})
+
+/**
+ * The strip has to know what the canvas already shows, or it offers a chart
+ * somebody is looking at — which §11.3 calls noise, and noise is what stops
+ * people reading suggestions at all.
+ */
+describe('chartSubject', () => {
+  const ended = { col: 'call_ended_reason' }
+
+  it('matches a suggestion to the chart already on the canvas', () => {
+    expect(chartSubject({ spec_version: 1, agg: { fn: 'count' }, dimension: { field: ended }, range: { days: 30 } } as never))
+      .toBe(chartSubject({ spec_version: 1, agg: { fn: 'count' }, dimension: { field: ended }, range: { days: 7 } } as never))
+  })
+
+  it('keeps the same field apart when it is counted differently', () => {
+    const a = chartSubject({ spec_version: 1, agg: { fn: 'avg', field: { col: 'avg_latency' } }, range: { days: 30 } } as never)
+    const b = chartSubject({ spec_version: 1, agg: { fn: 'p95', field: { col: 'avg_latency' } }, range: { days: 30 } } as never)
+    expect(a).not.toBe(b)
+  })
+
+  it('keeps two JSON fields apart when only their path differs', () => {
+    const a = chartSubject({ spec_version: 1, agg: { fn: 'count' }, dimension: { field: { col: 'metadata', path: ['a'] } }, range: { days: 30 } } as never)
+    const b = chartSubject({ spec_version: 1, agg: { fn: 'count' }, dimension: { field: { col: 'metadata', path: ['b'] } }, range: { days: 30 } } as never)
+    expect(a).not.toBe(b)
+  })
+
+  it('never offers a second plain call count', () => {
+    expect(chartSubject({ spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } } as never)).toBe('count::count')
   })
 })

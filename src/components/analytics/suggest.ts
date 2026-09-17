@@ -179,3 +179,15 @@ export function adaptSpecToKind(spec: SpecInput, kind: ChartKind, fields: Catalo
   }
   return next
 }
+
+/**
+ * What a chart is "about", so the same field is never suggested twice.
+ *
+ * A dashboard already showing "Calls by why the call ended" does not need that
+ * offered again, and a suggestion strip that repeats the canvas is noise — the
+ * thing §11.3 says a suggestion must never be.
+ */
+export function chartSubject(spec: SpecInput): string {
+  const f = spec.dimension?.field ?? spec.agg?.field
+  return f ? `${spec.agg?.fn}::${f.col}::${(f.path ?? []).join('.')}` : `${spec.agg?.fn}::count`
+}
