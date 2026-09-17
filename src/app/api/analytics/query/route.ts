@@ -33,6 +33,10 @@ const Body = z.object({
   filters: z.array(FilterNode).max(50).default([]),
   /** The Period control in the header. Overrides whatever range each chart was saved with. */
   range: z.union([z.object({ days: z.number().int().min(1).max(730) }), z.object({ from: z.string(), to: z.string() })]).optional(),
+  /** The time-of-day window above the canvas. Same rule as the filters: it narrows every chart. */
+  time_of_day: z.object({ from: z.string(), to: z.string() }).nullable().optional(),
+  /** Which days count, 1 = Monday to 7 = Sunday. */
+  days_of_week: z.array(z.number().int().min(1).max(7)).max(7).nullable().optional(),
   widgets: z.array(z.object({ id: z.string(), spec: z.unknown() })).min(1).max(20),
 })
 
@@ -67,6 +71,8 @@ export async function POST(req: NextRequest) {
           // never override
           having: [...(((widget.spec as { having?: unknown[] }).having ?? []) as never[]), ...body.filters],
           ...(body.range ? { range: body.range } : {}),
+          ...(body.time_of_day ? { time_of_day: body.time_of_day } : {}),
+          ...(body.days_of_week?.length ? { days_of_week: body.days_of_week } : {}),
         })
 
         // resolved per request, which is what makes reordering the agent's

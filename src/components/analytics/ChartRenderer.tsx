@@ -58,11 +58,23 @@ export function ChartRenderer({
   const tickFor = (x: string) => (shaped.axis === 'time' ? formatBucket(x, bucket) : shortLabel(x, compact ? 10 : 18))
 
   if (kind === 'kpi') return <Kpi rows={rows} spec={spec} />
+  // a table with nothing to break down is just the number
+  if (kind === 'table' && shape(rows, spec).axis === 'none') return <Kpi rows={rows} spec={spec} />
+
+  // a chart type needs a shape to draw. Say which one is missing rather than
+  // leaving an empty rectangle and no explanation.
+  if (shaped.axis === 'none') {
+    return <Notice>Choose something to split by, or a time breakdown, to draw this as a {kind}.</Notice>
+  }
+  if (kind === 'pie' && shaped.axis === 'time') {
+    return <Notice>A pie cannot show a time breakdown. Split by a field instead, or use a bar or line.</Notice>
+  }
+
   if (kind === 'table') return <Table shaped={shaped} spec={spec} bucket={bucket} onSelect={onSelect} />
 
   if (kind === 'pie') {
     if (shaped.points.length > PIE_MAX_SLICES) {
-      return <Notice>Too many categories for a pie. Try a bar chart.</Notice>
+      return <Notice>{shaped.points.length} categories is too many for a pie. A bar chart reads better.</Notice>
     }
     return (
       <ResponsiveContainer width="100%" height="100%">

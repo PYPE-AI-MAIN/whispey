@@ -223,6 +223,12 @@ export const Spec = z
     ]),
     /** Local wall-clock window. 'from' after 'to' means it crosses midnight. */
     time_of_day: z.object({ from: z.string(), to: z.string() }).optional(),
+    /**
+     * Which days count, 1 = Monday to 7 = Sunday, in the project's zone. A
+     * hospital's weekend behaves nothing like its Tuesday, and averaging them
+     * together hides both.
+     */
+    days_of_week: z.array(z.number().int().min(1).max(7)).max(7).optional(),
     bucket: z.enum(BUCKETS).default('none'),
 
     live: z.boolean().default(false),

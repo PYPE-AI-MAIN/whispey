@@ -32,8 +32,9 @@ import { ChartCard } from './ChartCard'
 import { SidePanel } from './SidePanel'
 import { LogsOverlay } from './LogsOverlay'
 import { FilterBar, decodeFilters, encodeFilters } from './FilterBar'
+import { WhenFilter, type TimeOfDay } from './WhenFilter'
 import { OutcomeOrderEditor, type OutcomeRanking } from './OutcomeOrderEditor'
-import { suggestSpec, suggestTitle } from './suggest'
+import { adaptSpecToKind, suggestSpec, suggestTitle } from './suggest'
 import { coverage } from './chartData'
 
 type Props = {
@@ -85,8 +86,29 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
     [router, searchParams]
   )
 
+  // the hours and the days live in the URL too, so a shared link shows the
+  // same numbers the sender was looking at
+  const when = useMemo(
+    () => ({
+      timeOfDay: decodeWhen(searchParams.get('at')),
+      days: (searchParams.get('dow') ?? '').split(',').map(Number).filter((n) => n >= 1 && n <= 7),
+    }),
+    [searchParams]
+  )
+  const setWhen = useCallback(
+    (next: { timeOfDay: TimeOfDay; days: number[] }) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (next.timeOfDay) params.set('at', `${next.timeOfDay.from}-${next.timeOfDay.to}`)
+      else params.delete('at')
+      if (next.days.length && next.days.length < 7) params.set('dow', next.days.join(','))
+      else params.delete('dow')
+      router.replace(`?${params.toString()}`, { scroll: false })
+    },
+    [router, searchParams]
+  )
+
   const range = useMemo(() => ({ from: dateRange.from.slice(0, 10), to: dateRange.to.slice(0, 10) }), [dateRange])
-  const charts = useChartData(agentId, widgets, range, filters, Boolean(isActive))
+  const charts = useChartData(agentId, widgets, range, filters, when, Boolean(isActive))
 
   const selected = widgets.find((w) => w.id === selectedId) ?? null
   const edit = useCallback(
@@ -238,6 +260,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
                 </span>
               ))}
               {/* on but hidden makes every number wrong without anyone noticing */}
+              <WhenFilter timeOfDay={when.timeOfDay} days={when.days} onChange={setWhen} />
               <FilterBar filters={filters} fields={catalog} onChange={setFilters} />
             </div>
 
@@ -316,7 +339,10 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
               canEdit={canEdit}
               onAddChart={(kind) => insertAt(kind, widgets.length)}
               onChange={(spec) => selected && edit(selected.id, { spec })}
-              onChangeKind={(kind) => selected && edit(selected.id, { kind })}
+              // a new type needs the shape that draws it, or you get an empty box
+              onChangeKind={(kind) =>
+                selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec, kind, catalog) })
+              }
               onChangeWidth={(width: WidgetWidth) => selected && edit(selected.id, { layout: { width } })}
               onChangeTitle={(title) => selected && edit(selected.id, { title })}
             />
@@ -352,6 +378,14 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       />
     </DndContext>
   )
+}
+
+/** "22:00-02:00" from the URL. Anything else is ignored rather than crashing the page. */
+export function decodeWhen(raw: string | null): TimeOfDay {
+  if (!raw) return null
+  const [from, to] = raw.split('-')
+  const clock = /^([01]\d|2[0-3]):[0-5]\d$/
+  return clock.test(from ?? '') && clock.test(to ?? '') ? { from, to } : null
 }
 
 /** The whole scroll area accepts a drop, so a chart can be added to empty space too. */

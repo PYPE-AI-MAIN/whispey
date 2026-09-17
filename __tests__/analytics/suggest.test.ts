@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { suggestSpec, suggestTitle, suggestions } from '@/components/analytics/suggest'
+import { adaptSpecToKind, suggestSpec, suggestTitle, suggestions } from '@/components/analytics/suggest'
 import type { CatalogField } from '@/types/analytics'
+import type { SpecInput } from '@/server/analytics/spec'
 
 const field = (over: Partial<CatalogField>): CatalogField => ({
   id: 'x', col: 'transcription_metrics', path: ['f'], label: 'Field',
@@ -62,5 +63,39 @@ describe('suggestions say why, or they are noise', () => {
     for (const s of suggestions([disposition, confirmed, latency])) {
       if (s.spec.agg?.fn === 'rate') expect(s.spec.agg.field?.boolean_encoding).toBeTruthy()
     }
+  })
+})
+
+describe('switching chart type gives you a chart, not a puzzle', () => {
+  const bar: SpecInput = {
+    spec_version: 1,
+    agg: { fn: 'count' },
+    dimension: { field: { col: 'transcription_metrics', path: ['final_disposition'] }, limit: 12 },
+    range: { days: 30 },
+  }
+
+  it('gives a line something to run along', () => {
+    expect(adaptSpecToKind({ ...bar, bucket: 'none' }, 'line', [disposition]).bucket).toBe('day')
+  })
+
+  it('keeps a bucket that is already set', () => {
+    expect(adaptSpecToKind({ ...bar, bucket: 'week' }, 'line', [disposition]).bucket).toBe('week')
+  })
+
+  it('strips both axes off a single number', () => {
+    const spec = adaptSpecToKind({ ...bar, bucket: 'day' }, 'kpi', [disposition])
+    expect(spec.dimension).toBeUndefined()
+    expect(spec.bucket).toBe('none')
+  })
+
+  it('gives a bar something to split by when it has nothing', () => {
+    const spec = adaptSpecToKind({ spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } }, 'bar', [disposition])
+    expect(spec.dimension?.field).toMatchObject({ path: ['final_disposition'] })
+  })
+
+  it('will not let a pie try to be a time series', () => {
+    const spec = adaptSpecToKind({ ...bar, bucket: 'day' }, 'pie', [disposition])
+    expect(spec.bucket).toBe('none')
+    expect(spec.dimension?.limit).toBeLessThanOrEqual(8)
   })
 })

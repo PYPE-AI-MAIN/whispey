@@ -320,6 +320,12 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     // 22:00–02:00 is the night shift, not an empty range
     where.push(from > to ? `(${a} OR ${b})` : `(${a} AND ${b})`)
   }
+  if (spec.days_of_week?.length && spec.days_of_week.length < 7) {
+    // isodow so Monday is 1 and Sunday is 7, in the project's zone rather than UTC
+    where.push(
+      `EXTRACT(isodow FROM (l.call_started_at AT TIME ZONE '${STORED_ZONE}' AT TIME ZONE ${tz()})) = ANY(${bind(spec.days_of_week)}::int[])`
+    )
+  }
   for (const r of allRefs) {
     if (r.col === ELEMENT_COL && spec.grain !== 'element') throw new SpecError('element refs need grain "element"')
   }

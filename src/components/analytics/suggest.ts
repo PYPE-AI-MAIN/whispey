@@ -115,3 +115,42 @@ export function suggestions(fields: CatalogField[]): { title: string; why: strin
 
   return out
 }
+
+/**
+ * Switching chart type has to give you a chart, not a puzzle.
+ *
+ * Chart type stays presentational — it never reaches the compiler — but each
+ * type needs a particular *shape* to draw: a line needs something on the time
+ * axis, a pie and a bar need categories, a number needs neither. Changing the
+ * type without changing the shape leaves an empty rectangle and no explanation,
+ * which is the opposite of self-serve. So the shape is adjusted to match, using
+ * the same rules a freshly dropped chart uses.
+ */
+export function adaptSpecToKind(spec: SpecInput, kind: ChartKind, fields: CatalogField[]): SpecInput {
+  const next: SpecInput = { ...spec }
+
+  if (kind === 'kpi') {
+    // one number: no axis of any sort
+    delete next.dimension
+    next.bucket = 'none'
+    return next
+  }
+
+  if (kind === 'line') {
+    // a line is a shape over time; without a bucket it has nothing to run along
+    if (!next.bucket || next.bucket === 'none') next.bucket = 'day'
+    return next
+  }
+
+  // bar, pie and table read categories. Keep a time bucket if one is already
+  // set — a stacked bar over time is a real chart — but a pie cannot hold both.
+  if (!next.dimension) {
+    const suggested = suggestSpec(kind, fields).dimension
+    if (suggested) next.dimension = suggested
+  }
+  if (kind === 'pie') {
+    next.bucket = 'none'
+    if (next.dimension) next.dimension = { ...next.dimension, limit: Math.min(next.dimension.limit ?? 8, 8) }
+  }
+  return next
+}

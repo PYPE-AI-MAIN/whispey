@@ -72,6 +72,7 @@ export function useChartData(
   widgets: Widget[],
   range: { from: string; to: string } | { days: number } | undefined,
   filters: FilterNodeInput[],
+  when: { timeOfDay: { from: string; to: string } | null; days: number[] },
   enabled: boolean
 ) {
   const key = useMemo(
@@ -80,7 +81,7 @@ export function useChartData(
   )
 
   const query = useQuery({
-    queryKey: ['analytics', 'query', agentId, key, range, filters],
+    queryKey: ['analytics', 'query', agentId, key, range, filters, when],
     queryFn: () =>
       json<{ widgets: WidgetResult[] }>(`/api/analytics/query`, {
         method: 'POST',
@@ -88,6 +89,8 @@ export function useChartData(
           agentId,
           range,
           filters,
+          time_of_day: when.timeOfDay,
+          days_of_week: when.days,
           widgets: widgets.map((w) => ({ id: w.id, spec: w.spec })),
         }),
       }),

@@ -608,3 +608,24 @@ function paramIndex(fragment: string, after: string): number {
 function stripParams(sql: string): string {
   return sql.replace(/\$\d+/g, '$?')
 }
+
+describe('which days count', () => {
+  it('filters to the chosen weekdays, in the project time zone', () => {
+    const { sql, params } = buildQuery(
+      parse({ ...countByDisposition, days_of_week: [1, 2, 3, 4, 5] }),
+      ctx,
+      'aggregate'
+    )
+    // isodow so Monday is 1 and Sunday is 7
+    expect(sql).toContain('EXTRACT(isodow FROM')
+    expect(sql).toContain(`AT TIME ZONE 'UTC' AT TIME ZONE $`)
+    expect(params).toContainEqual([1, 2, 3, 4, 5])
+  })
+
+  it('does not filter at all when every day is chosen', () => {
+    const all = buildQuery(parse({ ...countByDisposition, days_of_week: [1, 2, 3, 4, 5, 6, 7] }), ctx, 'aggregate')
+    const none = buildQuery(parse({ ...countByDisposition, days_of_week: [] }), ctx, 'aggregate')
+    expect(all.sql).not.toContain('isodow')
+    expect(none.sql).not.toContain('isodow')
+  })
+})
