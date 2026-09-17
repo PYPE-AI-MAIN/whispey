@@ -12,7 +12,7 @@
  * and everything else moves out of the way.
  */
 'use client'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
 import { ChevronRight, Loader2, PanelRightOpen, Plus, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
@@ -85,34 +85,8 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
    * did not, the grid laid itself out wider than the page and the right-hand
    * cards disappeared under the settings panel.
    */
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(0)
-  const measure = useCallback(() => {
-    const node = containerRef.current
-    // zero is never a real layout — it means the tab is display:none or the
-    // node is between renders. Keeping the last good width stops the grid
-    // blanking out, since it will not draw without one.
-    if (node && node.clientWidth > 0) setWidth(node.clientWidth)
-  }, [])
-  useEffect(() => {
-    const node = containerRef.current
-    if (!node) return
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(node)
-    // the tab is display:none until Overview is opened, which reports zero
-    window.addEventListener('resize', measure)
-    // and one late attempt, for the case where the first measurement lands
-    // before the layout settles and the observer then has nothing to report
-    const settle = setTimeout(measure, 200)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', measure)
-      clearTimeout(settle)
-    }
-  }, [measure])
-
-  // the panel is where you build; when you are only reading it is in the way
+  // the panel is where you build; when you are only reading a dashboard it is
+  // in the way. Remembered per browser, like the app's own sidebar.
   const [panelOpen, setPanelOpen] = useState(true)
   useEffect(() => {
     try {
@@ -131,12 +105,48 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       return !open
     })
   }, [])
-  // the panel changes the width by 288px; measure on the next frame rather than
-  // waiting for the observer, so the cards never render at the old width
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+
+  /**
+   * Zero is never a real layout — it means the tab is display:none, or the node
+   * is between renders. Taking it would blank the grid, which will not draw
+   * without a width, so only a real measurement is kept.
+   */
+  const measure = useCallback(() => {
+    const node = containerRef.current
+    if (!node) return 0
+    const next = Math.floor(node.clientWidth || node.getBoundingClientRect().width || 0)
+    if (next > 0) setWidth((prev) => (prev === next ? prev : next))
+    return next
+  }, [])
+
+  // before paint, so the first frame already has a width to lay out in
+  useLayoutEffect(() => {
+    measure()
+  }, [measure])
+
   useEffect(() => {
-    const frame = requestAnimationFrame(measure)
-    return () => cancelAnimationFrame(frame)
-  }, [panelOpen, isActive, measure])
+    const node = containerRef.current
+    if (!node) return
+    const observer = new ResizeObserver(() => measure())
+    observer.observe(node)
+    window.addEventListener('resize', measure)
+
+    // and keep asking, briefly, for the case where the first measurements all
+    // land at zero and nothing ever resizes to tell us otherwise. Without this
+    // a single bad reading leaves a skeleton on the screen forever.
+    let attempts = 0
+    const retry = window.setInterval(() => {
+      if (measure() > 0 || ++attempts > 20) window.clearInterval(retry)
+    }, 150)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+      window.clearInterval(retry)
+    }
+  }, [measure])
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   const canEdit = dashboard.data?.can_edit === true
@@ -176,6 +186,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       setDraft((prev) => (prev ?? widgets).map((w) => (w.id === id ? { ...w, ...patch } : w))),
     [widgets]
   )
+  // settings have nowhere to appear if the panel is shut
   const selectChart = useCallback((id: string) => {
     setSelectedId(id)
     setPanelOpen(true)
