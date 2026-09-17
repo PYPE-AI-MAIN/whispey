@@ -31,8 +31,9 @@ import { WhenFilter, type TimeOfDay } from './WhenFilter'
 import { OutcomeOrderEditor, type OutcomeRanking } from './OutcomeOrderEditor'
 import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitle } from './suggest'
 import { coverage } from './chartData'
+import { explainSpec } from './explain'
 import {
-  applyGridLayout, toGridLayout, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, MIN_SIZE, ROW_HEIGHT,
+  applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, MIN_SIZE, ROW_HEIGHT,
 } from './gridLayout'
 import 'react-grid-layout/css/styles.css'
 import './grid.css'
@@ -181,12 +182,14 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       title: suggestTitle(kind, catalog),
       kind,
       spec: suggestSpec(kind, catalog),
-      layout: { ...(at ?? { x: 0, y: Infinity }), ...DEFAULT_SIZE[kind] },
+      // a real row, not Infinity: it is a number, it survives a spread, and it
+      // becomes null in JSON, which the save route rejects
+      layout: { ...(at ?? { x: 0, y: nextRow(widgets) }), ...DEFAULT_SIZE[kind] },
       position: 0,
       live: false,
       is_seeded: false,
     }),
-    [catalog, dashboard.data]
+    [catalog, dashboard.data, widgets]
   )
 
   const addChart = (kind: ChartKind, at?: { x: number; y: number }) => {
@@ -215,7 +218,13 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
   }
 
   const duplicate = (w: Widget) => {
-    const copy: Widget = { ...w, id: `new-${crypto.randomUUID()}`, title: `${w.title} copy`, is_seeded: false, layout: { ...(w.layout as object), y: Infinity } as Widget['layout'] }
+    const copy: Widget = {
+      ...w,
+      id: `new-${crypto.randomUUID()}`,
+      title: `${w.title} copy`,
+      is_seeded: false,
+      layout: { ...toGridLayout([w])[0], i: undefined, y: nextRow(widgets) } as unknown as Widget['layout'],
+    }
     setDraft([...(draft ?? widgets), copy])
     selectChart(copy.id)
   }
@@ -391,6 +400,7 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
                     draggable={!isMobile}
                     categories={categoriesFor(w, catalog)}
                     grainLabel={grainLabel(w, catalog)}
+                    definition={explainSpec(w.spec, catalog)}
                     onSelect={() => selectChart(w.id)}
                     onOpenLogs={(value) => setLogs({ widget: w, value })}
                     onEdit={() => selectChart(w.id)}

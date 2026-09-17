@@ -9,6 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { randomUUID } from 'node:crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { Spec } from '@/server/analytics/spec'
 import { STARTER_CHARTS } from '@/server/analytics/starterCharts'
@@ -153,28 +154,36 @@ export async function PUT(req: NextRequest) {
     )
   }
 
-  const keep = body.widgets.filter((w) => w.id).map((w) => w.id as string)
+  // Every row must carry the same keys: PostgREST refuses a batch where some
+  // objects have `id` and some do not, which is what a dashboard with one new
+  // chart on it looks like. Minting the id here keeps one uniform upsert.
+  const rows = body.widgets.map((w) => ({
+    id: w.id ?? randomUUID(),
+    dashboard_id: body.dashboardId,
+    title: w.title,
+    kind: w.kind,
+    spec: w.spec,
+    layout: w.layout,
+    position: w.position,
+    is_seeded: w.is_seeded ?? false,
+  }))
+
   const removal = supabase.from('pype_analytics_widgets').delete().eq('dashboard_id', body.dashboardId)
-  const { error: delError } = keep.length
-    ? await removal.not('id', 'in', `(${keep.join(',')})`)
+  const { error: delError } = rows.length
+    ? await removal.not('id', 'in', `(${rows.map((r) => r.id).join(',')})`)
     : await removal
 
-  const { error: upError } = await supabase.from('pype_analytics_widgets').upsert(
-    body.widgets.map((w) => ({
-      ...(w.id ? { id: w.id } : {}),
-      dashboard_id: body.dashboardId,
-      title: w.title,
-      kind: w.kind,
-      spec: w.spec,
-      layout: w.layout,
-      position: w.position,
-      is_seeded: w.is_seeded ?? false,
-    }))
-  )
+  const { error: upError } = await supabase.from('pype_analytics_widgets').upsert(rows)
 
   if (delError || upError) {
-    console.error('[analytics/dashboard] save failed', delError ?? upError)
-    return NextResponse.json({ error: 'Could not save this dashboard' }, { status: 500 })
+    const failure = delError ?? upError
+    console.error('[analytics/dashboard] save failed', failure)
+    return NextResponse.json(
+      // the version was already bumped, so the browser has to reload rather
+      // than press Save again against a number the database has moved past
+      { error: 'Could not save this dashboard. Reload the page and try again.', detail: failure?.message },
+      { status: 500 }
+    )
   }
 
   const { data: widgets } = await supabase

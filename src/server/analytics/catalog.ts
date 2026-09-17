@@ -285,7 +285,9 @@ export async function scanBuiltins(agentId: string): Promise<BuiltinField[]> {
       value_type: b.value_type === 'enum' && !usableValues ? 'text' : b.value_type,
       coverage_pct: total > 0 ? Math.round((filled / total) * 1000) / 10 : 0,
       cardinality_est: values?.length ?? 0,
-      is_identity_candidate: b.col === 'customer_number' || b.col === 'call_id',
+      // customer_number only: call_id identifies a call, so "one per call id"
+      // is the same as every call and offering it is just confusing
+      is_identity_candidate: b.col === 'customer_number',
     }
   })
 }

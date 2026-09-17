@@ -57,8 +57,11 @@ export function toGridLayout(widgets: Widget[]): GridItem[] {
     const w = clamp(saved.w ?? LEGACY_WIDTH[saved.width ?? ''] ?? fallback.w, min.w, GRID_COLUMNS)
     const h = Math.max(saved.h ?? fallback.h, min.h)
 
-    if (typeof saved.x === 'number' && typeof saved.y === 'number') {
-      return { i: widget.id, x: clamp(saved.x, 0, GRID_COLUMNS - w), y: saved.y, w, h, minW: min.w, minH: min.h }
+    // Number.isFinite, not typeof: Infinity is a number, survives a spread, and
+    // becomes null in JSON — which the save route rejects as a bad request
+    if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+      const x = clamp(saved.x as number, 0, GRID_COLUMNS - w)
+      return { i: widget.id, x, y: saved.y as number, w, h, minW: min.w, minH: min.h }
     }
 
     // no coordinates: pack it after the last one, wrapping at the edge
@@ -98,4 +101,9 @@ export function applyGridLayout(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
+}
+
+/** The row below everything already placed — where a new card goes. */
+export function nextRow(widgets: Widget[]): number {
+  return toGridLayout(widgets).reduce((lowest, item) => Math.max(lowest, item.y + item.h), 0)
 }

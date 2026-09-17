@@ -24,7 +24,7 @@ import { coverage } from './chartData'
 export const DRAG_HANDLE_CLASS = 'chart-drag-handle'
 
 export function ChartCard({
-  widget, result, isLoading, selected, canEdit, draggable, categories, grainLabel,
+  widget, result, isLoading, selected, canEdit, draggable, categories, grainLabel, definition,
   onSelect, onOpenLogs, onEdit, onDuplicate, onRemove, onExport, onChangeGrain,
 }: {
   widget: Widget
@@ -34,6 +34,8 @@ export function ChartCard({
   categories?: string[] | null
   /** "Every call", or the name of whatever this chart counts one of. */
   grainLabel: string
+  /** What the card counted, in words — "How many calls · only where why the call ended is completed". */
+  definition: string
   selected: boolean
   canEdit: boolean
   /** Off on a phone: the canvas is for reading there, not for building. */
@@ -86,18 +88,25 @@ export function ChartCard({
             </h3>
           </div>
 
-          {/* it changes what the number means, so it is never hidden in a dialog */}
-          {!isKpi && canEdit && (
-            <button
-              className="mt-0.5 text-[11px] text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
-              onClick={(e) => {
-                e.stopPropagation()
-                onChangeGrain(grain === 'entity' ? 'interaction' : 'entity')
-              }}
-            >
-              {grainLabel}
-            </button>
-          )}
+          <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5 text-[11px] text-gray-400">
+            {/* it changes what the number means, so it is never hidden in a dialog */}
+            {canEdit && (
+              <button
+                className="shrink-0 underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onChangeGrain(grain === 'entity' ? 'interaction' : 'entity')
+                }}
+              >
+                {grainLabel}
+              </button>
+            )}
+            {/* "Completed calls · 110" is not a number anyone can check */}
+            <span className="truncate text-gray-400/80 dark:text-gray-500" title={definition}>
+              {canEdit ? '· ' : ''}
+              {definition}
+            </span>
+          </div>
         </div>
 
         <DropdownMenu>
