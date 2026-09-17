@@ -13,6 +13,7 @@ import { JSON_COLS } from '@/server/analytics/spec'
 import { scanColumn, scanBuiltins, inferField, BUILTIN_COLUMNS } from '@/server/analytics/catalog'
 import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { applyDeclarations } from '@/server/analytics/extractor'
+import { guarded } from '@/server/analytics/guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ export const dynamic = 'force-dynamic'
 const supabase = createServiceRoleClient()
 const STALE_AFTER_MS = 6 * 60 * 60 * 1000
 
-export async function GET(req: NextRequest) {
+export const GET = guarded('analytics/fields', async (req: NextRequest) => {
   const agentId = req.nextUrl.searchParams.get('agentId')
   const force = req.nextUrl.searchParams.get('refresh') === '1'
   if (!agentId) return NextResponse.json({ error: 'agentId is required' }, { status: 400 })
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
     outcome_ranking: agent.outcomeRanking ?? null,
     fields: described,
   })
-}
+})
 
 /**
  * Replaces what we worked out, keeps what a person decided. A confirmed type,

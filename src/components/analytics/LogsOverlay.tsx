@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Widget } from '@/types/analytics'
-import { useCsvExport } from '@/hooks/useAnalyticsDashboard'
+import { useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
 
 type Row = {
   id: string
@@ -27,7 +27,7 @@ type Row = {
 }
 
 export function LogsOverlay({
-  agentId, projectId, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel,
+  agentId, projectId, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
 }: {
   agentId: string
   /** Needed to link a row to its call. */
@@ -43,6 +43,14 @@ export function LogsOverlay({
   onClose: () => void
   downloadDisabled: boolean
   chartTotal?: number
+  /**
+   * The Period control, filter chips and When above the canvas — without
+   * these the rows here were the chart's own saved defaults (a starter chart
+   * says 7 days) instead of what the card on screen is actually showing, and
+   * "the row count under a bar always equals the bar" stopped being true the
+   * moment anyone touched the Period control.
+   */
+  dashboard: DashboardContext
 }) {
   const [rows, setRows] = useState<Row[]>([])
   const [cursor, setCursor] = useState<{ startedAt: string; id: string } | null>(null)
@@ -59,7 +67,16 @@ export function LogsOverlay({
         const res = await fetch('/api/analytics/drill', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agentId, spec: widget.spec, dimensionValue, cursor: next }),
+          body: JSON.stringify({
+            agentId,
+            spec: widget.spec,
+            dimensionValue,
+            cursor: next,
+            filters: dashboard.filters,
+            range: dashboard.range,
+            time_of_day: dashboard.time_of_day,
+            days_of_week: dashboard.days_of_week,
+          }),
         }).catch(() => {
           throw new Error('Could not reach the server. Check your connection and try again.')
         })
@@ -73,7 +90,7 @@ export function LogsOverlay({
         setLoading(false)
       }
     },
-    [agentId, widget, dimensionValue]
+    [agentId, widget, dimensionValue, dashboard]
   )
 
   useEffect(() => {
@@ -97,7 +114,12 @@ export function LogsOverlay({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[85vh] max-w-4xl overflow-hidden p-0">
+      {/* both max-w-6xl AND sm:max-w-6xl: the base DialogContent sets
+          sm:max-w-lg, and tailwind-merge only dedupes within the same
+          variant bucket — a bare max-w-6xl doesn't touch an sm: one, so
+          without this the dialog stayed capped at 32rem on every real
+          screen no matter what unprefixed max-w- class was added here */}
+      <DialogContent className="max-h-[85vh] max-w-6xl sm:max-w-6xl overflow-hidden p-0">
         <DialogHeader className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
           <DialogTitle className="text-base">
             {widget?.title}
@@ -127,7 +149,7 @@ export function LogsOverlay({
                 variant="outline"
                 size="sm"
                 disabled={csv.busy || !widget}
-                onClick={() => widget && csv.run(widget.spec, dimensionValue, widget.title)}
+                onClick={() => widget && csv.run(widget.spec, dimensionValue, widget.title, dashboard)}
               >
                 {csv.busy ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
                 Export CSV
@@ -145,8 +167,21 @@ export function LogsOverlay({
           )}
 
           {rows.length > 0 && (
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white text-left text-xs uppercase tracking-wide text-gray-400 dark:bg-gray-950">
+            // border-collapse: the browser default is border-collapse: separate
+            // with a couple px of border-spacing between rows — the sticky
+            // thead's box doesn't cover that gap, so a sliver of the row above
+            // kept peeking through above the header as you scrolled.
+            <table className="w-full border-collapse text-sm">
+              {/* z-10: a sticky element with no z-index still paints in DOM
+                  order, so the rows scrolling underneath it — later in the
+                  document — were painting on TOP of it instead of behind it */}
+              {/* bg-background, not bg-white/dark:bg-gray-950: the dialog's own
+                  surface is the theme's `--background` token (DialogContent
+                  uses `bg-background`), and gray-950 is a close but NOT
+                  identical shade — a fixed hue vs. the theme's own hue. That
+                  seam is subtle but is exactly what reads as the header being
+                  a separate floating panel instead of part of the table. */}
+              <thead className="sticky top-0 z-10 bg-background text-left text-xs uppercase tracking-wide text-gray-400">
                 <tr className="border-b border-gray-200 dark:border-gray-800">
                   <th className="py-2 font-medium">When</th>
                   <th className="py-2 font-medium">Number</th>

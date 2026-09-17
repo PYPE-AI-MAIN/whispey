@@ -109,7 +109,8 @@ export function OutcomeOrderEditor({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl">
+      {/* same sm: bucket issue as the other analytics dialogs — see LogsOverlay.tsx */}
+      <DialogContent className="max-w-2xl sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-base">When we called more than once, which result wins?</DialogTitle>
           <p className="text-xs text-gray-500 dark:text-gray-400">

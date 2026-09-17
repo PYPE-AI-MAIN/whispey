@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { Widget, WidgetResult } from '@/types/analytics'
+import type { CatalogField, Widget, WidgetResult } from '@/types/analytics'
 import { ChartRenderer } from './ChartRenderer'
 import { coverage } from './chartData'
 
@@ -24,7 +24,7 @@ import { coverage } from './chartData'
 export const DRAG_HANDLE_CLASS = 'chart-drag-handle'
 
 export function ChartCard({
-  widget, result, isLoading, selected, canEdit, draggable, categories, grainLabel, definition,
+  widget, result, isLoading, selected, canEdit, draggable, categories, catalog, catalogReady, grainLabel, definition,
   onSelect, onOpenLogs, onEdit, onDuplicate, onRemove, onExport, onChangeGrain,
 }: {
   widget: Widget
@@ -32,6 +32,10 @@ export function ChartCard({
   isLoading: boolean
   /** Known values of the field this chart splits by, so a zero shows as a zero. */
   categories?: string[] | null
+  /** So an empty chart can tell "nothing happened" from "we stopped measuring this". */
+  catalog: CatalogField[]
+  /** The catalog fetch hasn't resolved yet — an empty `catalog` then means "not loaded", not "no fields exist" */
+  catalogReady: boolean
   /** "Every call", or the name of whatever this chart counts one of. */
   grainLabel: string
   /** What the card counted, in words — "How many calls · only where why the call ended is completed". */
@@ -59,6 +63,15 @@ export function ChartCard({
   // counts, so "99 of 99 calls" says nothing and implies a universe of 99.
   const showCoverage = Boolean(cover && (cover.used < cover.total || widget.spec.dimension))
   const grain = widget.spec.grain ?? 'interaction'
+  // "no rows" and "this field is no longer produced" used to look identical —
+  // a dropped or renamed field read as a confident zero. The catalog is a
+  // fresh read of what the agent actually produces right now, so a field this
+  // chart depends on that isn't in it anymore has been removed, not empty.
+  const fieldMissing =
+    catalogReady &&
+    [widget.spec.agg.field, widget.spec.dimension?.field].some(
+      (ref) => ref && !catalog.some((f) => f.col === ref.col && f.path.join('.') === (ref.path ?? []).join('.'))
+    )
 
   return (
     <div
@@ -156,7 +169,7 @@ export function ChartCard({
 
       {/* the only part allowed to absorb a card that is shorter than its contents */}
       <div className={cn('min-h-0 flex-1 overflow-hidden px-4', isKpi ? 'pb-1' : 'pb-2')}>
-        <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} short={short} onSelect={onOpenLogs} />
+        <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} fieldMissing={fieldMissing} short={short} onSelect={onOpenLogs} />
       </div>
 
       {/* an average over only the usable rows misleads unless the card says so */}
@@ -183,13 +196,15 @@ export function ChartCard({
 
 /** The five states a card has to be able to show, and never a blank rectangle. */
 function CardBody({
-  widget, result, isLoading, rows, categories, short, onSelect,
+  widget, result, isLoading, rows, categories, fieldMissing, short, onSelect,
 }: {
   widget: Widget
   result?: WidgetResult
   isLoading: boolean
   rows: WidgetResult['data'] & object
   categories?: string[] | null
+  /** The field(s) this chart reads are gone from the catalog — the agent stopped producing them. */
+  fieldMissing: boolean
   /** Two grid rows tall — the number has to be smaller or it draws over the words. */
   short: boolean
   onSelect: (value: string | null) => void
@@ -213,8 +228,18 @@ function CardBody({
     )
   }
   if (result && rows.length === 0 && !categories?.length) {
-    // "no rows" and "this field is no longer produced" look identical on screen
-    // unless the card distinguishes them
+    // "no rows" and "this field is no longer produced" used to look identical
+    // — a dropped or renamed field read as a confident zero, which on a
+    // safety metric is the exact failure this card exists to prevent (§8.4)
+    if (fieldMissing) {
+      return (
+        <State
+          icon={<AlertTriangle className="h-4 w-4" />}
+          text="This chart reads a field the agent no longer produces."
+          tone="warn"
+        />
+      )
+    }
     return <State text={widget.spec.display?.empty_text ?? 'Nothing in this range.'} tone="muted" />
   }
 
@@ -234,13 +259,11 @@ function CardBody({
 
 function State({ icon, text, tone = 'warn' }: { icon?: React.ReactNode; text: string; tone?: 'warn' | 'muted' }) {
   return (
-    <div
-      className={cn(
-        'flex h-full flex-col items-center justify-center gap-1.5 px-3 text-center text-xs',
-        tone === 'warn' ? 'text-amber-600 dark:text-amber-500' : 'text-gray-400 dark:text-gray-500'
-      )}
-    >
-      {icon}
+    <div className="flex h-full flex-col items-center justify-center gap-1.5 px-3 text-center text-xs text-gray-500 dark:text-gray-400">
+      {/* only the icon carries the warning color — a whole card in solid
+          amber (icon and text both) reads as loud, especially with several
+          cards failing at once; the icon alone is enough of a signal */}
+      {icon && <span className={tone === 'warn' ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'}>{icon}</span>}
       <span className="leading-snug">{text}</span>
     </div>
   )

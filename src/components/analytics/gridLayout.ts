@@ -40,14 +40,38 @@ export type GridItem = { i: string; x: number; y: number; w: number; h: number; 
 
 const LEGACY_WIDTH: Record<string, number> = { quarter: 3, half: 6, full: 12 }
 
+const overlaps = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+
 /**
  * Reads a saved layout, whatever shape it is in, and fills the gaps by packing
  * cards left to right in their saved order.
+ *
+ * Two widgets with saved rectangles that overlap — a bad write, a stale copy,
+ * anything — used to be handed straight to react-grid-layout as-is. The grid's
+ * own compaction pass silently resolves the overlap on render, which does not
+ * match what this function just returned, so `onLayoutChange` fires believing
+ * the user moved a card and marks the dashboard dirty on a page nobody
+ * touched. A collision here is unpacked the same as a missing position,
+ * instead of relying on the grid to mask a bad read.
  */
 export function toGridLayout(widgets: Widget[]): GridItem[] {
   let cursorX = 0
   let cursorY = 0
   let rowHeight = 0
+  const placed: GridItem[] = []
+
+  const pack = (w: number, h: number) => {
+    if (cursorX + w > GRID_COLUMNS) {
+      cursorX = 0
+      cursorY += rowHeight
+      rowHeight = 0
+    }
+    const at = { x: cursorX, y: cursorY }
+    cursorX += w
+    rowHeight = Math.max(rowHeight, h)
+    return at
+  }
 
   return widgets.map((widget) => {
     const saved = (widget.layout ?? {}) as Partial<GridItem> & { width?: string }
@@ -59,20 +83,16 @@ export function toGridLayout(widgets: Widget[]): GridItem[] {
 
     // Number.isFinite, not typeof: Infinity is a number, survives a spread, and
     // becomes null in JSON — which the save route rejects as a bad request
-    if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
-      const x = clamp(saved.x as number, 0, GRID_COLUMNS - w)
-      return { i: widget.id, x, y: saved.y as number, w, h, minW: min.w, minH: min.h }
-    }
+    let at =
+      Number.isFinite(saved.x) && Number.isFinite(saved.y)
+        ? { x: clamp(saved.x as number, 0, GRID_COLUMNS - w), y: saved.y as number }
+        : null
 
-    // no coordinates: pack it after the last one, wrapping at the edge
-    if (cursorX + w > GRID_COLUMNS) {
-      cursorX = 0
-      cursorY += rowHeight
-      rowHeight = 0
-    }
-    const item = { i: widget.id, x: cursorX, y: cursorY, w, h, minW: min.w, minH: min.h }
-    cursorX += w
-    rowHeight = Math.max(rowHeight, h)
+    if (at && placed.some((p) => overlaps({ ...at!, w, h }, p))) at = null
+    if (!at) at = pack(w, h)
+
+    const item = { i: widget.id, x: at.x, y: at.y, w, h, minW: min.w, minH: min.h }
+    placed.push(item)
     return item
   })
 }

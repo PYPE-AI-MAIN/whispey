@@ -21,13 +21,23 @@
 .react-grid-item > .react-resizable-handle:focus-visible {
   opacity: 1;
 }
+/* three short diagonal dots — the familiar macOS/Figma grip — instead of a
+   bare right-angle bracket, which reads as a stray pixel-art corner up close */
 .react-grid-item > .react-resizable-handle::after {
-  right: 5px;
-  bottom: 5px;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid rgb(148 163 184);
-  border-bottom: 2px solid rgb(148 163 184);
+  right: 6px;
+  bottom: 6px;
+  width: 7px;
+  height: 7px;
+  border: none;
+  border-radius: 1px;
+  background-image: radial-gradient(circle, rgb(148 163 184) 1px, transparent 1.4px);
+  background-size: 3.5px 3.5px;
+  background-position: bottom right;
+  background-repeat: repeat;
+  transition: background-image 120ms ease;
+}
+.react-grid-item:hover > .react-resizable-handle::after {
+  background-image: radial-gradient(circle, rgb(59 130 246) 1px, transparent 1.4px);
 }
 
 /* a card being dragged should float above the rest, not tunnel under them */

@@ -9,7 +9,7 @@
  * row read has neither problem.
  */
 import { z } from 'zod'
-import { Spec } from './spec'
+import { Spec, FilterNode } from './spec'
 import { buildQuery, type Ctx, type Target } from './buildQuery'
 import { runQuery } from './db'
 import { outcomeOrderFor } from './context'
@@ -21,6 +21,16 @@ export const RowsBody = z.object({
   dimensionValue: z.string().nullable().optional(),
   cursor: z.object({ startedAt: z.string(), id: z.string().uuid() }).nullable().optional(),
   limit: z.number().int().min(1).max(5000).optional(),
+  // The dashboard's own controls — Period, filter chips, When — the same ones
+  // /api/analytics/query merges into every chart. A saved widget carries its
+  // own default range (a starter chart says 7 days); without these the row
+  // list under a bar stopped matching the bar the moment anyone changed the
+  // Period control above the canvas, because the drill request never heard
+  // about it.
+  filters: z.array(FilterNode).max(50).optional(),
+  range: z.union([z.object({ days: z.number().int().min(1).max(730) }), z.object({ from: z.string(), to: z.string() })]).optional(),
+  time_of_day: z.object({ from: z.string(), to: z.string() }).nullable().optional(),
+  days_of_week: z.array(z.number().int().min(1).max(7)).max(7).nullable().optional(),
 })
 
 export const ROW_COLUMNS = [
@@ -34,7 +44,15 @@ export async function fetchRowPage(
   outcomeRanking: unknown,
   target: Target
 ): Promise<{ rows: Record<string, unknown>[]; nextCursor: { startedAt: string; id: string } | null }> {
-  const spec = Spec.parse(body.spec)
+  const spec = Spec.parse({
+    ...(body.spec as object),
+    // same merge /api/analytics/query does: the dashboard narrows, the chart
+    // can narrow further, and the dashboard's Period overrides the chart's own
+    having: [...(((body.spec as { having?: unknown[] }).having ?? []) as never[]), ...(body.filters ?? [])],
+    ...(body.range ? { range: body.range } : {}),
+    ...(body.time_of_day ? { time_of_day: body.time_of_day } : {}),
+    ...(body.days_of_week?.length ? { days_of_week: body.days_of_week } : {}),
+  })
   if (spec.dedupe?.ranking_ref === 'agent' && !spec.dedupe.ranking?.length) {
     const order = outcomeOrderFor(outcomeRanking)
     if (!order?.length) throw new Error('This agent has no outcome order set yet')

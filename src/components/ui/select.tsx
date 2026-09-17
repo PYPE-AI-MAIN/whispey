@@ -128,10 +128,16 @@ function SelectItem({
         </SelectPrimitive.ItemIndicator>
       </span>
       {description ? (
-        <span className="flex min-w-0 flex-col gap-0.5">
+        // a div, not a span: the item's own className above styles its LAST
+        // span child with `*:[span]:last:flex items-center gap-2` for the
+        // plain icon+label case, and with a description this wrapper would
+        // be that last span — center-aligning what's meant to be a left-
+        // aligned label row over a description line, and fighting its own
+        // gap-0.5 with the inherited gap-2. A div never matches that selector.
+        <div className="flex min-w-0 flex-col gap-0.5">
           <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
           <span className="text-muted-foreground text-[11px] leading-snug">{description}</span>
-        </span>
+        </div>
       ) : (
         <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
       )}

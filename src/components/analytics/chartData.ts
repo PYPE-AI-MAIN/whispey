@@ -69,7 +69,9 @@ export type Shaped = {
 
 /**
  * Every category the field is known to produce, including the ones that scored
- * zero — §8.4.
+ * zero — §8.4. Also draws them in `categories` order, so the outcome order a
+ * user configures in OutcomeOrderEditor is the order bars/legend actually show,
+ * not just a dedupe tie-break.
  *
  * "emergency_escalated: 0" vanishing from a chart looks exactly like the field
  * not existing, which on a safety metric is the difference between "we checked
@@ -80,7 +82,10 @@ export function zeroFill(shaped: Shaped, categories: string[] | null | undefined
   if (shaped.axis !== 'category' || !categories?.length) return shaped
   const seen = new Set(shaped.points.map((p) => p.x))
   const missing = categories.filter((c) => !seen.has(c)).map((c) => ({ x: c, value: 0 }))
-  return missing.length ? { ...shaped, points: [...shaped.points, ...missing] } : shaped
+  const points = missing.length ? [...shaped.points, ...missing] : shaped.points
+  const order = new Map(categories.map((c, i) => [c, i]))
+  const sorted = [...points].sort((a, b) => (order.get(String(a.x)) ?? categories.length) - (order.get(String(b.x)) ?? categories.length))
+  return { ...shaped, points: sorted }
 }
 
 export function shape(rows: ResultRow[], spec: Widget['spec']): Shaped {

@@ -175,11 +175,19 @@ function prune(results: Map<string, WidgetResult>, widgets: Widget[]): Map<strin
 }
 
 /** Walks the export a page at a time, following the cursor, and hands back one file. */
+/** The dashboard's own controls — Period, filter chips, When — narrowed into whatever a chart or a drill/export request reads. */
+export type DashboardContext = {
+  range: { from: string; to: string } | { days: number }
+  filters: FilterNodeInput[]
+  time_of_day: { from: string; to: string } | null
+  days_of_week: number[] | null
+}
+
 export function useCsvExport(agentId: string | undefined) {
   const [state, setState] = useState<{ busy: boolean; rows: number; error?: string }>({ busy: false, rows: 0 })
 
   const run = useCallback(
-    async (spec: unknown, dimensionValue: string | null | undefined, filename: string) => {
+    async (spec: unknown, dimensionValue: string | null | undefined, filename: string, dashboard?: DashboardContext) => {
       if (!agentId) return
       setState({ busy: true, rows: 0 })
       const parts: string[] = []
@@ -191,7 +199,16 @@ export function useCsvExport(agentId: string | undefined) {
           const res = await fetch('/api/analytics/export', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ agentId, spec, dimensionValue, cursor }),
+            body: JSON.stringify({
+              agentId,
+              spec,
+              dimensionValue,
+              cursor,
+              filters: dashboard?.filters,
+              range: dashboard?.range,
+              time_of_day: dashboard?.time_of_day,
+              days_of_week: dashboard?.days_of_week,
+            }),
           })
           if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Export failed')
           parts.push(await res.text())

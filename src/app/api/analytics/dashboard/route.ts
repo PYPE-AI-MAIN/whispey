@@ -8,6 +8,7 @@
  * nobody ever lands on a blank page.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { guarded } from '@/server/analytics/guard'
 import { z } from 'zod'
 import { randomUUID } from 'node:crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
@@ -20,7 +21,7 @@ export const dynamic = 'force-dynamic'
 
 const supabase = createServiceRoleClient()
 
-export async function GET(req: NextRequest) {
+export const GET = guarded('analytics/dashboard', async (req: NextRequest) => {
   const agentId = req.nextUrl.searchParams.get('agentId')
   if (!agentId) return NextResponse.json({ error: 'agentId is required' }, { status: 400 })
 
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
     // the export route refuses anyway; this stops the button appearing at all
     download_disabled: downloadDisabled,
   })
-}
+})
 
 const SaveBody = z.object({
   agentId: z.string().uuid(),
@@ -120,7 +121,7 @@ const SaveBody = z.object({
     .max(40),
 })
 
-export async function PUT(req: NextRequest) {
+export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   const parsed = SaveBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
   const body = parsed.data
@@ -199,4 +200,4 @@ export async function PUT(req: NextRequest) {
     .order('position', { ascending: true })
 
   return NextResponse.json({ version: bumped.data.version, widgets: widgets ?? [] })
-}
+})

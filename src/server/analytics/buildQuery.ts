@@ -519,8 +519,15 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const withClause = `WITH ${ctes.join(',\n')}\n`
 
   if (target !== 'aggregate') {
-    const rowFilters = conjunction(spec.having, t)
-    if (dimExpr && !spec.dimension!.include_empty) rowFilters.push(`${dimExpr} IS NOT NULL`)
+    // reuse `post`, don't recompute conjunction(spec.having, t): every `bind()`
+    // inside `condition()` pushes a new SQL parameter as a side effect, so
+    // calling it again here bound the same having-filter a second time under
+    // a fresh, unused param index — harmless while `having` was empty (the
+    // common case before dashboard filters reached drill/export), but the
+    // moment a real filter chip was active, `checkEveryParamIsUsed` caught the
+    // orphaned first copy and rejected the whole query as a compiler bug.
+    // `post` already carries the dimension-not-null condition (pushed above)
+    const rowFilters = [...post]
     if (opts.dimensionValue !== undefined && dimExpr) {
       rowFilters.push(`${dimExpr} IS NOT DISTINCT FROM ${bind(opts.dimensionValue)}`)
     }

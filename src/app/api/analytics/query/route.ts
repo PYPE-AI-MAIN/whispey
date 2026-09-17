@@ -18,6 +18,7 @@ import { Spec, FilterNode } from '@/server/analytics/spec'
 import { planDashboardQueries, SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
 import { resolveAnalyticsContext, isDenied, outcomeOrderFor } from '@/server/analytics/context'
+import { guarded } from '@/server/analytics/guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -48,7 +49,7 @@ type WidgetResult = {
   error?: string
 }
 
-export async function POST(req: NextRequest) {
+export const POST = guarded('analytics/query', async (req: NextRequest) => {
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
     return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
   )
 
   return NextResponse.json({ widgets: ordered, took_ms: Date.now() - startedAt, statements: plans.length })
-}
+})
 
 
 /**

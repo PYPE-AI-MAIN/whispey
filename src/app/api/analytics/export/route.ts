@@ -16,11 +16,12 @@ import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { isTimeout } from '@/server/analytics/db'
 import { SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { csvPage } from '@/server/analytics/csv'
+import { guarded } from '@/server/analytics/guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function POST(req: NextRequest) {
+export const POST = guarded('analytics/export', async (req: NextRequest) => {
   const parsed = RowsBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
@@ -53,4 +54,4 @@ export async function POST(req: NextRequest) {
     console.error('[analytics/export]', err)
     return NextResponse.json({ error: 'Could not build the export' }, { status: 500 })
   }
-}
+})

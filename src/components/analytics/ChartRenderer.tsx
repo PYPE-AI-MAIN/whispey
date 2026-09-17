@@ -17,7 +17,16 @@ import type { ChartKind, ResultRow, Widget } from '@/types/analytics'
 import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, unitFor } from './chartData'
 
 /** Distinguishable in both themes, and still distinguishable for the most common colour blindness. */
-const SERIES_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16']
+/**
+ * The dataviz skill's validated 8-slot categorical order (references/palette.md)
+ * — fixed order, never cycled, worst adjacent CVD ΔE 9.1 light / 8.4 dark. Swap
+ * one slot in and the safety guarantee is gone; add a 9th series by folding into
+ * "Other", not by generating a new hue.
+ */
+const SERIES_COLORS = [
+  'var(--analytics-series-1)', 'var(--analytics-series-2)', 'var(--analytics-series-3)', 'var(--analytics-series-4)',
+  'var(--analytics-series-5)', 'var(--analytics-series-6)', 'var(--analytics-series-7)', 'var(--analytics-series-8)',
+]
 
 /** Above this a pie stops meaning anything; the card offers a bar instead. */
 export const PIE_MAX_SLICES = 8
@@ -95,7 +104,10 @@ export function ChartRenderer({
             ))}
           </Pie>
           <Tooltip {...tooltipStyle} formatter={(v: unknown) => formatValue(Number(v), spec)} />
-          <Legend formatter={(v: unknown) => shortLabel(String(v), 18)} wrapperStyle={{ fontSize: 11 }} />
+          <Legend
+            formatter={(v: unknown) => <span title={String(v)}>{shortLabel(String(v), 18)}</span>}
+            wrapperStyle={{ fontSize: 11 }}
+          />
         </PieChart>
       </ResponsiveContainer>
     )
@@ -114,7 +126,10 @@ export function ChartRenderer({
           formatter={(v: unknown) => formatValue(Number(v), spec)}
         />
         {shaped.seriesKeys.length > 1 && (
-          <Legend formatter={(v: unknown) => shortLabel(String(v), 16)} wrapperStyle={{ fontSize: 11 }} />
+          <Legend
+            formatter={(v: unknown) => <span title={String(v)}>{shortLabel(String(v), 16)}</span>}
+            wrapperStyle={{ fontSize: 11 }}
+          />
         )}
         {shaped.seriesKeys.map((key, i) =>
           kind === 'line' ? (

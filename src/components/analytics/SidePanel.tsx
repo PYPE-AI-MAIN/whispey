@@ -430,7 +430,18 @@ function Picker({
       <SelectTrigger className="h-8 w-full text-sm">
         <SelectValue placeholder={placeholder ?? 'Pick one'} />
       </SelectTrigger>
-      <SelectContent className="max-h-72">
+      {/* wider than the trigger on purpose — the side panel itself is narrow,
+          but Radix portals this to the body, and the calculation help text
+          ("out of the calls where this field has an answer...") was wrapping
+          to two lines at trigger width.
+          align="end": the panel sits at the right edge of the screen, so
+          widening it left `align="start"`'s default anchor (the trigger's
+          left edge) had nowhere to grow into and Radix's own collision
+          avoidance shoved the whole thing further left to fit — detached
+          from the trigger, floating over the canvas. Anchoring to the
+          trigger's right edge instead means it only ever grows toward the
+          panel's own left side, where the room actually is. */}
+      <SelectContent align="end" className="max-h-72 min-w-[22rem]">
         {(clearable || !value) && <SelectItem value={NONE}>{placeholder ?? 'None'}</SelectItem>}
         {options.map((o) => (
           // a calculation nobody can explain produces a number nobody can check

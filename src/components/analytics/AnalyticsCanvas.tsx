@@ -19,10 +19,11 @@ import { ChevronRight, Loader2, PanelRightOpen, RefreshCw, RotateCcw, Save, Slid
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
-import { useAnalyticsDashboard, useChartData, useCsvExport } from '@/hooks/useAnalyticsDashboard'
+import { useAnalyticsDashboard, useChartData, useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS } from './ChartCard'
+import { ChartErrorBoundary } from './ErrorBoundary'
 import { SidePanel, CHART_TYPE_DRAG_TYPE } from './SidePanel'
 import { LogsOverlay } from './LogsOverlay'
 import { FilterBar, decodeFilters, encodeFilters } from './FilterBar'
@@ -123,7 +124,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       return !open
     })
   }, [])
-  const { width, containerRef, measureWidth } = useContainerWidth()
+  const { width, mounted, containerRef, measureWidth } = useContainerWidth()
 
   /**
    * Opening and closing the panel is the one resize the observer cannot be
@@ -140,6 +141,17 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
     const id = requestAnimationFrame(measureWidth)
     return () => cancelAnimationFrame(id)
   }, [panelOpen, measureWidth])
+
+  // the ResizeObserver on containerRef should already catch the whole browser
+  // window growing or shrinking — its element is `w-full` and does resize with
+  // it — but the tab this canvas lives in can be kept mounted-but-hidden by its
+  // parent (`isActive`, §"do not fetch for a screen nobody is looking at"), and
+  // a display:none element reports 0 to its own observer. A direct window
+  // listener doesn't have that blind spot.
+  useEffect(() => {
+    window.addEventListener('resize', measureWidth)
+    return () => window.removeEventListener('resize', measureWidth)
+  }, [measureWidth])
 
   // a zero-width reading is the tab being display:none, not a one-column
   // dashboard — draw the last real width rather than reflowing into a strip
@@ -178,6 +190,14 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   const range = useMemo(() => ({ from: dateRange.from.slice(0, 10), to: dateRange.to.slice(0, 10) }), [dateRange])
   const charts = useChartData(agentId, widgets, range, filters, when, Boolean(isActive))
+  // the same Period/filters/When merge /api/analytics/query does, so the logs
+  // overlay and CSV export read what the card on screen is showing rather than
+  // the widget's own saved defaults — memoized, or a new object every render
+  // re-triggers the overlay's fetch effect while it's open
+  const dashboardContext = useMemo<DashboardContext>(
+    () => ({ range, filters, time_of_day: when.timeOfDay, days_of_week: when.days }),
+    [range, filters, when]
+  )
 
   const selected = widgets.find((w) => w.id === selectedId) ?? null
   const edit = useCallback(
@@ -244,7 +264,16 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   }, [dashboard.data])
 
   const onLayoutChange = (next: Layout) => {
-    if (!canEdit || next.length !== widgets.length) return
+    // the 'sm' breakpoint's layout is `{ ...l, x: 0, w: 1 }` for every widget —
+    // a deliberately flattened, read-only view for a narrow screen, never a
+    // real desktop arrangement. On refresh the grid can briefly measure under
+    // 640px before the sidebar/chrome finishes laying out, report ITS OWN
+    // single-column fallback here, and this handler used to accept it at face
+    // value — permanently collapsing every card into one column and marking
+    // the dashboard dirty, because the corrupted layout got written into
+    // `draft`/`widgets`, which `gridWidth` correcting itself afterward can't
+    // undo. Below the breakpoint, nothing reported here is real data.
+    if (!canEdit || next.length !== widgets.length || gridWidth < BREAKPOINTS.lg) return
     const moved = applyGridLayout(widgets, next)
     if (!settled.current) {
       settled.current = true
@@ -405,7 +434,11 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
           {/* measured without the padding — the grid lays out inside this box,
               and measuring the padded parent made it 24px too wide */}
           <div ref={containerRef} className="w-full">
-            {widgets.length > 0 && (
+            {/* the grid's first paint has to be at the real measured width — laying
+                twelve columns out at the library's guessed default and then snapping
+                to the real width is the visible jump/overlap on load. `containerRef`
+                must stay mounted either way, or it never gets measured to begin with. */}
+            {widgets.length > 0 && mounted && (
             <ResponsiveGridLayout
               width={gridWidth}
               layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
@@ -430,6 +463,8 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
             >
               {widgets.map((w) => (
                 <div key={w.id}>
+                  {/* the eleven cards beside this one keep working */}
+                  <ChartErrorBoundary label={w.title}>
                   <ChartCard
                     widget={w}
                     result={charts.byWidget.get(w.id)}
@@ -438,7 +473,9 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                     canEdit={canEdit}
                     // dragging off on a phone: the canvas is for reading there
                     draggable={!isMobile}
-                    categories={categoriesFor(w, catalog)}
+                    categories={categoriesFor(w, catalog, ranking)}
+                    catalog={catalog}
+                    catalogReady={fields.isSuccess}
                     grainLabel={grainLabel(w, catalog)}
                     definition={explainSpec(w.spec, catalog)}
                     onSelect={() => selectChart(w.id)}
@@ -449,9 +486,10 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                       setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
                       if (selectedId === w.id) setSelectedId(null)
                     }}
-                    onExport={() => !downloadDisabled && csv.run(w.spec, undefined, w.title)}
+                    onExport={() => !downloadDisabled && csv.run(w.spec, undefined, w.title, dashboardContext)}
                     onChangeGrain={(grain) => setGrain(w, grain)}
                   />
+                  </ChartErrorBoundary>
                 </div>
               ))}
               </ResponsiveGridLayout>
@@ -517,6 +555,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
         onClose={() => setLogs(null)}
         downloadDisabled={downloadDisabled}
         chartTotal={logs ? coverage(charts.byWidget.get(logs.widget.id)?.data ?? [])?.total : undefined}
+        dashboard={dashboardContext}
       />
 
       <OutcomeOrderEditor
@@ -540,15 +579,29 @@ export function decodeWhen(raw: string | null): TimeOfDay {
 }
 
 /**
- * The value list of whatever this chart splits by. A category that scored zero
- * has to be drawn as a zero — on a safety metric, a missing bar and a bar of
- * zero mean opposite things (§8.4).
+ * The value list of whatever this chart splits by, in display order. A
+ * category that scored zero has to be drawn as a zero — on a safety metric, a
+ * missing bar and a bar of zero mean opposite things (§8.4).
+ *
+ * When this is the outcome field, the order configured in OutcomeOrderEditor
+ * goes first — otherwise "drag to reorder" changed only the dedupe tie-break
+ * and never what the chart itself showed.
  */
-function categoriesFor(w: Widget, fields: { col: string; path: string[]; enum_values: string[] | null }[]) {
+function categoriesFor(
+  w: Widget,
+  fields: { col: string; path: string[]; enum_values: string[] | null }[],
+  ranking?: OutcomeRanking
+) {
   const dim = w.spec.dimension?.field
   if (!dim) return null
   const key = `${dim.col}::${(dim.path ?? []).join('.')}`
-  return fields.find((f) => `${f.col}::${f.path.join('.')}` === key)?.enum_values ?? null
+  const values = fields.find((f) => `${f.col}::${f.path.join('.')}` === key)?.enum_values ?? null
+  if (!values) return null
+  const rankingKey = ranking && `${ranking.field.col}::${(ranking.field.path ?? []).join('.')}`
+  if (rankingKey !== key || !ranking) return values
+  const ranked = ranking.order.filter((v) => values.includes(v))
+  const rest = values.filter((v) => !ranked.includes(v))
+  return [...ranked, ...rest]
 }
 
 const asRef = (f: { col: string; path: string[] }) => ({ col: f.col, ...(f.path.length ? { path: f.path } : {}) })

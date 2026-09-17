@@ -11,6 +11,7 @@
  * Which also means changing it changes past numbers. The editor has to say so.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { guarded } from '@/server/analytics/guard'
 import { z } from 'zod'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { Ref } from '@/server/analytics/spec'
@@ -29,7 +30,7 @@ const Body = z.object({
   order: z.array(z.string().min(1).max(200)).max(200),
 })
 
-export async function PUT(req: NextRequest) {
+export const PUT = guarded('analytics/outcome-ranking', async (req: NextRequest) => {
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   const { agentId, field, order } = parsed.data
@@ -54,4 +55,4 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Could not save the order' }, { status: 500 })
   }
   return NextResponse.json({ ok: true, field, order })
-}
+})
