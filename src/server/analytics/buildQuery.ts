@@ -161,8 +161,14 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const bind = (v: unknown) => `$${params.push(v)}`
 
   const range = resolveRange(spec, ctx)
-  const tz = bind(ctx.tz)
-  const sentinels = bind(spec.sentinels.map((s) => s.toLowerCase()))
+
+  // Bound on first use, not up front: a parameter that never appears in the SQL
+  // makes Postgres reject the whole statement with "could not determine data
+  // type". A `count(*)` with no dimension touches neither of these.
+  let tzRef: string | null = null
+  const tz = () => (tzRef ??= bind(ctx.tz))
+  let sentinelRef: string | null = null
+  const sentinels = () => (sentinelRef ??= bind(spec.sentinels.map((s) => s.toLowerCase())))
 
   /* ---- field access ---- */
 
@@ -192,7 +198,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   /** Text with the four ways of writing "empty" collapsed to NULL (§5.1). */
   const cleanText = (ref: Ref, t: string) => {
     const raw = rawText(ref, t)
-    return `(CASE WHEN lower(btrim(${raw})) = ANY(${sentinels}::text[]) THEN NULL ELSE btrim(${raw}) END)`
+    return `(CASE WHEN lower(btrim(${raw})) = ANY(${sentinels()}::text[]) THEN NULL ELSE btrim(${raw}) END)`
   }
 
   /**
@@ -280,7 +286,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   if (spec.time_of_day) {
     const { from, to } = spec.time_of_day
     if (!CLOCK.test(from) || !CLOCK.test(to)) throw new SpecError('time_of_day must be HH:MM')
-    const local = `(l.call_started_at AT TIME ZONE '${STORED_ZONE}' AT TIME ZONE ${tz})::time`
+    const local = `(l.call_started_at AT TIME ZONE '${STORED_ZONE}' AT TIME ZONE ${tz()})::time`
     const a = `${local} >= ${bind(from)}::time`
     const b = `${local} <  ${bind(to)}::time`
     // 22:00–02:00 is the night shift, not an empty range
@@ -299,7 +305,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const scanCols = [
     'l.id',
     'l.call_started_at AS started_at',
-    `(l.call_started_at AT TIME ZONE '${STORED_ZONE}' AT TIME ZONE ${tz}) AS started_local`,
+    `(l.call_started_at AT TIME ZONE '${STORED_ZONE}' AT TIME ZONE ${tz()}) AS started_local`,
     ...[...carried].map((c) => `l.${c}`),
   ]
   const ctes: string[] = [`scanned AS (\n  SELECT ${scanCols.join(', ')}\n  FROM pype_voice_call_logs l\n  WHERE ${where.join('\n    AND ')}\n)`]
@@ -342,16 +348,19 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
 
   if (spec.grain === 'element') {
     const src = spec.element_source!
-    const asText = rawText(src, stage)
-    const asJson = `${stage}.${src.col} #> ${bind(src.path ?? [])}::text[]`
-    const arr =
-      src.encoding === 'json_string'
-        ? // JSON stored as text (§5.1). A broken value like '[object Object]' makes
-          // the row expand to nothing instead of failing the whole query.
-          // pg_input_is_valid needs Postgres 16 — §3.2 checks the version first.
-          `CASE WHEN pg_input_is_valid(${asText}, 'jsonb') AND jsonb_typeof((${asText})::jsonb) = 'array'
-                THEN (${asText})::jsonb ELSE '[]'::jsonb END`
-        : `CASE WHEN jsonb_typeof(${asJson}) = 'array' THEN ${asJson} ELSE '[]'::jsonb END`
+    let arr: string
+    if (src.encoding === 'json_string') {
+      // JSON stored as text (§5.1). A broken value like '[object Object]' makes
+      // the row expand to nothing instead of failing the whole query.
+      // pg_input_is_valid needs Postgres 16; production is on 17.6.
+      const asText = rawText(src, stage)
+      arr =
+        `CASE WHEN pg_input_is_valid(${asText}, 'jsonb') AND jsonb_typeof((${asText})::jsonb) = 'array'
+              THEN (${asText})::jsonb ELSE '[]'::jsonb END`
+    } else {
+      const asJson = `${stage}.${src.col} #> ${bind(src.path ?? [])}::text[]`
+      arr = `CASE WHEN jsonb_typeof(${asJson}) = 'array' THEN ${asJson} ELSE '[]'::jsonb END`
+    }
     ctes.push(
       `expanded AS (\n  SELECT ${stage}.*, elem\n  FROM ${stage}\n  CROSS JOIN LATERAL jsonb_array_elements(${arr}) AS elem\n)`
     )
@@ -428,6 +437,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
       (rowFilters.length ? `WHERE ${rowFilters.join('\n  AND ')}\n` : '') +
       `ORDER BY ${t}.started_at DESC NULLS LAST, ${t}.id DESC\n` +
       `LIMIT ${bind(Math.min(opts.limit ?? 200, target === 'export' ? 5000 : 500))}`
+    checkEveryParamIsUsed(sql, params)
     return { sql, params, meta }
   }
 
@@ -460,7 +470,21 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     order +
     limit
 
+  checkEveryParamIsUsed(sql, params)
   return { sql, params, meta }
+}
+
+/**
+ * Postgres rejects a statement carrying a parameter it never sees, so a
+ * parameter bound down one branch and referenced down another fails at run time
+ * rather than at build time. Catch it here, where the message can name itself.
+ */
+function checkEveryParamIsUsed(sql: string, params: unknown[]): void {
+  for (let n = 1; n <= params.length; n++) {
+    if (!new RegExp(`\\$${n}(?![0-9])`).test(sql)) {
+      throw new SpecError(`parameter $${n} was bound but never used — the query would be rejected`)
+    }
+  }
 }
 
 /** Every column name this module is willing to write into SQL. Used by the tests. */

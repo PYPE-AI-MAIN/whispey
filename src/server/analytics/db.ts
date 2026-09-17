@@ -67,11 +67,15 @@ export async function runQuery<T extends Row = Row>(
 ): Promise<T[]> {
   const client: PoolClient = await pool().connect()
   try {
-    await client.query('BEGIN READ ONLY')
-    // bounded above so a caller cannot ask to hold a connection indefinitely
-    await client.query(`SET LOCAL statement_timeout = ${Math.min(Math.max(timeoutMs, 1000), 55_000)}`)
-    // the builder converts to the project's zone explicitly; leave the session in UTC
-    await client.query(`SET LOCAL TimeZone = 'UTC'`)
+    // one round trip, not three — at ~100ms to the region that is most of the
+    // time a small query takes. statement_timeout is bounded above so a caller
+    // cannot ask to hold a connection indefinitely; TimeZone stays UTC because
+    // the query builder converts to the project's zone explicitly.
+    await client.query(
+      `BEGIN READ ONLY;` +
+      `SET LOCAL statement_timeout = ${Math.min(Math.max(timeoutMs, 1000), 55_000)};` +
+      `SET LOCAL TimeZone = 'UTC';`
+    )
     const result = await client.query<T>(sql, params)
     await client.query('COMMIT')
     return result.rows
