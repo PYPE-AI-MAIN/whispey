@@ -50,8 +50,23 @@ type Props = {
   isActive?: boolean
 }
 
-/** Phase 3 adds WhatsApp and Journeys. An empty tab looks broken, so only Voice ships (§10.2). */
-const SOURCES = [{ id: 'voice', label: 'Voice' }] as const
+/**
+ * The channels — Confluence "Analytics Phase 1 and 2 — Build Spec" §10.2.
+ *
+ * One row is a call on Voice, a message thread on WhatsApp, and one patient
+ * chasing one goal across every channel on Journeys. A chart belongs to its
+ * tab, so these cannot merge later; they are separate tabs from the start.
+ *
+ * §10.2 says not to ship an empty Journeys tab because it looks broken — and
+ * the section's own mockup draws "[ Voice ] [ WhatsApp ·soon ]". The thing that
+ * looks broken is a tab you can click that then shows nothing. One that is
+ * plainly switched off says what is coming without pretending it is here.
+ */
+const SOURCES = [
+  { id: 'voice', label: 'Voice', ready: true },
+  { id: 'whatsapp', label: 'WhatsApp', ready: false },
+  { id: 'journeys', label: 'Journeys', ready: false },
+] as const
 
 /**
  * Cards stack into one column below this (§10.9).
@@ -288,14 +303,33 @@ export default function AnalyticsCanvas({ agent, dateRange, isLoading, isActive 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 dark:border-gray-800">
           <div className="flex flex-wrap items-center gap-2">
-            {SOURCES.map((s) => (
-              <span
-                key={s.id}
-                className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-              >
-                {s.label}
-              </span>
-            ))}
+            <div className="flex items-center gap-1" role="tablist" aria-label="Channel">
+              {SOURCES.map((s) => (
+                <button
+                  key={s.id}
+                  role="tab"
+                  aria-selected={s.ready}
+                  // not `disabled`: a disabled button is skipped by the keyboard
+                  // entirely, so a screen reader never reaches the word "soon"
+                  aria-disabled={!s.ready}
+                  title={s.ready ? undefined : `${s.label} analytics is coming soon`}
+                  onClick={(e) => !s.ready && e.preventDefault()}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition',
+                    s.ready
+                      ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                      : 'cursor-not-allowed text-gray-400 dark:text-gray-600'
+                  )}
+                >
+                  {s.label}
+                  {!s.ready && (
+                    <span className="rounded-full bg-gray-100 px-1.5 py-px text-[10px] font-normal uppercase tracking-wide text-gray-400 dark:bg-gray-800/80 dark:text-gray-500">
+                      Soon
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
             {/* on but hidden makes every number wrong without anyone noticing */}
             <WhenFilter
               timeOfDay={when.timeOfDay}
