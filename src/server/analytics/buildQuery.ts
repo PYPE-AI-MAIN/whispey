@@ -80,6 +80,19 @@ export type Ctx = {
 export type Target = 'aggregate' | 'drill' | 'export'
 
 export type BuildOpts = {
+  /**
+   * Other charts that share this one's base — same rows, different sums.
+   *
+   * Eight of the twelve starter charts are a count over the same agent, the
+   * same range and the same rules; only the calculation and the filter differ.
+   * Run separately that is eight scans of the same rows and, more expensively,
+   * eight round trips to another region. Given as companions they become extra
+   * columns on one scan.
+   *
+   * Their filters move into FILTER clauses rather than the WHERE, which is what
+   * lets "completed" and "incomplete" share a pass.
+   */
+  companions?: { id: string; agg: Spec['agg']; having: Spec['having'] }[]
   /** drill/export: which bar was clicked. null means the empty bucket. */
   dimensionValue?: string | null
   /** drill/export: keyset cursor from the previous page. Never OFFSET (§9.4). */
@@ -286,7 +299,15 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const refs = [spec.agg.field, spec.dimension?.field, spec.dedupe?.key.field, spec.dedupe?.outcome, spec.element_source]
   const collect = (nodes: FilterNode[]): Ref[] =>
     nodes.flatMap((n) => ('children' in n ? collect(n.children) : [n.field]))
-  const allRefs = [...refs, ...collect(spec.filters), ...collect(spec.having)].filter(Boolean) as Ref[]
+  const allRefs = [
+    ...refs,
+    ...collect(spec.filters),
+    ...collect(spec.having),
+    // a companion reads the same rows but not necessarily the same columns —
+    // "total minutes" needs call_ended_at and the count it shares a scan with
+    // does not, so its columns have to survive the projection too
+    ...(opts.companions ?? []).flatMap((c) => [c.agg.field, ...collect(c.having)]),
+  ].filter(Boolean) as Ref[]
 
   const carried = new Set<string>(['call_id', 'agent_id', 'created_at'])
   for (const r of allRefs) {
@@ -417,7 +438,10 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
 
   const t = stage
   const bucket = spec.bucket === 'none' ? 'none' : spec.bucket === 'auto' ? autoBucket(range.days) : spec.bucket
-  const post = conjunction(spec.having, t)
+  // with companions the scan is shared, so nobody's own filter can narrow it —
+  // each one becomes a FILTER on its own columns instead
+  const shared = opts.companions?.length ? [] : spec.having
+  const post = conjunction(shared, t)
 
   const dimExpr = spec.dimension
     ? spec.dimension.case_insensitive
@@ -426,36 +450,63 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     : null
   if (dimExpr && !spec.dimension!.include_empty) post.push(`${dimExpr} IS NOT NULL`)
 
-  const aggField = spec.agg.field
-  const present = !aggField
-    ? 'TRUE'
-    : spec.agg.fn === 'rate'
-      ? `(${boolean(aggField, t, true)} OR ${boolean(aggField, t, false)})`
-      : ['sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95'].includes(spec.agg.fn)
-        ? `${numeric(aggField, t)} IS NOT NULL`
-        : `${cleanText(aggField, t)} IS NOT NULL`
+  /** The columns one chart contributes to a shared scan. */
+  const aggregateColumns = (
+    agg: Spec['agg'],
+    having: Spec['having'],
+    suffix: string
+  ): string[] => {
+    const aggField = agg.field
+    const numericFn = ['sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95'].includes(agg.fn)
+    const present = !aggField
+      ? 'TRUE'
+      : agg.fn === 'rate'
+        ? `(${boolean(aggField, t, true)} OR ${boolean(aggField, t, false)})`
+        : numericFn
+          ? `${numeric(aggField, t)} IS NOT NULL`
+          : `${cleanText(aggField, t)} IS NOT NULL`
 
-  let aggExpr: string
-  switch (spec.agg.fn) {
-    case 'count':
-      aggExpr = 'count(*)'
-      break
-    case 'count_distinct':
-      aggExpr = `count(DISTINCT ${cleanText(aggField!, t)})`
-      break
-    case 'rate': {
-      const hit = boolean(aggField!, t, spec.agg.match)
-      const denom = spec.agg.denominator === 'all_rows' ? 'TRUE' : present
-      aggExpr = `(count(*) FILTER (WHERE ${hit}))::numeric / NULLIF(count(*) FILTER (WHERE ${denom}), 0)`
-      break
+    // a companion's own filter cannot go in the WHERE — the scan is shared —
+    // so it rides along on every aggregate it belongs to
+    const own = having.length ? conjunction(having, t).join(' AND ') : null
+    const predicate = (extra?: string) => [own, extra].filter(Boolean).join(' AND ')
+    /** `FILTER (WHERE TRUE)` is just noise; leave it out when nothing narrows. */
+    const filter = (extra?: string) => {
+      const where = predicate(extra)
+      return where ? ` FILTER (WHERE ${where})` : ''
     }
-    case 'p50': case 'p90': case 'p95': {
-      const q = { p50: 0.5, p90: 0.9, p95: 0.95 }[spec.agg.fn]
-      aggExpr = `percentile_cont(${q}) WITHIN GROUP (ORDER BY ${numeric(aggField!, t)})`
-      break
+    const and = (extra?: string) => predicate(extra) || 'TRUE'
+
+    let value: string
+    switch (agg.fn) {
+      case 'count':
+        value = `count(*)${filter()}`
+        break
+      case 'count_distinct':
+        value = `count(DISTINCT ${cleanText(aggField!, t)})${filter()}`
+        break
+      case 'rate': {
+        const hit = boolean(aggField!, t, agg.match)
+        const denom = agg.denominator === 'all_rows' ? 'TRUE' : present
+        value =
+          `(count(*) FILTER (WHERE ${and(hit)}))::numeric / ` +
+          `NULLIF(count(*) FILTER (WHERE ${and(denom)}), 0)`
+        break
+      }
+      case 'p50': case 'p90': case 'p95': {
+        const q = { p50: 0.5, p90: 0.9, p95: 0.95 }[agg.fn]
+        value = `percentile_cont(${q}) WITHIN GROUP (ORDER BY ${numeric(aggField!, t)})${filter()}`
+        break
+      }
+      default:
+        value = `${agg.fn}(${numeric(aggField!, t)})${filter()}`
     }
-    default:
-      aggExpr = `${spec.agg.fn}(${numeric(aggField!, t)})`
+
+    return [
+      `${value} AS value${suffix}`,
+      `count(*)${filter()} AS n_rows${suffix}`,
+      `count(*) FILTER (WHERE ${and(present)}) AS n_nonnull${suffix}`,
+    ]
   }
 
   const meta: Built['meta'] = {
@@ -468,7 +519,8 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const withClause = `WITH ${ctes.join(',\n')}\n`
 
   if (target !== 'aggregate') {
-    const rowFilters = [...post]
+    const rowFilters = conjunction(spec.having, t)
+    if (dimExpr && !spec.dimension!.include_empty) rowFilters.push(`${dimExpr} IS NOT NULL`)
     if (opts.dimensionValue !== undefined && dimExpr) {
       rowFilters.push(`${dimExpr} IS NOT DISTINCT FROM ${bind(opts.dimensionValue)}`)
     }
@@ -501,15 +553,17 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     selected.push(`${dimExpr} AS series`)
     grouped.push(String(grouped.length + 1))
   }
-  selected.push(
-    `${aggExpr} AS value`,
-    'count(*) AS n_rows',
-    `count(*) FILTER (WHERE ${present}) AS n_nonnull`
-  )
+  const members = opts.companions?.length
+    ? opts.companions.map((c, i) => ({ agg: c.agg, having: c.having, suffix: `_${i}` }))
+    : [{ agg: spec.agg, having: shared.length ? [] : spec.having, suffix: '' }]
+  for (const m of members) selected.push(...aggregateColumns(m.agg, m.having, m.suffix))
 
   // limit the categories, not the rows: with a time bucket the schema already
   // caps the breakdown at 50, and cutting rows there would drop whole days
-  const order = bucket !== 'none' ? 'ORDER BY 1' : dimExpr ? 'ORDER BY value DESC NULLS LAST' : ''
+  // a LIMIT without an ORDER BY returns arbitrary rows, so a shared scan orders
+  // by the first chart's value — the categories are the same for all of them
+  const valueAlias = opts.companions?.length ? 'value_0' : 'value'
+  const order = bucket !== 'none' ? 'ORDER BY 1' : dimExpr ? `ORDER BY ${valueAlias} DESC NULLS LAST` : ''
   const limit = bucket === 'none' && spec.dimension ? `\nLIMIT ${bind(spec.dimension.limit)}` : ''
 
   const sql =
@@ -539,3 +593,58 @@ function checkEveryParamIsUsed(sql: string, params: unknown[]): void {
 
 /** Every column name this module is willing to write into SQL. Used by the tests. */
 export const ALLOWED_IDENTIFIERS = new Set<string>([...JSON_COLS, ...TEXT_COLS, ...NUMERIC_COLS])
+
+
+/* ------------------------------------------------------- one scan, many charts */
+
+/**
+ * Turns a dashboard into as few statements as it can be answered in.
+ *
+ * Measured against this database, a chart's SQL costs almost nothing — `SELECT
+ * 1` takes 312ms and a real chart 262ms, so what a dashboard costs is round
+ * trips to another region, multiplied by the number of charts. Eight of the
+ * twelve starter charts read the same rows with the same rules and differ only
+ * in what they add up, so they become one statement with more columns.
+ *
+ * Charts that genuinely differ — a different grain, a breakdown, a time bucket —
+ * still get their own statement, because they read different rows.
+ */
+export function planDashboardQueries(
+  entries: { id: string; spec: Spec }[],
+  ctx: Ctx
+): { sql: string; params: unknown[]; meta: Built['meta']; members: string[] }[] {
+  const groups = new Map<string, { id: string; spec: Spec }[]>()
+  for (const entry of entries) {
+    const key = baseSignature(entry.spec)
+    const group = groups.get(key)
+    if (group) group.push(entry)
+    else groups.set(key, [entry])
+  }
+
+  return [...groups.values()].map((group) => {
+    const built = buildQuery(
+      group[0].spec,
+      ctx,
+      'aggregate',
+      // one member is just a chart; the companion form only earns its keep
+      // when there is something to share the scan with
+      group.length > 1
+        ? { companions: group.map((g) => ({ id: g.id, agg: g.spec.agg, having: g.spec.having })) }
+        : {}
+    )
+    return { ...built, members: group.map((g) => g.id) }
+  })
+}
+
+/**
+ * Everything that decides which rows a chart reads. Two charts with the same
+ * signature can share one scan; the calculation and the chart's own filter are
+ * deliberately absent, because those become columns rather than predicates.
+ */
+function baseSignature(spec: Spec): string {
+  return JSON.stringify([
+    spec.source, spec.grain, spec.dedupe, spec.element_source, spec.dimension,
+    spec.bucket, spec.range, spec.time_of_day, spec.days_of_week,
+    spec.include_live_calls, spec.exclude_environments, spec.sentinels, spec.filters,
+  ])
+}

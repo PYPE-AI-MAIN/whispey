@@ -16,7 +16,20 @@ import { Pool, type PoolClient } from 'pg'
 export const runtime = 'nodejs'
 
 /** Per query. The database default is 2 minutes, which is far too long to hold a connection. */
-const STATEMENT_TIMEOUT_MS = 10_000
+const DEFAULT_TIMEOUT_MS = 10_000
+
+/**
+ * Measured: a chart's SQL costs this database almost nothing — `SELECT 1` takes
+ * 312ms and a real chart 262ms, so the whole cost is three round trips to
+ * another region (BEGIN + SET, the query, COMMIT).
+ *
+ * Startup options would remove two of them, but the transaction pooler refuses
+ * them: "unsupported startup parameter: options". A session-level SET is worse —
+ * under transaction pooling it lands on whichever server connection the pooler
+ * happened to pick. Setting it on a dedicated database role is the real fix and
+ * needs a role to exist; until then the answer is fewer queries, not fewer round
+ * trips per query.
+ */
 
 declare global {
   var __analyticsPool: Pool | undefined
@@ -37,8 +50,11 @@ function pool(): Pool {
 
   const created = new Pool({
     connectionString,
-    // pool size is per running instance, so the ceiling is max × peak instances
-    max: 2,
+    // pool size is per running instance, so the ceiling is max × peak
+    // instances. Through the transaction pooler these are pooler connections
+    // rather than the database's own 60, and a dashboard of twelve charts
+    // through a pool of two is six rounds of waiting.
+    max: 4,
     idleTimeoutMillis: 10_000,
     // a dashboard sends its charts together and the pool holds 2, so most of them
     // queue here. Waiting is correct; statement_timeout bounds how long any one
@@ -66,14 +82,14 @@ export type Row = Record<string, unknown>
 export async function runQuery<T extends Row = Row>(
   sql: string,
   params: unknown[],
-  timeoutMs: number = STATEMENT_TIMEOUT_MS
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<T[]> {
   const client: PoolClient = await pool().connect()
   try {
-    // one round trip, not three — at ~100ms to the region that is most of the
-    // time a small query takes. statement_timeout is bounded above so a caller
-    // cannot ask to hold a connection indefinitely; TimeZone stays UTC because
-    // the query builder converts to the project's zone explicitly.
+    // one round trip for the setup, not three: BEGIN and both SETs go together.
+    // statement_timeout is bounded above so a caller cannot ask to hold a
+    // connection indefinitely; TimeZone stays UTC because the query builder
+    // converts to the project's zone explicitly.
     await client.query(
       `BEGIN READ ONLY;` +
       `SET LOCAL statement_timeout = ${Math.min(Math.max(timeoutMs, 1000), 55_000)};` +

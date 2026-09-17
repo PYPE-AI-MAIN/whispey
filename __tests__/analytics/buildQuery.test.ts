@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { Spec, type SpecInput } from '@/server/analytics/spec'
-import { buildQuery, SpecError, type Ctx } from '@/server/analytics/buildQuery'
+import { buildQuery, planDashboardQueries, SpecError, type Ctx } from '@/server/analytics/buildQuery'
 
 const AGENT = '11111111-1111-1111-1111-111111111111'
 
@@ -185,7 +185,7 @@ describe('4 · the number guard must be visible, not silent', () => {
       ctx,
       'aggregate'
     )
-    expect(sql).toContain('count(*) AS n_rows')
+    expect(sql).toContain('AS n_rows')
     expect(sql).toContain('count(*) FILTER (WHERE')
     expect(sql).toContain('AS n_nonnull')
     // '₹500' and '1,200' fail the guard and become NULL — which n_nonnull reports
@@ -693,5 +693,82 @@ describe('one answer written four ways is one category', () => {
     // the folding has to happen in SQL, or the bar and the list below it disagree
     expect(drill.sql).toContain('lower((CASE WHEN')
     expect(chart.sql).toContain('lower((CASE WHEN')
+  })
+})
+
+describe('charts that read the same rows share one scan', () => {
+  const kpi = (over: Partial<SpecInput>): SpecInput => ({
+    spec_version: 1, agg: { fn: 'count' }, range: { days: 30 }, ...over,
+  })
+
+  it('puts the tiles that differ only in what they add up into one statement', () => {
+    const plans = planDashboardQueries(
+      [
+        { id: 'calls', spec: parse(kpi({})) },
+        { id: 'minutes', spec: parse(kpi({ agg: { fn: 'sum', field: { col: 'call_duration_seconds' } } })) },
+        { id: 'done', spec: parse(kpi({ having: [{ field: { col: 'call_ended_reason' }, op: 'eq', value: 'completed' }] })) },
+      ],
+      ctx
+    )
+    expect(plans).toHaveLength(1)
+    expect(plans[0].members).toEqual(['calls', 'minutes', 'done'])
+    expect(plans[0].sql).toContain('AS value_0')
+    expect(plans[0].sql).toContain('AS value_2')
+  })
+
+  it('carries the columns a companion needs, not only the first chart’s', () => {
+    // "total minutes" measures call_ended_at and the count it shares a scan
+    // with does not; without this the statement fails on a missing column
+    const plans = planDashboardQueries(
+      [
+        { id: 'calls', spec: parse(kpi({})) },
+        { id: 'minutes', spec: parse(kpi({ agg: { fn: 'sum', field: { col: 'call_duration_seconds' } } })) },
+      ],
+      ctx
+    )
+    expect(plans[0].sql).toContain('l.call_ended_at')
+  })
+
+  it('keeps a companion’s own filter out of the shared WHERE', () => {
+    const plans = planDashboardQueries(
+      [
+        { id: 'all', spec: parse(kpi({})) },
+        { id: 'done', spec: parse(kpi({ having: [{ field: { col: 'call_ended_reason' }, op: 'eq', value: 'completed' }] })) },
+      ],
+      ctx
+    )
+    // in the aggregate, never in the scan — or "all calls" would be filtered too
+    expect(scanWhere(plans[0].sql)).not.toContain('call_ended_reason')
+    expect(plans[0].sql).toMatch(/count\(\*\) FILTER \(WHERE .*call_ended_reason/)
+  })
+
+  it('separates charts that genuinely read different rows', () => {
+    const plans = planDashboardQueries(
+      [
+        { id: 'a', spec: parse(kpi({})) },
+        { id: 'b', spec: parse(kpi({ bucket: 'day' })) },
+        { id: 'c', spec: parse(kpi({ range: { days: 7 } })) },
+        { id: 'd', spec: parse(kpi({ include_live_calls: true })) },
+      ],
+      ctx
+    )
+    expect(plans).toHaveLength(4)
+  })
+
+  it('leaves a lone chart exactly as it was', () => {
+    const plans = planDashboardQueries([{ id: 'only', spec: parse(countByDisposition) }], ctx)
+    expect(plans[0].sql).toEqual(buildQuery(parse(countByDisposition), ctx, 'aggregate').sql)
+  })
+
+  it('still orders a shared breakdown, so its LIMIT is not arbitrary', () => {
+    const plans = planDashboardQueries(
+      [
+        { id: 'a', spec: parse(countByDisposition) },
+        { id: 'b', spec: parse({ ...countByDisposition, agg: { fn: 'count_distinct', field: { col: 'customer_number' } } }) },
+      ],
+      ctx
+    )
+    expect(plans[0].sql).toContain('ORDER BY value_0 DESC NULLS LAST')
+    expect(plans[0].sql).toContain('LIMIT')
   })
 })
