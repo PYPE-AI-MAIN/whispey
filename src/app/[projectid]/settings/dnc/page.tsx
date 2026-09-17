@@ -356,14 +356,14 @@ export default function DncPage() {
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-sm">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
               <Plus className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              <h2 className="text-sm font-medium text-gray-900 dark:text-gray-100">Add numbers</h2>
+              <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Add numbers</h2>
             </div>
 
             <div className="p-5 grid gap-4">
               {/* Scope + project */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Scope</span>
+                  <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Scope</span>
                   <Select value={scope} onValueChange={(v) => { setScope(v as Scope); setSelectedProject(null) }}>
                     <SelectTrigger>
                       <SelectValue />
@@ -381,7 +381,7 @@ export default function DncPage() {
 
                 {scope === 'project' && (
                   <div className="grid gap-1.5">
-                    <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Project</span>
+                    <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Project</span>
                     <Popover open={projectOpen} onOpenChange={setProjectOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -422,7 +422,7 @@ export default function DncPage() {
               {/* Numbers: manual entry or CSV upload */}
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Phone numbers</span>
+                  <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Phone numbers</span>
                   {parsedCount > 0 && (
                     <Badge variant="secondary">{parsedCount} ready</Badge>
                   )}
@@ -530,7 +530,7 @@ export default function DncPage() {
               {/* Reason + submit */}
               <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
                 <div className="grid gap-1.5 flex-1">
-                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">Reason (optional)</span>
+                  <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Reason (optional)</span>
                   <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. customer opt-out" />
                 </div>
                 <Button onClick={() => addMutation.mutate()} disabled={!canSubmit} className="bg-blue-600 hover:bg-blue-700 text-white">

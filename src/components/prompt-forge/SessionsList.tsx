@@ -92,8 +92,8 @@ export function SessionsList({ projectId, agentId }: Props) {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                <FlaskConical className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              <div className="h-8 w-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <FlaskConical className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Prompt Forge</h1>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium rounded-full">Beta</Badge>
@@ -117,7 +117,7 @@ export function SessionsList({ projectId, agentId }: Props) {
               className={cn(
                 'flex items-center gap-1.5 px-3 h-9 text-xs font-medium border-b-2 transition-colors',
                 tab === t.key
-                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-400 dark:text-gray-600',
                 t.soon ? 'cursor-not-allowed opacity-50' : 'hover:text-gray-700 dark:hover:text-gray-300',
               )}
@@ -166,17 +166,17 @@ export function SessionsList({ projectId, agentId }: Props) {
 
       {/* Delete confirm */}
       <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-sm bg-gray-900 border-gray-700">
+        <DialogContent className="sm:max-w-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-gray-100">Delete session</DialogTitle>
-            <DialogDescription className="text-xs text-gray-400">
+            <DialogTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">Delete session</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
               Delete{' '}
-              <span className="font-medium text-gray-200">"{deleteTarget?.name || 'Untitled session'}"</span>
+              <span className="font-medium text-gray-700 dark:text-gray-200">"{deleteTarget?.name || 'Untitled session'}"</span>
               ? This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 justify-end pt-1">
-            <Button variant="outline" size="sm" className="h-8 text-xs border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => setDeleteTarget(null)}>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setDeleteTarget(null)}>
               Cancel
             </Button>
             <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" onClick={handleDelete} disabled={deleting}>

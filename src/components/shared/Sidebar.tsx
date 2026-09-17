@@ -575,14 +575,14 @@ export default function Sidebar({
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
                     <span
-                      className="text-[#111827] dark:text-[#F3F4F6]"
+                      className="text-gray-900 dark:text-gray-100"
                       style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
                     >
                       Whispey
                     </span>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
                       <span
-                        className="text-[#6D28D9] dark:text-[#8B7BC9]"
+                        className="text-gray-400 dark:text-gray-500"
                         style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
                       >
                         by
@@ -738,16 +738,16 @@ function PricingBox({
   }
 
   return (
-    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
-        <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-        <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">{pricingConfig.plan}</span>
+        <Crown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <span className="text-xs font-semibold text-blue-900 dark:text-blue-100">{pricingConfig.plan}</span>
       </div>
       {pricingConfig.features && pricingConfig.features.length > 0 && (
         <ul className="space-y-1 mb-3">
           {pricingConfig.features.map((feature: string) => (
-            <li key={feature} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
-              <div className="w-1 h-1 bg-purple-400 rounded-full flex-shrink-0" />
+            <li key={feature} className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1">
+              <div className="w-1 h-1 bg-blue-400 rounded-full flex-shrink-0" />
               {feature}
             </li>
           ))}
@@ -759,7 +759,7 @@ function PricingBox({
             onMobileClose()
           }
         }}>
-          <Button size="sm" className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white">
+          <Button size="sm" className="w-full text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white">
             {pricingConfig.upgradeText}
           </Button>
         </Link>
@@ -806,7 +806,7 @@ function SidebarUserMenu({
               <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
                 isCollapsed && !isMobile ? 'justify-center' : ''
               }`}>
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                   {getUserDisplayName(user).charAt(0).toUpperCase()}
                 </div>
                 <UserMenuNameEmail user={user} isCollapsed={isCollapsed} isMobile={isMobile} />

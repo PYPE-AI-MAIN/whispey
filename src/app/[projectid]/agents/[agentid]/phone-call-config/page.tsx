@@ -447,9 +447,12 @@ export default function PhoneCallConfig() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
-      <div className="flex h-screen">
-        <div className="w-[45%] border-r border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl overflow-hidden flex flex-col">
-          <div className="p-8 flex-1 flex flex-col overflow-y-auto">
+      {/* stacks on phone: a fixed 45%/55% split left each panel under 200px
+          wide on a real phone screen — this is a dialer, not a data table,
+          so half-width panels are unusable rather than just cramped */}
+      <div className="flex flex-col sm:flex-row h-screen">
+        <div className="w-full sm:w-[45%] h-1/2 sm:h-auto border-r-0 sm:border-r border-b sm:border-b-0 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl overflow-hidden flex flex-col">
+          <div className="p-4 sm:p-8 flex-1 flex flex-col overflow-y-auto">
             <div className="mb-6 flex items-center gap-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg shadow-blue-500/20">
                 <Phone className="w-6 h-6 text-white" />
@@ -504,7 +507,7 @@ export default function PhoneCallConfig() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   <div className="flex gap-4 items-center">
                     Calling To <span className="text-red-500">*</span>
-                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-xl border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
+                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
                       {showDialer ? <PhoneOff className="w-4 h-4" /> : <PhoneCall className="w-4 h-4" />}
                     </button>
                   </div>
@@ -614,8 +617,8 @@ export default function PhoneCallConfig() {
         </div>
 
         {/* ── Right Panel ──────────────────────────────────────────────────────── */}
-        <div className="w-[55%] flex flex-col bg-white/30 dark:bg-gray-900/30 backdrop-blur-sm">
-          <div className="p-8 pb-6 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
+        <div className="w-full sm:w-[55%] h-1/2 sm:h-auto flex flex-col bg-white/30 dark:bg-gray-900/30 backdrop-blur-sm">
+          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <History className="w-6 h-6 text-gray-700 dark:text-gray-300" />
@@ -642,7 +645,7 @@ export default function PhoneCallConfig() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 pt-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-4 sm:pt-6">
             {callHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4"><Phone className="w-10 h-10 text-gray-400 dark:text-gray-600" /></div>

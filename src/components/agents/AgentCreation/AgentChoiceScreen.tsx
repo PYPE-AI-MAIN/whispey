@@ -202,7 +202,7 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
       {/* Header */}
       <DialogHeader className={`${isMobile ? 'px-4 pt-4 pb-3' : 'px-6 pt-6 pb-4'} flex-shrink-0`}>
         <div className="text-center">
-          <div className={`${isMobile ? 'w-10 h-10 mb-2' : 'w-12 h-12 mb-3'} mx-auto bg-gradient-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800`}>
+          <div className={`${isMobile ? 'w-10 h-10 mb-2' : 'w-12 h-12 mb-3'} mx-auto bg-gradient-to-br from-blue-50 to-gray-50 dark:from-blue-900/20 dark:to-gray-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800`}>
             <Sparkles className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-gray-700 dark:text-gray-300`} />
           </div>
           <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 mb-1`}>
@@ -271,7 +271,7 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
                         {isMobile ? 'Create Pype Agent' : 'Create New Agent with Pype'}
                       </h3>
                       {(!canCreatePypeAgent || hasReachedLimit) && (
-                        <span className="text-xs font-medium px-2 py-0.5 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
+                        <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
                           {hasReachedLimit ? 'Limit Reached' : 'Beta'}
                         </span>
                       )}
@@ -303,12 +303,12 @@ const AgentChoiceScreen: React.FC<AgentChoiceScreenProps> = ({
 
               {/* Connect Agent Option */}
               <div
-                className={`group relative ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-teal-300 dark:hover:border-teal-600 hover:bg-teal-50/50 dark:hover:bg-teal-900/20 transition-all duration-200 cursor-pointer`}
+                className={`group relative ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-all duration-200 cursor-pointer`}
                 onClick={onConnectAgent}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-teal-100 dark:bg-teal-900/30 group-hover:bg-teal-200 dark:group-hover:bg-teal-900/50 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
-                    <Eye className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-teal-600 dark:text-teal-400`} />
+                  <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
+                    <Eye className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-gray-600 dark:text-gray-400`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className={`${isMobile ? 'text-base mb-1' : 'text-lg mb-2'} font-semibold text-gray-900 dark:text-gray-100`}>

@@ -9,7 +9,7 @@ import { validateVariables, ValidationResult } from '@/utils/variableValidator';
 const Editor = dynamic(() => import('@monaco-editor/react'), { 
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-white dark:bg-[#283442] border border-gray-200 dark:border-gray-700 rounded-lg">
+    <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
       <p className="text-sm text-gray-500 dark:text-gray-400">Loading editor...</p>
     </div>
   )
@@ -96,7 +96,13 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
         { token: 'variable.invalid', foreground: 'ff7b72', fontStyle: 'underline' }
         ],
         colors: {
-        'editor.background': '#283442',
+        // matches the wrapper div's own `dark:bg-gray-900` — this app is on
+        // Tailwind v4, whose gray-900 is oklch(21% 0.034 264.665) = #101828,
+        // not the old v3 hex. This used to be a different hardcoded
+        // slate-blue (#283442), which is exactly what showed as a mismatched
+        // stripe on both sides of the editor, in the padding gutter between
+        // the wrapper and Monaco's own canvas.
+        'editor.background': '#101828',
         }
     });
     }, []);
@@ -130,7 +136,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
 
   return (
     <div 
-      className={`var-editor-monaco border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-[#283442] ${className}`} 
+      className={`var-editor-monaco border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900 ${className}`}
       style={{ ...style, minHeight: style?.minHeight || '200px' }}
     >
       {/* Padding wrapper for left/right spacing */}

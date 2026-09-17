@@ -549,14 +549,14 @@ function ImportLogDialog({ open, onClose, agentId, onImport }: {
               {!loading && logs.map(log => (
                 <button key={log.id} onClick={() => handleSelectLog(log)}
                   className={cn('w-full flex items-start gap-2.5 px-4 py-3 text-left border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors',
-                    selectedId === log.id ? 'bg-violet-50 dark:bg-violet-900/20' : 'hover:bg-gray-100 dark:hover:bg-gray-800')}
+                    selectedId === log.id ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-100 dark:hover:bg-gray-800')}
                 >
                   <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 border',
-                    selectedId === log.id ? 'bg-violet-100 dark:bg-violet-900/40 border-violet-200 dark:border-violet-800' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700')}>
-                    <Phone className={cn('w-3 h-3', selectedId === log.id ? 'text-violet-500 dark:text-violet-400' : 'text-gray-400 dark:text-gray-500')} />
+                    selectedId === log.id ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700')}>
+                    <Phone className={cn('w-3 h-3', selectedId === log.id ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-xs font-medium truncate', selectedId === log.id ? 'text-violet-700 dark:text-violet-300' : 'text-gray-900 dark:text-gray-100')}>
+                    <p className={cn('text-xs font-medium truncate', selectedId === log.id ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100')}>
                       {log.customer_number || 'Unknown caller'}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -570,15 +570,15 @@ function ImportLogDialog({ open, onClose, agentId, onImport }: {
             </div>
             {showPagination && (
               <div className="shrink-0 flex items-center justify-center gap-0.5 py-2 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400" disabled={page === 1 || loading} onClick={() => goToPage(page - 1)}>
+                <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-7 sm:w-7 p-0 text-gray-500 dark:text-gray-400" disabled={page === 1 || loading} onClick={() => goToPage(page - 1)}>
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </Button>
                 {pageItems.map((item, idx) =>
                   item === '…'
                     ? <span key={`e${idx}`} className="w-6 text-center text-xs text-gray-400 dark:text-gray-600 select-none">…</span>
-                    : <Button key={item} variant={item === page ? 'default' : 'ghost'} size="sm" className={cn('h-7 w-7 p-0 text-xs font-medium', item === page && 'pointer-events-none')} disabled={loading} onClick={() => goToPage(item as number)}>{item}</Button>
+                    : <Button key={item} variant={item === page ? 'default' : 'ghost'} size="sm" className={cn('h-9 w-9 sm:h-7 sm:w-7 p-0 text-xs font-medium', item === page && 'pointer-events-none')} disabled={loading} onClick={() => goToPage(item as number)}>{item}</Button>
                 )}
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400" disabled={!hasNextPage || loading} onClick={() => goToPage(page + 1)}>
+                <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-7 sm:w-7 p-0 text-gray-500 dark:text-gray-400" disabled={!hasNextPage || loading} onClick={() => goToPage(page + 1)}>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -647,17 +647,17 @@ function ToolCard({ tool }: { tool: AgentTool }) {
         <div className="border-t border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
           {tool.endpoint && (
             <div className="px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600 mb-1">Endpoint</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Endpoint</p>
               <code className="text-[11px] text-gray-700 dark:text-gray-300 font-mono break-all leading-relaxed">{tool.method} {tool.endpoint}</code>
             </div>
           )}
           {tool.parameters.length > 0 && (
             <div className="px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600 mb-2">Parameters</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Parameters</p>
               <div className="space-y-2">
                 {tool.parameters.map(p => (
                   <div key={p.name} className="flex items-start gap-2">
-                    <code className="text-[11px] font-mono text-violet-600 dark:text-violet-400 shrink-0 mt-0.5">{p.name}</code>
+                    <code className="text-[11px] font-mono text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">{p.name}</code>
                     <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 rounded mt-0.5 shrink-0">{p.type}</span>
                     {p.required && <span className="text-[10px] text-red-500 shrink-0 mt-0.5">required</span>}
                     {p.description && <span className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">{p.description}</span>}
@@ -719,7 +719,7 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
         <div className="border-t border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
           {tc.arguments != null && (
             <div className="px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600 mb-1.5">Arguments</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5">Arguments</p>
               <pre className="text-[11px] text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
                 {typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments, null, 2)}
               </pre>
@@ -727,7 +727,7 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
           )}
           {tc.result != null && (
             <div className="px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-600 mb-1.5">Result</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5">Result</p>
               <pre className="text-[11px] text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
                 {typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2)}
               </pre>
@@ -748,7 +748,7 @@ function VariablePanel({ variables, onChange }: { variables: Variable[]; onChang
     <div className="shrink-0 border-t border-gray-200 dark:border-gray-800">
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 h-8 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
         <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 dark:bg-violet-500 shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-500 shrink-0" />
           Variables ({variables.length})
         </span>
         <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform', open && 'rotate-180')} />
@@ -759,7 +759,7 @@ function VariablePanel({ variables, onChange }: { variables: Variable[]; onChang
             <div key={v.name} className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-[11px] font-mono text-violet-600 dark:text-violet-400 w-36 shrink-0 truncate cursor-default">{`{{${v.name}}}`}</span>
+                  <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400 w-36 shrink-0 truncate cursor-default">{`{{${v.name}}}`}</span>
                 </TooltipTrigger>
                 {v.description && <TooltipContent side="left" className="text-xs max-w-[200px]">{v.description}</TooltipContent>}
               </Tooltip>
@@ -767,7 +767,7 @@ function VariablePanel({ variables, onChange }: { variables: Variable[]; onChang
                 value={v.value}
                 onChange={e => { const updated = [...variables]; updated[i] = { ...v, value: e.target.value }; onChange(updated) }}
                 placeholder={v.description || 'value…'}
-                className="flex-1 h-6 text-xs px-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none focus:border-violet-400 dark:focus:border-violet-500 transition-colors"
+                className="flex-1 h-6 text-xs px-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
               />
             </div>
           ))}
@@ -803,13 +803,13 @@ function SessionNameEditor({ name, onSave }: { name: string; onSave: (v: string)
         onChange={e => setValue(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setEditing(false); setValue(name) } }}
-        className="text-sm font-medium bg-white dark:bg-gray-800 border border-violet-400 dark:border-violet-500 rounded px-2 py-0.5 text-gray-900 dark:text-gray-100 outline-none min-w-0 max-w-[200px]"
+        className="text-sm font-medium bg-white dark:bg-gray-800 border border-blue-400 dark:border-blue-500 rounded px-2 py-0.5 text-gray-900 dark:text-gray-100 outline-none min-w-0 max-w-[200px]"
       />
     )
   }
 
   return (
-    <button onClick={startEdit} className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-violet-600 dark:hover:text-violet-400 transition-colors truncate max-w-[200px]" title="Click to rename">
+    <button onClick={startEdit} className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate max-w-[200px]" title="Click to rename">
       {name || 'Untitled session'}
     </button>
   )
@@ -978,8 +978,8 @@ function ForgeUI({
               </TooltipTrigger>
               <TooltipContent>Back to sessions</TooltipContent>
             </Tooltip>
-            <div className="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
-              <FlaskConical className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+            <div className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+              <FlaskConical className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 shrink-0">Prompt Forge</span>
             {agentName && <><ChevronRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-700 shrink-0" /><span className="text-sm text-gray-400 dark:text-gray-500 shrink-0 hidden sm:block truncate max-w-[120px]">{agentName}</span></>}
@@ -1096,14 +1096,14 @@ function ForgeUI({
             {/* Right: Chat */}
             <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-900">
               {importedFrom && (
-                <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-violet-50 dark:bg-violet-900/20 border-b border-violet-100 dark:border-violet-800/30">
-                  <Phone className="w-3 h-3 text-violet-500 dark:text-violet-400 shrink-0" />
-                  <span className="text-xs text-violet-700 dark:text-violet-300 flex-1 min-w-0 truncate">
+                <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30">
+                  <Phone className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
+                  <span className="text-xs text-blue-700 dark:text-blue-300 flex-1 min-w-0 truncate">
                     <span className="font-medium">{importedFrom.phone}</span>
-                    <span className="text-violet-500 dark:text-violet-400 ml-1.5">· {importedFrom.date}{importedFrom.duration && ` · ${importedFrom.duration}`}</span>
+                    <span className="text-blue-500 dark:text-blue-400 ml-1.5">· {importedFrom.date}{importedFrom.duration && ` · ${importedFrom.duration}`}</span>
                   </span>
-                  <span className="text-[10px] text-violet-400 dark:text-violet-600 shrink-0">Imported · edit prompt &amp; replay</span>
-                  <button onClick={() => setImportedFrom(null)} className="w-4 h-4 flex items-center justify-center rounded text-violet-400 hover:text-violet-700 hover:bg-violet-100 dark:hover:bg-violet-800/30 transition-colors"><X className="w-3 h-3" /></button>
+                  <span className="text-[10px] text-blue-400 dark:text-blue-600 shrink-0">Imported · edit prompt &amp; replay</span>
+                  <button onClick={() => setImportedFrom(null)} className="w-4 h-4 flex items-center justify-center rounded text-blue-400 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"><X className="w-3 h-3" /></button>
                 </div>
               )}
               <div className="flex-1 overflow-y-auto">
@@ -1186,7 +1186,7 @@ function ChatEmptyState({ hasTools, hasVariables }: { hasTools?: boolean; hasVar
       </div>
       {(hasTools || hasVariables) && (
         <div className="flex items-center gap-3 text-[11px] text-gray-400 dark:text-gray-600">
-          {hasVariables && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-violet-400" />Variables active</span>}
+          {hasVariables && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Variables active</span>}
           {hasTools && <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-amber-400" />Tools active</span>}
         </div>
       )}
@@ -1202,10 +1202,10 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
     return (
       <div className="flex gap-3 items-center py-1">
         <div className="relative w-6 h-6 shrink-0">
-          <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 border border-violet-200 dark:border-violet-800/60 flex items-center justify-center">
-            <Bot className="w-3 h-3 text-violet-500 dark:text-violet-400" />
+          <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center">
+            <Bot className="w-3 h-3 text-blue-500 dark:text-blue-400" />
           </div>
-          <span className="absolute inset-[-3px] rounded-full border border-violet-400/40 dark:border-violet-500/30 animate-ping" />
+          <span className="absolute inset-[-3px] rounded-full border border-blue-400/40 dark:border-blue-500/30 animate-ping" />
         </div>
         <div className="flex items-end gap-1.5 pb-0.5">
           {[0, 150, 300].map(d => (
@@ -1220,7 +1220,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
   return (
     <div className={cn('group flex gap-2 items-start', isUser && 'flex-row-reverse')}>
       <div className={cn('w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold mt-1',
-        isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800/60')}>
+        isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60')}>
         {isUser ? 'U' : <Bot className="w-3 h-3" />}
       </div>
       <div className={cn('flex flex-col min-w-0', isUser ? 'items-end' : 'items-start')} style={{ maxWidth: '80%' }}>

@@ -15,9 +15,9 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
   const blockedCount = dncBlocked ? csvData.filter((r) => dncBlocked.has(r.phone)).length : 0
   if (csvData.length === 0) {
     return (
-      <div className="border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex flex-col w-80">
+      <div className="border-l-0 sm:border-l border-t sm:border-t-0 border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex flex-col w-full sm:w-80">
         <div className="p-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Recipients (0)
           </h3>
         </div>
@@ -46,10 +46,14 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
     return 'w-32' // default width for other columns
   }
 
+  // stacked below the form on phone (parent switches to flex-col there), so
+  // this needs its own height cap — otherwise its internal `flex-1
+  // overflow-auto` table has no bounded height to fill and grows unbounded
+  // instead of scrolling
   return (
-    <div className="border-l border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col w-[900px]">
+      <div className="border-l-0 sm:border-l border-t sm:border-t-0 border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col w-full sm:w-[900px] h-[50vh] sm:h-auto">
       <div className="p-3 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-800">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Recipients ({csvData.length})
         </h3>
         {blockedCount > 0 ? (
@@ -104,7 +108,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
                       <div className="truncate flex items-center gap-1" title={(row as any)[header] || '-'}>
                         {(row as any)[header] || '-'}
                         {isBlocked && header.toLowerCase().includes('phone') && (
-                          <span className="text-[10px] font-semibold uppercase text-red-600 dark:text-red-400">
+                          <span className="text-[11px] font-semibold uppercase text-red-600 dark:text-red-400">
                             (DNC)
                           </span>
                         )}

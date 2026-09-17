@@ -108,7 +108,7 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
   // No search results - same as before
   if (searchQuery && totalAgents > 0) {
     return (
-      <div className={`text-center py-12 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 ${isMobile ? 'px-4' : ''}`}>
+      <div className={`text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm ${isMobile ? 'px-4' : ''}`}>
         <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-4">
           <Eye className="h-6 w-6 text-gray-400 dark:text-gray-500" />
         </div>
@@ -130,7 +130,7 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
 
   if (experienceLevel === 'unknown') {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
         <div className={`text-center py-6 ${isMobile ? 'px-4' : 'px-6'}`}>
           <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
             <Eye className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -185,7 +185,7 @@ const AdaptiveTutorialEmptyState: React.FC<AdaptiveTutorialEmptyStateProps> = ({
   // Beginner tutorial - Mobile optimized
   if (experienceLevel === 'beginner') {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
         <div className={isMobile ? 'p-4' : 'p-6'}>
           <div className={`flex items-center justify-between mb-4 ${isMobile ? 'flex-col gap-3' : ''}`}>
             <div className={isMobile ? 'text-center' : ''}>
@@ -388,7 +388,7 @@ pip install livekit-plugins-silero`}
 
   // Experienced users - Mobile optimized
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
       <div className={isMobile ? 'p-4' : 'p-6'}>
         <div className={`flex items-center justify-between mb-4 ${isMobile ? 'flex-col gap-3' : ''}`}>
           <div className={isMobile ? 'text-center' : ''}>

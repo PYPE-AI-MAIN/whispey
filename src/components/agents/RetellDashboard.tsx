@@ -90,7 +90,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 rounded-full animate-spin mx-auto" style={{ borderTopColor: '#328c81' }} />
+          <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto" />
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading agent details...</p>
         </div>
       </div>
@@ -115,8 +115,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
             </Button>
             <Button
               onClick={() => window.open(`https://dashboard.retellai.com/agent/${retellAgent?.agent_id || ''}`, '_blank')}
-              style={{ backgroundColor: '#328c81' }}
-              className="text-white"
+              className="text-white bg-blue-600 hover:bg-blue-700"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
               Open in Retell
@@ -239,7 +238,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
 
             {/* Connection Status */}
             <div>
-              <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4">
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
                 Configuration Overview
               </h3>
               <div className="flex items-center gap-2 mb-4">
@@ -254,7 +253,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
                     <Mic className="w-3 h-3" /> Voice
                   </span>
                   <span className="text-xs text-gray-400">{retellAgent.voice_model || '—'}</span>
@@ -267,7 +266,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
               {/* LLM */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
                     <Brain className="w-3 h-3" /> LLM
                   </span>
                   <span className="text-xs text-gray-400">{retellAgent.response_engine?.type}</span>
@@ -279,7 +278,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
 
               {/* Language */}
               <div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Language</span>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Language</span>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {retellAgent.language || 'en-US'}
                 </p>
@@ -287,7 +286,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
 
               {/* Retell Agent ID */}
               <div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Retell Agent ID</span>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Retell Agent ID</span>
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">
                     {retellAgent.agent_id}
@@ -308,7 +307,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
               {/* Version */}
               {retellAgent.version !== undefined && (
                 <div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Version</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Version</span>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">v{retellAgent.version}</p>
                 </div>
               )}

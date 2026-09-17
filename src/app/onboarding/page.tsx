@@ -137,7 +137,7 @@ export default function OnboardingPage() {
               <form onSubmit={handleCreateOrganization} className="space-y-6">
                 {/* Organization Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <Label htmlFor="name" className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Organization Name *
                   </Label>
                   <Input
@@ -156,7 +156,7 @@ export default function OnboardingPage() {
 
                 {/* Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <Label htmlFor="description" className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Description (Optional)
                   </Label>
                   <Textarea
@@ -174,7 +174,7 @@ export default function OnboardingPage() {
 
                 {/* Environment */}
                 <div className="space-y-2">
-                  <Label htmlFor="environment" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <Label htmlFor="environment" className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Environment
                   </Label>
                   <Select

@@ -651,7 +651,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Model + Language ── */}
           <div className="grid grid-cols-2 gap-3 min-w-0">
             <div className="space-y-1.5 min-w-0 overflow-hidden">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Model</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Model</label>
               <Select
                 value={currentModel}
                 onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, model: value, language: 'en' }))}
@@ -674,7 +674,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             </div>
 
             <div className="space-y-1.5 min-w-0 overflow-hidden">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Language</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Language</label>
               <Select
                 value={currentLanguage}
                 onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, language: value }))}
@@ -695,7 +695,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Flux: Turn Detection ── */}
           {isFlux && (
             <div className="space-y-2">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Turn Detection</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Turn Detection</label>
               <div className="space-y-3">
                 {([
                   { key: 'eot_threshold', label: 'EOT Threshold', hint: '0.5 – 0.9', placeholder: '0.7', step: 0.05, min: 0.5, max: 0.9, isInt: false },
@@ -741,7 +741,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Transcript</label>
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Transcript</label>
                 <TooltipProvider delayDuration={700}>
                 <div className="flex flex-wrap gap-1.5">
                   {([
@@ -782,7 +782,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Key Terms ── */}
           {supportsKeyterm && (
             <div className="space-y-2">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Key Terms</label>
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Key Terms</label>
               <div className="flex items-center h-9 rounded-md border border-input bg-transparent px-3 text-sm ring-offset-background focus-within:ring-1 focus-within:ring-ring">
                 <input
                   ref={keytermInputRef}

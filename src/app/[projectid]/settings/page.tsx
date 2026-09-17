@@ -66,12 +66,12 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-3xl mx-auto">
+    <div className="space-y-6 p-4 sm:p-6 max-w-3xl mx-auto">
       <OrganizationSettings
         organizationName={organization.name}
         organizationId={organization.id}
       />
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Callback Scheduling</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Callback scheduling is now configured per-agent. Open an agent &rarr; Advanced Settings &rarr; Callback Scheduling.

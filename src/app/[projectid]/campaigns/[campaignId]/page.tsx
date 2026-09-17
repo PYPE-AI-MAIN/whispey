@@ -731,7 +731,7 @@ function ViewCampaign() {
               value={downloadStatusFilter}
               onChange={(e) => setDownloadStatusFilter(e.target.value)}
               disabled={isDownloading}
-              className="h-6 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+              className="h-7 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -782,50 +782,50 @@ function ViewCampaign() {
         <div className="max-w-7xl mx-auto p-4 space-y-4">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-gray-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Contacts</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Contacts</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {campaignDetails.callStats?.total ?? campaignDetails.totalContacts}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Processed</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Processed</span>
               </div>
               <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {campaignDetails.processedContacts}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Success</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Success</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-red-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Failed</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Failed</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Pending</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Pending</span>
               </div>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {campaignDetails.callStats?.pending ?? 0}
@@ -834,8 +834,8 @@ function ViewCampaign() {
           </div>
 
           {/* Campaign Info */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
               Campaign Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -890,7 +890,7 @@ function ViewCampaign() {
             {/* Retry Configuration */}
             {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-1.5">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
                   <RefreshCw className="w-3 h-3" />
                   Retry Configuration
                 </h3>
@@ -953,20 +953,20 @@ function ViewCampaign() {
           </div>
 
           {/* Campaign Logs Table */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Campaign Logs ({logs.length})
               </h2>
             </div>
 
             {loadingLogs && logs.length === 0 ? (
-              <div className="p-8 text-center">
+              <div className="p-4 sm:p-8 text-center">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
               </div>
             ) : logs.length === 0 ? (
-              <div className="p-8 text-center">
+              <div className="p-4 sm:p-8 text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
               </div>
             ) : (

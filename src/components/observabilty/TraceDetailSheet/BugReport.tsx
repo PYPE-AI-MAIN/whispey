@@ -268,7 +268,7 @@ function BugReport({ trace }: { trace: any }) {
 
     {/* Flagged Turn Metadata */}
     {currentFlaggedTurn && (
-        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
         <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             Flagged Turn Details
@@ -295,7 +295,7 @@ function BugReport({ trace }: { trace: any }) {
     )}
 
     {/* Debug Information */}
-    <details className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+    <details className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
         <summary className="cursor-pointer font-medium text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
         Debug Information
         </summary>

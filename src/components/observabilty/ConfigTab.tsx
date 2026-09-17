@@ -115,10 +115,10 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
     <div className="p-4 space-y-3">
       {/* LLM Configuration */}
       {llm && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <Brain className="w-4 h-4 text-blue-500" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">LLM Configuration</h3>
+            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">LLM Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
@@ -149,10 +149,10 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
 
       {/* STT Configuration */}
       {stt && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <Mic className="w-4 h-4 text-green-500" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">STT Configuration</h3>
+            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">STT Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
@@ -173,10 +173,10 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
 
       {/* TTS Configuration */}
       {tts && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <Volume2 className="w-4 h-4 text-purple-500" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">TTS Configuration</h3>
+            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">TTS Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
@@ -200,7 +200,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
             {tts.voice_settings && (
               <div className="col-span-2">
                 <span className="text-gray-500 dark:text-gray-400">Voice Settings:</span>
-                <pre className="mt-1.5 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-[10px] overflow-x-auto">
+                <pre className="mt-1.5 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-[11px] overflow-x-auto">
                   {JSON.stringify(tts.voice_settings, null, 2)}
                 </pre>
               </div>
@@ -211,10 +211,10 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
 
       {/* Prompt Configuration */}
       {prompt && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-4 h-4 text-orange-500" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Prompt</h3>
+            <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Prompt</h3>
           </div>
           <div className="mt-1.5">
             <pre className="p-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs text-gray-900 dark:text-gray-100 whitespace-pre-wrap overflow-x-auto max-h-96 overflow-y-auto">
@@ -225,12 +225,12 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
       )}
 
       {/* Raw Config (for debugging) */}
-      <details className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+      <details className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
         <summary className="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
           <Code className="w-3.5 h-3.5" />
           Raw Configuration (JSON)
         </summary>
-        <pre className="mt-2 p-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg text-[10px] overflow-x-auto max-h-96 overflow-y-auto">
+        <pre className="mt-2 p-2.5 bg-gray-50 dark:bg-gray-900 rounded-lg text-[11px] overflow-x-auto max-h-96 overflow-y-auto">
           {JSON.stringify(config.full_config, null, 2)}
         </pre>
       </details>
