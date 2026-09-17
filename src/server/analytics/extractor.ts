@@ -120,9 +120,42 @@ export function parseExtractorKeys(prompt: unknown): DeclaredField[] {
   return out
 }
 
-/** Keyed by the extracted field's name, which is the leaf of its JSON path. */
-export function declaredByKey(prompt: unknown): Map<string, DeclaredField> {
-  return new Map(parseExtractorKeys(prompt).map((d) => [d.key, d]))
+/**
+ * The declared name and the written name are not always the same string.
+ *
+ * Tinkal declares `DoctorName`, `Count`, `Interruption_occurred`; the pipeline
+ * writes `doctorName`, `count`, `interruption_occurred`. Matching exactly found
+ * none of its five declarations, so the agent looked to the catalog as though
+ * it had declared nothing at all — silently, which is the worst way for this to
+ * fail.
+ *
+ * So: case and separators are ignored. Two declarations that collide once
+ * normalised are both dropped rather than guessed between — a description
+ * attached to the wrong field is worse than no description.
+ */
+const normaliseKey = (key: string): string => key.toLowerCase().replace(/[\s_.-]+/g, '')
+
+export type DeclarationIndex = { exact: Map<string, DeclaredField>; loose: Map<string, DeclaredField> }
+
+export function declaredByKey(prompt: unknown): DeclarationIndex {
+  const declarations = parseExtractorKeys(prompt)
+  const exact = new Map(declarations.map((d) => [d.key, d]))
+
+  const loose = new Map<string, DeclaredField>()
+  const ambiguous = new Set<string>()
+  for (const d of declarations) {
+    const k = normaliseKey(d.key)
+    if (loose.has(k)) ambiguous.add(k)
+    loose.set(k, d)
+  }
+  for (const k of ambiguous) loose.delete(k)
+
+  return { exact, loose }
+}
+
+/** Exact spelling wins; the relaxed match is the fallback, never the override. */
+export function findDeclaration(index: DeclarationIndex, leaf: string): DeclaredField | undefined {
+  return index.exact.get(leaf) ?? index.loose.get(normaliseKey(leaf))
 }
 
 /* -------------------------------------------------- applying it to the catalog */
@@ -189,7 +222,7 @@ export function applyDeclarations<T extends CatalogRow>(
   return rows.map((row) => {
     const path = (row.path ?? []) as string[]
     const leaf = path[path.length - 1] ?? ''
-    const d = path.length ? declared.get(leaf) : undefined
+    const d = path.length ? findDeclaration(declared, leaf) : undefined
     const group = groupOf(row.col, path)
     const base = {
       ...row,

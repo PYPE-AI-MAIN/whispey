@@ -138,3 +138,55 @@ describe('grouping', () => {
     expect(groupOf(col, [...path])).toBe(group)
   })
 })
+
+/**
+ * Tinkal declares `DoctorName`, `Count` and `Interruption_occurred`; the
+ * pipeline writes `doctorName`, `count` and `interruption_occurred`. Matching
+ * the declared spelling exactly found none of them, and the agent looked to the
+ * catalog as though it had declared nothing — silently.
+ */
+describe('matching a declared name to the name actually written', () => {
+  const TINKAL = JSON.stringify([
+    { key: 'DoctorName', description: 'Doctor by which user is taking the appointment' },
+    { key: 'Interruption_occurred', description: 'An interruption is counted when the agent starts speaking. Return true or false.' },
+  ])
+  const row = (leaf: string) => ({
+    col: 'transcription_metrics', path: [leaf], value_type: 'text',
+    boolean_encoding: null, enum_values: null, type_confirmed: false,
+  })
+
+  it.each(['doctorName', 'DoctorName', 'doctor_name', 'Doctor_Name'])('matches %s', (leaf) => {
+    const [out] = applyDeclarations([row(leaf)], TINKAL, { includeDescription: true })
+    expect(out.declared).toBe(true)
+    expect(out.description).toContain('Doctor by which')
+  })
+
+  it('carries the declared type across the spelling change too', () => {
+    const [out] = applyDeclarations([row('interruption_occurred')], TINKAL, { includeDescription: true })
+    expect(out.value_type).toBe('boolean')
+    expect(out.boolean_encoding).toBe('true_false')
+  })
+
+  it('still matches nothing that is genuinely a different field', () => {
+    const [out] = applyDeclarations([row('doctor_notes')], TINKAL, { includeDescription: true })
+    expect(out.declared).toBe(false)
+  })
+
+  it('refuses to guess between two declarations that collide', () => {
+    const colliding = JSON.stringify([
+      { key: 'user_busy', description: 'the first one' },
+      { key: 'userBusy', description: 'the second one' },
+    ])
+    const [out] = applyDeclarations([row('user_Busy')], colliding, { includeDescription: true })
+    expect(out.declared).toBe(false)
+  })
+
+  it('but an exactly spelled key still wins over the collision', () => {
+    const colliding = JSON.stringify([
+      { key: 'user_busy', description: 'the first one' },
+      { key: 'userBusy', description: 'the second one' },
+    ])
+    const [out] = applyDeclarations([row('userBusy')], colliding, { includeDescription: true })
+    expect(out.description).toBe('the second one')
+  })
+})
