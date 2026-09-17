@@ -1,0 +1,117 @@
+/**
+ * What a chart should be before anyone configures it — Confluence "Analytics
+ * Phase 1 and 2 — Build Spec" §10.4 ("dropping a chart opens settings already
+ * filled in with the suggested field") and the rules half of §11.3.
+ *
+ * Rules first, LLM second. These are the rules: they turn a field's shape into
+ * a chart, ordered by how often the field is filled in, and every suggestion can
+ * say why. When the model is added it writes the same object this does — and if
+ * it is down, this still works.
+ */
+import type { CatalogField, ChartKind } from '@/types/analytics'
+import type { SpecInput } from '@/server/analytics/spec'
+
+/** A field almost nobody fills in makes a chart that looks broken. */
+const MIN_COVERAGE = 20
+
+const ref = (f: CatalogField) => ({ col: f.col, ...(f.path.length ? { path: f.path } : {}) })
+const byCoverage = (a: CatalogField, b: CatalogField) => (b.coverage_pct ?? 0) - (a.coverage_pct ?? 0)
+
+const usable = (fields: CatalogField[], type: CatalogField['value_type']) =>
+  fields.filter((f) => f.value_type === type && (f.coverage_pct ?? 0) >= MIN_COVERAGE).sort(byCoverage)
+
+/**
+ * The spec a freshly dropped chart starts with. Never empty: an empty card is a
+ * puzzle, a filled one is a thing to adjust.
+ */
+export function suggestSpec(kind: ChartKind, fields: CatalogField[]): SpecInput {
+  const base = { spec_version: 1 as const, range: { days: 30 }, display: { round: 0 } }
+
+  if (kind === 'kpi') {
+    // a rate reads better as a single number than a count does
+    const boolean = usable(fields, 'boolean')[0]
+    return boolean
+      ? {
+          ...base,
+          agg: { fn: 'rate', field: { ...ref(boolean), boolean_encoding: boolean.boolean_encoding ?? 'true_false' }, denominator: 'field_present' },
+          display: { round: 1, unit: '%' },
+        }
+      : { ...base, agg: { fn: 'count' } }
+  }
+
+  if (kind === 'line') {
+    return { ...base, agg: { fn: 'count' }, bucket: 'day' }
+  }
+
+  const category = usable(fields, 'enum')[0]
+  return {
+    ...base,
+    agg: { fn: 'count' },
+    ...(category ? { dimension: { field: ref(category), limit: kind === 'pie' ? 8 : 12 } } : {}),
+  }
+}
+
+/** The title that goes with it, in the words the catalog uses rather than a path. */
+export function suggestTitle(kind: ChartKind, fields: CatalogField[]): string {
+  if (kind === 'kpi') {
+    const boolean = usable(fields, 'boolean')[0]
+    return boolean ? boolean.label : 'Total calls'
+  }
+  if (kind === 'line') return 'Calls over time'
+  const category = usable(fields, 'enum')[0]
+  return category ? `Calls by ${category.label.toLowerCase()}` : 'Calls'
+}
+
+/**
+ * Charts worth offering for this agent, best first. Each says why, because a
+ * suggestion without a reason is noise.
+ */
+export function suggestions(fields: CatalogField[]): { title: string; why: string; kind: ChartKind; spec: SpecInput }[] {
+  const out: { title: string; why: string; kind: ChartKind; spec: SpecInput }[] = []
+
+  for (const f of usable(fields, 'boolean').slice(0, 5)) {
+    out.push({
+      title: f.label,
+      why: `yes or no, filled in on ${f.coverage_pct}% of calls`,
+      kind: 'kpi',
+      spec: {
+        spec_version: 1,
+        agg: { fn: 'rate', field: { ...ref(f), boolean_encoding: f.boolean_encoding ?? 'true_false' }, denominator: 'field_present' },
+        range: { days: 30 },
+        display: { round: 1, unit: '%' },
+      },
+    })
+  }
+
+  for (const f of usable(fields, 'enum').slice(0, 5)) {
+    out.push({
+      title: `Calls by ${f.label.toLowerCase()}`,
+      why: `${f.cardinality_est ?? 0} different values, filled in on ${f.coverage_pct}% of calls`,
+      kind: 'bar',
+      spec: {
+        spec_version: 1,
+        agg: { fn: 'count' },
+        dimension: { field: ref(f), limit: 12 },
+        range: { days: 30 },
+        display: { round: 0 },
+      },
+    })
+  }
+
+  for (const f of usable(fields, 'number').slice(0, 3)) {
+    out.push({
+      title: `${f.label} over time`,
+      why: `a number, filled in on ${f.coverage_pct}% of calls`,
+      kind: 'line',
+      spec: {
+        spec_version: 1,
+        agg: { fn: 'avg', field: ref(f) },
+        bucket: 'day',
+        range: { days: 30 },
+        display: { round: 2 },
+      },
+    })
+  }
+
+  return out
+}

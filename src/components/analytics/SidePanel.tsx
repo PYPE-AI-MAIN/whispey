@@ -10,6 +10,7 @@
  */
 'use client'
 import React, { useMemo } from 'react'
+import { useDraggable } from '@dnd-kit/core'
 import { BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -48,6 +49,41 @@ const BUCKETS = [
 
 const fieldKey = (f: { col: string; path?: string[] }) => `${f.col}::${(f.path ?? []).join('.')}`
 
+/**
+ * Draggable onto the canvas, and clickable for anyone who would rather not drag
+ * — a keyboard user, or somebody on a trackpad who finds dragging fiddly.
+ * Dropping it is what places it; clicking it appends to the end.
+ */
+function ChartTypeTile({
+  type, disabled, onAdd,
+}: {
+  type: { kind: ChartKind; label: string; icon: React.ReactNode }
+  disabled: boolean
+  onAdd: () => void
+}) {
+  const drag = useDraggable({ id: `chart-type-${type.kind}`, data: { chartType: type.kind }, disabled })
+  return (
+    <button
+      ref={drag.setNodeRef}
+      {...drag.attributes}
+      {...drag.listeners}
+      disabled={disabled}
+      onClick={onAdd}
+      className={cn(
+        'flex flex-col items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-4 text-xs text-gray-600 transition',
+        'hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700 active:cursor-grabbing',
+        'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:bg-transparent',
+        'dark:border-gray-800 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:bg-blue-950/30',
+        !disabled && 'cursor-grab',
+        drag.isDragging && 'opacity-40'
+      )}
+    >
+      {type.icon}
+      {type.label}
+    </button>
+  )
+}
+
 export function SidePanel({
   selected, fields, canEdit, onAddChart, onChange, onChangeKind, onChangeWidth, onChangeTitle,
 }: {
@@ -64,24 +100,13 @@ export function SidePanel({
     return (
       <Panel title="Chart types">
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-          {canEdit ? 'Pick one to add it to the dashboard.' : 'You can view this dashboard but not change it.'}
+          {canEdit
+            ? 'Drag one onto the dashboard, or click to add it at the end.'
+            : 'You can view this dashboard but not change it.'}
         </p>
         <div className="grid grid-cols-2 gap-2">
           {CHART_TYPES.map((t) => (
-            <button
-              key={t.kind}
-              disabled={!canEdit}
-              onClick={() => onAddChart(t.kind)}
-              className={cn(
-                'flex flex-col items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-4 text-xs text-gray-600 transition',
-                'hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700',
-                'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:bg-transparent',
-                'dark:border-gray-800 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:bg-blue-950/30'
-              )}
-            >
-              {t.icon}
-              {t.label}
-            </button>
+            <ChartTypeTile key={t.kind} type={t} disabled={!canEdit} onAdd={() => onAddChart(t.kind)} />
           ))}
         </div>
       </Panel>
