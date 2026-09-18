@@ -572,7 +572,10 @@ describe('the shape of the result', () => {
   it('is a breakdown over time when both are set, and does not cut whole days off', () => {
     const { sql } = buildQuery(parse({ ...countByDisposition, bucket: 'day' }), ctx, 'aggregate')
     expect(sql).toContain('GROUP BY 1, 2')
-    expect(sql).not.toContain('LIMIT')
+    // the LIMIT bounds the category count via top_series, not the days — every
+    // bucket still gets a row, just folded into a bounded set of series
+    expect(sql).toContain('top_series')
+    expect(sql).toContain('LIMIT')
   })
 
   it('limits the categories of a plain breakdown', () => {
