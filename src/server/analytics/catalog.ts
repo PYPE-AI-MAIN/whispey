@@ -94,7 +94,7 @@ function looksLikeJson(text: string): boolean {
   }
 }
 
-const NUMERIC = /^-?\d+(\.\d+)?([eE][-+]?[0-9]+)?$/
+const NUMERIC = /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/
 
 /**
  * Real JSON, or a native boolean/number column — read the type rather than

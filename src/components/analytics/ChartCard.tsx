@@ -75,8 +75,6 @@ export function ChartCard({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
       className={cn(
         // the grid owns the rectangle; the card fills whatever it is given
         'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-colors dark:bg-gray-900',
@@ -84,16 +82,21 @@ export function ChartCard({
           ? 'border-blue-500 ring-1 ring-blue-500/30 dark:border-blue-400'
           : 'border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'
       )}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onSelect()
-        else if (e.key === ' ') {
-          e.preventDefault()
-          onSelect()
-        }
-      }}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2 px-4 pt-3">
+      {/* Selecting the card is a real <button> so it's keyboard-reachable —
+          but it can't wrap the card, since the card itself holds other real
+          buttons (drag handle, options menu, ...) and a button can't contain
+          a button. So it sits behind everything as the click target for
+          whatever isn't one of those controls; the content above opts back
+          into pointer events per-control. */}
+      <button
+        type="button"
+        aria-label={`Select ${widget.title}`}
+        onClick={onSelect}
+        className="absolute inset-0 z-0 cursor-pointer appearance-none bg-transparent border-0 p-0"
+      />
+
+      <div className="relative z-10 pointer-events-none flex shrink-0 items-start justify-between gap-2 px-4 pt-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             {draggable && canEdit && (
@@ -103,7 +106,7 @@ export function ChartCard({
                 // feature nobody finds
                 className={cn(
                   DRAG_HANDLE_CLASS,
-                  '-ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-40 transition hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 dark:text-gray-600'
+                  'pointer-events-auto -ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-40 transition hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 dark:text-gray-600'
                 )}
               >
                 <GripVertical className="h-3.5 w-3.5" />
@@ -118,11 +121,8 @@ export function ChartCard({
             {/* it changes what the number means, so it is never hidden in a dialog */}
             {canEdit && (
               <button
-                className="shrink-0 underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onChangeGrain(grain === 'entity' ? 'interaction' : 'entity')
-                }}
+                className="pointer-events-auto shrink-0 underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
+                onClick={() => onChangeGrain(grain === 'entity' ? 'interaction' : 'entity')}
               >
                 {grainLabel}
               </button>
@@ -141,11 +141,10 @@ export function ChartCard({
         </div>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger asChild className="pointer-events-auto">
             <button
               aria-label={`Options for ${widget.title}`}
               className="rounded p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100 focus:opacity-100 dark:hover:bg-gray-800"
-              onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="h-3.5 w-3.5" />
             </button>
@@ -176,20 +175,20 @@ export function ChartCard({
         </DropdownMenu>
       </div>
 
-      {/* the only part allowed to absorb a card that is shorter than its contents */}
-      <div className={cn('min-h-0 flex-1 overflow-hidden px-4', isKpi ? 'pb-1' : 'pb-2')}>
+      {/* the only part allowed to absorb a card that is shorter than its contents.
+          Left pointer-events-auto (rather than following the header/footer's
+          none+opt-in split) because the chart itself is click-interactive
+          (drilling into a bar) throughout, not just at a couple of controls. */}
+      <div className={cn('relative z-10 min-h-0 flex-1 overflow-hidden px-4', isKpi ? 'pb-1' : 'pb-2')}>
         <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} fieldMissing={fieldMissing} short={short} onSelect={onOpenLogs} />
       </div>
 
       {/* an average over only the usable rows misleads unless the card says so */}
-      <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
+      <div className="relative z-10 pointer-events-none flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
         {cover && showCoverage ? (
           <button
-            className="truncate underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
-            onClick={(e) => {
-              e.stopPropagation()
-              onOpenLogs()
-            }}
+            className="pointer-events-auto truncate underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
+            onClick={() => onOpenLogs()}
           >
             {cover.used.toLocaleString()} of {cover.total.toLocaleString()} calls
             {cover.pct < 95 && cover.pct > 0 && ` · ${Math.round(cover.pct)}% filled in`}

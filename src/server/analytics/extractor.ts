@@ -40,7 +40,7 @@ const SUMMARY_MAX = 150
  * the first one — it is whatever follows "TASK:" when the author wrote one.
  */
 export function summarise(description: string): string {
-  const flat = description.replaceAll(/\*\*/g, '').replaceAll(/\s+/g, ' ').trim()
+  const flat = description.replaceAll('**', '').replaceAll(/\s+/g, ' ').trim()
   const task = /(?:^|\s)TASK:\s*(.+?)(?=\s+[A-Z][A-Z ]{3,}:|$)/.exec(flat)
   const text = (task?.[1] ?? flat).trim()
   const sentence = /^(.+?[.?!])(?:\s|$)/.exec(text)?.[1] ?? text
@@ -67,7 +67,7 @@ function declaredEnum(flat: string): string[] | undefined {
 }
 
 function declaredType(description: string): DeclaredField['declared'] {
-  const flat = description.replaceAll(/\*\*/g, '').replaceAll(/\s+/g, ' ')
+  const flat = description.replaceAll('**', '').replaceAll(/\s+/g, ' ')
 
   // "(Score 1)" / "(Score 0)" — the convention every is_* prompt here uses
   if (/score\s*\(?1\)?/i.test(flat) && /score\s*\(?0\)?/i.test(flat)) {

@@ -147,9 +147,10 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
         </p>
 
         <div className={`${isMobile ? 'space-y-3' : 'grid md:grid-cols-2 gap-4'} max-w-4xl mx-auto`}>
-          <div
+          <button
+            type="button"
             onClick={() => onSelect('beginner')}
-            className="group p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-all"
+            className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-all"
           >
             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
               <Terminal className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -162,11 +163,12 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
               Complete Tutorial
               <ChevronDown className="ml-1 h-3 w-3 rotate-[-90deg]" />
             </div>
-          </div>
+          </button>
 
-          <div
+          <button
+            type="button"
             onClick={() => onSelect('experienced')}
-            className="group p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer transition-all"
+            className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer transition-all"
           >
             <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
               <Play className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -179,7 +181,7 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
               Quick Integration
               <ChevronDown className="ml-1 h-3 w-3 rotate-[-90deg]" />
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </div>

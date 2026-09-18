@@ -190,13 +190,13 @@ function CampaignTableSkeleton() {
 // Upload CSV dialog content, extracted to keep CampaignLogs' render function simple
 function UploadDialogContent({
   csvFile, onFileChange, uploading, onCancel, onUpload,
-}: {
+}: Readonly<{
   csvFile: File | null
   onFileChange: (file: File | null) => void
   uploading: boolean
   onCancel: () => void
   onUpload: () => void
-}) {
+}>) {
   return (
     <div className="space-y-4">
       <div className="text-center">
@@ -209,10 +209,11 @@ function UploadDialogContent({
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="upload-csv-file" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             CSV File
           </label>
           <input
+            id="upload-csv-file"
             type="file"
             accept=".csv"
             onChange={(e) => onFileChange(e.target.files?.[0] || null)}
@@ -261,7 +262,7 @@ function UploadDialogContent({
 // Delete-all confirmation dialog content, extracted to keep CampaignLogs' render function simple
 function DeleteDialogContent({
   deleteConfirmText, onConfirmTextChange, deleting, deleteResult, pagination, onCancel, onDelete, onClose,
-}: {
+}: Readonly<{
   deleteConfirmText: string
   onConfirmTextChange: (v: string) => void
   deleting: boolean
@@ -270,7 +271,7 @@ function DeleteDialogContent({
   onCancel: () => void
   onDelete: () => void
   onClose: () => void
-}) {
+}>) {
   if (!deleteResult) {
     return (
       <div className="space-y-4">
@@ -290,10 +291,11 @@ function DeleteDialogContent({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="delete-confirm-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Type <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">DELETE ALL LOGS</span> to confirm:
             </label>
             <input
+              id="delete-confirm-text"
               type="text"
               value={deleteConfirmText}
               onChange={(e) => onConfirmTextChange(e.target.value)}
@@ -388,7 +390,7 @@ function DeleteDialogContent({
 // Schedule campaign dialog content, extracted to keep CampaignLogs' render function simple
 function ScheduleDialogContent({
   scheduleData, onScheduleDataChange, scheduling, onCancel, onSchedule,
-}: {
+}: Readonly<{
   scheduleData: {
     start_date: string
     end_date: string
@@ -401,7 +403,7 @@ function ScheduleDialogContent({
   scheduling: boolean
   onCancel: () => void
   onSchedule: () => void
-}) {
+}>) {
   return (
     <div className="space-y-4">
       <div className="text-center">
@@ -417,10 +419,11 @@ function ScheduleDialogContent({
         {/* Date Range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="schedule-start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Start Date
             </label>
             <input
+              id="schedule-start-date"
               type="date"
               value={scheduleData.start_date}
               onChange={(e) => onScheduleDataChange({ start_date: e.target.value })}
@@ -429,10 +432,11 @@ function ScheduleDialogContent({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="schedule-end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               End Date
             </label>
             <input
+              id="schedule-end-date"
               type="date"
               value={scheduleData.end_date}
               onChange={(e) => onScheduleDataChange({ end_date: e.target.value })}
@@ -473,15 +477,16 @@ function ScheduleDialogContent({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label htmlFor="schedule-concurrency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Concurrency
           </label>
           <input
+            id="schedule-concurrency"
             type="number"
             min="1"
             max="50"
             value={scheduleData.concurrency}
-            onChange={(e) => onScheduleDataChange({ concurrency: parseInt(e.target.value) || 1 })}
+            onChange={(e) => onScheduleDataChange({ concurrency: Number.parseInt(e.target.value) || 1 })}
             disabled={scheduling}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />

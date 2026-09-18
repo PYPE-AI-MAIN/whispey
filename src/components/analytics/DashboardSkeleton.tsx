@@ -33,14 +33,14 @@ export function DashboardSkeleton({ withHeader = false }: Readonly<{ withHeader?
         {/* four numbers across, then charts two to a row — the seeded layout */}
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton
-            key={`skeleton-kpi-${i}`}
+            key={`skeleton-kpi-${i}`} // NOSONAR: fixed-count placeholder loader, no data identity to key by
             className="col-span-12 h-[124px] rounded-xl sm:col-span-6 xl:col-span-3"
             style={{ animationDelay: `${i * 40}ms` }}
           />
         ))}
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton
-            key={`skeleton-chart-${i}`}
+            key={`skeleton-chart-${i}`} // NOSONAR: fixed-count placeholder loader, no data identity to key by
             className={cn('col-span-12 h-[292px] rounded-xl lg:col-span-6')}
             style={{ animationDelay: `${(i + 8) * 40}ms` }}
           />

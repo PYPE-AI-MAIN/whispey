@@ -337,9 +337,9 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
 
   const where: string[] = []
   if (HAS_PROJECT_ID_COLUMN) where.push(`l.project_id = ${bind(ctx.projectId)}`)
-  where.push(`l.agent_id = ANY(${bind(ctx.agentIds)}::uuid[])`)
   // the lookback bound, so the entity's whole history is rankable (§8.2)
   where.push(
+    `l.agent_id = ANY(${bind(ctx.agentIds)}::uuid[])`,
     `l.call_started_at >= ${bind(pgTimestamp(range.loWithLookback))}::timestamp`,
     `l.call_started_at <  ${bind(pgTimestamp(range.hi))}::timestamp`
   )
@@ -611,7 +611,14 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   // by the first chart's value — the categories are the same for all of them.
   // A breakdown over time is bounded above instead, via top_series.
   const valueAlias = opts.companions?.length ? 'value_0' : 'value'
-  const order = bucket === 'none' ? (dimExpr ? `ORDER BY ${valueAlias} DESC NULLS LAST` : '') : 'ORDER BY 1'
+  let order: string
+  if (bucket !== 'none') {
+    order = 'ORDER BY 1'
+  } else if (dimExpr) {
+    order = `ORDER BY ${valueAlias} DESC NULLS LAST`
+  } else {
+    order = ''
+  }
   const limit = bucket === 'none' && spec.dimension ? `\nLIMIT ${bind(spec.dimension.limit)}` : ''
 
   const sql =

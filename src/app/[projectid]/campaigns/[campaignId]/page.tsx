@@ -1068,7 +1068,7 @@ function ViewCampaign() {
                   Retry Configuration
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {campaignDetails.schedule.retryConfig.map((config, index) => {
+                  {campaignDetails.schedule.retryConfig.map((config) => {
                     // Handle different retry types
                     let displayLabel = ''
                     if (config.type === 'sipCode' && config.errorCodes && Array.isArray(config.errorCodes) && config.errorCodes.length > 0) {
@@ -1089,10 +1089,11 @@ function ViewCampaign() {
                     }
                     
                     const label = displayLabel
+                    const configKey = `${config.type}-${config.errorCodes?.[0] ?? ''}-${config.metricName ?? config.fieldName ?? ''}-${config.delayMinutes}-${config.maxRetries}`
 
                     return (
-                      <div 
-                        key={index} 
+                      <div
+                        key={configKey}
                         className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md"
                       >
                         <div className="flex items-center gap-2 mb-2">

@@ -180,9 +180,8 @@ function ChartSettings({
   }, [fields, calculation.needs])
 
   const dimensions = useMemo(() => fields.filter((f) => f.is_dimension && f.value_type !== 'json'), [fields])
-  const chosenAggField = spec.agg?.field
-    ? fields.find((f) => fieldKey(f) === fieldKey(spec.agg!.field!))
-    : undefined
+  const aggField = spec.agg?.field
+  const chosenAggField = aggField ? fields.find((f) => fieldKey(f) === fieldKey(aggField)) : undefined
   const chosenDimensionField = spec.dimension?.field
     ? fields.find((f) => fieldKey(f) === fieldKey(spec.dimension!.field))
     : undefined

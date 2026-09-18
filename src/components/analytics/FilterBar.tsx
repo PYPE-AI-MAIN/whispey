@@ -219,6 +219,7 @@ export function ChartFilters({
         isCondition(node) ? (
           <Chip key={`${keyOf(node.field)}-${node.op}-${i}`} label={describe(node, labels)} onRemove={() => onChange(filters.filter((_, j) => j !== i))} />
         ) : (
+          // NOSONAR: a group node has no stable identity of its own (two "and" groups with the same children are indistinguishable) — index is the only available tiebreaker
           <Chip key={`group-${i}`} label="a group of conditions" onRemove={() => onChange(filters.filter((_, j) => j !== i))} />
         )
       )}
