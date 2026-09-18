@@ -548,8 +548,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
   }, [calls])
 
   const columns = useMemo(
-    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetchCurrentPage, role }),
-    [visibleColumns, availableTags, refetchCurrentPage, role]
+    () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetchCurrentPage, role, currentUserId: user?.id ?? null, currentUserEmail: userEmail ?? null }),
+    [visibleColumns, availableTags, refetchCurrentPage, role, user?.id, userEmail]
   )
 
   const table = useReactTable({
