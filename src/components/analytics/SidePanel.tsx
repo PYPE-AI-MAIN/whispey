@@ -183,6 +183,9 @@ function ChartSettings({
   const chosenAggField = spec.agg?.field
     ? fields.find((f) => fieldKey(f) === fieldKey(spec.agg!.field!))
     : undefined
+  const chosenDimensionField = spec.dimension?.field
+    ? fields.find((f) => fieldKey(f) === fieldKey(spec.dimension!.field))
+    : undefined
   const identities = useMemo(() => identityFields(fields), [fields])
   const outcome = useMemo(() => outcomeField(fields), [fields])
 
@@ -306,6 +309,17 @@ function ChartSettings({
               : setSpec({ dimension: undefined })
           }
         />
+        {/* the compiler now caps a breakdown at spec.dimension.limit (default
+            50) categories, folding the rest into "(other)", so this can no
+            longer make a chart unrenderable or slow the rest of the dashboard
+            — but a near-unique field is still a bad chart split on its own
+            terms: 50-odd nearly-meaningless lines beat 30,000, not "legible" */}
+        {chosenDimensionField?.is_identity_candidate && (
+          <p className="mt-1 text-[11px] leading-snug text-amber-600 dark:text-amber-500">
+            {chosenDimensionField.label} looks close to one-value-per-call — splitting by it
+            usually produces a chart with too many categories to read.
+          </p>
+        )}
       </Row>
 
       <Row label="Over time">

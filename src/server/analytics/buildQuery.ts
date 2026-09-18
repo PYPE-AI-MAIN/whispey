@@ -516,7 +516,10 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     lookbackDays: range.lookbackDays,
   }
 
-  const withClause = `WITH ${ctes.join(',\n')}\n`
+  // a function, not a string: a breakdown-over-time chart pushes one more CTE
+  // below (the top-N category list) after this point, and a plain string
+  // captured here would silently miss it
+  const withClause = () => `WITH ${ctes.join(',\n')}\n`
 
   if (target !== 'aggregate') {
     // reuse `post`, don't recompute conjunction(spec.having, t): every `bind()`
@@ -549,7 +552,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
       ...(dimExpr ? [`${dimExpr} AS series`] : []),
     ]
     const sql =
-      `${withClause}SELECT ${cols.join(', ')}\n` +
+      `${withClause()}SELECT ${cols.join(', ')}\n` +
       `FROM ${t}\n` +
       (rowFilters.length ? `WHERE ${rowFilters.join('\n  AND ')}\n` : '') +
       `ORDER BY ${t}.started_at DESC NULLS LAST, ${t}.id DESC\n` +
@@ -564,8 +567,34 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     selected.push(`date_trunc(${bind(bucket)}, ${t}.started_local) AS bucket`)
     grouped.push('1')
   }
+  // a breakdown WITHOUT a time bucket gets its LIMIT further down, applied
+  // directly to the query's own ORDER BY value DESC — cheap, no second pass.
+  // A breakdown WITH a time bucket can't use that trick: LIMIT there would cut
+  // off arbitrary (bucket, category) pairs, silently dropping some days'
+  // categories and keeping others'. This comment used to claim "the schema
+  // already caps the breakdown at 50" for that case, but nothing did — an
+  // agent with a near-unique-per-row field (30,000+ distinct values) turned
+  // one chart into a multi-second full scan and an unrenderable legend, and
+  // every other chart in the same dashboard request waited behind it. Rank
+  // categories by row count first, keep the top `spec.dimension.limit`, fold
+  // the rest into one literal '(other)' bucket — same row count either way,
+  // bounded number of series.
+  let seriesExpr = dimExpr
+  if (bucket !== 'none' && dimExpr && spec.dimension) {
+    ctes.push(
+      `top_series AS (\n` +
+        `  SELECT ${dimExpr} AS series\n` +
+        `  FROM ${t}\n` +
+        (post.length ? `  WHERE ${post.join('\n    AND ')}\n` : '') +
+        `  GROUP BY 1\n` +
+        `  ORDER BY count(*) DESC\n` +
+        `  LIMIT ${bind(spec.dimension.limit)}\n` +
+        `)`
+    )
+    seriesExpr = `(CASE WHEN (${dimExpr}) IN (SELECT series FROM top_series) THEN (${dimExpr}) ELSE '(other)' END)`
+  }
   if (dimExpr) {
-    selected.push(`${dimExpr} AS series`)
+    selected.push(`${seriesExpr} AS series`)
     grouped.push(String(grouped.length + 1))
   }
   const members = opts.companions?.length
@@ -582,7 +611,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const limit = bucket === 'none' && spec.dimension ? `\nLIMIT ${bind(spec.dimension.limit)}` : ''
 
   const sql =
-    `${withClause}SELECT ${selected.join(', ')}\n` +
+    `${withClause()}SELECT ${selected.join(', ')}\n` +
     `FROM ${t}\n` +
     (post.length ? `WHERE ${post.join('\n  AND ')}\n` : '') +
     (grouped.length ? `GROUP BY ${grouped.join(', ')}\n` : '') +
