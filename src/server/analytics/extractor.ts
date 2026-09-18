@@ -36,14 +36,24 @@ export type DeclaredField = {
 const SUMMARY_MAX = 150
 
 /**
+ * A real declaration is a paragraph or two — no legitimate prompt needs more
+ * than this to say what a field means. Capping the input before any regex
+ * touches it (on top of bounding the regexes' own quantifiers below) is what
+ * actually keeps them linear: an agent's `field_extractor_prompt` is text the
+ * agent's own owner writes, but nothing stops it from being pathological, and
+ * `.+?` ahead of a lookahead can go quadratic on a long adversarial string.
+ */
+const MAX_PROMPT_LEN = 4000
+
+/**
  * These prompts are written as instructions, so the useful sentence is rarely
  * the first one — it is whatever follows "TASK:" when the author wrote one.
  */
 export function summarise(description: string): string {
-  const flat = description.replaceAll('**', '').replaceAll(/\s+/g, ' ').trim()
-  const task = /(?:^|\s)TASK:\s*(.+?)(?=\s+[A-Z][A-Z ]{3,}:|$)/.exec(flat)
+  const flat = description.slice(0, MAX_PROMPT_LEN).replaceAll('**', '').replaceAll(/\s+/g, ' ').trim()
+  const task = /(?:^|\s)TASK:\s*(.{1,2000}?)(?=\s+[A-Z][A-Z ]{3,}:|$)/.exec(flat)
   const text = (task?.[1] ?? flat).trim()
-  const sentence = /^(.+?[.?!])(?:\s|$)/.exec(text)?.[1] ?? text
+  const sentence = /^(.{1,2000}?[.?!])(?:\s|$)/.exec(text)?.[1] ?? text
   return sentence.length > SUMMARY_MAX ? `${sentence.slice(0, SUMMARY_MAX - 1).trimEnd()}…` : sentence
 }
 
@@ -56,7 +66,7 @@ export function summarise(description: string): string {
  * plain comma list of short identifiers is left to the sampler.
  */
 function declaredEnum(flat: string): string[] | undefined {
-  const m = /(?:exactly one label from the following options|one of the following|one of|following options)\s*:?\s*([^.]{3,300}?)\s*(?:\.|$)/i.exec(flat)
+  const m = /(?:exactly one label from the following options|one of the following|one of|following options)\s{0,20}:?\s{0,20}([^.]{3,300}?)\s{0,20}(?:\.|$)/i.exec(flat)
   if (!m) return undefined
   const values = m[1]
     .split(/\s*(?:,|\bor\b)\s*/)
@@ -67,7 +77,7 @@ function declaredEnum(flat: string): string[] | undefined {
 }
 
 function declaredType(description: string): DeclaredField['declared'] {
-  const flat = description.replaceAll('**', '').replaceAll(/\s+/g, ' ')
+  const flat = description.slice(0, MAX_PROMPT_LEN).replaceAll('**', '').replaceAll(/\s+/g, ' ')
 
   // "(Score 1)" / "(Score 0)" — the convention every is_* prompt here uses
   if (/score\s*\(?1\)?/i.test(flat) && /score\s*\(?0\)?/i.test(flat)) {
