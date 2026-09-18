@@ -412,10 +412,10 @@ export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConf
     ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
     ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
     ...(formValues.selectedProvider === 'self_hosted' && {
-      // Falls back to the backend's default LLM_BASE_URL/LLM_API_KEY env vars when
-      // a model doesn't declare its own baseUrl (see ModelSelector.getModelBaseUrl).
+      // Falls back to the backend's default GEMMA_LLM_BASE_URL/GEMMA_LLM_API_KEY env vars
+      // when a model doesn't declare its own baseUrl (see ModelSelector.getModelBaseUrl).
       base_url: getModelBaseUrl('self_hosted', formValues.selectedModel) || getFallback(null, 'llm.base_url'),
-      api_key_env: 'LLM_API_KEY'
+      api_key_env: 'GEMMA_LLM_API_KEY'
     }),
     ...(formValues.fallbackLlmProvider && {
       fallback: {
@@ -434,7 +434,7 @@ export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConf
         ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
         ...(formValues.fallbackLlmProvider === 'self_hosted' && {
           base_url: getModelBaseUrl('self_hosted', formValues.fallbackLlmModel) || getFallback(null, 'llm.base_url'),
-          api_key_env: 'LLM_API_KEY'
+          api_key_env: 'GEMMA_LLM_API_KEY'
         }),
       }
     }),

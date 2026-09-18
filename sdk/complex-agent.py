@@ -105,8 +105,8 @@ async def entrypoint(ctx: JobContext):
             # variant is ~2x the decode speed. reasoning_effort="none" is required or
             # every reply pays several seconds of silent "thinking" first (same doc).
             model=os.environ.get("LLM_MODEL", "gemma4-e4b-mtp"),
-            base_url=os.environ["LLM_BASE_URL"],
-            api_key=os.environ["LLM_API_KEY"],
+            base_url=os.environ["GEMMA_LLM_BASE_URL"],
+            api_key=os.environ["GEMMA_LLM_API_KEY"],
             temperature=0.4,
             reasoning_effort="none",
         ),
