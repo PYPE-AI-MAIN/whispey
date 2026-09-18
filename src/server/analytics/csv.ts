@@ -26,7 +26,7 @@ export function csvCell(value: unknown): string {
   } else if (typeof value === 'object') {
     text = JSON.stringify(value)
   } else {
-    text = String(value)
+    text = String(value) // NOSONAR: value is narrowed to string | bigint | symbol | function here (Date and object handled above) — never stringifies as [object Object]
   }
   const defused = FORMULA_START.test(text) ? `'${text}` : text
   return `"${defused.replaceAll('"', '""')}"`

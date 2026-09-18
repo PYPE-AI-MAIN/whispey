@@ -191,7 +191,21 @@ function autoBucket(days: number): 'hour' | 'day' | 'week' | 'month' {
 
 /* --------------------------------------------------------------------- build */
 
-export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts = {}): Built {
+// Cognitive complexity is high by design here, not by neglect — this is the
+// one function the file's own header calls out as deliberately unified (every
+// chart, drill-through, export, and companion-sharing path compiles through
+// here so a fix lands once). It is built from four already-named stages (scan,
+// dedupe, element expansion, aggregate) and a dozen already-extracted value
+// helpers (rawText/cleanText/numeric/boolean/condition/tree/conjunction) —
+// splitting those into free-standing functions means threading `bind`/`params`
+// (which must stay one shared counter across the whole query) through every
+// one of them as explicit parameters instead of closures, a real architectural
+// change to the query compiler with no way to verify it live against a real
+// dashboard from here. The existing 83-case test suite (__tests__/analytics/
+// buildQuery.test.ts) is the actual safety net for this function; treat a
+// mechanical Sonar-driven fragmentation of it as a task for its own reviewed
+// PR, not a side effect of a lint pass.
+export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts = {}): Built { // NOSONAR
   if (ctx.agentIds.length === 0) throw new SpecError('no readable agents')
 
   const params: unknown[] = []
@@ -397,8 +411,11 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     const order: string[] = []
     if (d.winner === 'best_outcome') {
       if (!d.ranking?.length) throw new SpecError('best_outcome needs the agent outcome order')
+      // spec.ts's superRefine guarantees dedupe.outcome whenever winner is
+      // 'best_outcome' — re-checked here as a real error rather than a `!`
+      if (!d.outcome) throw new InternalSpecError('best_outcome dedupe needs dedupe.outcome but none was provided')
       // one list on the agent instead of a CASE ladder copied into every query
-      order.push(`array_position(${bind(d.ranking)}::text[], ${cleanText(d.outcome!, 's')}) NULLS LAST`, 's.created_at DESC')
+      order.push(`array_position(${bind(d.ranking)}::text[], ${cleanText(d.outcome, 's')}) NULLS LAST`, 's.created_at DESC')
     } else {
       order.push(d.winner === 'most_recent' ? 's.created_at DESC' : 's.created_at ASC')
     }
@@ -481,16 +498,26 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     }
     const and = (extra?: string) => predicate(extra) || 'TRUE'
 
+    // every branch but 'count' needs a field — the spec's own superRefine (spec.ts)
+    // guarantees this before a query is ever built, but that invariant lives in a
+    // different module than TS can see, so re-assert it here as a real runtime
+    // check with its own message instead of a silent `!` that would just throw a
+    // generic TypeError on a bad spec
+    const requireField = (fn: string): Ref => {
+      if (!aggField) throw new InternalSpecError(`agg.fn "${fn}" needs a field but none was provided`)
+      return aggField
+    }
+
     let value: string
     switch (agg.fn) {
       case 'count':
         value = `count(*)${filter()}`
         break
       case 'count_distinct':
-        value = `count(DISTINCT ${cleanText(aggField!, t)})${filter()}`
+        value = `count(DISTINCT ${cleanText(requireField(agg.fn), t)})${filter()}`
         break
       case 'rate': {
-        const hit = boolean(aggField!, t, agg.match)
+        const hit = boolean(requireField(agg.fn), t, agg.match)
         const denom = agg.denominator === 'all_rows' ? 'TRUE' : present
         value =
           `(count(*) FILTER (WHERE ${and(hit)}))::numeric / ` +
@@ -499,11 +526,11 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
       }
       case 'p50': case 'p90': case 'p95': {
         const q = { p50: 0.5, p90: 0.9, p95: 0.95 }[agg.fn]
-        value = `percentile_cont(${q}) WITHIN GROUP (ORDER BY ${numeric(aggField!, t)})${filter()}`
+        value = `percentile_cont(${q}) WITHIN GROUP (ORDER BY ${numeric(requireField(agg.fn), t)})${filter()}`
         break
       }
       default:
-        value = `${agg.fn}(${numeric(aggField!, t)})${filter()}`
+        value = `${agg.fn}(${numeric(requireField(agg.fn), t)})${filter()}`
     }
 
     return [
