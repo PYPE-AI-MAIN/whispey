@@ -51,9 +51,23 @@ const MAX_PROMPT_LEN = 4000
  */
 export function summarise(description: string): string {
   const flat = description.slice(0, MAX_PROMPT_LEN).replaceAll('**', '').replaceAll(/\s+/g, ' ').trim()
-  const task = /(?:^|\s)TASK:\s*(.{1,2000}?)(?=\s+[A-Z][A-Z ]{3,}:|$)/.exec(flat)
-  const text = (task?.[1] ?? flat).trim()
-  const sentence = /^(.{1,2000}?[.?!])(?:\s|$)/.exec(text)?.[1] ?? text
+
+  // "whatever follows TASK:" — found by locating TASK: and the next all-caps
+  // label separately and slicing between them, rather than one regex with a
+  // lazy quantifier ahead of a lookahead (the shape that backtracks quadratically)
+  const taskStart = /(?:^|\s)TASK:\s*/.exec(flat)
+  let text = flat
+  if (taskStart) {
+    const afterTask = flat.slice(taskStart.index + taskStart[0].length)
+    const nextLabel = /\s[A-Z][A-Z ]{3,}:/.exec(afterTask)
+    text = (nextLabel ? afterTask.slice(0, nextLabel.index) : afterTask).trim()
+  }
+
+  // first sentence: find the terminator directly instead of lazily capturing
+  // up to it — same reason, no lazy-quantifier-before-lookahead shape
+  const terminator = /[.?!](?=\s|$)/.exec(text)
+  const sentence = terminator ? text.slice(0, terminator.index + 1) : text
+
   return sentence.length > SUMMARY_MAX ? `${sentence.slice(0, SUMMARY_MAX - 1).trimEnd()}…` : sentence
 }
 
