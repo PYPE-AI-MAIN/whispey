@@ -83,7 +83,9 @@ function declaredEnum(flat: string): string[] | undefined {
   const m = /(?:exactly one label from the following options|one of the following|one of|following options)\s{0,20}:?\s{0,20}([^.]{3,300}?)\s{0,20}(?:\.|$)/i.exec(flat)
   if (!m) return undefined
   const values = m[1]
-    .split(/\s*(?:,|\bor\b)\s*/)
+    // no surrounding \s* needed — every piece is trimmed right below anyway,
+    // and dropping it removes the last ambiguous quantifier-around-alternation shape
+    .split(/,|\bor\b/)
     .map((v) => v.trim().replaceAll(/^["'`]|["'`]$/g, ''))
     .filter(Boolean)
   const plausible = values.length >= 2 && values.length <= 30 && values.every((v) => /^[a-z0-9][a-z0-9_ -]{0,40}$/i.test(v))
