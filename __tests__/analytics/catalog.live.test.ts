@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import pg from 'pg'
 import fs from 'node:fs'
 import { scanBuiltins, scanColumn, inferField } from '@/server/analytics/catalog'
@@ -54,5 +54,11 @@ run('what the pickers show', () => {
     }
 
     console.log('\nSPLIT-BY candidates:', rows.filter(f=>f.is_dimension && f.value_type!=='json').length, 'of', rows.length)
+
+    // The whole point of this test: catch fields colliding into duplicate labels
+    // (this is what caught five separate rows all reading "Reason").
+    expect(rows.length).toBeGreaterThan(0)
+    const labels = rows.map((f) => names.get(key(f)) ?? '')
+    expect(new Set(labels).size).toBe(labels.length)
   }, 120000)
 })

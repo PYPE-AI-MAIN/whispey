@@ -20,9 +20,9 @@ export function csvCell(value: unknown): string {
   // a real negative number is not an injection, and prefixing it would turn the
   // column into text
   if (typeof value === 'number' || typeof value === 'boolean') return `"${value}"`
-  const text = value instanceof Date ? value.toISOString() : String(value)
+  const text = value instanceof Date ? value.toISOString() : typeof value === 'object' ? JSON.stringify(value) : String(value)
   const defused = FORMULA_START.test(text) ? `'${text}` : text
-  return `"${defused.replace(/"/g, '""')}"`
+  return `"${defused.replaceAll('"', '""')}"`
 }
 
 export function csvRow(values: unknown[]): string {

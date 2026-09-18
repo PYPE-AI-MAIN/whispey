@@ -40,7 +40,7 @@ const SUMMARY_MAX = 150
  * the first one — it is whatever follows "TASK:" when the author wrote one.
  */
 export function summarise(description: string): string {
-  const flat = description.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim()
+  const flat = description.replaceAll(/\*\*/g, '').replaceAll(/\s+/g, ' ').trim()
   const task = /(?:^|\s)TASK:\s*(.+?)(?=\s+[A-Z][A-Z ]{3,}:|$)/.exec(flat)
   const text = (task?.[1] ?? flat).trim()
   const sentence = /^(.+?[.?!])(?:\s|$)/.exec(text)?.[1] ?? text
@@ -60,14 +60,14 @@ function declaredEnum(flat: string): string[] | undefined {
   if (!m) return undefined
   const values = m[1]
     .split(/\s*(?:,|\bor\b)\s*/)
-    .map((v) => v.trim().replace(/^["'`]|["'`]$/g, ''))
+    .map((v) => v.trim().replaceAll(/^["'`]|["'`]$/g, ''))
     .filter(Boolean)
   const plausible = values.length >= 2 && values.length <= 30 && values.every((v) => /^[a-z0-9][a-z0-9_ -]{0,40}$/i.test(v))
   return plausible ? [...new Set(values)] : undefined
 }
 
 function declaredType(description: string): DeclaredField['declared'] {
-  const flat = description.replace(/\*\*/g, '').replace(/\s+/g, ' ')
+  const flat = description.replaceAll(/\*\*/g, '').replaceAll(/\s+/g, ' ')
 
   // "(Score 1)" / "(Score 0)" — the convention every is_* prompt here uses
   if (/score\s*\(?1\)?/i.test(flat) && /score\s*\(?0\)?/i.test(flat)) {
@@ -133,7 +133,7 @@ export function parseExtractorKeys(prompt: unknown): DeclaredField[] {
  * normalised are both dropped rather than guessed between — a description
  * attached to the wrong field is worse than no description.
  */
-const normaliseKey = (key: string): string => key.toLowerCase().replace(/[\s_.-]+/g, '')
+const normaliseKey = (key: string): string => key.toLowerCase().replaceAll(/[\s_.-]+/g, '')
 
 export type DeclarationIndex = { exact: Map<string, DeclaredField>; loose: Map<string, DeclaredField> }
 
@@ -220,8 +220,8 @@ export function applyDeclarations<T extends CatalogRow>(
   const declared = declaredByKey(prompt)
 
   return rows.map((row) => {
-    const path = (row.path ?? []) as string[]
-    const leaf = path[path.length - 1] ?? ''
+    const path = row.path ?? []
+    const leaf = path.at(-1) ?? ''
     const d = path.length ? findDeclaration(declared, leaf) : undefined
     const group = groupOf(row.col, path)
     const base = {

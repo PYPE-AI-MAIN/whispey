@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { JSON_COLS } from '@/server/analytics/spec'
-import { scanColumn, scanBuiltins, inferField, BUILTIN_COLUMNS } from '@/server/analytics/catalog'
+import { scanColumn, scanBuiltins, inferField, BUILTIN_COLUMNS, type FieldStats } from '@/server/analytics/catalog'
 import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { applyDeclarations } from '@/server/analytics/extractor'
 import { guarded } from '@/server/analytics/guard'
@@ -83,6 +83,82 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
   })
 })
 
+/** One row for a real column — every call has a duration and a reason it ended, so it is measured, not discovered. */
+function builtinFieldRow(
+  b: Awaited<ReturnType<typeof scanBuiltins>>[number],
+  agentId: string,
+  projectId: string,
+  now: string,
+  prior: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  return {
+    ...(prior?.id ? { id: prior.id } : {}),
+    project_id: projectId,
+    agent_id: agentId,
+    source: 'voice',
+    col: b.col,
+    path: [],
+    label: (prior?.type_confirmed && (prior?.label as string)) || b.label,
+    value_type: b.value_type,
+    encoding: 'native',
+    boolean_encoding: null,
+    json_shape: null,
+    sentinels: null,
+    enum_values: b.enum_values,
+    is_identity_candidate: b.is_identity_candidate,
+    type_confirmed: prior?.type_confirmed === true,
+    cardinality_est: b.cardinality_est,
+    coverage_pct: b.coverage_pct,
+    blank_count: null,
+    empty_count: null,
+    name_normalised: b.col,
+    is_dimension: b.is_dimension,
+    first_seen_at: prior?.first_seen_at ?? now,
+    last_seen_at: now,
+  }
+}
+
+/** One row for a JSON field — a person's label and confirmed type win over anything we work out. */
+function jsonFieldRow(
+  stats: FieldStats,
+  col: string,
+  agentId: string,
+  projectId: string,
+  now: string,
+  prior: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  const inferred = inferField(stats)
+  const confirmed = prior?.type_confirmed === true
+
+  return {
+    ...(prior?.id ? { id: prior.id } : {}),
+    project_id: projectId,
+    agent_id: agentId,
+    source: 'voice',
+    col,
+    path: stats.path,
+    label: (confirmed && (prior?.label as string)) || inferred.label,
+    value_type: confirmed ? prior?.value_type : inferred.value_type,
+    encoding: confirmed ? prior?.encoding : inferred.encoding,
+    boolean_encoding: confirmed ? prior?.boolean_encoding : (inferred.boolean_encoding ?? null),
+    json_shape: inferred.json_shape ?? null,
+    sentinels: prior?.sentinels ?? null,
+    enum_values: inferred.enum_values ?? prior?.enum_values ?? null,
+    is_identity_candidate: inferred.is_identity_candidate,
+    type_confirmed: confirmed,
+    cardinality_est: inferred.cardinality_est,
+    coverage_pct: inferred.coverage_pct,
+    blank_count: stats.n_null,
+    empty_count: stats.n_sentinel,
+    // 'summary ' with a trailing space sits next to 'summary'; this is what
+    // lets the picker show one entry instead of two
+    name_normalised: stats.path.map((p) => p.trim().toLowerCase()).join('.'),
+    is_dimension: inferred.is_dimension,
+    first_seen_at: prior?.first_seen_at ?? now,
+    last_seen_at: now,
+  }
+}
+
 /**
  * Replaces what we worked out, keeps what a person decided. A confirmed type,
  * an edited label and hand-picked empty values survive a rescan; coverage,
@@ -100,69 +176,13 @@ async function rescan(
   // the real columns first: every call has a duration and a reason it ended,
   // so they are not discovered, only measured
   for (const b of await scanBuiltins(agentId)) {
-    const prior = keep.get(`${b.col}.`)
-    out.push({
-      ...(prior?.id ? { id: prior.id } : {}),
-      project_id: projectId,
-      agent_id: agentId,
-      source: 'voice',
-      col: b.col,
-      path: [],
-      label: (prior?.type_confirmed && (prior?.label as string)) || b.label,
-      value_type: b.value_type,
-      encoding: 'native',
-      boolean_encoding: null,
-      json_shape: null,
-      sentinels: null,
-      enum_values: b.enum_values,
-      is_identity_candidate: b.is_identity_candidate,
-      type_confirmed: prior?.type_confirmed === true,
-      cardinality_est: b.cardinality_est,
-      coverage_pct: b.coverage_pct,
-      blank_count: null,
-      empty_count: null,
-      name_normalised: b.col,
-      is_dimension: b.is_dimension,
-      first_seen_at: prior?.first_seen_at ?? now,
-      last_seen_at: now,
-    })
+    out.push(builtinFieldRow(b, agentId, projectId, now, keep.get(`${b.col}.`)))
   }
 
   for (const col of JSON_COLS) {
     for (const stats of await scanColumn(agentId, col)) {
-      const inferred = inferField(stats)
       const key = `${col}.${stats.path.join('.')}`
-      const prior = keep.get(key)
-      const confirmed = prior?.type_confirmed === true
-
-      out.push({
-        ...(prior?.id ? { id: prior.id } : {}),
-        project_id: projectId,
-        agent_id: agentId,
-        source: 'voice',
-        col,
-        path: stats.path,
-        // a person's label and confirmed type win over anything we work out
-        label: (confirmed && (prior?.label as string)) || inferred.label,
-        value_type: confirmed ? prior?.value_type : inferred.value_type,
-        encoding: confirmed ? prior?.encoding : inferred.encoding,
-        boolean_encoding: confirmed ? prior?.boolean_encoding : (inferred.boolean_encoding ?? null),
-        json_shape: inferred.json_shape ?? null,
-        sentinels: prior?.sentinels ?? null,
-        enum_values: inferred.enum_values ?? prior?.enum_values ?? null,
-        is_identity_candidate: inferred.is_identity_candidate,
-        type_confirmed: confirmed,
-        cardinality_est: inferred.cardinality_est,
-        coverage_pct: inferred.coverage_pct,
-        blank_count: stats.n_null,
-        empty_count: stats.n_sentinel,
-        // 'summary ' with a trailing space sits next to 'summary'; this is what
-        // lets the picker show one entry instead of two
-        name_normalised: stats.path.map((p) => p.trim().toLowerCase()).join('.'),
-        is_dimension: inferred.is_dimension,
-        first_seen_at: prior?.first_seen_at ?? now,
-        last_seen_at: now,
-      })
+      out.push(jsonFieldRow(stats, col, agentId, projectId, now, keep.get(key)))
     }
   }
 

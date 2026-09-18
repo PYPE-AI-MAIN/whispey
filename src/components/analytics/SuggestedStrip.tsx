@@ -28,13 +28,13 @@ const MAX_SHOWN = 4
 
 export function SuggestedStrip({
   fields, widgets, canEdit, onAdd,
-}: {
+}: Readonly<{
   fields: CatalogField[]
   /** What is already on the canvas — suggesting a chart somebody has is noise. */
   widgets: Widget[]
   canEdit: boolean
   onAdd: (title: string, kind: ChartKind, spec: SpecInput) => void
-}) {
+}>) {
   // dismissed for this visit only: a suggestion nobody wants today may be the
   // right chart next month, and nothing here is worth a database row
   const [dismissed, setDismissed] = useState<string[]>([])

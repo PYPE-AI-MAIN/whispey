@@ -11,7 +11,7 @@ import React from 'react'
 import { AlertTriangle, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export default function AgentPageError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function AgentPageError({ error, reset }: Readonly<{ error: Error & { digest?: string }; reset: () => void }>) {
   React.useEffect(() => {
     console.error('[agent page]', error)
   }, [error])

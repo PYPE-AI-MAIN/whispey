@@ -972,8 +972,8 @@ const handleRowClick = (trace: TraceLog) => {
                             )}
                             {metrics.length > 0 && (
                               <div className="flex gap-1">
-                                {metrics.map((metric, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-[11px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
+                                {metrics.map((metric) => (
+                                  <Badge key={metric.type} variant="outline" className="text-[11px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
                                     {metric.type}
                                   </Badge>
                                 ))}

@@ -63,13 +63,13 @@ export async function fetchRowPage(
   const { sql, params } = buildQuery(spec, ctx, target, {
     // only narrow by the clicked bar when the caller actually clicked one —
     // `undefined` means "all rows", `null` means "the empty bucket"
-    ...(body.dimensionValue !== undefined ? { dimensionValue: body.dimensionValue } : {}),
+    ...(body.dimensionValue === undefined ? {} : { dimensionValue: body.dimensionValue }),
     ...(body.cursor ? { cursor: body.cursor } : {}),
     limit,
   })
 
-  const rows = (await runQuery(sql, params, target === 'export' ? 30_000 : 10_000)) as Record<string, unknown>[]
-  const last = rows.length === limit ? rows[rows.length - 1] : null
+  const rows = await runQuery(sql, params, target === 'export' ? 30_000 : 10_000)
+  const last = rows.length === limit ? rows.at(-1) : null
   const nextCursor = last
     ? { startedAt: new Date(last.started_at as string).toISOString(), id: String(last.id) }
     : null

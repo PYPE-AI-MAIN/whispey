@@ -38,19 +38,19 @@ const WEEKDAYS = [1, 2, 3, 4, 5]
 
 export function WhenFilter({
   timeOfDay, days, onChange,
-}: {
+}: Readonly<{
   timeOfDay: TimeOfDay
   /** 1 = Monday to 7 = Sunday. Empty or all seven means every day. */
   days: number[]
   onChange: (next: { timeOfDay: TimeOfDay; days: number[] }) => void
-}) {
+}>) {
   const allDays = days.length === 0 || days.length === 7
   const active = Boolean(timeOfDay) || !allDays
   const preset = PRESETS.find((p) => p.window?.from === timeOfDay?.from && p.window?.to === timeOfDay?.to)
 
   const toggleDay = (n: number) => {
     const current = allDays ? [1, 2, 3, 4, 5, 6, 7] : days
-    const next = current.includes(n) ? current.filter((d) => d !== n) : [...current, n].sort()
+    const next = current.includes(n) ? current.filter((d) => d !== n) : [...current, n].sort((a, b) => a - b)
     // zero days would return nothing at all; treat it as "every day" instead
     onChange({ timeOfDay, days: next.length === 0 || next.length === 7 ? [] : next })
   }

@@ -1522,11 +1522,11 @@ const unmappedVariablesCount = useMemo(() => {
             {/* Conversation Flow */}
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3 space-y-3 flex-shrink-0">
               <div className="space-y-2">
-                <label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <label htmlFor="firstMessageMode" className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Conversation Start
                 </label>
-                <Select 
-                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
+                <Select
+                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode}
                   onValueChange={(value) => {
                     if (typeof formik.values.firstMessageMode === 'object') {
                       formik.setFieldValue('firstMessageMode', {
@@ -1542,7 +1542,7 @@ const unmappedVariablesCount = useMemo(() => {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-8 text-sm w-full">
+                  <SelectTrigger id="firstMessageMode" className="h-8 text-sm w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

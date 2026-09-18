@@ -40,8 +40,8 @@ export function disambiguate(fields: CatalogField[]): Map<string, string> {
 
   const out = new Map<string, string>()
   for (const f of fields) {
-    const parent = f.path.length > 1 ? f.path[f.path.length - 2] : ''
-    const qualifier = parent.replace(/[_.]+/g, ' ').trim()
+    const parent = f.path.length > 1 ? f.path.at(-2) ?? '' : ''
+    const qualifier = parent.replaceAll(/[_.]+/g, ' ').trim()
     out.set(
       fieldKey(f),
       (counts.get(f.label) ?? 0) > 1 && qualifier ? `${f.label} (${qualifier})` : f.label
@@ -51,7 +51,7 @@ export function disambiguate(fields: CatalogField[]): Map<string, string> {
 }
 
 /** How often it is filled in, and a warning when that is not often. */
-function Coverage({ pct }: { pct: number | null | undefined }) {
+function Coverage({ pct }: Readonly<{ pct: number | null | undefined }>) {
   if (pct === null || pct === undefined) return null
   return (
     <span className={cn('shrink-0 text-[11px] tabular-nums', pct < 20 ? 'text-amber-600 dark:text-amber-500' : 'text-gray-400')}>
@@ -62,7 +62,7 @@ function Coverage({ pct }: { pct: number | null | undefined }) {
 
 export function FieldPicker({
   fields, value, onChange, disabled, placeholder = 'Pick a field', clearable, emptyLabel = 'None',
-}: {
+}: Readonly<{
   fields: CatalogField[]
   /** A `fieldKey`, or '' for nothing chosen. */
   value: string
@@ -71,7 +71,7 @@ export function FieldPicker({
   placeholder?: string
   clearable?: boolean
   emptyLabel?: string
-}) {
+}>) {
   const [open, setOpen] = useState(false)
   const names = useMemo(() => disambiguate(fields), [fields])
 
@@ -185,13 +185,14 @@ export function FieldPicker({
  * mistrusting the whole dashboard, so a true/false field says which pair it is
  * written with.
  */
-export function FieldShape({ field }: { field: CatalogField }) {
+export function FieldShape({ field }: Readonly<{ field: CatalogField }>) {
   if (field.value_type === 'boolean') {
-    const pair =
-      field.boolean_encoding === 'one_zero' ? 'yes (1) / no (0)'
-      : field.boolean_encoding === 'y_n' ? 'yes (Y) / no (N)'
-      : field.boolean_encoding === 'yes_no' ? 'yes / no'
-      : 'yes (true) / no (false)'
+    const BOOLEAN_PAIR_LABEL: Record<string, string> = {
+      one_zero: 'yes (1) / no (0)',
+      y_n: 'yes (Y) / no (N)',
+      yes_no: 'yes / no',
+    }
+    const pair = BOOLEAN_PAIR_LABEL[field.boolean_encoding ?? ''] ?? 'yes (true) / no (false)'
     return <span className="text-[11px] text-gray-400">{pair}</span>
   }
   if (field.value_type === 'enum' && field.enum_values?.length) {

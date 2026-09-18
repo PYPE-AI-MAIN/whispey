@@ -128,6 +128,179 @@ function touchExistingCall(existing: CallRecord, status: string): CallRecord {
   }
 }
 
+// Running/active indicator pill — its color and label depend on agent type and live status.
+function AgentStatusBadge({ agent, runningStatus, isCheckingRunning }: {
+  agent: Agent
+  runningStatus: { isRunning: boolean; agentName: string | null }
+  isCheckingRunning: boolean
+}) {
+  return (
+    <div className="mb-5">
+      <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+        isCheckingRunning ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+        : agent.agent_type === 'pype_agent'
+          ? runningStatus.isRunning ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+          : agent.is_active ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+      }`}>
+        {isCheckingRunning ? (<><Loader2 className="w-3 h-3 animate-spin text-gray-500" /><span className="text-xs font-medium text-gray-700 dark:text-gray-400">Checking...</span></>)
+        : agent.agent_type === 'pype_agent' ? (
+          runningStatus.isRunning
+            ? (<><div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /><span className="text-xs font-semibold text-green-700 dark:text-green-400">Running</span></>)
+            : (<><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Stopped</span></>)
+        ) : agent.is_active
+          ? (<><div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /><span className="text-xs font-semibold text-green-700 dark:text-green-400">Active</span></>)
+          : (<><div className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /><span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">Inactive</span></>)
+        }
+      </div>
+    </div>
+  )
+}
+
+// Number-pad keys shown when "Calling To" is toggled into dialer mode.
+function DialerPad({ buttons, phoneNumber, onDigit, onBackspace }: {
+  buttons: { digit: string; letters: string }[]
+  phoneNumber: string
+  onDigit: (digit: string) => void
+  onBackspace: () => void
+}) {
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-inner">
+      <div className="grid grid-cols-3 gap-2">
+        {buttons.map(({ digit, letters }) => (
+          <button key={digit} onClick={() => onDigit(digit)} className="group relative h-11 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
+            <div className="flex flex-col items-center justify-center h-full">
+              <span className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{digit}</span>
+              {letters && <span className="text-[8px] font-medium text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 tracking-wide">{letters}</span>}
+            </div>
+          </button>
+        ))}
+      </div>
+      <button onClick={onBackspace} disabled={!phoneNumber} className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
+        <Delete className="w-4 h-4 text-red-600 dark:text-red-400" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Backspace</span>
+      </button>
+    </div>
+  )
+}
+
+// The {{key}} → value list sent along with the dispatch request.
+function VariablesEditor({ variables, setVariables }: {
+  variables: { key: string; value: string }[]
+  setVariables: React.Dispatch<React.SetStateAction<{ key: string; value: string }[]>>
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Variables <span className="text-xs font-normal text-gray-400">(optional)</span>
+        </label>
+        <button
+          onClick={() => setVariables(prev => [...prev, { key: '', value: '' }])}
+          className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Variable
+        </button>
+      </div>
+      {variables.length === 0 ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+          No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {variables.map((v, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <Input
+                placeholder="key"
+                value={v.key}
+                onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
+                className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
+              />
+              <Input
+                placeholder="value"
+                value={v.value}
+                onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
+                className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
+              />
+              <button
+                onClick={() => setVariables(prev => prev.filter((_, j) => j !== i))}
+                className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// One row in the call-history list — redial target, inline rename, delete.
+function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingName, onSelect, onStartEdit, onSaveEdit, onCancelEdit, onNameKeyDown, onDelete }: {
+  call: CallRecord
+  isSelected: boolean
+  isEditing: boolean
+  editingName: string
+  setEditingName: (name: string) => void
+  onSelect: (call: CallRecord) => void
+  onStartEdit: (callId: string, currentName: string, e: React.MouseEvent) => void
+  onSaveEdit: (callId: string, e?: React.MouseEvent) => void
+  onCancelEdit: (e?: React.MouseEvent) => void
+  onNameKeyDown: (callId: string, e: React.KeyboardEvent) => void
+  onDelete: (callId: string, e: React.MouseEvent) => void
+}) {
+  return (
+    <div onClick={() => onSelect(call)} className={`group relative p-5 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-md' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'}`}>
+      <button onClick={(e) => onDelete(call.id, e)} className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg z-10 ${isEditing ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
+        <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+      </button>
+      <div className="flex items-start gap-4">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-blue-100 dark:bg-blue-800/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
+          <Phone className={`w-6 h-6 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 pr-8">
+            {isEditing ? (
+              <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => onNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-blue-300 dark:border-blue-600" placeholder="Enter name" autoFocus />
+                <button onClick={(e) => onSaveEdit(call.id, e)} className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"><Check className="w-4 h-4 text-green-600 dark:text-green-400" /></button>
+                <button onClick={(e) => onCancelEdit(e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"><X className="w-4 h-4 text-red-600 dark:text-red-400" /></button>
+              </div>
+            ) : (
+              <>
+                <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{call.name}{call.call_count && call.call_count > 1 && <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">({call.call_count})</span>}</span>
+                <button onClick={(e) => onStartEdit(call.id, call.name, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-opacity"><Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></button>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base font-mono font-medium text-gray-700 dark:text-gray-300">{call.formatted_number}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">{COUNTRIES.find(c => c.code === call.country_code)?.flag}</span>
+          </div>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2"><span className="text-gray-500 dark:text-gray-400">From:</span><span className="font-mono text-xs text-gray-700 dark:text-gray-300">{call.from_phone_display}</span></div>
+          </div>
+          <div className="flex items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
+            <Clock className="w-3.5 h-3.5" /><span>{formatRelativeTime(call.timestamp)}</span>
+            <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">{call.status}</span>
+          </div>
+        </div>
+        {isSelected && (
+          <div className="flex-shrink-0 mr-8"><div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center"><RotateCcw className="w-4 h-4 text-white" /></div></div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Relative "Xm ago" label for a call-history timestamp.
+function formatRelativeTime(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return 'Just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
+}
+
 export default function PhoneCallConfig() {
   const params = useParams()
   const router = useRouter()
@@ -406,13 +579,6 @@ export default function PhoneCallConfig() {
     if (selectedCallId === callId) { setPhoneNumber(''); setFromPhoneNumberId(''); setSelectedCallId(null) }
   }
   const clearAllHistory = () => { setCallHistory([]); localStorage.removeItem(`${STORAGE_KEY}_${agentId}`); setPhoneNumber(''); setFromPhoneNumberId(''); setSelectedCallId(null) }
-  const formatRelativeTime = (timestamp: number) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000)
-    if (seconds < 60) return 'Just now'
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-    return `${Math.floor(seconds / 86400)}d ago`
-  }
 
   if (redirectLoading || isLoadingAgent) {
     return (
@@ -463,24 +629,7 @@ export default function PhoneCallConfig() {
               </div>
             </div>
 
-            <div className="mb-5">
-              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
-                isCheckingRunning ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
-                : agent.agent_type === 'pype_agent'
-                  ? runningStatus.isRunning ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                  : agent.is_active ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-              }`}>
-                {isCheckingRunning ? (<><Loader2 className="w-3 h-3 animate-spin text-gray-500" /><span className="text-xs font-medium text-gray-700 dark:text-gray-400">Checking...</span></>)
-                : agent.agent_type === 'pype_agent' ? (
-                  runningStatus.isRunning
-                    ? (<><div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /><span className="text-xs font-semibold text-green-700 dark:text-green-400">Running</span></>)
-                    : (<><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Stopped</span></>)
-                ) : agent.is_active
-                  ? (<><div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /><span className="text-xs font-semibold text-green-700 dark:text-green-400">Active</span></>)
-                  : (<><div className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /><span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">Inactive</span></>)
-                }
-              </div>
-            </div>
+            <AgentStatusBadge agent={agent} runningStatus={runningStatus} isCheckingRunning={isCheckingRunning} />
 
             <div className="space-y-5 flex-1 w-full">
               <div className='w-full'>
@@ -530,67 +679,11 @@ export default function PhoneCallConfig() {
               </div>
 
               {showDialer && (
-                <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-inner">
-                  <div className="grid grid-cols-3 gap-2">
-                    {dialerButtons.map(({ digit, letters }) => (
-                      <button key={digit} onClick={() => handleDialerClick(digit)} className="group relative h-11 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
-                        <div className="flex flex-col items-center justify-center h-full">
-                          <span className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{digit}</span>
-                          {letters && <span className="text-[8px] font-medium text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 tracking-wide">{letters}</span>}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={handleDialerBackspace} disabled={!phoneNumber} className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
-                    <Delete className="w-4 h-4 text-red-600 dark:text-red-400" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Backspace</span>
-                  </button>
-                </div>
+                <DialerPad buttons={dialerButtons} phoneNumber={phoneNumber} onDigit={handleDialerClick} onBackspace={handleDialerBackspace} />
               )}
 
               {/* Variables */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Variables <span className="text-xs font-normal text-gray-400">(optional)</span>
-                  </label>
-                  <button
-                    onClick={() => setVariables(prev => [...prev, { key: '', value: '' }])}
-                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Variable
-                  </button>
-                </div>
-                {variables.length === 0 ? (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-                    No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {variables.map((v, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <Input
-                          placeholder="key"
-                          value={v.key}
-                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
-                          className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
-                        />
-                        <Input
-                          placeholder="value"
-                          value={v.value}
-                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
-                          className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
-                        />
-                        <button
-                          onClick={() => setVariables(prev => prev.filter((_, j) => j !== i))}
-                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <VariablesEditor variables={variables} setVariables={setVariables} />
 
               {message && (
                 <div className={`p-4 rounded-xl border backdrop-blur-sm transition-all ${messageType === 'success' ? 'bg-green-50/80 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-red-50/80 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'}`}>
@@ -655,46 +748,20 @@ export default function PhoneCallConfig() {
             ) : (
               <div className="space-y-3">
                 {callHistory.map((call) => (
-                  <div key={call.id} onClick={() => loadCallFromHistory(call)} className={`group relative p-5 rounded-xl border transition-all cursor-pointer ${selectedCallId === call.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-md' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'}`}>
-                    <button onClick={(e) => deleteCallFromHistory(call.id, e)} className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg z-10 ${editingCallId === call.id ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
-                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    </button>
-                    <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedCallId === call.id ? 'bg-blue-100 dark:bg-blue-800/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                        <Phone className={`w-6 h-6 ${selectedCallId === call.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 pr-8">
-                          {editingCallId === call.id ? (
-                            <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-                              <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => handleNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-blue-300 dark:border-blue-600" placeholder="Enter name" autoFocus />
-                              <button onClick={(e) => saveEditedName(call.id, e)} className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"><Check className="w-4 h-4 text-green-600 dark:text-green-400" /></button>
-                              <button onClick={(e) => cancelEditingName(e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"><X className="w-4 h-4 text-red-600 dark:text-red-400" /></button>
-                            </div>
-                          ) : (
-                            <>
-                              <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{call.name}{call.call_count && call.call_count > 1 && <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">({call.call_count})</span>}</span>
-                              <button onClick={(e) => startEditingName(call.id, call.name, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-opacity"><Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></button>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-base font-mono font-medium text-gray-700 dark:text-gray-300">{call.formatted_number}</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">{COUNTRIES.find(c => c.code === call.country_code)?.flag}</span>
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex items-center gap-2"><span className="text-gray-500 dark:text-gray-400">From:</span><span className="font-mono text-xs text-gray-700 dark:text-gray-300">{call.from_phone_display}</span></div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
-                          <Clock className="w-3.5 h-3.5" /><span>{formatRelativeTime(call.timestamp)}</span>
-                          <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">{call.status}</span>
-                        </div>
-                      </div>
-                      {selectedCallId === call.id && (
-                        <div className="flex-shrink-0 mr-8"><div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center"><RotateCcw className="w-4 h-4 text-white" /></div></div>
-                      )}
-                    </div>
-                  </div>
+                  <CallHistoryItem
+                    key={call.id}
+                    call={call}
+                    isSelected={selectedCallId === call.id}
+                    isEditing={editingCallId === call.id}
+                    editingName={editingName}
+                    setEditingName={setEditingName}
+                    onSelect={loadCallFromHistory}
+                    onStartEdit={startEditingName}
+                    onSaveEdit={saveEditedName}
+                    onCancelEdit={cancelEditingName}
+                    onNameKeyDown={handleNameKeyDown}
+                    onDelete={deleteCallFromHistory}
+                  />
                 ))}
               </div>
             )}

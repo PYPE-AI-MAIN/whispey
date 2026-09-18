@@ -109,7 +109,7 @@ export function fieldName(
   if (match) return match.label.toLowerCase()
   // the catalog has not caught up with this field yet; the leaf name still
   // reads better than the whole path
-  return (ref.path?.[ref.path.length - 1] ?? ref.col).replace(/[_.]+/g, ' ').toLowerCase()
+  return (ref.path?.[ref.path.length - 1] ?? ref.col).replaceAll(/[_.]+/g, ' ').toLowerCase()
 }
 
 export function describeCondition(condition: Condition, fields: CatalogField[]): string {

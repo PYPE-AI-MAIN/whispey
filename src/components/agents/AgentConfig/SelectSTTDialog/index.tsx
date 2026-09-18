@@ -651,13 +651,13 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Model + Language ── */}
           <div className="grid grid-cols-2 gap-3 min-w-0">
             <div className="space-y-1.5 min-w-0 overflow-hidden">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Model</label>
+              <Label htmlFor="dg-model" className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Model</Label>
               <Select
                 value={currentModel}
                 onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, model: value, language: 'en' }))}
                 disabled={DISABLE_SETTINGS}
               >
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger id="dg-model" className="h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -674,13 +674,13 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             </div>
 
             <div className="space-y-1.5 min-w-0 overflow-hidden">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Language</label>
+              <Label htmlFor="dg-language" className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Language</Label>
               <Select
                 value={currentLanguage}
                 onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, language: value }))}
                 disabled={DISABLE_SETTINGS}
               >
-                <SelectTrigger className="h-9 text-sm w-full [&>span]:truncate [&>span]:block [&>span]:max-w-[calc(100%-1rem)]">
+                <SelectTrigger id="dg-language" className="h-9 text-sm w-full [&>span]:truncate [&>span]:block [&>span]:max-w-[calc(100%-1rem)]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -695,7 +695,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Flux: Turn Detection ── */}
           {isFlux && (
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Turn Detection</label>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Turn Detection</span>
               <div className="space-y-3">
                 {([
                   { key: 'eot_threshold', label: 'EOT Threshold', hint: '0.5 – 0.9', placeholder: '0.7', step: 0.05, min: 0.5, max: 0.9, isInt: false },
@@ -741,7 +741,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Transcript</label>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Transcript</span>
                 <TooltipProvider delayDuration={700}>
                 <div className="flex flex-wrap gap-1.5">
                   {([
@@ -782,9 +782,10 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Key Terms ── */}
           {supportsKeyterm && (
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Key Terms</label>
+              <Label htmlFor="dg-keyterm" className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Key Terms</Label>
               <div className="flex items-center h-9 rounded-md border border-input bg-transparent px-3 text-sm ring-offset-background focus-within:ring-1 focus-within:ring-ring">
                 <input
+                  id="dg-keyterm"
                   ref={keytermInputRef}
                   value={keytermInput}
                   onChange={(e) => setKeytermInput(e.target.value)}

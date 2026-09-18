@@ -89,7 +89,7 @@ export function toGridLayout(widgets: Widget[]): GridItem[] {
         : null
 
     if (at && placed.some((p) => overlaps({ ...at!, w, h }, p))) at = null
-    if (!at) at = pack(w, h)
+    at ??= pack(w, h)
 
     const item = { i: widget.id, x: at.x, y: at.y, w, h, minW: min.w, minH: min.h }
     placed.push(item)

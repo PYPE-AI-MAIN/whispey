@@ -186,7 +186,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                   const expanded = expandedIndex === index
                   return (
                   <div
-                    key={`field-${index}`}
+                    key={`field-${field.key}-${field.description}`}
                     className="rounded-lg border border-border p-3 space-y-2"
                   >
                     <div className="grid grid-cols-12 gap-2 items-end">

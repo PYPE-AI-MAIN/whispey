@@ -49,6 +49,71 @@ type WidgetResult = {
   error?: string
 }
 
+/**
+ * One widget's spec, merged with the dashboard's own filters/range and with
+ * the agent's outcome order resolved — or the reason it cannot run.
+ */
+function resolveWidgetSpec(
+  widget: { id: string; spec?: unknown },
+  body: z.infer<typeof Body>,
+  agentOutcomeOrder: string[] | null | undefined
+): { spec: Spec } | { error: string } {
+  try {
+    const spec = Spec.parse({
+      ...(widget.spec as object),
+      // dashboard filters AND the chart's own: a chart may narrow further,
+      // never override
+      having: [...(((widget.spec as { having?: unknown[] }).having ?? []) as never[]), ...body.filters],
+      ...(body.range ? { range: body.range } : {}),
+      ...(body.time_of_day ? { time_of_day: body.time_of_day } : {}),
+      ...(body.days_of_week?.length ? { days_of_week: body.days_of_week } : {}),
+    })
+
+    // resolved per request, which is what makes reordering the agent's
+    // outcome list update every chart at once
+    if (spec.dedupe?.ranking_ref === 'agent' && !spec.dedupe.ranking?.length) {
+      if (!agentOutcomeOrder?.length) return { error: 'This agent has no outcome order set yet' }
+      spec.dedupe.ranking = agentOutcomeOrder
+    }
+    return { spec }
+  } catch (err) {
+    return { error: explain(err, widget.id) }
+  }
+}
+
+/** Runs one shared-scan statement and records every member widget's result. */
+async function runPlan(
+  plan: ReturnType<typeof planDashboardQueries>[number],
+  startedAt: number,
+  results: Map<string, WidgetResult>
+): Promise<void> {
+  const fail = (status: WidgetResult['status'], error: string) => {
+    for (const id of plan.members) results.set(id, { widget_id: id, status, error })
+  }
+  if (Date.now() - startedAt > BATCH_DEADLINE_MS) {
+    fail('skipped', 'Ran out of time — reload to try this chart again')
+    return
+  }
+  try {
+    const rows = await runQuery(plan.sql, plan.params, PER_CHART_TIMEOUT_MS)
+    plan.members.forEach((id, index) => {
+      results.set(id, {
+        widget_id: id,
+        status: 'ok',
+        data: unpack(rows, plan.members.length > 1 ? index : null),
+        meta: plan.meta,
+      })
+    })
+  } catch (err) {
+    if (isTimeout(err)) {
+      fail('timeout', 'This chart took too long. Try a shorter date range.')
+      return
+    }
+    console.error('[analytics/query]', plan.members, err)
+    fail('error', err instanceof SpecError ? err.message : 'Something went wrong drawing this chart')
+  }
+}
+
 export const POST = guarded('analytics/query', async (req: NextRequest) => {
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
@@ -69,64 +134,18 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
   const runnable: { id: string; spec: Spec }[] = []
 
   for (const widget of body.widgets) {
-    try {
-      const spec = Spec.parse({
-        ...(widget.spec as object),
-        // dashboard filters AND the chart's own: a chart may narrow further,
-        // never override
-        having: [...(((widget.spec as { having?: unknown[] }).having ?? []) as never[]), ...body.filters],
-        ...(body.range ? { range: body.range } : {}),
-        ...(body.time_of_day ? { time_of_day: body.time_of_day } : {}),
-        ...(body.days_of_week?.length ? { days_of_week: body.days_of_week } : {}),
-      })
-
-      // resolved per request, which is what makes reordering the agent's
-      // outcome list update every chart at once
-      if (spec.dedupe?.ranking_ref === 'agent' && !spec.dedupe.ranking?.length) {
-        if (!agentOutcomeOrder?.length) {
-          results.set(widget.id, { widget_id: widget.id, status: 'error', error: 'This agent has no outcome order set yet' })
-          continue
-        }
-        spec.dedupe.ranking = agentOutcomeOrder
-      }
-      runnable.push({ id: widget.id, spec })
-    } catch (err) {
-      results.set(widget.id, { widget_id: widget.id, status: 'error', error: explain(err, widget.id) })
+    const resolution = resolveWidgetSpec(widget, body, agentOutcomeOrder)
+    if ('error' in resolution) {
+      results.set(widget.id, { widget_id: widget.id, status: 'error', error: resolution.error })
+    } else {
+      runnable.push({ id: widget.id, spec: resolution.spec })
     }
   }
 
   // charts that read the same rows under the same rules answer in one statement
   const plans = runnable.length ? planDashboardQueries(runnable, ctx) : []
 
-  await Promise.all(
-    plans.map(async (plan) => {
-      const fail = (status: WidgetResult['status'], error: string) => {
-        for (const id of plan.members) results.set(id, { widget_id: id, status, error })
-      }
-      if (Date.now() - startedAt > BATCH_DEADLINE_MS) {
-        fail('skipped', 'Ran out of time — reload to try this chart again')
-        return
-      }
-      try {
-        const rows = await runQuery(plan.sql, plan.params, PER_CHART_TIMEOUT_MS)
-        plan.members.forEach((id, index) => {
-          results.set(id, {
-            widget_id: id,
-            status: 'ok',
-            data: unpack(rows, plan.members.length > 1 ? index : null),
-            meta: plan.meta,
-          })
-        })
-      } catch (err) {
-        if (isTimeout(err)) {
-          fail('timeout', 'This chart took too long. Try a shorter date range.')
-          return
-        }
-        console.error('[analytics/query]', plan.members, err)
-        fail('error', err instanceof SpecError ? err.message : 'Something went wrong drawing this chart')
-      }
-    })
-  )
+  await Promise.all(plans.map((plan) => runPlan(plan, startedAt, results)))
 
   const ordered = body.widgets.map(
     (w) => results.get(w.id) ?? { widget_id: w.id, status: 'error' as const, error: 'This chart did not run' }
@@ -144,8 +163,8 @@ function unpack(rows: Record<string, unknown>[], index: number | null): Record<s
   if (index === null) return rows
   const suffix = `_${index}`
   return rows.map((row) => ({
-    ...(row.bucket !== undefined ? { bucket: row.bucket } : {}),
-    ...(row.series !== undefined ? { series: row.series } : {}),
+    ...(row.bucket === undefined ? {} : { bucket: row.bucket }),
+    ...(row.series === undefined ? {} : { series: row.series }),
     value: row[`value${suffix}`],
     n_rows: row[`n_rows${suffix}`],
     n_nonnull: row[`n_nonnull${suffix}`],

@@ -37,7 +37,15 @@ const axisStyle = { fontSize: 11, fill: 'currentColor' } as const
 const readX = (datum: unknown): string | null => {
   if (!datum || typeof datum !== 'object') return null
   const x = (datum as { x?: unknown }).x
-  return typeof x === 'string' ? (x === '(empty)' ? null : x) : null
+  if (typeof x !== 'string') return null
+  return x === '(empty)' ? null : x
+}
+/** Legend label formatters, at module scope so recharts isn't handed a fresh component every render. */
+function pieLegendLabel(v: unknown) {
+  return <span title={String(v)}>{shortLabel(String(v), 18)}</span>
+}
+function seriesLegendLabel(v: unknown) {
+  return <span title={String(v)}>{shortLabel(String(v), 16)}</span>
 }
 const tooltipStyle = {
   contentStyle: {
@@ -51,7 +59,7 @@ const tooltipStyle = {
 
 export function ChartRenderer({
   kind, rows, spec, bucket, categories, onSelect, compact, short,
-}: {
+}: Readonly<{
   kind: ChartKind
   rows: ResultRow[]
   spec: Widget['spec']
@@ -63,10 +71,11 @@ export function ChartRenderer({
   compact?: boolean
   /** A card only two grid rows tall: the big number has to come down a size. */
   short?: boolean
-}) {
+}>) {
   const shaped = zeroFill(shape(rows, spec), categories)
   const suffix = unitFor(spec)
-  const tickFor = (x: string) => (shaped.axis === 'time' ? formatBucket(x, bucket) : shortLabel(x, compact ? 10 : 18))
+  const shortLabelWidth = compact ? 10 : 18
+  const tickFor = (x: string) => (shaped.axis === 'time' ? formatBucket(x, bucket) : shortLabel(x, shortLabelWidth))
 
   if (kind === 'kpi') return <Kpi rows={rows} spec={spec} short={short} />
   // a table with nothing to break down is just the number
@@ -99,15 +108,12 @@ export function ChartRenderer({
             paddingAngle={2}
             onClick={(slice: unknown) => onSelect?.(readX(slice))}
           >
-            {shaped.points.map((_, i) => (
-              <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
+            {shaped.points.map((p, i) => (
+              <Cell key={p.x} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
             ))}
           </Pie>
           <Tooltip {...tooltipStyle} formatter={(v: unknown) => formatValue(Number(v), spec)} />
-          <Legend
-            formatter={(v: unknown) => <span title={String(v)}>{shortLabel(String(v), 18)}</span>}
-            wrapperStyle={{ fontSize: 11 }}
-          />
+          <Legend formatter={pieLegendLabel} wrapperStyle={{ fontSize: 11 }} />
         </PieChart>
       </ResponsiveContainer>
     )
@@ -126,10 +132,7 @@ export function ChartRenderer({
           formatter={(v: unknown) => formatValue(Number(v), spec)}
         />
         {shaped.seriesKeys.length > 1 && (
-          <Legend
-            formatter={(v: unknown) => <span title={String(v)}>{shortLabel(String(v), 16)}</span>}
-            wrapperStyle={{ fontSize: 11 }}
-          />
+          <Legend formatter={seriesLegendLabel} wrapperStyle={{ fontSize: 11 }} />
         )}
         {shaped.seriesKeys.map((key, i) =>
           kind === 'line' ? (
@@ -162,7 +165,7 @@ export function ChartRenderer({
   )
 }
 
-function Kpi({ rows, spec, short }: { rows: ResultRow[]; spec: Widget['spec']; short?: boolean }) {
+function Kpi({ rows, spec, short }: Readonly<{ rows: ResultRow[]; spec: Widget['spec']; short?: boolean }>) {
   const value = displayNumber(rows[0], spec)
   return (
     <div className="flex h-full flex-col justify-center overflow-hidden">
@@ -181,12 +184,12 @@ function Kpi({ rows, spec, short }: { rows: ResultRow[]; spec: Widget['spec']; s
 
 function Table({
   shaped, spec, bucket, onSelect,
-}: {
+}: Readonly<{
   shaped: ReturnType<typeof shape>
   spec: Widget['spec']
   bucket?: string
   onSelect?: (value: string | null) => void
-}) {
+}>) {
   return (
     <div className="h-full overflow-auto">
       <table className="w-full text-sm">
@@ -205,7 +208,7 @@ function Table({
               </td>
               {shaped.seriesKeys.map((key) => (
                 <td key={key} className="py-1.5 text-right tabular-nums text-gray-900 dark:text-gray-100">
-                  {formatValue(typeof p[key] === 'number' ? (p[key] as number) : null, spec)}
+                  {formatValue(typeof p[key] === 'number' ? p[key] : null, spec)}
                 </td>
               ))}
             </tr>
@@ -216,7 +219,7 @@ function Table({
   )
 }
 
-function Notice({ children }: { children: React.ReactNode }) {
+function Notice({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="flex h-full items-center justify-center px-4 text-center text-xs text-gray-500 dark:text-gray-400">
       {children}

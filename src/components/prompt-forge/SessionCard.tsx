@@ -56,6 +56,11 @@ export function SessionCard({
   return (
     <div
       onClick={() => onNavigate(session.id)}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate(session.id) }
+      }}
+      role="button"
+      tabIndex={0}
       className={cn(
         'group flex items-center gap-4 px-5 py-4 cursor-pointer',
         'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm',

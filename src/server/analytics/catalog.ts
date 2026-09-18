@@ -73,8 +73,8 @@ const IDENTITY_HINT = /(^|_)(id|ids|uuid|mrn|phone|mobile|number|appointment|app
 /** 'is_task_complete' and 'finalDisposition' both have to become something a nurse can read. */
 export function humanise(segment: string): string {
   const words = segment
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_\-.]+/g, ' ')
+    .replaceAll(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replaceAll(/[_\-.]+/g, ' ')
     .trim()
     .toLowerCase()
     .split(/\s+/)
@@ -94,7 +94,37 @@ function looksLikeJson(text: string): boolean {
   }
 }
 
-const NUMERIC = /^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/
+const NUMERIC = /^-?\d+(\.\d+)?([eE][-+]?[0-9]+)?$/
+
+/**
+ * Real JSON, or a native boolean/number column — read the type rather than
+ * guessing from its text. `null` means "still text, keep looking".
+ */
+function classifyStructured(stats: FieldStats, nonEmpty: number): Partial<FieldInference> | null {
+  if (stats.n_object > 0 && stats.n_object >= stats.n_array) {
+    return { value_type: 'json', encoding: 'native', json_shape: 'object', is_dimension: false }
+  }
+  if (stats.n_array > 0) {
+    return { value_type: 'json', encoding: 'native', json_shape: 'array', is_dimension: false }
+  }
+  if (stats.n_boolean > 0 && stats.n_boolean >= nonEmpty) {
+    return { value_type: 'boolean', encoding: 'native', boolean_encoding: 'true_false' }
+  }
+  if (stats.n_number > 0 && stats.n_number >= nonEmpty) {
+    return { value_type: 'number', encoding: 'native', is_dimension: false }
+  }
+  return null
+}
+
+/** True/false, written four ways — the first encoding whose literals cover every sampled value. */
+function detectBooleanEncoding(meaningful: string[]): (typeof BOOLEAN_ENCODINGS)[number] | undefined {
+  const lowered = new Set(meaningful.map((v) => v.toLowerCase()))
+  for (const encoding of BOOLEAN_ENCODINGS) {
+    const allowed = new Set([...BOOLEAN_VALUES[encoding].t, ...BOOLEAN_VALUES[encoding].f])
+    if ([...lowered].every((v) => allowed.has(v))) return encoding
+  }
+  return undefined
+}
 
 /**
  * Works out what a field is, in the order §11.2 sets out. Empty values are
@@ -105,7 +135,7 @@ const NUMERIC = /^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/
 export function inferField(stats: FieldStats): FieldInference {
   const nonEmpty = Math.max(0, stats.rows_with_key - stats.n_null - stats.n_sentinel)
   const coverage_pct = stats.rows_sampled > 0 ? Math.round((nonEmpty / stats.rows_sampled) * 1000) / 10 : 0
-  const leaf = stats.path[stats.path.length - 1] ?? ''
+  const leaf = stats.path.at(-1) ?? ''
   const label = humanise(leaf)
   const values = stats.sample_values.filter((v) => v !== null && v !== undefined)
   const meaningful = values
@@ -129,18 +159,8 @@ export function inferField(stats: FieldStats): FieldInference {
   }
 
   // real JSON first — read its type rather than guessing from its text
-  if (stats.n_object > 0 && stats.n_object >= stats.n_array) {
-    return { ...base, value_type: 'json', encoding: 'native', json_shape: 'object', is_dimension: false }
-  }
-  if (stats.n_array > 0) {
-    return { ...base, value_type: 'json', encoding: 'native', json_shape: 'array', is_dimension: false }
-  }
-  if (stats.n_boolean > 0 && stats.n_boolean >= nonEmpty) {
-    return { ...base, value_type: 'boolean', encoding: 'native', boolean_encoding: 'true_false' }
-  }
-  if (stats.n_number > 0 && stats.n_number >= nonEmpty) {
-    return { ...base, value_type: 'number', encoding: 'native', is_dimension: false }
-  }
+  const structured = classifyStructured(stats, nonEmpty)
+  if (structured) return { ...base, ...structured } as FieldInference
 
   // text that parses as JSON — the shape §5.1 calls "JSON stored as text"
   if (meaningful.length > 0 && meaningful.every(looksLikeJson)) {
@@ -155,13 +175,8 @@ export function inferField(stats: FieldStats): FieldInference {
 
   // true/false, written four ways, sometimes more than one way on one field
   if (meaningful.length > 0) {
-    const lowered = new Set(meaningful.map((v) => v.toLowerCase()))
-    for (const encoding of BOOLEAN_ENCODINGS) {
-      const allowed = new Set([...BOOLEAN_VALUES[encoding].t, ...BOOLEAN_VALUES[encoding].f])
-      if ([...lowered].every((v) => allowed.has(v))) {
-        return { ...base, value_type: 'boolean', encoding: 'native', boolean_encoding: encoding }
-      }
-    }
+    const encoding = detectBooleanEncoding(meaningful)
+    if (encoding) return { ...base, value_type: 'boolean', encoding: 'native', boolean_encoding: encoding }
   }
 
   if (meaningful.length > 0 && meaningful.every((v) => NUMERIC.test(v))) {
@@ -171,7 +186,12 @@ export function inferField(stats: FieldStats): FieldInference {
   // a short list of short values is a fixed list; a short list of paragraphs is
   // still text, however few of them there are
   if (stats.distinct_values > 0 && stats.distinct_values <= ENUM_MAX_DISTINCT && longestValue <= MAX_LABEL_LENGTH) {
-    return { ...base, value_type: 'enum', encoding: 'native', enum_values: meaningful.slice(0, ENUM_MAX_DISTINCT).sort() }
+    return {
+      ...base,
+      value_type: 'enum',
+      encoding: 'native',
+      enum_values: meaningful.slice(0, ENUM_MAX_DISTINCT).sort((a, b) => a.localeCompare(b)),
+    }
   }
 
   return { ...base, value_type: 'text', encoding: 'native' }
@@ -306,7 +326,7 @@ export async function scanBuiltins(agentId: string): Promise<BuiltinField[]> {
     const filled = Number(row[`n_${b.col}`] ?? 0)
     const values = (row[`vals_${b.col}`] as string[] | null) ?? null
     // a column with too many values is not a category, whatever it was declared
-    const usableValues = values && values.length <= 30 ? values.slice().sort() : null
+    const usableValues = values && values.length <= 30 ? values.slice().sort((a, b) => a.localeCompare(b)) : null
     return {
       ...b,
       path: [],

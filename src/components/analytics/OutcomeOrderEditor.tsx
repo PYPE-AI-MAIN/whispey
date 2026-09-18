@@ -28,14 +28,14 @@ const keyOf = (f: { col: string; path?: string[] }) => `${f.col}::${(f.path ?? [
 
 export function OutcomeOrderEditor({
   agentId, fields, current, open, onClose, onSaved,
-}: {
+}: Readonly<{
   agentId: string
   fields: CatalogField[]
   current: OutcomeRanking
   open: boolean
   onClose: () => void
   onSaved: () => void
-}) {
+}>) {
   // an outcome is a short list of named results, which is exactly what the
   // catalog calls an enum
   const candidates = useMemo(() => fields.filter((f) => f.value_type === 'enum' && (f.enum_values?.length ?? 0) > 1), [fields])
@@ -125,7 +125,7 @@ export function OutcomeOrderEditor({
         ) : (
           <>
             <div>
-              <label className="mb-1 block text-[11px] font-medium text-gray-500">Which field holds the result</label>
+              <label htmlFor="outcome-ranking-field" className="mb-1 block text-[11px] font-medium text-gray-500">Which field holds the result</label>
               <Select
                 value={fieldKey}
                 onValueChange={(v) => {
@@ -134,7 +134,7 @@ export function OutcomeOrderEditor({
                   setOrder(candidates.find((f) => keyOf(f) === v)?.enum_values ?? [])
                 }}
               >
-                <SelectTrigger className="h-8 text-sm">
+                <SelectTrigger id="outcome-ranking-field" className="h-8 text-sm">
                   <SelectValue placeholder="Pick a field" />
                 </SelectTrigger>
                 <SelectContent>
@@ -195,7 +195,7 @@ export function OutcomeOrderEditor({
   )
 }
 
-function OutcomeRow({ value, rank, isBest, isWorst }: { value: string; rank: number; isBest: boolean; isWorst: boolean }) {
+function OutcomeRow({ value, rank, isBest, isWorst }: Readonly<{ value: string; rank: number; isBest: boolean; isWorst: boolean }>) {
   const s = useSortable({ id: value })
   return (
     <div

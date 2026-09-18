@@ -57,6 +57,11 @@ export function InlineNameEditor({ name, onSave, forceEdit, onForceEditDone }: P
   return (
     <span
       onClick={startEdit}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(e as unknown as React.MouseEvent) }
+      }}
+      role="button"
+      tabIndex={0}
       title="Click to rename"
       className="text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
     >

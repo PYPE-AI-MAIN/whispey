@@ -576,7 +576,7 @@ function ImportLogDialog({ open, onClose, agentId, onImport }: {
                 {pageItems.map((item, idx) =>
                   item === '…'
                     ? <span key={`e${idx}`} className="w-6 text-center text-xs text-gray-400 dark:text-gray-600 select-none">…</span>
-                    : <Button key={item} variant={item === page ? 'default' : 'ghost'} size="sm" className={cn('h-9 w-9 sm:h-7 sm:w-7 p-0 text-xs font-medium', item === page && 'pointer-events-none')} disabled={loading} onClick={() => goToPage(item as number)}>{item}</Button>
+                    : <Button key={item} variant={item === page ? 'default' : 'ghost'} size="sm" className={cn('h-9 w-9 sm:h-7 sm:w-7 p-0 text-xs font-medium', item === page && 'pointer-events-none')} disabled={loading} onClick={() => goToPage(item)}>{item}</Button>
                 )}
                 <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-7 sm:w-7 p-0 text-gray-500 dark:text-gray-400" disabled={!hasNextPage || loading} onClick={() => goToPage(page + 1)}>
                   <ChevronRight className="w-3.5 h-3.5" />

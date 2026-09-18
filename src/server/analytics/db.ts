@@ -36,7 +36,7 @@ declare global {
 }
 
 function pool(): Pool {
-  if (global.__analyticsPool) return global.__analyticsPool
+  if (globalThis.__analyticsPool) return globalThis.__analyticsPool
 
   const connectionString = process.env.SUPABASE_POOLER_URL
   if (!connectionString) {
@@ -67,7 +67,7 @@ function pool(): Pool {
 
   // survives hot reload in dev, where a new module instance would otherwise
   // open a new pool on every edit
-  global.__analyticsPool = created
+  globalThis.__analyticsPool = created
   return created
 }
 

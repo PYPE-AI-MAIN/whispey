@@ -156,7 +156,7 @@ export function useChartData(
     if (!enabled) return
     // settings change on every keystroke and every dropdown; wait for the
     // person to stop before asking the database anything
-    const timer = setTimeout(() => void run(false), 250)
+    const timer = setTimeout(() => { run(false) }, 250)
     return () => clearTimeout(timer)
     // `signature` and `context` are the real inputs; `run` closes over both
     // eslint-disable-next-line react-hooks/exhaustive-deps

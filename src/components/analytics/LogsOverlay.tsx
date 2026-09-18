@@ -28,7 +28,7 @@ type Row = {
 
 export function LogsOverlay({
   agentId, projectId, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
-}: {
+}: Readonly<{
   agentId: string
   /** Needed to link a row to its call. */
   projectId: string
@@ -51,7 +51,7 @@ export function LogsOverlay({
    * moment anyone touched the Period control.
    */
   dashboard: DashboardContext
-}) {
+}>) {
   const [rows, setRows] = useState<Row[]>([])
   const [cursor, setCursor] = useState<{ startedAt: string; id: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -97,11 +97,12 @@ export function LogsOverlay({
     if (open) {
       setRows([])
       setCursor(null)
-      void load(null)
+      load(null)
     }
   }, [open, load])
 
   const grain = widget?.spec.grain ?? 'interaction'
+  const winnerLabel = widget?.spec.dedupe?.winner === 'most_recent' ? 'most recent attempt' : 'best outcome'
   // the breakdown column earns its space only when the rows differ in it
   const showSeries = Boolean(widget?.spec.dimension) && dimensionValue === undefined
 
@@ -125,16 +126,14 @@ export function LogsOverlay({
             {widget?.title}
             {dimensionValue !== undefined && (
               <span className="ml-2 font-normal text-gray-500">
-                · {dimensionValue === null ? 'no value' : dimensionValue}
+                · {dimensionValue ?? 'no value'}
               </span>
             )}
           </DialogTitle>
 
           {/* stops somebody asking why they expected 1,847 */}
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {grain === 'entity'
-              ? `${grainLabel}, ${widget?.spec.dedupe?.winner === 'most_recent' ? 'most recent attempt' : 'best outcome'}`
-              : grainLabel}
+            {grain === 'entity' ? `${grainLabel}, ${winnerLabel}` : grainLabel}
             {/* only when it actually collapsed something: "54 calls became 54
                 rows" reads like a bug, because it is telling you nothing */}
             {grain === 'entity' && chartTotal && chartTotal !== rows.length
@@ -232,7 +231,7 @@ export function LogsOverlay({
 
           {cursor && (
             <div className="pt-3 text-center">
-              <Button variant="outline" size="sm" disabled={loading} onClick={() => void load(cursor)}>
+              <Button variant="outline" size="sm" disabled={loading} onClick={() => load(cursor)}>
                 {loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
                 Load more
               </Button>

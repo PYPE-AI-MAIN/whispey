@@ -772,6 +772,179 @@ function ViewCampaign() {
     </div>
   )
 
+  // Campaign logs table body: loading / empty / populated. Extracted from a nested
+  // ternary into if/else so each state reads as its own branch.
+  let logsSection: React.ReactNode
+  if (loadingLogs && logs.length === 0) {
+    logsSection = (
+      <div className="p-4 sm:p-8 text-center">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+        <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
+      </div>
+    )
+  } else if (logs.length === 0) {
+    logsSection = (
+      <div className="p-4 sm:p-8 text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
+      </div>
+    )
+  } else {
+    logsSection = (
+      <>
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
+              <tr>
+                {columns.map((column) => {
+                  // Map column names to display labels
+                  const columnLabels: { [key: string]: string } = {
+                    'status': 'Status',
+                    'retryCount': 'Retry Count',
+                    'lastCallAt': 'Last Call',
+                  }
+
+                  const label = columnLabels[column] ||
+                    column.split(/(?=[A-Z])/).map(word =>
+                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    ).join(' ')
+
+                  return (
+                    <th
+                      key={column}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap"
+                    >
+                      {label}
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {logs.map((log, index) => (
+                <tr
+                  key={log.contactId || log.id || index}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                >
+                  {columns.map((column) => {
+                    const value = getValue(log, column)
+                    let displayValue: React.ReactNode = value
+
+                    // Handle specific column mappings
+                    if (column === 'status') {
+                      displayValue = value ? (
+                        <Badge className={getStatusColor(value)}>
+                          {value}
+                        </Badge>
+                      ) : <span className="text-gray-400">-</span>
+                    } else if (column === 'retryCount') {
+                      displayValue = value !== undefined && value !== null ? value : 0
+                    } else if (column === 'phoneNumber' || column === 'phone') {
+                      displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-gray-400">-</span>
+                    } else if (column === 'lastCallAt') {
+                      if (value) {
+                        try {
+                          displayValue = new Date(value as string).toLocaleString()
+                        } catch {
+                          displayValue = value
+                        }
+                      } else {
+                        displayValue = <span className="text-gray-400">-</span>
+                      }
+                    } else {
+                      // Format phone numbers
+                      if (column.toLowerCase().includes('phone') && typeof value === 'string') {
+                        displayValue = <span className="font-mono text-xs">{value}</span>
+                      }
+                      // Format status with badge
+                      else if (column.toLowerCase().includes('status') && typeof value === 'string') {
+                        displayValue = (
+                          <Badge className={getStatusColor(value)}>
+                            {value}
+                          </Badge>
+                        )
+                      }
+                      // Format dates - be more specific to avoid false positives
+                      else if (value && typeof value === 'string') {
+                        // Only format as date if column name explicitly indicates it's a date/time field
+                        // Exclude appointment_date and appointment_time - show them as-is
+                        const columnLower = column.toLowerCase()
+                        const isDateColumn = (columnLower.endsWith('date') && columnLower !== 'appointment_date') ||
+                                           (columnLower.endsWith('at') && columnLower !== 'appointment_time') ||
+                                           columnLower === 'createdat' ||
+                                           columnLower === 'updatedat' ||
+                                           columnLower === 'lastcallat' ||
+                                           columnLower === 'nextcallat'
+
+                        if (isDateColumn) {
+                          try {
+                            const dateValue = new Date(value)
+                            if (!isNaN(dateValue.getTime())) {
+                              displayValue = dateValue.toLocaleString()
+                            } else {
+                              displayValue = value
+                            }
+                          } catch {
+                            displayValue = value
+                          }
+                        } else {
+                          // For non-date columns (including appointment_date and appointment_time), just display the value as-is
+                          displayValue = value
+                        }
+                      }
+                      // Format numbers
+                      else if (typeof value === 'number') {
+                        displayValue = value.toLocaleString()
+                      }
+                      // Handle null/undefined
+                      else if (value === null || value === undefined) {
+                        displayValue = <span className="text-gray-400">-</span>
+                      }
+                      // Handle objects
+                      else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        displayValue = <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>
+                      }
+                    }
+
+                    return (
+                      <td
+                        key={column}
+                        className="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
+                      >
+                        {displayValue}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Load More Button */}
+        {hasMoreLogs && (
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLoadMore}
+              disabled={loadingLogs}
+              className="text-xs"
+            >
+              {loadingLogs ? (
+                <>
+                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                'Load More'
+              )}
+            </Button>
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
       {/* Header */}
@@ -960,169 +1133,7 @@ function ViewCampaign() {
               </h2>
             </div>
 
-            {loadingLogs && logs.length === 0 ? (
-              <div className="p-4 sm:p-8 text-center">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
-              </div>
-            ) : logs.length === 0 ? (
-              <div className="p-4 sm:p-8 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
-                      <tr>
-                        {columns.map((column) => {
-                          // Map column names to display labels
-                          const columnLabels: { [key: string]: string } = {
-                            'status': 'Status',
-                            'retryCount': 'Retry Count',
-                            'lastCallAt': 'Last Call',
-                          }
-                          
-                          const label = columnLabels[column] || 
-                            column.split(/(?=[A-Z])/).map(word => 
-                              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                            ).join(' ')
-                          
-                          return (
-                            <th 
-                              key={column}
-                              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap"
-                            >
-                              {label}
-                            </th>
-                          )
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {logs.map((log, index) => (
-                        <tr 
-                          key={log.contactId || log.id || index}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
-                        >
-                          {columns.map((column) => {
-                            const value = getValue(log, column)
-                            let displayValue: React.ReactNode = value
-
-                            // Handle specific column mappings
-                            if (column === 'status') {
-                              displayValue = value ? (
-                                <Badge className={getStatusColor(value)}>
-                                  {value}
-                                </Badge>
-                              ) : <span className="text-gray-400">-</span>
-                            } else if (column === 'retryCount') {
-                              displayValue = value !== undefined && value !== null ? value : 0
-                            } else if (column === 'phoneNumber' || column === 'phone') {
-                              displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-gray-400">-</span>
-                            } else if (column === 'lastCallAt') {
-                              if (value) {
-                                try {
-                                  displayValue = new Date(value as string).toLocaleString()
-                                } catch {
-                                  displayValue = value
-                                }
-                              } else {
-                                displayValue = <span className="text-gray-400">-</span>
-                              }
-                            } else {
-                              // Format phone numbers
-                              if (column.toLowerCase().includes('phone') && typeof value === 'string') {
-                                displayValue = <span className="font-mono text-xs">{value}</span>
-                              }
-                              // Format status with badge
-                              else if (column.toLowerCase().includes('status') && typeof value === 'string') {
-                                displayValue = (
-                                  <Badge className={getStatusColor(value)}>
-                                    {value}
-                                  </Badge>
-                                )
-                              }
-                              // Format dates - be more specific to avoid false positives
-                              else if (value && typeof value === 'string') {
-                                // Only format as date if column name explicitly indicates it's a date/time field
-                                // Exclude appointment_date and appointment_time - show them as-is
-                                const columnLower = column.toLowerCase()
-                                const isDateColumn = (columnLower.endsWith('date') && columnLower !== 'appointment_date') || 
-                                                   (columnLower.endsWith('at') && columnLower !== 'appointment_time') ||
-                                                   columnLower === 'createdat' ||
-                                                   columnLower === 'updatedat' ||
-                                                   columnLower === 'lastcallat' ||
-                                                   columnLower === 'nextcallat'
-                                
-                                if (isDateColumn) {
-                                  try {
-                                    const dateValue = new Date(value)
-                                    if (!isNaN(dateValue.getTime())) {
-                                      displayValue = dateValue.toLocaleString()
-                                    } else {
-                                      displayValue = value
-                                    }
-                                  } catch {
-                                    displayValue = value
-                                  }
-                                } else {
-                                  // For non-date columns (including appointment_date and appointment_time), just display the value as-is
-                                  displayValue = value
-                                }
-                              }
-                              // Format numbers
-                              else if (typeof value === 'number') {
-                                displayValue = value.toLocaleString()
-                              }
-                              // Handle null/undefined
-                              else if (value === null || value === undefined) {
-                                displayValue = <span className="text-gray-400">-</span>
-                              }
-                              // Handle objects
-                              else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                                displayValue = <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>
-                              }
-                            }
-
-                            return (
-                              <td 
-                                key={column}
-                                className="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
-                              >
-                                {displayValue}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Load More Button */}
-                {hasMoreLogs && (
-                  <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLoadMore}
-                      disabled={loadingLogs}
-                      className="text-xs"
-                    >
-                      {loadingLogs ? (
-                        <>
-                          <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        'Load More'
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
+            {logsSection}
           </div>
         </div>
       </div>

@@ -134,7 +134,7 @@ const EOD_PROMPT_SNIPPET =
 const chevronClass = (open: boolean) => open ? 'rotate-180' : ''
 
 /** A super-heading over a cluster of related sections — the "first" one carries no top margin, the rest space themselves off the divider above. */
-function GroupLabel({ children, first = false }: { children: React.ReactNode; first?: boolean }) {
+function GroupLabel({ children, first = false }: Readonly<{ children: React.ReactNode; first?: boolean }>) {
   return (
     <div className={first ? 'px-2 pb-1' : 'px-2 pb-1 pt-1'}>
       <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">{children}</span>
@@ -268,7 +268,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
               ambiguousKeywords={advancedSettings.fillers.ambiguousKeywords ?? []}
               ambiguousFillers={advancedSettings.fillers.ambiguousFillers ?? []}
               generalFillers={advancedSettings.fillers.generalFillers ?? []}
-              fillerCooldownSec={advancedSettings.fillers.fillerCooldownSec ?? 4.0}
+              fillerCooldownSec={advancedSettings.fillers.fillerCooldownSec ?? 4}
               latencyThreshold={advancedSettings.fillers.latencyThreshold ?? 1.2}
               onFieldChange={onFieldChange}
             />
@@ -522,7 +522,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
               ambientVolume={advancedSettings.backgroundAudio?.ambientVolume || 30}
               thinkingType={advancedSettings.backgroundAudio?.thinkingType || 'keyboard'}
               thinkingVolume={advancedSettings.backgroundAudio?.thinkingVolume || 0.5}
-              thinkingProbability={advancedSettings.backgroundAudio?.thinkingProbability ?? 1.0}
+              thinkingProbability={advancedSettings.backgroundAudio?.thinkingProbability ?? 1}
               toolCallTyping={advancedSettings.backgroundAudio?.toolCallTyping ?? false}
               toolCallVolume={advancedSettings.backgroundAudio?.toolCallVolume ?? 0.8}
               onFieldChange={onFieldChange}

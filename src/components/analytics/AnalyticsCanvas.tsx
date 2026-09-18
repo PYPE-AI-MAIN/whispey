@@ -44,8 +44,6 @@ type Props = {
   project: { id: string } | null | undefined
   agent: { id: string; name?: string } | null | undefined
   dateRange: { from: string; to: string }
-  quickFilter?: string
-  isCustomRange?: boolean
   isLoading?: boolean
   /** The tab stays mounted while hidden; do not fetch for a screen nobody is looking at. */
   isActive?: boolean
@@ -81,7 +79,7 @@ const SOURCES = [
 const BREAKPOINTS = { lg: 640, sm: 0 }
 const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
 
-export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true }: Props) {
+export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true }: Readonly<Props>) {
   const agentId = agent?.id
   const { isMobile } = useMobile()
   const router = useRouter()
@@ -217,8 +215,8 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedId(null)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    globalThis.addEventListener('keydown', onKey)
+    return () => globalThis.removeEventListener('keydown', onKey)
   }, [])
 
   /** A new card arrives with its settings already filled in, never blank (§10.4). */
@@ -644,11 +642,11 @@ function changed(w: Widget, original: Widget[]): boolean {
   return JSON.stringify(was.spec) !== JSON.stringify(w.spec) || was.title !== w.title || was.kind !== w.kind
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
+function Centered({ children }: Readonly<{ children: React.ReactNode }>) {
   return <div className="flex h-40 items-center justify-center text-sm text-gray-500 dark:text-gray-400">{children}</div>
 }
 
-function Banner({ children, onDismiss }: { children: React.ReactNode; onDismiss: () => void }) {
+function Banner({ children, onDismiss }: Readonly<{ children: React.ReactNode; onDismiss: () => void }>) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
       <span>{children}</span>

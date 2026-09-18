@@ -172,7 +172,7 @@ export function SessionsList({ projectId, agentId }: Props) {
             <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
               Delete{' '}
               <span className="font-medium text-gray-700 dark:text-gray-200">"{deleteTarget?.name || 'Untitled session'}"</span>
-              ? This cannot be undone.
+              {' '}? This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 justify-end pt-1">

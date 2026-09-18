@@ -176,11 +176,11 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   const { error: upError } = await supabase.from('pype_analytics_widgets').upsert(rows)
 
   const removal = supabase.from('pype_analytics_widgets').delete().eq('dashboard_id', body.dashboardId)
-  const { error: delError } = upError
-    ? { error: null }
-    : rows.length
-      ? await removal.not('id', 'in', `(${rows.map((r) => r.id).join(',')})`)
-      : await removal
+  let delError: typeof upError = null
+  if (!upError) {
+    const result = rows.length ? await removal.not('id', 'in', `(${rows.map((r) => r.id).join(',')})`) : await removal
+    delError = result.error
+  }
 
   if (delError || upError) {
     const failure = delError ?? upError

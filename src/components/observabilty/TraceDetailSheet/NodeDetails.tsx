@@ -496,8 +496,8 @@ function NodeDetails({
               Tool Executions ({selectedStage.tools.length})
             </h4>
             <div className="space-y-3">
-              {selectedStage.tools.map((tool: any, index: number) => (
-                <div key={index} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
+              {selectedStage.tools.map((tool: any) => (
+                <div key={tool.id ?? `${tool.name}-${tool.execution_duration_ms ?? 'na'}-${JSON.stringify(tool.arguments)}`} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-800 flex items-center justify-center">

@@ -70,13 +70,13 @@ const currentColumns = (widget: Widget): number | null =>
  */
 function ChartTypeTile({
   type, disabled, onAdd, onDragStart, onDragEnd,
-}: {
+}: Readonly<{
   type: { kind: ChartKind; label: string; icon: React.ReactNode }
   disabled: boolean
   onAdd: () => void
   onDragStart: () => void
   onDragEnd: () => void
-}) {
+}>) {
   return (
     <button
       draggable={!disabled}
@@ -106,7 +106,7 @@ function ChartTypeTile({
 
 export function SidePanel({
   selected, fields, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack,
-}: {
+}: Readonly<{
   selected: Widget | null
   fields: CatalogField[]
   canEdit: boolean
@@ -118,7 +118,7 @@ export function SidePanel({
   onChange: (spec: SpecInput) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
-}) {
+}>) {
   if (!selected) {
     return (
       <Panel title="Chart types">
@@ -158,7 +158,7 @@ export function SidePanel({
 
 function ChartSettings({
   widget, fields, canEdit, onBack, onChange, onChangeKind, onChangeTitle,
-}: {
+}: Readonly<{
   widget: Widget
   fields: CatalogField[]
   canEdit: boolean
@@ -166,7 +166,7 @@ function ChartSettings({
   onChange: (spec: SpecInput) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
-}) {
+}>) {
   const spec = widget.spec
   const calculation = CALCULATIONS.find((c) => c.fn === spec.agg?.fn) ?? CALCULATIONS[0]
 
@@ -274,7 +274,7 @@ function ChartSettings({
                     },
                     ...(calculation.needs === 'boolean' ? { denominator: 'field_present' as const } : {}),
                   },
-                } as Partial<SpecInput>)
+                })
               )
             }
           />
@@ -394,7 +394,7 @@ function coverageHint(f: CatalogField): string | undefined {
   return `${f.coverage_pct}% of calls`
 }
 
-function Panel({ title, children, onBack }: { title: string; children: React.ReactNode; onBack?: () => void }) {
+function Panel({ title, children, onBack }: Readonly<{ title: string; children: React.ReactNode; onBack?: () => void }>) {
   return (
     <aside className="flex h-full w-full flex-col overflow-y-auto border-l border-gray-200 bg-gray-50/60 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/40">
       {/* selecting a chart replaces the chart types with its settings, and
@@ -415,7 +415,7 @@ function Panel({ title, children, onBack }: { title: string; children: React.Rea
   )
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
   return (
     <div className="mb-3">
       <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">{label}</label>
@@ -426,14 +426,14 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function Picker({
   value, options, onChange, disabled, placeholder, clearable,
-}: {
+}: Readonly<{
   value: string
   options: { value: string; label: string; hint?: string; help?: string }[]
   onChange: (value: string) => void
   disabled?: boolean
   placeholder?: string
   clearable?: boolean
-}) {
+}>) {
   const NONE = '__none__'
   return (
     <Select

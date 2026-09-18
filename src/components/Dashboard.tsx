@@ -536,8 +536,6 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
             project={project}
             agent={agent}
             dateRange={apiDateRange}
-            quickFilter={quickFilter}
-            isCustomRange={isCustomRange}
             isLoading={agentLoading || projectLoading}
             isActive={activeTab === 'overview'}
           />

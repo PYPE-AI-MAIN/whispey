@@ -26,7 +26,7 @@ export const DRAG_HANDLE_CLASS = 'chart-drag-handle'
 export function ChartCard({
   widget, result, isLoading, selected, canEdit, draggable, categories, catalog, catalogReady, grainLabel, definition,
   onSelect, onOpenLogs, onEdit, onDuplicate, onRemove, onExport, onChangeGrain,
-}: {
+}: Readonly<{
   widget: Widget
   result?: WidgetResult
   isLoading: boolean
@@ -51,7 +51,7 @@ export function ChartCard({
   onRemove: () => void
   onExport: () => void
   onChangeGrain: (grain: 'interaction' | 'entity') => void
-}) {
+}>) {
   const rows = result?.data ?? []
   const cover = coverage(rows)
   const isKpi = widget.kind === 'kpi'
@@ -75,6 +75,8 @@ export function ChartCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(
         // the grid owns the rectangle; the card fills whatever it is given
         'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-colors dark:bg-gray-900',
@@ -83,6 +85,13 @@ export function ChartCard({
           : 'border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'
       )}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') onSelect()
+        else if (e.key === ' ') {
+          e.preventDefault()
+          onSelect()
+        }
+      }}
     >
       <div className="flex shrink-0 items-start justify-between gap-2 px-4 pt-3">
         <div className="min-w-0">
@@ -197,7 +206,7 @@ export function ChartCard({
 /** The five states a card has to be able to show, and never a blank rectangle. */
 function CardBody({
   widget, result, isLoading, rows, categories, fieldMissing, short, onSelect,
-}: {
+}: Readonly<{
   widget: Widget
   result?: WidgetResult
   isLoading: boolean
@@ -208,7 +217,7 @@ function CardBody({
   /** Two grid rows tall — the number has to be smaller or it draws over the words. */
   short: boolean
   onSelect: (value: string | null) => void
-}) {
+}>) {
   if (isLoading && !result) return <Skeleton className="h-full w-full rounded-lg" />
 
   if (result?.status === 'timeout') {
@@ -257,7 +266,7 @@ function CardBody({
   )
 }
 
-function State({ icon, text, tone = 'warn' }: { icon?: React.ReactNode; text: string; tone?: 'warn' | 'muted' }) {
+function State({ icon, text, tone = 'warn' }: Readonly<{ icon?: React.ReactNode; text: string; tone?: 'warn' | 'muted' }>) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-1.5 px-3 text-center text-xs text-gray-500 dark:text-gray-400">
       {/* only the icon carries the warning color — a whole card in solid

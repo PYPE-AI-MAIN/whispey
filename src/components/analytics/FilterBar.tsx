@@ -12,7 +12,6 @@
 'use client'
 import React, { useMemo, useState } from 'react'
 import { Filter, Plus, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -38,11 +37,11 @@ const isCondition = (n: FilterNodeInput): n is Condition => !('children' in n)
 
 export function FilterBar({
   filters, fields, onChange,
-}: {
+}: Readonly<{
   filters: FilterNodeInput[]
   fields: CatalogField[]
   onChange: (filters: FilterNodeInput[]) => void
-}) {
+}>) {
   const [open, setOpen] = useState(false)
   const labels = useMemo(() => new Map(fields.map((f) => [keyOf(f), f.label])), [fields])
 
@@ -51,7 +50,7 @@ export function FilterBar({
       {filters.map((node, i) =>
         isCondition(node) ? (
           <Chip
-            key={i}
+            key={`${keyOf(node.field)}-${node.op}-${i}`}
             label={describe(node, labels)}
             onRemove={() => onChange(filters.filter((_, j) => j !== i))}
           />
@@ -79,7 +78,7 @@ export function FilterBar({
   )
 }
 
-export function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+export function Chip({ label, onRemove }: Readonly<{ label: string; onRemove: () => void }>) {
   return (
     <span className="inline-flex max-w-xs items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
       <span className="truncate">{label}</span>
@@ -90,7 +89,7 @@ export function Chip({ label, onRemove }: { label: string; onRemove: () => void 
   )
 }
 
-export function FilterEditor({ fields, onAdd }: { fields: CatalogField[]; onAdd: (c: Condition) => void }) {
+export function FilterEditor({ fields, onAdd }: Readonly<{ fields: CatalogField[]; onAdd: (c: Condition) => void }>) {
   const usable = useMemo(() => fields.filter((f) => f.value_type !== 'json'), [fields])
   const [fieldKey, setFieldKey] = useState('')
   const [op, setOp] = useState<Condition['op']>('eq')
@@ -191,7 +190,8 @@ function describe(c: Condition, labels: Map<string, string>): string {
   if (c.op === 'is_false') return `${name}: no`
   const op = OPERATORS.find((o) => o.op === c.op)
   const value = Array.isArray(c.value) ? c.value.join(', ') : c.value
-  return `${name} ${op?.label ?? c.op}${op?.needsValue ? ` ${value}` : ''}`
+  const valueSuffix = op?.needsValue ? ` ${value}` : ''
+  return `${name} ${op?.label ?? c.op}${valueSuffix}`
 }
 
 /**
@@ -204,12 +204,12 @@ function describe(c: Condition, labels: Map<string, string>): string {
  */
 export function ChartFilters({
   filters, fields, disabled, onChange,
-}: {
+}: Readonly<{
   filters: FilterNodeInput[]
   fields: CatalogField[]
   disabled: boolean
   onChange: (filters: FilterNodeInput[]) => void
-}) {
+}>) {
   const [open, setOpen] = useState(false)
   const labels = useMemo(() => new Map(fields.map((f) => [keyOf(f), f.label])), [fields])
 
@@ -217,9 +217,9 @@ export function ChartFilters({
     <div className="flex flex-wrap items-center gap-1">
       {filters.map((node, i) =>
         isCondition(node) ? (
-          <Chip key={i} label={describe(node, labels)} onRemove={() => onChange(filters.filter((_, j) => j !== i))} />
+          <Chip key={`${keyOf(node.field)}-${node.op}-${i}`} label={describe(node, labels)} onRemove={() => onChange(filters.filter((_, j) => j !== i))} />
         ) : (
-          <Chip key={i} label="a group of conditions" onRemove={() => onChange(filters.filter((_, j) => j !== i))} />
+          <Chip key={`group-${i}`} label="a group of conditions" onRemove={() => onChange(filters.filter((_, j) => j !== i))} />
         )
       )}
       <Popover open={open} onOpenChange={setOpen}>

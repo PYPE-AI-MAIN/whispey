@@ -17,7 +17,7 @@
 import React from 'react'
 import { AlertTriangle } from 'lucide-react'
 
-type Props = { children: React.ReactNode; label?: string; onReset?: () => void }
+type Props = { children: React.ReactNode; label?: string }
 type State = { error: Error | null }
 
 export class ChartErrorBoundary extends React.Component<Props, State> {

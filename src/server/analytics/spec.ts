@@ -268,18 +268,15 @@ export const Spec = z
   })
   .superRefine((s, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message })
+    checkGrain(s, fail)
 
     if (s.agg.fn !== 'count' && !s.agg.field) fail(`${s.agg.fn} needs a field`)
     if (s.agg.fn === 'rate' && s.agg.field && !s.agg.field.boolean_encoding) {
       fail('rate needs boolean_encoding — true/false is written four ways in this data')
     }
-    if (s.grain === 'entity' && !s.dedupe) fail('grain "entity" needs dedupe')
-    if (s.grain !== 'entity' && s.dedupe) fail('dedupe only applies at grain "entity"')
     if (s.dedupe?.winner === 'best_outcome' && !s.dedupe.outcome) {
       fail('winner "best_outcome" needs an outcome field')
     }
-    if (s.grain === 'element' && !s.element_source) fail('grain "element" needs element_source')
-    if (s.grain !== 'element' && refsElement(s)) fail('"element" is only readable at grain "element"')
     if (s.bucket !== 'none' && s.dimension && s.dimension.limit > 50) {
       fail('a time bucket plus a breakdown is limited to 50 categories')
     }
@@ -292,4 +289,12 @@ export type SpecInput = z.input<typeof Spec>
 function refsElement(s: z.infer<typeof Spec>): boolean {
   return [s.agg.field, s.dimension?.field, s.dedupe?.key.field, s.dedupe?.outcome]
     .some((r) => r?.col === ELEMENT_COL)
+}
+
+/** grain, dedupe and element_source have to agree with each other — pulled out of superRefine to keep it under the complexity limit. */
+function checkGrain(s: z.infer<typeof Spec>, fail: (message: string) => void): void {
+  if (s.grain === 'entity' && !s.dedupe) fail('grain "entity" needs dedupe')
+  if (s.grain !== 'entity' && s.dedupe) fail('dedupe only applies at grain "entity"')
+  if (s.grain === 'element' && !s.element_source) fail('grain "element" needs element_source')
+  if (s.grain !== 'element' && refsElement(s)) fail('"element" is only readable at grain "element"')
 }

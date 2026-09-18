@@ -232,7 +232,8 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     if ((JSON_COLS as readonly string[]).includes(ref.col)) {
       return `(${t}.${ref.col} #>> ${bind(ref.path)}::text[])`
     }
-    return `(${COLUMN_EXPRESSIONS[ref.col]?.(t) ?? `${t}.${ref.col}`})::text`
+    const column = COLUMN_EXPRESSIONS[ref.col]?.(t) ?? `${t}.${ref.col}`
+    return `(${column})::text`
   }
 
   /** Text with the four ways of writing "empty" collapsed to NULL (§5.1). */
@@ -247,9 +248,12 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
    * NULL, which is why n_nonnull is always returned beside the number.
    */
   const numeric = (ref: Ref, t: string) => {
-    if (NUMERIC_COL_SET.has(ref.col)) return `${COLUMN_EXPRESSIONS[ref.col]?.(t) ?? `${t}.${ref.col}`}::numeric`
+    if (NUMERIC_COL_SET.has(ref.col)) {
+      const column = COLUMN_EXPRESSIONS[ref.col]?.(t) ?? `${t}.${ref.col}`
+      return `${column}::numeric`
+    }
     const c = cleanText(ref, t)
-    return `(CASE WHEN ${c} ~ '^-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$' THEN (${c})::numeric END)`
+    return String.raw`(CASE WHEN ${c} ~ '^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$' THEN (${c})::numeric END)`
   }
 
   const boolean = (ref: Ref, t: string, want: boolean) => {
@@ -335,8 +339,10 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   if (HAS_PROJECT_ID_COLUMN) where.push(`l.project_id = ${bind(ctx.projectId)}`)
   where.push(`l.agent_id = ANY(${bind(ctx.agentIds)}::uuid[])`)
   // the lookback bound, so the entity's whole history is rankable (§8.2)
-  where.push(`l.call_started_at >= ${bind(pgTimestamp(range.loWithLookback))}::timestamp`)
-  where.push(`l.call_started_at <  ${bind(pgTimestamp(range.hi))}::timestamp`)
+  where.push(
+    `l.call_started_at >= ${bind(pgTimestamp(range.loWithLookback))}::timestamp`,
+    `l.call_started_at <  ${bind(pgTimestamp(range.hi))}::timestamp`
+  )
   if (!spec.include_live_calls) {
     // a call_started row with no matching end is a call happening right now (§5.5)
     where.push(`coalesce(l.wcall_event, 'call_ended') = 'call_ended'`)
@@ -392,8 +398,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     if (d.winner === 'best_outcome') {
       if (!d.ranking?.length) throw new SpecError('best_outcome needs the agent outcome order')
       // one list on the agent instead of a CASE ladder copied into every query
-      order.push(`array_position(${bind(d.ranking)}::text[], ${cleanText(d.outcome!, 's')}) NULLS LAST`)
-      order.push('s.created_at DESC')
+      order.push(`array_position(${bind(d.ranking)}::text[], ${cleanText(d.outcome!, 's')}) NULLS LAST`, 's.created_at DESC')
     } else {
       order.push(d.winner === 'most_recent' ? 's.created_at DESC' : 's.created_at ASC')
     }
@@ -403,9 +408,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     // silently grouped with every other keyless call
     const keyless = d.key.fallback === 'none' ? `\n  WHERE ${key} IS NOT NULL` : ''
     ctes.push(
-      `ranked AS (\n  SELECT s.*, row_number() OVER (PARTITION BY ${partition} ORDER BY ${order.join(', ')}) AS rn\n  FROM scanned s${keyless}\n)`
-    )
-    ctes.push(
+      `ranked AS (\n  SELECT s.*, row_number() OVER (PARTITION BY ${partition} ORDER BY ${order.join(', ')}) AS rn\n  FROM scanned s${keyless}\n)`,
       `picked AS (\n  SELECT * FROM ranked WHERE rn = 1 AND started_at >= ${bind(pgTimestamp(range.lo))}::timestamp\n)`
     )
     stage = 'picked'
@@ -437,17 +440,20 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   /* ---- stage 4: the answer ---- */
 
   const t = stage
-  const bucket = spec.bucket === 'none' ? 'none' : spec.bucket === 'auto' ? autoBucket(range.days) : spec.bucket
+  let bucket: 'none' | 'hour' | 'day' | 'week' | 'month'
+  if (spec.bucket === 'none') bucket = 'none'
+  else if (spec.bucket === 'auto') bucket = autoBucket(range.days)
+  else bucket = spec.bucket
   // with companions the scan is shared, so nobody's own filter can narrow it —
   // each one becomes a FILTER on its own columns instead
   const shared = opts.companions?.length ? [] : spec.having
   const post = conjunction(shared, t)
 
-  const dimExpr = spec.dimension
-    ? spec.dimension.case_insensitive
-      ? `lower(${cleanText(spec.dimension.field, t)})`
-      : cleanText(spec.dimension.field, t)
-    : null
+  let dimExpr: string | null = null
+  if (spec.dimension) {
+    const base = cleanText(spec.dimension.field, t)
+    dimExpr = spec.dimension.case_insensitive ? `lower(${base})` : base
+  }
   if (dimExpr && !spec.dimension!.include_empty) post.push(`${dimExpr} IS NOT NULL`)
 
   /** The columns one chart contributes to a shared scan. */
@@ -458,13 +464,11 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   ): string[] => {
     const aggField = agg.field
     const numericFn = ['sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95'].includes(agg.fn)
-    const present = !aggField
-      ? 'TRUE'
-      : agg.fn === 'rate'
-        ? `(${boolean(aggField, t, true)} OR ${boolean(aggField, t, false)})`
-        : numericFn
-          ? `${numeric(aggField, t)} IS NOT NULL`
-          : `${cleanText(aggField, t)} IS NOT NULL`
+    let present: string
+    if (!aggField) present = 'TRUE'
+    else if (agg.fn === 'rate') present = `(${boolean(aggField, t, true)} OR ${boolean(aggField, t, false)})`
+    else if (numericFn) present = `${numeric(aggField, t)} IS NOT NULL`
+    else present = `${cleanText(aggField, t)} IS NOT NULL`
 
     // a companion's own filter cannot go in the WHERE — the scan is shared —
     // so it rides along on every aggregate it belongs to
@@ -602,12 +606,12 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     : [{ agg: spec.agg, having: shared.length ? [] : spec.having, suffix: '' }]
   for (const m of members) selected.push(...aggregateColumns(m.agg, m.having, m.suffix))
 
-  // limit the categories, not the rows: with a time bucket the schema already
-  // caps the breakdown at 50, and cutting rows there would drop whole days
+  // a plain breakdown (no bucket) limits rows directly, ordered by value —
   // a LIMIT without an ORDER BY returns arbitrary rows, so a shared scan orders
-  // by the first chart's value — the categories are the same for all of them
+  // by the first chart's value — the categories are the same for all of them.
+  // A breakdown over time is bounded above instead, via top_series.
   const valueAlias = opts.companions?.length ? 'value_0' : 'value'
-  const order = bucket !== 'none' ? 'ORDER BY 1' : dimExpr ? `ORDER BY ${valueAlias} DESC NULLS LAST` : ''
+  const order = bucket === 'none' ? (dimExpr ? `ORDER BY ${valueAlias} DESC NULLS LAST` : '') : 'ORDER BY 1'
   const limit = bucket === 'none' && spec.dimension ? `\nLIMIT ${bind(spec.dimension.limit)}` : ''
 
   const sql =
@@ -629,7 +633,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
  */
 function checkEveryParamIsUsed(sql: string, params: unknown[]): void {
   for (let n = 1; n <= params.length; n++) {
-    if (!new RegExp(`\\$${n}(?![0-9])`).test(sql)) {
+    if (!new RegExp(String.raw`\$${n}(?![0-9])`).test(sql)) {
       throw new InternalSpecError(`parameter $${n} was bound but never used — the query would be rejected`)
     }
   }
