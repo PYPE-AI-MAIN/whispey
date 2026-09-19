@@ -191,12 +191,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Interruption Configuration */}
         <Collapsible open={openSections.interruption} onOpenChange={() => toggleSection('interruption')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <SettingsIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Interruption Configuration</span>
+              <SettingsIcon className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Interruption Configuration</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.interruption)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.interruption)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -225,12 +225,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Voice Activity Detection (VAD) */}
         <Collapsible open={openSections.vad} onOpenChange={() => toggleSection('vad')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <MicIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Voice Activity Detection (VAD)</span>
+              <MicIcon className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Voice Activity Detection (VAD)</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.vad)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.vad)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -252,12 +252,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Fillers Words & Natural Speech */}
         <Collapsible open={openSections.fillers} onOpenChange={() => toggleSection('fillers')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Fillers Words</span>
+              <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Fillers Words</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.fillers)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.fillers)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -281,12 +281,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Session Behaviour */}
         <Collapsible open={openSections.session} onOpenChange={() => toggleSection('session')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <UserIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Session Behaviour</span>
+              <UserIcon className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Session Behaviour</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.session)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.session)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -310,12 +310,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* EOD Auto-Hangup */}
         <Collapsible open={openSections.eod} onOpenChange={() => toggleSection('eod')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">EOD Auto-Hangup</span>
+              <Zap className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">EOD Auto-Hangup</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.eod)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.eod)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -361,12 +361,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Drop-off Call Configuration */}
         <Collapsible open={openSections.dropoff} onOpenChange={() => toggleSection('dropoff')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <PhoneOff className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Drop-off Call Configuration</span>
+              <PhoneOff className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Drop-off Call Configuration</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.dropoff)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.dropoff)}`} />
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -391,12 +391,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Callback Scheduling */}
         <Collapsible open={openSections.callbackScheduling} onOpenChange={() => toggleSection('callbackScheduling')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <PhoneCall className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Callback Scheduling</span>
+              <PhoneCall className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Callback Scheduling</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.callbackScheduling)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.callbackScheduling)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -417,12 +417,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Tools & Actions */}
         <Collapsible open={openSections.tools} onOpenChange={() => toggleSection('tools')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <WrenchIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tools & Actions</span>
+              <WrenchIcon className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Tools & Actions</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.tools)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.tools)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -441,12 +441,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Knowledge Base (RAG) */}
         <Collapsible open={openSections.knowledgeBase} onOpenChange={() => toggleSection('knowledgeBase')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">RAG Settings</span>
+              <BookOpen className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">RAG Settings</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.knowledgeBase)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.knowledgeBase)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -462,12 +462,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Context Memory */}
         <Collapsible open={openSections.contextMemory} onOpenChange={() => toggleSection('contextMemory')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Context Memory</span>
+              <MessageSquareIcon className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Context Memory</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.contextMemory)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.contextMemory)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -484,12 +484,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* TTS Switcher */}
         <Collapsible open={openSections.ttsSwitcher} onOpenChange={() => toggleSection('ttsSwitcher')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <ArrowRightLeft className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">TTS Switcher</span>
+              <ArrowRightLeft className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">TTS Switcher</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.ttsSwitcher)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.ttsSwitcher)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -504,12 +504,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Background Audio */}
         <Collapsible open={openSections.backgroundAudio} onOpenChange={() => toggleSection('backgroundAudio')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <Volume2 className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Background Audio</span>
+              <Volume2 className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Background Audio</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.backgroundAudio)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.backgroundAudio)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -536,12 +536,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Webhook Configuration */}
         <Collapsible open={openSections.webhook} onOpenChange={() => toggleSection('webhook')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <Webhook className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Webhook Configuration</span>
+              <Webhook className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Webhook Configuration</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.webhook)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.webhook)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
@@ -563,12 +563,12 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
 
         {/* Bug Report System */}
         <Collapsible open={openSections.bugs} onOpenChange={() => toggleSection('bugs')}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
             <div className="flex items-center gap-2">
-              <BugIcon className="w-3.5 h-3.5 text-gray-500" />
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Bug Report System</span>
+              <BugIcon className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Bug Report System</span>
             </div>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${chevronClass(openSections.bugs)}`} />
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.bugs)}`} />
           </CollapsibleTrigger>
 
           <CollapsibleContent className="mt-2 ml-5 space-y-2">
