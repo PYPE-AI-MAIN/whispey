@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { 
   Table,
   TableBody,
@@ -183,6 +184,343 @@ function CampaignTableSkeleton() {
         </div>
       </div>
     </main>
+  )
+}
+
+// Upload CSV dialog content, extracted to keep CampaignLogs' render function simple
+function UploadDialogContent({
+  csvFile, onFileChange, uploading, onCancel, onUpload,
+}: Readonly<{
+  csvFile: File | null
+  onFileChange: (file: File | null) => void
+  uploading: boolean
+  onCancel: () => void
+  onUpload: () => void
+}>) {
+  return (
+    <div className="space-y-4">
+      <div className="text-center">
+        <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+          <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        </div>
+        <DialogTitle className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Upload CSV File</DialogTitle>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Select a CSV file to upload to S3</p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="upload-csv-file" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            CSV File
+          </label>
+          <input
+            id="upload-csv-file"
+            type="file"
+            accept=".csv"
+            onChange={(e) => onFileChange(e.target.files?.[0] || null)}
+            className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
+          />
+        </div>
+
+        {csvFile && (
+          <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
+            <strong>Selected:</strong> {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          disabled={uploading}
+          className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={onUpload}
+          disabled={!csvFile || uploading}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="w-4 h-4 mr-2" />
+              Upload to S3
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// Delete-all confirmation dialog content, extracted to keep CampaignLogs' render function simple
+function DeleteDialogContent({
+  deleteConfirmText, onConfirmTextChange, deleting, deleteResult, pagination, onCancel, onDelete, onClose,
+}: Readonly<{
+  deleteConfirmText: string
+  onConfirmTextChange: (v: string) => void
+  deleting: boolean
+  deleteResult: any
+  pagination: PaginationMeta | null
+  onCancel: () => void
+  onDelete: () => void
+  onClose: () => void
+}>) {
+  if (!deleteResult) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+            <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+          </div>
+          <DialogTitle className="text-xs font-medium uppercase tracking-wide text-red-600 dark:text-red-400 mb-2">Delete All Campaign Logs</DialogTitle>
+          <p className="text-sm text-red-700 dark:text-red-300">This will permanently delete all campaign logs from DynamoDB</p>
+        </div>
+
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
+          <p className="text-sm text-red-800 dark:text-red-300 mb-2">
+            <strong>⚠️ Warning:</strong> This action cannot be undone!
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="delete-confirm-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Type <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">DELETE ALL LOGS</span> to confirm:
+            </label>
+            <input
+              id="delete-confirm-text"
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => onConfirmTextChange(e.target.value)}
+              placeholder="DELETE ALL LOGS"
+              disabled={deleting}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+
+          {pagination && (
+            <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
+              <strong>Records to be deleted:</strong> {pagination.totalItems} campaign log entries
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            disabled={deleting}
+            className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={onDelete}
+            disabled={deleteConfirmText !== 'DELETE ALL LOGS' || deleting}
+            className="flex-1"
+          >
+            {deleting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete All Logs
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="text-center">
+        <div className={`w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center ${
+          deleteResult.success ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
+        }`}>
+          {deleteResult.success ? (
+            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+          ) : (
+            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+          )}
+        </div>
+        <DialogTitle className={`text-xs font-medium uppercase tracking-wide mb-2 ${
+          deleteResult.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+        }`}>
+          {deleteResult.success ? 'Deletion Successful!' : 'Deletion Failed'}
+        </DialogTitle>
+        <p className={`text-sm ${
+          deleteResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+        }`}>
+          {deleteResult.message}
+        </p>
+
+        {deleteResult.success && (
+          <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
+            <strong>Deleted:</strong> {deleteResult.count} records in {deleteResult.batchCount} batches
+          </div>
+        )}
+      </div>
+
+      <div className="pt-2">
+        <Button
+          variant="outline"
+          onClick={onClose}
+          className="w-full border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          Close
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// Schedule campaign dialog content, extracted to keep CampaignLogs' render function simple
+function ScheduleDialogContent({
+  scheduleData, onScheduleDataChange, scheduling, onCancel, onSchedule,
+}: Readonly<{
+  scheduleData: {
+    start_date: string
+    end_date: string
+    start_time: string
+    end_time: string
+    concurrency: number
+    retry_config: Record<string, number>
+  }
+  onScheduleDataChange: (data: Partial<{ start_date: string; end_date: string; start_time: string; end_time: string; concurrency: number }>) => void
+  scheduling: boolean
+  onCancel: () => void
+  onSchedule: () => void
+}>) {
+  return (
+    <div className="space-y-4">
+      <div className="text-center">
+        <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+          <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        </div>
+        <DialogTitle className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Schedule Campaign</DialogTitle>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Configure your campaign schedule settings</p>
+      </div>
+
+      {/* Schedule form content - with dark mode */}
+      <div className="space-y-4">
+        {/* Date Range */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="schedule-start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Start Date
+            </label>
+            <input
+              id="schedule-start-date"
+              type="date"
+              value={scheduleData.start_date}
+              onChange={(e) => onScheduleDataChange({ start_date: e.target.value })}
+              disabled={scheduling}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="schedule-end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              End Date
+            </label>
+            <input
+              id="schedule-end-date"
+              type="date"
+              value={scheduleData.end_date}
+              onChange={(e) => onScheduleDataChange({ end_date: e.target.value })}
+              disabled={scheduling}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+        </div>
+
+        {/* Time Range and other fields */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <Clock className="w-4 h-4 inline mr-1" />
+              Start Time
+            </label>
+            <input
+              type="time"
+              value={scheduleData.start_time}
+              onChange={(e) => onScheduleDataChange({ start_time: e.target.value })}
+              disabled={scheduling}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <Clock className="w-4 h-4 inline mr-1" />
+              End Time
+            </label>
+            <input
+              type="time"
+              value={scheduleData.end_time}
+              onChange={(e) => onScheduleDataChange({ end_time: e.target.value })}
+              disabled={scheduling}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="schedule-concurrency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Concurrency
+          </label>
+          <input
+            id="schedule-concurrency"
+            type="number"
+            min="1"
+            max="50"
+            value={scheduleData.concurrency}
+            onChange={(e) => onScheduleDataChange({ concurrency: Number.parseInt(e.target.value) || 1 })}
+            disabled={scheduling}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          disabled={scheduling}
+          className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={onSchedule}
+          disabled={scheduling}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          {scheduling ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Scheduling...
+            </>
+          ) : (
+            <>
+              <Calendar className="w-4 mr-2" />
+              Create Schedule
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -1031,312 +1369,54 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       </main>
 
       {/* All dialog components with dark mode support */}
-      {showUploadDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-                <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Upload CSV File</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Select a CSV file to upload to S3</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  CSV File
-                </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
-                />
-              </div>
-              
-              {csvFile && (
-                <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3">
-                  <strong>Selected:</strong> {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
-                </div>
-              )}
-            </div>
-            
-            <div className="flex gap-3 pt-2">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowUploadDialog(false)
-                  setCsvFile(null)
-                }} 
-                disabled={uploading}
-                className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleUpload}
-                disabled={!csvFile || uploading}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload to S3
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={showUploadDialog} onOpenChange={(open) => { setShowUploadDialog(open); if (!open) setCsvFile(null) }}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <UploadDialogContent
+            csvFile={csvFile}
+            onFileChange={setCsvFile}
+            uploading={uploading}
+            onCancel={() => { setShowUploadDialog(false); setCsvFile(null) }}
+            onUpload={handleUpload}
+          />
+        </DialogContent>
+      </Dialog>
 
-      {showDeleteDialog && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-                  {!deleteResult ? (
-                    <>
-                      <div className="text-center">
-                        <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-                          <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-red-900 dark:text-red-100 mb-2">Delete All Campaign Logs</h3>
-                        <p className="text-sm text-red-700 dark:text-red-300">This will permanently delete all campaign logs from DynamoDB</p>
-                      </div>
-                      
-                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                        <p className="text-sm text-red-800 dark:text-red-300 mb-2">
-                          <strong>⚠️ Warning:</strong> This action cannot be undone!
-                        </p>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Type <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">DELETE ALL LOGS</span> to confirm:
-                          </label>
-                          <input
-                            type="text"
-                            value={deleteConfirmText}
-                            onChange={(e) => setDeleteConfirmText(e.target.value)}
-                            placeholder="DELETE ALL LOGS"
-                            disabled={deleting}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                          />
-                        </div>
-                        
-                        {pagination && (
-                          <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3">
-                            <strong>Records to be deleted:</strong> {pagination.totalItems} campaign log entries
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex gap-3 pt-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            setShowDeleteDialog(false)
-                            setDeleteConfirmText('')
-                            setDeleteResult(null)
-                          }}
-                          disabled={deleting}
-                          className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          variant="destructive"
-                          onClick={handleDeleteAll}
-                          disabled={deleteConfirmText !== 'DELETE ALL LOGS' || deleting}
-                          className="flex-1"
-                        >
-                          {deleting ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Deleting...
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete All Logs
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-center">
-                        <div className={`w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center ${
-                          deleteResult.success ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
-                        }`}>
-                          {deleteResult.success ? (
-                            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-                          )}
-                        </div>
-                        <h3 className={`text-xl font-semibold mb-2 ${
-                          deleteResult.success ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'
-                        }`}>
-                          {deleteResult.success ? 'Deletion Successful!' : 'Deletion Failed'}
-                        </h3>
-                        <p className={`text-sm ${
-                          deleteResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-                        }`}>
-                          {deleteResult.message}
-                        </p>
-                        
-                        {deleteResult.success && (
-                          <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3">
-                            <strong>Deleted:</strong> {deleteResult.count} records in {deleteResult.batchCount} batches
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="pt-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => {
-                            setShowDeleteDialog(false)
-                            setDeleteConfirmText('')
-                            setDeleteResult(null)
-                          }}
-                          className="w-full border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        >
-                          Close
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
+      <Dialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open)
+          if (!open) {
+            setDeleteConfirmText('')
+            setDeleteResult(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <DeleteDialogContent
+            deleteConfirmText={deleteConfirmText}
+            onConfirmTextChange={setDeleteConfirmText}
+            deleting={deleting}
+            deleteResult={deleteResult}
+            pagination={pagination}
+            onCancel={() => { setShowDeleteDialog(false); setDeleteConfirmText(''); setDeleteResult(null) }}
+            onDelete={handleDeleteAll}
+            onClose={() => { setShowDeleteDialog(false); setDeleteConfirmText(''); setDeleteResult(null) }}
+          />
+        </DialogContent>
+      </Dialog>
 
-            {/* Schedule Dialog - with dark mode support */}
-            {showScheduleDialog && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-                  <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-4 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Schedule Campaign</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Configure your campaign schedule settings</p>
-                  </div>
-                  
-                  {/* Schedule form content - with dark mode */}
-                  <div className="space-y-4">
-                    {/* Date Range */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          value={scheduleData.start_date}
-                          onChange={(e) => setScheduleData({ ...scheduleData, start_date: e.target.value })}
-                          disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          End Date
-                        </label>
-                        <input
-                          type="date"
-                          value={scheduleData.end_date}
-                          onChange={(e) => setScheduleData({ ...scheduleData, end_date: e.target.value })}
-                          disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Time Range and other fields */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          <Clock className="w-4 h-4 inline mr-1" />
-                          Start Time
-                        </label>
-                        <input
-                          type="time"
-                          value={scheduleData.start_time}
-                          onChange={(e) => setScheduleData({ ...scheduleData, start_time: e.target.value })}
-                          disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          <Clock className="w-4 h-4 inline mr-1" />
-                          End Time
-                        </label>
-                        <input
-                          type="time"
-                          value={scheduleData.end_time}
-                          onChange={(e) => setScheduleData({ ...scheduleData, end_time: e.target.value })}
-                          disabled={scheduling}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Concurrency
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="50"
-                        value={scheduleData.concurrency}
-                        onChange={(e) => setScheduleData({ ...scheduleData, concurrency: parseInt(e.target.value) || 1 })}
-                        disabled={scheduling}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowScheduleDialog(false)}
-                      disabled={scheduling}
-                      className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={handleSchedule}
-                      disabled={scheduling}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {scheduling ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Scheduling...
-                        </>
-                      ) : (
-                        <>
-                          <Calendar className="w-4 mr-2" />
-                          Create Schedule
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+      {/* Schedule Dialog - with dark mode support */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
+          <ScheduleDialogContent
+            scheduleData={scheduleData}
+            onScheduleDataChange={(update) => setScheduleData({ ...scheduleData, ...update })}
+            scheduling={scheduling}
+            onCancel={() => setShowScheduleDialog(false)}
+            onSchedule={handleSchedule}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

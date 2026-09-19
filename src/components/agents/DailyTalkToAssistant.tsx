@@ -282,9 +282,9 @@ export default function DailyTalkToAssistant({
       {/* Tips — idle */}
       {!state.isConnected && !state.isConnecting && (
         <div className="p-4 mt-auto flex-shrink-0">
-          <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-            <h4 className="text-xs font-medium text-orange-700 dark:text-orange-300 mb-2">💡 Voice Testing Tips</h4>
-            <ul className="text-xs text-orange-600 dark:text-orange-400 space-y-1">
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <h4 className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">💡 Voice Testing Tips</h4>
+            <ul className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
               <li>• Test your system prompt and agent behavior</li>
               <li>• Verify STT, LLM, and TTS configurations</li>
               <li>• Check response timing and accuracy</li>

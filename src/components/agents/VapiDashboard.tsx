@@ -112,7 +112,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
             <div className="w-12 h-12 bg-black dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Image src="/vapi.svg" alt="Vapi Logo" width={24} height={24} />
             </div>
-            <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 rounded-full animate-spin mx-auto" style={{ borderTopColor: '#328c81' }}></div>
+            <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading assistant details...</p>
           </div>
         </div>
@@ -156,8 +156,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
                   const assistantId = agentData?.configuration?.vapi?.assistantId || agentId
                   window.open(`https://dashboard.vapi.ai/assistants/${assistantId}`, '_blank')
                 }}
-                className="text-white hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#328c81' }}
+                className="text-white bg-blue-600 hover:bg-blue-700 transition-colors"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Open in Vapi Dashboard
@@ -285,7 +284,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
         <div className="w-1/3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
             <div>
-              <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-2">Configuration Overview</h3>
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Configuration Overview</h3>
               
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-2">
@@ -302,7 +301,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Model</span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Model</span>
                     <span className="text-xs text-gray-400 dark:text-gray-500">{assistant.model?.provider}</span>
                   </div>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{assistant.model?.model}</p>
@@ -310,7 +309,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Voice</span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Voice</span>
                     <span className="text-xs text-gray-400 dark:text-gray-500">{assistant.voice?.provider}</span>
                   </div>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{assistant.voice?.voiceId}</p>

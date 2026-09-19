@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useMemo } from "react"
-import { Plus, X, AlertCircle, Maximize2 } from "lucide-react"
+import { Plus, X, AlertCircle, Maximize2, Minimize2, Copy, Check } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,11 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import MagicButton from "@/components/buttons/MagicButton"
 
 interface FieldExtractorItem {
@@ -51,9 +46,22 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
   )
   const [enabled, setEnabled] = useState(isEnabled)
   const [isOpen, setIsOpen] = useState(false)
-  const [editingFieldIndex, setEditingFieldIndex] = useState<number | null>(null)
-  const [tempDescription, setTempDescription] = useState("")
-  
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [copiedAll, setCopiedAll] = useState(false)
+
+  const copyField = (field: FieldExtractorItem, index: number) => {
+    navigator.clipboard.writeText(JSON.stringify(field, null, 2))
+    setCopiedIndex(index)
+    setTimeout(() => setCopiedIndex((cur) => (cur === index ? null : cur)), 1500)
+  }
+
+  const copyAllFields = () => {
+    navigator.clipboard.writeText(JSON.stringify(fields, null, 2))
+    setCopiedAll(true)
+    setTimeout(() => setCopiedAll(false), 1500)
+  }
+
   // Extract variable names from all field descriptions
   const detectedVariables = useMemo(() => {
     const varPattern = /\{\{(\w+)\}\}/g
@@ -127,26 +135,18 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
     setVariables([...variables, ...newVariables])
   }
 
-  const openDescriptionEditor = (index: number) => {
-    setEditingFieldIndex(index)
-    setTempDescription(fields[index].description)
-  }
-
-  const saveDescription = () => {
-    if (editingFieldIndex !== null) {
-      updateField(editingFieldIndex, { description: tempDescription })
-      setEditingFieldIndex(null)
-    }
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <MagicButton />
       </DialogTrigger>
-      <DialogContent className="max-w-2xl rounded-lg shadow-xl p-0 flex flex-col h-[85vh]">
+      {/* sm:max-w-3xl alongside max-w-3xl: the base DialogContent sets
+          sm:max-w-lg, and tailwind-merge doesn't touch it for an unprefixed
+          max-w- override — the two live in different variant buckets, so
+          the sm: one silently won on every real screen without this */}
+      <DialogContent className="max-w-3xl sm:max-w-3xl rounded-lg shadow-xl p-0 flex flex-col h-[85vh]">
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
-          <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
+          <DialogTitle className="text-2xl font-semibold text-foreground">
             Field Extractor Config
           </DialogTitle>
         </DialogHeader>
@@ -154,8 +154,8 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
 
         {/* Fixed section for the enable switch */}
         <div className="flex-shrink-0 p-6 pb-4">
-          <div className="flex items-center justify-between p-2 rounded-md bg-gray-50 dark:bg-gray-800">
-            <Label htmlFor="enabled" className="text-base font-medium text-gray-700 dark:text-gray-300">
+          <div className="flex items-center justify-between p-2 rounded-md bg-muted">
+            <Label htmlFor="enabled" className="text-base font-medium text-foreground">
               Enable Field Extraction
             </Label>
             <Switch id="enabled" checked={enabled} onCheckedChange={setEnabled} />
@@ -167,101 +167,113 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
           <div className="space-y-6 pr-2">
             {/* Fields Section */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Extraction Fields</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">Extraction Fields</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={copyAllFields}
+                  className="h-7 text-xs"
+                  title="Copy all fields as a JSON array"
+                >
+                  {copiedAll ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                  Copy all
+                </Button>
+              </div>
               <div className="space-y-4">
-                {fields.map((field, index) => (
-                  <div key={`field-${index}`} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-5">
-                      <Label
-                        htmlFor={`field-key-${index}`}
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block"
-                      >
-                        Label
-                      </Label>
-                      <Input
-                        id={`field-key-${index}`}
-                        placeholder="e.g. Respondent Name"
-                        value={field.key}
-                        onChange={(e) => updateField(index, { key: e.target.value })}
-                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 h-8"
-                      />
-                    </div>
-                    <div className="col-span-6">
-                      <Label
-                        htmlFor={`field-description-${index}`}
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block"
-                      >
-                        Description
-                      </Label>
-                      <div className="flex gap-1">
+                {fields.map((field, index) => {
+                  const expanded = expandedIndex === index
+                  return (
+                  <div
+                    key={`field-${field.key}-${field.description}`}
+                    className="rounded-lg border border-border p-3 space-y-2"
+                  >
+                    <div className="grid grid-cols-12 gap-2 items-end">
+                      <div className="col-span-5">
+                        <Label
+                          htmlFor={`field-key-${index}`}
+                          className="text-sm font-medium text-muted-foreground mb-1 block"
+                        >
+                          Label
+                        </Label>
                         <Input
-                          id={`field-description-${index}`}
-                          placeholder="Describe what to extract"
-                          value={field.description}
-                          onChange={(e) => updateField(index, { description: e.target.value })}
-                          className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 flex-1 h-8"
+                          id={`field-key-${index}`}
+                          placeholder="e.g. Respondent Name"
+                          value={field.key}
+                          onChange={(e) => updateField(index, { key: e.target.value })}
+                          className="h-8"
                         />
-                        <Popover open={editingFieldIndex === index} onOpenChange={(open) => {
-                          if (!open) setEditingFieldIndex(null)
-                        }}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDescriptionEditor(index)}
-                              className="h-8 w-8 p-0 flex-shrink-0"
-                              title="Expand editor"
-                            >
-                              <Maximize2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent 
-                            className="w-[600px] p-4" 
-                            align="end"
-                            side="top"
+                      </div>
+                      <div className="col-span-5">
+                        <Label
+                          htmlFor={`field-description-${index}`}
+                          className="text-sm font-medium text-muted-foreground mb-1 block"
+                        >
+                          Description
+                        </Label>
+                        <div className="flex gap-1">
+                          <Input
+                            id={`field-description-${index}`}
+                            placeholder="Describe what to extract"
+                            value={field.description}
+                            onChange={(e) => updateField(index, { description: e.target.value })}
+                            className="flex-1 h-8"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setExpandedIndex(expanded ? null : index)}
+                            className="h-8 w-8 p-0 flex-shrink-0"
+                            title={expanded ? "Collapse" : "Expand editor"}
                           >
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-                                  Edit Description
-                                </Label>
-                                <Button
-                                  size="sm"
-                                  onClick={saveDescription}
-                                  className="h-7 text-xs"
-                                >
-                                  Done
-                                </Button>
-                              </div>
-                              <Textarea
-                                value={tempDescription}
-                                onChange={(e) => setTempDescription(e.target.value)}
-                                placeholder="Describe what to extract in detail..."
-                                className="min-h-[200px] resize-y text-sm"
-                                autoFocus
-                              />
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Use {`{{variable_name}}`} for dynamic values
-                              </p>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                            {expanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="col-span-1 flex items-center justify-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => copyField(field, index)}
+                          aria-label={`Copy field ${index + 1}`}
+                          title="Copy as JSON"
+                          className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:text-foreground"
+                        >
+                          {copiedIndex === index ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                      <div className="col-span-1 flex items-center justify-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeField(index)}
+                          aria-label={`Remove field ${index + 1}`}
+                          className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="col-span-1 flex items-center justify-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeField(index)}
-                        aria-label={`Remove field ${index + 1}`}
-                        className="h-8 w-8 p-0 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    {expanded && (
+                      <div className="space-y-1">
+                        <Textarea
+                          value={field.description}
+                          onChange={(e) => updateField(index, { description: e.target.value })}
+                          placeholder="Describe what to extract in detail..."
+                          className="min-h-[160px] resize-y text-sm"
+                          autoFocus
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Use {`{{variable_name}}`} for dynamic values
+                        </p>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -269,7 +281,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
             <Separator />
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Dynamic Variables</h3>
+                <h3 className="text-sm font-semibold text-foreground">Dynamic Variables</h3>
                 {unmappedVariables.length > 0 && (
                   <Button
                     type="button"
@@ -283,7 +295,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                   </Button>
                 )}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Variables used in descriptions: {detectedVariables.length > 0 ? detectedVariables.map(v => `{{${v}}}`).join(', ') : 'None detected'}
               </p>
               {unmappedVariables.length > 0 && (
@@ -300,7 +312,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                     <div className="col-span-5">
                       <Label
                         htmlFor={`var-name-${index}`}
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block"
+                        className="text-sm font-medium text-muted-foreground mb-1 block"
                       >
                         Variable Name
                       </Label>
@@ -309,13 +321,13 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                         placeholder="e.g. customer_name"
                         value={variable.variableName}
                         onChange={(e) => updateVariable(index, { variableName: e.target.value })}
-                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 h-8"
+                        className="h-8"
                       />
                     </div>
                     <div className="col-span-6">
                       <Label
                         htmlFor={`var-path-${index}`}
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block"
+                        className="text-sm font-medium text-muted-foreground mb-1 block"
                       >
                         Column Path
                       </Label>
@@ -324,7 +336,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                         placeholder="e.g. metadata.name, dynamic_variables.order_id"
                         value={variable.columnPath}
                         onChange={(e) => updateVariable(index, { columnPath: e.target.value })}
-                        className="rounded-md border border-gray-300 dark:border-gray-700 focus:ring-gray-950 focus:border-gray-950 dark:focus:ring-gray-300 dark:focus:border-gray-300 h-8"
+                        className="h-8"
                       />
                     </div>
                     <div className="col-span-1 flex items-center justify-center">
@@ -333,7 +345,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                         size="icon"
                         onClick={() => removeVariable(index)}
                         aria-label={`Remove variable ${index + 1}`}
-                        className="h-8 w-8 p-0 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
+                        className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -346,30 +358,17 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
         </div>
 
         {/* Fixed section for action buttons */}
-        <div className="flex-shrink-0 p-6 pt-4 border-t dark:border-gray-700">
+        <div className="flex-shrink-0 p-6 pt-4 border-t border-border">
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addField}
-                className="rounded-md border border-dashed border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 bg-transparent"
-              >
+              <Button type="button" variant="outline" onClick={addField} className="border-dashed">
                 <Plus className="w-4 h-4 mr-2" /> Add Field
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addVariable}
-                className="rounded-md border border-dashed border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 bg-transparent"
-              >
+              <Button type="button" variant="outline" onClick={addVariable} className="border-dashed">
                 <Plus className="w-4 h-4 mr-2" /> Add Variable
               </Button>
             </div>
-            <Button
-              onClick={handleSave}
-              className="w-full rounded-md bg-gray-900 text-white shadow-sm hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-200 dark:focus-visible:ring-gray-300"
-            >
+            <Button onClick={handleSave} className="w-full">
               Save Field Extractor
             </Button>
           </div>

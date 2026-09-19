@@ -71,11 +71,11 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
               </a>
               <Link href="/">
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start', color: '#111827' }}>
+                  <span className="text-gray-900 dark:text-gray-100" style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}>
                     Whispey
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif', color: '#6D28D9' }}>by</span>
+                    <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}>by</span>
                     <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
                   </div>
                 </div>
@@ -88,31 +88,31 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                 <nav className="flex items-center gap-2 text-sm">
                   <Link 
                     href="/" 
-                    className="text-gray-500 hover:text-gray-900 transition-colors"
+                    className="text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   >
                     Home
                   </Link>
-                  
+
                   {breadcrumbState.project && (
                     <>
-                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600" />
                       {isLoading ? (
                         <Skeleton className="h-4 w-24" />
                       ) : (
-                        <span className="text-gray-900">
+                        <span className="text-gray-900 dark:text-gray-100">
                           {breadcrumbState.project}
                         </span>
                       )}
                     </>
                   )}
-                  
+
                   {breadcrumbState.item && (
                     <>
-                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600" />
                       {isLoading ? (
                         <Skeleton className="h-4 w-32" />
                       ) : (
-                        <span className="text-gray-900">
+                        <span className="text-gray-900 dark:text-gray-100">
                           {breadcrumbState.item}
                         </span>
                       )}
@@ -158,35 +158,35 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 w-9 h-9 p-0 rounded-lg border border-transparent hover:border-gray-200 transition-all duration-200"
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 w-9 h-9 p-0 rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
                 >
                   <HelpCircle className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 shadow-lg border border-gray-200/80 rounded-xl backdrop-blur-sm bg-white/95">
-                <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-900">Help & Resources</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Get support and documentation</p>
+              <DropdownMenuContent align="end" className="w-64 shadow-lg border border-gray-200/80 dark:border-gray-800 rounded-xl backdrop-blur-sm bg-white/95 dark:bg-gray-900/95">
+                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Help & Resources</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Get support and documentation</p>
                 </div>
                 <div className="py-1">
                   <DropdownMenuItem asChild>
-                    <Link href="/api-reference" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
-                      <Zap className="w-4 h-4 mr-3 text-yellow-600" />
+                    <Link href="/api-reference" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg mx-1">
+                      <Zap className="w-4 h-4 mr-3 text-yellow-600 dark:text-yellow-500" />
                       <div>
-                        <p className="font-medium text-gray-900">API Reference</p>
-                        <p className="text-xs text-gray-500">Complete API documentation</p>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">API Reference</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Complete API documentation</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>
                 </div>
-                <DropdownMenuSeparator className="bg-gray-100" />
+                <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
                 <div className="py-1">
                   <DropdownMenuItem asChild>
-                    <Link href="mailto:deepesh@pypeai.com" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
-                      <HelpCircle className="w-4 h-4 mr-3 text-purple-600" />
+                    <Link href="mailto:deepesh@pypeai.com" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg mx-1">
+                      <HelpCircle className="w-4 h-4 mr-3 text-blue-600 dark:text-blue-400" />
                       <div>
-                        <p className="font-medium text-gray-900">Contact Support</p>
-                        <p className="text-xs text-gray-500">Get help from our team</p>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">Contact Support</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Get help from our team</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>

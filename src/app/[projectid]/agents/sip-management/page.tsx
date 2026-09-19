@@ -267,28 +267,31 @@ export default function SimplifiedSipManagement() {
         </div>
       ) : (
         <div className="p-4">
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            {/* Table Header */}
-            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-              <div className="grid grid-cols-4 gap-4 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            {/* Table Header — hidden below sm: a 4-column grid at 375px would
+                crush every field to under 90px. Each row below labels its own
+                fields inline on mobile instead of relying on this header. */}
+            <div className="hidden sm:block px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+              <div className="grid grid-cols-4 gap-4 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 <div>Number</div>
                 <div>Assigned Agent Name</div>
                 <div>Last Updated</div>
                 <div>Actions</div>
               </div>
             </div>
-            
+
             {/* Table Body */}
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="divide-y divide-gray-200 dark:divide-gray-800">
               {filteredAgents.map((phoneAgent) => {
                 return (
                   <div
                     key={phoneAgent.id}
                     className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
-                    <div className="grid grid-cols-4 gap-4 items-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 sm:items-center">
                       {/* Phone Number */}
                       <div>
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:hidden">Number</div>
                         {phoneAgent.inbound_phone_number ? (
                           <Badge variant="outline" className="text-sm font-mono">
                             {phoneAgent.inbound_phone_number}
@@ -302,6 +305,7 @@ export default function SimplifiedSipManagement() {
                       
                       {/* Assigned Agent */}
                       <div>
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:hidden">Assigned Agent Name</div>
                         {phoneAgent.name ? (
                           <div className="flex items-center gap-2">
                             <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
@@ -318,6 +322,7 @@ export default function SimplifiedSipManagement() {
                       
                       {/* Last Updated */}
                       <div>
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:hidden">Last Updated</div>
                         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                           <Clock className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate max-w-[150px]" title={formatDate(phoneAgent.created_at)}>

@@ -144,7 +144,7 @@ function SipCodePicker({
   return (
     <div className="mb-3">
       <div className="flex items-center gap-1 mb-1.5">
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 block">
+        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 block">
           SIP Error Codes
         </Label>
         <Popover>
@@ -166,7 +166,7 @@ function SipCodePicker({
                   </span>{' '}
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
                   {!c.enabled && (
-                    <span className="ml-1 text-[10px] italic text-gray-400">(coming soon)</span>
+                    <span className="ml-1 text-[11px] italic text-gray-400">(coming soon)</span>
                   )}
                   <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
                 </div>
@@ -256,7 +256,7 @@ function SipCodeGroup({
               }
             >
               {c.code} — {c.label}
-              {!c.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
+              {!c.enabled && <span className="ml-1 text-[11px] italic">(coming soon)</span>}
             </button>
           )
         })}
@@ -284,7 +284,7 @@ function OperatorAndExpectedValueFields({
   return (
     <>
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
           Operator
         </Label>
         <Select value={operator || 'missing'} onValueChange={onOperatorChange}>
@@ -303,7 +303,7 @@ function OperatorAndExpectedValueFields({
 
       {operator && operator !== 'missing' && (
         <div>
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
             Expected Value
           </Label>
           <Input
@@ -623,7 +623,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                   variant="ghost"
                   size="sm"
                   onClick={() => removeRetryConfig(index)}
-                  className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -631,7 +631,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
 
               {/* Retry Type Selector - show for all items */}
               <div className="mb-3">
-                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                   Retry Type
                 </Label>
                 <Select
@@ -720,7 +720,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'metric' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                         Metric Name
                       </Label>
                       {loadingFields ? (
@@ -756,7 +756,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     {config.metricName && (
                       <>
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Operator
                           </Label>
                           <Select
@@ -780,7 +780,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         </div>
 
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Threshold
                           </Label>
                           <Input
@@ -807,7 +807,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'fieldExtractor' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                         Field Name
                       </Label>
                       {loadingFields ? (
@@ -861,7 +861,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'metadata' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                         Metadata Field
                       </Label>
                       <Select
@@ -877,7 +877,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           {CALL_METADATA_FIELDS.map((field) => (
                             <SelectItem key={field.key} value={field.key} disabled={!field.enabled}>
                               {field.label}
-                              {!field.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
+                              {!field.enabled && <span className="ml-1 text-[11px] italic">(coming soon)</span>}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -907,7 +907,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 const isBackoff = Array.isArray(config.backoffMinutes) && config.backoffMinutes.length > 0
                 return (
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">
+                    <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1 block">
                       Retry Timing
                     </Label>
                     <div className="flex items-center gap-4 text-xs text-gray-700 dark:text-gray-300">
@@ -949,7 +949,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     {!isBackoff ? (
                       <div className="grid grid-cols-2 gap-3 pt-1">
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Delay (minutes)
                           </Label>
                           <Input
@@ -967,7 +967,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         </div>
 
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Max Retries
                           </Label>
                           <Input
@@ -986,7 +986,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                       </div>
                     ) : (
                       <div className="pt-1">
-                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                           Backoff schedule (minutes)
                         </Label>
                         <ChipInput

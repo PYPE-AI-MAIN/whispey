@@ -1408,7 +1408,7 @@ const unmappedVariablesCount = useMemo(() => {
           <div className="flex-1 min-w-0 flex flex-col space-y-3">
             
             {/* Quick Setup Row */}
-            <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+            <div className="flex-shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3 space-y-3">
               {/* Pipeline mode toggle */}
               <div className="flex items-center justify-between">
 
@@ -1429,7 +1429,7 @@ const unmappedVariablesCount = useMemo(() => {
                     onClick={enterFallbackMode}
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
                       showFallback
-                        ? 'bg-yellow-100 text-black shadow-sm'
+                        ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 shadow-sm'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
@@ -1520,13 +1520,13 @@ const unmappedVariablesCount = useMemo(() => {
             </div>
 
             {/* Conversation Flow */}
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3 flex-shrink-0">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3 space-y-3 flex-shrink-0">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                <label htmlFor="firstMessageMode" className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Conversation Start
                 </label>
-                <Select 
-                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
+                <Select
+                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode}
                   onValueChange={(value) => {
                     if (typeof formik.values.firstMessageMode === 'object') {
                       formik.setFieldValue('firstMessageMode', {
@@ -1542,7 +1542,7 @@ const unmappedVariablesCount = useMemo(() => {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-8 text-sm w-full">
+                  <SelectTrigger id="firstMessageMode" className="h-8 text-sm w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1586,10 +1586,10 @@ const unmappedVariablesCount = useMemo(() => {
             </div>
 
             {/* System Prompt */}
-            <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+            <div className="flex-1 min-h-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 flex flex-col">
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">System Prompt</span>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
